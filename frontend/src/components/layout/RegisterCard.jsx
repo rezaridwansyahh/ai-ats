@@ -14,18 +14,35 @@ import { Label } from "@/components/ui/label"
 export function RegisterCard() {
   return (
     <Card className="w-full max-w-sm">
+      <div className="w-4/5 mx-auto">
+        <img 
+          src="../../../public/abhimata.png"
+          className="w-full object-contain"
+        />
+      </div>
       <CardHeader>
-        <CardTitle>Login to your account</CardTitle>
+        <CardTitle>Register to your account</CardTitle>
         <CardDescription>
-          Enter your email below to login to your account
+          Enter your credential below to create your account
         </CardDescription>
         <CardAction>
-          <Button variant="link">Sign Up</Button>
+          <Button asChild variant="link">
+            <a href="/login">Log In</a>
+          </Button>
         </CardAction>
       </CardHeader>
       <CardContent>
         <form>
           <div className="flex flex-col gap-6">
+            <div className="grid gap-2">
+              <Label htmlFor="email">Username</Label>
+              <Input
+                id="username"
+                type="username"
+                placeholder="John Smith"
+                required
+              />
+            </div>
             <div className="grid gap-2">
               <Label htmlFor="email">Email</Label>
               <Input
@@ -38,12 +55,6 @@ export function RegisterCard() {
             <div className="grid gap-2">
               <div className="flex items-center">
                 <Label htmlFor="password">Password</Label>
-                <a
-                  href="#"
-                  className="ml-auto inline-block text-sm underline-offset-4 hover:underline"
-                >
-                  Forgot your password?
-                </a>
               </div>
               <Input id="password" type="password" required />
             </div>
@@ -51,11 +62,8 @@ export function RegisterCard() {
         </form>
       </CardContent>
       <CardFooter className="flex-col gap-2">
-        <Button type="submit" className="w-full">
-          Login
-        </Button>
-        <Button variant="outline" className="w-full">
-          Login with Google
+        <Button type="submit" className="w-full cursor-pointer">
+          Register
         </Button>
       </CardFooter>
     </Card>

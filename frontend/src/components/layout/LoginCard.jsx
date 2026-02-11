@@ -14,13 +14,21 @@ import { Label } from "@/components/ui/label"
 export function LoginCard() {
   return (
     <Card className="w-full max-w-sm">
+      <div className="w-4/5 mx-auto">
+        <img 
+          src="../../../public/abhimata.png"
+          className="w-full object-contain"
+        />
+      </div>
       <CardHeader>
         <CardTitle>Login to your account</CardTitle>
         <CardDescription>
           Enter your email below to login to your account
         </CardDescription>
         <CardAction>
-          <Button variant="link">Sign Up</Button>
+          <Button asChild variant="link">
+            <a href="/register">Sign Up</a>
+          </Button>
         </CardAction>
       </CardHeader>
       <CardContent>
@@ -51,11 +59,8 @@ export function LoginCard() {
         </form>
       </CardContent>
       <CardFooter className="flex-col gap-2">
-        <Button type="submit" className="w-full">
+        <Button type="submit" className="w-full cursor-pointer">
           Login
-        </Button>
-        <Button variant="outline" className="w-full">
-          Login with Google
         </Button>
       </CardFooter>
     </Card>
