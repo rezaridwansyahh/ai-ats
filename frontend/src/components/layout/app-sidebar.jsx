@@ -1,4 +1,5 @@
 import React from 'react';
+import { useNavigate } from 'react-router-dom'
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import {
   Sidebar,
@@ -101,6 +102,13 @@ export const menuItems = [
   ];
 
 export function AppSidebar() {
+  const navigate = useNavigate();
+  const handleLogout = () => {
+    localStorage.removeItem('token');
+    
+    navigate("/login");
+  }
+
   return (
     <Sidebar>
       <SidebarHeader>
@@ -195,7 +203,7 @@ export function AppSidebar() {
                 </DropdownMenuItem>
                 <DropdownMenuItem 
                   onClick={() => {
-                    // Add your logout logic here
+                    handleLogout();
                     console.log('Logging out...');
                   }}
                 >

@@ -1,3 +1,7 @@
+import { useState } from "react"
+import { useNavigate } from "react-router-dom"
+import { registerUser } from "../../services/auth"
+
 import { Button } from "@/components/ui/button"
 import {
   Card,
@@ -12,6 +16,31 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 
 export function RegisterCard() {
+  const [username, setUsername] = useState("")
+  const [email, setEmail] = useState("")
+  const [password, setPassword] = useState("")
+
+  const navigate = useNavigate()
+
+  const handleSubmitRegister = async (e) => {
+    e.preventDefault()
+    
+    try {
+      const res = await registerUser({
+        username,
+        email,
+        password
+      });
+
+      console.log(res);
+
+      localStorage.setItem('token', res.data.token);
+      navigate("/dashboard");
+    } catch (err) {
+      console.log("err");
+    }
+  }
+
   return (
     <Card className="w-full max-w-sm">
       <div className="w-4/5 mx-auto">
@@ -32,7 +61,8 @@ export function RegisterCard() {
         </CardAction>
       </CardHeader>
       <CardContent>
-        <form>
+
+        <form id="registerForm" onSubmit={handleSubmitRegister}>
           <div className="flex flex-col gap-6">
             <div className="grid gap-2">
               <Label htmlFor="email">Username</Label>
@@ -40,6 +70,8 @@ export function RegisterCard() {
                 id="username"
                 type="username"
                 placeholder="John Smith"
+                value={username}
+                onChange={(e) => setUsername(e.target.value)}
                 required
               />
             </div>
@@ -48,7 +80,9 @@ export function RegisterCard() {
               <Input
                 id="email"
                 type="email"
+                value={email}
                 placeholder="m@example.com"
+                onChange={(e) => setEmail(e.target.value)}
                 required
               />
             </div>
@@ -56,16 +90,20 @@ export function RegisterCard() {
               <div className="flex items-center">
                 <Label htmlFor="password">Password</Label>
               </div>
-              <Input id="password" type="password" required />
+              <Input id="password" type="password" required value={password} onChange={(e) => setPassword(e.target.value)}/>
             </div>
           </div>
         </form>
-      </CardContent>
-      <CardFooter className="flex-col gap-2">
-        <Button type="submit" className="w-full cursor-pointer">
-          Register
-        </Button>
-      </CardFooter>
+
+        </CardContent>
+
+        <CardFooter className="flex-col gap-2">
+          <Button form="registerForm" type="submit" className="w-full cursor-pointer">
+            Register
+          </Button>
+        </CardFooter>
+      
+      
     </Card>
   )
 }
