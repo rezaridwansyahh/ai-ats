@@ -51,9 +51,13 @@ class AuthController {
       return res.status(401).json({ message: 'Invalid email or password' });
       }
 
+      const roles = await Role.getByUserId(user.id);
+      const role_id = roles.length > 0 ? roles[0].role_id : null;
+
       const payload = {
-      user_id: user.id,
-      email: user.email
+        user_id: user.id,
+        email: user.email,
+        role_id: role_id
       };
 
       const token = jwt.sign(payload, CONFIG.JWT_SECRET, {

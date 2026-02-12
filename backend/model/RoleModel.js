@@ -81,14 +81,29 @@ class Role {
     return result.rows;
   }
 
-  static async create(user_id, role_id) {
+  static async getByPermissionId(permission_id) {
     const result = await db.query(`
-      INSERT INTO mapping_users_roles (user_id, role_id)
-      VALUES ($1, $2)
+      SELECT r.*
+      FROM mapping_roles_permissions rp
+      JOIN master_roles r ON rp.role_id = r.id
+      WHERE rp.permission_id = $1  
+    `, [permission_id]);
+
+    return result.rows;
+  }  
+
+  static async create(name, additional) {
+    const result = await db.query(
+      `
+      INSERT INTO master_roles (name, additional) 
+      VALUES ($1, $2) 
       RETURNING *
-    `, [user_id, role_id]);
+    `,
+      [name, additional]
+    );
     return result.rows[0];
   }
+
 
   static async delete(id) {
     const result = await db.query(`
@@ -99,6 +114,32 @@ class Role {
 
     return result.rows[0];
   }
+
+  static async update(id, fields) {
+    const keys = Object.keys(fields);
+    const values = Object.values(fields);
+
+    if (keys.length === 0) {
+      throw new Error("No fields provided for update");
+    }
+
+    const setClause = keys
+      .map((key, index) => `"${key}" = $${index + 1}`)
+      .join(", ");
+
+    const result = await db.query(
+      `
+      UPDATE master_roles 
+      SET ${setClause} 
+      WHERE id = $${keys.length + 1} 
+      RETURNING *
+    `,
+      [...values, id]
+    );
+
+    return result.rows[0];
+  }
+
 }
 
 export default Role;

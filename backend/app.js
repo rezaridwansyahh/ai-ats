@@ -5,6 +5,10 @@ import client from 'prom-client';
 const app = express();
 
 import auths from './routes/auths.js';
+import roles from './routes/roles.js';
+import modules from './routes/modules.js';
+import menus from './routes/menus.js';
+import permissions from './routes/permissions.js';
 
 const collectDefaultMetrics = client.collectDefaultMetrics;
 collectDefaultMetrics();
@@ -66,6 +70,10 @@ app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
 app.use("/api", auths);
+app.use("/api/modules", modules);
+app.use("/api/menus", menus);
+app.use("/api/permissions", permissions);
+app.use("/api/roles", roles);
 
 
 export default app;
