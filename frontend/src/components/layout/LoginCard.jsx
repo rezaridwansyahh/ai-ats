@@ -1,3 +1,7 @@
+import { useState } from "react"
+import { useNavigate } from "react-router-dom"
+import { loginUser } from "../../services/auth"
+
 import { Button } from "@/components/ui/button"
 import {
   Card,
@@ -12,19 +16,49 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 
 export function LoginCard() {
+  const [email, setEmail] = useState("")
+  const [password, setPassword] = useState("")
+  const navigate = useNavigate();
+
+  const handleSubmitLogin = async (e) => {
+    e.preventDefault()
+    
+    try {
+      const res = await loginUser({
+        email,
+        password
+      });
+
+      console.log(res.data);
+
+      localStorage.setItem('token', res.data.token);
+      navigate("/dashboard");
+    } catch (err) {
+      console.log("err", err);
+    }
+  }
+
   return (
     <Card className="w-full max-w-sm">
+      <div className="w-4/5 mx-auto">
+        <img 
+          src="../../../public/abhimata.png"
+          className="w-full object-contain"
+        />
+      </div>
       <CardHeader>
         <CardTitle>Login to your account</CardTitle>
         <CardDescription>
           Enter your email below to login to your account
         </CardDescription>
         <CardAction>
-          <Button variant="link">Sign Up</Button>
+          <Button asChild variant="link">
+            <a href="/register">Sign Up</a>
+          </Button>
         </CardAction>
       </CardHeader>
       <CardContent>
-        <form>
+        <form id="loginForm" onSubmit={handleSubmitLogin}>
           <div className="flex flex-col gap-6">
             <div className="grid gap-2">
               <Label htmlFor="email">Email</Label>
@@ -33,6 +67,7 @@ export function LoginCard() {
                 type="email"
                 placeholder="m@example.com"
                 required
+                onChange={(e) => setEmail(e.target.value)}
               />
             </div>
             <div className="grid gap-2">
@@ -45,17 +80,14 @@ export function LoginCard() {
                   Forgot your password?
                 </a>
               </div>
-              <Input id="password" type="password" required />
+              <Input id="password" type="password" required onChange={(e) => setPassword(e.target.value)}/>
             </div>
           </div>
         </form>
       </CardContent>
       <CardFooter className="flex-col gap-2">
-        <Button type="submit" className="w-full">
+        <Button form="loginForm" type="submit" className="w-full cursor-pointer">
           Login
-        </Button>
-        <Button variant="outline" className="w-full">
-          Login with Google
         </Button>
       </CardFooter>
     </Card>
