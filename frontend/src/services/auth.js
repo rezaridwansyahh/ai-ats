@@ -1,10 +1,32 @@
-import { login } from "../api/auth.api"
-import { register } from "../api/auth.api"
+import { login, register } from "../api/auth.api";
+import { setAuthToken } from "../api/axios";
 
 export const loginUser = async (payload) => {
-  return await login(payload);
-}
+  const { data } = await login(payload);
+
+  localStorage.setItem("token", data.token);
+  localStorage.setItem("user", JSON.stringify(data.user));
+  setAuthToken(data.token);
+
+  return data.user;
+};
 
 export const registerUser = async (payload) => {
-  return await register(payload);
-}
+  const { data } = await register(payload);
+  return data.user;
+};
+
+
+export const logoutUser = () => {
+  localStorage.removeItem("token");
+  localStorage.removeItem("user");
+  setAuthToken(null);
+};
+
+export const getCurrentUser = () => {
+  const token = localStorage.getItem("token");
+  if (token) setAuthToken(token);
+
+  const user = localStorage.getItem("user");
+  return user ? JSON.parse(user) : null;
+};

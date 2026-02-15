@@ -31,55 +31,61 @@ const CONFIG = (() => {
 
 class AuthController {
 
-  static async login(req, res) {
-    try {
-      const { email, password } = req.body;
+static async login(req, res) {
+  try {
+    const { email, password } = req.body;
 
-      if (!email || !password) {
+    if (!email || !password) {
       return res.status(400).json({ message: 'Email and password are required' });
-      }
+    }
 
-      logger.info(`Login attempt: ${email}`);
+    logger.info(`Login attempt: ${email}`);
 
-      const user = await User.getByEmail(email);
-      if (!user) {
+    const user = await User.getByEmail(email);
+    if (!user) {
       return res.status(401).json({ message: 'Invalid email or password' });
-      }
+    }
 
-      const isMatch = await bcrypt.compare(password, user.password);
-      if (!isMatch) {
+    const isMatch = await bcrypt.compare(password, user.password);
+    if (!isMatch) {
       return res.status(401).json({ message: 'Invalid email or password' });
-      }
+    }
 
-      const roles = await Role.getByUserId(user.id);
-      const role_id = roles.length > 0 ? roles[0].role_id : null;
+    const role = await Role.getByUserId(user.id);
 
-      const payload = {
-        user_id: user.id,
-        email: user.email,
-        role_id: role_id
-      };
-
-      const token = jwt.sign(payload, CONFIG.JWT_SECRET, {
-      expiresIn: '1h'
+    if (!role || role.length === 0) {
+      return res.status(401).json({
+        message: "Unauthorized: No role assigned"
       });
+    }
 
-      logger.info(`Login success: ${email}`);
+    const payload = {
+      user_id: user.id,
+      email: user.email,
+      role  
+    };
 
-      return res.status(200).json({
+    const token = jwt.sign(payload, CONFIG.JWT_SECRET, {
+      expiresIn: '1h'
+    });
+
+    logger.info(`Login success: ${email}`);
+
+    return res.status(200).json({
       message: 'Login successful',
       token,
       user: {
         id: user.id,
         email: user.email
-        }
-      });
+      },
+      role  
+    });
 
-    } catch (err) {
-      logger.error(`Login failed: ${err.message}`);
-      return res.status(500).json({ message: 'Internal server error' });
-    }
+  } catch (err) {
+    logger.error(`Login failed: ${err.message}`);
+    return res.status(500).json({ message: 'Internal server error' });
   }
+}
 
 
   static async register(req, res) {

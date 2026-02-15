@@ -34,15 +34,19 @@ class Role {
     return result.rows[0];
   }
 
-  static async getByUserId(user_id) {
-    const result = await db.query(`
-      SELECT *
-      FROM mapping_users_roles
-      WHERE user_id = $1
-    `, [user_id]);
+static async getByUserId(user_id) {
+  const result = await db.query(`
+    SELECT 
+      r.id,
+      r.name,
+      mur.role_id
+    FROM mapping_users_roles mur
+    JOIN master_roles r ON mur.role_id = r.id
+    WHERE mur.user_id = $1
+  `, [user_id]);
 
-    return result.rows;
-  } 
+  return result.rows;
+}
 
   static async getByRoleId(role_id) {
     const result = await db.query(`

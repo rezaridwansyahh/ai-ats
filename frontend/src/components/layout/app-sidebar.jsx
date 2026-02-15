@@ -1,6 +1,8 @@
 import React from 'react';
 import { useNavigate } from 'react-router-dom'
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
+import { getModules } from '@/api/modules.api';
+import { getMenusByModule } from '@/api/menus.api';
 import {
   Sidebar,
   SidebarContent,
@@ -103,6 +105,7 @@ export const menuItems = [
 
 export function AppSidebar() {
   const navigate = useNavigate();
+
   const handleLogout = () => {
     localStorage.removeItem('token');
     

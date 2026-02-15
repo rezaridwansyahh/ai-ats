@@ -31,7 +31,6 @@ export function LoginCard() {
 
       console.log(res.data);
 
-      localStorage.setItem('token', res.data.token);
       navigate("/dashboard");
     } catch (err) {
       console.log("err", err);
