@@ -1,7 +1,7 @@
 import type { PlasmoCSConfig } from "plasmo"
 
 export const config: PlasmoCSConfig = {
-  matches: ["https://*.jobstreet.com/*"]
+  matches: ["<all_urls>"]
 }
 
 /*
@@ -9,40 +9,52 @@ export const config: PlasmoCSConfig = {
   In this case i using jobstreet.com as my example to scrape the data in it and send it to the popup.html
 */
 
-console.log("Content script loaded!")
 
 function scrapePage() {
-  const cards = document.querySelectorAll('[data-testid="job-card"]');
+  console.log("CONTENT SCRIPT LOADED")
 
-  const data = Array.from(cards).map((card) => {
-    const jobTitle = card.querySelector('[data-automation="jobTitle"]');
-    const company = card.querySelector('[data-automation="jobCompany"]');
-    const location = card.querySelectorAll('[data-automation="jobCardLocation"]');
-    const salary = card.querySelector('[data-automation="jobSalary"]')
-    const arrangement = card.querySelector('[data-testid="work-arrangement"]');
-    const requiredSkillList = card.querySelector("ul");
-    const classification = card.querySelector('[data-automation="jobClassification"]');
-    const subClassification = card.querySelector('[data-automation="jobSubClassification"]');
-    const datePublished = card.querySelector('[data-automation="jobListingDate"]');
-    
-    const locationParsed = Array.from(location).map((el) => el.textContent?.trim()).join(" ");
+  const cards = document.querySelector('[componentkey="SearchResultsMainContent"]');
 
-    const requiredSkill = requiredSkillList?.textContent?.trim();
+  const data = cards.querySelectorAll('[role="button"][componentkey^="job-card-component-ref-"]');
+
+  const jobs = Array.from(data).map((job) => {
+    const firstDivChild = job.children[0];
+
+    const layout = firstDivChild.children[0];
+
+    const logo = layout.querySelector('img');
+    const logoUrl = logo.src; //done
+
+    const textLayout = layout.children[1];
+
+    const UpperTextWrapper = textLayout.children[0];
+    const UpperTextLayout = UpperTextWrapper.children[0];
+    const UpperTextLayoutDivided = UpperTextLayout.children[0];
+
+    const BottomTextWrapper = textLayout.children[1];
+
+    const jobTitleElement = UpperTextLayoutDivided.children[0] as HTMLElement;
+    const jobTitle = jobTitleElement.innerText.trim();
+
+    const cleanedJobTitle = jobTitle.replace(/\n.*$/, ""); // first extracted data
+
+    const companyNameDiv = UpperTextLayoutDivided.children[1];
+    const companyName = companyNameDiv.textContent?.trim();
+
+    const location = UpperTextLayoutDivided.children[2].textContent?.trim();
+
+    const jobPosted = BottomTextWrapper.querySelector('span').textContent?.trim();
     
     return {
-      jobTitle: jobTitle.textContent?.trim(),
-      company: company.textContent?.trim(),
-      location: locationParsed,
-      salary: salary?.textContent?.trim(),
-      arrangement: arrangement?.textContent?.trim() || null,
-      requiredSkill: requiredSkill,
-      classification: classification.textContent?.trim(),
-      subClassification: subClassification.textContent?.trim(),
-      datePublished: datePublished.textContent?.trim()
+      jobTitle: cleanedJobTitle,
+      companyName,
+      logoUrl,
+      location,
+      jobPosted
     }
   })
 
-  return data;
+  return jobs;
 }
 
 chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {

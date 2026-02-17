@@ -47,7 +47,7 @@ function Popup() {
         setResult(response?.data || null)
         setLoading(false)
       } catch (err) {
-        setError("Cannot scrape this page")
+        setError("Cannot scrape this page" +  err.message)
         setLoading(false)
       }
     }
