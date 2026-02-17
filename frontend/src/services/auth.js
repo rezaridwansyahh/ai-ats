@@ -3,12 +3,8 @@ import { setAuthToken } from "../api/axios";
 
 export const loginUser = async (payload) => {
   const { data } = await login(payload);
-
-  localStorage.setItem("token", data.token);
-  localStorage.setItem("user", JSON.stringify(data.user));
   setAuthToken(data.token);
-
-  return data.user;
+  return data;
 };
 
 export const registerUser = async (payload) => {
@@ -16,10 +12,12 @@ export const registerUser = async (payload) => {
   return data.user;
 };
 
-
 export const logoutUser = () => {
   localStorage.removeItem("token");
   localStorage.removeItem("user");
+  localStorage.removeItem("role");
+  localStorage.removeItem("permissions");
+  localStorage.removeItem("userData");
   setAuthToken(null);
 };
 

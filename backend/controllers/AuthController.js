@@ -7,6 +7,7 @@ import { fileURLToPath } from 'url';
 import User from '../model/UserModel.js';
 import Role from '../model/RoleModel.js';
 import logger from '../utils/logger.js';
+import Permission from '../model/PermissionModel.js';
 
 
 const __filename = fileURLToPath(import.meta.url);
@@ -31,61 +32,66 @@ const CONFIG = (() => {
 
 class AuthController {
 
-static async login(req, res) {
-  try {
-    const { email, password } = req.body;
+  static async login(req, res) {
+    try {
+      const { email, password } = req.body;
 
-    if (!email || !password) {
-      return res.status(400).json({ message: 'Email and password are required' });
-    }
+      if (!email || !password) {
+        return res.status(400).json({ message: 'Email and password are required' });
+      }
 
-    logger.info(`Login attempt: ${email}`);
+      logger.info(`Login attempt: ${email}`);
 
-    const user = await User.getByEmail(email);
-    if (!user) {
-      return res.status(401).json({ message: 'Invalid email or password' });
-    }
+      const user = await User.getByEmail(email);
+      if (!user) {
+        return res.status(401).json({ message: 'Invalid email or password' });
+      }
 
-    const isMatch = await bcrypt.compare(password, user.password);
-    if (!isMatch) {
-      return res.status(401).json({ message: 'Invalid email or password' });
-    }
+      const isMatch = await bcrypt.compare(password, user.password);
+      if (!isMatch) {
+        return res.status(401).json({ message: 'Invalid email or password' });
+      }
 
-    const role = await Role.getByUserId(user.id);
+      const role = await Role.getByUserId(user.id);
 
-    if (!role || role.length === 0) {
-      return res.status(401).json({
-        message: "Unauthorized: No role assigned"
+      if (!role || role.length === 0) {
+        return res.status(401).json({
+          message: "Unauthorized: No role assigned"
+        });
+      }
+
+      const roleIds = role.map(r => r.id);
+      const {permissions} = await Permission.checkPermissionsRoleId(roleIds);
+
+      // JWT payload 
+      const payload = {
+        user_id: user.id,
+        email: user.email,
+        role
+      };
+
+      const token = jwt.sign(payload, CONFIG.JWT_SECRET, {
+        expiresIn: '1h'
       });
+
+      logger.info(`Login success: ${email}`);
+
+      return res.status(200).json({
+        message: 'Login successful',
+        token,
+        user: {
+          id: user.id,
+          email: user.email
+        },
+        role,
+        permissions
+      });
+
+    } catch (err) {
+      logger.error(`Login failed: ${err.message}`);
+      return res.status(500).json({ message: 'Internal server error' });
     }
-
-    const payload = {
-      user_id: user.id,
-      email: user.email,
-      role  
-    };
-
-    const token = jwt.sign(payload, CONFIG.JWT_SECRET, {
-      expiresIn: '1h'
-    });
-
-    logger.info(`Login success: ${email}`);
-
-    return res.status(200).json({
-      message: 'Login successful',
-      token,
-      user: {
-        id: user.id,
-        email: user.email
-      },
-      role  
-    });
-
-  } catch (err) {
-    logger.error(`Login failed: ${err.message}`);
-    return res.status(500).json({ message: 'Internal server error' });
   }
-}
 
 
   static async register(req, res) {

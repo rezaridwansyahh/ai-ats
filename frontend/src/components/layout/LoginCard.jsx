@@ -29,7 +29,12 @@ export function LoginCard() {
         password
       });
 
-      console.log(res.data);
+      localStorage.setItem('token', res.token)
+      localStorage.setItem('user', JSON.stringify(res.user))
+      localStorage.setItem('role', JSON.stringify(res.role))
+      localStorage.setItem('permissions', JSON.stringify(res.permissions))
+      localStorage.setItem('userData', JSON.stringify(res))
+
 
       navigate("/dashboard");
     } catch (err) {
