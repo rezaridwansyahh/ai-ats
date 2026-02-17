@@ -237,57 +237,8 @@ function Popup() {
   }
 
   return (
-    <div className="popup-container">
-      <div className="header">
-        <h2>📊 Scraped Data</h2>
-      </div>
-
-      {loading && (
-        <div className="loading">
-          <div className="spinner"></div>
-          <p>Scraping data...</p>
-        </div>
-      )}
-
-      {error && (
-        <div className="error-box">
-          <strong>Error:</strong> {error}
-        </div>
-      )}
-
-      {!loading && !error && result && (
-        <>
-          <div className="stats">
-            <p>
-              {Array.isArray(result) ? (
-                <>
-                  <strong>{result.length}</strong> items found
-                </>
-              ) : (
-                <>
-                  <strong>{Object.keys(result).length}</strong> properties found
-                </>
-              )}
-            </p>
-            <div className="export-btns">
-              <button onClick={exportJSON} className="btn-export">
-                📥 JSON
-              </button>
-              <button onClick={exportCSV} className="btn-export">
-                📥 CSV
-              </button>
-            </div>
-          </div>
-
-          {renderTable(result)}
-        </>
-      )}
-
-      {!loading && !error && !result && (
-        <div className="info-box">
-          <p>No data returned from the page</p>
-        </div>
-      )}
+    <div className="w-[400px] h-[500px] p-4 bg-red-500">
+      <h1 className="text-white text-2xl">It works!</h1>
     </div>
   )
 }

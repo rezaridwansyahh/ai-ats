@@ -1,6 +1,6 @@
 {
-  "name": "testing-plasmo",
-  "displayName": "Testing plasmo",
+  "name": "shadcn-ext",
+  "displayName": "Shadcn ext",
   "version": "0.0.1",
   "description": "A basic Plasmo extension.",
   "author": "Zacvin",
@@ -10,9 +10,17 @@
     "package": "plasmo package"
   },
   "dependencies": {
+    "@radix-ui/react-label": "2.1.2",
+    "@radix-ui/react-slot": "1.1.2",
+    "class-variance-authority": "^0.7.1",
+    "clsx": "^2.1.1",
+    "lucide-react": "^0.572.0",
     "plasmo": "0.90.5",
+    "radix-ui": "^1.4.3",
     "react": "18.2.0",
-    "react-dom": "18.2.0"
+    "react-dom": "18.2.0",
+    "tailwind-merge": "^3.4.1",
+    "tw-animate-css": "^1.4.0"
   },
   "devDependencies": {
     "@ianvs/prettier-plugin-sort-imports": "4.1.1",
@@ -24,6 +32,7 @@
     "postcss": "^8.5.6",
     "prettier": "3.2.4",
     "tailwindcss": "^3.4.19",
+    "tailwindcss-animate": "^1.0.7",
     "typescript": "5.3.3"
   },
   "manifest": {
@@ -31,7 +40,7 @@
       "https://*/*"
     ],
     "permissions": [
-      "scripting"
+      "tabs"
     ]
   }
 }
