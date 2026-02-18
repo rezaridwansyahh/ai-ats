@@ -19,4 +19,6 @@ export default [
   { id: 9, module_id: 5, menu_id: 6 }, // Settings -> Company List
 
   {id: 10, module_id: 5, menu_id: 10}, // Settings -> Help
+
+  {id: 11, module_id: 6, menu_id: 11}, // Users -> User Management
 ];

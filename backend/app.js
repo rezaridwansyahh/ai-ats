@@ -9,6 +9,7 @@ import roles from './routes/roles.js';
 import modules from './routes/modules.js';
 import menus from './routes/menus.js';
 import permissions from './routes/permissions.js';
+import users from './routes/users.js';
 
 const collectDefaultMetrics = client.collectDefaultMetrics;
 collectDefaultMetrics();
@@ -74,6 +75,7 @@ app.use("/api/modules", modules);
 app.use("/api/menus", menus);
 app.use("/api/permissions", permissions);
 app.use("/api/roles", roles);
+app.use("/api/users", users);
 
 
 export default app;

@@ -9,4 +9,6 @@ export default [
   { id: 8, name: 'General'},
   { id: 9, name: 'Exports'},
   { id: 10, name: 'Help'},
+  { id: 11, name: 'User Management'},
+  { id: 12, name: 'Permission Management'},
 ];

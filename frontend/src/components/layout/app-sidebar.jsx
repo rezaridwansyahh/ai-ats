@@ -43,16 +43,15 @@ import {
   Briefcase,
 } from 'lucide-react';
 
-// ─── Icon mapping (module name → icon component) ──────────────────────────────
 const iconMap = {
   'Dashboard':  Home,
   'Positions':  Briefcase,
   'Applicants': Users,
   'Reports':    BarChart,
   'Settings':   Settings,
+  'Users':      Users,
 };
 
-// ─── Route mapping (menu name → path) ─────────────────────────────────────────
 const routeMap = {
   'dashboard':        '/dashboard',
   'Add Positions':    '/positions/add',
@@ -64,6 +63,7 @@ const routeMap = {
   'General':          '/settings/general',
   'Company List':     '/settings/companies',
   'Help':             '/settings/help',
+  'User Management': '/users/management',
 };
 
 const useSidebarStructure = (permissions) => {
@@ -178,10 +178,11 @@ export function AppSidebar() {
             <SidebarMenu>
 
               {sidebarItems.map(({ moduleName, menus }) => {
+                console.log('Rendering module:', moduleName, 'with menus:', menus); // ← ADD THIS
                 const ModuleIcon = iconMap[moduleName] ?? Package;
                 const isOpen     = openModules.has(moduleName);
 
-                if (menus.length === 1) {
+                if (menus.length === 0) {
                   return (
                     <SidebarMenuItem key={moduleName}>
                       <SidebarMenuButton

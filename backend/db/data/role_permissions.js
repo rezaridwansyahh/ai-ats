@@ -2,9 +2,9 @@ export default [
 
   /* =========================
      ADMIN (role_id: 1)
-     Full access
+     Full access to everything
   ========================= */
-  ...Array.from({ length: 34 }, (_, i) => ({
+  ...Array.from({ length: 39 }, (_, i) => ({
     id: i + 1,
     role_id: 1,
     permission_id: i + 1
@@ -13,85 +13,136 @@ export default [
   /* =========================
      MANAGER (role_id: 2)
      read/create/update/export
+     No delete permissions
   ========================= */
-  { id: 35, role_id: 2, permission_id: 1 },  // Dashboard read
-  { id: 36, role_id: 2, permission_id: 2 },  // create
-  { id: 37, role_id: 2, permission_id: 3 },  // update
+  // Dashboard
+  { id: 40, role_id: 2, permission_id: 1 },  // read
+  { id: 41, role_id: 2, permission_id: 2 },  // create
+  { id: 42, role_id: 2, permission_id: 3 },  // update
 
-  { id: 38, role_id: 2, permission_id: 5 },
-  { id: 39, role_id: 2, permission_id: 6 },
-  { id: 40, role_id: 2, permission_id: 7 },
+  // Positions -> Add Positions
+  { id: 43, role_id: 2, permission_id: 5 },  // read
+  { id: 44, role_id: 2, permission_id: 6 },  // create
+  { id: 45, role_id: 2, permission_id: 7 },  // update
 
-  { id: 41, role_id: 2, permission_id: 9 },
-  { id: 42, role_id: 2, permission_id: 10 },
-  { id: 43, role_id: 2, permission_id: 11 },
+  // Positions -> Positions List
+  { id: 46, role_id: 2, permission_id: 9 },  // read
+  { id: 47, role_id: 2, permission_id: 10 }, // create
+  { id: 48, role_id: 2, permission_id: 11 }, // update
 
-  { id: 44, role_id: 2, permission_id: 13 },
-  { id: 45, role_id: 2, permission_id: 14 },
-  { id: 46, role_id: 2, permission_id: 15 },
+  // Applicants -> Applicant List
+  { id: 49, role_id: 2, permission_id: 13 }, // read
+  { id: 50, role_id: 2, permission_id: 14 }, // create
+  { id: 51, role_id: 2, permission_id: 15 }, // update
 
-  { id: 47, role_id: 2, permission_id: 17 },
-  { id: 48, role_id: 2, permission_id: 18 },
-  { id: 49, role_id: 2, permission_id: 19 },
+  // Applicants -> Crawl Applicants
+  { id: 52, role_id: 2, permission_id: 17 }, // read
+  { id: 53, role_id: 2, permission_id: 18 }, // create
+  { id: 54, role_id: 2, permission_id: 19 }, // update
 
-  { id: 50, role_id: 2, permission_id: 21 },
-  { id: 51, role_id: 2, permission_id: 22 },
-  { id: 52, role_id: 2, permission_id: 23 },
+  // Reports -> Analytics
+  { id: 55, role_id: 2, permission_id: 21 }, // read
+  { id: 56, role_id: 2, permission_id: 22 }, // create
+  { id: 57, role_id: 2, permission_id: 23 }, // update
 
-  { id: 53, role_id: 2, permission_id: 25 }, // export
-  { id: 54, role_id: 2, permission_id: 26 }, // export
+  // Reports -> Exports
+  { id: 58, role_id: 2, permission_id: 25 }, // read
+  { id: 59, role_id: 2, permission_id: 26 }, // export
 
-  { id: 55, role_id: 2, permission_id: 27 },
-  { id: 56, role_id: 2, permission_id: 28 },
-  { id: 57, role_id: 2, permission_id: 29 },
+  // Settings -> General
+  { id: 60, role_id: 2, permission_id: 27 }, // read
+  { id: 61, role_id: 2, permission_id: 28 }, // create
+  { id: 62, role_id: 2, permission_id: 29 }, // update
 
-  { id: 58, role_id: 2, permission_id: 31 },
-  { id: 59, role_id: 2, permission_id: 32 },
-  { id: 60, role_id: 2, permission_id: 33 },
-  
-  { id: 86, role_id: 2, permission_id: 35 },
+  // Settings -> Company List
+  { id: 63, role_id: 2, permission_id: 31 }, // read
+  { id: 64, role_id: 2, permission_id: 32 }, // create
+  { id: 65, role_id: 2, permission_id: 33 }, // update
+
+  // Settings -> Help
+  { id: 66, role_id: 2, permission_id: 35 }, // read
+
+  // Users -> User Management
+  { id: 67, role_id: 2, permission_id: 36 }, // read
+  { id: 68, role_id: 2, permission_id: 37 }, // create
+  { id: 69, role_id: 2, permission_id: 38 }, // update
 
   /* =========================
      STAFF (role_id: 3)
-     read + create
+     read + create only
+     No update or delete
   ========================= */
-  { id: 61, role_id: 3, permission_id: 1 },
-  { id: 62, role_id: 3, permission_id: 2 },
+  // Dashboard
+  { id: 70, role_id: 3, permission_id: 1 },  // read
+  { id: 71, role_id: 3, permission_id: 2 },  // create
 
-  { id: 63, role_id: 3, permission_id: 5 },
-  { id: 64, role_id: 3, permission_id: 6 },
+  // Positions -> Add Positions
+  { id: 72, role_id: 3, permission_id: 5 },  // read
+  { id: 73, role_id: 3, permission_id: 6 },  // create
 
-  { id: 65, role_id: 3, permission_id: 9 },
-  { id: 66, role_id: 3, permission_id: 10 },
+  // Positions -> Positions List
+  { id: 74, role_id: 3, permission_id: 9 },  // read
+  { id: 75, role_id: 3, permission_id: 10 }, // create
 
-  { id: 67, role_id: 3, permission_id: 13 },
-  { id: 68, role_id: 3, permission_id: 14 },
+  // Applicants -> Applicant List
+  { id: 76, role_id: 3, permission_id: 13 }, // read
+  { id: 77, role_id: 3, permission_id: 14 }, // create
 
-  { id: 69, role_id: 3, permission_id: 17 },
-  { id: 70, role_id: 3, permission_id: 18 },
+  // Applicants -> Crawl Applicants
+  { id: 78, role_id: 3, permission_id: 17 }, // read
+  { id: 79, role_id: 3, permission_id: 18 }, // create
 
-  { id: 71, role_id: 3, permission_id: 21 },
-  { id: 72, role_id: 3, permission_id: 22 },
+  // Reports -> Analytics
+  { id: 80, role_id: 3, permission_id: 21 }, // read
+  { id: 81, role_id: 3, permission_id: 22 }, // create
 
-  { id: 73, role_id: 3, permission_id: 27 },
-  { id: 74, role_id: 3, permission_id: 28 },
+  // Settings -> General
+  { id: 82, role_id: 3, permission_id: 27 }, // read
+  { id: 83, role_id: 3, permission_id: 28 }, // create
 
-  { id: 75, role_id: 3, permission_id: 31 },
-  { id: 76, role_id: 3, permission_id: 32 },
+  // Settings -> Company List
+  { id: 84, role_id: 3, permission_id: 31 }, // read
+  { id: 85, role_id: 3, permission_id: 32 }, // create
 
-  { id: 87, role_id: 3, permission_id: 35 },  
+  // Settings -> Help
+  { id: 86, role_id: 3, permission_id: 35 }, // read
+
+  // Users -> User Management (read only for staff)
+  { id: 87, role_id: 3, permission_id: 36 }, // read
 
   /* =========================
      INTERN (role_id: 4)
-     read-only
+     Read-only access
   ========================= */
-  { id: 77, role_id: 4, permission_id: 1 },
-  { id: 78, role_id: 4, permission_id: 5 },
-  { id: 79, role_id: 4, permission_id: 9 },
-  { id: 80, role_id: 4, permission_id: 13 },
-  { id: 81, role_id: 4, permission_id: 17 },
-  { id: 82, role_id: 4, permission_id: 21 },
-  { id: 83, role_id: 4, permission_id: 25 }, // read exports
-  { id: 84, role_id: 4, permission_id: 27 },
-  { id: 85, role_id: 4, permission_id: 31 },
+  // Dashboard
+  { id: 88, role_id: 4, permission_id: 1 },  // read
+
+  // Positions -> Add Positions
+  { id: 89, role_id: 4, permission_id: 5 },  // read
+
+  // Positions -> Positions List
+  { id: 90, role_id: 4, permission_id: 9 },  // read
+
+  // Applicants -> Applicant List
+  { id: 91, role_id: 4, permission_id: 13 }, // read
+
+  // Applicants -> Crawl Applicants
+  { id: 92, role_id: 4, permission_id: 17 }, // read
+
+  // Reports -> Analytics
+  { id: 93, role_id: 4, permission_id: 21 }, // read
+
+  // Reports -> Exports (read only, no export permission)
+  { id: 94, role_id: 4, permission_id: 25 }, // read
+
+  // Settings -> General
+  { id: 95, role_id: 4, permission_id: 27 }, // read
+
+  // Settings -> Company List
+  { id: 96, role_id: 4, permission_id: 31 }, // read
+
+  // Settings -> Help
+  { id: 97, role_id: 4, permission_id: 35 }, // read
+
+  // NO access to User Management for interns
 ];

@@ -25,9 +25,9 @@ const seed = async () => {
     // 1. users
     for (const user of usersData) {
       await db.query(
-        `INSERT INTO master_users (id, password, email)
-         VALUES ($1, $2, $3)`,
-        [user.id, user.password, user.email]
+        `INSERT INTO master_users (id, password, email, username)
+         VALUES ($1, $2, $3, $4)`,
+        [user.id, user.password, user.email, user.username]
       );
     }
 

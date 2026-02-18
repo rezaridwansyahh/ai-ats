@@ -2,6 +2,15 @@ import db from '../db/connection.js';
 
 class Permission {
 
+  static async getAll(){
+    const result = await db.query(`
+      SELECT perm.*
+      FROM global_permissions perm
+      `);
+
+    return result.rows;
+  }
+
   static async getById(id) {
     const result = await db.query(`
       SELECT perm.*
@@ -134,6 +143,40 @@ class Permission {
     return { permissions };
   }
 
+  static async create(permission){
+    const result = await db.query(`
+      INSERT INTO global_permissions (fuctionality, module_menu_id)
+      VALUES ($1, $2)
+      RETURNING *
+      `, [permission.functionality, permission.module_menu_id]);
+    return result.rows[0];
+  }
+
+  static async update(id, fields) {
+    const key = Object.keys(fields);
+    const value = Object.values(fields);
+
+    const setClause = key.map((k, index) => `${k} = $${index + 1}`).join(', ');
+
+    const result = await db.query(`
+      UPDATE global_permissions 
+      SET ${setClause} 
+      WHERE id = $${key.length + 1} 
+      RETURNING *
+    `, [...value, id]);
+
+    return result.rows[0];
+  }
+
+  static async delete(id){
+    const result = await db.query(`
+      DELETE FROM global_permissions
+      WHERE id = $1
+      RETURNING *
+      `, [id]);
+      
+    return result.rows[0];
+  }
 }
 
 export default Permission;

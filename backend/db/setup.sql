@@ -11,7 +11,8 @@ DROP TABLE IF EXISTS mapping_roles_permissions CASCADE;
 CREATE TABLE master_users (
   id SERIAL PRIMARY KEY,
   password TEXT NOT NULL,
-  email VARCHAR(100) NOT NULL
+  email VARCHAR(100) NOT NULL,
+  username VARCHAR(100) NOT NULL
 );
 
 CREATE TABLE master_roles (

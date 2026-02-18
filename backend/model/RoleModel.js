@@ -85,6 +85,25 @@ static async getByUserId(user_id) {
     return result.rows;
   }
 
+  static async getAllMasterRoles() {
+    const result = await db.query(`
+      SELECT id, name, additional
+      FROM master_roles
+      ORDER BY id ASC
+    `);
+    return result.rows;
+  }
+
+  static async replaceUserRoles(user_id, role_ids) {
+    await db.query(`DELETE FROM mapping_users_roles WHERE user_id = $1`, [user_id]);
+    for (const role_id of role_ids) {
+      await db.query(
+        `INSERT INTO mapping_users_roles (user_id, role_id) VALUES ($1, $2)`,
+        [user_id, role_id]
+      );
+    }
+  }
+
   static async getByPermissionId(permission_id) {
     const result = await db.query(`
       SELECT r.*

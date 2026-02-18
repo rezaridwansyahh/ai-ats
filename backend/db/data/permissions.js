@@ -75,5 +75,11 @@ export default [
   // ============================================================================
   { id: 35, module_menu_id: 10, functionality: 'read' },
 
-
+  // ============================================================================
+  // User -> User Management (module_menu_id: 11)
+  // ============================================================================
+  { id: 36, module_menu_id: 11, functionality: 'read' },
+  { id: 37, module_menu_id: 11, functionality: 'create' },
+  { id: 38, module_menu_id: 11, functionality: 'update' },
+  { id: 39, module_menu_id: 11, functionality: 'delete' },
 ];

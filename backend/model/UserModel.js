@@ -9,6 +9,33 @@ class User {
     
     return result.rows;
   }
+ 
+  static async getAllWithRoles() {
+    const result = await db.query(`
+      SELECT 
+        u.id,
+        u.email,
+        u.username,
+        u.password,
+        COALESCE(
+          JSON_AGG(
+            JSON_BUILD_OBJECT(
+              'id', r.id,
+              'name', r.name,
+              'additional', r.additional
+            )
+          ) FILTER (WHERE r.id IS NOT NULL),
+          '[]'
+        ) as roles
+      FROM master_users u
+      LEFT JOIN mapping_users_roles mur ON u.id = mur.user_id
+      LEFT JOIN master_roles r ON mur.role_id = r.id
+      GROUP BY u.id, u.email, u.username, u.password
+      ORDER BY u.id ASC
+    `);
+    
+    return result.rows;
+  }
 
   static async getById(id) {
     const result = await db.query(`
@@ -39,12 +66,12 @@ class User {
     `, [role_id]);
   }
 
-  static async create(email, password ) {    
+  static async create(email, password, username) {    
     const result = await db.query(`
-      INSERT INTO master_users ( email, password) 
-      VALUES ($1, $2) 
+      INSERT INTO master_users ( email, password, username) 
+      VALUES ($1, $2, $3) 
       RETURNING *
-    `, [ email, password]);
+    `, [ email, password, username]);
     
     return result.rows[0];
   }
