@@ -63,7 +63,9 @@ const routeMap = {
   'General':          '/settings/general',
   'Company List':     '/settings/companies',
   'Help':             '/settings/help',
-  'User Management': '/users/management',
+  'User Management':  '/users/management',
+  'Role Management':  '/users/role-management',
+  'Integrations':     '/settings/integrations',
 };
 
 const useSidebarStructure = (permissions) => {
@@ -98,15 +100,7 @@ const useSidebarStructure = (permissions) => {
         }
       }
     });
-    const items = Object.values(grouped);
-
-    items.sort((a, b) => {
-      if (a.moduleName === 'Dashboard') return -1;
-      if (b.moduleName === 'Dashboard') return  1;
-      return 0;
-    });
-
-    return items;
+    return Object.values(grouped);
   }, [permissions]);
 };
 
@@ -176,12 +170,19 @@ export function AppSidebar() {
           <SidebarGroupLabel>Menu</SidebarGroupLabel>
           <SidebarGroupContent>
             <SidebarMenu>
+             <SidebarMenuItem>
+                <SidebarMenuButton
+                  className="cursor-pointer"
+                  onClick={() => navigate('/dashboard')}
+                >
+                  <Home className="h-4 w-4" />
+                  <span>Dashboard</span>
+                </SidebarMenuButton>
+              </SidebarMenuItem>
 
               {sidebarItems.map(({ moduleName, menus }) => {
-                console.log('Rendering module:', moduleName, 'with menus:', menus); // ← ADD THIS
                 const ModuleIcon = iconMap[moduleName] ?? Package;
                 const isOpen     = openModules.has(moduleName);
-
                 if (menus.length === 0) {
                   return (
                     <SidebarMenuItem key={moduleName}>

@@ -43,6 +43,24 @@ class Permission {
     return result.rows[0];
   }
 
+  static async getAllWithDetails() {
+    const result = await db.query(`
+      SELECT
+        perm.id          AS permission_id,
+        perm.functionality,
+        m.id             AS module_id,
+        m.name           AS module_name,
+        menu.id          AS menu_id,
+        menu.name        AS menu_name
+      FROM global_permissions perm
+      JOIN mapping_modules_menus mm ON perm.module_menu_id = mm.id
+      JOIN master_modules m         ON mm.module_id = m.id
+      JOIN master_menus menu        ON mm.menu_id   = menu.id
+      ORDER BY m.id, menu.id, perm.id
+    `);
+    return result.rows;
+  }
+
   static async getByRoleIdDetails(role_id) {
     const result = await db.query(`
       SELECT 

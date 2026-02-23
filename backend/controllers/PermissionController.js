@@ -16,6 +16,35 @@ class PermissionController {
     }
   }
 
+  static async getAllWithDetails(req, res) {
+    try {
+      const rows = await Permission.getAllWithDetails();
+
+      const moduleMap = new Map();
+      const modules   = [];
+
+      for (const p of rows) {
+        if (!moduleMap.has(p.module_id)) {
+          moduleMap.set(p.module_id, { id: p.module_id, name: p.module_name, menus: [] });
+          modules.push(moduleMap.get(p.module_id));
+        }
+        const mod = moduleMap.get(p.module_id);
+
+        let menu = mod.menus.find(m => m.id === p.menu_id);
+        if (!menu) {
+          menu = { id: p.menu_id, name: p.menu_name, permissions: [] };
+          mod.menus.push(menu);
+        }
+
+        menu.permissions.push({ id: p.permission_id, functionality: p.functionality });
+      }
+
+      res.status(200).json({ message: 'All permissions with details', modules });
+    } catch (err) {
+      res.status(500).json({ message: err.message });
+    }
+  }
+
   static async getByIdDetails(req, res) {
     const { id } = req.params;
 

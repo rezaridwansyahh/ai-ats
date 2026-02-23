@@ -1,36 +1,20 @@
 import db from '../db/connection.js';
 
 class Role {
-  static async getAll() {    
+  static async getAll() {
     const result = await db.query(`
-      SELECT *
-      FROM mapping_users_roles
+      SELECT * 
+      FROM master_roles
     `);
-
-    return result.rows;
-  }
-
-  static async getAllDetails() {
-    const result = await db.query(`
-      SELECT
-        ur.*,
-        u.email as user_email,
-        r.name as role_name
-      FROM mapping_users_roles ur
-      JOIN master_users u ON ur.user_id = u.id
-      JOIN master_roles r ON ur.role_id  = r.id
-    `);
-
     return result.rows;
   }
 
   static async getById(id) {
     const result = await db.query(`
-      SELECT *
-      FROM mapping_users_roles
-      WHERE id = $1  
-    `, [id]);
-
+      SELECT * 
+      FROM master_roles 
+      WHERE id = $1
+      `, [id]);
     return result.rows[0];
   }
 
@@ -109,11 +93,20 @@ static async getByUserId(user_id) {
       SELECT r.*
       FROM mapping_roles_permissions rp
       JOIN master_roles r ON rp.role_id = r.id
-      WHERE rp.permission_id = $1  
+      WHERE rp.permission_id = $1
     `, [permission_id]);
-
     return result.rows;
-  }  
+  }
+
+  static async setRolePermissions(role_id, permission_ids) {
+    await db.query(`DELETE FROM mapping_roles_permissions WHERE role_id = $1`, [role_id]);
+    for (const permission_id of permission_ids) {
+      await db.query(
+        `INSERT INTO mapping_roles_permissions (role_id, permission_id) VALUES ($1, $2)`,
+        [role_id, permission_id]
+      );
+    }
+  }
 
   static async create(name, additional) {
     const result = await db.query(
@@ -130,11 +123,8 @@ static async getByUserId(user_id) {
 
   static async delete(id) {
     const result = await db.query(`
-      DELETE FROM mapping_users_roles
-      WHERE id = $1
-      RETURNING *
+      DELETE FROM master_roles WHERE id = $1 RETURNING *
     `, [id]);
-
     return result.rows[0];
   }
 

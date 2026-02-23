@@ -11,15 +11,14 @@ export const hasPermission = (moduleName, menuName, functionality) => {
   try {
     const permissionsStr = localStorage.getItem('permissions');
     if (!permissionsStr) return false;
-    
+
+    // Permissions are stored as nested: [{ module, menus: [{ menu, functionalities: [] }] }]
     const permissions = JSON.parse(permissionsStr);
-    
-    // Check if user has the specific permission
-    return permissions.some(perm => 
-      perm.module === moduleName &&
-      perm.menu === menuName &&
-      perm.functionality === functionality
-    );
+    const modulePerms = permissions.find(p => p.module === moduleName);
+    if (!modulePerms) return false;
+    const menuPerms = modulePerms.menus?.find(m => m.menu === menuName);
+    if (!menuPerms) return false;
+    return menuPerms.functionalities?.includes(functionality) ?? false;
   } catch (error) {
     console.error('Error checking permission:', error);
     return false;

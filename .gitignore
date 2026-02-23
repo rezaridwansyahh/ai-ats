@@ -3,3 +3,4 @@
 
 /backend/.env.dev
 /frontend/.env.dev
+/.claude

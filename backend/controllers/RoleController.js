@@ -80,19 +80,36 @@ class RoleController {
 	}
 
 	static async create(req, res) {
-		const {name} = req.body;
+		const { name, additional } = req.body;
 		try {
-
 			if (!name) {
 				return res.status(400).json({ message: 'Role name is required' });
 			}
+
+			const newRole = await Role.create(name, additional || null);
 
 			res.status(201).json({
 				message: "Role created",
 				newRole
 			});
 		} catch (err) {
-			res.status(500).json({ message: err.message});
+			res.status(500).json({ message: err.message });
+		}
+	}
+
+	static async setPermissions(req, res) {
+		const { id } = req.params;
+		const { permission_ids } = req.body;
+
+		try {
+			const role = await Role.getById(id);
+			if (!role) return res.status(404).json({ message: 'Role not found' });
+
+			await Role.setRolePermissions(id, Array.isArray(permission_ids) ? permission_ids : []);
+
+			res.status(200).json({ message: 'Role permissions updated' });
+		} catch (err) {
+			res.status(500).json({ message: err.message });
 		}
 	}
 

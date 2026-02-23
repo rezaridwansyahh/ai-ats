@@ -3,6 +3,7 @@ import { RefreshCw, Users, Shield, XCircle, Plus } from 'lucide-react';
 import { Button }      from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { getUsers, getMasterRoles, createUser, updateUser, deleteUser } from '@/api/users.api';
+import { hasPermission } from '@/utils/permissions';
 
 import { UserFilters }      from '@/components/user-management/UserFilters';
 import { useSort }          from '@/hooks/useSort';
@@ -20,6 +21,10 @@ function getRoles(user) {
 }
 
 export function UserManagementLayout() {
+  const canCreate = hasPermission('Users', 'User Management', 'create');
+  const canEdit   = hasPermission('Users', 'User Management', 'update');
+  const canDelete = hasPermission('Users', 'User Management', 'delete');
+
   // ── Data fetching ──
   const [users, setUsers]     = useState([]);
   const [loading, setLoading] = useState(true);
@@ -144,10 +149,12 @@ export function UserManagementLayout() {
             <RefreshCw className={`h-4 w-4 mr-2 ${loading ? 'animate-spin' : ''}`} />
             Refresh
           </Button>
-          <Button size="sm" onClick={openCreate}>
-            <Plus className="h-4 w-4 mr-2" />
-            Add User
-          </Button>
+          {canCreate && (
+            <Button size="sm" onClick={openCreate}>
+              <Plus className="h-4 w-4 mr-2" />
+              Add User
+            </Button>
+          )}
         </div>
       </div>
 
@@ -199,6 +206,8 @@ export function UserManagementLayout() {
                 SortIcon={SortIcon}
                 onEdit={openEdit}
                 onDelete={openDelete}
+                canEdit={canEdit}
+                canDelete={canDelete}
               />
 
               <UserPagination
