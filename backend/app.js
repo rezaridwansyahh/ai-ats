@@ -46,26 +46,28 @@ const allowedOrigins = [
   /^http:\/\/localhost(:\d+)?$/   
 ];
 
-app.use(
-  cors({
-    origin: function (origin, callback) {
-      if (!origin) return callback(null, true);
+// app.use(
+//   cors({
+//     origin: function (origin, callback) {
+//       if (!origin) return callback(null, true);
 
-      const isAllowed = allowedOrigins.some((rule) =>
-        rule instanceof RegExp ? rule.test(origin) : rule === origin
-      );
+//       const isAllowed = allowedOrigins.some((rule) =>
+//         rule instanceof RegExp ? rule.test(origin) : rule === origin
+//       );
 
-      if (isAllowed) {
-        callback(null, true);
-      } else {
-        console.log("CORS blocked:", origin);
-        callback(new Error("Not allowed by CORS"));
-      }
-    },
-    credentials: true,
-    exposedHeaders: ["Content-Disposition"], 
-  })
-);
+//       if (isAllowed) {
+//         callback(null, true);
+//       } else {
+//         console.log("CORS blocked:", origin);
+//         callback(new Error("Not allowed by CORS"));
+//       }
+//     },
+//     credentials: true,
+//     exposedHeaders: ["Content-Disposition"], 
+//   })
+// );
+
+app.use(cors());
 
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
