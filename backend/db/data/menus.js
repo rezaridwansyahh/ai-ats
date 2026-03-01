@@ -11,4 +11,7 @@ export default [
   { id: 10, name: 'User Management'},
   { id: 11, name: 'Integrations'},
   { id: 12, name: 'Role Management'},
+  { id: 13, name: 'Seek'},
+  { id: 14, name: 'LinkedIn'},
+  { id: 15, name: 'Account'},
 ];

@@ -39,4 +39,11 @@ export default [
   ========================= */
   { id: 10, module_id: 5, menu_id: 10 }, // Users -> User Management
   { id: 12, module_id: 5, menu_id: 12 }, // Users -> Role Management
+
+  /* =========================
+     Job Posting (module_id: 6)
+  ========================= */
+  { id: 13, module_id: 6, menu_id: 13 }, // Job Posting -> Seek
+  { id: 14, module_id: 6, menu_id: 14 }, // Job Posting -> LinkedIn
+  { id: 15, module_id: 6, menu_id: 15 }, // Job Posting -> Account
 ];

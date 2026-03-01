@@ -91,4 +91,28 @@ export default [
   { id: 42, module_menu_id: 12, functionality: 'update' },
   { id: 43, module_menu_id: 12, functionality: 'delete' },
 
+  /* ===================================================================
+     Job Postings -> Seek (module_menu_id: 13)
+  =================================================================== */
+  { id: 44, module_menu_id: 13, functionality: 'read' },
+  { id: 45, module_menu_id: 13, functionality: 'create' },
+  { id: 46, module_menu_id: 13, functionality: 'update' },
+  { id: 47, module_menu_id: 13, functionality: 'delete' },
+
+  /* ===================================================================
+     Job Postings -> LinkedIn (module_menu_id: 14)
+  =================================================================== */
+  { id: 48, module_menu_id: 14, functionality: 'read' },
+  { id: 49, module_menu_id: 14, functionality: 'create' },
+  { id: 50, module_menu_id: 14, functionality: 'update' },
+  { id: 51, module_menu_id: 14, functionality: 'delete' },
+
+  /* ===================================================================
+     Job Postings -> Account (module_menu_id: 15)
+  =================================================================== */
+  { id: 52, module_menu_id: 15, functionality: 'read' },
+  { id: 53, module_menu_id: 15, functionality: 'create' },
+  { id: 54, module_menu_id: 15, functionality: 'update' },
+  { id: 55, module_menu_id: 15, functionality: 'delete' },
+
 ];

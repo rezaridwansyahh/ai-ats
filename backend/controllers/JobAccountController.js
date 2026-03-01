@@ -2,7 +2,7 @@ import JobAccount from '../model/JobAccountModel.js';
 import User from '../model/UserModel.js';
 import crypto from 'crypto';
 
-const ENCRYPTION_KEY = process.env.JOB_ACCOUNT_ENCRYPTION_KEY; 
+const ENCRYPTION_KEY = process.env.ENCRYPTION_KEY; 
 const IV_LENGTH = 16;
 
 function encrypt(text) {
@@ -77,11 +77,11 @@ class JobAccountController {
   }
 
   static async create(req, res) {
-    const { user_id, portal_name, username, password } = req.body;
+    const { user_id, portal_name, email, password } = req.body;
 
     try {
-      if (!user_id || !portal_name || !username || !password) {
-        return res.status(400).json({ message: 'user_id, portal_name, username, and password are required' });
+      if (!user_id || !portal_name || !email || !password) {
+        return res.status(400).json({ message: 'user_id, portal_name, email, and password are required' });
       }
 
       const user = await User.getById(user_id);
@@ -95,7 +95,7 @@ class JobAccountController {
       }
 
       const encryptedPassword = encrypt(password);
-      const newAccount = await JobAccount.create(user_id, portal_name, username, encryptedPassword);
+      const newAccount = await JobAccount.create(user_id, portal_name, email, encryptedPassword);
 
       res.status(201).json({
         message: 'Job Account created',
@@ -108,10 +108,10 @@ class JobAccountController {
 
   static async update(req, res) {
     const { id } = req.params;
-    const { username, password } = req.body;
+    const { email, password } = req.body;
 
     const fields = {};
-    if (username) fields.username = username;
+    if (email) fields.email = email;
     if (password) fields.password = encrypt(password);
 
     try {
@@ -151,56 +151,7 @@ class JobAccountController {
     }
   }
 
-  // Used by extension to get decrypted credentials
-  static async getCredentials(req, res) {
-    const { id } = req.params;
 
-    try {
-      const account = await JobAccount.getById(id);
-      if (!account) {
-        return res.status(404).json({ message: 'Job Account not found' });
-      }
-
-      if (!account.is_active) {
-        return res.status(403).json({ message: 'Job Account is inactive' });
-      }
-
-      const decryptedPassword = decrypt(account.password);
-
-      res.status(200).json({
-        message: 'Job Account credentials',
-        credentials: {
-          portal_name: account.portal_name,
-          username: account.username,
-          password: decryptedPassword
-        }
-      });
-    } catch (err) {
-      res.status(500).json({ message: err.message });
-    }
-  }
-
-  //hardcoded
-  static async getCredentialsSeek(req, res) {
-    try {
-      const credentials = {
-        portal_name: 'seek',
-        username: process.env.EMAIL,
-        password: process.env.PASSWORD
-      };
-
-      if (!credentials.username || !credentials.password) {
-        return res.status(500).json({ message: 'Seek credentials not configured in environment' });
-      }
-
-      res.status(200).json({
-        message: 'Job Account credentials',
-        credentials
-      });
-    } catch (err) {
-      res.status(500).json({ message: err.message });
-    }
-  }  
 }
 
 export default JobAccountController;

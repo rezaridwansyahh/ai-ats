@@ -10,6 +10,10 @@ import modules from './routes/modules.js';
 import menus from './routes/menus.js';
 import permissions from './routes/permissions.js';
 import users from './routes/users.js';
+import JobAccounts from './routes/job-accounts.js';
+import JobPosting from './routes/job-posting-linkedin.js';
+import JobPostingLinkedin from './routes/job-posting-linkedin.js';
+import JobPostingSeek from './routes/job-posting-seek.js';
 
 const collectDefaultMetrics = client.collectDefaultMetrics;
 collectDefaultMetrics();
@@ -73,11 +77,14 @@ app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
 app.use("/api", auths);
-app.use("/api/modules", modules);
-app.use("/api/menus", menus);
-app.use("/api/permissions", permissions);
-app.use("/api/roles", roles);
-app.use("/api/users", users);
-
+app.use("/api/module", modules);
+app.use("/api/menu", menus);
+app.use("/api/permission", permissions);
+app.use("/api/role", roles);
+app.use("/api/user", users);
+app.use("/api/job-account", JobAccounts);
+app.use("/api/job-posting", JobPosting);
+app.use("/api/seek", JobPostingSeek);
+app.use("/api/linkedin", JobPostingLinkedin)
 
 export default app;

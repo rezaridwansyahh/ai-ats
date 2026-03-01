@@ -4,4 +4,5 @@ export default [
   { id: 3, name: 'Reports' },
   { id: 4, name: 'Settings'},
   { id: 5, name: 'Users'},
+  { id: 6, name: 'Job Postings'},
 ];

@@ -37,12 +37,12 @@ class JobAccount {
     return result.rows[0];
   }
 
-  static async create(user_id, portal_name, username, password) {
+  static async create(user_id, portal_name, email, password) {
     const result = await db.query(`
-      INSERT INTO master_job_account (user_id, portal_name, username, password)
+      INSERT INTO master_job_account (user_id, portal_name, email, password)
       VALUES ($1, $2, $3, $4)
       RETURNING *
-    `, [user_id, portal_name, username, password]);
+    `, [user_id, portal_name, email, password]);
     return result.rows[0];
   }
 

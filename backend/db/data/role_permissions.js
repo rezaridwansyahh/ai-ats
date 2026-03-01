@@ -3,7 +3,7 @@ export default [
 /* ============================================================================
    ADMIN (role_id: 1) → FULL ACCESS
 ============================================================================ */
-...Array.from({ length: 43 }, (_, i) => ({
+...Array.from({ length: 55 }, (_, i) => ({
   id: i + 1,
   role_id: 1,
   permission_id: i + 1
@@ -71,6 +71,21 @@ export default [
   { id: 131, role_id: 2, permission_id: 41 },
   { id: 132, role_id: 2, permission_id: 42 },
 
+  // Job Postings -> Seek (44–47) read/create/update
+  { id: 133, role_id: 2, permission_id: 44 },
+  { id: 134, role_id: 2, permission_id: 45 },
+  { id: 135, role_id: 2, permission_id: 46 },
+
+  // Job Postings -> LinkedIn (48–51) read/create/update
+  { id: 136, role_id: 2, permission_id: 48 },
+  { id: 137, role_id: 2, permission_id: 49 },
+  { id: 138, role_id: 2, permission_id: 50 },
+
+  // Job Postings -> Account (52–55) read/create/update
+  { id: 139, role_id: 2, permission_id: 52 },
+  { id: 140, role_id: 2, permission_id: 53 },
+  { id: 141, role_id: 2, permission_id: 54 },
+
 /* ============================================================================
    STAFF (role_id: 3)
    read + create only
@@ -109,6 +124,18 @@ export default [
   // Role Management (read only)
   { id: 218, role_id: 3, permission_id: 40 },
 
+  // Job Postings -> Seek (read + create)
+  { id: 219, role_id: 3, permission_id: 44 },
+  { id: 220, role_id: 3, permission_id: 45 },
+
+  // Job Postings -> LinkedIn (read + create)
+  { id: 221, role_id: 3, permission_id: 48 },
+  { id: 222, role_id: 3, permission_id: 49 },
+
+  // Job Postings -> Account (read + create)
+  { id: 223, role_id: 3, permission_id: 52 },
+  { id: 224, role_id: 3, permission_id: 53 },
+
 /* ============================================================================
    INTERN (role_id: 4)
    READ ONLY
@@ -124,5 +151,8 @@ export default [
   { id: 307, role_id: 4, permission_id: 27 },  // Company List
   { id: 308, role_id: 4, permission_id: 31 },  // Help
   { id: 309, role_id: 4, permission_id: 32 },  // Integrations (read)
+  { id: 310, role_id: 4, permission_id: 44 },  // Seek (read)
+  { id: 311, role_id: 4, permission_id: 48 },  // LinkedIn (read)
+  { id: 312, role_id: 4, permission_id: 52 },  // Account (read)
 
 ];

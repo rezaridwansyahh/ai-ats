@@ -50,6 +50,7 @@ const iconMap = {
   'Reports':    BarChart,
   'Settings':   Settings,
   'Users':      Users,
+  'Job Postings': Package, 
 };
 
 const routeMap = {
@@ -66,6 +67,9 @@ const routeMap = {
   'User Management':  '/users/management',
   'Role Management':  '/users/role-management',
   'Integrations':     '/settings/integrations',
+  'Seek':             '/job-postings/seek',
+  'LinkedIn':         '/job-postings/linkedin',
+  'Account':          '/job-postings/account',
 };
 
 const useSidebarStructure = (permissions) => {

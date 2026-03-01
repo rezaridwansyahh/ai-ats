@@ -84,7 +84,7 @@ CREATE TABLE mapping_roles_permissions (
 CREATE TABLE master_job_account (
   id SERIAL PRIMARY KEY,
   portal_name platform_type NOT NULL,
-  username VARCHAR(255) NOT NULL,
+  email VARCHAR(255) NOT NULL,
   password TEXT NOT NULL,
   user_id INTEGER NOT NULL REFERENCES master_users(id) ON DELETE CASCADE,
   is_active BOOLEAN NOT NULL DEFAULT TRUE,

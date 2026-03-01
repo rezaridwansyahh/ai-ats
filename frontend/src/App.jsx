@@ -6,6 +6,8 @@ import DashboardLayout from "./components/layout/Dashboard-Layout"
 import UserManagementPage from "./pages/UserManagement"
 import IntegrationsPage    from "./pages/Integrations"
 import RoleManagementPage from "./pages/RoleManagement"
+import AccountPage from "./pages/Account"
+import SeekPage from "./pages/Seek"
 
 function App() {
   return (
@@ -21,6 +23,10 @@ function App() {
       </Route>
       <Route path="/settings" element={<DashboardLayout />}>
         <Route path="integrations" element={<IntegrationsPage />} />
+      </Route>
+      <Route path="/job-postings" element={<DashboardLayout />}>
+        <Route path="account"  element={<AccountPage />} />
+        <Route path="seek"     element={<SeekPage />} />
       </Route>
     </Routes>
   )
