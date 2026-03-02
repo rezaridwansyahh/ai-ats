@@ -1,6 +1,6 @@
 import { useState } from "react"
 import { useNavigate } from "react-router-dom"
-import { loginUser } from "../../services/auth"
+import { loginUser } from "@/services/auth"
 
 import { Button } from "@/components/ui/button"
 import {
@@ -22,16 +22,20 @@ export function LoginCard() {
 
   const handleSubmitLogin = async (e) => {
     e.preventDefault()
-    
+
     try {
       const res = await loginUser({
         email,
         password
       });
 
-      console.log(res.data);
+      localStorage.setItem('token', res.token)
+      localStorage.setItem('user', JSON.stringify(res.user))
+      localStorage.setItem('role', JSON.stringify(res.role))
+      localStorage.setItem('permissions', JSON.stringify(res.permissions))
+      localStorage.setItem('userData', JSON.stringify(res))
 
-      localStorage.setItem('token', res.data.token);
+
       navigate("/dashboard");
     } catch (err) {
       console.log("err", err);
@@ -39,9 +43,9 @@ export function LoginCard() {
   }
 
   return (
-    <Card className="w-full max-w-sm">
+    <Card className="w-full max-w-sm animate-in fade-in zoom-in-95 duration-300">
       <div className="w-4/5 mx-auto">
-        <img 
+        <img
           src="../../../public/abhimata.png"
           className="w-full object-contain"
         />
