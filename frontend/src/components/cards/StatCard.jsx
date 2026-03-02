@@ -4,7 +4,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 export function StatCard({ icon, label, value, loading }) {
   return (
     <Card>
-      <CardContent className="flex items-center gap-4 pt-6">
+      <CardContent className="flex items-center gap-4 pt-6 transition-all duration-200 hover:-translate-y-0.5">
         <div className="rounded-lg bg-muted p-2.5">
           {icon}
         </div>

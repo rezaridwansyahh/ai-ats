@@ -176,7 +176,7 @@ export function AppSidebar() {
             <SidebarMenu>
              <SidebarMenuItem>
                 <SidebarMenuButton
-                  className="cursor-pointer"
+                  className="cursor-pointer transition-colors duration-150"
                   onClick={() => navigate('/dashboard')}
                 >
                   <Home className="h-4 w-4" />
@@ -191,7 +191,7 @@ export function AppSidebar() {
                   return (
                     <SidebarMenuItem key={moduleName}>
                       <SidebarMenuButton
-                        className="cursor-pointer"
+                        className="cursor-pointer transition-colors duration-150"
                         onClick={() => handleNavigate(menus[0])}
                       >
                         <ModuleIcon className="h-4 w-4" />
@@ -209,7 +209,7 @@ export function AppSidebar() {
                       className="group/collapsible"
                     >
                       <CollapsibleTrigger asChild>
-                        <SidebarMenuButton className="cursor-pointer">
+                        <SidebarMenuButton className="cursor-pointer transition-colors duration-150">
                           <ModuleIcon className="h-4 w-4" />
                           <span>{moduleName}</span>
                           <ChevronDown
@@ -224,7 +224,7 @@ export function AppSidebar() {
                           {menus.map((menuName) => (
                             <SidebarMenuSubItem key={menuName}>
                               <SidebarMenuSubButton
-                                className="cursor-pointer"
+                                className="cursor-pointer transition-colors duration-150"
                                 onClick={() => handleNavigate(menuName)}
                               >
                                 <span>{menuName}</span>

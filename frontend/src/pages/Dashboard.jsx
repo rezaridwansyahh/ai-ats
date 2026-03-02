@@ -25,7 +25,7 @@ const PLACEHOLDER_TESTS = [
 
 export default function Dashboard() {
   return (
-    <div className="space-y-6 px-4 py-6">
+    <div className="space-y-6 px-4 py-6 animate-in fade-in duration-300">
       {/* STAT CARDS */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
         <StatCard label="Jobs Open"            value={74} />

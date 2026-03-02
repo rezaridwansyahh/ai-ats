@@ -1,6 +1,6 @@
 import { useState } from "react"
 import { useNavigate } from "react-router-dom"
-import { loginUser } from "../../services/auth"
+import { registerUser } from "@/services/auth"
 
 import { Button } from "@/components/ui/button"
 import {
@@ -15,85 +15,95 @@ import {
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 
-export function LoginCard() {
+export function RegisterCard() {
+  const [username, setUsername] = useState("")
   const [email, setEmail] = useState("")
   const [password, setPassword] = useState("")
-  const navigate = useNavigate();
 
-  const handleSubmitLogin = async (e) => {
+  const navigate = useNavigate()
+
+  const handleSubmitRegister = async (e) => {
     e.preventDefault()
-    
+
     try {
-      const res = await loginUser({
+      const res = await registerUser({
+        username,
         email,
         password
       });
 
-      localStorage.setItem('token', res.token)
-      localStorage.setItem('user', JSON.stringify(res.user))
-      localStorage.setItem('role', JSON.stringify(res.role))
-      localStorage.setItem('permissions', JSON.stringify(res.permissions))
-      localStorage.setItem('userData', JSON.stringify(res))
+      console.log(res);
 
-
+      localStorage.setItem('token', res.data.token);
       navigate("/dashboard");
     } catch (err) {
-      console.log("err", err);
+      console.log("err");
     }
   }
 
   return (
-    <Card className="w-full max-w-sm">
+    <Card className="w-full max-w-sm animate-in fade-in zoom-in-95 duration-300">
       <div className="w-4/5 mx-auto">
-        <img 
+        <img
           src="../../../public/abhimata.png"
           className="w-full object-contain"
         />
       </div>
       <CardHeader>
-        <CardTitle>Login to your account</CardTitle>
+        <CardTitle>Register to your account</CardTitle>
         <CardDescription>
-          Enter your email below to login to your account
+          Enter your credential below to create your account
         </CardDescription>
         <CardAction>
           <Button asChild variant="link">
-            <a href="/register">Sign Up</a>
+            <a href="/login">Log In</a>
           </Button>
         </CardAction>
       </CardHeader>
       <CardContent>
-        <form id="loginForm" onSubmit={handleSubmitLogin}>
+
+        <form id="registerForm" onSubmit={handleSubmitRegister}>
           <div className="flex flex-col gap-6">
+            <div className="grid gap-2">
+              <Label htmlFor="email">Username</Label>
+              <Input
+                id="username"
+                type="username"
+                placeholder="John Smith"
+                value={username}
+                onChange={(e) => setUsername(e.target.value)}
+                required
+              />
+            </div>
             <div className="grid gap-2">
               <Label htmlFor="email">Email</Label>
               <Input
                 id="email"
                 type="email"
+                value={email}
                 placeholder="m@example.com"
-                required
                 onChange={(e) => setEmail(e.target.value)}
+                required
               />
             </div>
             <div className="grid gap-2">
               <div className="flex items-center">
                 <Label htmlFor="password">Password</Label>
-                <a
-                  href="#"
-                  className="ml-auto inline-block text-sm underline-offset-4 hover:underline"
-                >
-                  Forgot your password?
-                </a>
               </div>
-              <Input id="password" type="password" required onChange={(e) => setPassword(e.target.value)}/>
+              <Input id="password" type="password" required value={password} onChange={(e) => setPassword(e.target.value)}/>
             </div>
           </div>
         </form>
-      </CardContent>
-      <CardFooter className="flex-col gap-2">
-        <Button form="loginForm" type="submit" className="w-full cursor-pointer">
-          Login
-        </Button>
-      </CardFooter>
+
+        </CardContent>
+
+        <CardFooter className="flex-col gap-2">
+          <Button form="registerForm" type="submit" className="w-full cursor-pointer">
+            Register
+          </Button>
+        </CardFooter>
+
+
     </Card>
   )
 }
