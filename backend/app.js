@@ -1,71 +1,37 @@
-import express from 'express';
+import "./src/config/env.js"; // must be first
+
+import express from "express";
 import cors from 'cors';
-import client from 'prom-client';
 
 const app = express();
 
-import auths from './routes/auths.js';
-
-const collectDefaultMetrics = client.collectDefaultMetrics;
-collectDefaultMetrics();
-
-const httpRequestCounter = new client.Counter({
-  name: "http_requests_total",
-  help: "Total number of HTTP requests",
-  labelNames: ["method", "route", "status"],
-});
-
-app.use((req, res, next) => {
-  res.on("finish", () => {
-    httpRequestCounter.inc({
-      method: req.method,
-      route: req.route?.path || req.path,
-      status: res.statusCode,
-    });
-  });
-  next();
-});
-
-app.get("/metrics", async (req, res) => {
-  try {
-    res.set("Content-Type", client.register.contentType);
-    res.end(await client.register.metrics());
-  } catch (ex) {
-    res.status(500).end(ex);
-  }
-});
-
-
-const allowedOrigins = [
-  /\.localhost$/,                 
-  /^http:\/\/localhost(:\d+)?$/   
-];
-
-app.use(
-  cors({
-    origin: function (origin, callback) {
-      if (!origin) return callback(null, true);
-
-      const isAllowed = allowedOrigins.some((rule) =>
-        rule instanceof RegExp ? rule.test(origin) : rule === origin
-      );
-
-      if (isAllowed) {
-        callback(null, true);
-      } else {
-        console.log("CORS blocked:", origin);
-        callback(new Error("Not allowed by CORS"));
-      }
-    },
-    credentials: true,
-    exposedHeaders: ["Content-Disposition"], 
-  })
-);
+import cookies from "./src/modules/cookie/cookie.route.js";
+import linkedin from "./src/modules/platform/linkedin/linkedin.route.js"
+import seek from "./src/modules/platform/seek/seek.route.js"
+import auth from "./src/modules/auth/auth.route.js"
+import role from "./src/modules/role/role.route.js"
+import user from "./src/modules/user/user.route.js"
+import permission from "./src/modules/permission/permission.route.js"
+import module from "./src/modules/module/module.route.js"
+import menu from "./src/modules/menu/menu.route.js"
+import jobAccount from "./src/modules/job-account/job-account.route.js"
+import jobPosting from "./src/modules/job-post/job-post.router.js"
 
 app.use(express.json());
-app.use(express.urlencoded({ extended: true }));
+app.use(cors());
 
-app.use("/api", auths);
+app.use("/api/auth", auth);
+app.use("/api/cookies", cookies);
+app.use("/api/linkedin", linkedin);
+app.use("/api/seek", seek);
+app.use("/api/role", role);
+app.use("/api/user", user);
+app.use("/api/permission", permission);
+app.use("/api/module", module);
+app.use("/api/menu", menu);
+app.use("/api/job-account", jobAccount);
+app.use("/api/job-posting", jobPosting);
 
-
-export default app;
+app.listen(3000, () => {
+  console.log(`Server is listening on port: 3000`);
+});
