@@ -6,6 +6,7 @@ import jobPostModel from "../../job-post/job-post.model.js"
 import jobPostSeekModel from "./job-post-seek.model.js"
 import browserPuppeteer from "../../../shared/services/puppeteer/browser.puppeteer.js"
 import extractJobPostRpa from "../seek/rpa/extract-job-post.rpa.js"
+import candidateModel from "../../candidate/candidate.model.js"
 
 class SeekService {
   async jobPost(user_id, account_id, service, dataForm) {
@@ -87,31 +88,50 @@ class SeekService {
       await browserPuppeteer.close();
     }
   }
-  async extractCandidates(account_id, application_id, candidate_type) {
+  async extractCandidates(account_id, job_posting_id) {
     const page = await cookieService.includeCookiesIfExist(account_id);
+    const jobPostSeek = await jobPostSeekModel.getDetailsByJobPostingId(job_posting_id);
 
     try {
       await loginRpa.authenticatedPage(page, account_id);
-      await extractCandidateRpa.navigateToCandidatePage(page, application_id);
+      await extractCandidateRpa.navigateToCandidatePage(page, jobPostSeek.seek_id);
 
-      const buckets = await extractCandidateRpa.extractCandidateType(page, application_id);
+      const buckets = await extractCandidateRpa.extractCandidateType(page, jobPostSeek.seek_id);
+      const seekRecord = await jobPostSeekModel.getBySeekId(jobPostSeek.seek_id);
+      const job_name = seekRecord?.job_title || jobPostSeek.seek_id;
 
-      if (candidate_type) {
-        const bucket = buckets.find(b => b.name === candidate_type);
-        if (!bucket) {
-          throw { status: 400, message: `Candidate type "${candidate_type}" not found` };
+      const results = [];
+
+      for (const bucket of buckets) {
+        if (bucket.count === 0) {
+          results.push({ bucket: bucket.name, saved: 0 });
+          continue;
         }
 
-        const seekRecord = await jobPostSeekModel.getBySeekId(String(application_id));
-        const job_name = seekRecord?.job_title || application_id;
+        await extractCandidateRpa.navigateToCandidateDetail(page, bucket.name);
+        const candidates = await extractCandidateRpa.extractCandidates(page, bucket, account_id, jobPostSeek.seek_id, job_name);
 
-        await extractCandidateRpa.navigateToCandidateDetail(page, candidate_type);
-        const candidates = await extractCandidateRpa.extractCandidates(page, bucket, account_id, application_id, job_name);
+        for (const candidate of candidates) {
+          if (!candidate.candidate_id) continue;
 
-        return { buckets, candidates };
+          await candidateModel.upsert({
+            job_posting_id,
+            candidate_status: bucket.name,
+            candidate_id: parseInt(candidate.candidate_id),
+            name: candidate.name,
+            last_position: candidate.last_position,
+            address: candidate.address,
+            education: candidate.education || null,
+            information: candidate.information || null,
+            date: candidate.date || null,
+            attachment: candidate.attachment || null,
+          });
+        }
+
+        results.push({ bucket: bucket.name, saved: candidates.length });
       }
 
-      return { buckets, candidates: [] };
+      return { buckets, results };
     } catch (err) {
       throw err;
     } finally {

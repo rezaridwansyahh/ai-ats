@@ -30,6 +30,7 @@ CREATE TYPE pay_type_type AS ENUM ('Hourly', 'Monthly', 'Annually');
 CREATE TYPE currency_type AS ENUM ('AUD', 'HKD', 'IDR', 'MYR', 'NZD', 'PHP', 'SGD', 'THB', 'USD');
 CREATE TYPE pay_display_type AS ENUM ('Show', 'Hide');
 CREATE TYPE platform_type AS ENUM ('seek', 'linkedin');
+CREATE TYPE candidate_status_type AS ENUM ('Kotak masuk', 'Prescreen', 'Terpilih', 'Wawancara', 'Penawaran', 'Menerima Tawaran', 'Tidak cocok');
 
 CREATE TABLE master_users (
   id SERIAL PRIMARY KEY,
@@ -132,6 +133,21 @@ CREATE TABLE mapping_job_posting_seek (
   pay_display pay_display_type,
   created_at TIMESTAMP NOT NULL DEFAULT NOW(),
   updated_at TIMESTAMP NOT NULL DEFAULT NOW()
+);
+
+CREATE TABLE master_candidates (
+  id SERIAL PRIMARY KEY,
+  job_posting_id INTEGER NOT NULL REFERENCES core_job_posting(id) ON DELETE CASCADE,
+  candidate_status candidate_status_type NOT NULL,
+  candidate_id INTEGER NOT NULL,
+  name VARCHAR(255) NOT NULL,
+  last_position VARCHAR(255) NOT NULL,
+  address VARCHAR(255) NOT NULL,
+  education VARCHAR(255),
+  information JSONB,
+  date TIMESTAMPTZ,
+  attachment VARCHAR(255),
+  UNIQUE(candidate_id, job_posting_id)
 );
 
 CREATE TABLE mapping_job_posting_linkedin (

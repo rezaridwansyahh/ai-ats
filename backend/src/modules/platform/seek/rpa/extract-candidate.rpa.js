@@ -4,10 +4,10 @@ import fs from 'fs';
 const delay = (ms) => new Promise(r => setTimeout(r, ms));
 
 class ExtractCandidateService {
-  async navigateToCandidatePage(page, application_id) {
-    console.log('Navigating to candidates for job ID:', application_id);
+  async navigateToCandidatePage(page, seek_id) {
+    console.log('Navigating to candidates for job ID:', seek_id);
 
-    await page.goto(`https://id.employer.seek.com/id/candidates/?jobid=${application_id}`, {
+    await page.goto(`https://id.employer.seek.com/id/candidates/?jobid=${seek_id}`, {
       waitUntil: 'networkidle0',
     });
 
@@ -34,10 +34,10 @@ class ExtractCandidateService {
     }
   }
 
-  async extractCandidateType(page, application_id) {
+  async extractCandidateType(page, seek_id) {
     console.log('Extracting candidate types');
 
-    const buckets = await page.evaluate((application_id) => {
+    const buckets = await page.evaluate((seek_id) => {
       const buttons = document.querySelectorAll('[data-testid="desktop-buckets"]');
       const type = Array.from(buttons);
       const dataType = [];
@@ -48,19 +48,19 @@ class ExtractCandidateService {
 
         dataType.push({
           name: nameEl.textContent.trim(),
-          application_id,
+          seek_id,
           count: parseInt(countEl.textContent.trim().replace(/,/g, ""))
         });
       }
 
       return dataType;
-    }, application_id);
+    }, seek_id);
 
     console.log('Candidate types extracted:', buckets);
     return buckets;
   }
 
-  async extractCandidates(page, candidateType, account_id, application_id, job_name) {
+  async extractCandidates(page, candidateType, account_id, seek_id, job_name) {
     console.log(candidateType);
     console.log("Starting candidate extraction with pagination");
 
@@ -86,7 +86,7 @@ class ExtractCandidateService {
 
     // Prepare download path: resumes/{account_id}/{jobId}_{jobName}/
     const safeName = job_name.replace(/[<>:"/\\|?*]+/g, '_');
-    const downloadDir = path.resolve(`./resumes/${account_id}/${application_id}_${safeName}`);
+    const downloadDir = path.resolve(`./resumes/${account_id}/${seek_id}_${safeName}`);
     fs.mkdirSync(downloadDir, { recursive: true });
 
     while (true) {
@@ -203,7 +203,7 @@ class ExtractCandidateService {
         const hasResumeTab = await page.$('#tab-select-detail-view_3');
 
         if (hasResumeTab) {
-          resumeFileName = `${application_id}_${candidateId}.pdf`;
+          resumeFileName = `${seek_id}_${candidateId}.pdf`;
 
           try {
             await page.click('#tab-select-detail-view_3');
