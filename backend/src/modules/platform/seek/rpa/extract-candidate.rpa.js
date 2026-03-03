@@ -203,7 +203,8 @@ class ExtractCandidateService {
         const hasResumeTab = await page.$('#tab-select-detail-view_3');
 
         if (hasResumeTab) {
-          resumeFileName = `${seek_id}_${candidateId}.pdf`;
+          const fileName = `${seek_id}_${candidateId}.pdf`;
+          resumeFileName = `resumes/${account_id}/${seek_id}_${safeName}/${fileName}`;
 
           try {
             await page.click('#tab-select-detail-view_3');
@@ -213,14 +214,25 @@ class ExtractCandidateService {
             const hasDownloadBtn = await page.$('#download-document-viewer');
 
             if (hasDownloadBtn) {
+              // Snapshot files before download so we can identify the new file
+              const filesBefore = new Set(fs.readdirSync(downloadDir));
+
               await page._client().send('Page.setDownloadBehavior', {
                 behavior: 'allow',
                 downloadPath: downloadDir
               });
 
               await page.click('#download-document-viewer');
-              console.log(`Downloading: ${resumeFileName}`);
+              console.log(`Downloading: ${fileName}`);
               await delay(5000);
+
+              // Rename the newly downloaded file to our consistent naming convention
+              const filesAfter = fs.readdirSync(downloadDir).filter(f => !f.endsWith('.crdownload'));
+              const newFile = filesAfter.find(f => !filesBefore.has(f));
+              if (newFile && newFile !== fileName) {
+                fs.renameSync(path.join(downloadDir, newFile), path.join(downloadDir, fileName));
+                console.log(`Renamed: ${newFile} → ${fileName}`);
+              }
             } else {
               console.log('No download button found - Resume not available');
               resumeFileName = null;

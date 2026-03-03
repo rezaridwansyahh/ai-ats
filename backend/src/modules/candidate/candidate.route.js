@@ -9,6 +9,7 @@ router.use(authToken);
 router.get('/', candidateController.getAll);
 router.get('/job-posting/:job_posting_id', candidateController.getByJobPostingId);
 router.get('/:id', candidateController.getById);
+router.get('/:id/cv', candidateController.downloadCv);
 
 router.put('/:id/status', candidateController.updateStatus);
 
