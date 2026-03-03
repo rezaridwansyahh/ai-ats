@@ -3,7 +3,7 @@ export default [
 /* ============================================================================
    ADMIN (role_id: 1) → FULL ACCESS
 ============================================================================ */
-...Array.from({ length: 55 }, (_, i) => ({
+...Array.from({ length: 63 }, (_, i) => ({
   id: i + 1,
   role_id: 1,
   permission_id: i + 1
@@ -86,6 +86,16 @@ export default [
   { id: 140, role_id: 2, permission_id: 53 },
   { id: 141, role_id: 2, permission_id: 54 },
 
+  // Job Management -> Seek Sourcing (56–59) read/create/update
+  { id: 142, role_id: 2, permission_id: 56 },
+  { id: 143, role_id: 2, permission_id: 57 },
+  { id: 144, role_id: 2, permission_id: 58 },
+
+  // Job Management -> LinkedIn Sourcing (60–63) read/create/update
+  { id: 145, role_id: 2, permission_id: 60 },
+  { id: 146, role_id: 2, permission_id: 61 },
+  { id: 147, role_id: 2, permission_id: 62 },
+
 /* ============================================================================
    STAFF (role_id: 3)
    read + create only
@@ -136,6 +146,14 @@ export default [
   { id: 223, role_id: 3, permission_id: 52 },
   { id: 224, role_id: 3, permission_id: 53 },
 
+  // Job Management -> Seek Sourcing (read + create)
+  { id: 225, role_id: 3, permission_id: 56 },
+  { id: 226, role_id: 3, permission_id: 57 },
+
+  // Job Management -> LinkedIn Sourcing (read + create)
+  { id: 227, role_id: 3, permission_id: 60 },
+  { id: 228, role_id: 3, permission_id: 61 },
+
 /* ============================================================================
    INTERN (role_id: 4)
    READ ONLY
@@ -154,5 +172,7 @@ export default [
   { id: 310, role_id: 4, permission_id: 44 },  // Seek (read)
   { id: 311, role_id: 4, permission_id: 48 },  // LinkedIn (read)
   { id: 312, role_id: 4, permission_id: 52 },  // Account (read)
+  { id: 313, role_id: 4, permission_id: 56 },  // Seek Sourcing (read)
+  { id: 314, role_id: 4, permission_id: 60 },  // LinkedIn Sourcing (read)
 
 ];

@@ -3,11 +3,7 @@ import {
 } from '@/components/ui/table';
 import { Button }   from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
-import {
-  DropdownMenu, DropdownMenuContent, DropdownMenuItem,
-  DropdownMenuSeparator, DropdownMenuTrigger,
-} from '@/components/ui/dropdown-menu';
-import { MoreHorizontal, Pencil, Trash2, Eye } from 'lucide-react';
+import { Pencil, Trash2, Eye } from 'lucide-react';
 
 const STATUS_COLORS = {
   Draft:     'bg-gray-100 text-gray-700',
@@ -25,7 +21,7 @@ function formatPay(posting) {
   return `${currency} ${min} – ${max}${type}`;
 }
 
-const COLUMNS = ['#', 'Job Title', 'Location', 'Work Type', 'Pay Range', 'Status', ''];
+const COLUMNS = ['#', 'Job Title', 'Location', 'Work Type', 'Pay Range', 'Status', 'Actions'];
 
 export function SeekPostingTable({ postings, loading, onView, onEdit, onDelete, canEdit, canDelete }) {
   if (loading) {
@@ -34,7 +30,7 @@ export function SeekPostingTable({ postings, loading, onView, onEdit, onDelete, 
         <TableHeader>
           <TableRow>
             {COLUMNS.map((col, i) => (
-              <TableHead key={i} className={i === 0 ? 'w-12' : i === COLUMNS.length - 1 ? 'w-16' : ''}>
+              <TableHead key={i} className={i === 0 ? 'w-12' : i === COLUMNS.length - 1 ? 'w-28' : ''}>
                 {col}
               </TableHead>
             ))}
@@ -71,7 +67,7 @@ export function SeekPostingTable({ postings, loading, onView, onEdit, onDelete, 
           <TableHead>Work Type</TableHead>
           <TableHead>Pay Range</TableHead>
           <TableHead>Status</TableHead>
-          <TableHead className="w-16" />
+          <TableHead className="w-28 text-center">Actions</TableHead>
         </TableRow>
       </TableHeader>
       <TableBody>
@@ -88,40 +84,39 @@ export function SeekPostingTable({ postings, loading, onView, onEdit, onDelete, 
               </span>
             </TableCell>
             <TableCell>
-              <DropdownMenu>
-                <DropdownMenuTrigger asChild>
-                  <Button variant="ghost" size="icon" className="h-8 w-8">
-                    <MoreHorizontal className="h-4 w-4" />
+              <div className="flex items-center justify-center gap-1">
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="h-8 w-8"
+                  onClick={() => onView(posting)}
+                  title="View"
+                >
+                  <Eye className="h-4 w-4" />
+                </Button>
+                {canEdit && posting.status !== 'Expired' && (
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="h-8 w-8"
+                    onClick={() => onEdit(posting)}
+                    title="Edit"
+                  >
+                    <Pencil className="h-4 w-4" />
                   </Button>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent align="end">
-                  <DropdownMenuItem onClick={() => onView(posting)}>
-                    <Eye className="h-4 w-4 mr-2" />
-                    View
-                  </DropdownMenuItem>
-                  {canEdit && posting.status !== 'Expired' && (
-                    <>
-                      <DropdownMenuSeparator />
-                      <DropdownMenuItem onClick={() => onEdit(posting)}>
-                        <Pencil className="h-4 w-4 mr-2" />
-                        Edit
-                      </DropdownMenuItem>
-                    </>
-                  )}
-                  {canDelete && (
-                    <>
-                      <DropdownMenuSeparator />
-                      <DropdownMenuItem
-                        className="text-destructive focus:text-destructive"
-                        onClick={() => onDelete(posting)}
-                      >
-                        <Trash2 className="h-4 w-4 mr-2" />
-                        Delete
-                      </DropdownMenuItem>
-                    </>
-                  )}
-                </DropdownMenuContent>
-              </DropdownMenu>
+                )}
+                {canDelete && (
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="h-8 w-8 text-destructive hover:text-destructive"
+                    onClick={() => onDelete(posting)}
+                    title="Delete"
+                  >
+                    <Trash2 className="h-4 w-4" />
+                  </Button>
+                )}
+              </div>
             </TableCell>
           </TableRow>
         ))}

@@ -41,6 +41,7 @@ import {
   LogOut,
   ChevronsUpDown,
   Briefcase,
+  Search,
 } from 'lucide-react';
 
 const iconMap = {
@@ -50,7 +51,8 @@ const iconMap = {
   'Reports':    BarChart,
   'Settings':   Settings,
   'Users':      Users,
-  'Job Postings': Package, 
+  'Job Postings': Package,
+  'Job Management': Search,
 };
 
 const routeMap = {
@@ -69,7 +71,9 @@ const routeMap = {
   'Integrations':     '/settings/integrations',
   'Seek':             '/job-postings/seek',
   'LinkedIn':         '/job-postings/linkedin',
-  'Account':          '/job-postings/account',
+  'Account':            '/job-postings/account',
+  'Seek Sourcing':     '/job-management/seek-sourcing',
+  'LinkedIn Sourcing': '/job-management/linkedin-sourcing',
 };
 
 const useSidebarStructure = (permissions) => {

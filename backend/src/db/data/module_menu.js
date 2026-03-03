@@ -45,5 +45,11 @@ export default [
   ========================= */
   { id: 13, module_id: 6, menu_id: 13 }, // Job Posting -> Seek
   { id: 14, module_id: 6, menu_id: 14 }, // Job Posting -> LinkedIn  
-  { id: 15, module_id: 6, menu_id: 15 }, // Job Posting -> Account  
+  { id: 15, module_id: 6, menu_id: 15 }, // Job Posting -> Account
+
+  /* =========================
+     Job Management (module_id: 7)
+  ========================= */
+  { id: 16, module_id: 7, menu_id: 16 }, // Job Management -> Seek Sourcing
+  { id: 17, module_id: 7, menu_id: 17 }, // Job Management -> LinkedIn Sourcing
 ];

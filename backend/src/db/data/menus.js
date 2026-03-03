@@ -14,4 +14,6 @@ export default [
   { id: 13, name: 'Seek'},
   { id: 14, name: 'LinkedIn'},
   { id: 15, name: 'Account'},
+  { id: 16, name: 'Seek Sourcing'},
+  { id: 17, name: 'LinkedIn Sourcing'},
 ];

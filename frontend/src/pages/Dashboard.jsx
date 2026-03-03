@@ -1,172 +1,162 @@
+import { useState } from 'react';
 import {
-  Plus,
-  ChevronRight,
-  Eye,
-  Pencil,
+  Briefcase,
+  Users,
+  UserCheck,
+  Clock,
+  FileText,
+  CalendarDays,
+  Send,
+  Rocket,
+  LayoutGrid,
+  Kanban,
+  Zap,
 } from 'lucide-react';
 
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
-import { Badge }  from '@/components/ui/badge';
+import { StatCard } from '@/components/cards/StatCard';
+import DashboardHeader from '@/components/dashboard/DashboardHeader';
+import ProcessFlow from '@/components/dashboard/ProcessFlow';
+import TimeToHireChart from '@/components/dashboard/TimeToHireChart';
+import DepartmentChart from '@/components/dashboard/DepartmentChart';
+import HiringFunnel from '@/components/dashboard/HiringFunnel';
+import UpcomingInterviews from '@/components/dashboard/UpcomingInterviews';
+import SourceChannelTable from '@/components/dashboard/SourceChannelTable';
+import DepartmentProgress from '@/components/dashboard/DepartmentProgress';
+import KanbanBoard from '@/components/dashboard/KanbanBoard';
+import AutomationLog from '@/components/dashboard/AutomationLog';
 
-const PLACEHOLDER_JOBS = [
-  { id: 1, title: 'Senior Frontend Developer', location: 'Jakarta',  candidates: 124, status: 'Active' },
-  { id: 2, title: 'Backend Engineer',          location: 'Bandung',  candidates: 89,  status: 'Active' },
-  { id: 3, title: 'UI/UX Designer',            location: 'Remote',   candidates: 56,  status: 'Kedaluwarsa' },
-  { id: 4, title: 'Data Analyst',              location: 'Surabaya', candidates: 43,  status: 'Active' },
-];
-
-const PLACEHOLDER_TESTS = [
-  { id: 1, title: 'Technical Assessment - Frontend', questions: 25, completions: 312 },
-  { id: 2, title: 'Logical Reasoning Test',          questions: 40, completions: 198 },
-  { id: 3, title: 'Culture Fit Assessment',           questions: 15, completions: 456 },
-  { id: 4, title: 'Coding Challenge - Backend',       questions: 10, completions: 87  },
+const TABS = [
+  { id: 'overview', label: 'Overview',          icon: LayoutGrid },
+  { id: 'kanban',   label: 'Kanban Pipeline',   icon: Kanban },
+  { id: 'auto',     label: 'Automation Log',    icon: Zap },
 ];
 
 export default function Dashboard() {
+  const [activeTab, setActiveTab] = useState('overview');
+
   return (
-    <div className="space-y-6 px-4 py-6 animate-in fade-in duration-300">
-      {/* STAT CARDS */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-        <StatCard label="Jobs Open"            value={74} />
-        <StatCard label="Ongoing Test Taker"   value={21} />
-        <StatCard label="Candidate Pool"       value="2,647" />
-        <StatCard label="Test Completion Rate" value="30.4%" />
+    <div className="space-y-5 px-4 py-6 animate-in fade-in duration-300">
+      {/* Header */}
+      <DashboardHeader />
+
+      {/* Tab navigation */}
+      <div className="flex gap-0 border-b">
+        {TABS.map((tab) => {
+          const Icon = tab.icon;
+          const isActive = activeTab === tab.id;
+          return (
+            <button
+              key={tab.id}
+              onClick={() => setActiveTab(tab.id)}
+              className={`flex items-center gap-1.5 px-4 py-2.5 text-xs font-semibold border-b-2 -mb-px transition-colors cursor-pointer ${
+                isActive
+                  ? 'text-primary border-primary'
+                  : 'text-muted-foreground border-transparent hover:text-foreground hover:bg-muted/50'
+              }`}
+            >
+              <Icon className="h-3.5 w-3.5" />
+              {tab.label}
+            </button>
+          );
+        })}
       </div>
 
-      {/* MIDDLE SECTION: Company Profile + Actions */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
-        {/* Company Profile */}
-        <Card className="lg:col-span-2">
-          <CardHeader>
-            <CardTitle>Company Profile</CardTitle>
-            <CardDescription>Company profile sudah lengkap</CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <div className="w-full rounded-full bg-muted h-2.5">
-              <div className="bg-primary h-2.5 rounded-full w-full" />
-            </div>
-            <div className="flex gap-3">
-              <Button variant="outline" size="sm">
-                <Eye className="h-4 w-4" />
-                View Page
-              </Button>
-              <Button variant="outline" size="sm">
-                <Pencil className="h-4 w-4" />
-                Edit Page
-              </Button>
-            </div>
-          </CardContent>
-        </Card>
-
-        {/* Action Cards */}
-        <div className="flex flex-col gap-4">
-          <Card>
-            <CardHeader className="pb-2">
-              <CardTitle className="text-base">Create Job</CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-3">
-              <p className="text-sm text-muted-foreground">
-                Buat lowongan untuk mulai mendapatkan kandidat.
-              </p>
-              <Button size="sm" className="w-full">
-                <Plus className="h-4 w-4" />
-                Create Job
-              </Button>
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader className="pb-2">
-              <CardTitle className="text-base">Create Test</CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-3">
-              <p className="text-sm text-muted-foreground">
-                Buat tes sebagai bagian dari seleksi lowongan ataupun sebagai tes terpisah.
-              </p>
-              <Button size="sm" className="w-full">
-                <Plus className="h-4 w-4" />
-                Create Test
-              </Button>
-            </CardContent>
-          </Card>
-        </div>
-      </div>
-
-      {/* BOTTOM SECTION: My Jobs + My Tests */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-        {/* My Jobs */}
-        <Card>
-          <CardHeader className="flex-row items-center justify-between">
-            <CardTitle>My Jobs</CardTitle>
-            <Button variant="ghost" size="sm">
-              View all (896)
-              <ChevronRight className="h-4 w-4" />
-            </Button>
-          </CardHeader>
-          <CardContent className="space-y-3">
-            {PLACEHOLDER_JOBS.map((job) => (
-              <div
-                key={job.id}
-                className="flex items-center justify-between border-b pb-3 last:border-b-0 last:pb-0"
-              >
-                <div className="min-w-0 flex-1">
-                  <p className="font-medium text-sm truncate">{job.title}</p>
-                  <p className="text-xs text-muted-foreground">{job.location}</p>
-                </div>
-                <div className="flex items-center gap-3">
-                  <div className="text-right">
-                    <p className="text-sm font-semibold">{job.candidates}</p>
-                    <p className="text-xs text-muted-foreground">candidates</p>
-                  </div>
-                  <Badge variant={job.status === 'Kedaluwarsa' ? 'secondary' : 'default'}>
-                    {job.status}
-                  </Badge>
-                </div>
-              </div>
-            ))}
-          </CardContent>
-        </Card>
-
-        {/* My Tests */}
-        <Card>
-          <CardHeader className="flex-row items-center justify-between">
-            <CardTitle>My Test</CardTitle>
-            <Button variant="ghost" size="sm">
-              View all (4,254)
-              <ChevronRight className="h-4 w-4" />
-            </Button>
-          </CardHeader>
-          <CardContent className="space-y-3">
-            {PLACEHOLDER_TESTS.map((test) => (
-              <div
-                key={test.id}
-                className="flex items-center justify-between border-b pb-3 last:border-b-0 last:pb-0"
-              >
-                <div className="min-w-0 flex-1">
-                  <p className="font-medium text-sm truncate">{test.title}</p>
-                  <p className="text-xs text-muted-foreground">{test.questions} questions</p>
-                </div>
-                <div className="text-right">
-                  <p className="text-sm font-semibold">{test.completions}</p>
-                  <p className="text-xs text-muted-foreground">completions</p>
-                </div>
-              </div>
-            ))}
-          </CardContent>
-        </Card>
-      </div>
+      {/* Tab content */}
+      {activeTab === 'overview' && <OverviewTab />}
+      {activeTab === 'kanban' && <KanbanBoard />}
+      {activeTab === 'auto' && <AutomationLog />}
     </div>
   );
 }
 
-function StatCard({ label, value }) {
+/* ─── Overview Tab ─── */
+function OverviewTab() {
   return (
-    <Card>
-      <CardContent className="pt-6">
-        <p className="text-sm text-muted-foreground">{label}</p>
-        <p className="text-3xl font-bold mt-1">{value}</p>
-      </CardContent>
-    </Card>
+    <div className="space-y-5">
+      {/* 9-Phase Process Flow */}
+      <ProcessFlow />
+
+      {/* KPI Row 1: Primary metrics */}
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+        <StatCard
+          icon={<Briefcase className="h-5 w-5 text-primary" />}
+          iconBg="bg-primary/10"
+          label="Active Jobs"
+          value={24}
+          trend="up"
+          trendLabel="+12%"
+        />
+        <StatCard
+          icon={<Users className="h-5 w-5 text-blue-500" />}
+          iconBg="bg-blue-50"
+          label="Total Applicants"
+          value="1,488"
+          trend="up"
+          trendLabel="+23%"
+        />
+        <StatCard
+          icon={<UserCheck className="h-5 w-5 text-green-500" />}
+          iconBg="bg-green-50"
+          label="Hired This Month"
+          value={18}
+          trend="up"
+          trendLabel="+8"
+        />
+        <StatCard
+          icon={<Clock className="h-5 w-5 text-amber-500" />}
+          iconBg="bg-amber-50"
+          label="Avg. Time to Hire"
+          value="21d"
+          trend="down"
+          trendLabel="-3 days"
+        />
+      </div>
+
+      {/* KPI Row 2: Secondary metrics */}
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+        <StatCard
+          icon={<FileText className="h-5 w-5 text-violet-500" />}
+          iconBg="bg-violet-50"
+          label="New Applicants (7d)"
+          value={156}
+        />
+        <StatCard
+          icon={<CalendarDays className="h-5 w-5 text-sky-500" />}
+          iconBg="bg-sky-50"
+          label="Interviews This Week"
+          value={12}
+        />
+        <StatCard
+          icon={<Send className="h-5 w-5 text-amber-500" />}
+          iconBg="bg-amber-50"
+          label="Pending Offers"
+          value={5}
+        />
+        <StatCard
+          icon={<Rocket className="h-5 w-5 text-green-500" />}
+          iconBg="bg-green-50"
+          label="Onboarding In Progress"
+          value={8}
+        />
+      </div>
+
+      {/* Charts row 1: Time to Hire + Department Donut */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+        <TimeToHireChart />
+        <DepartmentChart />
+      </div>
+
+      {/* Charts row 2: Funnel + Upcoming Interviews */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+        <HiringFunnel />
+        <UpcomingInterviews />
+      </div>
+
+      {/* Source Channel Performance */}
+      <SourceChannelTable />
+
+      {/* Time-to-Hire by Department */}
+      <DepartmentProgress />
+    </div>
   );
 }

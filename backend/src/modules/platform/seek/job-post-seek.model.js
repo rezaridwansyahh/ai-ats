@@ -54,6 +54,7 @@ class JobPostSeekModel {
         cjp.work_option,
         cjp.work_type,
         cjp.status,
+        cjp.candidate_count,
         cjp.created_at,
         cjp.updated_at,
         mjps.id AS seeks_id,
@@ -62,7 +63,9 @@ class JobPostSeekModel {
         mjps.pay_type,
         mjps.pay_min,
         mjps.pay_max,
-        mjps.pay_display
+        mjps.pay_display,
+        mjps.created_date_seek,
+        mjps.created_by
       FROM mapping_job_posting_seek mjps
       JOIN core_job_posting cjp ON mjps.job_posting_id = cjp.id
       WHERE mjps.job_posting_id = $1
@@ -77,11 +80,14 @@ class JobPostSeekModel {
         cjp.*,
         mja.portal_name,
         mja.email,
+        mjps.seek_id,
         mjps.currency,
         mjps.pay_type,
         mjps.pay_min,
         mjps.pay_max,
-        mjps.pay_display
+        mjps.pay_display,
+        mjps.created_date_seek,
+        mjps.created_by
       FROM core_job_posting cjp
       JOIN master_job_account mja ON cjp.account_id = mja.id
       LEFT JOIN mapping_job_posting_seek mjps ON cjp.id = mjps.job_posting_id
@@ -97,11 +103,14 @@ class JobPostSeekModel {
         cjp.*,
         mja.portal_name,
         mja.email,
+        mjps.seek_id,
         mjps.currency,
         mjps.pay_type,
         mjps.pay_min,
         mjps.pay_max,
-        mjps.pay_display
+        mjps.pay_display,
+        mjps.created_date_seek,
+        mjps.created_by
       FROM core_job_posting cjp
       JOIN master_job_account mja ON cjp.account_id = mja.id
       LEFT JOIN mapping_job_posting_seek mjps ON cjp.id = mjps.job_posting_id

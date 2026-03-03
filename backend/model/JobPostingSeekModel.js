@@ -41,14 +41,17 @@ class JobPostingSeek {
         cjp.work_option,
         cjp.work_type,
         cjp.status,
+        cjp.candidate_count,
         cjp.created_at,
         cjp.updated_at,
-        mjps.id AS seek_id,
+        mjps.seek_id,
         mjps.currency,
         mjps.pay_type,
         mjps.pay_min,
         mjps.pay_max,
-        mjps.pay_display
+        mjps.pay_display,
+        mjps.created_date_seek,
+        mjps.created_by
       FROM mapping_job_posting_seek mjps
       JOIN core_job_posting cjp ON mjps.job_posting_id = cjp.id
       WHERE mjps.job_posting_id = $1

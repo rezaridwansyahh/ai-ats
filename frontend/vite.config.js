@@ -7,7 +7,7 @@ import { defineConfig } from "vite"
 export default defineConfig({
   plugins: [react(), tailwindcss()],
   server: {
-    allowedHosts: ["3918-180-247-60-184.ngrok-free.app"]
+    allowedHosts: ["242c-180-247-60-184.ngrok-free.app"]
   },
   resolve: {
     alias: {

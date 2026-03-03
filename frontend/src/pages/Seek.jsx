@@ -1,8 +1,14 @@
 import { useState, useEffect, useCallback } from 'react';
-import { RefreshCw, Briefcase, Plus, XCircle, FileText, Send, Play, Clock } from 'lucide-react';
+import { RefreshCw, Briefcase, XCircle, FileText, Send, Play, Clock } from 'lucide-react';
 import { Button }   from '@/components/ui/button';
+import { Input }    from '@/components/ui/input';
+import { Label }    from '@/components/ui/label';
+import { Textarea } from '@/components/ui/textarea';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { StatCard }  from '@/components/cards/StatCard';
+import {
+  Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
+} from '@/components/ui/select';
 
 import {
   getSeekPostingsByUserId,
@@ -14,17 +20,21 @@ import { getJobAccountsByUserId } from '@/api/job-accounts.api';
 import { hasPermission } from '@/utils/permissions';
 
 import { SeekPostingTable }      from '@/components/job-posting/SeekPostingTable';
-import { SeekFormDialog }       from '@/components/job-posting/SeekFormDialog';
-import { JobPostingViewDialog } from '@/components/job-posting/JobPostingViewDialog';
-import { JobPostingEditDialog } from '@/components/job-posting/JobPostingEditDialog';
+import { JobPostingViewDialog }  from '@/components/job-posting/JobPostingViewDialog';
+import { JobPostingEditDialog }  from '@/components/job-posting/JobPostingEditDialog';
 import { DeleteJobPostingDialog } from '@/components/job-posting/DeleteJobPostingDialog';
+
+const WORK_OPTIONS = ['On-site', 'Hybrid', 'Remote'];
+const WORK_TYPES   = ['Full-time', 'Part-time', 'Contract', 'Casual'];
+const PAY_TYPES    = ['Hourly', 'Monthly', 'Annually'];
+const CURRENCIES   = ['AUD', 'HKD', 'IDR', 'MYR', 'NZD', 'PHP', 'SGD', 'THB', 'USD'];
+const DISPLAY_OPTS = ['Show', 'Hide'];
 
 export default function SeekPage() {
   const canCreate = hasPermission('Job Postings', 'Seek', 'create');
   const canEdit   = hasPermission('Job Postings', 'Seek', 'update');
   const canDelete = hasPermission('Job Postings', 'Seek', 'delete');
 
-  // Get current user id from localStorage
   const user = JSON.parse(localStorage.getItem('user') || '{}');
   const userId = user?.id;
 
@@ -61,7 +71,6 @@ export default function SeekPage() {
   useEffect(() => { fetchPostings(); fetchAccounts(); }, [fetchPostings, fetchAccounts]);
 
   // ── Dialog state ──
-  const [createOpen,   setCreateOpen]   = useState(false);
   const [viewOpen,     setViewOpen]     = useState(false);
   const [editOpen,     setEditOpen]     = useState(false);
   const [deleteOpen,   setDeleteOpen]   = useState(false);
@@ -72,12 +81,70 @@ export default function SeekPage() {
   const openEdit   = (p) => { setSelected(p); setEditOpen(true); };
   const openDelete = (p) => { setSelected(p); setDeleteOpen(true); };
 
-  // ── CRUD handlers ──
-  const handleCreate = async (payload) => {
+  // ── Inline form state ──
+  const [formAccountId,   setFormAccountId]   = useState('');
+  const [formJobTitle,    setFormJobTitle]     = useState('');
+  const [formJobDesc,     setFormJobDesc]      = useState('');
+  const [formJobLocation, setFormJobLocation]  = useState('');
+  const [formWorkOption,  setFormWorkOption]   = useState('');
+  const [formWorkType,    setFormWorkType]     = useState('');
+  const [formPayType,     setFormPayType]      = useState('');
+  const [formCurrency,    setFormCurrency]     = useState('');
+  const [formMin,         setFormMin]          = useState('');
+  const [formMax,         setFormMax]          = useState('');
+  const [formDisplay,     setFormDisplay]      = useState('');
+  const [formError,       setFormError]        = useState('');
+
+  // Auto-select account if only one
+  useEffect(() => {
+    if (accounts.length === 1) setFormAccountId(String(accounts[0].id));
+  }, [accounts]);
+
+  const resetForm = () => {
+    setFormAccountId(accounts.length === 1 ? String(accounts[0].id) : '');
+    setFormJobTitle('');
+    setFormJobDesc('');
+    setFormJobLocation('');
+    setFormWorkOption('');
+    setFormWorkType('');
+    setFormPayType('');
+    setFormCurrency('');
+    setFormMin('');
+    setFormMax('');
+    setFormDisplay('');
+    setFormError('');
+  };
+
+  const handleCreate = async (e) => {
+    e.preventDefault();
+    setFormError('');
+
+    if (!formAccountId) { setFormError('Please select an account'); return; }
+    if (!formJobTitle.trim()) { setFormError('Job title is required'); return; }
+
     setSubmitting(true);
     try {
-      await submitSeekPosting(payload);
+      await submitSeekPosting({
+        user_id: userId,
+        account_id: Number(formAccountId),
+        service: 'seek',
+        dataForm: {
+          job_title:    formJobTitle.trim(),
+          job_desc:     formJobDesc.trim()     || null,
+          job_location: formJobLocation.trim() || null,
+          work_option:  formWorkOption          || null,
+          work_type:    formWorkType            || null,
+          pay_type:     formPayType             || null,
+          currency:     formCurrency            || null,
+          pay_min:      formMin ? Number(formMin) : null,
+          pay_max:      formMax ? Number(formMax) : null,
+          pay_display:  formDisplay             || null,
+        },
+      });
+      resetForm();
       await fetchPostings();
+    } catch (err) {
+      setFormError(err.response?.data?.message || err.message || 'Something went wrong');
     } finally {
       setSubmitting(false);
     }
@@ -120,22 +187,185 @@ export default function SeekPage() {
         <div>
           <h1 className="text-2xl font-semibold tracking-tight">Seek Job Postings</h1>
           <p className="text-sm text-muted-foreground mt-0.5">
-            Manage your Seek job postings.
+            Create and manage your Seek job postings.
           </p>
         </div>
-        <div className="flex gap-2">
-          <Button variant="outline" size="sm" onClick={fetchPostings} disabled={loading}>
-            <RefreshCw className={`h-4 w-4 mr-2 ${loading ? 'animate-spin' : ''}`} />
-            Refresh
-          </Button>
-          {canCreate && (
-            <Button size="sm" onClick={() => setCreateOpen(true)}>
-              <Plus className="h-4 w-4 mr-2" />
-              New Posting
-            </Button>
-          )}
-        </div>
+        <Button variant="outline" size="sm" onClick={fetchPostings} disabled={loading}>
+          <RefreshCw className={`h-4 w-4 mr-2 ${loading ? 'animate-spin' : ''}`} />
+          Refresh
+        </Button>
       </div>
+
+      {/* Inline Creation Form */}
+      {canCreate && (
+        <Card>
+          <CardHeader className="pb-4">
+            <CardTitle className="text-base">Create New Job Posting</CardTitle>
+            <CardDescription>
+              Fill in the details below to submit a new Seek job posting via RPA.
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <form onSubmit={handleCreate} className="space-y-5">
+              {/* Account Selection */}
+              <div className="flex flex-col gap-2">
+                <Label>Seek Account <span className="text-destructive">*</span></Label>
+                {accounts.length === 0 ? (
+                  <p className="text-sm text-destructive">No Seek accounts found. Please add one first.</p>
+                ) : (
+                  <Select value={formAccountId} onValueChange={setFormAccountId}>
+                    <SelectTrigger className="w-full">
+                      <SelectValue placeholder="Select account" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {accounts.map((acc) => (
+                        <SelectItem key={acc.id} value={String(acc.id)}>
+                          {acc.email}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                )}
+              </div>
+
+              {/* Job Details */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="flex flex-col gap-2">
+                  <Label htmlFor="seek-title">Job Title <span className="text-destructive">*</span></Label>
+                  <Input
+                    id="seek-title"
+                    placeholder="e.g. Software Engineer"
+                    value={formJobTitle}
+                    onChange={(e) => setFormJobTitle(e.target.value)}
+                  />
+                </div>
+                <div className="flex flex-col gap-2">
+                  <Label htmlFor="seek-location">Location</Label>
+                  <Input
+                    id="seek-location"
+                    placeholder="e.g. Melbourne, VIC"
+                    value={formJobLocation}
+                    onChange={(e) => setFormJobLocation(e.target.value)}
+                  />
+                </div>
+              </div>
+
+              <div className="flex flex-col gap-2">
+                <Label htmlFor="seek-desc">Job Description</Label>
+                <Textarea
+                  id="seek-desc"
+                  placeholder="Describe the role..."
+                  rows={3}
+                  value={formJobDesc}
+                  onChange={(e) => setFormJobDesc(e.target.value)}
+                />
+              </div>
+
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                <div className="flex flex-col gap-2">
+                  <Label>Work Option</Label>
+                  <Select value={formWorkOption} onValueChange={setFormWorkOption}>
+                    <SelectTrigger className="w-full">
+                      <SelectValue placeholder="Select" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {WORK_OPTIONS.map((o) => (
+                        <SelectItem key={o} value={o}>{o}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="flex flex-col gap-2">
+                  <Label>Work Type</Label>
+                  <Select value={formWorkType} onValueChange={setFormWorkType}>
+                    <SelectTrigger className="w-full">
+                      <SelectValue placeholder="Select" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {WORK_TYPES.map((t) => (
+                        <SelectItem key={t} value={t}>{t}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="flex flex-col gap-2">
+                  <Label>Currency</Label>
+                  <Select value={formCurrency} onValueChange={setFormCurrency}>
+                    <SelectTrigger className="w-full">
+                      <SelectValue placeholder="Select" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {CURRENCIES.map((c) => (
+                        <SelectItem key={c} value={c}>{c}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="flex flex-col gap-2">
+                  <Label>Pay Type</Label>
+                  <Select value={formPayType} onValueChange={setFormPayType}>
+                    <SelectTrigger className="w-full">
+                      <SelectValue placeholder="Select" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {PAY_TYPES.map((p) => (
+                        <SelectItem key={p} value={p}>{p}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+                <div className="flex flex-col gap-2">
+                  <Label htmlFor="seek-min">Pay Min</Label>
+                  <Input
+                    id="seek-min"
+                    type="number"
+                    placeholder="e.g. 60000"
+                    value={formMin}
+                    onChange={(e) => setFormMin(e.target.value)}
+                  />
+                </div>
+                <div className="flex flex-col gap-2">
+                  <Label htmlFor="seek-max">Pay Max</Label>
+                  <Input
+                    id="seek-max"
+                    type="number"
+                    placeholder="e.g. 90000"
+                    value={formMax}
+                    onChange={(e) => setFormMax(e.target.value)}
+                  />
+                </div>
+                <div className="flex flex-col gap-2">
+                  <Label>Display on Ad</Label>
+                  <Select value={formDisplay} onValueChange={setFormDisplay}>
+                    <SelectTrigger className="w-full">
+                      <SelectValue placeholder="Select" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {DISPLAY_OPTS.map((d) => (
+                        <SelectItem key={d} value={d}>{d}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+
+              {formError && <p className="text-sm text-destructive">{formError}</p>}
+
+              <div className="flex justify-end gap-2">
+                <Button type="button" variant="outline" onClick={resetForm}>
+                  Reset
+                </Button>
+                <Button type="submit" disabled={submitting}>
+                  {submitting ? 'Submitting…' : 'Submit Posting'}
+                </Button>
+              </div>
+            </form>
+          </CardContent>
+        </Card>
+      )}
 
       {/* Stat cards */}
       <div className="grid grid-cols-2 sm:grid-cols-5 gap-4">
@@ -201,15 +431,6 @@ export default function SeekPage() {
       </Card>
 
       {/* Dialogs */}
-      <SeekFormDialog
-        open={createOpen}
-        onOpenChange={setCreateOpen}
-        userId={userId}
-        accounts={accounts}
-        onSubmit={handleCreate}
-        loading={submitting}
-      />
-
       {selected && (
         <>
           <JobPostingViewDialog

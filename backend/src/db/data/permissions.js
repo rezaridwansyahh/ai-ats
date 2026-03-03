@@ -115,4 +115,20 @@ export default [
   { id: 54, module_menu_id: 15, functionality: 'update' },
   { id: 55, module_menu_id: 15, functionality: 'delete' },
 
+  /* ===================================================================
+     Job Management -> Seek Sourcing (module_menu_id: 16)
+  =================================================================== */
+  { id: 56, module_menu_id: 16, functionality: 'read' },
+  { id: 57, module_menu_id: 16, functionality: 'create' },
+  { id: 58, module_menu_id: 16, functionality: 'update' },
+  { id: 59, module_menu_id: 16, functionality: 'delete' },
+
+  /* ===================================================================
+     Job Management -> LinkedIn Sourcing (module_menu_id: 17)
+  =================================================================== */
+  { id: 60, module_menu_id: 17, functionality: 'read' },
+  { id: 61, module_menu_id: 17, functionality: 'create' },
+  { id: 62, module_menu_id: 17, functionality: 'update' },
+  { id: 63, module_menu_id: 17, functionality: 'delete' },
+
 ];

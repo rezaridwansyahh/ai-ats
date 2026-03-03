@@ -8,6 +8,7 @@ import IntegrationsPage    from "./pages/Integrations"
 import RoleManagementPage from "./pages/RoleManagement"
 import AccountPage from "./pages/Account"
 import SeekPage from "./pages/Seek"
+import SeekSourcingPage from "./pages/SeekSourcing"
 
 function App() {
   return (
@@ -27,6 +28,9 @@ function App() {
       <Route path="/job-postings" element={<DashboardLayout />}>
         <Route path="account"  element={<AccountPage />} />
         <Route path="seek"     element={<SeekPage />} />
+      </Route>
+      <Route path="/job-management" element={<DashboardLayout />}>
+        <Route path="seek-sourcing" element={<SeekSourcingPage />} />
       </Route>
     </Routes>
   )
