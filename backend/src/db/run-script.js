@@ -7,13 +7,13 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
 // Load env
-dotenv.config({ path: path.join(__dirname, '../../', '.env') });
+dotenv.config({ path: path.join(__dirname, '../../', '.env.dev') });
 
 const setupSqlPath = path.join(__dirname, 'setup.sql');
 const seedScriptPath = path.join(__dirname, 'seeds', 'run-seed.js');
 const syncSqlPath = path.join(__dirname, 'sync-seq.sql');
 
-const psqlCommand = `psql "${process.env.DATABASE_URL}" -f "${setupSqlPath}"`;
+const psqlCommand = `psql "${process.env.DATABASEURL}" -f "${setupSqlPath}"`;
 
 console.log('Running setup.sql...');
 
@@ -40,7 +40,7 @@ exec(psqlCommand, { env: { ...process.env, PGPASSWORD: process.env.PGPASSWORD } 
 
     console.log('Running sync-seq.sql...');
     exec(
-      `psql "${process.env.DATABASE_URL}" -f "${syncSqlPath}"`,
+      `psql "${process.env.DATABASEURL}" -f "${syncSqlPath}"`,
       { env: { ...process.env, PGPASSWORD: process.env.PGPASSWORD } },
       (syncErr, syncOut, syncErrOut) => {
         if (syncErrOut) console.warn('sync warnings:\n', syncErrOut);

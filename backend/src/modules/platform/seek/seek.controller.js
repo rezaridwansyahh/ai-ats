@@ -56,6 +56,18 @@ class SeekController {
       });
     }
   }
+  async extractCandidatesRpa(req, res) {
+    const { account_id, application_id, candidate_type } = req.body;
+
+    try {
+      const result = await seekService.extractCandidates(account_id, application_id, candidate_type);
+      return res.status(200).json({ message: "success", ...result });
+    } catch (err) {
+      return res.status(err.status || 500).json({
+        message: err.message
+      });
+    }
+  }
 }
 
 export default new SeekController();
