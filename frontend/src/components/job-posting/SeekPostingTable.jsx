@@ -3,7 +3,11 @@ import {
 } from '@/components/ui/table';
 import { Button }   from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
-import { Pencil, Trash2, Eye } from 'lucide-react';
+import {
+  DropdownMenu, DropdownMenuContent, DropdownMenuItem,
+  DropdownMenuSeparator, DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
+import { MoreHorizontal, Pencil, Trash2, Eye, Users } from 'lucide-react';
 
 const STATUS_COLORS = {
   Draft:     'bg-gray-100 text-gray-700',
@@ -23,7 +27,7 @@ function formatPay(posting) {
 
 const COLUMNS = ['#', 'Job Title', 'Location', 'Work Type', 'Pay Range', 'Status', 'Actions'];
 
-export function SeekPostingTable({ postings, loading, onView, onEdit, onDelete, canEdit, canDelete }) {
+export function SeekPostingTable({ postings, loading, onView, onEdit, onDelete, onViewCandidates, canEdit, canDelete }) {
   if (loading) {
     return (
       <Table>
@@ -67,7 +71,7 @@ export function SeekPostingTable({ postings, loading, onView, onEdit, onDelete, 
           <TableHead>Work Type</TableHead>
           <TableHead>Pay Range</TableHead>
           <TableHead>Status</TableHead>
-          <TableHead className="w-28 text-center">Actions</TableHead>
+          <TableHead className="w-24" />
         </TableRow>
       </TableHeader>
       <TableBody>
@@ -84,38 +88,50 @@ export function SeekPostingTable({ postings, loading, onView, onEdit, onDelete, 
               </span>
             </TableCell>
             <TableCell>
-              <div className="flex items-center justify-center gap-1">
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  className="h-8 w-8"
-                  onClick={() => onView(posting)}
-                  title="View"
-                >
-                  <Eye className="h-4 w-4" />
-                </Button>
-                {canEdit && posting.status !== 'Expired' && (
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    className="h-8 w-8"
-                    onClick={() => onEdit(posting)}
-                    title="Edit"
-                  >
-                    <Pencil className="h-4 w-4" />
+              <div className="flex items-center gap-1">
+              <Button
+                variant="ghost"
+                size="icon"
+                className="h-8 w-8"
+                title="View candidates"
+                onClick={() => onViewCandidates(posting)}
+              >
+                <Users className="h-4 w-4" />
+              </Button>
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button variant="ghost" size="icon" className="h-8 w-8">
+                    <MoreHorizontal className="h-4 w-4" />
                   </Button>
-                )}
-                {canDelete && (
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    className="h-8 w-8 text-destructive hover:text-destructive"
-                    onClick={() => onDelete(posting)}
-                    title="Delete"
-                  >
-                    <Trash2 className="h-4 w-4" />
-                  </Button>
-                )}
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end">
+                  <DropdownMenuItem onClick={() => onView(posting)}>
+                    <Eye className="h-4 w-4 mr-2" />
+                    View
+                  </DropdownMenuItem>
+                  {canEdit && posting.status !== 'Expired' && (
+                    <>
+                      <DropdownMenuSeparator />
+                      <DropdownMenuItem onClick={() => onEdit(posting)}>
+                        <Pencil className="h-4 w-4 mr-2" />
+                        Edit
+                      </DropdownMenuItem>
+                    </>
+                  )}
+                  {canDelete && (
+                    <>
+                      <DropdownMenuSeparator />
+                      <DropdownMenuItem
+                        className="text-destructive focus:text-destructive"
+                        onClick={() => onDelete(posting)}
+                      >
+                        <Trash2 className="h-4 w-4 mr-2" />
+                        Delete
+                      </DropdownMenuItem>
+                    </>
+                  )}
+                </DropdownMenuContent>
+              </DropdownMenu>
               </div>
             </TableCell>
           </TableRow>

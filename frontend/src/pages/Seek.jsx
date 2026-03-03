@@ -23,6 +23,7 @@ import { SeekPostingTable }      from '@/components/job-posting/SeekPostingTable
 import { JobPostingViewDialog }  from '@/components/job-posting/JobPostingViewDialog';
 import { JobPostingEditDialog }  from '@/components/job-posting/JobPostingEditDialog';
 import { DeleteJobPostingDialog } from '@/components/job-posting/DeleteJobPostingDialog';
+import { CandidatesDialog }       from '@/components/job-posting/CandidatesDialog';
 
 const WORK_OPTIONS = ['On-site', 'Hybrid', 'Remote'];
 const WORK_TYPES   = ['Full-time', 'Part-time', 'Contract', 'Casual'];
@@ -71,15 +72,18 @@ export default function SeekPage() {
   useEffect(() => { fetchPostings(); fetchAccounts(); }, [fetchPostings, fetchAccounts]);
 
   // ── Dialog state ──
-  const [viewOpen,     setViewOpen]     = useState(false);
-  const [editOpen,     setEditOpen]     = useState(false);
-  const [deleteOpen,   setDeleteOpen]   = useState(false);
-  const [selected,     setSelected]     = useState(null);
-  const [submitting,   setSubmitting]   = useState(false);
+  const [createOpen,      setCreateOpen]      = useState(false);
+  const [viewOpen,        setViewOpen]        = useState(false);
+  const [editOpen,        setEditOpen]        = useState(false);
+  const [deleteOpen,      setDeleteOpen]      = useState(false);
+  const [candidatesOpen,  setCandidatesOpen]  = useState(false);
+  const [selected,        setSelected]        = useState(null);
+  const [submitting,      setSubmitting]      = useState(false);
 
-  const openView   = (p) => { setSelected(p); setViewOpen(true); };
-  const openEdit   = (p) => { setSelected(p); setEditOpen(true); };
-  const openDelete = (p) => { setSelected(p); setDeleteOpen(true); };
+  const openView           = (p) => { setSelected(p); setViewOpen(true); };
+  const openEdit           = (p) => { setSelected(p); setEditOpen(true); };
+  const openDelete         = (p) => { setSelected(p); setDeleteOpen(true); };
+  const openViewCandidates = (p) => { setSelected(p); setCandidatesOpen(true); };
 
   // ── Inline form state ──
   const [formAccountId,   setFormAccountId]   = useState('');
@@ -423,6 +427,7 @@ export default function SeekPage() {
               onView={openView}
               onEdit={openEdit}
               onDelete={openDelete}
+              onViewCandidates={openViewCandidates}
               canEdit={canEdit}
               canDelete={canDelete}
             />
@@ -431,6 +436,21 @@ export default function SeekPage() {
       </Card>
 
       {/* Dialogs */}
+      <SeekFormDialog
+        open={createOpen}
+        onOpenChange={setCreateOpen}
+        userId={userId}
+        accounts={accounts}
+        onSubmit={handleCreate}
+        loading={submitting}
+      />
+
+      <CandidatesDialog
+        open={candidatesOpen}
+        onOpenChange={setCandidatesOpen}
+        posting={selected}
+      />
+
       {selected && (
         <>
           <JobPostingViewDialog
