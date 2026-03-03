@@ -101,13 +101,13 @@ class JobPostSeekModel {
     return result.rows;
   }
 
-  async create(job_posting_id, currency, pay_type, pay_min, pay_max, pay_display) {
+  async create(job_posting_id, currency, pay_type, pay_min, pay_max, pay_display, created_date_seek, created_by, seek_id) {
     const result = await db.query(`
       INSERT INTO mapping_job_posting_seek
-        (job_posting_id, currency, pay_type, pay_min, pay_max, pay_display)
-      VALUES ($1, $2, $3, $4, $5, $6)
+        (job_posting_id, currency, pay_type, pay_min, pay_max, pay_display, created_date_seek, created_by, seek_id)
+      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
       RETURNING *
-    `, [job_posting_id, currency, pay_type, pay_min, pay_max, pay_display]);
+    `, [job_posting_id, currency, pay_type, pay_min, pay_max, pay_display, created_date_seek, created_by, seek_id]);
 
     return result.rows[0];
   }

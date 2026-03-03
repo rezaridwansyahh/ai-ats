@@ -45,11 +45,25 @@ class SeekController {
   }
 
   async updateJobPostDraftRpa(req, res) {
-    const { job_posting_id, user_id, account_id, service, dataForm } = req.body;
+    const { job_posting_id, account_id, dataForm } = req.body;
 
     try {
-      const updateJobPostDraft = await seekService.updateJobPostDraft(job_posting_id, account_id, user_id, service, dataForm);
+      const updateJobPostDraft = await seekService.updateJobPostDraft(job_posting_id, account_id, dataForm);
       return res.status(200).json({ message: "success update", updateJobPostDraft });
+    } catch(err) {
+      return res.status(500).json({
+        message: err.message
+      });
+    }
+  }
+
+  async jobPostSyncRpa(req, res) {
+    const { account_id } = req.body;
+
+    try {
+      const extractedJobPost = await seekService.syncJobPostAll(account_id);
+
+      return res.status(200).json({ message: "success", extractedJobPost });
     } catch(err) {
       return res.status(500).json({
         message: err.message

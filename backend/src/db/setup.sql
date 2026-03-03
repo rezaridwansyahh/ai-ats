@@ -23,7 +23,7 @@ DROP TYPE IF EXISTS pay_display_type CASCADE;
 DROP TYPE IF EXISTS platform_type CASCADE;
 
 -- Create ENUM type
-CREATE TYPE status_type AS ENUM ('Draft', 'Active', 'Running', 'Expired', 'Failed');
+CREATE TYPE status_type AS ENUM ('Draft', 'Active', 'Running', 'Expired', 'Failed', 'Blocked');
 CREATE TYPE work_option_type AS ENUM ('On-site', 'Hybrid', 'Remote');
 CREATE TYPE work_type_type AS ENUM ('Full-time', 'Part-time', 'Contract', 'Casual');
 CREATE TYPE pay_type_type AS ENUM ('Hourly', 'Monthly', 'Annually');
@@ -108,7 +108,7 @@ CREATE TABLE core_job_posting (
   account_id INTEGER NOT NULL REFERENCES master_job_account(id) ON DELETE CASCADE,
   platform platform_type NOT NULL,
   job_title VARCHAR(255) NOT NULL,
-  job_desc TEXT NOT NULL,
+  job_desc TEXT,
   job_location VARCHAR(255),
   work_option work_option_type,
   work_type  work_type_type,

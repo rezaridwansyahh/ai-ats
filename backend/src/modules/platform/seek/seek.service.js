@@ -1,10 +1,10 @@
 import cookieService from "../../cookie/cookie.service.js"
-import navigationRpa from "./rpa/navigation.rpa.js"
 import loginRpa from "./rpa/login.rpa.js"
 import jobPostRpa from "./rpa/job-post.rpa.js"
 import jobPostModel from "../../job-post/job-post.model.js"
 import jobPostSeekModel from "./job-post-seek.model.js"
 import browserPuppeteer from "../../../shared/services/puppeteer/browser.puppeteer.js"
+import extractJobPostRpa from "../seek/rpa/extract-job-post.rpa.js"
 
 class SeekService {
   async jobPost(user_id, account_id, service, dataForm) {
@@ -85,6 +85,55 @@ class SeekService {
     } finally {
       await browserPuppeteer.close();
     }
+  }
+
+  async syncJobPostAll(account_id) {
+    const types = ['open', 'expired', 'draft'];
+    const page = await cookieService.includeCookiesIfExist(account_id); // still hardcoded from req body (user_id, service);
+
+    try {
+      await loginRpa.authenticatedPage(page, account_id);
+      const result = []
+      for(let i = 0; i < types.length; i++) {
+        const extracted = await extractJobPostRpa.syncAll(page, types[i]);
+
+        console.log('Inserting to database');
+        for(const data of extracted) {
+          const jobPost = await jobPostModel.create(
+            account_id, 
+            'seek', 
+            data.job_title, 
+            data.job_desc, 
+            data.job_location, 
+            data.work_option, 
+            data.work_type, 
+            data.status, 
+            data.candidate_count, 
+            data.additional
+          );
+
+          await jobPostSeekModel.create(
+            jobPost.id,
+            data.currency, 
+            data.pay_type, 
+            data.pay_min, 
+            data.pay_max, 
+            data.pay_display,
+            data.created_date_seek,
+            data.created_by,
+            data.seek_id
+          )
+        }
+        
+        result.push(extracted)
+      }
+      return result;
+    } catch(err) {
+      throw err;
+    } finally {
+      await browserPuppeteer.close();
+    }
+
   }
 }
 

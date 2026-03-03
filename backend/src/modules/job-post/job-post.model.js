@@ -67,13 +67,13 @@ class JobPostModel {
     return result.rows;
   }
 
-  async create(account_id, platform, job_title, job_desc, job_location, work_option, work_type) {
+  async create(account_id, platform, job_title, job_desc, job_location, work_option, work_type, status = 'Running', candidate_count, additional) {
     const result = await db.query(`
       INSERT INTO core_job_posting
-        (account_id, platform, job_title, job_desc, job_location, work_option, work_type)
-      VALUES ($1, $2, $3, $4, $5, $6, $7)
+        (account_id, platform, job_title, job_desc, job_location, work_option, work_type, status, candidate_count, additional)
+      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
       RETURNING *
-    `, [account_id, platform, job_title, job_desc, job_location, work_option, work_type]);
+    `, [account_id, platform, job_title, job_desc, job_location, work_option, work_type, status, candidate_count, additional]);
 
     return result.rows[0];
   }
