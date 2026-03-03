@@ -5,6 +5,7 @@ export default class SeekJobMapper {
   }
 
   static normalize(scraped) {
+    console.log(scraped);
     const salaryInfo = this.extractSalary(scraped.kisaran_upah);
 
     return {

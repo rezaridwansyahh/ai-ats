@@ -180,23 +180,27 @@ class ExtractJobPostService {
         await page.waitForSelector('[data-testid="jobInformation"]', { visible: true });
 
         const jobDetail = await page.evaluate(() => {
-          const modal = document.querySelector('[id="job-information"]');
-          if (!modal) return null;
-
-          const exclude = ['Ad ID', 'Classification', 'Posted by'];
           const result = {};
 
-          modal.querySelectorAll('._1rkv0k82n').forEach(r => {
-            const label = r.querySelector('.ryotqa2')?.innerText?.trim();
-            const value = r.querySelector(':not(.ryotqa2) .ux6ywn0, :not(.ryotqa2) [data-testid]')?.innerText?.trim();
+          const container = document.querySelector('[data-testid="jobInformation"]');
+          if (!container) return result;
 
-            if (label && value && !exclude.includes(label)) {
-              result[label.toLowerCase().replace(/\s+/g, "_")] = value;
-            }
-          });
+          const blocks = container.querySelectorAll(':scope > div > div');
+
+          blocks.forEach(block => {
+            const divs = block.querySelectorAll(':scope > div');
+            divs.forEach(div => {
+                const key = div.querySelector('div:first-child').innerText;
+                const value = div.querySelector('div:last-child').innerText;
+                result[key.toLowerCase().replace(/\s+/g, "_")] = value;
+            });
+            console.log(divs);
+        });
 
           return result;
         });
+
+        console.log("job detail", jobDetail);
 
         await page.click('button[aria-label="Close"]');
         await page.waitForSelector('[id="job-information"]', { hidden: true });

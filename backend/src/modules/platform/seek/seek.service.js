@@ -140,7 +140,7 @@ class SeekService {
   }
 
   async syncJobPostAll(account_id) {
-    const types = ['open', 'expired', 'draft'];
+    const types = ['open']; // , 'expired', 'draft'
     const page = await cookieService.includeCookiesIfExist(account_id); // still hardcoded from req body (user_id, service);
 
     try {
@@ -148,7 +148,7 @@ class SeekService {
       const result = []
       for(let i = 0; i < types.length; i++) {
         const extracted = await extractJobPostRpa.syncAll(page, types[i]);
-
+        
         console.log('Upserting to database');
         for(const data of extracted) {
           // Check if this seek_id already exists
