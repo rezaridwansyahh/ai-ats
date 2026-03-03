@@ -3,7 +3,7 @@ import {
 } from '@/components/ui/table';
 import { Button }   from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
-import { Eye, Download } from 'lucide-react';
+import { Eye, Download, Loader2 } from 'lucide-react';
 
 const STATUS_COLORS = {
   Draft:       'bg-gray-100 text-gray-700',
@@ -16,7 +16,7 @@ const STATUS_COLORS = {
 
 const COLUMNS = ['#', 'Status', 'Seek ID', 'Job Title', 'Candidates', 'Created Date', 'Created By', 'Actions'];
 
-export function SourcingTable({ postings, loading, onView }) {
+export function SourcingTable({ postings, loading, onView, onImportCv, extractingId }) {
   if (loading) {
     return (
       <Table>
@@ -106,11 +106,16 @@ export function SourcingTable({ postings, loading, onView }) {
                   variant="outline"
                   size="sm"
                   className="h-8 text-xs gap-1"
-                  title="Import CV (coming soon)"
-                  disabled
+                  title="Extract candidates"
+                  onClick={() => onImportCv(posting)}
+                  disabled={!posting.candidate_count || extractingId != null}
                 >
-                  <Download className="h-3.5 w-3.5" />
-                  Import CV
+                  {extractingId === posting.id ? (
+                    <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                  ) : (
+                    <Download className="h-3.5 w-3.5" />
+                  )}
+                  {extractingId === posting.id ? 'Extracting…' : 'Import CV'}
                 </Button>
               </div>
             </TableCell>

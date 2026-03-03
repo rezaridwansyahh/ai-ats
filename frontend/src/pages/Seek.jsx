@@ -72,7 +72,6 @@ export default function SeekPage() {
   useEffect(() => { fetchPostings(); fetchAccounts(); }, [fetchPostings, fetchAccounts]);
 
   // ── Dialog state ──
-  const [createOpen,      setCreateOpen]      = useState(false);
   const [viewOpen,        setViewOpen]        = useState(false);
   const [editOpen,        setEditOpen]        = useState(false);
   const [deleteOpen,      setDeleteOpen]      = useState(false);
@@ -436,14 +435,6 @@ export default function SeekPage() {
       </Card>
 
       {/* Dialogs */}
-      <SeekFormDialog
-        open={createOpen}
-        onOpenChange={setCreateOpen}
-        userId={userId}
-        accounts={accounts}
-        onSubmit={handleCreate}
-        loading={submitting}
-      />
 
       <CandidatesDialog
         open={candidatesOpen}

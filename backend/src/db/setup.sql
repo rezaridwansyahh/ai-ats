@@ -123,7 +123,7 @@ CREATE TABLE core_job_posting (
 CREATE TABLE mapping_job_posting_seek (
   id SERIAL PRIMARY KEY,
   job_posting_id INTEGER NOT NULL UNIQUE REFERENCES core_job_posting(id) ON DELETE CASCADE,
-  seek_id VARCHAR(100),
+  seek_id VARCHAR(100) UNIQUE,
   currency currency_type,
   pay_type pay_type_type,
   created_date_seek VARCHAR(255),

@@ -21,6 +21,7 @@ import {
   getSeekPostingsByUserId,
   getSeekPostingFull,
   syncSeekJobPosts,
+  extractSeekCandidates,
 } from '@/api/job-posting-seek.api';
 import { getJobAccountsByUserId } from '@/api/job-accounts.api';
 
@@ -64,6 +65,9 @@ export default function SeekSourcingPage() {
   const [fullData, setFullData]     = useState(null);
   const [loadingFull, setLoadingFull] = useState(false);
 
+  // ── Extract state ──
+  const [extractingId, setExtractingId] = useState(null);
+
   const fetchPostings = useCallback(async () => {
     if (!userId) return;
     setLoading(true);
@@ -106,6 +110,22 @@ export default function SeekSourcingPage() {
       console.error('Sync failed:', err);
     } finally {
       setSyncing(false);
+    }
+  };
+
+  // ── Extract candidates handler ──
+  const handleExtractCandidates = async (posting) => {
+    setExtractingId(posting.id);
+    try {
+      await extractSeekCandidates({
+        account_id: posting.account_id,
+        job_posting_id: posting.id,
+      });
+      await fetchPostings();
+    } catch (err) {
+      console.error('Extract candidates failed:', err);
+    } finally {
+      setExtractingId(null);
     }
   };
 
@@ -228,6 +248,8 @@ export default function SeekSourcingPage() {
               postings={postings}
               loading={loading}
               onView={openView}
+              onImportCv={handleExtractCandidates}
+              extractingId={extractingId}
             />
           )}
         </CardContent>

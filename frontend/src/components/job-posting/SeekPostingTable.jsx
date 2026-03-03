@@ -25,7 +25,7 @@ function formatPay(posting) {
   return `${currency} ${min} – ${max}${type}`;
 }
 
-const COLUMNS = ['#', 'Job Title', 'Location', 'Work Type', 'Pay Range', 'Status', 'Actions'];
+const COLUMNS = ['#', 'Job Title', 'Location', 'Work Type', 'Pay Range', 'Status', 'Candidates', 'Actions'];
 
 export function SeekPostingTable({ postings, loading, onView, onEdit, onDelete, onViewCandidates, canEdit, canDelete }) {
   if (loading) {

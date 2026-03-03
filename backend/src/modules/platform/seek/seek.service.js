@@ -149,32 +149,59 @@ class SeekService {
       for(let i = 0; i < types.length; i++) {
         const extracted = await extractJobPostRpa.syncAll(page, types[i]);
 
-        console.log('Inserting to database');
+        console.log('Upserting to database');
         for(const data of extracted) {
-          const jobPost = await jobPostModel.create(
-            account_id, 
-            'seek', 
-            data.job_title, 
-            data.job_desc, 
-            data.job_location, 
-            data.work_option, 
-            data.work_type, 
-            data.status, 
-            data.candidate_count, 
-            data.additional
-          );
+          // Check if this seek_id already exists
+          const existing = data.seek_id ? await jobPostSeekModel.getBySeekId(data.seek_id) : null;
 
-          await jobPostSeekModel.create(
-            jobPost.id,
-            data.currency, 
-            data.pay_type, 
-            data.pay_min, 
-            data.pay_max, 
-            data.pay_display,
-            data.created_date_seek,
-            data.created_by,
-            data.seek_id
-          )
+          if (existing) {
+            // Update existing records
+            await jobPostModel.update(existing.job_posting_id, {
+              job_title: data.job_title,
+              job_desc: data.job_desc,
+              job_location: data.job_location,
+              work_option: data.work_option,
+              work_type: data.work_type,
+              status: data.status,
+              candidate_count: data.candidate_count,
+              additional: data.additional,
+            });
+            await jobPostSeekModel.update(existing.job_posting_id, {
+              currency: data.currency,
+              pay_type: data.pay_type,
+              pay_min: data.pay_min,
+              pay_max: data.pay_max,
+              pay_display: data.pay_display,
+              created_date_seek: data.created_date_seek,
+              created_by: data.created_by,
+            });
+          } else {
+            // Create new records
+            const jobPost = await jobPostModel.create(
+              account_id,
+              'seek',
+              data.job_title,
+              data.job_desc,
+              data.job_location,
+              data.work_option,
+              data.work_type,
+              data.status,
+              data.candidate_count,
+              data.additional
+            );
+
+            await jobPostSeekModel.create(
+              jobPost.id,
+              data.currency,
+              data.pay_type,
+              data.pay_min,
+              data.pay_max,
+              data.pay_display,
+              data.created_date_seek,
+              data.created_by,
+              data.seek_id
+            );
+          }
         }
         
         result.push(extracted)

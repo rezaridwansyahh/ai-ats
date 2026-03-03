@@ -5,8 +5,10 @@ import {
 import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from '@/components/ui/table';
+import { Button }   from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
-import { getCandidatesByJobPostingId } from '@/api/candidate.api';
+import { Download } from 'lucide-react';
+import { getCandidatesByJobPostingId, downloadCandidateCv } from '@/api/candidate.api';
 
 const STATUS_COLORS = {
   'Kotak masuk':      'bg-gray-100 text-gray-700',
@@ -18,12 +20,26 @@ const STATUS_COLORS = {
   'Tidak cocok':      'bg-red-100 text-red-700',
 };
 
-const COLUMNS = ['#', 'Name', 'Status', 'Last Position', 'Address', 'Education'];
+const COLUMNS = ['#', 'Name', 'Status', 'Last Position', 'Address', 'Education', 'CV'];
 
 export function CandidatesDialog({ open, onOpenChange, posting }) {
   const [candidates, setCandidates] = useState([]);
   const [loading, setLoading]       = useState(false);
   const [error, setError]           = useState(null);
+
+  const handleDownloadCv = async (candidate) => {
+    try {
+      const { data } = await downloadCandidateCv(candidate.id);
+      const url = window.URL.createObjectURL(data);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `${candidate.name}-cv.pdf`;
+      a.click();
+      window.URL.revokeObjectURL(url);
+    } catch (err) {
+      console.error('Failed to download CV:', err);
+    }
+  };
 
   useEffect(() => {
     if (!open || !posting) return;
@@ -77,6 +93,7 @@ export function CandidatesDialog({ open, onOpenChange, posting }) {
                 <TableHead>Last Position</TableHead>
                 <TableHead>Address</TableHead>
                 <TableHead>Education</TableHead>
+                <TableHead className="w-16 text-center">CV</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -92,6 +109,21 @@ export function CandidatesDialog({ open, onOpenChange, posting }) {
                   <TableCell className="text-muted-foreground text-sm">{c.last_position || '—'}</TableCell>
                   <TableCell className="text-muted-foreground text-sm">{c.address || '—'}</TableCell>
                   <TableCell className="text-muted-foreground text-sm">{c.education || '—'}</TableCell>
+                  <TableCell className="text-center">
+                    {c.attachment ? (
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="h-7 w-7"
+                        title="Download CV"
+                        onClick={() => handleDownloadCv(c)}
+                      >
+                        <Download className="h-3.5 w-3.5" />
+                      </Button>
+                    ) : (
+                      <span className="text-muted-foreground text-xs">—</span>
+                    )}
+                  </TableCell>
                 </TableRow>
               ))}
             </TableBody>

@@ -8,3 +8,6 @@ export const updateCandidateStatus = (id, status) =>
 
 export const deleteCandidate = (id) =>
   api.delete(`/candidate/${id}`);
+
+export const downloadCandidateCv = (id) =>
+  api.get(`/candidate/${id}/cv`, { responseType: 'blob' });
