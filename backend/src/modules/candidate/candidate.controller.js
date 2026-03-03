@@ -45,6 +45,15 @@ class CandidateController {
       res.status(err.status || 500).json({ message: err.message });
     }
   }
+
+  async downloadCv(req, res) {
+    try {
+      const filePath = await candidateService.getCv(req.params.id);
+      res.download(filePath);
+    } catch (err) {
+      res.status(err.status || 500).json({ message: err.message });
+    }
+  }
 }
 
 export default new CandidateController();
