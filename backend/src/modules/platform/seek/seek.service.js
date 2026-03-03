@@ -1,6 +1,7 @@
 import cookieService from "../../cookie/cookie.service.js"
 import loginRpa from "./rpa/login.rpa.js"
 import jobPostRpa from "./rpa/job-post.rpa.js"
+import extractCandidateRpa from "./rpa/extract-candidate.rpa.js"
 import jobPostModel from "../../job-post/job-post.model.js"
 import jobPostSeekModel from "./job-post-seek.model.js"
 import browserPuppeteer from "../../../shared/services/puppeteer/browser.puppeteer.js"
@@ -82,6 +83,37 @@ class SeekService {
       return { updatedJobPost: updated, updatedSeek: seekUpdated};
     } catch (err) {
       throw err
+    } finally {
+      await browserPuppeteer.close();
+    }
+  }
+  async extractCandidates(account_id, application_id, candidate_type) {
+    const page = await cookieService.includeCookiesIfExist(account_id);
+
+    try {
+      await loginRpa.authenticatedPage(page, account_id);
+      await extractCandidateRpa.navigateToCandidatePage(page, application_id);
+
+      const buckets = await extractCandidateRpa.extractCandidateType(page, application_id);
+
+      if (candidate_type) {
+        const bucket = buckets.find(b => b.name === candidate_type);
+        if (!bucket) {
+          throw { status: 400, message: `Candidate type "${candidate_type}" not found` };
+        }
+
+        const seekRecord = await jobPostSeekModel.getBySeekId(String(application_id));
+        const job_name = seekRecord?.job_title || application_id;
+
+        await extractCandidateRpa.navigateToCandidateDetail(page, candidate_type);
+        const candidates = await extractCandidateRpa.extractCandidates(page, bucket, account_id, application_id, job_name);
+
+        return { buckets, candidates };
+      }
+
+      return { buckets, candidates: [] };
+    } catch (err) {
+      throw err;
     } finally {
       await browserPuppeteer.close();
     }

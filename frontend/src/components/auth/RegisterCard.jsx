@@ -1,6 +1,6 @@
 import { useState } from "react"
 import { useNavigate } from "react-router-dom"
-import { registerUser } from "../../services/auth"
+import { registerUser } from "@/services/auth"
 
 import { Button } from "@/components/ui/button"
 import {
@@ -24,7 +24,7 @@ export function RegisterCard() {
 
   const handleSubmitRegister = async (e) => {
     e.preventDefault()
-    
+
     try {
       const res = await registerUser({
         username,
@@ -42,9 +42,9 @@ export function RegisterCard() {
   }
 
   return (
-    <Card className="w-full max-w-sm">
+    <Card className="w-full max-w-sm animate-in fade-in zoom-in-95 duration-300">
       <div className="w-4/5 mx-auto">
-        <img 
+        <img
           src="../../../public/abhimata.png"
           className="w-full object-contain"
         />
@@ -102,8 +102,8 @@ export function RegisterCard() {
             Register
           </Button>
         </CardFooter>
-      
-      
+
+
     </Card>
   )
 }

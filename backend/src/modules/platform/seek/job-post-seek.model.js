@@ -31,6 +31,17 @@ class JobPostSeekModel {
     return result.rows[0];
   }
 
+  async getBySeekId(seek_id) {
+    const result = await db.query(`
+      SELECT cjp.job_title, cjp.account_id, mjps.*
+      FROM mapping_job_posting_seek mjps
+      JOIN core_job_posting cjp ON mjps.job_posting_id = cjp.id
+      WHERE mjps.seek_id = $1
+    `, [seek_id]);
+
+    return result.rows[0];
+  }
+
   async getDetailsByJobPostingId(job_posting_id) {
     const result = await db.query(`
       SELECT
