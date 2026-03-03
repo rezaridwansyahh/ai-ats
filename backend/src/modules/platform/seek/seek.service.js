@@ -140,7 +140,7 @@ class SeekService {
   }
 
   async syncJobPostAll(account_id) {
-    const types = ['open']; // , 'expired', 'draft'
+    const types = ['open', 'expired', 'draft']; // 
     const page = await cookieService.includeCookiesIfExist(account_id); // still hardcoded from req body (user_id, service);
 
     try {

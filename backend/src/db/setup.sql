@@ -3,6 +3,7 @@ DROP TABLE IF EXISTS mapping_job_posting_linkedin CASCADE;
 DROP TABLE IF EXISTS mapping_job_posting_seek CASCADE;
 DROP TABLE IF EXISTS core_job_posting CASCADE;
 DROP TABLE IF EXISTS master_job_account CASCADE;
+DROP TABLE IF EXISTS master_candidates CASCADE;
 DROP TABLE IF EXISTS cookies;
 DROP TABLE IF EXISTS master_users CASCADE;
 DROP TABLE IF EXISTS master_roles CASCADE;
@@ -21,6 +22,7 @@ DROP TYPE IF EXISTS pay_type_type CASCADE;
 DROP TYPE IF EXISTS currency_type CASCADE;
 DROP TYPE IF EXISTS pay_display_type CASCADE;
 DROP TYPE IF EXISTS platform_type CASCADE;
+DROP TYPE IF EXISTS candidate_status_type CASCADE;
 
 -- Create ENUM type
 CREATE TYPE status_type AS ENUM ('Draft', 'Active', 'Running', 'Expired', 'Failed', 'Blocked');
