@@ -1,5 +1,5 @@
-import { useState, useEffect, useCallback } from 'react';
-import { RefreshCw, Briefcase, XCircle, FileText, Send, Play, Clock } from 'lucide-react';
+import { useState, useEffect, useCallback, useRef, useMemo } from 'react';
+import { RefreshCw, Briefcase, XCircle, FileText, Send, Play, Clock, Search } from 'lucide-react';
 import { Button }   from '@/components/ui/button';
 import { Input }    from '@/components/ui/input';
 import { Label }    from '@/components/ui/label';
@@ -9,9 +9,12 @@ import { StatCard }  from '@/components/cards/StatCard';
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from '@/components/ui/select';
+import { useSort } from '@/hooks/useSort';
+import { TablePagination } from '@/components/shared/TablePagination';
 
 import {
   getSeekPostingsByUserId,
+  getSeekPostingFull,
   submitSeekPosting,
   updateJobPosting,
   deleteJobPosting,
@@ -30,6 +33,7 @@ const WORK_TYPES   = ['Full-time', 'Part-time', 'Contract', 'Casual'];
 const PAY_TYPES    = ['Hourly', 'Monthly', 'Annually'];
 const CURRENCIES   = ['AUD', 'HKD', 'IDR', 'MYR', 'NZD', 'PHP', 'SGD', 'THB', 'USD'];
 const DISPLAY_OPTS = ['Show', 'Hide'];
+const STATUS_OPTIONS = ['Draft', 'Submitted', 'Running', 'Active', 'Expired'];
 
 export default function SeekPage() {
   const canCreate = hasPermission('Job Postings', 'Seek', 'create');
@@ -79,6 +83,8 @@ export default function SeekPage() {
   const [selected,        setSelected]        = useState(null);
   const [submitting,      setSubmitting]      = useState(false);
 
+  const formRef = useRef(null);
+
   const openView           = (p) => { setSelected(p); setViewOpen(true); };
   const openEdit           = (p) => { setSelected(p); setEditOpen(true); };
   const openDelete         = (p) => { setSelected(p); setDeleteOpen(true); };
@@ -102,6 +108,27 @@ export default function SeekPage() {
   useEffect(() => {
     if (accounts.length === 1) setFormAccountId(String(accounts[0].id));
   }, [accounts]);
+
+  const handleDuplicate = async (posting) => {
+    try {
+      const { data } = await getSeekPostingFull(posting.id);
+      const full = data.posting || data;
+      setFormJobTitle(full.job_title || '');
+      setFormJobDesc(full.job_desc || '');
+      setFormJobLocation(full.job_location || '');
+      setFormWorkOption(full.work_option || '');
+      setFormWorkType(full.work_type || '');
+      setFormPayType(full.pay_type || '');
+      setFormCurrency(full.currency || '');
+      setFormMin(full.pay_min != null ? String(full.pay_min) : '');
+      setFormMax(full.pay_max != null ? String(full.pay_max) : '');
+      setFormDisplay(full.pay_display || '');
+      setFormError('');
+      formRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    } catch (err) {
+      console.error('Failed to load posting for duplicate:', err);
+    }
+  };
 
   const resetForm = () => {
     setFormAccountId(accounts.length === 1 ? String(accounts[0].id) : '');
@@ -183,28 +210,50 @@ export default function SeekPage() {
   const runningCount   = postings.filter(p => p.status === 'Running').length;
   const expiredCount   = postings.filter(p => p.status === 'Expired').length;
 
+  // ── Search, filter, sort, pagination ──
+  const { toggle, apply, SortIcon } = useSort();
+  const [search,       setSearch]       = useState('');
+  const [statusFilter, setStatusFilter] = useState('all');
+  const [page,         setPage]         = useState(1);
+  const [pageSize,     setPageSize]     = useState(10);
+
+  useEffect(() => { setPage(1); }, [search, statusFilter]);
+
+  const filtered = useMemo(() =>
+    postings.filter((p) => {
+      const matchSearch = !search || p.job_title?.toLowerCase().includes(search.toLowerCase());
+      const matchStatus = statusFilter === 'all' || p.status === statusFilter;
+      return matchSearch && matchStatus;
+    }),
+  [postings, search, statusFilter]);
+
+  const sorted    = useMemo(() => apply(filtered), [filtered, apply]);
+  const totalPages = Math.max(1, Math.ceil(sorted.length / pageSize));
+  const safePage   = Math.min(page, totalPages);
+  const paginated  = sorted.slice((safePage - 1) * pageSize, safePage * pageSize);
+
   return (
-    <div className="flex flex-col gap-6 p-6 animate-in fade-in duration-300">
+    <div className="flex flex-col gap-5 animate-fade-in-up">
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-semibold tracking-tight">Seek Job Postings</h1>
-          <p className="text-sm text-muted-foreground mt-0.5">
+          <h1 className="text-xl font-bold tracking-tight">Seek Job Postings</h1>
+          <p className="text-xs text-muted-foreground mt-0.5">
             Create and manage your Seek job postings.
           </p>
         </div>
         <Button variant="outline" size="sm" onClick={fetchPostings} disabled={loading}>
-          <RefreshCw className={`h-4 w-4 mr-2 ${loading ? 'animate-spin' : ''}`} />
+          <RefreshCw className={`h-3.5 w-3.5 ${loading ? 'animate-spin' : ''}`} />
           Refresh
         </Button>
       </div>
 
       {/* Inline Creation Form */}
       {canCreate && (
-        <Card>
-          <CardHeader className="pb-4">
-            <CardTitle className="text-base">Create New Job Posting</CardTitle>
-            <CardDescription>
+        <Card ref={formRef} className="border shadow-sm">
+          <CardHeader className="pb-3">
+            <CardTitle className="text-sm font-semibold">Create New Job Posting</CardTitle>
+            <CardDescription className="text-xs">
               Fill in the details below to submit a new Seek job posting via RPA.
             </CardDescription>
           </CardHeader>
@@ -371,7 +420,7 @@ export default function SeekPage() {
       )}
 
       {/* Stat cards */}
-      <div className="grid grid-cols-2 sm:grid-cols-5 gap-4">
+      <div className="grid grid-cols-2 sm:grid-cols-5 gap-3 stagger-children">
         <StatCard
           icon={<Briefcase className="h-5 w-5 text-blue-500" />}
           label="Total"
@@ -405,14 +454,38 @@ export default function SeekPage() {
       </div>
 
       {/* Table card */}
-      <Card>
-        <CardHeader className="pb-4">
-          <CardTitle className="text-base">All Seek Postings</CardTitle>
-          <CardDescription>
-            {loading ? 'Loading…' : `${postings.length} posting${postings.length !== 1 ? 's' : ''}`}
+      <Card className="border shadow-sm">
+        <CardHeader className="pb-3">
+          <CardTitle className="text-sm font-semibold">All Seek Postings</CardTitle>
+          <CardDescription className="text-xs">
+            {loading ? 'Loading…' : `${filtered.length} of ${postings.length} posting${postings.length !== 1 ? 's' : ''}`}
           </CardDescription>
+
+          <div className="flex flex-col sm:flex-row gap-2.5 mt-3">
+            <div className="relative flex-1">
+              <Search className="absolute left-2.5 top-2 h-4 w-4 text-muted-foreground" />
+              <Input
+                placeholder="Search by job title..."
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                className="pl-8 h-8 text-sm"
+              />
+            </div>
+            <Select value={statusFilter} onValueChange={setStatusFilter}>
+              <SelectTrigger className="w-full sm:w-[150px] h-8 text-sm">
+                <SelectValue placeholder="All Statuses" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All Statuses</SelectItem>
+                {STATUS_OPTIONS.map((s) => (
+                  <SelectItem key={s} value={s}>{s}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
         </CardHeader>
-        <CardContent>
+
+        <CardContent className="flex flex-col gap-4">
           {error ? (
             <div className="flex flex-col items-center gap-2 py-16 text-destructive">
               <XCircle className="h-8 w-8" />
@@ -420,16 +493,30 @@ export default function SeekPage() {
               <Button variant="outline" size="sm" onClick={fetchPostings}>Try again</Button>
             </div>
           ) : (
-            <SeekPostingTable
-              postings={postings}
-              loading={loading}
-              onView={openView}
-              onEdit={openEdit}
-              onDelete={openDelete}
-              onViewCandidates={openViewCandidates}
-              canEdit={canEdit}
-              canDelete={canDelete}
-            />
+            <>
+              <SeekPostingTable
+                postings={paginated}
+                loading={loading}
+                onView={openView}
+                onEdit={openEdit}
+                onDelete={openDelete}
+                onDuplicate={canCreate ? handleDuplicate : undefined}
+                onViewCandidates={openViewCandidates}
+                canEdit={canEdit}
+                canDelete={canDelete}
+                toggle={toggle}
+                SortIcon={SortIcon}
+              />
+
+              <TablePagination
+                page={safePage}
+                totalPages={totalPages}
+                totalItems={sorted.length}
+                pageSize={pageSize}
+                setPage={setPage}
+                setPageSize={setPageSize}
+              />
+            </>
           )}
         </CardContent>
       </Card>

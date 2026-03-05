@@ -10,7 +10,7 @@ import { MoreHorizontal, Pencil, Trash2 } from 'lucide-react';
 
 function renderAdditional(additional) {
   if (!additional || typeof additional !== 'object' || Object.keys(additional).length === 0) {
-    return <span className="italic">—</span>;
+    return <span className="italic text-muted-foreground/60">{'\u2014'}</span>;
   }
   return Object.entries(additional).map(([k, v]) => `${k}: ${v}`).join(', ');
 }
@@ -20,7 +20,7 @@ export function RoleTable({ roles, loading, onEdit, onDelete, canEdit, canDelete
     return (
       <div className="space-y-2">
         {Array.from({ length: 4 }).map((_, i) => (
-          <Skeleton key={i} className="h-12 w-full" />
+          <Skeleton key={i} className="h-10 w-full" />
         ))}
       </div>
     );
@@ -28,9 +28,12 @@ export function RoleTable({ roles, loading, onEdit, onDelete, canEdit, canDelete
 
   if (roles.length === 0) {
     return (
-      <p className="py-12 text-center text-sm text-muted-foreground">
-        No roles found.
-      </p>
+      <div className="flex flex-col items-center justify-center py-12 text-muted-foreground">
+        <div className="w-10 h-10 rounded-full bg-muted flex items-center justify-center mb-3">
+          <span className="text-lg">0</span>
+        </div>
+        <p className="text-sm font-medium">No roles found</p>
+      </div>
     );
   }
 
@@ -40,21 +43,21 @@ export function RoleTable({ roles, loading, onEdit, onDelete, canEdit, canDelete
         <TableRow>
           <TableHead>Role Name</TableHead>
           <TableHead>Additional</TableHead>
-          <TableHead className="text-right">Actions</TableHead>
+          <TableHead className="text-right w-16">Actions</TableHead>
         </TableRow>
       </TableHeader>
       <TableBody>
         {roles.map((role) => (
           <TableRow key={role.id}>
             <TableCell className="font-medium">{role.name}</TableCell>
-            <TableCell className="text-muted-foreground">
+            <TableCell className="text-muted-foreground text-xs">
               {renderAdditional(role.additional)}
             </TableCell>
             <TableCell className="text-right">
               {(canEdit || canDelete) && (
                 <DropdownMenu>
                   <DropdownMenuTrigger asChild>
-                    <Button variant="ghost" size="icon-sm">
+                    <Button variant="ghost" size="icon" className="h-7 w-7">
                       <MoreHorizontal className="h-4 w-4" />
                     </Button>
                   </DropdownMenuTrigger>

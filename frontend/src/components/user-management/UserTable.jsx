@@ -20,11 +20,11 @@ export function UserTable({ paginated, loading, currentPage, toggle, SortIcon, o
       <Table>
         <TableHeader>
           <TableRow>
-            <TableHead className="w-12">#</TableHead>
+            <TableHead className="w-10">#</TableHead>
             <TableHead>Email</TableHead>
             <TableHead>Username</TableHead>
             <TableHead>Roles</TableHead>
-            <TableHead className="w-16" />
+            <TableHead className="w-12" />
           </TableRow>
         </TableHeader>
         <TableBody>
@@ -44,8 +44,12 @@ export function UserTable({ paginated, loading, currentPage, toggle, SortIcon, o
 
   if (paginated.length === 0) {
     return (
-      <div className="flex items-center justify-center py-16 text-muted-foreground text-sm">
-        No users found.
+      <div className="flex flex-col items-center justify-center py-12 text-muted-foreground">
+        <div className="w-10 h-10 rounded-full bg-muted flex items-center justify-center mb-3">
+          <span className="text-lg">0</span>
+        </div>
+        <p className="text-sm font-medium">No users found</p>
+        <p className="text-xs text-muted-foreground/70 mt-0.5">Try adjusting your search or filters</p>
       </div>
     );
   }
@@ -54,10 +58,10 @@ export function UserTable({ paginated, loading, currentPage, toggle, SortIcon, o
     <Table>
       <TableHeader>
         <TableRow>
-          <TableHead className="w-12">#</TableHead>
+          <TableHead className="w-10">#</TableHead>
           <TableHead>
             <button
-              className="inline-flex items-center gap-1 hover:text-foreground"
+              className="inline-flex items-center gap-1 hover:text-foreground transition-colors"
               onClick={() => toggle('email')}
             >
               Email <SortIcon field="email" />
@@ -65,33 +69,33 @@ export function UserTable({ paginated, loading, currentPage, toggle, SortIcon, o
           </TableHead>
           <TableHead>
             <button
-              className="inline-flex items-center gap-1 hover:text-foreground"
+              className="inline-flex items-center gap-1 hover:text-foreground transition-colors"
               onClick={() => toggle('username')}
             >
               Username <SortIcon field="username" />
             </button>
           </TableHead>
           <TableHead>Roles</TableHead>
-          <TableHead className="w-16" />
+          <TableHead className="w-12" />
         </TableRow>
       </TableHeader>
       <TableBody>
         {paginated.map((user, i) => (
           <TableRow key={user.id}>
-            <TableCell className="text-muted-foreground">
+            <TableCell className="text-muted-foreground text-xs">
               {startIndex + i + 1}
             </TableCell>
             <TableCell className="font-medium">{user.email}</TableCell>
-            <TableCell>{user.username}</TableCell>
+            <TableCell className="text-muted-foreground">{user.username}</TableCell>
             <TableCell>
               <div className="flex flex-wrap gap-1">
                 {(user.roles || []).map((role) => (
-                  <Badge key={role.id} variant="secondary">
+                  <Badge key={role.id} variant="secondary" className="text-[11px] font-medium">
                     {role.name}
                   </Badge>
                 ))}
                 {(!user.roles || user.roles.length === 0) && (
-                  <span className="text-muted-foreground text-xs">No roles</span>
+                  <span className="text-muted-foreground text-xs italic">No roles</span>
                 )}
               </div>
             </TableCell>
@@ -99,7 +103,7 @@ export function UserTable({ paginated, loading, currentPage, toggle, SortIcon, o
               {(canEdit || canDelete) && (
                 <DropdownMenu>
                   <DropdownMenuTrigger asChild>
-                    <Button variant="ghost" size="icon" className="h-8 w-8">
+                    <Button variant="ghost" size="icon" className="h-7 w-7">
                       <MoreHorizontal className="h-4 w-4" />
                     </Button>
                   </DropdownMenuTrigger>

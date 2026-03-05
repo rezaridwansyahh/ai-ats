@@ -5,7 +5,6 @@ import { loginUser } from "@/services/auth"
 import { Button } from "@/components/ui/button"
 import {
   Card,
-  CardAction,
   CardContent,
   CardDescription,
   CardFooter,
@@ -18,10 +17,14 @@ import { Label } from "@/components/ui/label"
 export function LoginCard() {
   const [email, setEmail] = useState("")
   const [password, setPassword] = useState("")
+  const [loading, setLoading] = useState(false)
+  const [error, setError] = useState("")
   const navigate = useNavigate();
 
   const handleSubmitLogin = async (e) => {
     e.preventDefault()
+    setError("")
+    setLoading(true)
 
     try {
       const res = await loginUser({
@@ -35,65 +38,85 @@ export function LoginCard() {
       localStorage.setItem('permissions', JSON.stringify(res.permissions))
       localStorage.setItem('userData', JSON.stringify(res))
 
-
       navigate("/dashboard");
     } catch (err) {
-      console.log("err", err);
+      setError(err.response?.data?.message || "Invalid email or password")
+    } finally {
+      setLoading(false)
     }
   }
 
   return (
-    <Card className="w-full max-w-sm animate-in fade-in zoom-in-95 duration-300">
-      <div className="w-4/5 mx-auto">
+    <div className="w-full max-w-sm animate-fade-in-up">
+      {/* Logo — visible only on mobile (desktop shows left panel) */}
+      <div className="flex justify-center mb-8 lg:hidden">
         <img
-          src="../../../public/abhimata.png"
-          className="w-full object-contain"
+          src="/Logo.png"
+          className="h-10 w-auto object-contain"
+          alt="Myralix"
         />
       </div>
-      <CardHeader>
-        <CardTitle>Login to your account</CardTitle>
-        <CardDescription>
-          Enter your email below to login to your account
-        </CardDescription>
-        <CardAction>
-          <Button asChild variant="link">
-            <a href="/register">Sign Up</a>
-          </Button>
-        </CardAction>
-      </CardHeader>
-      <CardContent>
-        <form id="loginForm" onSubmit={handleSubmitLogin}>
-          <div className="flex flex-col gap-6">
-            <div className="grid gap-2">
-              <Label htmlFor="email">Email</Label>
-              <Input
-                id="email"
-                type="email"
-                placeholder="m@example.com"
-                required
-                onChange={(e) => setEmail(e.target.value)}
-              />
-            </div>
-            <div className="grid gap-2">
-              <div className="flex items-center">
-                <Label htmlFor="password">Password</Label>
-                <a
-                  href="#"
-                  className="ml-auto inline-block text-sm underline-offset-4 hover:underline"
-                >
-                  Forgot your password?
-                </a>
-              </div>
-              <Input id="password" type="password" required onChange={(e) => setPassword(e.target.value)}/>
-            </div>
+
+      <div className="mb-6">
+        <h1 className="text-2xl font-bold tracking-tight font-display">Welcome back</h1>
+        <p className="text-sm text-muted-foreground mt-1">
+          Sign in to your account to continue
+        </p>
+      </div>
+
+      <form onSubmit={handleSubmitLogin} className="space-y-4">
+        <div className="space-y-1.5">
+          <Label htmlFor="email" className="text-xs font-medium">Email</Label>
+          <Input
+            id="email"
+            type="email"
+            placeholder="you@company.com"
+            required
+            className="h-10"
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+          />
+        </div>
+
+        <div className="space-y-1.5">
+          <div className="flex items-center justify-between">
+            <Label htmlFor="password" className="text-xs font-medium">Password</Label>
+            <a
+              href="#"
+              className="text-xs text-muted-foreground hover:text-primary transition-colors"
+            >
+              Forgot password?
+            </a>
           </div>
-        </form>
-      </CardContent>
-      <CardFooter className="flex-col gap-2">
-        <Button form="loginForm" type="submit" className="w-full cursor-pointer">
-          Login
+          <Input
+            id="password"
+            type="password"
+            required
+            className="h-10"
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+          />
+        </div>
+
+        {error && (
+          <p className="text-sm text-destructive">{error}</p>
+        )}
+
+        <Button
+          type="submit"
+          className="w-full h-10 font-medium cursor-pointer"
+          disabled={loading}
+        >
+          {loading ? "Signing in..." : "Sign In"}
         </Button>
-      </CardFooter>
-    </Card>
+      </form>
+
+      <p className="text-center text-sm text-muted-foreground mt-6">
+        Don't have an account?{" "}
+        <a href="/register" className="text-primary font-medium hover:underline">
+          Sign Up
+        </a>
+      </p>
+    </div>
   )
 }

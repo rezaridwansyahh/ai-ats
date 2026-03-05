@@ -1,9 +1,10 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useMemo } from 'react';
 import {
   RefreshCw, Briefcase, Clock,
-  Play, XCircle, Users,
+  Play, XCircle, Users, Search,
 } from 'lucide-react';
 import { Button }   from '@/components/ui/button';
+import { Input }    from '@/components/ui/input';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Badge }    from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -14,6 +15,8 @@ import {
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription,
 } from '@/components/ui/dialog';
+import { useSort } from '@/hooks/useSort';
+import { TablePagination } from '@/components/shared/TablePagination';
 
 import { SourcingTable } from '@/components/job-sourcing/SourcingTable';
 
@@ -26,13 +29,14 @@ import {
 import { getJobAccountsByUserId } from '@/api/job-accounts.api';
 
 const STATUS_COLORS = {
-  Draft:       'bg-gray-100 text-gray-700',
-  Submitted:   'bg-blue-100 text-blue-700',
-  Running:     'bg-green-100 text-green-700',
-  Expired:     'bg-red-100 text-red-700',
-  Kedaluwarsa: 'bg-red-100 text-red-700',
-  Active:      'bg-green-100 text-green-700',
+  Draft:       'bg-[var(--warning-bg)] text-[#A16207]',
+  Submitted:   'bg-[var(--info-bg)] text-[#1E40AF]',
+  Running:     'bg-[var(--success-bg)] text-[#16A34A]',
+  Expired:     'bg-[var(--error-bg)] text-[#9A3412]',
+  Active:      'bg-[var(--success-bg)] text-[#16A34A]',
 };
+
+const STATUS_OPTIONS = ['Draft', 'Submitted', 'Running', 'Active', 'Expired'];
 
 function Field({ label, value }) {
   if (value === null || value === undefined || value === '') return null;
@@ -146,22 +150,44 @@ export default function SeekSourcingPage() {
   // ── Stats ──
   const totalCandidates = postings.reduce((sum, p) => sum + (p.candidate_count || 0), 0);
   const runningCount    = postings.filter(p => p.status === 'Running' || p.status === 'Active').length;
-  const expiredCount    = postings.filter(p => p.status === 'Expired' || p.status === 'Kedaluwarsa').length;
+  const expiredCount    = postings.filter(p => p.status === 'Expired').length;
+
+  // ── Search, filter, sort, pagination ──
+  const { toggle, apply, SortIcon } = useSort();
+  const [search,       setSearch]       = useState('');
+  const [statusFilter, setStatusFilter] = useState('all');
+  const [page,         setPage]         = useState(1);
+  const [pageSize,     setPageSize]     = useState(10);
+
+  useEffect(() => { setPage(1); }, [search, statusFilter]);
+
+  const filtered = useMemo(() =>
+    postings.filter((p) => {
+      const matchSearch = !search || p.job_title?.toLowerCase().includes(search.toLowerCase());
+      const matchStatus = statusFilter === 'all' || p.status === statusFilter;
+      return matchSearch && matchStatus;
+    }),
+  [postings, search, statusFilter]);
+
+  const sorted     = useMemo(() => apply(filtered), [filtered, apply]);
+  const totalPages = Math.max(1, Math.ceil(sorted.length / pageSize));
+  const safePage   = Math.min(page, totalPages);
+  const paginated  = sorted.slice((safePage - 1) * pageSize, safePage * pageSize);
 
   return (
-    <div className="flex flex-col gap-6 p-6 animate-in fade-in duration-300">
+    <div className="flex flex-col gap-5 animate-fade-in-up">
       {/* Header */}
       <div className="flex items-center justify-between flex-wrap gap-3">
         <div>
-          <h1 className="text-2xl font-semibold tracking-tight">Job Sourcing</h1>
-          <p className="text-sm text-muted-foreground mt-0.5">
+          <h1 className="text-xl font-bold tracking-tight">Job Sourcing</h1>
+          <p className="text-xs text-muted-foreground mt-0.5">
             View and sync your Seek job ads. Import candidates from active postings.
           </p>
         </div>
         <div className="flex flex-col items-end gap-1">
           <div className="flex items-center gap-2">
             <Button variant="outline" size="sm" onClick={fetchPostings} disabled={loading}>
-              <RefreshCw className={`h-4 w-4 mr-2 ${loading ? 'animate-spin' : ''}`} />
+              <RefreshCw className={`h-3.5 w-3.5 ${loading ? 'animate-spin' : ''}`} />
               Refresh
             </Button>
             <Button
@@ -169,7 +195,7 @@ export default function SeekSourcingPage() {
               onClick={handleSync}
               disabled={syncing || !accountId}
             >
-              <RefreshCw className={`h-4 w-4 mr-2 ${syncing ? 'animate-spin' : ''}`} />
+              <RefreshCw className={`h-3.5 w-3.5 ${syncing ? 'animate-spin' : ''}`} />
               {syncing ? 'Syncing…' : 'Sync'}
             </Button>
           </div>
@@ -201,7 +227,7 @@ export default function SeekSourcingPage() {
       </div>
 
       {/* Stat cards */}
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 stagger-children">
         <StatCard
           icon={<Briefcase className="h-5 w-5 text-blue-500" />}
           label="Total Jobs"
@@ -229,14 +255,38 @@ export default function SeekSourcingPage() {
       </div>
 
       {/* Job Sourcing Table */}
-      <Card>
-        <CardHeader className="pb-4">
-          <CardTitle className="text-base">Seek Job Ads</CardTitle>
-          <CardDescription>
-            {loading ? 'Loading…' : `${postings.length} job ad${postings.length !== 1 ? 's' : ''} found`}
+      <Card className="border shadow-sm">
+        <CardHeader className="pb-3">
+          <CardTitle className="text-sm font-semibold">Seek Job Ads</CardTitle>
+          <CardDescription className="text-xs">
+            {loading ? 'Loading…' : `${filtered.length} of ${postings.length} job ad${postings.length !== 1 ? 's' : ''} found`}
           </CardDescription>
+
+          <div className="flex flex-col sm:flex-row gap-2.5 mt-3">
+            <div className="relative flex-1">
+              <Search className="absolute left-2.5 top-2 h-4 w-4 text-muted-foreground" />
+              <Input
+                placeholder="Search by job title..."
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                className="pl-8 h-8 text-sm"
+              />
+            </div>
+            <Select value={statusFilter} onValueChange={setStatusFilter}>
+              <SelectTrigger className="w-full sm:w-[150px] h-8 text-sm">
+                <SelectValue placeholder="All Statuses" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All Statuses</SelectItem>
+                {STATUS_OPTIONS.map((s) => (
+                  <SelectItem key={s} value={s}>{s}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
         </CardHeader>
-        <CardContent>
+
+        <CardContent className="flex flex-col gap-4">
           {error ? (
             <div className="flex flex-col items-center gap-2 py-16 text-destructive">
               <XCircle className="h-8 w-8" />
@@ -244,13 +294,26 @@ export default function SeekSourcingPage() {
               <Button variant="outline" size="sm" onClick={fetchPostings}>Try again</Button>
             </div>
           ) : (
-            <SourcingTable
-              postings={postings}
-              loading={loading}
-              onView={openView}
-              onImportCv={handleExtractCandidates}
-              extractingId={extractingId}
-            />
+            <>
+              <SourcingTable
+                postings={paginated}
+                loading={loading}
+                onView={openView}
+                onImportCv={handleExtractCandidates}
+                extractingId={extractingId}
+                toggle={toggle}
+                SortIcon={SortIcon}
+              />
+
+              <TablePagination
+                page={safePage}
+                totalPages={totalPages}
+                totalItems={sorted.length}
+                pageSize={pageSize}
+                setPage={setPage}
+                setPageSize={setPageSize}
+              />
+            </>
           )}
         </CardContent>
       </Card>

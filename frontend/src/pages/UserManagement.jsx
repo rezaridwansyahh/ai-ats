@@ -134,24 +134,24 @@ export default function UserManagementPage() {
   };
 
   return (
-    <div className="flex flex-col gap-6 p-6 animate-in fade-in duration-300">
+    <div className="flex flex-col gap-5 animate-fade-in-up">
 
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-semibold tracking-tight">User Management</h1>
-          <p className="text-sm text-muted-foreground mt-0.5">
+          <h1 className="text-xl font-bold tracking-tight">User Management</h1>
+          <p className="text-xs text-muted-foreground mt-0.5">
             Manage system users and roles.
           </p>
         </div>
         <div className="flex gap-2">
           <Button variant="outline" size="sm" onClick={fetchUsers} disabled={loading}>
-            <RefreshCw className={`h-4 w-4 mr-2 ${loading ? 'animate-spin' : ''}`} />
+            <RefreshCw className={`h-3.5 w-3.5 ${loading ? 'animate-spin' : ''}`} />
             Refresh
           </Button>
           {canCreate && (
             <Button size="sm" onClick={openCreate}>
-              <Plus className="h-4 w-4 mr-2" />
+              <Plus className="h-3.5 w-3.5" />
               Add User
             </Button>
           )}
@@ -159,7 +159,7 @@ export default function UserManagementPage() {
       </div>
 
       {/* Stat cards */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 stagger-children">
         <StatCard
           icon={<Users  className="h-5 w-5 text-blue-500"   />}
           label="Total Users"
@@ -175,10 +175,10 @@ export default function UserManagementPage() {
       </div>
 
       {/* Table card */}
-      <Card>
-        <CardHeader className="pb-4">
-          <CardTitle className="text-base">All Users</CardTitle>
-          <CardDescription className="mt-0.5">
+      <Card className="border shadow-sm">
+        <CardHeader className="pb-3">
+          <CardTitle className="text-sm font-semibold">All Users</CardTitle>
+          <CardDescription className="text-xs mt-0">
             {loading ? 'Loading…' : `${filtered.length} of ${users.length} user${users.length !== 1 ? 's' : ''}`}
           </CardDescription>
 

@@ -25,7 +25,7 @@ const PHASES = [
 
 export default function ProcessFlow() {
   return (
-    <Card>
+    <Card className="border shadow-sm">
       <CardContent className="pt-4 pb-4">
         <div className="flex items-center gap-0 overflow-x-auto px-1 py-1">
           {PHASES.map((phase, i) => {
@@ -33,7 +33,7 @@ export default function ProcessFlow() {
             return (
               <div key={phase.num} className="flex items-center">
                 <div className="flex flex-col items-center min-w-[70px] px-1 group cursor-default">
-                  <div className="w-8 h-8 rounded-full bg-primary text-primary-foreground flex items-center justify-center text-xs font-bold mb-1 group-hover:scale-110 transition-transform">
+                  <div className="w-8 h-8 rounded-full bg-primary text-primary-foreground flex items-center justify-center text-xs font-bold mb-1 group-hover:scale-110 group-hover:shadow-md transition-all duration-200">
                     {phase.num}
                   </div>
                   <Icon className="h-3.5 w-3.5 text-muted-foreground mb-0.5" />
@@ -42,9 +42,7 @@ export default function ProcessFlow() {
                   </span>
                 </div>
                 {i < PHASES.length - 1 && (
-                  <span className="text-muted-foreground/40 text-xs mx-0.5 flex-shrink-0">
-                    &rarr;
-                  </span>
+                  <div className="flex-shrink-0 w-6 h-0.5 bg-border mx-0.5" />
                 )}
               </div>
             );

@@ -35,7 +35,7 @@ export default function Dashboard() {
   const [activeTab, setActiveTab] = useState('overview');
 
   return (
-    <div className="space-y-5 px-4 py-6 animate-in fade-in duration-300">
+    <div className="space-y-5 animate-fade-in-up">
       {/* Header */}
       <DashboardHeader />
 
@@ -48,10 +48,10 @@ export default function Dashboard() {
             <button
               key={tab.id}
               onClick={() => setActiveTab(tab.id)}
-              className={`flex items-center gap-1.5 px-4 py-2.5 text-xs font-semibold border-b-2 -mb-px transition-colors cursor-pointer ${
+              className={`relative flex items-center gap-1.5 px-4 py-2.5 text-xs font-semibold border-b-2 -mb-px transition-all cursor-pointer ${
                 isActive
                   ? 'text-primary border-primary'
-                  : 'text-muted-foreground border-transparent hover:text-foreground hover:bg-muted/50'
+                  : 'text-muted-foreground border-transparent hover:text-foreground hover:bg-muted/40'
               }`}
             >
               <Icon className="h-3.5 w-3.5" />
@@ -62,14 +62,16 @@ export default function Dashboard() {
       </div>
 
       {/* Tab content */}
-      {activeTab === 'overview' && <OverviewTab />}
-      {activeTab === 'kanban' && <KanbanBoard />}
-      {activeTab === 'auto' && <AutomationLog />}
+      <div key={activeTab} className="animate-fade-in-up">
+        {activeTab === 'overview' && <OverviewTab />}
+        {activeTab === 'kanban' && <KanbanBoard />}
+        {activeTab === 'auto' && <AutomationLog />}
+      </div>
     </div>
   );
 }
 
-/* ─── Overview Tab ─── */
+/* --- Overview Tab --- */
 function OverviewTab() {
   return (
     <div className="space-y-5">
@@ -77,7 +79,7 @@ function OverviewTab() {
       <ProcessFlow />
 
       {/* KPI Row 1: Primary metrics */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 stagger-children">
         <StatCard
           icon={<Briefcase className="h-5 w-5 text-primary" />}
           iconBg="bg-primary/10"
@@ -95,8 +97,8 @@ function OverviewTab() {
           trendLabel="+23%"
         />
         <StatCard
-          icon={<UserCheck className="h-5 w-5 text-green-500" />}
-          iconBg="bg-green-50"
+          icon={<UserCheck className="h-5 w-5 text-emerald-500" />}
+          iconBg="bg-emerald-50"
           label="Hired This Month"
           value={18}
           trend="up"
@@ -113,7 +115,7 @@ function OverviewTab() {
       </div>
 
       {/* KPI Row 2: Secondary metrics */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 stagger-children">
         <StatCard
           icon={<FileText className="h-5 w-5 text-violet-500" />}
           iconBg="bg-violet-50"
@@ -133,20 +135,20 @@ function OverviewTab() {
           value={5}
         />
         <StatCard
-          icon={<Rocket className="h-5 w-5 text-green-500" />}
-          iconBg="bg-green-50"
+          icon={<Rocket className="h-5 w-5 text-emerald-500" />}
+          iconBg="bg-emerald-50"
           label="Onboarding In Progress"
           value={8}
         />
       </div>
 
-      {/* Charts row 1: Time to Hire + Department Donut */}
+      {/* Charts row 1 */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
         <TimeToHireChart />
         <DepartmentChart />
       </div>
 
-      {/* Charts row 2: Funnel + Upcoming Interviews */}
+      {/* Charts row 2 */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
         <HiringFunnel />
         <UpcomingInterviews />

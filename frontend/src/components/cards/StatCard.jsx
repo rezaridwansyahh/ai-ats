@@ -4,19 +4,24 @@ import { Skeleton } from '@/components/ui/skeleton';
 
 export function StatCard({ icon, label, value, loading, trend, trendLabel, iconBg }) {
   return (
-    <Card>
-      <CardContent className="flex items-center gap-4 pt-6 transition-all duration-200 hover:-translate-y-0.5">
-        <div className={`rounded-lg p-2.5 ${iconBg || 'bg-muted'}`}>
+    <Card className="group hover:shadow-md transition-all duration-200 hover:-translate-y-0.5 border shadow-sm">
+      <CardContent className="flex items-center gap-3.5 py-4 px-4">
+        <div className={`rounded-lg p-2.5 ${iconBg || 'bg-muted'} transition-transform duration-200 group-hover:scale-105`}>
           {icon}
         </div>
         <div className="flex-1 min-w-0">
-          <div className="flex items-center justify-between gap-2">
-            <p className="text-sm text-muted-foreground truncate">{label}</p>
+          <p className="text-xs font-medium text-muted-foreground truncate mb-0.5">{label}</p>
+          <div className="flex items-center gap-2">
+            {loading ? (
+              <Skeleton className="h-7 w-14" />
+            ) : (
+              <p className="text-2xl font-bold tracking-tight font-display">{value}</p>
+            )}
             {trend && (
               <span
-                className={`inline-flex items-center gap-0.5 text-[10px] font-semibold px-1.5 py-0.5 rounded ${
+                className={`inline-flex items-center gap-0.5 text-[10px] font-semibold px-1.5 py-0.5 rounded-md ${
                   trend === 'up'
-                    ? 'bg-green-50 text-green-600'
+                    ? 'bg-emerald-50 text-emerald-600'
                     : 'bg-red-50 text-red-600'
                 }`}
               >
@@ -29,11 +34,6 @@ export function StatCard({ icon, label, value, loading, trend, trendLabel, iconB
               </span>
             )}
           </div>
-          {loading ? (
-            <Skeleton className="h-7 w-12 mt-0.5" />
-          ) : (
-            <p className="text-2xl font-bold">{value}</p>
-          )}
         </div>
       </CardContent>
     </Card>

@@ -86,23 +86,23 @@ export default function AccountPage() {
   };
 
   return (
-    <div className="flex flex-col gap-6 p-6 animate-in fade-in duration-300">
+    <div className="flex flex-col gap-5 animate-fade-in-up">
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-semibold tracking-tight">Job Accounts</h1>
-          <p className="text-sm text-muted-foreground mt-0.5">
+          <h1 className="text-xl font-bold tracking-tight">Job Accounts</h1>
+          <p className="text-xs text-muted-foreground mt-0.5">
             Manage job portal credentials for users.
           </p>
         </div>
         <div className="flex gap-2">
           <Button variant="outline" size="sm" onClick={fetchAccounts} disabled={loading}>
-            <RefreshCw className={`h-4 w-4 mr-2 ${loading ? 'animate-spin' : ''}`} />
+            <RefreshCw className={`h-3.5 w-3.5 ${loading ? 'animate-spin' : ''}`} />
             Refresh
           </Button>
           {canCreate && (
             <Button size="sm" onClick={openCreate}>
-              <Plus className="h-4 w-4 mr-2" />
+              <Plus className="h-3.5 w-3.5" />
               Add Account
             </Button>
           )}
@@ -110,7 +110,7 @@ export default function AccountPage() {
       </div>
 
       {/* Stat card */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 stagger-children">
         <StatCard
           icon={<KeyRound className="h-5 w-5 text-orange-500" />}
           label="Total Accounts"
@@ -120,10 +120,10 @@ export default function AccountPage() {
       </div>
 
       {/* Table card */}
-      <Card>
-        <CardHeader className="pb-4">
-          <CardTitle className="text-base">All Job Accounts</CardTitle>
-          <CardDescription>
+      <Card className="border shadow-sm">
+        <CardHeader className="pb-3">
+          <CardTitle className="text-sm font-semibold">All Job Accounts</CardTitle>
+          <CardDescription className="text-xs">
             {loading ? 'Loading…' : `${accounts.length} account${accounts.length !== 1 ? 's' : ''}`}
           </CardDescription>
         </CardHeader>

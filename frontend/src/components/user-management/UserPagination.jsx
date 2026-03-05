@@ -6,34 +6,34 @@ export function UserPagination({ page, totalPages, totalItems, pageSize, setPage
   const end   = Math.min(page * pageSize, totalItems);
 
   return (
-    <div className="flex items-center justify-between">
-      <p className="text-sm text-muted-foreground">
+    <div className="flex items-center justify-between pt-1">
+      <p className="text-xs text-muted-foreground">
         {totalItems === 0
           ? 'No results'
           : `Showing ${start}\u2013${end} of ${totalItems}`}
       </p>
 
-      <div className="flex items-center gap-2">
+      <div className="flex items-center gap-1.5">
         <Button
           variant="outline"
-          size="sm"
+          size="xs"
           disabled={page <= 1}
           onClick={() => setPage(page - 1)}
         >
-          <ChevronLeft className="h-4 w-4 mr-1" />
-          Previous
+          <ChevronLeft className="h-3.5 w-3.5 mr-0.5" />
+          Prev
         </Button>
-        <span className="text-sm text-muted-foreground">
-          Page {page} of {totalPages}
+        <span className="text-xs text-muted-foreground px-2">
+          {page} / {totalPages}
         </span>
         <Button
           variant="outline"
-          size="sm"
+          size="xs"
           disabled={page >= totalPages}
           onClick={() => setPage(page + 1)}
         >
           Next
-          <ChevronRight className="h-4 w-4 ml-1" />
+          <ChevronRight className="h-3.5 w-3.5 ml-0.5" />
         </Button>
       </div>
     </div>

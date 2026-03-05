@@ -11,12 +11,12 @@ export default function DashboardHeader() {
     <div className="flex items-center justify-between flex-wrap gap-3">
       <div>
         <h1 className="text-xl font-bold tracking-tight">Dashboard</h1>
-        <p className="text-sm text-muted-foreground">
+        <p className="text-xs text-muted-foreground mt-0.5">
           Real-time command center — aggregating data from all recruitment phases
         </p>
       </div>
       <Select defaultValue="30d">
-        <SelectTrigger className="w-[160px] h-9 text-xs">
+        <SelectTrigger className="w-[140px] h-8 text-xs">
           <SelectValue />
         </SelectTrigger>
         <SelectContent>

@@ -3,15 +3,6 @@ import { useNavigate } from "react-router-dom"
 import { registerUser } from "@/services/auth"
 
 import { Button } from "@/components/ui/button"
-import {
-  Card,
-  CardAction,
-  CardContent,
-  CardDescription,
-  CardFooter,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 
@@ -19,11 +10,15 @@ export function RegisterCard() {
   const [username, setUsername] = useState("")
   const [email, setEmail] = useState("")
   const [password, setPassword] = useState("")
+  const [loading, setLoading] = useState(false)
+  const [error, setError] = useState("")
 
   const navigate = useNavigate()
 
   const handleSubmitRegister = async (e) => {
     e.preventDefault()
+    setError("")
+    setLoading(true)
 
     try {
       const res = await registerUser({
@@ -32,78 +27,91 @@ export function RegisterCard() {
         password
       });
 
-      console.log(res);
-
       localStorage.setItem('token', res.data.token);
       navigate("/dashboard");
     } catch (err) {
-      console.log("err");
+      setError(err.response?.data?.message || "Registration failed")
+    } finally {
+      setLoading(false)
     }
   }
 
   return (
-    <Card className="w-full max-w-sm animate-in fade-in zoom-in-95 duration-300">
-      <div className="w-4/5 mx-auto">
+    <div className="w-full max-w-sm animate-fade-in-up">
+      {/* Logo — visible only on mobile */}
+      <div className="flex justify-center mb-8 lg:hidden">
         <img
-          src="../../../public/abhimata.png"
-          className="w-full object-contain"
+          src="/Logo.png"
+          className="h-10 w-auto object-contain"
+          alt="Myralix"
         />
       </div>
-      <CardHeader>
-        <CardTitle>Register to your account</CardTitle>
-        <CardDescription>
-          Enter your credential below to create your account
-        </CardDescription>
-        <CardAction>
-          <Button asChild variant="link">
-            <a href="/login">Log In</a>
-          </Button>
-        </CardAction>
-      </CardHeader>
-      <CardContent>
 
-        <form id="registerForm" onSubmit={handleSubmitRegister}>
-          <div className="flex flex-col gap-6">
-            <div className="grid gap-2">
-              <Label htmlFor="email">Username</Label>
-              <Input
-                id="username"
-                type="username"
-                placeholder="John Smith"
-                value={username}
-                onChange={(e) => setUsername(e.target.value)}
-                required
-              />
-            </div>
-            <div className="grid gap-2">
-              <Label htmlFor="email">Email</Label>
-              <Input
-                id="email"
-                type="email"
-                value={email}
-                placeholder="m@example.com"
-                onChange={(e) => setEmail(e.target.value)}
-                required
-              />
-            </div>
-            <div className="grid gap-2">
-              <div className="flex items-center">
-                <Label htmlFor="password">Password</Label>
-              </div>
-              <Input id="password" type="password" required value={password} onChange={(e) => setPassword(e.target.value)}/>
-            </div>
-          </div>
-        </form>
+      <div className="mb-6">
+        <h1 className="text-2xl font-bold tracking-tight font-display">Create an account</h1>
+        <p className="text-sm text-muted-foreground mt-1">
+          Enter your details to get started
+        </p>
+      </div>
 
-        </CardContent>
+      <form onSubmit={handleSubmitRegister} className="space-y-4">
+        <div className="space-y-1.5">
+          <Label htmlFor="username" className="text-xs font-medium">Username</Label>
+          <Input
+            id="username"
+            type="text"
+            placeholder="John Smith"
+            value={username}
+            onChange={(e) => setUsername(e.target.value)}
+            required
+            className="h-10"
+          />
+        </div>
 
-        <CardFooter className="flex-col gap-2">
-          <Button form="registerForm" type="submit" className="w-full cursor-pointer">
-            Register
-          </Button>
-        </CardFooter>
+        <div className="space-y-1.5">
+          <Label htmlFor="email" className="text-xs font-medium">Email</Label>
+          <Input
+            id="email"
+            type="email"
+            placeholder="you@company.com"
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+            required
+            className="h-10"
+          />
+        </div>
 
+        <div className="space-y-1.5">
+          <Label htmlFor="password" className="text-xs font-medium">Password</Label>
+          <Input
+            id="password"
+            type="password"
+            required
+            value={password}
+            className="h-10"
+            onChange={(e) => setPassword(e.target.value)}
+          />
+        </div>
 
-    </Card>
+        {error && (
+          <p className="text-sm text-destructive">{error}</p>
+        )}
+
+        <Button
+          type="submit"
+          className="w-full h-10 font-medium cursor-pointer"
+          disabled={loading}
+        >
+          {loading ? "Creating account..." : "Create Account"}
+        </Button>
+      </form>
+
+      <p className="text-center text-sm text-muted-foreground mt-6">
+        Already have an account?{" "}
+        <a href="/login" className="text-primary font-medium hover:underline">
+          Sign In
+        </a>
+      </p>
+    </div>
   )
 }

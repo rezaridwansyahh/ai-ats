@@ -10,19 +10,19 @@ export function UserFilters({
   roleOptions,
 }) {
   return (
-    <div className="flex flex-col sm:flex-row gap-3 mt-4">
+    <div className="flex flex-col sm:flex-row gap-2.5 mt-3">
       <div className="relative flex-1">
-        <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
+        <Search className="absolute left-2.5 top-2 h-4 w-4 text-muted-foreground" />
         <Input
           placeholder="Search by email or name..."
           value={search}
           onChange={(e) => setSearch(e.target.value)}
-          className="pl-8"
+          className="pl-8 h-8 text-sm"
         />
       </div>
 
       <Select value={roleFilter} onValueChange={setRoleFilter}>
-        <SelectTrigger className="w-full sm:w-[160px]">
+        <SelectTrigger className="w-full sm:w-[150px] h-8 text-sm">
           <SelectValue placeholder="All Roles" />
         </SelectTrigger>
         <SelectContent>

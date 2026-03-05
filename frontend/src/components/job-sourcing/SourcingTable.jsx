@@ -6,17 +6,16 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { Eye, Download, Loader2 } from 'lucide-react';
 
 const STATUS_COLORS = {
-  Draft:       'bg-gray-100 text-gray-700',
-  Submitted:   'bg-blue-100 text-blue-700',
-  Running:     'bg-green-100 text-green-700',
-  Active:      'bg-green-100 text-green-700',
-  Expired:     'bg-red-100 text-red-700',
-  Kedaluwarsa: 'bg-red-100 text-red-700',
+  Draft:       'bg-[var(--warning-bg)] text-[#A16207]',
+  Submitted:   'bg-[var(--info-bg)] text-[#1E40AF]',
+  Running:     'bg-[var(--success-bg)] text-[#16A34A]',
+  Active:      'bg-[var(--success-bg)] text-[#16A34A]',
+  Expired:     'bg-[var(--error-bg)] text-[#9A3412]',
 };
 
 const COLUMNS = ['#', 'Status', 'Seek ID', 'Job Title', 'Candidates', 'Created Date', 'Created By', 'Actions'];
 
-export function SourcingTable({ postings, loading, onView, onImportCv, extractingId }) {
+export function SourcingTable({ postings, loading, onView, onImportCv, extractingId, toggle, SortIcon }) {
   if (loading) {
     return (
       <Table>
@@ -53,11 +52,35 @@ export function SourcingTable({ postings, loading, onView, onImportCv, extractin
       <TableHeader>
         <TableRow>
           <TableHead className="w-12">#</TableHead>
-          <TableHead>Status</TableHead>
+          <TableHead>
+            {toggle ? (
+              <button className="inline-flex items-center gap-1 hover:text-foreground" onClick={() => toggle('status')}>
+                Status {SortIcon && <SortIcon field="status" />}
+              </button>
+            ) : 'Status'}
+          </TableHead>
           <TableHead>Seek ID</TableHead>
-          <TableHead>Job Title</TableHead>
-          <TableHead className="text-center">Candidates</TableHead>
-          <TableHead>Created Date</TableHead>
+          <TableHead>
+            {toggle ? (
+              <button className="inline-flex items-center gap-1 hover:text-foreground" onClick={() => toggle('job_title')}>
+                Job Title {SortIcon && <SortIcon field="job_title" />}
+              </button>
+            ) : 'Job Title'}
+          </TableHead>
+          <TableHead className="text-center">
+            {toggle ? (
+              <button className="inline-flex items-center gap-1 hover:text-foreground" onClick={() => toggle('candidate_count')}>
+                Candidates {SortIcon && <SortIcon field="candidate_count" />}
+              </button>
+            ) : 'Candidates'}
+          </TableHead>
+          <TableHead>
+            {toggle ? (
+              <button className="inline-flex items-center gap-1 hover:text-foreground" onClick={() => toggle('created_date_seek')}>
+                Created Date {SortIcon && <SortIcon field="created_date_seek" />}
+              </button>
+            ) : 'Created Date'}
+          </TableHead>
           <TableHead>Created By</TableHead>
           <TableHead className="text-center">Actions</TableHead>
         </TableRow>

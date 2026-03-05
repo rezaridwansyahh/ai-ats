@@ -104,23 +104,23 @@ export default function RoleManagementPage() {
   };
 
   return (
-    <div className="flex flex-col gap-6 p-6 animate-in fade-in duration-300">
+    <div className="flex flex-col gap-5 animate-fade-in-up">
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-semibold tracking-tight">Role Management</h1>
-          <p className="text-sm text-muted-foreground mt-0.5">
+          <h1 className="text-xl font-bold tracking-tight">Role Management</h1>
+          <p className="text-xs text-muted-foreground mt-0.5">
             Manage roles and their permission sets.
           </p>
         </div>
         <div className="flex gap-2">
           <Button variant="outline" size="sm" onClick={fetchRoles} disabled={loading}>
-            <RefreshCw className={`h-4 w-4 ${loading ? 'animate-spin' : ''}`} />
+            <RefreshCw className={`h-3.5 w-3.5 ${loading ? 'animate-spin' : ''}`} />
             Refresh
           </Button>
           {canCreate && (
             <Button size="sm" onClick={openCreate}>
-              <Plus className="h-4 w-4" />
+              <Plus className="h-3.5 w-3.5" />
               Add Role
             </Button>
           )}
@@ -128,7 +128,7 @@ export default function RoleManagementPage() {
       </div>
 
       {/* Stat card */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 stagger-children">
         <StatCard
           icon={<Shield className="h-5 w-5 text-violet-500" />}
           label="Total Roles"
@@ -138,10 +138,10 @@ export default function RoleManagementPage() {
       </div>
 
       {/* Table card */}
-      <Card>
-        <CardHeader className="pb-4">
-          <CardTitle className="text-base">All Roles</CardTitle>
-          <CardDescription>
+      <Card className="border shadow-sm">
+        <CardHeader className="pb-3">
+          <CardTitle className="text-sm font-semibold">All Roles</CardTitle>
+          <CardDescription className="text-xs">
             {loading ? 'Loading…' : `${roles.length} role${roles.length !== 1 ? 's' : ''}`}
           </CardDescription>
         </CardHeader>

@@ -1,6 +1,6 @@
 import { useEffect, useState, useMemo } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { Avatar, AvatarImage } from "@/components/ui/avatar";
+import { useNavigate, useLocation } from 'react-router-dom';
+import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import {
   Sidebar,
   SidebarContent,
@@ -21,6 +21,7 @@ import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
+  DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 
@@ -114,6 +115,7 @@ const useSidebarStructure = (permissions) => {
 
 export function AppSidebar() {
   const navigate = useNavigate();
+  const location = useLocation();
 
   const [user, setUser]               = useState(null);
   const [permissions, setPermissions] = useState([]);
@@ -138,6 +140,22 @@ export function AppSidebar() {
 
   const sidebarItems = useSidebarStructure(permissions);
 
+  // Auto-open module that contains the current route
+  useEffect(() => {
+    sidebarItems.forEach(({ moduleName, menus }) => {
+      menus.forEach((menuName) => {
+        const route = routeMap[menuName];
+        if (route && location.pathname === route) {
+          setOpenModules((prev) => {
+            const next = new Set(prev);
+            next.add(moduleName);
+            return next;
+          });
+        }
+      });
+    });
+  }, [location.pathname, sidebarItems]);
+
   const toggleModule = (moduleName) => {
     setOpenModules((prev) => {
       const next = new Set(prev);
@@ -161,60 +179,74 @@ export function AppSidebar() {
     navigate('/login');
   };
 
+  const isRouteActive = (menuName) => {
+    const route = routeMap[menuName];
+    return route && location.pathname === route;
+  };
+
+  const userInitials = user?.email
+    ? user.email.split('@')[0].slice(0, 2).toUpperCase()
+    : 'U';
+
   return (
     <Sidebar>
       <SidebarHeader>
-        <div className="w-4/5 mx-auto pt-4">
-          <img
-            src="../../../public/abhimata.png"
-            className="w-full object-contain"
-            alt="Logo"
-          />
+        <div className="px-4 py-4 border-b border-sidebar-border">
+          <img src="/Logo.png" className="h-9 w-auto object-contain" alt="Myralix" />
         </div>
       </SidebarHeader>
 
       <SidebarContent>
+        {/* Dashboard — Main group */}
         <SidebarGroup>
-          <SidebarGroupLabel>Menu</SidebarGroupLabel>
+          <SidebarGroupLabel className="text-[10px] uppercase tracking-widest text-muted-foreground/60 font-semibold px-2 mb-1">Main</SidebarGroupLabel>
           <SidebarGroupContent>
             <SidebarMenu>
-             <SidebarMenuItem>
+              <SidebarMenuItem>
                 <SidebarMenuButton
-                  className="cursor-pointer transition-colors duration-150"
+                  className={`cursor-pointer transition-all duration-150 ${
+                    location.pathname === '/dashboard'
+                      ? 'bg-primary/10 text-primary font-medium border-l-2 border-primary rounded-l-none'
+                      : 'hover:bg-accent/60'
+                  }`}
                   onClick={() => navigate('/dashboard')}
                 >
-                  <Home className="h-4 w-4" />
+                  <div className="h-6 w-6 rounded-md bg-primary/10 flex items-center justify-center flex-shrink-0">
+                    <Home className="h-3.5 w-3.5 text-primary" />
+                  </div>
                   <span>Dashboard</span>
                 </SidebarMenuButton>
               </SidebarMenuItem>
+            </SidebarMenu>
+          </SidebarGroupContent>
+        </SidebarGroup>
 
-              {sidebarItems.map(({ moduleName, menus }) => {
-                const ModuleIcon = iconMap[moduleName] ?? Package;
-                const isOpen     = openModules.has(moduleName);
-                if (menus.length === 0) {
-                  return (
-                    <SidebarMenuItem key={moduleName}>
-                      <SidebarMenuButton
-                        className="cursor-pointer transition-colors duration-150"
-                        onClick={() => handleNavigate(menus[0])}
-                      >
-                        <ModuleIcon className="h-4 w-4" />
-                        <span>{moduleName}</span>
-                      </SidebarMenuButton>
-                    </SidebarMenuItem>
-                  );
-                }
+        {/* Permission-driven module groups */}
+        {sidebarItems.map(({ moduleName, menus }) => {
+          const ModuleIcon = iconMap[moduleName] ?? Package;
+          const isOpen     = openModules.has(moduleName);
+          const hasActiveChild = menus.some(m => isRouteActive(m));
 
-                return (
-                  <SidebarMenuItem key={moduleName}>
+          if (menus.length === 0) return null;
+
+          return (
+            <SidebarGroup key={moduleName}>
+              <SidebarGroupLabel className="text-[10px] uppercase tracking-widest text-muted-foreground/60 font-semibold px-2 mb-1">{moduleName}</SidebarGroupLabel>
+              <SidebarGroupContent>
+                <SidebarMenu>
+                  <SidebarMenuItem>
                     <Collapsible
                       open={isOpen}
                       onOpenChange={() => toggleModule(moduleName)}
                       className="group/collapsible"
                     >
                       <CollapsibleTrigger asChild>
-                        <SidebarMenuButton className="cursor-pointer transition-colors duration-150">
-                          <ModuleIcon className="h-4 w-4" />
+                        <SidebarMenuButton className={`cursor-pointer transition-all duration-150 ${
+                          hasActiveChild ? 'text-primary font-medium' : 'hover:bg-accent/60'
+                        }`}>
+                          <div className="h-6 w-6 rounded-md bg-primary/10 flex items-center justify-center flex-shrink-0">
+                            <ModuleIcon className="h-3.5 w-3.5 text-primary" />
+                          </div>
                           <span>{moduleName}</span>
                           <ChevronDown
                             className="ml-auto h-4 w-4 transition-transform duration-200
@@ -223,12 +255,16 @@ export function AppSidebar() {
                         </SidebarMenuButton>
                       </CollapsibleTrigger>
 
-                      <CollapsibleContent>
+                      <CollapsibleContent className="animate-slide-down">
                         <SidebarMenuSub>
                           {menus.map((menuName) => (
                             <SidebarMenuSubItem key={menuName}>
                               <SidebarMenuSubButton
-                                className="cursor-pointer transition-colors duration-150"
+                                className={`cursor-pointer transition-all duration-150 ${
+                                  isRouteActive(menuName)
+                                    ? 'bg-primary/10 text-primary font-medium'
+                                    : 'hover:bg-accent/60'
+                                }`}
                                 onClick={() => handleNavigate(menuName)}
                               >
                                 <span>{menuName}</span>
@@ -239,12 +275,11 @@ export function AppSidebar() {
                       </CollapsibleContent>
                     </Collapsible>
                   </SidebarMenuItem>
-                );
-              })}
-
-            </SidebarMenu>
-          </SidebarGroupContent>
-        </SidebarGroup>
+                </SidebarMenu>
+              </SidebarGroupContent>
+            </SidebarGroup>
+          );
+        })}
       </SidebarContent>
 
       <SidebarFooter>
@@ -252,17 +287,19 @@ export function AppSidebar() {
           <SidebarMenuItem>
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
-                <SidebarMenuButton size="lg" className="cursor-pointer">
-                  <div className="flex items-center gap-2 px-1 py-1.5">
-                    <Avatar>
+                <SidebarMenuButton size="lg" className="cursor-pointer hover:bg-accent/60 transition-all duration-150">
+                  <div className="flex items-center gap-2.5 px-1 py-1.5">
+                    <Avatar className="h-8 w-8 ring-2 ring-primary/20">
                       <AvatarImage
                         src="https://github.com/shadcn.png"
                         alt="profile"
-                        className="grayscale"
                       />
+                      <AvatarFallback className="bg-primary/10 text-primary text-xs font-semibold">
+                        {userInitials}
+                      </AvatarFallback>
                     </Avatar>
-                    <div className="grid flex-1 text-left text-sm">
-                      <span className="truncate font-medium">
+                    <div className="grid flex-1 text-left text-sm leading-tight">
+                      <span className="truncate font-semibold text-foreground">
                         {user?.email?.split('@')[0] ?? 'User'}
                       </span>
                       <span className="text-muted-foreground truncate text-xs">
@@ -270,7 +307,7 @@ export function AppSidebar() {
                       </span>
                     </div>
                   </div>
-                  <ChevronsUpDown className="ml-auto h-4 w-4" />
+                  <ChevronsUpDown className="ml-auto h-4 w-4 text-muted-foreground" />
                 </SidebarMenuButton>
               </DropdownMenuTrigger>
 
@@ -292,6 +329,7 @@ export function AppSidebar() {
                   <Settings className="mr-2 h-4 w-4" />
                   <span>Settings</span>
                 </DropdownMenuItem>
+                <DropdownMenuSeparator />
                 <DropdownMenuItem
                   className="cursor-pointer text-red-600 focus:text-red-600"
                   onClick={handleLogout}
