@@ -2,53 +2,93 @@ export default [
 
 /* ============================================================================
    ADMIN (role_id: 1) → FULL ACCESS
+   Permission IDs: 1–4, 23–63
 ============================================================================ */
-...Array.from({ length: 63 }, (_, i) => ({
+// Candidates -> Search (1–4)
+...Array.from({ length: 4 }, (_, i) => ({
   id: i + 1,
   role_id: 1,
   permission_id: i + 1
 })),
+// Settings -> General (23–26)
+...Array.from({ length: 4 }, (_, i) => ({
+  id: 5 + i,
+  role_id: 1,
+  permission_id: 23 + i
+})),
+// Settings -> Company List (27–30)
+...Array.from({ length: 4 }, (_, i) => ({
+  id: 9 + i,
+  role_id: 1,
+  permission_id: 27 + i
+})),
+// Settings -> Help (31)
+{ id: 13, role_id: 1, permission_id: 31 },
+// Settings -> Integrations (32–35)
+...Array.from({ length: 4 }, (_, i) => ({
+  id: 14 + i,
+  role_id: 1,
+  permission_id: 32 + i
+})),
+// Users -> User Management (36–39)
+...Array.from({ length: 4 }, (_, i) => ({
+  id: 18 + i,
+  role_id: 1,
+  permission_id: 36 + i
+})),
+// Users -> Role Management (40–43)
+...Array.from({ length: 4 }, (_, i) => ({
+  id: 22 + i,
+  role_id: 1,
+  permission_id: 40 + i
+})),
+// Job Postings -> Seek (44–47)
+...Array.from({ length: 4 }, (_, i) => ({
+  id: 26 + i,
+  role_id: 1,
+  permission_id: 44 + i
+})),
+// Job Postings -> LinkedIn (48–51)
+...Array.from({ length: 4 }, (_, i) => ({
+  id: 30 + i,
+  role_id: 1,
+  permission_id: 48 + i
+})),
+// Job Postings -> Account (52–55)
+...Array.from({ length: 4 }, (_, i) => ({
+  id: 34 + i,
+  role_id: 1,
+  permission_id: 52 + i
+})),
+// Job Management -> Seek Sourcing (56–59)
+...Array.from({ length: 4 }, (_, i) => ({
+  id: 38 + i,
+  role_id: 1,
+  permission_id: 56 + i
+})),
+// Job Management -> LinkedIn Sourcing (60–63)
+...Array.from({ length: 4 }, (_, i) => ({
+  id: 42 + i,
+  role_id: 1,
+  permission_id: 60 + i
+})),
 
 /* ============================================================================
    MANAGER (role_id: 2)
-   read / create / update / export
+   read / create / update (no delete)
 ============================================================================ */
 
-  // Positions -> Add Positions (1–4)
-  { id: 100, role_id: 2, permission_id: 1 }, // read
-  { id: 101, role_id: 2, permission_id: 2 }, // create
-  { id: 102, role_id: 2, permission_id: 3 }, // update
+  // Candidates -> Search (1–3: read/create/update)
+  { id: 100, role_id: 2, permission_id: 1 },
+  { id: 101, role_id: 2, permission_id: 2 },
+  { id: 102, role_id: 2, permission_id: 3 },
 
-  // Positions -> Positions List (5–8)
-  { id: 103, role_id: 2, permission_id: 5 },
-  { id: 104, role_id: 2, permission_id: 6 },
-  { id: 105, role_id: 2, permission_id: 7 },
-
-  // Applicants -> Applicant List (9–12)
-  { id: 106, role_id: 2, permission_id: 9 },
-  { id: 107, role_id: 2, permission_id: 10 },
-  { id: 108, role_id: 2, permission_id: 11 },
-
-  // Applicants -> Crawl Applicants (13–16)
-  { id: 109, role_id: 2, permission_id: 13 },
-  { id: 110, role_id: 2, permission_id: 14 },
-  { id: 111, role_id: 2, permission_id: 15 },
-
-  // Reports -> Analytics (17–20)
-  { id: 112, role_id: 2, permission_id: 17 },
-  { id: 113, role_id: 2, permission_id: 18 },
-  { id: 114, role_id: 2, permission_id: 19 },
-
-  // Reports -> Exports (21–22)
-  { id: 115, role_id: 2, permission_id: 21 }, // read
-  { id: 116, role_id: 2, permission_id: 22 }, // export
-
-  // Settings -> General (23–26)
+  // Settings -> General (23–25)
   { id: 117, role_id: 2, permission_id: 23 },
   { id: 118, role_id: 2, permission_id: 24 },
   { id: 119, role_id: 2, permission_id: 25 },
 
-  // Settings -> Company List (27–30)
+  // Settings -> Company List (27–29)
   { id: 120, role_id: 2, permission_id: 27 },
   { id: 121, role_id: 2, permission_id: 28 },
   { id: 122, role_id: 2, permission_id: 29 },
@@ -56,42 +96,42 @@ export default [
   // Settings -> Help (31)
   { id: 123, role_id: 2, permission_id: 31 },
 
-  // Settings -> Integrations (32–35)
+  // Settings -> Integrations (32–34)
   { id: 124, role_id: 2, permission_id: 32 },
   { id: 125, role_id: 2, permission_id: 33 },
   { id: 126, role_id: 2, permission_id: 34 },
 
-  // Users -> User Management (36–39)
+  // Users -> User Management (36–38)
   { id: 127, role_id: 2, permission_id: 36 },
   { id: 128, role_id: 2, permission_id: 37 },
   { id: 129, role_id: 2, permission_id: 38 },
 
-  // Users -> Role Management (40–43)
+  // Users -> Role Management (40–42)
   { id: 130, role_id: 2, permission_id: 40 },
   { id: 131, role_id: 2, permission_id: 41 },
   { id: 132, role_id: 2, permission_id: 42 },
 
-  // Job Postings -> Seek (44–47) read/create/update
+  // Job Postings -> Seek (44–46)
   { id: 133, role_id: 2, permission_id: 44 },
   { id: 134, role_id: 2, permission_id: 45 },
   { id: 135, role_id: 2, permission_id: 46 },
 
-  // Job Postings -> LinkedIn (48–51) read/create/update
+  // Job Postings -> LinkedIn (48–50)
   { id: 136, role_id: 2, permission_id: 48 },
   { id: 137, role_id: 2, permission_id: 49 },
   { id: 138, role_id: 2, permission_id: 50 },
 
-  // Job Postings -> Account (52–55) read/create/update
+  // Job Postings -> Account (52–54)
   { id: 139, role_id: 2, permission_id: 52 },
   { id: 140, role_id: 2, permission_id: 53 },
   { id: 141, role_id: 2, permission_id: 54 },
 
-  // Job Management -> Seek Sourcing (56–59) read/create/update
+  // Job Management -> Seek Sourcing (56–58)
   { id: 142, role_id: 2, permission_id: 56 },
   { id: 143, role_id: 2, permission_id: 57 },
   { id: 144, role_id: 2, permission_id: 58 },
 
-  // Job Management -> LinkedIn Sourcing (60–63) read/create/update
+  // Job Management -> LinkedIn Sourcing (60–62)
   { id: 145, role_id: 2, permission_id: 60 },
   { id: 146, role_id: 2, permission_id: 61 },
   { id: 147, role_id: 2, permission_id: 62 },
@@ -101,27 +141,19 @@ export default [
    read + create only
 ============================================================================ */
 
-  // Positions
+  // Candidates -> Search (read + create)
   { id: 200, role_id: 3, permission_id: 1 },
   { id: 201, role_id: 3, permission_id: 2 },
-  { id: 202, role_id: 3, permission_id: 5 },
-  { id: 203, role_id: 3, permission_id: 6 },
 
-  // Applicants
-  { id: 204, role_id: 3, permission_id: 9 },
-  { id: 205, role_id: 3, permission_id: 10 },
-  { id: 206, role_id: 3, permission_id: 13 },
-  { id: 207, role_id: 3, permission_id: 14 },
-
-  // Reports
-  { id: 208, role_id: 3, permission_id: 17 },
-  { id: 209, role_id: 3, permission_id: 18 },
-
-  // Settings
+  // Settings -> General (read + create)
   { id: 210, role_id: 3, permission_id: 23 },
   { id: 211, role_id: 3, permission_id: 24 },
+
+  // Settings -> Company List (read + create)
   { id: 212, role_id: 3, permission_id: 27 },
   { id: 213, role_id: 3, permission_id: 28 },
+
+  // Settings -> Help (read)
   { id: 214, role_id: 3, permission_id: 31 },
 
   // Settings -> Integrations (read + create)
@@ -159,12 +191,7 @@ export default [
    READ ONLY
 ============================================================================ */
 
-  { id: 300, role_id: 4, permission_id: 1 },   // Add Positions
-  { id: 301, role_id: 4, permission_id: 5 },   // Positions List
-  { id: 302, role_id: 4, permission_id: 9 },   // Applicant List
-  { id: 303, role_id: 4, permission_id: 13 },  // Crawl Applicants
-  { id: 304, role_id: 4, permission_id: 17 },  // Analytics
-  { id: 305, role_id: 4, permission_id: 21 },  // Exports (read)
+  { id: 300, role_id: 4, permission_id: 1 },   // Candidates -> Search
   { id: 306, role_id: 4, permission_id: 23 },  // General
   { id: 307, role_id: 4, permission_id: 27 },  // Company List
   { id: 308, role_id: 4, permission_id: 31 },  // Help

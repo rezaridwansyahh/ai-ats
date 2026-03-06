@@ -51,7 +51,7 @@ export function LoginCard() {
       {/* Logo — visible only on mobile (desktop shows left panel) */}
       <div className="flex justify-center mb-8 lg:hidden">
         <img
-          src="/Logo.png"
+          src="/Myralix_Logo_Dark.png"
           className="h-10 w-auto object-contain"
           alt="Myralix"
         />

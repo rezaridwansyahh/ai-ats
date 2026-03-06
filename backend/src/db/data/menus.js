@@ -1,12 +1,7 @@
 export default [
-  { id: 1, name: 'Add Positions'},
-  { id: 2, name: 'Positions List'},
-  { id: 3, name: 'Applicant List'},
-  { id: 4, name: 'Crawl Applicants'},
+  { id: 1, name: 'Search'},
   { id: 5, name: 'Company List'},
-  { id: 6, name: 'Analytics' },
   { id: 7, name: 'General'},
-  { id: 8, name: 'Exports'},
   { id: 9, name: 'Help'},
   { id: 10, name: 'User Management'},
   { id: 11, name: 'Integrations'},

@@ -35,7 +35,6 @@ import {
   Home,
   Settings,
   Users,
-  BarChart,
   Package,
   ChevronDown,
   User,
@@ -46,33 +45,26 @@ import {
 } from 'lucide-react';
 
 const iconMap = {
-  'Dashboard':  Home,
-  'Positions':  Briefcase,
-  'Applicants': Users,
-  'Reports':    BarChart,
-  'Settings':   Settings,
-  'Users':      Users,
-  'Job Postings': Package,
-  'Job Management': Search,
+  'Dashboard':      Home,
+  'Candidates':     Search,
+  'Settings':       Settings,
+  'Users':          Users,
+  'Job Postings':   Package,
+  'Job Management': Briefcase,
 };
 
 const routeMap = {
-  'dashboard':        '/dashboard',
-  'Add Positions':    '/positions/add',
-  'Positions List':   '/positions',
-  'Applicant List':   '/applicants',
-  'Crawl Applicants': '/applicants/crawl',
-  'Analytics':        '/reports/analytics',
-  'Exports':          '/reports/exports',
-  'General':          '/settings/general',
-  'Company List':     '/settings/companies',
-  'Help':             '/settings/help',
-  'User Management':  '/users/management',
-  'Role Management':  '/users/role-management',
-  'Integrations':     '/settings/integrations',
-  'Seek':             '/job-postings/seek',
-  'LinkedIn':         '/job-postings/linkedin',
-  'Account':            '/job-postings/account',
+  'dashboard':         '/dashboard',
+  'Search':            '/candidates/search',
+  'General':           '/settings/general',
+  'Company List':      '/settings/companies',
+  'Help':              '/settings/help',
+  'User Management':   '/users/management',
+  'Role Management':   '/users/role-management',
+  'Integrations':      '/settings/integrations',
+  'Seek':              '/job-postings/seek',
+  'LinkedIn':          '/job-postings/linkedin',
+  'Account':           '/job-postings/account',
   'Seek Sourcing':     '/job-management/seek-sourcing',
   'LinkedIn Sourcing': '/job-management/linkedin-sourcing',
 };
@@ -192,7 +184,7 @@ export function AppSidebar() {
     <Sidebar>
       <SidebarHeader>
         <div className="px-4 py-4 border-b border-sidebar-border">
-          <img src="/Logo.png" className="h-9 w-auto object-contain" alt="Myralix" />
+          <img src="/Myralix_Logo_Dark.png" className="h-9 w-auto object-contain" alt="Myralix" />
         </div>
       </SidebarHeader>
 
