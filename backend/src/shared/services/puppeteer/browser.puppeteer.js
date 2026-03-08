@@ -11,7 +11,7 @@ class BrowserPuppeteer {
   }
 
   async init(session) {
-    this.browser = await puppeteer.launch();
+    this.browser = await puppeteer.launch({ headless: false });
     this.page = await this.browser.newPage();
 
     await this.page.setViewport({

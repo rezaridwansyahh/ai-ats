@@ -2,6 +2,7 @@ import cookieService from "../../cookie/cookie.service.js"
 import navigationRpa from "./rpa/navigation.rpa.js"
 import jobPostRpa from "./rpa/job-post.rpa.js"
 import projectCreateRpa from "./rpa/project-create.rpa.js"
+import recruiteSearchRpa from "./rpa/recruite-search.rpa.js"
 
 class LinkedInService {
   async jobPost(data) {
@@ -42,6 +43,24 @@ class LinkedInService {
       throw err
     } finally {
         // later add browser.close
+    }
+  }
+  async recruiteSearch(data) {
+    const { account_id, dataForm } = data
+
+    const page = await cookieService.includeCookiesIfExist(account_id)
+
+    if (!page) {
+      throw new Error("No cookies found")
+    }
+
+    try {
+      await recruiteSearchRpa.fillFormRecruiteSearch(page, dataForm)
+    } catch (err) {
+      console.log(err)
+      throw err
+    } finally {
+      // later add browser.close
     }
   }
 }

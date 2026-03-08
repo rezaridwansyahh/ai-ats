@@ -38,6 +38,20 @@ class LinkedInController {
       });
     }
   }
+  async recruiteSearchRpa(req, res) {
+    const { account_id, dataForm } = req.body;
+
+    try {
+      await linkedinService.recruiteSearch({ account_id, dataForm });
+      return res.status(200).json({ message: "success" });
+    } catch(err) {
+      return res.status(500).json({
+        status: 'error',
+        retry: true,
+        message: err.message
+      });
+    }
+  }
 }
 
 export default new LinkedInController();
