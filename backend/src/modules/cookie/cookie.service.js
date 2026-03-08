@@ -2,23 +2,17 @@ import cookieModel from './cookie.model.js';
 import browserPuppeteer from '../../shared/services/puppeteer/browser.puppeteer.js';
 
 class CookieService {
-  async checkCookies(user_id, service) { // still hardcode to link on linkedin only
-    const cookies = await cookieModel.getByUserIdAndService(user_id, service);
+  async checkCookies(account_id) { // still hardcode to link on linkedin only
+    const cookies = await cookieModel.getByAccountId(account_id);
 
     if (!cookies || cookies.length === 0) {
       return false;
     }
 
-    const puppeteerCookies = cookies.map((c) => ({
-      name: c.name,
-      value: c.value,
-      domain: c.domain,
-      path: c.path || "/",
-      secure: c.secure || false,
-      httpOnly: c.httpOnly || false,
-      ...(c.sameSite && { sameSite: c.sameSite }),
-      ...(c.expirationDate && { expires: c.expirationDate })
-    }))
+    console.log("run cookie");
+
+    const puppeteerCookies = cookies.cookies;
+    console.log(cookies.cookies);
 
     await browserPuppeteer.init(puppeteerCookies);
 

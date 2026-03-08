@@ -10,8 +10,8 @@ class BrowserPuppeteer {
     this.browser = null
   }
 
-  async init(session = null) {
-    this.browser = await puppeteer.launch({ headless: false });
+  async init(session) {
+    this.browser = await puppeteer.launch();
     this.page = await this.browser.newPage();
 
     await this.page.setViewport({
@@ -21,8 +21,23 @@ class BrowserPuppeteer {
     });
 
     if (session?.cookies?.length > 0) {
-      await this.page.setUserAgent(session.userAgent);
-      await this.browser.setCookie(...session.cookies);
+      if (session.userAgent) {
+        await this.page.setUserAgent(session.userAgent);
+      }
+
+      // Sanitize cookies to only Puppeteer-supported fields
+      const cleanCookies = session.cookies.map(c => ({
+        name: c.name,
+        value: c.value,
+        domain: c.domain,
+        path: c.path || '/',
+        httpOnly: !!c.httpOnly,
+        secure: !!c.secure,
+        ...(c.sameSite && c.sameSite !== 'unspecified' ? { sameSite: c.sameSite } : {}),
+        ...(c.expires || c.expirationDate ? { expires: c.expires || c.expirationDate } : {})
+      }));
+
+      await this.browser.setCookie(...cleanCookies);
     }
 
     return this.page;

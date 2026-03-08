@@ -13,6 +13,8 @@ DROP TABLE IF EXISTS master_menus CASCADE;
 DROP TABLE IF EXISTS mapping_modules_menus CASCADE;
 DROP TABLE IF EXISTS global_permissions CASCADE;
 DROP TABLE IF EXISTS mapping_roles_permissions CASCADE;
+DROP TABLE IF EXISTS master_sourcing CASCADE;
+DROP TABLE IF EXISTS master_sourcing_recruite CASCADE;
 
 -- Drop enums after all tables are gone
 DROP TYPE IF EXISTS status_type CASCADE;
@@ -157,4 +159,35 @@ CREATE TABLE mapping_job_posting_linkedin (
   job_posting_id INTEGER NOT NULL UNIQUE REFERENCES core_job_posting(id) ON DELETE CASCADE,
   created_at TIMESTAMP NOT NULL DEFAULT NOW(),
   updated_at TIMESTAMP NOT NULL DEFAULT NOW()
+);
+
+CREATE TABLE master_sourcing (
+  id INTEGER PRIMARY KEY,
+  job_title VARCHAR(255),
+  location VARCHAR(255),
+  skills_and_assessments VARCHAR(255),
+  companies VARCHAR(255),
+  schools VARCHAR(255),
+  year_graduate INTEGER,
+  industries VARCHAR(255),
+  keywords VARCHAR(255),
+
+  CONSTRAINT at_least_one_field_filled CHECK (
+    job_title IS NOT NULL OR
+    location IS NOT NULL OR
+    skills_and_assessments IS NOT NULL OR
+    companies IS NOT NULL OR
+    schools IS NOT NULL OR
+    year_graduate IS NOT NULL OR
+    industries IS NOT NULL OR
+    keywords IS NOT NULL
+  )
+);
+
+CREATE TABLE master_sourcing_recruite (
+  id INTEGER PRIMARY KEY,
+  sourcing_id INTEGER REFERENCES master_sourcing(id) NOT NULL,
+  job_title VARCHAR(255) NOT NULL,
+  information VARCHAR(255),
+  date_created TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );

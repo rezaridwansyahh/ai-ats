@@ -17,6 +17,7 @@ import menu from "./src/modules/menu/menu.route.js"
 import jobAccount from "./src/modules/job-account/job-account.route.js"
 import jobPosting from "./src/modules/job-post/job-post.router.js"
 import candidate from "./src/modules/candidate/candidate.route.js"
+import sourcing from "./src/modules/sourcing/sourcing.route.js"
 
 app.use(express.json());
 app.use(cors());
@@ -33,6 +34,7 @@ app.use("/api/menu", menu);
 app.use("/api/job-account", jobAccount);
 app.use("/api/job-posting", jobPosting);
 app.use("/api/candidate", candidate);
+app.use("/api/sourcing", sourcing);
 
 app.listen(3000, () => {
   console.log(`Server is listening on port: 3000`);

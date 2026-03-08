@@ -2,10 +2,10 @@ import cookieService from "./cookie.service.js";
 
 class CookieController {
   async checkCookie(req, res) {
-    const { user_id, service } = req.body;
+    const { account_id } = req.body;
 
     try {
-      const isLoggedIn = await cookieService.checkCookies(user_id, service);
+      const isLoggedIn = await cookieService.checkCookies(account_id);
 
       if (isLoggedIn) {
         return res.json({
@@ -28,10 +28,12 @@ class CookieController {
   }
 
   async create(req, res) {
-    const { user_id, cookies, service } = req.body;
+    const { account_id, cookies, service } = req.body;
 
     try {
-      const cookie = cookieService.addCookies(accunt_id, cookies);
+      // cookies may arrive as a JSON string from the extension — parse it
+      const parsed = typeof cookies === 'string' ? JSON.parse(cookies) : cookies;
+      const cookie = await cookieService.addCookies(account_id, parsed);
 
       return res.json({ message: "Cookie added", cookie});
     } catch(err) {
