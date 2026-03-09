@@ -14,7 +14,7 @@ class CookieService {
     const puppeteerCookies = cookies.cookies;
     console.log(cookies.cookies);
 
-    await browserPuppeteer.init(puppeteerCookies);
+    await browserPuppeteer.init(puppeteerCookies, account_id);
 
     try {
       const page = browserPuppeteer.getPage();
@@ -35,7 +35,7 @@ class CookieService {
     const row = await cookieModel.getByAccountId(accountId);
 
     // row.cookies is now { cookies: [...], userAgent: "..." }
-    await browserPuppeteer.init(row?.cookies || null);
+    await browserPuppeteer.init(row?.cookies || null, accountId);
 
     return browserPuppeteer.getPage();
   }
