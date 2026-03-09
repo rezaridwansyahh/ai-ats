@@ -111,13 +111,13 @@ export default function CandidateSearchPage() {
       const payload = {
         account_id: Number(accountId),
         dataForm: {
-          ...(cJobTitle.length > 0 && { jobTitle: cJobTitle }),
-          ...(cLocation.length > 0 && { location: cLocation }),
-          ...(cSkill.length > 0 && { skill: cSkill }),
-          ...(cCompany.length > 0 && { company: cCompany }),
-          ...(cSchool.length > 0 && { school: cSchool }),
-          ...(yearsGrad.trim() && { years_grad: yearsGrad.trim() }),
-          ...(cIndustry.length > 0 && { industry: cIndustry }),
+          ...(cJobTitle.length > 0 && { job_titles: cJobTitle }),
+          ...(cLocation.length > 0 && { locations: cLocation }),
+          ...(cSkill.length > 0 && { skills: cSkill }),
+          ...(cCompany.length > 0 && { companies: cCompany }),
+          ...(cSchool.length > 0 && { schools: cSchool }),
+          ...(yearsGrad.trim() && { year_grads: yearsGrad.trim() }),
+          ...(cIndustry.length > 0 && { industries: cIndustry }),
           ...(keywords.trim() && { keywords: keywords.trim() }),
         },
       };
