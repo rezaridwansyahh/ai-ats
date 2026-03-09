@@ -55,7 +55,9 @@ class LinkedInService {
     }
 
     try {
-      await recruiteSearchRpa.fillFormRecruiteSearch(page, dataForm)
+      const form = await recruiteSearchRpa.fillFormRecruiteSearch(page, dataForm);
+
+      return form;
     } catch (err) {
       console.log(err)
       throw err
