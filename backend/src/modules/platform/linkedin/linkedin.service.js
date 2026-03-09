@@ -1,4 +1,5 @@
 import cookieService from "../../cookie/cookie.service.js"
+import browserPuppeteer from "../../../shared/services/puppeteer/browser.puppeteer.js"
 import navigationRpa from "./rpa/navigation.rpa.js"
 import jobPostRpa from "./rpa/job-post.rpa.js"
 import projectCreateRpa from "./rpa/project-create.rpa.js"
@@ -21,7 +22,7 @@ class LinkedInService {
       console.log(err)
       throw err
     } finally {
-      // later add browser.close
+      await browserPuppeteer.close();
     }
   }
 
@@ -42,7 +43,7 @@ class LinkedInService {
       console.log(err)
       throw err
     } finally {
-        // later add browser.close
+        await browserPuppeteer.close();
     }
   }
   async recruiteSearch(data) {
@@ -62,7 +63,7 @@ class LinkedInService {
       console.log(err)
       throw err
     } finally {
-      // later add browser.close
+      await browserPuppeteer.close();
     }
   }
 }
