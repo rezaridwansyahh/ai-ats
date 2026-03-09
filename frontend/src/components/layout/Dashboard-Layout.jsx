@@ -12,6 +12,7 @@ const BREADCRUMB_MAP = {
   '/job-postings/seek': ['Job Postings', 'Seek'],
   '/job-postings/account': ['Job Postings', 'Account'],
   '/job-management/seek-sourcing': ['Job Management', 'Seek Sourcing'],
+  '/candidates/search': ['Candidates', 'Search'],
 }
 
 export default function DashboardLayout() {

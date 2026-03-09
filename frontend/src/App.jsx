@@ -10,6 +10,7 @@ import RoleManagementPage from "./pages/RoleManagement"
 import AccountPage from "./pages/Account"
 import SeekPage from "./pages/Seek"
 import SeekSourcingPage from "./pages/SeekSourcing"
+import CandidateSearchPage from "./pages/CandidateSearch"
 
 function App() {
   return (
@@ -33,6 +34,9 @@ function App() {
       </Route>
       <Route path="/job-management" element={<DashboardLayout />}>
         <Route path="seek-sourcing" element={<SeekSourcingPage />} />
+      </Route>
+      <Route path="/candidates" element={<DashboardLayout />}>
+        <Route path="search" element={<CandidateSearchPage />} />
       </Route>
     </Routes>
   )
