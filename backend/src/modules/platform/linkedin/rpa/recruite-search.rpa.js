@@ -21,7 +21,13 @@ class RecruiteSearchRpa {
     }
 
     const jobTitles = await page.evaluate(() => {
-      
+      const div = document.querySelector('div[class*="facet-titles"]');
+
+      const ul = div.querySelectorAll('ul[class="pills-list-section__list"] li');
+
+      const li = Array.from(ul, ul => ul.querySelector('span[class="facet-pill__label"]').innerText);
+
+      return li;
     })
   }
 
@@ -41,7 +47,65 @@ class RecruiteSearchRpa {
     } 
 
     const locations = await page.evaluate(() => {
-      const ul = document.querySelectorAll('ul[class="pills-list-section__list"] li');
+      const div = document.querySelector('div[class*="facet-locations"]');
+
+      const ul = div.querySelectorAll('ul[class="pills-list-section__list"] li');
+
+      const li = Array.from(ul, ul => ul.querySelector('span[class="facet-pill__label"]').innerText);
+
+      return li;
+    });
+
+    return locations;
+  }
+
+  async fillSkillsAndAssesments(page, skill = ["JavaScript", "HTML", "CSS"]) {
+    await page.click('text/Skill keywords anywhere on profile');
+    
+    for(let i = 0; i < skill.length; i++) {
+      await page.waitForSelector('input[placeholder="enter a skill…"]');
+      await page.click('input[placeholder="enter a skill…"]');
+      await page.type('input[placeholder="enter a skill…"]', skill[i]);
+
+      await page.waitForSelector('ul.typeahead-results:not(.typeahead-results--hidden)', { visible: true });
+      await page.waitForSelector('ul.typeahead-results:not(.typeahead-results--hidden) li:first-child', { visible: true });
+      
+      await delay(500);
+      await page.click('ul.typeahead-results:not(.typeahead-results--hidden) li:first-child');
+    } 
+
+    const locations = await page.evaluate(() => {
+      const div = document.querySelector('div[class*="facet-locations"]');
+
+      const ul = div.querySelectorAll('ul[class="pills-list-section__list"] li');
+
+      const li = Array.from(ul, ul => ul.querySelector('span[class="facet-pill__label"]').innerText);
+
+      return li;
+    });
+
+    return locations;
+  }
+
+  async fillCompanies(page, company = ["Bank Central Asia", "Bank Rakyat Indonesia", "Bank Mandiri"]) {
+    await page.click('button span[aria-label="Add Companies or boolean"]');
+    
+    for(let i = 0; i < location.length; i++) {
+      await page.waitForSelector('input[placeholder="enter a company or boolean…"]');
+      await page.click('input[placeholder="enter a company or boolean…"]');
+      await page.type('input[placeholder="enter a company or boolean…"]', location[i]);
+
+      await page.waitForSelector('ul.typeahead-results:not(.typeahead-results--hidden)', { visible: true });
+      await page.waitForSelector('ul.typeahead-results:not(.typeahead-results--hidden) li:first-child', { visible: true });
+      
+      await delay(500);
+      await page.click('ul.typeahead-results:not(.typeahead-results--hidden) li:first-child');
+    } 
+
+    const locations = await page.evaluate(() => {
+      const div = document.querySelector('div[class*="facet-locations"]');
+
+      const ul = div.querySelectorAll('ul[class="pills-list-section__list"] li');
 
       const li = Array.from(ul, ul => ul.querySelector('span[class="facet-pill__label"]').innerText);
 
@@ -52,13 +116,13 @@ class RecruiteSearchRpa {
   }
 
   async fillFormRecruiteSearch(page, data = {}) {
-    const { location } = data;
+    const { skill } = data;
     const form = {};
 
     await this.redirectTalentSearch(page);
 
-    if (location) {
-      const locations = await this.fillLocation(page, location);
+    if (skill) {
+      const locations = await this.fillSkillsAndAssesments(page, skill);
       form.location = locations;
     }
 
