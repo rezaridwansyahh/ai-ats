@@ -58,7 +58,8 @@ class BrowserPuppeteer {
   async _isSessionExpired() {
     try {
       await this.page.goto("https://www.linkedin.com/talent/home", { waitUntil: "networkidle2", timeout: 15000 });
-      return !this.page.url().includes("/talent/home");
+      const url = this.page.url();
+      return !url.includes("/talent/home") && !url.includes("/talent/contract-chooser");
     } catch {
       return true;
     }
