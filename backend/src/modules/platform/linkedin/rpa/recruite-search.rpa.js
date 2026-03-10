@@ -11,7 +11,7 @@ class RecruiteSearchRpa {
     for(let i = 0; i < jobTitle.length; i++) {
       await page.waitForSelector('input[placeholder="enter a job title or boolean…"]');
       await page.click('input[placeholder="enter a job title or boolean…"]');
-      await page.type('input[placeholder="enter a job title or boolean…"]', jobTitle[i]);
+      await page.type('input[placeholder="enter a job title or boolean…"]', jobTitle[i], { delay: 80 });
 
       await page.waitForSelector('ul.typeahead-results:not(.typeahead-results--hidden)', { visible: true });
       await page.waitForSelector('ul.typeahead-results:not(.typeahead-results--hidden) li:first-child', { visible: true });
@@ -39,7 +39,7 @@ class RecruiteSearchRpa {
     for(let i = 0; i < location.length; i++) {
       await page.waitForSelector('input[placeholder="enter a location…"]');
       await page.click('input[placeholder="enter a location…"]');
-      await page.type('input[placeholder="enter a location…"]', location[i]);
+      await page.type('input[placeholder="enter a location…"]', location[i], { delay: 80 });
 
       await page.waitForSelector('ul.typeahead-results:not(.typeahead-results--hidden)', { visible: true });
       await page.waitForSelector('ul.typeahead-results:not(.typeahead-results--hidden) li:first-child', { visible: true });
@@ -67,7 +67,7 @@ class RecruiteSearchRpa {
     for(let i = 0; i < skill.length; i++) {
       await page.waitForSelector('input[placeholder="enter a skill…"]');
       await page.click('input[placeholder="enter a skill…"]');
-      await page.type('input[placeholder="enter a skill…"]', skill[i]);
+      await page.type('input[placeholder="enter a skill…"]', skill[i], { delay: 80 });
 
       await page.waitForSelector('ul.typeahead-results:not(.typeahead-results--hidden)', { visible: true });
       await page.waitForSelector('ul.typeahead-results:not(.typeahead-results--hidden) li:first-child', { visible: true });
@@ -95,7 +95,7 @@ class RecruiteSearchRpa {
     for(let i = 0; i < company.length; i++) {
       await page.waitForSelector('input[placeholder="enter a company or boolean…"]');
       await page.click('input[placeholder="enter a company or boolean…"]');
-      await page.type('input[placeholder="enter a company or boolean…"]', company[i]);
+      await page.type('input[placeholder="enter a company or boolean…"]', company[i], { delay: 80 });
 
       await page.waitForSelector('ul.typeahead-results:not(.typeahead-results--hidden)', { visible: true });
       await page.waitForSelector('ul.typeahead-results:not(.typeahead-results--hidden) li:first-child', { visible: true });
@@ -123,7 +123,7 @@ class RecruiteSearchRpa {
     for(let i = 0; i < school.length; i++) {
       await page.waitForSelector('input[placeholder="enter a school…"]');
       await page.click('input[placeholder="enter a school…"]');
-      await page.type('input[placeholder="enter a school…"]', school[i]);
+      await page.type('input[placeholder="enter a school…"]', school[i], { delay: 80 });
 
       await page.waitForSelector('ul.typeahead-results:not(.typeahead-results--hidden)', { visible: true });
       await page.waitForSelector('ul.typeahead-results:not(.typeahead-results--hidden) li:first-child', { visible: true });
@@ -146,30 +146,32 @@ class RecruiteSearchRpa {
   }
 
   async fillYearsGrad(page, yearsGrad = "2021 - 2025") {
-    const regexGrad = yearsGrad.match(/([1-9])\w+/);
+    const regexGrad = yearsGrad.match(/\d+/g);
 
     await page.click('text/Add graduation year range');
     
-    await page.waitForSelector('form[method="post"]');
+    await page.waitForSelector('form[method="post"] input', { visible: true });
 
-    await page.click('form[method="post"] input:first-child', { clickCount: 3 });
+    await page.click('form[method="post"] input[data-test-from-field]', { clickCount: 3 });
     await page.keyboard.press('Backspace');
-    await page.type('form[method="post"] input:first-child', regexGrad[0]);
+    await page.type('form[method="post"] input[data-test-from-field]', regexGrad[0], { delay: 80 });
 
-    await page.click('form[method="post"] input:last-child', { clickCount: 3 });
+    await page.click('form[method="post"] input[data-test-to-field]', { clickCount: 3 });
     await page.keyboard.press('Backspace');
-    await page.type('form[method="post"] input:last-child', regexGrad[1]);
+    await page.type('form[method="post"] input[data-test-to-field]', regexGrad[1], { delay: 80 });
+
+    await page.click('button[data-test-submit]');
 
     return yearsGrad;
   }
 
-  async fillIndustries(page, industry = ["Binus", "Atma Jaya"]) {
+  async fillIndustries(page, industry = ["Banking", "Tech"]) {
     await page.click('text/Candidate industries');
     
     for(let i = 0; i < industry.length; i++) {
       await page.waitForSelector('input[placeholder="enter a school…"]');
       await page.click('input[placeholder="enter a school…"]');
-      await page.type('input[placeholder="enter a school…"]', industry[i]);
+      await page.type('input[placeholder="enter a school…"]', industry[i], { delay: 80 });
 
       await page.waitForSelector('ul.typeahead-results:not(.typeahead-results--hidden)', { visible: true });
       await page.waitForSelector('ul.typeahead-results:not(.typeahead-results--hidden) li:first-child', { visible: true });
@@ -196,7 +198,7 @@ class RecruiteSearchRpa {
 
     await page.waitForSelector('textarea[placeholder="enter keywords…"]');
 
-    await page.type('textarea[placeholder="enter keywords…"]', keyword);
+    await page.type('textarea[placeholder="enter keywords…"]', keyword, { delay: 80 });
 
     await page.keyboard.press('Enter');
 
@@ -219,25 +221,22 @@ class RecruiteSearchRpa {
 
     await this.redirectTalentSearch(page);
 
-    if (skills || job_titles || locations || companies) {
-      const jobTitle = await this.fillJobTitle(page, job_titles);
-      const location = await this.fillLocation(page, locations);
-      const skill = await this.fillSkillsAndAssesments(page, skills);
-      const company = await this.fillCompanies(page, companies);
-      const school = await this.fillSchools(page, schools);
-      const yearsGrad = await this.fillYearsGrad(page, year_grads);
-      const industry = await this.fillIndustries(page, industries);
-      const keyword = await this.fillKeyword(page, keywords);
-      form.locations = location;
-      form.jobTitles = jobTitle;
-      form.skills = skill;
-      form.companies = company;
-      form.schools = school;
-      form.yearGrad = yearsGrad;
-      form.industries = industry;
-      form.keywords = keyword;
-    }
+    if(job_titles) form.jobTitles = await this.fillJobTitle(page, job_titles);
 
+    if(locations) form.locations = await this.fillLocation(page, locations);
+
+    if(skills) form.skills = await this.fillSkillsAndAssesments(page, skills);
+
+    if(companies) form.companies = await this.fillCompanies(page, companies);
+
+    if(schools) form.schools = await this.fillSchools(page, schools);
+
+    if(year_grads) form.yearGrad = await this.fillYearsGrad(page, year_grads);
+
+    if(industries) form.industries = await this.fillIndustries(page, industries);
+
+    if(keywords) form.keywords = await this.fillKeyword(page, keywords);
+      
     return form;
   }
 }

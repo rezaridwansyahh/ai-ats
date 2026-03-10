@@ -63,7 +63,7 @@ class LinkedInService {
       console.log(err)
       throw err
     } finally {
-      await browserPuppeteer.close();
+      // await browserPuppeteer.close(); //wait
     }
   }
 }
