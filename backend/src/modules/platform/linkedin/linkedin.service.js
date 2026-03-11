@@ -4,6 +4,7 @@ import navigationRpa from "./rpa/navigation.rpa.js"
 import jobPostRpa from "./rpa/job-post.rpa.js"
 import projectCreateRpa from "./rpa/project-create.rpa.js"
 import recruiteSearchRpa from "./rpa/recruite-search.rpa.js"
+import loginRpa from "./rpa/login.rpa.js"
 
 class LinkedInService {
   async jobPost(data) {
@@ -56,6 +57,7 @@ class LinkedInService {
     }
 
     try {
+      await loginRpa.authenticatedPage(page, account_id);
       const form = await recruiteSearchRpa.fillFormRecruiteSearch(page, dataForm);
 
       return form;
@@ -63,7 +65,6 @@ class LinkedInService {
       console.log(err)
       throw err
     } finally {
-      // await browserPuppeteer.close(); //wait
     }
   }
 }

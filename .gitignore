@@ -4,6 +4,8 @@
 /backend/.env.dev
 /frontend/.env.dev
 /.claude
+browser-profiles/
+
 
 /docs
 
