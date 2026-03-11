@@ -1,10 +1,29 @@
 import { useState } from "react"
+import { create } from "@/api/landing.api.js"
 
 export default function ContactSection() {
   const [form, setForm] = useState({ name: "", email: "", size: "1–100 employees", message: "" })
+  const [loading, setLoading] = useState(false)
+  const [status, setStatus] = useState(null)
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault()
+    setLoading(true)
+    setStatus(null)
+    try {
+      await create({
+        name: form.name,
+        email: form.email,
+        company_size: form.size,
+        message: form.message,
+      })
+      setStatus("success")
+      setForm({ name: "", email: "", size: "1–100 employees", message: "" })
+    } catch {
+      setStatus("error")
+    } finally {
+      setLoading(false)
+    }
   }
 
   const update = (field) => (e) => setForm((f) => ({ ...f, [field]: e.target.value }))
@@ -36,7 +55,11 @@ export default function ContactSection() {
               <label>Message</label>
               <textarea placeholder="Tell us about your hiring challenges..." value={form.message} onChange={update("message")} />
             </div>
-            <button type="submit" className="fsb">Schedule Your Free Demo →</button>
+            {status === "success" && <p className="fsm fss">Thank you! We'll be in touch soon.</p>}
+            {status === "error" && <p className="fsm fse">Something went wrong. Please try again.</p>}
+            <button type="submit" className="fsb" disabled={loading}>
+              {loading ? "Submitting…" : "Schedule Your Free Demo →"}
+            </button>
           </form>
           <div className="coi">
             <div className="coc"><h4>📧 Email</h4><p><a href="mailto:Info@myralix.com">Info@myralix.com</a></p></div>

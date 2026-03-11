@@ -988,6 +988,29 @@
   box-shadow: 0 8px 20px rgba(10, 110, 92, .2);
 }
 
+.landing .fsb:disabled {
+  opacity: .6;
+  cursor: not-allowed;
+}
+
+.landing .fsm {
+  font-size: .88rem;
+  font-weight: 600;
+  padding: .5rem .75rem;
+  border-radius: 6px;
+  margin-bottom: .25rem;
+}
+
+.landing .fss {
+  background: rgba(20, 184, 166, .12);
+  color: #0A6E5C;
+}
+
+.landing .fse {
+  background: rgba(225, 29, 72, .1);
+  color: #E11D48;
+}
+
 .landing .coi {
   display: flex;
   flex-direction: column;

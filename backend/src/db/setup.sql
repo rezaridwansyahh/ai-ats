@@ -1,4 +1,5 @@
 -- Drop tables in reverse dependency order (most dependent first)
+DROP TABLE IF EXISTS master_landing;
 DROP TABLE IF EXISTS mapping_job_posting_linkedin CASCADE;
 DROP TABLE IF EXISTS mapping_job_posting_seek CASCADE;
 DROP TABLE IF EXISTS core_job_posting CASCADE;
@@ -15,6 +16,7 @@ DROP TABLE IF EXISTS global_permissions CASCADE;
 DROP TABLE IF EXISTS mapping_roles_permissions CASCADE;
 DROP TABLE IF EXISTS master_sourcing CASCADE;
 DROP TABLE IF EXISTS master_sourcing_recruite CASCADE;
+DROP TABLE IF EXISTS master_landing CASCADE;
 
 -- Drop enums after all tables are gone
 DROP TYPE IF EXISTS status_type CASCADE;
@@ -190,4 +192,13 @@ CREATE TABLE master_sourcing_recruite (
   job_title VARCHAR(255) NOT NULL,
   information VARCHAR(255),
   date_created TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE TABLE master_landing (
+  id SERIAL PRIMARY KEY,
+  name VARCHAR(255) NOT NULL,
+  email VARCHAR(255) NOT NULL,
+  company_size VARCHAR(100),
+  message TEXT,
+  created_at TIMESTAMP DEFAULT NOW()
 );
