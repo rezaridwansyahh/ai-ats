@@ -180,33 +180,42 @@ export function AppSidebar() {
     ? user.email.split('@')[0].slice(0, 2).toUpperCase()
     : 'U';
 
+  const isDashboardActive = location.pathname === '/dashboard';
+
   return (
     <Sidebar>
-      <SidebarHeader>
-        <div className="px-4 py-4 border-b border-sidebar-border">
-          <img src="/Myralix_Logo_Dark.png" className="h-9 w-auto object-contain" alt="Myralix" />
+      {/* ── Header ── */}
+      <SidebarHeader className="p-0">
+        <div className="px-4 py-4 border-b border-sidebar-border/70">
+          <img src="/Myralix_Logo_Dark.png" className="h-8 w-auto object-contain" alt="Myralix" />
         </div>
       </SidebarHeader>
 
-      <SidebarContent>
+      {/* ── Content ── */}
+      <SidebarContent className="px-2 py-3 gap-0">
+
         {/* Dashboard — Main group */}
-        <SidebarGroup>
-          <SidebarGroupLabel className="text-[10px] uppercase tracking-widest text-muted-foreground/60 font-semibold px-2 mb-1">Main</SidebarGroupLabel>
+        <SidebarGroup className="p-0 mb-1">
+          <SidebarGroupLabel className="text-[9px] uppercase tracking-[0.12em] text-muted-foreground/50 font-bold px-2 mb-1 h-5">
+            Main
+          </SidebarGroupLabel>
           <SidebarGroupContent>
             <SidebarMenu>
               <SidebarMenuItem>
                 <SidebarMenuButton
-                  className={`cursor-pointer transition-all duration-150 ${
-                    location.pathname === '/dashboard'
-                      ? 'bg-primary/10 text-primary font-medium border-l-2 border-primary rounded-l-none'
-                      : 'hover:bg-accent/60'
+                  className={`cursor-pointer transition-all duration-200 rounded-lg h-8 ${
+                    isDashboardActive
+                      ? 'bg-primary text-primary-foreground font-semibold shadow-sm'
+                      : 'text-muted-foreground hover:bg-accent/80 hover:text-foreground'
                   }`}
                   onClick={() => navigate('/dashboard')}
                 >
-                  <div className="h-6 w-6 rounded-md bg-primary/10 flex items-center justify-center flex-shrink-0">
-                    <Home className="h-3.5 w-3.5 text-primary" />
+                  <div className={`h-5 w-5 rounded-md flex items-center justify-center flex-shrink-0 transition-all duration-200 ${
+                    isDashboardActive ? 'bg-white/20' : 'bg-primary/10'
+                  }`}>
+                    <Home className={`h-3 w-3 ${isDashboardActive ? 'text-white' : 'text-primary'}`} />
                   </div>
-                  <span>Dashboard</span>
+                  <span className="text-sm">Dashboard</span>
                 </SidebarMenuButton>
               </SidebarMenuItem>
             </SidebarMenu>
@@ -222,8 +231,10 @@ export function AppSidebar() {
           if (menus.length === 0) return null;
 
           return (
-            <SidebarGroup key={moduleName}>
-              <SidebarGroupLabel className="text-[10px] uppercase tracking-widest text-muted-foreground/60 font-semibold px-2 mb-1">{moduleName}</SidebarGroupLabel>
+            <SidebarGroup key={moduleName} className="p-0 mb-1">
+              <SidebarGroupLabel className="text-[9px] uppercase tracking-[0.12em] text-muted-foreground/50 font-bold px-2 mb-1 h-5">
+                {moduleName}
+              </SidebarGroupLabel>
               <SidebarGroupContent>
                 <SidebarMenu>
                   <SidebarMenuItem>
@@ -233,36 +244,45 @@ export function AppSidebar() {
                       className="group/collapsible"
                     >
                       <CollapsibleTrigger asChild>
-                        <SidebarMenuButton className={`cursor-pointer transition-all duration-150 ${
-                          hasActiveChild ? 'text-primary font-medium' : 'hover:bg-accent/60'
+                        <SidebarMenuButton className={`cursor-pointer transition-all duration-200 rounded-lg h-8 ${
+                          hasActiveChild
+                            ? 'text-primary font-semibold bg-primary/8'
+                            : 'text-muted-foreground hover:bg-accent/80 hover:text-foreground'
                         }`}>
-                          <div className="h-6 w-6 rounded-md bg-primary/10 flex items-center justify-center flex-shrink-0">
-                            <ModuleIcon className="h-3.5 w-3.5 text-primary" />
+                          <div className="h-5 w-5 rounded-md bg-primary/10 flex items-center justify-center flex-shrink-0">
+                            <ModuleIcon className="h-3 w-3 text-primary" />
                           </div>
-                          <span>{moduleName}</span>
+                          <span className="text-sm">{moduleName}</span>
                           <ChevronDown
-                            className="ml-auto h-4 w-4 transition-transform duration-200
-                                       group-data-[state=open]/collapsible:rotate-180"
+                            className={`ml-auto h-3.5 w-3.5 transition-transform duration-200 ${
+                              isOpen ? 'rotate-180' : ''
+                            } ${hasActiveChild ? 'text-primary' : 'text-muted-foreground/50'}`}
                           />
                         </SidebarMenuButton>
                       </CollapsibleTrigger>
 
-                      <CollapsibleContent className="animate-slide-down">
-                        <SidebarMenuSub>
-                          {menus.map((menuName) => (
-                            <SidebarMenuSubItem key={menuName}>
-                              <SidebarMenuSubButton
-                                className={`cursor-pointer transition-all duration-150 ${
-                                  isRouteActive(menuName)
-                                    ? 'bg-primary/10 text-primary font-medium'
-                                    : 'hover:bg-accent/60'
-                                }`}
-                                onClick={() => handleNavigate(menuName)}
-                              >
-                                <span>{menuName}</span>
-                              </SidebarMenuSubButton>
-                            </SidebarMenuSubItem>
-                          ))}
+                      <CollapsibleContent className="animate-slide-down overflow-hidden">
+                        <SidebarMenuSub className="ml-5 pl-2 border-l border-border/60 mt-0.5">
+                          {menus.map((menuName) => {
+                            const active = isRouteActive(menuName);
+                            return (
+                              <SidebarMenuSubItem key={menuName}>
+                                <SidebarMenuSubButton
+                                  className={`cursor-pointer transition-all duration-200 rounded-md h-7 text-xs ${
+                                    active
+                                      ? 'bg-primary/10 text-primary font-semibold'
+                                      : 'text-muted-foreground hover:bg-accent/80 hover:text-foreground'
+                                  }`}
+                                  onClick={() => handleNavigate(menuName)}
+                                >
+                                  {active && (
+                                    <span className="h-1.5 w-1.5 rounded-full bg-primary flex-shrink-0" />
+                                  )}
+                                  <span>{menuName}</span>
+                                </SidebarMenuSubButton>
+                              </SidebarMenuSubItem>
+                            );
+                          })}
                         </SidebarMenuSub>
                       </CollapsibleContent>
                     </Collapsible>
@@ -274,59 +294,65 @@ export function AppSidebar() {
         })}
       </SidebarContent>
 
-      <SidebarFooter>
+      {/* ── Footer ── */}
+      <SidebarFooter className="border-t border-sidebar-border/70 p-2">
         <SidebarMenu>
           <SidebarMenuItem>
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
-                <SidebarMenuButton size="lg" className="cursor-pointer hover:bg-accent/60 transition-all duration-150">
-                  <div className="flex items-center gap-2.5 px-1 py-1.5">
-                    <Avatar className="h-8 w-8 ring-2 ring-primary/20">
-                      <AvatarImage
-                        src="https://github.com/shadcn.png"
-                        alt="profile"
-                      />
-                      <AvatarFallback className="bg-primary/10 text-primary text-xs font-semibold">
-                        {userInitials}
-                      </AvatarFallback>
-                    </Avatar>
-                    <div className="grid flex-1 text-left text-sm leading-tight">
-                      <span className="truncate font-semibold text-foreground">
-                        {user?.email?.split('@')[0] ?? 'User'}
-                      </span>
-                      <span className="text-muted-foreground truncate text-xs">
-                        {user?.email ?? ''}
-                      </span>
-                    </div>
+                <SidebarMenuButton
+                  size="lg"
+                  className="cursor-pointer hover:bg-accent/80 transition-all duration-200 rounded-lg h-auto py-2"
+                >
+                  <Avatar className="h-7 w-7 ring-2 ring-primary/25 flex-shrink-0">
+                    <AvatarImage src="https://github.com/shadcn.png" alt="profile" />
+                    <AvatarFallback className="bg-primary/10 text-primary text-[11px] font-bold">
+                      {userInitials}
+                    </AvatarFallback>
+                  </Avatar>
+                  <div className="grid flex-1 text-left leading-tight min-w-0">
+                    <span className="truncate font-semibold text-foreground text-xs">
+                      {user?.email?.split('@')[0] ?? 'User'}
+                    </span>
+                    <span className="text-muted-foreground truncate text-[10px]">
+                      {user?.email ?? ''}
+                    </span>
                   </div>
-                  <ChevronsUpDown className="ml-auto h-4 w-4 text-muted-foreground" />
+                  <ChevronsUpDown className="ml-auto h-3.5 w-3.5 text-muted-foreground/50 flex-shrink-0" />
                 </SidebarMenuButton>
               </DropdownMenuTrigger>
 
               <DropdownMenuContent
                 side="right"
-                className="w-[--radix-popper-anchor-width]"
+                align="end"
+                className="w-52 shadow-md"
               >
+                <div className="px-2 py-1.5 border-b border-border mb-1">
+                  <p className="text-xs font-semibold text-foreground truncate">
+                    {user?.email?.split('@')[0] ?? 'User'}
+                  </p>
+                  <p className="text-[10px] text-muted-foreground truncate">{user?.email ?? ''}</p>
+                </div>
                 <DropdownMenuItem
-                  className="cursor-pointer"
+                  className="cursor-pointer text-sm h-8"
                   onClick={() => navigate('/profile')}
                 >
-                  <User className="mr-2 h-4 w-4" />
+                  <User className="mr-2 h-3.5 w-3.5 text-muted-foreground" />
                   <span>Profile</span>
                 </DropdownMenuItem>
                 <DropdownMenuItem
-                  className="cursor-pointer"
+                  className="cursor-pointer text-sm h-8"
                   onClick={() => navigate('/settings/general')}
                 >
-                  <Settings className="mr-2 h-4 w-4" />
+                  <Settings className="mr-2 h-3.5 w-3.5 text-muted-foreground" />
                   <span>Settings</span>
                 </DropdownMenuItem>
                 <DropdownMenuSeparator />
                 <DropdownMenuItem
-                  className="cursor-pointer text-red-600 focus:text-red-600"
+                  className="cursor-pointer text-sm h-8 text-red-600 focus:text-red-600 focus:bg-red-50"
                   onClick={handleLogout}
                 >
-                  <LogOut className="mr-2 h-4 w-4" />
+                  <LogOut className="mr-2 h-3.5 w-3.5" />
                   <span>Log out</span>
                 </DropdownMenuItem>
               </DropdownMenuContent>

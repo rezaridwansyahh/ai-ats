@@ -57,7 +57,7 @@
   --sidebar-foreground: #1E293B;
   --sidebar-primary: #0A6E5C;
   --sidebar-primary-foreground: #FFFFFF;
-  --sidebar-accent: rgba(10, 110, 92, 0.06);
+  --sidebar-accent: rgba(10, 110, 92, 0.07);
   --sidebar-accent-foreground: #0A6E5C;
   --sidebar-border: #E2E8F0;
   --sidebar-ring: #0A6E5C;
@@ -86,6 +86,28 @@
   --purple-bg: rgba(139, 92, 246, 0.06);
 
   --text-muted: #94A3B8;
+
+  /* ── Premium shadows ── */
+  --shadow-xs:  0 1px 2px  rgba(15, 23, 42, 0.06);
+  --shadow-sm:  0 1px 4px  rgba(15, 23, 42, 0.08), 0 1px 2px rgba(15, 23, 42, 0.04);
+  --shadow-md:  0 4px 12px rgba(15, 23, 42, 0.08), 0 2px 4px rgba(15, 23, 42, 0.05);
+  --shadow-lg:  0 8px 24px rgba(15, 23, 42, 0.10), 0 2px 8px rgba(15, 23, 42, 0.05);
+  --shadow-xl:  0 16px 40px rgba(15, 23, 42, 0.12), 0 4px 12px rgba(15, 23, 42, 0.06);
+
+  /* ── Primary-tinted shadows ── */
+  --shadow-primary-sm: 0 2px 8px  rgba(10, 110, 92, 0.16);
+  --shadow-primary-md: 0 4px 16px rgba(10, 110, 92, 0.20);
+  --shadow-primary-lg: 0 8px 32px rgba(10, 110, 92, 0.24);
+
+  /* ── Gradient tokens ── */
+  --gradient-primary:       linear-gradient(135deg, #0A6E5C 0%, #14B8A6 100%);
+  --gradient-primary-soft:  linear-gradient(135deg, rgba(10,110,92,0.12) 0%, rgba(20,184,166,0.08) 100%);
+  --gradient-surface:       linear-gradient(180deg, #FFFFFF 0%, #F8FAFC 100%);
+  --gradient-sidebar-header:linear-gradient(160deg, #0A6E5C 0%, #0d8a73 100%);
+
+  /* ── Glass surfaces ── */
+  --glass-bg:     rgba(255, 255, 255, 0.80);
+  --glass-border: rgba(255, 255, 255, 0.50);
 }
 
 .dark {
@@ -162,4 +184,23 @@
   --purple-bg: rgba(167, 139, 250, 0.1);
 
   --text-muted: #64748B;
+
+  /* ── Dark shadows ── */
+  --shadow-xs:  0 1px 2px  rgba(0, 0, 0, 0.2);
+  --shadow-sm:  0 1px 4px  rgba(0, 0, 0, 0.25);
+  --shadow-md:  0 4px 12px rgba(0, 0, 0, 0.3);
+  --shadow-lg:  0 8px 24px rgba(0, 0, 0, 0.35);
+  --shadow-xl:  0 16px 40px rgba(0, 0, 0, 0.4);
+
+  --shadow-primary-sm: 0 2px 8px  rgba(20, 184, 166, 0.18);
+  --shadow-primary-md: 0 4px 16px rgba(20, 184, 166, 0.22);
+  --shadow-primary-lg: 0 8px 32px rgba(20, 184, 166, 0.28);
+
+  --gradient-primary:       linear-gradient(135deg, #14B8A6 0%, #5EEAD4 100%);
+  --gradient-primary-soft:  linear-gradient(135deg, rgba(20,184,166,0.18) 0%, rgba(94,234,212,0.1) 100%);
+  --gradient-surface:       linear-gradient(180deg, #1E293B 0%, #172032 100%);
+  --gradient-sidebar-header:linear-gradient(160deg, #134e4a 0%, #0f766e 100%);
+
+  --glass-bg:     rgba(30, 41, 59, 0.85);
+  --glass-border: rgba(255, 255, 255, 0.07);
 }

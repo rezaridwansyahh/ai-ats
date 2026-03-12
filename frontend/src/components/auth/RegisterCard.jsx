@@ -56,7 +56,7 @@ export function RegisterCard() {
 
       <form onSubmit={handleSubmitRegister} className="space-y-4">
         <div className="space-y-1.5">
-          <Label htmlFor="username" className="text-xs font-medium">Username</Label>
+          <Label htmlFor="username" className="text-xs font-semibold text-foreground/80">Username</Label>
           <Input
             id="username"
             type="text"
@@ -69,7 +69,7 @@ export function RegisterCard() {
         </div>
 
         <div className="space-y-1.5">
-          <Label htmlFor="email" className="text-xs font-medium">Email</Label>
+          <Label htmlFor="email" className="text-xs font-semibold text-foreground/80">Email</Label>
           <Input
             id="email"
             type="email"
@@ -82,7 +82,7 @@ export function RegisterCard() {
         </div>
 
         <div className="space-y-1.5">
-          <Label htmlFor="password" className="text-xs font-medium">Password</Label>
+          <Label htmlFor="password" className="text-xs font-semibold text-foreground/80">Password</Label>
           <Input
             id="password"
             type="password"
@@ -94,12 +94,14 @@ export function RegisterCard() {
         </div>
 
         {error && (
-          <p className="text-sm text-destructive">{error}</p>
+          <div className="flex items-center gap-2 px-3 py-2.5 rounded-lg bg-red-50 border border-red-100 text-red-600 animate-scale-in">
+            <span className="text-xs font-semibold text-foreground/80">{error}</span>
+          </div>
         )}
 
         <Button
           type="submit"
-          className="w-full h-10 font-medium cursor-pointer"
+          className="w-full h-10 font-semibold cursor-pointer hover:shadow-md hover:-translate-y-0.5 active:translate-y-0"
           disabled={loading}
         >
           {loading ? "Creating account..." : "Create Account"}
