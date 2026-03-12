@@ -4,6 +4,7 @@ import navigationRpa from "./rpa/navigation.rpa.js"
 import jobPostRpa from "./rpa/job-post.rpa.js"
 import projectCreateRpa from "./rpa/project-create.rpa.js"
 import recruiteSearchRpa from "./rpa/recruite-search.rpa.js"
+import extractRecruiteRpa from "./rpa/extract-recruite.rpa.js"
 import loginRpa from "./rpa/login.rpa.js"
 
 class LinkedInService {
@@ -59,8 +60,11 @@ class LinkedInService {
     try {
       await loginRpa.authenticatedPage(page, account_id);
       const form = await recruiteSearchRpa.fillFormRecruiteSearch(page, dataForm);
-
-      return form;
+      const recruite = await extractRecruiteRpa.extractData(page, dataForm);
+      return {
+        form,
+        recruite
+      };
     } catch (err) {
       console.log(err)
       throw err
