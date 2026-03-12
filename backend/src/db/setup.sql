@@ -1,4 +1,5 @@
 -- Drop tables in reverse dependency order (most dependent first)
+DROP TABLE IF EXISTS demo_bookings;
 DROP TABLE IF EXISTS master_landing;
 DROP TABLE IF EXISTS mapping_job_posting_linkedin CASCADE;
 DROP TABLE IF EXISTS mapping_job_posting_seek CASCADE;
@@ -19,6 +20,8 @@ DROP TABLE IF EXISTS master_sourcing_recruite CASCADE;
 DROP TABLE IF EXISTS master_landing CASCADE;
 
 -- Drop enums after all tables are gone
+DROP TYPE IF EXISTS booking_status_type CASCADE;
+DROP TYPE IF EXISTS session_slot_type CASCADE;
 DROP TYPE IF EXISTS status_type CASCADE;
 DROP TYPE IF EXISTS work_option_type CASCADE;
 DROP TYPE IF EXISTS work_type_type CASCADE;
@@ -37,6 +40,8 @@ CREATE TYPE currency_type AS ENUM ('AUD', 'HKD', 'IDR', 'MYR', 'NZD', 'PHP', 'SG
 CREATE TYPE pay_display_type AS ENUM ('Show', 'Hide');
 CREATE TYPE platform_type AS ENUM ('seek', 'linkedin');
 CREATE TYPE candidate_status_type AS ENUM ('Kotak masuk', 'Prescreen', 'Terpilih', 'Wawancara', 'Penawaran', 'Menerima Tawaran', 'Tidak cocok');
+CREATE TYPE booking_status_type AS ENUM ('pending', 'approved', 'rejected');
+CREATE TYPE session_slot_type   AS ENUM ('10-12', '1-3', '4-6');
 
 CREATE TABLE master_users (
   id SERIAL PRIMARY KEY,
@@ -201,4 +206,19 @@ CREATE TABLE master_landing (
   company_size VARCHAR(100),
   message TEXT,
   created_at TIMESTAMP DEFAULT NOW()
+);
+
+CREATE TABLE demo_bookings (
+  id SERIAL PRIMARY KEY,
+  name VARCHAR(255) NOT NULL,
+  email VARCHAR(255) NOT NULL,
+  company_size VARCHAR(100),
+  message TEXT,
+  booking_date DATE NOT NULL,
+  session_slot session_slot_type NOT NULL,
+  status booking_status_type NOT NULL DEFAULT 'pending',
+  rejection_reason TEXT,
+  conference_link TEXT,
+  created_at TIMESTAMP NOT NULL DEFAULT NOW(),
+  updated_at TIMESTAMP NOT NULL DEFAULT NOW()
 );
