@@ -66,6 +66,23 @@ class SourcingModel {
     `);
     return result.rows[0].next_id;
   }
+
+  static async bulkInsert(candidates) {
+    if (!candidates.length) return;
+
+    const values = [];
+    const params = [];
+
+    candidates.forEach((c, i) => {
+      const offset = i * 3; // adjust based on column count
+      values.push(`($${offset + 1}, $${offset + 2}, $${offset + 3})`);
+      params.push(c.name, c.skill, c.email);
+    });
+
+    const sql = `INSERT INTO sourcing (name, skill, email) VALUES ${values.join(', ')} RETURNING *`;
+    const result = await db.query(sql, params);
+    return result.rows;
+  }
 }
 
 export default new SourcingModel();

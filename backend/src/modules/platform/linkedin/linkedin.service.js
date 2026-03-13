@@ -5,7 +5,11 @@ import jobPostRpa from "./rpa/job-post.rpa.js"
 import projectCreateRpa from "./rpa/project-create.rpa.js"
 import recruiteSearchRpa from "./rpa/recruite-search.rpa.js"
 import extractRecruiteRpa from "./rpa/extract-recruite.rpa.js"
+import sourcingModel from "../../sourcing/sourcing.model.js"
+import sourcingRecruiteModel from "../../sourcing/sourcing-recruite.model.js"
 import loginRpa from "./rpa/login.rpa.js"
+
+import { joinArrayFields } from '../../../shared/utils/format.js';
 
 class LinkedInService {
   async jobPost(data) {
@@ -45,7 +49,7 @@ class LinkedInService {
       console.log(err)
       throw err
     } finally {
-        await browserPuppeteer.close();
+      await browserPuppeteer.close();
     }
   }
   async recruiteSearch(data) {
@@ -60,15 +64,22 @@ class LinkedInService {
     try {
       await loginRpa.authenticatedPage(page, account_id);
       const form = await recruiteSearchRpa.fillFormRecruiteSearch(page, dataForm);
-      const recruite = await extractRecruiteRpa.extractData(page, dataForm);
+      const sourcing = joinArrayFields(form);
+      
+      const source = await sourcingModel.create(sourcing);
+
+      const recruiteData = await extractRecruiteRpa.extractData(page, dataForm);
+      
+      const recruite = await sourcingRecruiteModel.bulkCreate(source.id, recruiteData);
       return {
-        form,
+        source,
         recruite
       };
     } catch (err) {
       console.log(err)
       throw err
     } finally {
+      // await browserPuppeteer.close();
     }
   }
 }

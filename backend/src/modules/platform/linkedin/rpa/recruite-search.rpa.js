@@ -216,26 +216,26 @@ class RecruiteSearchRpa {
   }
 
   async fillFormRecruiteSearch(page, data = {}) {
-    const { skills, job_titles, locations, companies, schools, year_grads, industries, keywords } = data;
+    const { skill, job_title, location, company, school, year_graduate, industry, keyword } = data;
     const form = {};
 
     await this.redirectTalentSearch(page);
 
-    if(job_titles) form.jobTitles = await this.fillJobTitle(page, job_titles);
+    if(job_title) form.job_title = await this.fillJobTitle(page, job_title);
 
-    if(locations) form.locations = await this.fillLocation(page, locations);
+    if(location) form.location = await this.fillLocation(page, location);
 
-    if(skills) form.skills = await this.fillSkillsAndAssesments(page, skills);
+    if(skill) form.skill = await this.fillSkillsAndAssesments(page, skill);
 
-    if(companies) form.companies = await this.fillCompanies(page, companies);
+    if(company) form.company = await this.fillCompanies(page, company);
 
-    if(schools) form.schools = await this.fillSchools(page, schools);
+    if(school) form.school = await this.fillSchools(page, school);
 
-    if(year_grads) form.yearGrad = await this.fillYearsGrad(page, year_grads);
+    if(year_graduate) form.year_graduate = await this.fillYearsGrad(page, year_graduate);
 
-    if(industries) form.industries = await this.fillIndustries(page, industries);
+    if(industry) form.industry = await this.fillIndustries(page, industry);
 
-    if(keywords) form.keywords = await this.fillKeyword(page, keywords);
+    if(keyword) form.keyword = await this.fillKeyword(page, keyword);
       
     return form;
   }
