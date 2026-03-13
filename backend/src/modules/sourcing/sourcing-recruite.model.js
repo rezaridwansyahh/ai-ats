@@ -20,13 +20,34 @@ class SourcingRecruiteModel {
     return result.rows[0];
   }
 
-  async create(id, sourcing_id, job_title, information) {
+  async create(id, sourcing_id, name, skill, information) {
     const result = await db.query(`
-      INSERT INTO master_sourcing_recruite (id, sourcing_id, job_title, information)
-      VALUES ($1, $2, $3, $4)
+      INSERT INTO master_sourcing_recruite (id, sourcing_id, name, skill, information)
+      VALUES ($1, $2, $3, $4, $5)
       RETURNING *
-    `, [id, sourcing_id, job_title, information || null]);
+    `, [id, sourcing_id, name, skill, information ? JSON.stringify(information) : null]);
     return result.rows[0];
+  }
+
+  async bulkCreate(sourcing_id, recruites) {
+    if (!recruites.length) return [];
+
+    const nextId = await this.getNextId();
+    const values = [];
+    const params = [];
+
+    recruites.forEach((r, i) => {
+      const offset = i * 5;
+      values.push(`($${offset + 1}, $${offset + 2}, $${offset + 3}, $${offset + 4}, $${offset + 5})`);
+      params.push(nextId + i, sourcing_id, r.name, r.skill, r.information ? JSON.stringify(r.information) : null);
+    });
+
+    const result = await db.query(`
+      INSERT INTO master_sourcing_recruite (id, sourcing_id, name, skill, information)
+      VALUES ${values.join(', ')}
+      RETURNING *
+    `, params);
+    return result.rows;
   }
 
   async update(id, fields) {

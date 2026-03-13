@@ -167,33 +167,34 @@ CREATE TABLE mapping_job_posting_linkedin (
 );
 
 CREATE TABLE master_sourcing (
-  id INTEGER PRIMARY KEY,
+  id SERIAL PRIMARY KEY,
   job_title VARCHAR(255),
   location VARCHAR(255),
-  skills_and_assessments VARCHAR(255),
-  companies VARCHAR(255),
-  schools VARCHAR(255),
+  skill VARCHAR(255),
+  company VARCHAR(255),
+  school VARCHAR(255),
   year_graduate INTEGER,
-  industries VARCHAR(255),
-  keywords VARCHAR(255),
+  industry VARCHAR(255),
+  keyword VARCHAR(255),
 
   CONSTRAINT at_least_one_field_filled CHECK (
     job_title IS NOT NULL OR
     location IS NOT NULL OR
-    skills_and_assessments IS NOT NULL OR
-    companies IS NOT NULL OR
-    schools IS NOT NULL OR
+    skill IS NOT NULL OR
+    company IS NOT NULL OR
+    school IS NOT NULL OR
     year_graduate IS NOT NULL OR
-    industries IS NOT NULL OR
-    keywords IS NOT NULL
+    industry IS NOT NULL OR
+    keyword IS NOT NULL
   )
 );
 
 CREATE TABLE master_sourcing_recruite (
   id INTEGER PRIMARY KEY,
   sourcing_id INTEGER REFERENCES master_sourcing(id) NOT NULL,
-  job_title VARCHAR(255) NOT NULL,
-  information VARCHAR(255),
+  name VARCHAR(255) NOT NULL,
+  skill VARCHAR(255) NOT NULL,
+  information JSONB,
   date_created TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 

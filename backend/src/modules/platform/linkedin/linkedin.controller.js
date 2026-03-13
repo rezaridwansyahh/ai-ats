@@ -42,8 +42,8 @@ class LinkedInController {
     const { account_id, dataForm } = req.body;
 
     try {
-      const form = await linkedinService.recruiteSearch({ account_id, dataForm });
-      return res.status(200).json({ message: "success", form });
+      const result = await linkedinService.recruiteSearch({ account_id, dataForm });
+      return res.status(200).json({ message: "success", result });
     } catch(err) {
       return res.status(500).json({
         status: 'error',
