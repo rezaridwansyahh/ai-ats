@@ -1,5 +1,4 @@
 -- Drop tables in reverse dependency order (most dependent first)
-DROP TABLE IF EXISTS demo_bookings;
 DROP TABLE IF EXISTS master_landing;
 DROP TABLE IF EXISTS mapping_job_posting_linkedin CASCADE;
 DROP TABLE IF EXISTS mapping_job_posting_seek CASCADE;
@@ -17,7 +16,6 @@ DROP TABLE IF EXISTS global_permissions CASCADE;
 DROP TABLE IF EXISTS mapping_roles_permissions CASCADE;
 DROP TABLE IF EXISTS master_sourcing CASCADE;
 DROP TABLE IF EXISTS master_sourcing_recruite CASCADE;
-DROP TABLE IF EXISTS master_landing CASCADE;
 
 -- Drop enums after all tables are gone
 DROP TYPE IF EXISTS booking_status_type CASCADE;
@@ -205,17 +203,8 @@ CREATE TABLE master_landing (
   email VARCHAR(255) NOT NULL,
   company_size VARCHAR(100),
   message TEXT,
-  created_at TIMESTAMP DEFAULT NOW()
-);
-
-CREATE TABLE demo_bookings (
-  id SERIAL PRIMARY KEY,
-  name VARCHAR(255) NOT NULL,
-  email VARCHAR(255) NOT NULL,
-  company_size VARCHAR(100),
-  message TEXT,
-  booking_date DATE NOT NULL,
-  session_slot session_slot_type NOT NULL,
+  booking_date DATE,
+  session_slot session_slot_type,
   status booking_status_type NOT NULL DEFAULT 'pending',
   rejection_reason TEXT,
   conference_link TEXT,

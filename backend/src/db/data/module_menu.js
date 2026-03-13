@@ -30,4 +30,9 @@ export default [
   ========================= */
   { id: 16, module_id: 7, menu_id: 16 }, // Job Management -> Seek Sourcing
   { id: 17, module_id: 7, menu_id: 17 }, // Job Management -> LinkedIn Sourcing
+
+  /* =========================
+     Users (module_id: 5) — continued
+  ========================= */
+  { id: 18, module_id: 5, menu_id: 18 }, // Users -> Demo Booking
 ];
