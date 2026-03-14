@@ -4,10 +4,13 @@ import navigationRpa from "./rpa/navigation.rpa.js"
 import jobPostRpa from "./rpa/job-post.rpa.js"
 import projectCreateRpa from "./rpa/project-create.rpa.js"
 import recruiteSearchRpa from "./rpa/recruite-search.rpa.js"
-import extractRecruiteRpa from "./rpa/extract-recruite.rpa.js"
+import extractDataRpa from "./rpa/extract-data.rpa.js"
 import sourcingModel from "../../sourcing/sourcing.model.js"
 import sourcingRecruiteModel from "../../sourcing/sourcing-recruite.model.js"
 import loginRpa from "./rpa/login.rpa.js"
+import jobPostModel from "../../job-post/job-post.model.js"
+import jobPostLinkedinModel from "./job-post-linkedin.model.js"
+import candidateModel from "../../candidate/candidate.model.js"
 
 import { joinArrayFields } from '../../../shared/utils/format.js';
 
@@ -68,7 +71,7 @@ class LinkedInService {
       
       const source = await sourcingModel.create(sourcing);
 
-      const recruiteData = await extractRecruiteRpa.extractData(page, dataForm);
+      const recruiteData = await extractDataRpa.extractRecruite(page, dataForm);
       
       const recruite = await sourcingRecruiteModel.bulkCreate(source.id, recruiteData);
       return {
@@ -78,6 +81,49 @@ class LinkedInService {
     } catch (err) {
       console.log(err)
       throw err
+    } finally {
+      await browserPuppeteer.close();
+    }
+  }
+  async extractApplicant(account_id, job_posting_id, limit) {
+    const page = await cookieService.includeCookiesIfExist(account_id);
+    const jobPost = await jobPostModel.getById(job_posting_id);
+    const jobPostLinkedin = await jobPostLinkedinModel.getByJobPostingId(job_posting_id);
+
+    if (!page) {
+      throw new Error("No cookies found");
+    }
+
+    if (!jobPostLinkedin) {
+      throw new Error("No LinkedIn job posting mapping found");
+    }
+
+    try {
+      await loginRpa.authenticatedPage(page, account_id);
+      await navigationRpa.redirectProjectJob(page, jobPostLinkedin.project_id, jobPostLinkedin.linkedin_id);
+
+      const candidates = await extractDataRpa.extractApplicant(page, {
+        account_id,
+        job_name: jobPost.job_title,
+        linkedin_id: jobPostLinkedin.linkedin_id,
+        limit
+      });
+
+      for (const candidate of candidates) {
+        await candidateModel.create({
+          job_posting_id,
+          name: candidate.name,
+          last_position: candidate.last_position,
+          address: candidate.address,
+          information: candidate.information ? JSON.stringify(candidate.information) : null,
+          attachment: candidate.attachment || null,
+        });
+      }
+
+      return { saved: candidates.length };
+    } catch (err) {
+      console.log(err);
+      throw err;
     } finally {
       // await browserPuppeteer.close();
     }

@@ -67,7 +67,7 @@ class ProjectCreateRpa {
     await page.select('select[id*="seniority"]', seniorityLevel);
   }
 
-  async fillCompanyHiringFor(page, companyFor = "Abhimata") {
+  async fillCompanyHiringFor(page, companyFor = "Myralix") {
     console.log("start fill company hiring for");
 
     await page.click('input[id*="company-typeahead"]', { clickCount: 3 }); // delete the default first

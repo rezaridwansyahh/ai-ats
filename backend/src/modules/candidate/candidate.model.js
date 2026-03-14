@@ -22,6 +22,25 @@ class CandidateModel {
     return result.rows[0];
   }
 
+  async create({ job_posting_id, name, last_position, address, education, information, date, attachment }) {
+    const result = await db.query(`
+      INSERT INTO master_candidates
+        (job_posting_id, name, last_position, address, education, information, date, attachment)
+      VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+      ON CONFLICT (name, job_posting_id) DO UPDATE SET
+        last_position = EXCLUDED.last_position,
+        address       = EXCLUDED.address,
+        education     = EXCLUDED.education,
+        information   = EXCLUDED.information,
+        date          = EXCLUDED.date,
+        attachment    = EXCLUDED.attachment
+      RETURNING *
+    `, [job_posting_id, name, last_position, address, education || null,
+        information || null, date || null, attachment || null]);
+
+    return result.rows[0];
+  }
+
   async getAll() {
     const result = await db.query(`SELECT * FROM master_candidates ORDER BY id ASC`);
     return result.rows;
