@@ -34,16 +34,16 @@ export default function DemoBookingPage() {
   }
 
   return (
-    <div className="p-6 space-y-4">
+    <div className="space-y-4">
       <div>
-        <h1 className="text-2xl font-bold tracking-tight">Demo Booking</h1>
-        <p className="text-sm text-muted-foreground">
+        <h1 className="text-xl font-bold tracking-tight">Demo Booking</h1>
+        <p className="text-xs text-muted-foreground mt-0.5">
           View and manage demo booking requests from the landing page.
         </p>
       </div>
 
       {loading ? (
-        <div className="flex items-center justify-center py-20 text-muted-foreground">
+        <div className="flex items-center justify-center py-20 text-muted-foreground text-sm">
           Loading bookings...
         </div>
       ) : (
