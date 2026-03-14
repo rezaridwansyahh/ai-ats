@@ -3,6 +3,7 @@
 
 /backend/.env.dev
 /frontend/.env.dev
+/frontend/.env
 /.claude
 browser-profiles/
 

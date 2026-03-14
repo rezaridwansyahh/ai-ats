@@ -24,6 +24,14 @@ class LandingService {
       if (bookingDay < today) {
         throw { status: 400, message: "Booking date cannot be in the past" }
       }
+
+      const existing = await LandingModel.findRecentByEmail(email.trim(), booking_date)
+      if (existing) {
+        throw {
+          status: 409,
+          message: `You already have a ${existing.status} booking on ${existing.booking_date} (${existing.session_slot}). Only one booking per 30-day period is allowed.`
+        }
+      }
     }
 
     const record = await LandingModel.create(

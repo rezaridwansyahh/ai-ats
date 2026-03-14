@@ -137,27 +137,33 @@ export default function BookingCalendar({ onSelectSlot }) {
                 {d}
                 {hasBkng && !disabled && <span className="bcal-dot" />}
               </span>
-              {isSelected && !disabled && (
-                <div className="bcal-slots">
-                  {SESSIONS.map((s) => {
-                    const status = getSlotStatus(d, s.key)
-                    return (
-                      <div
-                        key={s.key}
-                        className={`bcal-slot bcal-slot-${status}`}
-                        onClick={(e) => { e.stopPropagation(); handleSlotClick(d, s) }}
-                      >
-                        <span className="bcal-slot-time">{s.label}</span>
-                        <span className="bcal-slot-badge">{status}</span>
-                      </div>
-                    )
-                  })}
-                </div>
-              )}
             </div>
           )
         })}
       </div>
+
+      {selectedDate && !isWeekend(selectedDate) && !isPast(selectedDate) && (
+        <div className="bcal-panel">
+          <div className="bcal-panel-title">
+            {new Date(year, month, selectedDate).toLocaleDateString("en-US", { weekday: "long", month: "long", day: "numeric", year: "numeric" })}
+          </div>
+          <div className="bcal-panel-slots">
+            {SESSIONS.map((s) => {
+              const status = getSlotStatus(selectedDate, s.key)
+              return (
+                <div
+                  key={s.key}
+                  className={`bcal-slot bcal-slot-${status}`}
+                  onClick={() => handleSlotClick(selectedDate, s)}
+                >
+                  <span className="bcal-slot-time">{s.label}</span>
+                  <span className="bcal-slot-badge">{status}</span>
+                </div>
+              )
+            })}
+          </div>
+        </div>
+      )}
 
       <div className="bcal-legend">
         <div className="bcal-legend-item"><span className="bcal-leg-dot bcal-leg-avail" />Available</div>

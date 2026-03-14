@@ -11,6 +11,19 @@ class LandingModel {
     return result.rows[0]
   }
 
+  async findRecentByEmail(email, booking_date) {
+    const result = await db.query(
+      `SELECT id, to_char(booking_date, 'YYYY-MM-DD') AS booking_date, session_slot, status
+       FROM master_landing
+       WHERE LOWER(email) = LOWER($1)
+         AND status IN ('pending', 'approved')
+         AND booking_date IS NOT NULL
+         AND ABS(booking_date - $2::date) <= 30`,
+      [email, booking_date]
+    )
+    return result.rows[0] || null
+  }
+
   async getActiveForMonth(year_month) {
     const result = await db.query(
       `SELECT to_char(booking_date, 'YYYY-MM-DD') AS booking_date, session_slot, status

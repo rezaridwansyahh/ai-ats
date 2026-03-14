@@ -1291,20 +1291,35 @@
   flex-shrink: 0;
 }
 
-.landing .bcal-slots {
-  margin-top: .35rem;
+.landing .bcal-panel {
+  margin-top: 1rem;
+  padding: 1rem 1.25rem;
+  background: var(--cr);
+  border-radius: 12px;
+  border: 2px solid var(--tl);
+  box-shadow: 0 4px 16px rgba(10, 110, 92, .08);
+}
+
+.landing .bcal-panel-title {
+  font-size: .95rem;
+  font-weight: 700;
+  color: var(--tl);
+  margin-bottom: .75rem;
+}
+
+.landing .bcal-panel-slots {
   display: flex;
-  flex-direction: column;
-  gap: 3px;
+  gap: .75rem;
 }
 
 .landing .bcal-slot {
   display: flex;
+  flex: 1;
   align-items: center;
   justify-content: space-between;
-  padding: .25rem .4rem;
-  border-radius: 6px;
-  font-size: .62rem;
+  padding: .6rem 1rem;
+  border-radius: 8px;
+  font-size: .85rem;
   cursor: pointer;
   transition: all .2s;
   border: 1px solid transparent;
@@ -1347,7 +1362,7 @@
   font-weight: 700;
   text-transform: uppercase;
   letter-spacing: .5px;
-  font-size: .55rem;
+  font-size: .7rem;
 }
 
 .landing .bcal-legend {
@@ -1434,8 +1449,8 @@
   .landing .nm { display: none; }
   .landing .bcal { padding: 1rem; }
   .landing .bcal-cell { min-height: 44px; padding: .25rem; }
-  .landing .bcal-slot-time { font-size: .55rem; }
-  .landing .bcal-slot-badge { display: none; }
+  .landing .bcal-panel-slots { flex-direction: column; gap: .5rem; }
+  .landing .bcal-slot { font-size: .75rem; padding: .5rem .75rem; }
 }
 
 @media (max-width: 600px) {

@@ -9,6 +9,7 @@ export default function ContactSection() {
   const [form, setForm] = useState({ name: "", email: "", size: "1–100 employees", message: "", booking_date: "", session_slot: "" })
   const [loading, setLoading] = useState(false)
   const [status, setStatus] = useState(null)
+  const [errorMessage, setErrorMessage] = useState("")
   const [errors, setErrors] = useState({})
   const [showCaptcha, setShowCaptcha] = useState(false)
   const captchaRef = useRef(null)
@@ -57,8 +58,9 @@ export default function ContactSection() {
       setStatus("success")
       setForm({ name: "", email: "", size: "1–100 employees", message: "", booking_date: "", session_slot: "" })
       setErrors({})
-    } catch {
+    } catch (err) {
       setStatus("error")
+      setErrorMessage(err.response?.data?.message || "Something went wrong. Please try again.")
     } finally {
       setLoading(false)
     }
@@ -124,7 +126,7 @@ export default function ContactSection() {
               </div>
             )}
             {status === "success" && <p className="fsm fss">Thank you! We'll be in touch soon.</p>}
-            {status === "error" && <p className="fsm fse">Something went wrong. Please try again.</p>}
+            {status === "error" && <p className="fsm fse">{errorMessage}</p>}
             <button type="submit" className="fsb" disabled={loading || showCaptcha}>
               {loading ? "Submitting…" : "Schedule Your Free Demo →"}
             </button>
