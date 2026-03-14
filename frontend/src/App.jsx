@@ -11,6 +11,7 @@ import AccountPage from "./pages/Account"
 import SeekPage from "./pages/Seek"
 import SeekSourcingPage from "./pages/SeekSourcing"
 import CandidateSearchPage from "./pages/CandidateSearch"
+import DemoBookingPage from "./pages/DemoBooking"
 
 function App() {
   return (
@@ -24,6 +25,7 @@ function App() {
       <Route path="/users" element={<DashboardLayout />}>
         <Route path="management"        element={<UserManagementPage />} />
         <Route path="role-management"   element={<RoleManagementPage />} />
+        <Route path="demo-booking"     element={<DemoBookingPage />} />
       </Route>
       <Route path="/settings" element={<DashboardLayout />}>
         <Route path="integrations" element={<IntegrationsPage />} />

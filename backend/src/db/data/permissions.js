@@ -93,4 +93,12 @@ export default [
   { id: 62, module_menu_id: 17, functionality: 'update' },
   { id: 63, module_menu_id: 17, functionality: 'delete' },
 
+  /* ===================================================================
+     Users -> Demo Booking (module_menu_id: 18)
+  =================================================================== */
+  { id: 64, module_menu_id: 18, functionality: 'read' },
+  { id: 65, module_menu_id: 18, functionality: 'create' },
+  { id: 66, module_menu_id: 18, functionality: 'update' },
+  { id: 67, module_menu_id: 18, functionality: 'delete' },
+
 ];

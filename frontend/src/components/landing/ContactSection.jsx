@@ -1,13 +1,48 @@
-import { useState } from "react"
+import { useState, useRef } from "react"
+import ReCAPTCHA from "react-google-recaptcha"
 import { create } from "@/api/landing.api.js"
+import BookingCalendar from "./BookingCalendar"
+
+const RECAPTCHA_SITE_KEY = import.meta.env.VITE_RECAPTCHA_SITE_KEY
 
 export default function ContactSection() {
-  const [form, setForm] = useState({ name: "", email: "", size: "1–100 employees", message: "" })
+  const [form, setForm] = useState({ name: "", email: "", size: "1–100 employees", message: "", booking_date: "", session_slot: "" })
   const [loading, setLoading] = useState(false)
   const [status, setStatus] = useState(null)
+  const [errorMessage, setErrorMessage] = useState("")
+  const [errors, setErrors] = useState({})
+  const [showCaptcha, setShowCaptcha] = useState(false)
+  const captchaRef = useRef(null)
 
-  const handleSubmit = async (e) => {
+  const validate = () => {
+    const e = {}
+    if (!form.name.trim()) e.name = "Full name is required"
+    if (!form.email.trim()) e.email = "Email is required"
+    if (!form.message.trim()) e.message = "Message is required"
+    if (!form.booking_date || !form.session_slot) e.slot = "Please select a date and session from the calendar above"
+    setErrors(e)
+    return Object.keys(e).length === 0
+  }
+
+  const handleSubmitClick = (e) => {
     e.preventDefault()
+    setStatus(null)
+    if (!validate()) return
+    if (RECAPTCHA_SITE_KEY) {
+      setShowCaptcha(true)
+    } else {
+      submitForm(null)
+    }
+  }
+
+  const onCaptchaChange = (token) => {
+    if (!token) return
+    setShowCaptcha(false)
+    captchaRef.current?.reset()
+    submitForm(token)
+  }
+
+  const submitForm = async (captchaToken) => {
     setLoading(true)
     setStatus(null)
     try {
@@ -16,32 +51,61 @@ export default function ContactSection() {
         email: form.email,
         company_size: form.size,
         message: form.message,
+        booking_date: form.booking_date,
+        session_slot: form.session_slot,
+        ...(captchaToken && { captcha_token: captchaToken }),
       })
       setStatus("success")
-      setForm({ name: "", email: "", size: "1–100 employees", message: "" })
-    } catch {
+      setForm({ name: "", email: "", size: "1–100 employees", message: "", booking_date: "", session_slot: "" })
+      setErrors({})
+    } catch (err) {
       setStatus("error")
+      setErrorMessage(err.response?.data?.message || "Something went wrong. Please try again.")
     } finally {
       setLoading(false)
     }
   }
 
-  const update = (field) => (e) => setForm((f) => ({ ...f, [field]: e.target.value }))
+  const update = (field) => (e) => {
+    setForm((f) => ({ ...f, [field]: e.target.value }))
+    if (errors[field]) setErrors((prev) => { const n = { ...prev }; delete n[field]; return n })
+  }
+
+  const handleSlotSelect = ({ date, session }) => {
+    setForm((f) => ({ ...f, booking_date: date, session_slot: session.key }))
+    if (errors.slot) setErrors((prev) => { const n = { ...prev }; delete n.slot; return n })
+  }
+
+  const selectedLabel = form.booking_date && form.session_slot
+    ? `${form.booking_date} | ${({ "10-12": "10 AM – 12 PM", "1-3": "1 PM – 3 PM", "4-6": "4 PM – 6 PM" })[form.session_slot]}`
+    : null
 
   return (
     <section className="con" id="contact">
       <div className="inn">
-        <div className="sl">GET IN TOUCH</div>
-        <div className="st">Let's Transform Your Hiring</div>
+        <div className="sl">SCHEDULE A DEMO</div>
+        <div className="st">Book Your Free Demo Session</div>
+        <p className="sd">Pick a date and time slot that works for you, then fill in your details below.</p>
+        <div className="bcal-wrapper">
+          <BookingCalendar onSelectSlot={handleSlotSelect} />
+        </div>
+        {selectedLabel && (
+          <div className="bcal-selected-banner">
+            Selected: <strong>{selectedLabel}</strong>
+          </div>
+        )}
+        {errors.slot && <p className="fsm fse" style={{ maxWidth: 820, margin: "0 auto .75rem", textAlign: "center" }}>{errors.slot}</p>}
         <div className="cog">
-          <form className="cof" onSubmit={handleSubmit}>
+          <form className="cof" onSubmit={handleSubmitClick}>
             <div className="fg2">
-              <label>Full Name</label>
+              <label>Full Name <span style={{ color: "#E11D48" }}>*</span></label>
               <input type="text" placeholder="Your name" value={form.name} onChange={update("name")} />
+              {errors.name && <span className="fve">{errors.name}</span>}
             </div>
             <div className="fg2">
-              <label>Email</label>
+              <label>Email <span style={{ color: "#E11D48" }}>*</span></label>
               <input type="email" placeholder="you@company.com" value={form.email} onChange={update("email")} />
+              {errors.email && <span className="fve">{errors.email}</span>}
             </div>
             <div className="fg2">
               <label>Company Size</label>
@@ -52,12 +116,18 @@ export default function ContactSection() {
               </select>
             </div>
             <div className="fg2">
-              <label>Message</label>
+              <label>Message <span style={{ color: "#E11D48" }}>*</span></label>
               <textarea placeholder="Tell us about your hiring challenges..." value={form.message} onChange={update("message")} />
+              {errors.message && <span className="fve">{errors.message}</span>}
             </div>
+            {showCaptcha && RECAPTCHA_SITE_KEY && (
+              <div className="fcaptcha">
+                <ReCAPTCHA ref={captchaRef} sitekey={RECAPTCHA_SITE_KEY} onChange={onCaptchaChange} />
+              </div>
+            )}
             {status === "success" && <p className="fsm fss">Thank you! We'll be in touch soon.</p>}
-            {status === "error" && <p className="fsm fse">Something went wrong. Please try again.</p>}
-            <button type="submit" className="fsb" disabled={loading}>
+            {status === "error" && <p className="fsm fse">{errorMessage}</p>}
+            <button type="submit" className="fsb" disabled={loading || showCaptcha}>
               {loading ? "Submitting…" : "Schedule Your Free Demo →"}
             </button>
           </form>

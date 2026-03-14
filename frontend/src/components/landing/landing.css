@@ -993,6 +993,20 @@
   cursor: not-allowed;
 }
 
+.landing .fve {
+  display: block;
+  font-size: .76rem;
+  color: #E11D48;
+  margin-top: .25rem;
+  font-weight: 500;
+}
+
+.landing .fcaptcha {
+  display: flex;
+  justify-content: center;
+  margin-bottom: .75rem;
+}
+
 .landing .fsm {
   font-size: .88rem;
   font-weight: 600;
@@ -1135,6 +1149,274 @@
   font-size: .75rem;
 }
 
+/* BOOKING CALENDAR */
+.landing .bcal-wrapper {
+  margin-top: 2rem;
+  margin-bottom: 1.5rem;
+}
+
+.landing .bcal {
+  background: var(--wh);
+  border-radius: 18px;
+  border: 1px solid rgba(10, 110, 92, .08);
+  box-shadow: 0 4px 24px rgba(30, 41, 59, .05);
+  padding: 1.5rem;
+  max-width: 820px;
+  margin: 0 auto;
+}
+
+.landing .bcal-hdr {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 1.2rem;
+}
+
+.landing .bcal-title {
+  font-family: var(--sf);
+  font-size: 1.3rem;
+  color: var(--sl);
+}
+
+.landing .bcal-nav {
+  background: var(--cr);
+  border: 1px solid rgba(10, 110, 92, .1);
+  color: var(--tl);
+  width: 36px;
+  height: 36px;
+  border-radius: 10px;
+  font-size: 1.3rem;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all .2s;
+  font-family: var(--sn);
+}
+
+.landing .bcal-nav:hover {
+  background: var(--tl);
+  color: var(--wh);
+  border-color: var(--tl);
+}
+
+.landing .bcal-loading {
+  text-align: center;
+  padding: .5rem;
+  font-size: .82rem;
+  color: var(--ch);
+  opacity: .6;
+}
+
+.landing .bcal-days {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 2px;
+  margin-bottom: 4px;
+}
+
+.landing .bcal-day-label {
+  text-align: center;
+  font-size: .7rem;
+  font-weight: 700;
+  letter-spacing: 1px;
+  text-transform: uppercase;
+  color: var(--ch);
+  opacity: .5;
+  padding: .4rem 0;
+}
+
+.landing .bcal-grid {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 3px;
+}
+
+.landing .bcal-cell {
+  min-height: 52px;
+  border-radius: 10px;
+  padding: .35rem;
+  cursor: pointer;
+  transition: all .2s;
+  position: relative;
+  background: var(--cr);
+  border: 2px solid transparent;
+}
+
+.landing .bcal-cell:hover:not(.bcal-disabled):not(.bcal-empty) {
+  border-color: rgba(10, 110, 92, .2);
+  box-shadow: 0 2px 10px rgba(10, 110, 92, .06);
+}
+
+.landing .bcal-cell.bcal-empty {
+  background: transparent;
+  cursor: default;
+}
+
+.landing .bcal-cell.bcal-disabled {
+  background: rgba(0, 0, 0, .02);
+  cursor: not-allowed;
+  opacity: .4;
+}
+
+.landing .bcal-cell.bcal-today {
+  border-color: var(--am);
+}
+
+.landing .bcal-cell.bcal-selected {
+  border-color: var(--tl);
+  background: rgba(10, 110, 92, .04);
+  box-shadow: 0 4px 16px rgba(10, 110, 92, .1);
+  grid-column: span 1;
+}
+
+.landing .bcal-date {
+  font-size: .82rem;
+  font-weight: 600;
+  color: var(--sl);
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.landing .bcal-disabled .bcal-date {
+  color: var(--ch);
+}
+
+.landing .bcal-dot {
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background: var(--tl);
+  flex-shrink: 0;
+}
+
+.landing .bcal-panel {
+  margin-top: 1rem;
+  padding: 1rem 1.25rem;
+  background: var(--cr);
+  border-radius: 12px;
+  border: 2px solid var(--tl);
+  box-shadow: 0 4px 16px rgba(10, 110, 92, .08);
+}
+
+.landing .bcal-panel-title {
+  font-size: .95rem;
+  font-weight: 700;
+  color: var(--tl);
+  margin-bottom: .75rem;
+}
+
+.landing .bcal-panel-slots {
+  display: flex;
+  gap: .75rem;
+}
+
+.landing .bcal-slot {
+  display: flex;
+  flex: 1;
+  align-items: center;
+  justify-content: space-between;
+  padding: .6rem 1rem;
+  border-radius: 8px;
+  font-size: .85rem;
+  cursor: pointer;
+  transition: all .2s;
+  border: 1px solid transparent;
+}
+
+.landing .bcal-slot:hover {
+  transform: scale(1.02);
+}
+
+.landing .bcal-slot-available {
+  background: rgba(20, 184, 166, .1);
+  color: #0A6E5C;
+  border-color: rgba(20, 184, 166, .2);
+}
+
+.landing .bcal-slot-available:hover {
+  background: rgba(20, 184, 166, .2);
+}
+
+.landing .bcal-slot-pending {
+  background: rgba(245, 158, 11, .1);
+  color: #92400E;
+  border-color: rgba(245, 158, 11, .2);
+}
+
+.landing .bcal-slot-booked {
+  background: rgba(225, 29, 72, .08);
+  color: #991B1B;
+  border-color: rgba(225, 29, 72, .12);
+  cursor: not-allowed;
+  opacity: .7;
+}
+
+.landing .bcal-slot-time {
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.landing .bcal-slot-badge {
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: .5px;
+  font-size: .7rem;
+}
+
+.landing .bcal-legend {
+  display: flex;
+  gap: 1.2rem;
+  justify-content: center;
+  margin-top: 1rem;
+  padding-top: .8rem;
+  border-top: 1px solid rgba(0, 0, 0, .05);
+}
+
+.landing .bcal-legend-item {
+  display: flex;
+  align-items: center;
+  gap: .35rem;
+  font-size: .72rem;
+  color: var(--ch);
+  opacity: .7;
+}
+
+.landing .bcal-leg-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+}
+
+.landing .bcal-leg-avail {
+  background: #14B8A6;
+}
+
+.landing .bcal-leg-pending {
+  background: #F59E0B;
+}
+
+.landing .bcal-leg-booked {
+  background: #E11D48;
+}
+
+.landing .bcal-selected-banner {
+  max-width: 820px;
+  margin: 0 auto 1.5rem;
+  background: rgba(10, 110, 92, .06);
+  border: 1px solid rgba(10, 110, 92, .15);
+  border-radius: 10px;
+  padding: .7rem 1.2rem;
+  font-size: .88rem;
+  color: var(--tl);
+  text-align: center;
+}
+
+.landing .bcal-selected-banner strong {
+  color: var(--dt);
+}
+
 /* ANIMATIONS */
 .landing .fi-o {
   opacity: 0;
@@ -1165,6 +1447,10 @@
   .landing .fi2 { grid-template-columns: 1fr 1fr; }
   .landing .cog { grid-template-columns: 1fr; }
   .landing .nm { display: none; }
+  .landing .bcal { padding: 1rem; }
+  .landing .bcal-cell { min-height: 44px; padding: .25rem; }
+  .landing .bcal-panel-slots { flex-direction: column; gap: .5rem; }
+  .landing .bcal-slot { font-size: .75rem; padding: .5rem .75rem; }
 }
 
 @media (max-width: 600px) {
