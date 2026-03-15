@@ -113,6 +113,18 @@ CREATE TABLE cookies (
   UNIQUE(account_id)  -- prevent duplicates
 );
 
+CREATE TABLE core_project_linkedin (
+  id SERIAL PRIMARY KEY,
+  projec_id INTEGER,
+  name VARCHAR(255) NOT NULL,
+  description TEXT NOT NULL,
+  job_title VARCHAR(255) NOT NULL,
+  job_location VARCHAR(255) NOT NULL,
+  seniority_level VARCHAR(255) NOT NULL,
+  company_for VARCHAR(255) NOT NULL,
+  project_visible VARCHAR(255)
+);
+
 CREATE TABLE core_job_posting (
   id SERIAL PRIMARY KEY,
   account_id INTEGER NOT NULL REFERENCES master_job_account(id) ON DELETE CASCADE,
@@ -144,26 +156,39 @@ CREATE TABLE mapping_job_posting_seek (
   updated_at TIMESTAMP NOT NULL DEFAULT NOW()
 );
 
+CREATE TABLE mapping_job_posting_linkedin ( -- Still Minimal
+  id SERIAL PRIMARY KEY,
+  job_posting_id INTEGER NOT NULL UNIQUE REFERENCES core_job_posting(id) ON DELETE CASCADE,
+  project_id INTEGER NOT NULL REFERENCES core_project_linkedin(id) ON DELETE CASCADE,
+  linkedin_id VARCHAR(100) UNIQUE,
+  created_at TIMESTAMP NOT NULL DEFAULT NOW(),
+  updated_at TIMESTAMP NOT NULL DEFAULT NOW()
+);
+
 CREATE TABLE master_candidates (
   id SERIAL PRIMARY KEY,
   job_posting_id INTEGER NOT NULL REFERENCES core_job_posting(id) ON DELETE CASCADE,
-  candidate_status candidate_status_type NOT NULL,
-  candidate_id INTEGER NOT NULL,
   name VARCHAR(255) NOT NULL,
   last_position VARCHAR(255) NOT NULL,
   address VARCHAR(255) NOT NULL,
   education VARCHAR(255),
   information JSONB,
   date TIMESTAMPTZ,
-  attachment VARCHAR(255),
-  UNIQUE(candidate_id, job_posting_id)
+  attachment VARCHAR(255)
 );
 
-CREATE TABLE mapping_job_posting_linkedin (
+CREATE TABLE mapping_candidates_seek (
   id SERIAL PRIMARY KEY,
-  job_posting_id INTEGER NOT NULL UNIQUE REFERENCES core_job_posting(id) ON DELETE CASCADE,
-  created_at TIMESTAMP NOT NULL DEFAULT NOW(),
-  updated_at TIMESTAMP NOT NULL DEFAULT NOW()
+  candidate_id INTEGER NOT NULL REFERENCES master_candidates(id) ON DELETE CASCADE,
+  job_posting_id INTEGER NOT NULL REFERENCES core_job_posting(id),
+  candidate_status candidate_status_type NOT NULL,
+  candidate_seek_id INTEGER NOT NULL,
+  UNIQUE (candidate_seek_id, job_posting_id)
+);
+
+CREATE TABLE mapping_candidates_linkedin (
+  id SERIAL PRIMARY KEY,
+  candidate_id INTEGER NOT NULL REFERENCES master_candidates(id) ON DELETE CASCADE
 );
 
 CREATE TABLE master_sourcing (
@@ -176,7 +201,6 @@ CREATE TABLE master_sourcing (
   year_graduate INTEGER,
   industry VARCHAR(255),
   keyword VARCHAR(255),
-
   CONSTRAINT at_least_one_field_filled CHECK (
     job_title IS NOT NULL OR
     location IS NOT NULL OR
