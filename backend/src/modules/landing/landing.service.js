@@ -86,6 +86,7 @@ class LandingService {
     if (booking.status !== "pending") throw { status: 400, message: "Only pending bookings can be approved" }
 
     return LandingModel.approve(id, conference_link || null)
+    // TODO: send email notification to active emails from master_email_notify
   }
 
   async rejectBooking(id, rejection_reason) {
@@ -94,6 +95,7 @@ class LandingService {
     if (booking.status !== "pending") throw { status: 400, message: "Only pending bookings can be rejected" }
 
     return LandingModel.reject(id, rejection_reason || null)
+    // TODO: send email notification to active emails from master_email_notify
   }
 }
 
