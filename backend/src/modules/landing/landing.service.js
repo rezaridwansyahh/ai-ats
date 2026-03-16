@@ -3,7 +3,7 @@ import LandingModel from "./landing.model.js"
 const VALID_SLOTS = ["10-12", "1-3", "4-6"]
 
 class LandingService {
-  async create({ name, email, company_size, message, booking_date, session_slot }) {
+  async create({ name, email, company_size, average_annual_hiring, message, booking_date, session_slot }) {
     if (!name || !name.trim()) throw { status: 400, message: "Name is required" }
     if (!email || !email.trim()) throw { status: 400, message: "Email is required" }
 
@@ -35,7 +35,7 @@ class LandingService {
     }
 
     const record = await LandingModel.create(
-      name.trim(), email.trim(), company_size, message,
+      name.trim(), email.trim(), company_size, average_annual_hiring, message,
       booking_date || null, session_slot || null
     )
     return record

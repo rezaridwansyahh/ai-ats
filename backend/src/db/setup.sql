@@ -227,6 +227,7 @@ CREATE TABLE master_landing (
   name VARCHAR(255) NOT NULL,
   email VARCHAR(255) NOT NULL,
   company_size VARCHAR(100),
+  average_annual_hiring VARCHAR(100),
   message TEXT,
   booking_date DATE,
   session_slot session_slot_type,
