@@ -83,7 +83,8 @@ export default function BookingCalendar({ open, onClose, onConfirm }) {
   const getSlotStatus = (d, sessionKey) => {
     const dayData = availability[getDateStr(d)]
     if (!dayData) return "available"
-    return dayData[sessionKey] || "available"
+    const raw = dayData[sessionKey] || "available"
+    return raw !== "available" ? "booked" : "available"
   }
 
   const hasAnyBooking = (d) => {
@@ -185,7 +186,6 @@ export default function BookingCalendar({ open, onClose, onConfirm }) {
 
         <div className="bcal-legend">
           <div className="bcal-legend-item"><span className="bcal-leg-dot bcal-leg-avail" />Available</div>
-          <div className="bcal-legend-item"><span className="bcal-leg-dot bcal-leg-pending" />Pending</div>
           <div className="bcal-legend-item"><span className="bcal-leg-dot bcal-leg-booked" />Booked</div>
         </div>
 
