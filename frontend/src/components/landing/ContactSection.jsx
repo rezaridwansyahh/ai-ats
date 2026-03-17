@@ -152,13 +152,13 @@ export default function ContactSection() {
           </form>
           <div className="coi">
             <div className="coc"><h4>📧 Email</h4><p><a href="mailto:Info@myralix.com">Info@myralix.com</a></p></div>
-            <div className="coc"><h4>📍 Office</h4><p>Menara Cakrawala, Jl. M.H. Thamrin No.9 Lt 12, Unit 1205A, Kebon Sirih, Kec. Menteng, Jakarta – 10340</p></div>
+            <div className="coc"><h4>🌐 Website</h4><p><a href="https://www.myralix.com" target="_blank" rel="noopener noreferrer">www.myralix.com</a></p></div>
             <div className="coc"><h4>📞 Phone</h4><p><a href="tel:+622150106260">+62 21 5010 6260</a></p></div>
             <div className="coc"><h4>📱 WhatsApp</h4><p><a href="https://wa.me/6281382327732">+62 813 8232 7732</a> (Sales)<br/><a href="https://wa.me/628118886578">+62 811 888 6578</a> (Support)</p></div>
-            <div className="coc"><h4>🌐 Website</h4><p><a href="https://www.myralix.com" target="_blank" rel="noopener noreferrer">www.myralix.com</a></p></div>
-            <div className="coc" style={{ background: "var(--tl)" }}>
-              <h4 style={{ color: "var(--am)" }}>🎁 Pilot Program</h4>
-              <p style={{ color: "rgba(255,255,255,.8)" }}>1-month complimentary strategic partnership to gain authentic experience. No credit card required.</p>
+            <div className="coc coc-full"><h4>📍 Office</h4><p>Menara Cakrawala, Jl. M.H. Thamrin No.9 Lt 12, Unit 1205A, Kebon Sirih, Kec. Menteng, Jakarta – 10340</p></div>
+            <div className="coc coc-full coc-pilot">
+              <h4>🎁 Pilot Program</h4>
+              <p>1-month complimentary strategic partnership to gain authentic experience. No credit card required.</p>
             </div>
           </div>
         </div>
