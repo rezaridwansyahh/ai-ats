@@ -252,6 +252,7 @@ CREATE TABLE master_landing (
   name VARCHAR(255) NOT NULL,
   email VARCHAR(255) NOT NULL,
   company_size VARCHAR(100),
+  average_annual_hiring VARCHAR(100),
   message TEXT,
   booking_date DATE,
   session_slot session_slot_type,
@@ -260,4 +261,12 @@ CREATE TABLE master_landing (
   conference_link TEXT,
   created_at TIMESTAMP NOT NULL DEFAULT NOW(),
   updated_at TIMESTAMP NOT NULL DEFAULT NOW()
+);
+
+CREATE TABLE master_email_notify (
+  id SERIAL PRIMARY KEY,
+  email VARCHAR(255) NOT NULL UNIQUE,
+  label VARCHAR(100),
+  is_active BOOLEAN DEFAULT TRUE,
+  created_at TIMESTAMP DEFAULT NOW()
 );

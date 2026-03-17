@@ -1,12 +1,12 @@
 import db from "../../config/postgres.js"
 
 class LandingModel {
-  async create(name, email, company_size, message, booking_date, session_slot) {
+  async create(name, email, company_size, average_annual_hiring, message, booking_date, session_slot) {
     const result = await db.query(
-      `INSERT INTO master_landing (name, email, company_size, message, booking_date, session_slot)
-       VALUES ($1, $2, $3, $4, $5, $6)
+      `INSERT INTO master_landing (name, email, company_size, average_annual_hiring, message, booking_date, session_slot)
+       VALUES ($1, $2, $3, $4, $5, $6, $7)
        RETURNING *`,
-      [name, email, company_size || null, message || null, booking_date || null, session_slot || null]
+      [name, email, company_size || null, average_annual_hiring || null, message || null, booking_date || null, session_slot || null]
     )
     return result.rows[0]
   }
