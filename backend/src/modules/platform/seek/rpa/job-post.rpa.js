@@ -225,7 +225,7 @@ class SeekJobPostingService {
     await this.fillJobWorkType(page, data.work_type);
     await this.fillJobPayType(page, data.pay_type);
     await this.fillJobPayCurrencyRange(page, data.currency, data.pay_min, data.pay_max);
-    const message = await this.checkSalaryCorrect(page);
+    const message = await this.checkSalaryCorrect(page); // Range tak bisa terlalu besar
     await this.fillJobPayDisplay(page, data.pay_display);
     await this.clickDraftButton(page);
     await this.redirectDraftPage(page);

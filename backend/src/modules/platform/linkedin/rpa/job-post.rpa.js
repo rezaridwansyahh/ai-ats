@@ -150,7 +150,7 @@ class JobPostRpa {
     await this.fillEmploymentType(page, data.employmentType);
     await this.fillSeniorityLevel(page, data.seniorityLevel);
     await this.fillCompanyUrl(page, data.companyUrl);
-    await this.fillProject(page, data.project);
+    await this.fillProject(page, data.project); // Create Project need to be created before jobPost, except it already created before
   }
 }
 

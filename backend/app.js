@@ -16,6 +16,7 @@ import module from "./src/modules/module/module.route.js"
 import menu from "./src/modules/menu/menu.route.js"
 import jobAccount from "./src/modules/job-account/job-account.route.js"
 import jobPosting from "./src/modules/job-post/job-post.router.js"
+import job from "./src/modules/job/job.route.js"
 import candidate from "./src/modules/candidate/candidate.route.js"
 import sourcing from "./src/modules/sourcing/sourcing.route.js"
 import landing from "./src/modules/landing/landing.route.js"
@@ -34,6 +35,7 @@ app.use("/api/module", module);
 app.use("/api/menu", menu);
 app.use("/api/job-account", jobAccount);
 app.use("/api/job-posting", jobPosting);
+app.use("/api/job", job);
 app.use("/api/candidate", candidate);
 app.use("/api/sourcing", sourcing);
 app.use("/api/landing", landing);

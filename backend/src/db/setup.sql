@@ -1,8 +1,10 @@
 -- Drop tables in reverse dependency order (most dependent first)
 DROP TABLE IF EXISTS master_landing;
-DROP TABLE IF EXISTS mapping_job_posting_linkedin CASCADE;
-DROP TABLE IF EXISTS mapping_job_posting_seek CASCADE;
-DROP TABLE IF EXISTS core_job_posting CASCADE;
+DROP TABLE IF EXISTS mapping_job_sourcing_linkedin CASCADE;
+DROP TABLE IF EXISTS mapping_job_sourcing_seek CASCADE;
+DROP TABLE IF EXISTS core_job_sourcing CASCADE;
+DROP TABLE IF EXISTS core_job CASCADE;
+DROP TABLE IF EXISTS core_project_linkedin CASCADE;
 DROP TABLE IF EXISTS master_job_account CASCADE;
 DROP TABLE IF EXISTS master_candidates CASCADE;
 DROP TABLE IF EXISTS cookies;
@@ -113,9 +115,47 @@ CREATE TABLE cookies (
   UNIQUE(account_id)  -- prevent duplicates
 );
 
+CREATE TABLE core_job (
+  id SERIAL PRIMARY KEY,
+  -- Common
+  job_title VARCHAR(255) NOT NULL,
+  job_desc TEXT,
+  job_location VARCHAR(255),
+  work_option work_option_type,
+  work_type work_type_type,
+  -- Seek-specific
+  pay_type pay_type_type,
+  currency currency_type,
+  pay_min INTEGER,
+  pay_max INTEGER,
+  pay_display pay_display_type,
+  -- LinkedIn-specific
+  company VARCHAR(255),
+  seniority_level VARCHAR(255),
+  company_url VARCHAR(255),
+  -- Status
+  status status_type NOT NULL DEFAULT 'Draft',
+  created_at TIMESTAMP NOT NULL DEFAULT NOW(),
+  updated_at TIMESTAMP NOT NULL DEFAULT NOW()
+);
+
+CREATE TABLE core_job_sourcing (
+  id SERIAL PRIMARY KEY,
+  job_id INTEGER NOT NULL REFERENCES core_job(id) ON DELETE CASCADE,
+  account_id INTEGER NOT NULL REFERENCES master_job_account(id) ON DELETE CASCADE,
+  platform platform_type NOT NULL,
+  platform_job_id VARCHAR(255),
+  status status_type NOT NULL DEFAULT 'Active',
+  last_sync TIMESTAMP,
+  created_at TIMESTAMP NOT NULL DEFAULT NOW(),
+  updated_at TIMESTAMP NOT NULL DEFAULT NOW(),
+  additional JSONB,
+  UNIQUE (job_id, platform, account_id)
+);
+
 CREATE TABLE core_project_linkedin (
   id SERIAL PRIMARY KEY,
-  projec_id INTEGER,
+  project_id INTEGER,
   name VARCHAR(255) NOT NULL,
   description TEXT NOT NULL,
   job_title VARCHAR(255) NOT NULL,
@@ -125,30 +165,15 @@ CREATE TABLE core_project_linkedin (
   project_visible VARCHAR(255)
 );
 
-CREATE TABLE core_job_posting (
+CREATE TABLE mapping_job_sourcing_seek (
   id SERIAL PRIMARY KEY,
-  account_id INTEGER NOT NULL REFERENCES master_job_account(id) ON DELETE CASCADE,
-  platform platform_type NOT NULL,
-  job_title VARCHAR(255) NOT NULL,
-  job_desc TEXT,
-  job_location VARCHAR(255),
-  work_option work_option_type,
-  work_type  work_type_type,
-  status status_type NOT NULL DEFAULT 'Running',
-  candidate_count INTEGER,
-  created_at TIMESTAMP NOT NULL DEFAULT NOW(),
-  updated_at TIMESTAMP NOT NULL DEFAULT NOW(),
-  additional JSONB
-);
-
-CREATE TABLE mapping_job_posting_seek (
-  id SERIAL PRIMARY KEY,
-  job_posting_id INTEGER NOT NULL UNIQUE REFERENCES core_job_posting(id) ON DELETE CASCADE,
+  job_sourcing_id INTEGER NOT NULL UNIQUE REFERENCES core_job_sourcing(id) ON DELETE CASCADE,
   seek_id VARCHAR(100) UNIQUE,
   currency currency_type,
   pay_type pay_type_type,
   created_date_seek VARCHAR(255),
   created_by VARCHAR(255),
+  candidate_count INTEGER DEFAULT 0,
   pay_min INT,
   pay_max INT,
   pay_display pay_display_type,
@@ -156,39 +181,39 @@ CREATE TABLE mapping_job_posting_seek (
   updated_at TIMESTAMP NOT NULL DEFAULT NOW()
 );
 
-CREATE TABLE mapping_job_posting_linkedin ( -- Still Minimal
+CREATE TABLE mapping_job_sourcing_linkedin (
   id SERIAL PRIMARY KEY,
-  job_posting_id INTEGER NOT NULL UNIQUE REFERENCES core_job_posting(id) ON DELETE CASCADE,
-  project_id INTEGER NOT NULL REFERENCES core_project_linkedin(id) ON DELETE CASCADE,
+  job_sourcing_id INTEGER NOT NULL UNIQUE REFERENCES core_job_sourcing(id) ON DELETE CASCADE,
+  project_id INTEGER REFERENCES core_project_linkedin(id) ON DELETE SET NULL,
   linkedin_id VARCHAR(100) UNIQUE,
   created_at TIMESTAMP NOT NULL DEFAULT NOW(),
   updated_at TIMESTAMP NOT NULL DEFAULT NOW()
-);
+)
 
 CREATE TABLE master_candidates (
   id SERIAL PRIMARY KEY,
-  job_posting_id INTEGER NOT NULL REFERENCES core_job_posting(id) ON DELETE CASCADE,
+  job_sourcing_id INTEGER NOT NULL REFERENCES core_job_sourcing(id) ON DELETE CASCADE,
   name VARCHAR(255) NOT NULL,
   last_position VARCHAR(255) NOT NULL,
   address VARCHAR(255) NOT NULL,
   education VARCHAR(255),
   information JSONB,
   date TIMESTAMPTZ,
-  attachment VARCHAR(255)
+  attachment VARCHAR(255),
+  UNIQUE (name, job_sourcing_id)
 );
 
 CREATE TABLE mapping_candidates_seek (
   id SERIAL PRIMARY KEY,
   candidate_id INTEGER NOT NULL REFERENCES master_candidates(id) ON DELETE CASCADE,
-  job_posting_id INTEGER NOT NULL REFERENCES core_job_posting(id),
   candidate_status candidate_status_type NOT NULL,
   candidate_seek_id INTEGER NOT NULL,
-  UNIQUE (candidate_seek_id, job_posting_id)
+  UNIQUE (candidate_seek_id, candidate_id)
 );
 
 CREATE TABLE mapping_candidates_linkedin (
   id SERIAL PRIMARY KEY,
-  candidate_id INTEGER NOT NULL REFERENCES master_candidates(id) ON DELETE CASCADE
+  candidate_id INTEGER NOT NULL UNIQUE REFERENCES master_candidates(id) ON DELETE CASCADE
 );
 
 CREATE TABLE master_sourcing (
