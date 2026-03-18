@@ -9,7 +9,7 @@ router.use(authToken);
 router.get('/', jobController.getAll);
 router.get('/status', jobController.getByStatus);
 router.get('/:id', jobController.getById);
-router.get('/:id/sourcings', jobController.getWithSourcings);
+router.get('/:id/candidates', jobController.getWithCandidates);
 
 router.post('/', jobController.create);
 

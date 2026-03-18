@@ -19,8 +19,8 @@ class JobService {
     return await JobModel.getByStatus(status);
   }
 
-  async getWithSourcings(id) {
-    const job = await JobModel.getWithSourcings(id);
+  async getWithCandidates(id) {
+    const job = await JobModel.getWithCandidates(id);
     if (!job) throw { status: 404, message: 'Job not found' };
     return job;
   }

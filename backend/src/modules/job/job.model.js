@@ -22,23 +22,24 @@ class JobModel {
     return result.rows;
   }
 
-  async getWithSourcings(id) {
+  async getWithCandidates(id) {
     const result = await db.query(`
       SELECT
         cj.*,
         json_agg(
           json_build_object(
-            'id', cjs.id,
-            'account_id', cjs.account_id,
-            'platform', cjs.platform,
-            'platform_job_id', cjs.platform_job_id,
-            'status', cjs.status,
-            'last_sync', cjs.last_sync,
-            'additional', cjs.additional
+            'id', mc.id,
+            'name', mc.name,
+            'last_position', mc.last_position,
+            'address', mc.address,
+            'education', mc.education,
+            'information', mc.information,
+            'date', mc.date,
+            'attachment', mc.attachment
           )
-        ) FILTER (WHERE cjs.id IS NOT NULL) AS sourcings
+        ) FILTER (WHERE mc.id IS NOT NULL) AS candidates
       FROM core_job cj
-      LEFT JOIN core_job_sourcing cjs ON cj.id = cjs.job_id
+      LEFT JOIN master_candidates mc ON cj.id = mc.job_id
       WHERE cj.id = $1
       GROUP BY cj.id
     `, [id]);

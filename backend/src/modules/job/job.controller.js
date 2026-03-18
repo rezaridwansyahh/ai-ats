@@ -28,10 +28,10 @@ class JobController {
     }
   }
 
-  async getWithSourcings(req, res) {
+  async getWithCandidates(req, res) {
     try {
-      const job = await jobService.getWithSourcings(req.params.id);
-      res.status(200).json({ message: 'Job with sourcings', job });
+      const job = await jobService.getWithCandidates(req.params.id);
+      res.status(200).json({ message: 'Job with candidates', job });
     } catch (err) {
       res.status(err.status || 500).json({ message: err.message });
     }

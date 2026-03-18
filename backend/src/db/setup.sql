@@ -141,7 +141,6 @@ CREATE TABLE core_job (
 
 CREATE TABLE core_job_sourcing (
   id SERIAL PRIMARY KEY,
-  job_id INTEGER NOT NULL REFERENCES core_job(id) ON DELETE CASCADE,
   account_id INTEGER NOT NULL REFERENCES master_job_account(id) ON DELETE CASCADE,
   platform platform_type NOT NULL,
   platform_job_id VARCHAR(255),
@@ -150,7 +149,7 @@ CREATE TABLE core_job_sourcing (
   created_at TIMESTAMP NOT NULL DEFAULT NOW(),
   updated_at TIMESTAMP NOT NULL DEFAULT NOW(),
   additional JSONB,
-  UNIQUE (job_id, platform, account_id)
+  UNIQUE (platform, account_id, platform_job_id)
 );
 
 CREATE TABLE core_project_linkedin (
@@ -188,11 +187,11 @@ CREATE TABLE mapping_job_sourcing_linkedin (
   linkedin_id VARCHAR(100) UNIQUE,
   created_at TIMESTAMP NOT NULL DEFAULT NOW(),
   updated_at TIMESTAMP NOT NULL DEFAULT NOW()
-)
+);
 
 CREATE TABLE master_candidates (
   id SERIAL PRIMARY KEY,
-  job_sourcing_id INTEGER NOT NULL REFERENCES core_job_sourcing(id) ON DELETE CASCADE,
+  job_id INTEGER NOT NULL REFERENCES core_job(id) ON DELETE CASCADE,
   name VARCHAR(255) NOT NULL,
   last_position VARCHAR(255) NOT NULL,
   address VARCHAR(255) NOT NULL,
@@ -200,7 +199,7 @@ CREATE TABLE master_candidates (
   information JSONB,
   date TIMESTAMPTZ,
   attachment VARCHAR(255),
-  UNIQUE (name, job_sourcing_id)
+  UNIQUE (name, job_id)
 );
 
 CREATE TABLE mapping_candidates_seek (
