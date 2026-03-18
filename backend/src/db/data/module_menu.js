@@ -35,4 +35,9 @@ export default [
      Users (module_id: 5) — continued
   ========================= */
   { id: 18, module_id: 5, menu_id: 18 }, // Users -> Demo Booking
+
+  /* =========================
+     Sourcing (module_id: 8)
+  ========================= */
+  { id: 19, module_id: 8, menu_id: 19 }, // Sourcing -> Job Management
 ];

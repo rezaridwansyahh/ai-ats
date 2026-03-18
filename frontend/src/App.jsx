@@ -12,6 +12,7 @@ import SeekPage from "./pages/Seek"
 import SeekSourcingPage from "./pages/SeekSourcing"
 import CandidateSearchPage from "./pages/CandidateSearch"
 import DemoBookingPage from "./pages/DemoBooking"
+import JobManagementPage from "./pages/JobManagement"
 
 function App() {
   return (
@@ -36,6 +37,9 @@ function App() {
       </Route>
       <Route path="/job-management" element={<DashboardLayout />}>
         <Route path="seek-sourcing" element={<SeekSourcingPage />} />
+      </Route>
+      <Route path="/sourcing" element={<DashboardLayout />}>
+        <Route path="job-management" element={<JobManagementPage />} />
       </Route>
       <Route path="/candidates" element={<DashboardLayout />}>
         <Route path="search" element={<CandidateSearchPage />} />

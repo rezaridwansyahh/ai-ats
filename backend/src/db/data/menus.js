@@ -12,4 +12,5 @@ export default [
   { id: 16, name: 'Seek Sourcing'},
   { id: 17, name: 'LinkedIn Sourcing'},
   { id: 18, name: 'Demo Booking'},
+  { id: 19, name: 'Job Management'},
 ];

@@ -51,6 +51,7 @@ const iconMap = {
   'Users':          Users,
   'Job Postings':   Package,
   'Job Management': Briefcase,
+  'Sourcing':       Briefcase,
 };
 
 const routeMap = {
@@ -68,6 +69,7 @@ const routeMap = {
   'Seek Sourcing':     '/job-management/seek-sourcing',
   'LinkedIn Sourcing': '/job-management/linkedin-sourcing',
   'Demo Booking':      '/users/demo-booking',
+  'Job Management':    '/sourcing/job-management',
 };
 
 const useSidebarStructure = (permissions) => {

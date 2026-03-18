@@ -101,4 +101,12 @@ export default [
   { id: 66, module_menu_id: 18, functionality: 'update' },
   { id: 67, module_menu_id: 18, functionality: 'delete' },
 
+  /* ===================================================================
+     Sourcing -> Job Management (module_menu_id: 19)
+  =================================================================== */
+  { id: 68, module_menu_id: 19, functionality: 'read' },
+  { id: 69, module_menu_id: 19, functionality: 'create' },
+  { id: 70, module_menu_id: 19, functionality: 'update' },
+  { id: 71, module_menu_id: 19, functionality: 'delete' },
+
 ];

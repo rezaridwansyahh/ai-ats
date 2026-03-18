@@ -78,6 +78,12 @@ export default [
   role_id: 1,
   permission_id: 64 + i
 })),
+// Sourcing -> Job Management (68–71)
+...Array.from({ length: 4 }, (_, i) => ({
+  id: 50 + i,
+  role_id: 1,
+  permission_id: 68 + i
+})),
 
 /* ============================================================================
    MANAGER (role_id: 2)
@@ -147,6 +153,11 @@ export default [
   { id: 149, role_id: 2, permission_id: 65 },
   { id: 150, role_id: 2, permission_id: 66 },
 
+  // Sourcing -> Job Management (68–70: read/create/update)
+  { id: 151, role_id: 2, permission_id: 68 },
+  { id: 152, role_id: 2, permission_id: 69 },
+  { id: 153, role_id: 2, permission_id: 70 },
+
 /* ============================================================================
    STAFF (role_id: 3)
    read + create only
@@ -197,6 +208,10 @@ export default [
   { id: 227, role_id: 3, permission_id: 60 },
   { id: 228, role_id: 3, permission_id: 61 },
 
+  // Sourcing -> Job Management (read + create)
+  { id: 230, role_id: 3, permission_id: 68 },
+  { id: 231, role_id: 3, permission_id: 69 },
+
   // Users -> Demo Booking (read only)
   { id: 229, role_id: 3, permission_id: 64 },
 
@@ -216,5 +231,6 @@ export default [
   { id: 313, role_id: 4, permission_id: 56 },  // Seek Sourcing (read)
   { id: 314, role_id: 4, permission_id: 60 },  // LinkedIn Sourcing (read)
   { id: 315, role_id: 4, permission_id: 64 },  // Demo Booking (read)
+  { id: 316, role_id: 4, permission_id: 68 },  // Sourcing -> Job Management (read)
 
 ];
