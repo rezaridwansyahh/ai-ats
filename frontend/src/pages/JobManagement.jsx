@@ -1,7 +1,7 @@
-import { useState } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import {
   Briefcase, FileText, Send, Users, GitBranch, Check,
-  Plus, Star, X, ChevronRight,
+  Plus, Star, X, ChevronRight, Loader2, Pencil, Trash2, Eye,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -12,6 +12,7 @@ import { Badge } from '@/components/ui/badge';
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from '@/components/ui/select';
+import { getJobs, createJob, updateJob, deleteJob } from '@/api/job.api';
 
 // Field options matching backend ENUMs (setup.sql)
 const WORK_OPTIONS = ['On-site', 'Hybrid', 'Remote'];
@@ -20,7 +21,6 @@ const PAY_TYPES = ['Hourly', 'Monthly', 'Annually'];
 const CURRENCIES = ['AUD', 'HKD', 'IDR', 'MYR', 'NZD', 'PHP', 'SGD', 'THB', 'USD'];
 const PAY_DISPLAY_OPTIONS = ['Show', 'Hide'];
 const SENIORITY_LEVELS = ['Internship', 'Entry Level', 'Associate', 'Mid-Senior Level', 'Director', 'Executive'];
-const STATUS_OPTIONS = ['Draft', 'Active', 'Running', 'Expired', 'Failed', 'Blocked'];
 
 const STEPS = [
   { key: 'creation', label: 'Job Creation', icon: FileText },
@@ -29,6 +29,22 @@ const STEPS = [
   { key: 'sourcing', label: 'Job Sourcing', icon: Users },
   { key: 'pipeline', label: 'Applicant Pipeline', icon: Briefcase },
 ];
+
+const INITIAL_FORM = {
+  job_title: '',
+  job_desc: '',
+  job_location: '',
+  work_option: '',
+  work_type: '',
+  pay_type: '',
+  currency: '',
+  pay_min: '',
+  pay_max: '',
+  pay_display: '',
+  company: '',
+  seniority_level: '',
+  company_url: '',
+};
 
 // ── Step Components ─────────────────────────────────────────────────
 
@@ -46,226 +62,310 @@ function StepPlaceholder({ title, stepNum }) {
   );
 }
 
-function JobCreationStep() {
-  const [requiredSkills] = useState([
-    { name: 'React', weight: 5 },
-    { name: 'TypeScript', weight: 4 },
-    { name: 'Node.js', weight: 3 },
-  ]);
-  const [preferredSkills] = useState([
-    { name: 'GraphQL', weight: 2 },
-    { name: 'Docker', weight: 2 },
-  ]);
+function JobCreationStep({ jobs, loading, onCreateJob, onEditJob, onDeleteJob }) {
+  const [form, setForm] = useState(INITIAL_FORM);
+  const [editingId, setEditingId] = useState(null);
+  const [submitting, setSubmitting] = useState(false);
+  const [showForm, setShowForm] = useState(false);
 
-  const renderStars = (weight) => {
-    return Array.from({ length: 5 }, (_, i) => (
-      <Star key={i} className={`h-3 w-3 ${i < weight ? 'text-amber-500 fill-amber-500' : 'text-muted-foreground/30'}`} />
-    ));
+  const handleChange = (field, value) => {
+    setForm(prev => ({ ...prev, [field]: value }));
+  };
+
+  const handleSubmit = async () => {
+    if (!form.job_title.trim()) return;
+    setSubmitting(true);
+    try {
+      const payload = { ...form };
+      // Convert pay_min/pay_max to numbers
+      if (payload.pay_min) payload.pay_min = Number(payload.pay_min);
+      if (payload.pay_max) payload.pay_max = Number(payload.pay_max);
+      // Remove empty strings
+      Object.keys(payload).forEach(k => {
+        if (payload[k] === '') delete payload[k];
+      });
+
+      if (editingId) {
+        await onEditJob(editingId, payload);
+      } else {
+        await onCreateJob(payload);
+      }
+      setForm(INITIAL_FORM);
+      setEditingId(null);
+      setShowForm(false);
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  const handleEdit = (job) => {
+    setForm({
+      job_title: job.job_title || '',
+      job_desc: job.job_desc || '',
+      job_location: job.job_location || '',
+      work_option: job.work_option || '',
+      work_type: job.work_type || '',
+      pay_type: job.pay_type || '',
+      currency: job.currency || '',
+      pay_min: job.pay_min ?? '',
+      pay_max: job.pay_max ?? '',
+      pay_display: job.pay_display || '',
+      company: job.company || '',
+      seniority_level: job.seniority_level || '',
+      company_url: job.company_url || '',
+    });
+    setEditingId(job.id);
+    setShowForm(true);
+  };
+
+  const handleCancel = () => {
+    setForm(INITIAL_FORM);
+    setEditingId(null);
+    setShowForm(false);
   };
 
   return (
     <div className="space-y-5">
       {/* Step Header */}
       <div className="flex items-center justify-between">
-        <div className="flex items-center gap-3">
-          <h3 className="text-base font-bold">Job Creation</h3>
-          <span className="inline-flex items-center gap-1.5 text-[10px] font-semibold text-emerald-600 bg-emerald-50 px-2.5 py-1 rounded-md">
-            <Check className="h-3 w-3" /> Draft saved 2 min ago
-          </span>
-        </div>
-        <span className="text-xs font-bold text-muted-foreground tracking-widest">Step 1</span>
+        <h3 className="text-base font-bold">Job Creation</h3>
+        {!showForm && (
+          <Button size="sm" onClick={() => setShowForm(true)}>
+            <Plus className="h-4 w-4 mr-1.5" /> New Job
+          </Button>
+        )}
       </div>
 
-      {/* Job Information — unified Seek + LinkedIn fields from core_job */}
+      {/* Job Form */}
+      {showForm && (
+        <>
+          <Card>
+            <CardHeader className="pb-3">
+              <CardTitle className="text-sm">{editingId ? 'Edit Job' : 'New Job'}</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-5">
+              {/* Job Title */}
+              <div className="flex flex-col gap-1.5">
+                <Label className="text-[11px] text-muted-foreground font-semibold">Job Title *</Label>
+                <Input
+                  placeholder="e.g. Senior Frontend Developer"
+                  value={form.job_title}
+                  onChange={e => handleChange('job_title', e.target.value)}
+                />
+              </div>
+
+              {/* Location + Work Option */}
+              <div className="grid grid-cols-2 gap-4">
+                <div className="flex flex-col gap-1.5">
+                  <Label className="text-[11px] text-muted-foreground font-semibold">Location</Label>
+                  <Input
+                    placeholder="e.g. Jakarta"
+                    value={form.job_location}
+                    onChange={e => handleChange('job_location', e.target.value)}
+                  />
+                </div>
+                <div className="flex flex-col gap-1.5">
+                  <Label className="text-[11px] text-muted-foreground font-semibold">Work Option</Label>
+                  <Select value={form.work_option} onValueChange={v => handleChange('work_option', v)}>
+                    <SelectTrigger className="w-full"><SelectValue placeholder="Select work option" /></SelectTrigger>
+                    <SelectContent>
+                      {WORK_OPTIONS.map(o => <SelectItem key={o} value={o}>{o}</SelectItem>)}
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+
+              {/* Work Type */}
+              <div className="grid grid-cols-2 gap-4">
+                <div className="flex flex-col gap-1.5">
+                  <Label className="text-[11px] text-muted-foreground font-semibold">Work Type</Label>
+                  <Select value={form.work_type} onValueChange={v => handleChange('work_type', v)}>
+                    <SelectTrigger className="w-full"><SelectValue placeholder="Select work type" /></SelectTrigger>
+                    <SelectContent>
+                      {WORK_TYPES.map(t => <SelectItem key={t} value={t}>{t}</SelectItem>)}
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+
+              {/* Job Description */}
+              <div className="flex flex-col gap-1.5">
+                <Label className="text-[11px] text-muted-foreground font-semibold">Job Description</Label>
+                <Textarea
+                  className="min-h-[100px] text-xs"
+                  placeholder="Enter job description..."
+                  value={form.job_desc}
+                  onChange={e => handleChange('job_desc', e.target.value)}
+                />
+              </div>
+
+              {/* ── Compensation (Seek fields) ── */}
+              <div className="border rounded-lg p-4 bg-muted/20 space-y-4">
+                <p className="text-xs font-semibold text-muted-foreground flex items-center gap-2">
+                  Compensation
+                  <Badge variant="secondary" className="text-[9px] bg-emerald-50 text-emerald-600">SEEK</Badge>
+                </p>
+
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="flex flex-col gap-1.5">
+                    <Label className="text-[11px] text-muted-foreground font-semibold">Currency</Label>
+                    <Select value={form.currency} onValueChange={v => handleChange('currency', v)}>
+                      <SelectTrigger className="w-full"><SelectValue placeholder="Select currency" /></SelectTrigger>
+                      <SelectContent>
+                        {CURRENCIES.map(c => <SelectItem key={c} value={c}>{c}</SelectItem>)}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="flex flex-col gap-1.5">
+                    <Label className="text-[11px] text-muted-foreground font-semibold">Pay Type</Label>
+                    <Select value={form.pay_type} onValueChange={v => handleChange('pay_type', v)}>
+                      <SelectTrigger className="w-full"><SelectValue placeholder="Select pay type" /></SelectTrigger>
+                      <SelectContent>
+                        {PAY_TYPES.map(p => <SelectItem key={p} value={p}>{p}</SelectItem>)}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-3 gap-4">
+                  <div className="flex flex-col gap-1.5">
+                    <Label className="text-[11px] text-muted-foreground font-semibold">Pay Min</Label>
+                    <Input
+                      type="number"
+                      placeholder="e.g. 8000000"
+                      value={form.pay_min}
+                      onChange={e => handleChange('pay_min', e.target.value)}
+                    />
+                  </div>
+                  <div className="flex flex-col gap-1.5">
+                    <Label className="text-[11px] text-muted-foreground font-semibold">Pay Max</Label>
+                    <Input
+                      type="number"
+                      placeholder="e.g. 15000000"
+                      value={form.pay_max}
+                      onChange={e => handleChange('pay_max', e.target.value)}
+                    />
+                  </div>
+                  <div className="flex flex-col gap-1.5">
+                    <Label className="text-[11px] text-muted-foreground font-semibold">Display on Ad</Label>
+                    <Select value={form.pay_display} onValueChange={v => handleChange('pay_display', v)}>
+                      <SelectTrigger className="w-full"><SelectValue placeholder="Show / Hide" /></SelectTrigger>
+                      <SelectContent>
+                        {PAY_DISPLAY_OPTIONS.map(d => <SelectItem key={d} value={d}>{d}</SelectItem>)}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </div>
+              </div>
+
+              {/* ── LinkedIn Details ── */}
+              <div className="border rounded-lg p-4 bg-muted/20 space-y-4">
+                <p className="text-xs font-semibold text-muted-foreground flex items-center gap-2">
+                  LinkedIn Details
+                  <Badge variant="secondary" className="text-[9px] bg-blue-50 text-blue-600">LINKEDIN</Badge>
+                </p>
+
+                <div className="grid grid-cols-3 gap-4">
+                  <div className="flex flex-col gap-1.5">
+                    <Label className="text-[11px] text-muted-foreground font-semibold">Company</Label>
+                    <Input
+                      placeholder="e.g. Acme Corp"
+                      value={form.company}
+                      onChange={e => handleChange('company', e.target.value)}
+                    />
+                  </div>
+                  <div className="flex flex-col gap-1.5">
+                    <Label className="text-[11px] text-muted-foreground font-semibold">Seniority Level</Label>
+                    <Select value={form.seniority_level} onValueChange={v => handleChange('seniority_level', v)}>
+                      <SelectTrigger className="w-full"><SelectValue placeholder="Select level" /></SelectTrigger>
+                      <SelectContent>
+                        {SENIORITY_LEVELS.map(l => <SelectItem key={l} value={l}>{l}</SelectItem>)}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="flex flex-col gap-1.5">
+                    <Label className="text-[11px] text-muted-foreground font-semibold">Company URL</Label>
+                    <Input
+                      placeholder="e.g. https://linkedin.com/company/..."
+                      value={form.company_url}
+                      onChange={e => handleChange('company_url', e.target.value)}
+                    />
+                  </div>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Form Actions */}
+          <div className="flex justify-end gap-2 pt-2 border-t">
+            <Button variant="outline" onClick={handleCancel} disabled={submitting}>Cancel</Button>
+            <Button onClick={handleSubmit} disabled={submitting || !form.job_title.trim()}>
+              {submitting && <Loader2 className="h-4 w-4 mr-1.5 animate-spin" />}
+              {editingId ? 'Update Job' : 'Create Job'}
+            </Button>
+          </div>
+        </>
+      )}
+
+      {/* Job List */}
       <Card>
         <CardHeader className="pb-3">
-          <CardTitle className="text-sm">Job Information</CardTitle>
+          <CardTitle className="text-sm">All Jobs</CardTitle>
         </CardHeader>
-        <CardContent className="space-y-5">
-          {/* Job Title */}
-          <div className="flex flex-col gap-1.5">
-            <Label className="text-[11px] text-muted-foreground font-semibold">Job Title *</Label>
-            <Input placeholder="e.g. Senior Frontend Developer" />
-          </div>
-
-          {/* Location + Work Option */}
-          <div className="grid grid-cols-2 gap-4">
-            <div className="flex flex-col gap-1.5">
-              <Label className="text-[11px] text-muted-foreground font-semibold">Location</Label>
-              <Input placeholder="e.g. Jakarta" />
+        <CardContent>
+          {loading ? (
+            <div className="flex items-center justify-center py-10">
+              <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
             </div>
-            <div className="flex flex-col gap-1.5">
-              <Label className="text-[11px] text-muted-foreground font-semibold">Work Option</Label>
-              <Select>
-                <SelectTrigger className="w-full"><SelectValue placeholder="Select work option" /></SelectTrigger>
-                <SelectContent>
-                  {WORK_OPTIONS.map(o => <SelectItem key={o} value={o}>{o}</SelectItem>)}
-                </SelectContent>
-              </Select>
-            </div>
-          </div>
-
-          {/* Work Type + Status */}
-          <div className="grid grid-cols-2 gap-4">
-            <div className="flex flex-col gap-1.5">
-              <Label className="text-[11px] text-muted-foreground font-semibold">Work Type</Label>
-              <Select>
-                <SelectTrigger className="w-full"><SelectValue placeholder="Select work type" /></SelectTrigger>
-                <SelectContent>
-                  {WORK_TYPES.map(t => <SelectItem key={t} value={t}>{t}</SelectItem>)}
-                </SelectContent>
-              </Select>
-            </div>
-            <div className="flex flex-col gap-1.5">
-              <Label className="text-[11px] text-muted-foreground font-semibold">Status</Label>
-              <Select defaultValue="Draft">
-                <SelectTrigger className="w-full"><SelectValue /></SelectTrigger>
-                <SelectContent>
-                  {STATUS_OPTIONS.map(s => <SelectItem key={s} value={s}>{s}</SelectItem>)}
-                </SelectContent>
-              </Select>
-            </div>
-          </div>
-
-          {/* Job Description */}
-          <div className="flex flex-col gap-1.5">
-            <Label className="text-[11px] text-muted-foreground font-semibold">Job Description</Label>
-            <Textarea className="min-h-[100px] text-xs" placeholder="Enter job description..." />
-          </div>
-
-          {/* ── Compensation (Seek fields) ── */}
-          <div className="border rounded-lg p-4 bg-muted/20 space-y-4">
-            <p className="text-xs font-semibold text-muted-foreground flex items-center gap-2">
-              Compensation
-              <Badge variant="secondary" className="text-[9px] bg-emerald-50 text-emerald-600">SEEK</Badge>
+          ) : jobs.length === 0 ? (
+            <p className="text-xs text-muted-foreground text-center py-10">
+              No jobs created yet. Click "New Job" to get started.
             </p>
-
-            <div className="grid grid-cols-2 gap-4">
-              <div className="flex flex-col gap-1.5">
-                <Label className="text-[11px] text-muted-foreground font-semibold">Currency</Label>
-                <Select>
-                  <SelectTrigger className="w-full"><SelectValue placeholder="Select currency" /></SelectTrigger>
-                  <SelectContent>
-                    {CURRENCIES.map(c => <SelectItem key={c} value={c}>{c}</SelectItem>)}
-                  </SelectContent>
-                </Select>
-              </div>
-              <div className="flex flex-col gap-1.5">
-                <Label className="text-[11px] text-muted-foreground font-semibold">Pay Type</Label>
-                <Select>
-                  <SelectTrigger className="w-full"><SelectValue placeholder="Select pay type" /></SelectTrigger>
-                  <SelectContent>
-                    {PAY_TYPES.map(p => <SelectItem key={p} value={p}>{p}</SelectItem>)}
-                  </SelectContent>
-                </Select>
-              </div>
-            </div>
-
-            <div className="grid grid-cols-3 gap-4">
-              <div className="flex flex-col gap-1.5">
-                <Label className="text-[11px] text-muted-foreground font-semibold">Pay Min</Label>
-                <Input type="number" placeholder="e.g. 8000000" />
-              </div>
-              <div className="flex flex-col gap-1.5">
-                <Label className="text-[11px] text-muted-foreground font-semibold">Pay Max</Label>
-                <Input type="number" placeholder="e.g. 15000000" />
-              </div>
-              <div className="flex flex-col gap-1.5">
-                <Label className="text-[11px] text-muted-foreground font-semibold">Display on Ad</Label>
-                <Select>
-                  <SelectTrigger className="w-full"><SelectValue placeholder="Show / Hide" /></SelectTrigger>
-                  <SelectContent>
-                    {PAY_DISPLAY_OPTIONS.map(d => <SelectItem key={d} value={d}>{d}</SelectItem>)}
-                  </SelectContent>
-                </Select>
-              </div>
-            </div>
-          </div>
-
-          {/* ── LinkedIn Details ── */}
-          <div className="border rounded-lg p-4 bg-muted/20 space-y-4">
-            <p className="text-xs font-semibold text-muted-foreground flex items-center gap-2">
-              LinkedIn Details
-              <Badge variant="secondary" className="text-[9px] bg-blue-50 text-blue-600">LINKEDIN</Badge>
-            </p>
-
-            <div className="grid grid-cols-3 gap-4">
-              <div className="flex flex-col gap-1.5">
-                <Label className="text-[11px] text-muted-foreground font-semibold">Company</Label>
-                <Input placeholder="e.g. Acme Corp" />
-              </div>
-              <div className="flex flex-col gap-1.5">
-                <Label className="text-[11px] text-muted-foreground font-semibold">Seniority Level</Label>
-                <Select>
-                  <SelectTrigger className="w-full"><SelectValue placeholder="Select level" /></SelectTrigger>
-                  <SelectContent>
-                    {SENIORITY_LEVELS.map(l => <SelectItem key={l} value={l}>{l}</SelectItem>)}
-                  </SelectContent>
-                </Select>
-              </div>
-              <div className="flex flex-col gap-1.5">
-                <Label className="text-[11px] text-muted-foreground font-semibold">Company URL</Label>
-                <Input placeholder="e.g. https://linkedin.com/company/..." />
-              </div>
-            </div>
-          </div>
-        </CardContent>
-      </Card>
-
-      {/* Skills & Qualifications */}
-      <Card>
-        <CardHeader className="pb-3">
-          <CardTitle className="text-sm">Skills & Qualifications</CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          {/* Qualifications */}
-          <div>
-            <Label className="text-[11px] text-muted-foreground font-semibold mb-1.5 block">Qualifications</Label>
-            <Textarea className="min-h-[70px] text-xs" placeholder="Enter qualifications..." />
-          </div>
-
-          {/* Required Skills */}
-          <div>
-            <Label className="text-[11px] text-muted-foreground font-semibold mb-1.5 block">
-              Required Skills <Badge variant="secondary" className="text-[9px] bg-primary/10 text-primary ml-1">WITH WEIGHT</Badge>
-            </Label>
-            <div className="flex flex-col gap-1.5 p-2 border rounded-lg bg-muted/30">
-              {requiredSkills.map(skill => (
-                <div key={skill.name} className="flex items-center gap-2">
-                  <span className="text-[11px] font-semibold min-w-[75px]">{skill.name}</span>
-                  <div className="flex gap-0.5">{renderStars(skill.weight)}</div>
-                  <Badge variant="secondary" className={`text-[9px] ${skill.weight >= 4 ? 'bg-primary/10 text-primary' : 'bg-amber-50 text-amber-600'}`}>
-                    {skill.weight}/5
-                  </Badge>
-                  <button className="ml-auto text-muted-foreground hover:text-red-500"><X className="h-3 w-3" /></button>
+          ) : (
+            <div className="space-y-2">
+              {jobs.map(job => (
+                <div
+                  key={job.id}
+                  className="flex items-center justify-between p-3 border rounded-lg hover:bg-muted/30 transition-colors"
+                >
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-2">
+                      <span className="text-sm font-semibold truncate">{job.job_title}</span>
+                      <Badge variant="secondary" className={`text-[9px] ${
+                        job.status === 'Active' ? 'bg-emerald-50 text-emerald-600' :
+                        job.status === 'Draft' ? 'bg-orange-50 text-orange-600' :
+                        job.status === 'Running' ? 'bg-blue-50 text-blue-600' :
+                        'bg-muted text-muted-foreground'
+                      }`}>
+                        {job.status}
+                      </Badge>
+                    </div>
+                    <div className="flex items-center gap-3 mt-1">
+                      {job.job_location && (
+                        <span className="text-[10px] text-muted-foreground">{job.job_location}</span>
+                      )}
+                      {job.work_type && (
+                        <span className="text-[10px] text-muted-foreground">{job.work_type}</span>
+                      )}
+                      {job.work_option && (
+                        <span className="text-[10px] text-muted-foreground">{job.work_option}</span>
+                      )}
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-1">
+                    <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => handleEdit(job)}>
+                      <Pencil className="h-3.5 w-3.5" />
+                    </Button>
+                    <Button variant="ghost" size="icon" className="h-7 w-7 text-red-500 hover:text-red-600" onClick={() => onDeleteJob(job.id)}>
+                      <Trash2 className="h-3.5 w-3.5" />
+                    </Button>
+                  </div>
                 </div>
               ))}
-              <input className="border-none outline-none text-[10px] bg-transparent px-0 py-1" placeholder="+ Add skill (weights pre-populate AI Matching)" />
             </div>
-          </div>
-
-          {/* Preferred Skills */}
-          <div>
-            <Label className="text-[11px] text-muted-foreground font-semibold mb-1.5 block">Preferred Skills</Label>
-            <div className="flex flex-col gap-1.5 p-2 border rounded-lg bg-muted/30">
-              {preferredSkills.map(skill => (
-                <div key={skill.name} className="flex items-center gap-2">
-                  <span className="text-[11px] font-semibold min-w-[75px]">{skill.name}</span>
-                  <div className="flex gap-0.5">{renderStars(skill.weight)}</div>
-                  <Badge variant="secondary" className="text-[9px] bg-muted text-muted-foreground border">{skill.weight}/5</Badge>
-                  <button className="ml-auto text-muted-foreground hover:text-red-500"><X className="h-3 w-3" /></button>
-                </div>
-              ))}
-              <input className="border-none outline-none text-[10px] bg-transparent px-0 py-1" placeholder="+ Add preferred skill" />
-            </div>
-          </div>
+          )}
         </CardContent>
       </Card>
-
-      {/* Navigation */}
-      <div className="flex justify-end pt-2 border-t">
-        <Button>Next <ChevronRight className="h-4 w-4 ml-1" /></Button>
-      </div>
     </div>
   );
 }
@@ -274,6 +374,39 @@ function JobCreationStep() {
 
 export default function JobManagementPage() {
   const [activeStep, setActiveStep] = useState(0);
+  const [jobs, setJobs] = useState([]);
+  const [loading, setLoading] = useState(true);
+
+  const fetchJobs = useCallback(async () => {
+    setLoading(true);
+    try {
+      const res = await getJobs();
+      setJobs(res.data.jobs || []);
+    } catch (err) {
+      // no-op
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    fetchJobs();
+  }, [fetchJobs]);
+
+  const handleCreateJob = async (data) => {
+    await createJob(data);
+    await fetchJobs();
+  };
+
+  const handleEditJob = async (id, data) => {
+    await updateJob(id, data);
+    await fetchJobs();
+  };
+
+  const handleDeleteJob = async (id) => {
+    await deleteJob(id);
+    await fetchJobs();
+  };
 
   return (
     <div className="space-y-6">
@@ -285,9 +418,6 @@ export default function JobManagementPage() {
             End-to-end job lifecycle — create, configure stages, publish, source, and manage applicants
           </p>
         </div>
-        <Button>
-          <Plus className="h-4 w-4 mr-1.5" /> Create New Job
-        </Button>
       </div>
 
       {/* Stepper */}
@@ -341,7 +471,15 @@ export default function JobManagementPage() {
       </div>
 
       {/* Step Content */}
-      {activeStep === 0 && <JobCreationStep />}
+      {activeStep === 0 && (
+        <JobCreationStep
+          jobs={jobs}
+          loading={loading}
+          onCreateJob={handleCreateJob}
+          onEditJob={handleEditJob}
+          onDeleteJob={handleDeleteJob}
+        />
+      )}
       {activeStep === 1 && <StepPlaceholder title="Job Stages" stepNum={2} />}
       {activeStep === 2 && <StepPlaceholder title="Job Posting" stepNum={3} />}
       {activeStep === 3 && <StepPlaceholder title="Job Sourcing" stepNum={4} />}
