@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import {
   Briefcase, FileText, Send, Users, GitBranch, Check,
-  Plus, Star, X, ChevronRight, Loader2, Pencil, Trash2, Eye,
+  Plus, Loader2, Pencil, Trash2,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -72,8 +72,15 @@ function JobCreationStep({ jobs, loading, onCreateJob, onEditJob, onDeleteJob })
     setForm(prev => ({ ...prev, [field]: value }));
   };
 
+  const isFormValid = () => {
+    return form.job_title.trim() && form.job_location.trim() && form.work_option &&
+      form.work_type && form.company.trim() && form.seniority_level && form.company_url.trim() &&
+      form.job_desc.trim() && form.currency && form.pay_type && form.pay_min && form.pay_max &&
+      form.pay_display;
+  };
+
   const handleSubmit = async () => {
-    if (!form.job_title.trim()) return;
+    if (!isFormValid()) return;
     setSubmitting(true);
     try {
       const payload = { ...form };
@@ -146,40 +153,38 @@ function JobCreationStep({ jobs, loading, onCreateJob, onEditJob, onDeleteJob })
             <CardContent className="space-y-5">
               {/* Job Title */}
               <div className="flex flex-col gap-1.5">
-                <Label className="text-[11px] text-muted-foreground font-semibold">Job Title *</Label>
+                <Label className="text-[11px] text-muted-foreground font-semibold">Job Title <span className="text-red-500">*</span></Label>
                 <Input
                   placeholder="e.g. Senior Frontend Developer"
                   value={form.job_title}
                   onChange={e => handleChange('job_title', e.target.value)}
+                  required
                 />
               </div>
 
-              {/* Location + Work Option */}
-              <div className="grid grid-cols-2 gap-4">
+              {/* Location + Work Option + Work Type */}
+              <div className="grid grid-cols-3 gap-4">
                 <div className="flex flex-col gap-1.5">
-                  <Label className="text-[11px] text-muted-foreground font-semibold">Location</Label>
+                  <Label className="text-[11px] text-muted-foreground font-semibold">Location <span className="text-red-500">*</span></Label>
                   <Input
                     placeholder="e.g. Jakarta"
                     value={form.job_location}
                     onChange={e => handleChange('job_location', e.target.value)}
+                    required
                   />
                 </div>
                 <div className="flex flex-col gap-1.5">
-                  <Label className="text-[11px] text-muted-foreground font-semibold">Work Option</Label>
-                  <Select value={form.work_option} onValueChange={v => handleChange('work_option', v)}>
+                  <Label className="text-[11px] text-muted-foreground font-semibold">Work Option <span className="text-red-500">*</span></Label>
+                  <Select value={form.work_option} onValueChange={v => handleChange('work_option', v)} required>
                     <SelectTrigger className="w-full"><SelectValue placeholder="Select work option" /></SelectTrigger>
                     <SelectContent>
                       {WORK_OPTIONS.map(o => <SelectItem key={o} value={o}>{o}</SelectItem>)}
                     </SelectContent>
                   </Select>
                 </div>
-              </div>
-
-              {/* Work Type */}
-              <div className="grid grid-cols-2 gap-4">
                 <div className="flex flex-col gap-1.5">
-                  <Label className="text-[11px] text-muted-foreground font-semibold">Work Type</Label>
-                  <Select value={form.work_type} onValueChange={v => handleChange('work_type', v)}>
+                  <Label className="text-[11px] text-muted-foreground font-semibold">Work Type <span className="text-red-500">*</span></Label>
+                  <Select value={form.work_type} onValueChange={v => handleChange('work_type', v)} required>
                     <SelectTrigger className="w-full"><SelectValue placeholder="Select work type" /></SelectTrigger>
                     <SelectContent>
                       {WORK_TYPES.map(t => <SelectItem key={t} value={t}>{t}</SelectItem>)}
@@ -188,109 +193,102 @@ function JobCreationStep({ jobs, loading, onCreateJob, onEditJob, onDeleteJob })
                 </div>
               </div>
 
+              {/* Company + Seniority Level + Company URL */}
+              <div className="grid grid-cols-3 gap-4">
+                <div className="flex flex-col gap-1.5">
+                  <Label className="text-[11px] text-muted-foreground font-semibold">Company <span className="text-red-500">*</span></Label>
+                  <Input
+                    placeholder="e.g. Acme Corp"
+                    value={form.company}
+                    onChange={e => handleChange('company', e.target.value)}
+                    required
+                  />
+                </div>
+                <div className="flex flex-col gap-1.5">
+                  <Label className="text-[11px] text-muted-foreground font-semibold">Seniority Level <span className="text-red-500">*</span></Label>
+                  <Select value={form.seniority_level} onValueChange={v => handleChange('seniority_level', v)} required>
+                    <SelectTrigger className="w-full"><SelectValue placeholder="Select level" /></SelectTrigger>
+                    <SelectContent>
+                      {SENIORITY_LEVELS.map(l => <SelectItem key={l} value={l}>{l}</SelectItem>)}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="flex flex-col gap-1.5">
+                  <Label className="text-[11px] text-muted-foreground font-semibold">Company URL <span className="text-red-500">*</span></Label>
+                  <Input
+                    placeholder="e.g. https://linkedin.com/company/..."
+                    value={form.company_url}
+                    onChange={e => handleChange('company_url', e.target.value)}
+                    required
+                  />
+                </div>
+              </div>
+
               {/* Job Description */}
               <div className="flex flex-col gap-1.5">
-                <Label className="text-[11px] text-muted-foreground font-semibold">Job Description</Label>
+                <Label className="text-[11px] text-muted-foreground font-semibold">Job Description <span className="text-red-500">*</span></Label>
                 <Textarea
                   className="min-h-[100px] text-xs"
                   placeholder="Enter job description..."
                   value={form.job_desc}
                   onChange={e => handleChange('job_desc', e.target.value)}
+                  required
                 />
               </div>
 
-              {/* ── Compensation (Seek fields) ── */}
-              <div className="border rounded-lg p-4 bg-muted/20 space-y-4">
-                <p className="text-xs font-semibold text-muted-foreground flex items-center gap-2">
-                  Compensation
-                  <Badge variant="secondary" className="text-[9px] bg-emerald-50 text-emerald-600">SEEK</Badge>
-                </p>
+              {/* ── Compensation ── */}
+              <p className="text-xs font-semibold text-muted-foreground pt-2 border-t">Compensation</p>
 
-                <div className="grid grid-cols-2 gap-4">
-                  <div className="flex flex-col gap-1.5">
-                    <Label className="text-[11px] text-muted-foreground font-semibold">Currency</Label>
-                    <Select value={form.currency} onValueChange={v => handleChange('currency', v)}>
-                      <SelectTrigger className="w-full"><SelectValue placeholder="Select currency" /></SelectTrigger>
-                      <SelectContent>
-                        {CURRENCIES.map(c => <SelectItem key={c} value={c}>{c}</SelectItem>)}
-                      </SelectContent>
-                    </Select>
-                  </div>
-                  <div className="flex flex-col gap-1.5">
-                    <Label className="text-[11px] text-muted-foreground font-semibold">Pay Type</Label>
-                    <Select value={form.pay_type} onValueChange={v => handleChange('pay_type', v)}>
-                      <SelectTrigger className="w-full"><SelectValue placeholder="Select pay type" /></SelectTrigger>
-                      <SelectContent>
-                        {PAY_TYPES.map(p => <SelectItem key={p} value={p}>{p}</SelectItem>)}
-                      </SelectContent>
-                    </Select>
-                  </div>
+              <div className="grid grid-cols-4 gap-4">
+                <div className="flex flex-col gap-1.5">
+                  <Label className="text-[11px] text-muted-foreground font-semibold">Currency <span className="text-red-500">*</span></Label>
+                  <Select value={form.currency} onValueChange={v => handleChange('currency', v)} required>
+                    <SelectTrigger className="w-full"><SelectValue placeholder="Select currency" /></SelectTrigger>
+                    <SelectContent>
+                      {CURRENCIES.map(c => <SelectItem key={c} value={c}>{c}</SelectItem>)}
+                    </SelectContent>
+                  </Select>
                 </div>
-
-                <div className="grid grid-cols-3 gap-4">
-                  <div className="flex flex-col gap-1.5">
-                    <Label className="text-[11px] text-muted-foreground font-semibold">Pay Min</Label>
-                    <Input
-                      type="number"
-                      placeholder="e.g. 8000000"
-                      value={form.pay_min}
-                      onChange={e => handleChange('pay_min', e.target.value)}
-                    />
-                  </div>
-                  <div className="flex flex-col gap-1.5">
-                    <Label className="text-[11px] text-muted-foreground font-semibold">Pay Max</Label>
-                    <Input
-                      type="number"
-                      placeholder="e.g. 15000000"
-                      value={form.pay_max}
-                      onChange={e => handleChange('pay_max', e.target.value)}
-                    />
-                  </div>
-                  <div className="flex flex-col gap-1.5">
-                    <Label className="text-[11px] text-muted-foreground font-semibold">Display on Ad</Label>
-                    <Select value={form.pay_display} onValueChange={v => handleChange('pay_display', v)}>
-                      <SelectTrigger className="w-full"><SelectValue placeholder="Show / Hide" /></SelectTrigger>
-                      <SelectContent>
-                        {PAY_DISPLAY_OPTIONS.map(d => <SelectItem key={d} value={d}>{d}</SelectItem>)}
-                      </SelectContent>
-                    </Select>
-                  </div>
+                <div className="flex flex-col gap-1.5">
+                  <Label className="text-[11px] text-muted-foreground font-semibold">Pay Type <span className="text-red-500">*</span></Label>
+                  <Select value={form.pay_type} onValueChange={v => handleChange('pay_type', v)} required>
+                    <SelectTrigger className="w-full"><SelectValue placeholder="Select pay type" /></SelectTrigger>
+                    <SelectContent>
+                      {PAY_TYPES.map(p => <SelectItem key={p} value={p}>{p}</SelectItem>)}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="flex flex-col gap-1.5">
+                  <Label className="text-[11px] text-muted-foreground font-semibold">Pay Min <span className="text-red-500">*</span></Label>
+                  <Input
+                    type="number"
+                    placeholder="e.g. 8000000"
+                    value={form.pay_min}
+                    onChange={e => handleChange('pay_min', e.target.value)}
+                    required
+                  />
+                </div>
+                <div className="flex flex-col gap-1.5">
+                  <Label className="text-[11px] text-muted-foreground font-semibold">Pay Max <span className="text-red-500">*</span></Label>
+                  <Input
+                    type="number"
+                    placeholder="e.g. 15000000"
+                    value={form.pay_max}
+                    onChange={e => handleChange('pay_max', e.target.value)}
+                    required
+                  />
                 </div>
               </div>
 
-              {/* ── LinkedIn Details ── */}
-              <div className="border rounded-lg p-4 bg-muted/20 space-y-4">
-                <p className="text-xs font-semibold text-muted-foreground flex items-center gap-2">
-                  LinkedIn Details
-                  <Badge variant="secondary" className="text-[9px] bg-blue-50 text-blue-600">LINKEDIN</Badge>
-                </p>
-
-                <div className="grid grid-cols-3 gap-4">
-                  <div className="flex flex-col gap-1.5">
-                    <Label className="text-[11px] text-muted-foreground font-semibold">Company</Label>
-                    <Input
-                      placeholder="e.g. Acme Corp"
-                      value={form.company}
-                      onChange={e => handleChange('company', e.target.value)}
-                    />
-                  </div>
-                  <div className="flex flex-col gap-1.5">
-                    <Label className="text-[11px] text-muted-foreground font-semibold">Seniority Level</Label>
-                    <Select value={form.seniority_level} onValueChange={v => handleChange('seniority_level', v)}>
-                      <SelectTrigger className="w-full"><SelectValue placeholder="Select level" /></SelectTrigger>
-                      <SelectContent>
-                        {SENIORITY_LEVELS.map(l => <SelectItem key={l} value={l}>{l}</SelectItem>)}
-                      </SelectContent>
-                    </Select>
-                  </div>
-                  <div className="flex flex-col gap-1.5">
-                    <Label className="text-[11px] text-muted-foreground font-semibold">Company URL</Label>
-                    <Input
-                      placeholder="e.g. https://linkedin.com/company/..."
-                      value={form.company_url}
-                      onChange={e => handleChange('company_url', e.target.value)}
-                    />
-                  </div>
+              <div className="grid grid-cols-4 gap-4">
+                <div className="flex flex-col gap-1.5">
+                  <Label className="text-[11px] text-muted-foreground font-semibold">Display on Ad <span className="text-red-500">*</span></Label>
+                  <Select value={form.pay_display} onValueChange={v => handleChange('pay_display', v)} required>
+                    <SelectTrigger className="w-full"><SelectValue placeholder="Show / Hide" /></SelectTrigger>
+                    <SelectContent>
+                      {PAY_DISPLAY_OPTIONS.map(d => <SelectItem key={d} value={d}>{d}</SelectItem>)}
+                    </SelectContent>
+                  </Select>
                 </div>
               </div>
             </CardContent>
@@ -299,7 +297,7 @@ function JobCreationStep({ jobs, loading, onCreateJob, onEditJob, onDeleteJob })
           {/* Form Actions */}
           <div className="flex justify-end gap-2 pt-2 border-t">
             <Button variant="outline" onClick={handleCancel} disabled={submitting}>Cancel</Button>
-            <Button onClick={handleSubmit} disabled={submitting || !form.job_title.trim()}>
+            <Button onClick={handleSubmit} disabled={submitting || !isFormValid()}>
               {submitting && <Loader2 className="h-4 w-4 mr-1.5 animate-spin" />}
               {editingId ? 'Update Job' : 'Create Job'}
             </Button>

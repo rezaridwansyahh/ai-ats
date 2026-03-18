@@ -354,7 +354,7 @@ thead th {
 }
 
 /* ── Button press effect ── */
-button:active:not(:disabled) {
+button:active:not(:disabled):not([data-slot]) {
   transform: scale(0.98);
 }
 
@@ -380,12 +380,3 @@ button:active:not(:disabled) {
   animation: float 3s ease-in-out infinite;
 }
 
-/* ── Dropdown menu entrance ── */
-[data-radix-popper-content-wrapper] {
-  animation: scale-in 0.15s cubic-bezier(0.22, 1, 0.36, 1);
-}
-
-/* ── Smooth page transitions ── */
-main > * {
-  animation: fade-in-up 0.35s cubic-bezier(0.22, 1, 0.36, 1) both;
-}
