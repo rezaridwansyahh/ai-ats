@@ -137,6 +137,10 @@ CREATE TABLE core_job (
   company VARCHAR(255),
   seniority_level VARCHAR(255),
   company_url VARCHAR(255),
+  -- Job Details
+  qualifications TEXT,
+  required_skills JSONB,
+  preferred_skills JSONB,
   -- Status
   status status_type NOT NULL DEFAULT 'Draft',
   created_at TIMESTAMP NOT NULL DEFAULT NOW(),

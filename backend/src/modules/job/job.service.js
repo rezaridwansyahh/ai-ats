@@ -28,7 +28,8 @@ class JobService {
   async create(data) {
     const { job_title, job_desc, job_location, work_option, work_type,
             pay_type, currency, pay_min, pay_max, pay_display,
-            company, seniority_level, company_url } = data;
+            company, seniority_level, company_url,
+            qualifications, required_skills, preferred_skills } = data;
 
     if (!job_title) throw { status: 400, message: 'job_title is required' };
 
@@ -46,6 +47,9 @@ class JobService {
     if (company) fields.company = company;
     if (seniority_level) fields.seniority_level = seniority_level;
     if (company_url) fields.company_url = company_url;
+    if (qualifications) fields.qualifications = qualifications;
+    if (required_skills) fields.required_skills = JSON.stringify(required_skills);
+    if (preferred_skills) fields.preferred_skills = JSON.stringify(preferred_skills);
 
     return await JobModel.create(fields);
   }
@@ -56,11 +60,18 @@ class JobService {
 
     const allowedFields = ['job_title', 'job_desc', 'job_location', 'work_option', 'work_type',
                            'pay_type', 'currency', 'pay_min', 'pay_max', 'pay_display',
-                           'company', 'seniority_level', 'company_url', 'status'];
+                           'company', 'seniority_level', 'company_url', 'status',
+                           'qualifications', 'required_skills', 'preferred_skills'];
 
     const fields = {};
     for (const key of allowedFields) {
-      if (data[key] !== undefined) fields[key] = data[key];
+      if (data[key] !== undefined) {
+        if ((key === 'required_skills' || key === 'preferred_skills') && typeof data[key] !== 'string') {
+          fields[key] = JSON.stringify(data[key]);
+        } else {
+          fields[key] = data[key];
+        }
+      }
     }
 
     if (Object.keys(fields).length === 0) {

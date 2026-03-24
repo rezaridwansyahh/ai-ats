@@ -1,7 +1,8 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import {
   Briefcase, FileText, Send, Users, GitBranch, Check,
-  Plus, Loader2, Pencil, Trash2,
+  Plus, Loader2, Pencil, Trash2, Upload, Sparkles, X, Star,
+  Bold, Italic, Underline, List, ListOrdered, Link, Bot,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -12,9 +13,8 @@ import { Badge } from '@/components/ui/badge';
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from '@/components/ui/select';
-import { getJobs, createJob, updateJob, deleteJob } from '@/api/job.api';
+import { getJobs, createJob, updateJob, deleteJob, generateJobAI } from '@/api/job.api';
 import { getRecruiters } from '@/api/recruiter.api';
-
 
 const WORK_OPTIONS = ['On-site', 'Hybrid', 'Remote'];
 const WORK_TYPES = ['Full-time', 'Part-time', 'Contract', 'Casual'];
@@ -22,6 +22,8 @@ const PAY_TYPES = ['Hourly', 'Monthly', 'Annually'];
 const CURRENCIES = ['AUD', 'HKD', 'IDR', 'MYR', 'NZD', 'PHP', 'SGD', 'THB', 'USD'];
 const PAY_DISPLAY_OPTIONS = ['Show', 'Hide'];
 const SENIORITY_LEVELS = ['Internship', 'Entry Level', 'Associate', 'Mid-Senior Level', 'Director', 'Executive'];
+const BENEFITS_LIST = ['Health Insurance', 'Life Insurance', 'Housing', 'Company Car', 'Gym Membership', 'Training & Dev'];
+
 const STEPS = [
   { key: 'creation', label: 'Job Creation', icon: FileText },
   { key: 'stages', label: 'Job Stages', icon: GitBranch },
@@ -45,10 +47,95 @@ const INITIAL_FORM = {
   seniority_level: '',
   company_url: '',
   recruiter: '',
+  qualifications: '',
 };
 
-// ── Step Components ─────────────────────────────────────────────────
+// ── Star Rating Component ───────────────────────────────────────────
+function StarRating({ value, onChange, accent }) {
+  return (
+    <span className="inline-flex gap-0.5">
+      {[1, 2, 3, 4, 5].map(i => (
+        <button
+          key={i}
+          type="button"
+          onClick={() => onChange(i)}
+          className={`text-[11px] leading-none ${i <= value ? (accent ? 'text-amber-400' : 'text-muted-foreground') : 'text-muted-foreground/30'}`}
+        >
+          <Star className={`h-3 w-3 ${i <= value ? 'fill-current' : ''}`} />
+        </button>
+      ))}
+    </span>
+  );
+}
 
+// ── Skills List Component ───────────────────────────────────────────
+function SkillsList({ skills, setSkills, accent, placeholder }) {
+  const rows = skills.length > 0 ? skills : [{ name: '', weight: 3 }];
+
+  const addRow = () => {
+    setSkills([...rows, { name: '', weight: 3 }]);
+  };
+
+  const removeRow = (idx) => {
+    const updated = rows.filter((_, i) => i !== idx);
+    setSkills(updated.length > 0 ? updated : [{ name: '', weight: 3 }]);
+  };
+
+  const updateName = (idx, val) => {
+    const updated = [...rows];
+    updated[idx] = { ...updated[idx], name: val };
+    setSkills(updated);
+  };
+
+  const setWeight = (idx, w) => {
+    const updated = [...rows];
+    updated[idx] = { ...updated[idx], weight: w };
+    setSkills(updated);
+  };
+
+  return (
+    <div className="flex flex-col gap-1.5">
+      {rows.map((skill, idx) => (
+        <div key={idx} className="flex items-center gap-2">
+          <input
+            type="text"
+            value={skill.name}
+            onChange={(e) => updateName(idx, e.target.value)}
+            placeholder={placeholder}
+            className="flex-1 rounded-md border border-input bg-background px-2.5 py-1.5 text-sm outline-none placeholder:text-muted-foreground focus:ring-1 focus:ring-ring"
+          />
+          <StarRating value={skill.weight} onChange={(w) => setWeight(idx, w)} accent={accent} />
+          <span className={`text-[9px] font-bold px-1.5 py-0.5 rounded ${
+            accent
+              ? 'bg-primary/10 text-primary'
+              : 'bg-muted text-muted-foreground border border-border'
+          }`}>
+            {skill.weight}/5
+          </span>
+          {rows.length > 1 && (
+            <button
+              type="button"
+              onClick={() => removeRow(idx)}
+              className="shrink-0 rounded-md p-1 text-muted-foreground hover:text-destructive hover:bg-muted transition-colors"
+            >
+              <X className="h-4 w-4" />
+            </button>
+          )}
+        </div>
+      ))}
+      <button
+        type="button"
+        onClick={addRow}
+        className="flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground transition-colors w-fit"
+      >
+        <Plus className="h-3.5 w-3.5" />
+        Add more
+      </button>
+    </div>
+  );
+}
+
+// ── Step Placeholder ────────────────────────────────────────────────
 function StepPlaceholder({ title, stepNum }) {
   return (
     <div className="flex flex-col items-center justify-center py-20 text-center">
@@ -63,11 +150,20 @@ function StepPlaceholder({ title, stepNum }) {
   );
 }
 
+// ── Job Creation Step ───────────────────────────────────────────────
 function JobCreationStep({ jobs, loading, recruiters, onCreateJob, onEditJob, onDeleteJob }) {
   const [form, setForm] = useState(INITIAL_FORM);
   const [editingId, setEditingId] = useState(null);
   const [submitting, setSubmitting] = useState(false);
   const [showForm, setShowForm] = useState(false);
+
+  // Job Details state
+  const [requiredSkills, setRequiredSkills] = useState([]);
+  const [preferredSkills, setPreferredSkills] = useState([]);
+  const [benefits, setBenefits] = useState([]);
+  const [uploadedFile, setUploadedFile] = useState(null);
+  const [generating, setGenerating] = useState(false);
+  const fileInputRef = useRef(null);
 
   const handleChange = (field, value) => {
     setForm(prev => ({ ...prev, [field]: value }));
@@ -85,10 +181,10 @@ function JobCreationStep({ jobs, loading, recruiters, onCreateJob, onEditJob, on
     setSubmitting(true);
     try {
       const payload = { ...form };
-      // Convert pay_min/pay_max to numbers
       if (payload.pay_min) payload.pay_min = Number(payload.pay_min);
       if (payload.pay_max) payload.pay_max = Number(payload.pay_max);
-      // Remove empty strings
+      if (requiredSkills.length > 0) payload.required_skills = requiredSkills;
+      if (preferredSkills.length > 0) payload.preferred_skills = preferredSkills;
       Object.keys(payload).forEach(k => {
         if (payload[k] === '') delete payload[k];
       });
@@ -99,6 +195,10 @@ function JobCreationStep({ jobs, loading, recruiters, onCreateJob, onEditJob, on
         await onCreateJob(payload);
       }
       setForm(INITIAL_FORM);
+      setRequiredSkills([]);
+      setPreferredSkills([]);
+      setBenefits([]);
+      setUploadedFile(null);
       setEditingId(null);
       setShowForm(false);
     } finally {
@@ -121,15 +221,55 @@ function JobCreationStep({ jobs, loading, recruiters, onCreateJob, onEditJob, on
       company: job.company || '',
       seniority_level: job.seniority_level || '',
       company_url: job.company_url || '',
+      recruiter: '',
+      qualifications: job.qualifications || '',
     });
+    setRequiredSkills(job.required_skills || []);
+    setPreferredSkills(job.preferred_skills || []);
     setEditingId(job.id);
     setShowForm(true);
   };
 
   const handleCancel = () => {
     setForm(INITIAL_FORM);
+    setRequiredSkills([]);
+    setPreferredSkills([]);
+    setBenefits([]);
+    setUploadedFile(null);
     setEditingId(null);
     setShowForm(false);
+  };
+
+  const handleFileDrop = (e) => {
+    e.preventDefault();
+    const file = e.dataTransfer?.files?.[0] || e.target?.files?.[0];
+    if (file) setUploadedFile(file);
+  };
+
+  const handleGenerate = async () => {
+    setGenerating(true);
+    let fullText = '';
+    try {
+      await generateJobAI(form, uploadedFile, (chunk) => {
+        fullText += chunk;
+        // Split at the Qualifications boundary if present
+        const parts = fullText.split(/\n\n(?=\d\.\s|\*\*Qualifications\*\*|Qualifications)/i);
+        if (parts.length >= 2) {
+          handleChange('job_desc', parts[0].trim());
+          handleChange('qualifications', parts.slice(1).join('\n\n').trim());
+        } else {
+          handleChange('job_desc', fullText);
+        }
+      });
+    } catch {
+      // no-op
+    } finally {
+      setGenerating(false);
+    }
+  };
+
+  const toggleBenefit = (b) => {
+    setBenefits(prev => prev.includes(b) ? prev.filter(x => x !== b) : [...prev, b]);
   };
 
   return (
@@ -149,7 +289,7 @@ function JobCreationStep({ jobs, loading, recruiters, onCreateJob, onEditJob, on
         <>
           <Card>
             <CardHeader className="pb-3">
-              <CardTitle className="text-sm">{editingId ? 'Edit Job' : 'New Job'}</CardTitle>
+              <CardTitle className="text-sm">Job Information</CardTitle>
             </CardHeader>
             <CardContent className="space-y-5">
               {/* Job Title */}
@@ -244,18 +384,6 @@ function JobCreationStep({ jobs, loading, recruiters, onCreateJob, onEditJob, on
                 </div>
               </div>
 
-              {/* Job Description */}
-              <div className="flex flex-col gap-1.5">
-                <Label className="text-[11px] text-muted-foreground font-semibold">Job Description <span className="text-red-500">*</span></Label>
-                <Textarea
-                  className="min-h-[100px] text-xs"
-                  placeholder="Enter job description..."
-                  value={form.job_desc}
-                  onChange={e => handleChange('job_desc', e.target.value)}
-                  required
-                />
-              </div>
-
               {/* ── Compensation ── */}
               <p className="text-xs font-semibold text-muted-foreground pt-2 border-t">Compensation</p>
 
@@ -311,6 +439,153 @@ function JobCreationStep({ jobs, loading, recruiters, onCreateJob, onEditJob, on
                   </Select>
                 </div>
               </div>
+
+              {/* ── Benefits ── */}
+              <p className="text-xs font-semibold text-muted-foreground pt-2 border-t">Benefits</p>
+
+              <div className="flex flex-wrap gap-3">
+                {BENEFITS_LIST.map(b => (
+                  <label key={b} className="flex items-center gap-1.5 text-[11px] cursor-pointer select-none">
+                    <input
+                      type="checkbox"
+                      checked={benefits.includes(b)}
+                      onChange={() => toggleBenefit(b)}
+                      className="accent-primary h-3.5 w-3.5 rounded"
+                    />
+                    {b}
+                  </label>
+                ))}
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* ── Job Details Card ── */}
+          <Card>
+            <CardHeader className="pb-3 flex flex-row items-center justify-between">
+              <CardTitle className="text-sm">Job Details</CardTitle>
+              <Button size="sm" onClick={handleGenerate} disabled={generating}>
+                {generating
+                  ? <><Loader2 className="h-3.5 w-3.5 mr-1.5 animate-spin" /> Generating...</>
+                  : <><Sparkles className="h-3.5 w-3.5 mr-1.5" /> AI Generate</>
+                }
+              </Button>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              {/* AI Tags */}
+              <div className="flex flex-wrap gap-2">
+                <Badge variant="secondary" className="text-[10px] font-semibold bg-emerald-50 text-emerald-600 border-0">
+                  &#10003; Bias-Free Language
+                </Badge>
+                <Badge variant="secondary" className="text-[10px] font-semibold bg-primary/8 text-primary border-0">
+                  &#128269; SEO Optimized
+                </Badge>
+                <Badge variant="secondary" className="text-[10px] font-semibold bg-blue-50 text-blue-600 border-0">
+                  &#127760; Multi-Language (ID+EN)
+                </Badge>
+                <Badge variant="secondary" className="text-[10px] font-semibold bg-red-50 text-red-600 border-0">
+                  &#9878; Compliance
+                </Badge>
+              </div>
+
+              {/* Upload JD */}
+              <div className="flex flex-col gap-1.5">
+                <Label className="text-[11px] text-muted-foreground font-semibold">Upload Job Description (Optional)</Label>
+                <div
+                  className="border-2 border-dashed border-border rounded-lg p-6 text-center bg-muted/30 cursor-pointer hover:border-primary/40 transition-colors"
+                  onClick={() => fileInputRef.current?.click()}
+                  onDragOver={e => e.preventDefault()}
+                  onDrop={handleFileDrop}
+                >
+                  <Upload className="h-5 w-5 mx-auto mb-2 text-muted-foreground" />
+                  <p className="text-xs font-semibold">
+                    {uploadedFile ? uploadedFile.name : 'Drag file here or click to browse'}
+                  </p>
+                  <p className="text-[10px] text-muted-foreground mt-1">
+                    Upload existing Job Desc: PDF, DOCX, TXT (max 10MB)
+                    <br />AI will auto-extract all fields from uploaded document
+                  </p>
+                  <input
+                    ref={fileInputRef}
+                    type="file"
+                    accept=".pdf,.docx,.txt"
+                    className="hidden"
+                    onChange={handleFileDrop}
+                  />
+                </div>
+              </div>
+
+              {/* Job Description with toolbar */}
+              <div className="flex flex-col gap-1.5">
+                <Label className="text-[11px] text-muted-foreground font-semibold">Job Description <span className="text-red-500">*</span></Label>
+                <div className="border rounded-lg overflow-hidden">
+                  <div className="flex gap-0.5 px-2 py-1.5 border-b bg-muted/40">
+                    <button type="button" className="w-7 h-7 rounded flex items-center justify-center hover:bg-muted transition-colors" title="Bold">
+                      <Bold className="h-3.5 w-3.5" />
+                    </button>
+                    <button type="button" className="w-7 h-7 rounded flex items-center justify-center hover:bg-muted transition-colors" title="Italic">
+                      <Italic className="h-3.5 w-3.5" />
+                    </button>
+                    <button type="button" className="w-7 h-7 rounded flex items-center justify-center hover:bg-muted transition-colors" title="Underline">
+                      <Underline className="h-3.5 w-3.5" />
+                    </button>
+                    <button type="button" className="w-7 h-7 rounded flex items-center justify-center hover:bg-muted transition-colors" title="Bullet list">
+                      <List className="h-3.5 w-3.5" />
+                    </button>
+                    <button type="button" className="w-7 h-7 rounded flex items-center justify-center hover:bg-muted transition-colors" title="Number list">
+                      <ListOrdered className="h-3.5 w-3.5" />
+                    </button>
+                    <button type="button" className="w-7 h-7 rounded flex items-center justify-center hover:bg-muted transition-colors" title="Link">
+                      <Link className="h-3.5 w-3.5" />
+                    </button>
+                    <button type="button" className="w-7 h-7 rounded flex items-center justify-center hover:bg-muted transition-colors" title="AI Assist">
+                      <Bot className="h-3.5 w-3.5" />
+                    </button>
+                  </div>
+                  <Textarea
+                    className="min-h-[100px] text-xs border-0 rounded-none focus-visible:ring-0 resize-y"
+                    placeholder="Enter job description or use AI Generate..."
+                    value={form.job_desc}
+                    onChange={e => handleChange('job_desc', e.target.value)}
+                  />
+                </div>
+              </div>
+
+              {/* Qualifications */}
+              <div className="flex flex-col gap-1.5">
+                <Label className="text-[11px] text-muted-foreground font-semibold">Qualifications <span className="text-red-500">*</span></Label>
+                <Textarea
+                  className="min-h-[70px] text-xs resize-y"
+                  placeholder="Enter qualifications or use AI Generate..."
+                  value={form.qualifications}
+                  onChange={e => handleChange('qualifications', e.target.value)}
+                />
+              </div>
+
+              {/* Required Skills */}
+              <div className="flex flex-col gap-1.5">
+                <Label className="text-[11px] text-muted-foreground font-semibold">
+                  Required Skills <span className="text-red-500">*</span>
+                  <span className="ml-2 text-[9px] font-bold px-1.5 py-0.5 rounded bg-primary/10 text-primary">WITH WEIGHT</span>
+                </Label>
+                <SkillsList
+                  skills={requiredSkills}
+                  setSkills={setRequiredSkills}
+                  accent
+                  placeholder="+ Add skill (weights pre-populate AI Matching)"
+                />
+              </div>
+
+              {/* Preferred Skills */}
+              <div className="flex flex-col gap-1.5">
+                <Label className="text-[11px] text-muted-foreground font-semibold">Preferred Skills</Label>
+                <SkillsList
+                  skills={preferredSkills}
+                  setSkills={setPreferredSkills}
+                  accent={false}
+                  placeholder="+ Add preferred skill"
+                />
+              </div>
+
             </CardContent>
           </Card>
 
@@ -337,7 +612,7 @@ function JobCreationStep({ jobs, loading, recruiters, onCreateJob, onEditJob, on
             </div>
           ) : jobs.length === 0 ? (
             <p className="text-xs text-muted-foreground text-center py-10">
-              No jobs created yet. Click "New Job" to get started.
+              No jobs created yet. Click &quot;New Job&quot; to get started.
             </p>
           ) : (
             <div className="space-y-2">

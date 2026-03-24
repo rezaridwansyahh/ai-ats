@@ -8,3 +8,38 @@ export const createJob = (data) => api.post('/job', data);
 export const updateJob = (id, data) => api.put(`/job/${id}`, data);
 export const updateJobStatus = (id, status) => api.put(`/job/${id}/status`, { status });
 export const deleteJob = (id) => api.delete(`/job/${id}`);
+
+export const generateJobAI = async (formFields, file, onChunk) => {
+  const formData = new FormData();
+  formData.append('fields', JSON.stringify(formFields));
+  if (file) formData.append('file', file);
+
+  const token = localStorage.getItem('token');
+  const res = await fetch('http://localhost:3000/api/job/generate', {
+    method: 'POST',
+    headers: {
+      ...(token ? { Authorization: `Bearer ${token}` } : {}),
+      'ngrok-skip-browser-warning': 'true',
+    },
+    body: formData,
+  });
+
+  const reader = res.body.getReader();
+  const decoder = new TextDecoder();
+  let buffer = '';
+
+  while (true) {
+    const { done, value } = await reader.read();
+    if (done) break;
+    buffer += decoder.decode(value, { stream: true });
+    const lines = buffer.split('\n');
+    buffer = lines.pop();
+    for (const line of lines) {
+      if (line.startsWith('data: ')) {
+        const data = line.slice(6);
+        if (data === '[DONE]') return;
+        onChunk(data);
+      }
+    }
+  }
+};
