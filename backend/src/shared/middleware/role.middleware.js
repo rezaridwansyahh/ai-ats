@@ -15,7 +15,7 @@ function checkPermission(moduleName, menuName, functionality, options = {}) {
       // Extract role IDs
       const roleIds = role.map(r => r.id);
       
-      const hasPermission = await Permission.checkPermissionMultipleRoles(
+      const hasPermission = await PermissionModel.checkPermissionMultipleRoles(
         roleIds,
         moduleName,
         menuName,

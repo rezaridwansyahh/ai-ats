@@ -109,4 +109,12 @@ export default [
   { id: 70, module_menu_id: 19, functionality: 'update' },
   { id: 71, module_menu_id: 19, functionality: 'delete' },
 
+  /* ===================================================================
+     Users -> Recruiters (module_menu_id: 20)
+  =================================================================== */
+  { id: 72, module_menu_id: 20, functionality: 'read' },
+  { id: 73, module_menu_id: 20, functionality: 'create' },
+  { id: 74, module_menu_id: 20, functionality: 'update' },
+  { id: 75, module_menu_id: 20, functionality: 'delete' },
+
 ];

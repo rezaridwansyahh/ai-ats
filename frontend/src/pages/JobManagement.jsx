@@ -13,15 +13,15 @@ import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from '@/components/ui/select';
 import { getJobs, createJob, updateJob, deleteJob } from '@/api/job.api';
+import { getRecruiters } from '@/api/recruiter.api';
 
-// Field options matching backend ENUMs (setup.sql)
+
 const WORK_OPTIONS = ['On-site', 'Hybrid', 'Remote'];
 const WORK_TYPES = ['Full-time', 'Part-time', 'Contract', 'Casual'];
 const PAY_TYPES = ['Hourly', 'Monthly', 'Annually'];
 const CURRENCIES = ['AUD', 'HKD', 'IDR', 'MYR', 'NZD', 'PHP', 'SGD', 'THB', 'USD'];
 const PAY_DISPLAY_OPTIONS = ['Show', 'Hide'];
 const SENIORITY_LEVELS = ['Internship', 'Entry Level', 'Associate', 'Mid-Senior Level', 'Director', 'Executive'];
-
 const STEPS = [
   { key: 'creation', label: 'Job Creation', icon: FileText },
   { key: 'stages', label: 'Job Stages', icon: GitBranch },
@@ -44,6 +44,7 @@ const INITIAL_FORM = {
   company: '',
   seniority_level: '',
   company_url: '',
+  recruiter: '',
 };
 
 // ── Step Components ─────────────────────────────────────────────────
@@ -62,7 +63,7 @@ function StepPlaceholder({ title, stepNum }) {
   );
 }
 
-function JobCreationStep({ jobs, loading, onCreateJob, onEditJob, onDeleteJob }) {
+function JobCreationStep({ jobs, loading, recruiters, onCreateJob, onEditJob, onDeleteJob }) {
   const [form, setForm] = useState(INITIAL_FORM);
   const [editingId, setEditingId] = useState(null);
   const [submitting, setSubmitting] = useState(false);
@@ -224,6 +225,25 @@ function JobCreationStep({ jobs, loading, onCreateJob, onEditJob, onDeleteJob })
                 </div>
               </div>
 
+              {/* ── Recruiter Assignment ── */}
+              <p className="text-xs font-semibold text-muted-foreground pt-2 border-t">Recruiter Assignment</p>
+
+              <div className="grid grid-cols-3 gap-4">
+                <div className="flex flex-col gap-1.5">
+                  <Select value={form.recruiter} onValueChange={v => handleChange('recruiter', v)}>
+                    <SelectTrigger className="w-full"><SelectValue placeholder="Select recruiter" /></SelectTrigger>
+                    <SelectContent>
+                      {recruiters.map(r => (
+                        <SelectItem key={r.id} value={r.id.toString()}>
+                          {r.name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  <span className="text-[10px] text-muted-foreground">This recruiter will manage all city pipelines for this job.</span>
+                </div>
+              </div>
+
               {/* Job Description */}
               <div className="flex flex-col gap-1.5">
                 <Label className="text-[11px] text-muted-foreground font-semibold">Job Description <span className="text-red-500">*</span></Label>
@@ -374,6 +394,7 @@ export default function JobManagementPage() {
   const [activeStep, setActiveStep] = useState(0);
   const [jobs, setJobs] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [recruiters, setRecruiters] = useState([]);
 
   const fetchJobs = useCallback(async () => {
     setLoading(true);
@@ -387,9 +408,19 @@ export default function JobManagementPage() {
     }
   }, []);
 
+  const fetchRecruiters = useCallback(async () => {
+    try {
+      const res = await getRecruiters();
+      setRecruiters(res.data.recruiters || []);
+    } catch (err) {
+      // no-op
+    }
+  }, []);
+
   useEffect(() => {
     fetchJobs();
-  }, [fetchJobs]);
+    fetchRecruiters();
+  }, [fetchJobs, fetchRecruiters]);
 
   const handleCreateJob = async (data) => {
     await createJob(data);
@@ -473,6 +504,7 @@ export default function JobManagementPage() {
         <JobCreationStep
           jobs={jobs}
           loading={loading}
+          recruiters={recruiters}
           onCreateJob={handleCreateJob}
           onEditJob={handleEditJob}
           onDeleteJob={handleDeleteJob}

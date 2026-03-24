@@ -13,6 +13,7 @@ import SeekSourcingPage from "./pages/SeekSourcing"
 import CandidateSearchPage from "./pages/CandidateSearch"
 import DemoBookingPage from "./pages/DemoBooking"
 import JobManagementPage from "./pages/JobManagement"
+import RecruitersPage from "./pages/Recruiters"
 
 function App() {
   return (
@@ -27,6 +28,7 @@ function App() {
         <Route path="management"        element={<UserManagementPage />} />
         <Route path="role-management"   element={<RoleManagementPage />} />
         <Route path="demo-booking"     element={<DemoBookingPage />} />
+        <Route path="recruiters"      element={<RecruitersPage />} />
       </Route>
       <Route path="/settings" element={<DashboardLayout />}>
         <Route path="integrations" element={<IntegrationsPage />} />

@@ -84,6 +84,12 @@ export default [
   role_id: 1,
   permission_id: 68 + i
 })),
+// Users -> Recruiters (72–75)
+...Array.from({ length: 4 }, (_, i) => ({
+  id: 54 + i,
+  role_id: 1,
+  permission_id: 72 + i
+})),
 
 /* ============================================================================
    MANAGER (role_id: 2)
@@ -158,6 +164,11 @@ export default [
   { id: 152, role_id: 2, permission_id: 69 },
   { id: 153, role_id: 2, permission_id: 70 },
 
+  // Users -> Recruiters (72–74: read/create/update)
+  { id: 160, role_id: 2, permission_id: 72 },
+  { id: 161, role_id: 2, permission_id: 73 },
+  { id: 162, role_id: 2, permission_id: 74 },
+
 /* ============================================================================
    STAFF (role_id: 3)
    read + create only
@@ -215,6 +226,10 @@ export default [
   // Users -> Demo Booking (read only)
   { id: 229, role_id: 3, permission_id: 64 },
 
+  // Users -> Recruiters (read + create)
+  { id: 232, role_id: 3, permission_id: 72 },
+  { id: 233, role_id: 3, permission_id: 73 },
+
 /* ============================================================================
    INTERN (role_id: 4)
    READ ONLY
@@ -232,5 +247,6 @@ export default [
   { id: 314, role_id: 4, permission_id: 60 },  // LinkedIn Sourcing (read)
   { id: 315, role_id: 4, permission_id: 64 },  // Demo Booking (read)
   { id: 316, role_id: 4, permission_id: 68 },  // Sourcing -> Job Management (read)
+  { id: 317, role_id: 4, permission_id: 72 },  // Recruiters (read)
 
 ];

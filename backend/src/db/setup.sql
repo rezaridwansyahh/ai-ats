@@ -19,7 +19,10 @@ DROP TABLE IF EXISTS mapping_roles_permissions CASCADE;
 DROP TABLE IF EXISTS master_sourcing CASCADE;
 DROP TABLE IF EXISTS master_sourcing_recruite CASCADE;
 
+DROP TABLE IF EXISTS master_recruiters CASCADE;
+
 -- Drop enums after all tables are gone
+DROP TYPE IF EXISTS recruiter_status_type CASCADE;
 DROP TYPE IF EXISTS booking_status_type CASCADE;
 DROP TYPE IF EXISTS session_slot_type CASCADE;
 DROP TYPE IF EXISTS status_type CASCADE;
@@ -40,6 +43,7 @@ CREATE TYPE currency_type AS ENUM ('AUD', 'HKD', 'IDR', 'MYR', 'NZD', 'PHP', 'SG
 CREATE TYPE pay_display_type AS ENUM ('Show', 'Hide');
 CREATE TYPE platform_type AS ENUM ('seek', 'linkedin');
 CREATE TYPE candidate_status_type AS ENUM ('Kotak masuk', 'Prescreen', 'Terpilih', 'Wawancara', 'Penawaran', 'Menerima Tawaran', 'Tidak cocok');
+CREATE TYPE recruiter_status_type AS ENUM ('Active', 'Onboarding');
 CREATE TYPE booking_status_type AS ENUM ('pending', 'approved', 'rejected');
 CREATE TYPE session_slot_type   AS ENUM ('10-12', '1-3', '4-6');
 
@@ -258,6 +262,16 @@ CREATE TABLE master_landing (
   status booking_status_type NOT NULL DEFAULT 'pending',
   rejection_reason TEXT,
   conference_link TEXT,
+  created_at TIMESTAMP NOT NULL DEFAULT NOW(),
+  updated_at TIMESTAMP NOT NULL DEFAULT NOW()
+);
+
+CREATE TABLE master_recruiters (
+  id SERIAL PRIMARY KEY,
+  name VARCHAR(100) NOT NULL,
+  email VARCHAR(100) NOT NULL,
+  jobs_assigned INTEGER NOT NULL DEFAULT 0,
+  status recruiter_status_type NOT NULL DEFAULT 'Active',
   created_at TIMESTAMP NOT NULL DEFAULT NOW(),
   updated_at TIMESTAMP NOT NULL DEFAULT NOW()
 );
