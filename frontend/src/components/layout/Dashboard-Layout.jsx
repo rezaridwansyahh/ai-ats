@@ -59,7 +59,7 @@ export default function DashboardLayout() {
         </header>
 
         {/* Main content */}
-        <main className="p-5 animate-slide-up min-h-[calc(100vh-3.25rem)]">
+        <main className="p-5 min-h-[calc(100vh-3.25rem)]">
           <Outlet />
         </main>
       </SidebarInset>
