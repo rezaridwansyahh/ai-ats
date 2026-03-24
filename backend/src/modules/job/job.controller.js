@@ -1,4 +1,6 @@
 import jobService from './job.service.js';
+import aiService from '../../shared/services/ai.service.js';
+import { parseFileToText } from '../../shared/utils/file-parser.js';
 
 class JobController {
   async getAll(req, res) {
@@ -70,6 +72,31 @@ class JobController {
       res.status(200).json({ message: 'Job deleted', job });
     } catch (err) {
       res.status(err.status || 500).json({ message: err.message });
+    }
+  }
+
+  async generate(req, res) {
+    res.setHeader('Content-Type', 'text/event-stream');
+    res.setHeader('Cache-Control', 'no-cache');
+    res.setHeader('Connection', 'keep-alive');
+
+    try {
+      const formFields = JSON.parse(req.body.fields || '{}');
+      let fileText = null;
+
+      if (req.file) {
+        fileText = await parseFileToText(req.file);
+      }
+
+      for await (const chunk of aiService.generateStream(formFields, fileText)) {
+        res.write(`data: ${JSON.stringify({ text: chunk })}\n\n`);
+      }
+
+      res.write('data: [DONE]\n\n');
+      res.end();
+    } catch (err) {
+      res.write(`data: ${JSON.stringify({ error: err.message })}\n\n`);
+      res.end();
     }
   }
 }
