@@ -22,7 +22,7 @@ const PAY_TYPES = ['Hourly', 'Monthly', 'Annually'];
 const CURRENCIES = ['AUD', 'HKD', 'IDR', 'MYR', 'NZD', 'PHP', 'SGD', 'THB', 'USD'];
 const PAY_DISPLAY_OPTIONS = ['Show', 'Hide'];
 const SENIORITY_LEVELS = ['Internship', 'Entry Level', 'Associate', 'Mid-Senior Level', 'Director', 'Executive'];
-const BENEFITS_LIST = ['Health Insurance', 'Life Insurance', 'Housing', 'Company Car', 'Gym Membership', 'Training & Dev'];
+const DEFAULT_BENEFITS = ['Health Insurance', 'Life Insurance', 'Housing', 'Company Car', 'Gym Membership', 'Training & Dev'];
 
 const STEPS = [
   { key: 'creation', label: 'Job Creation', icon: FileText },
@@ -59,7 +59,7 @@ function StarRating({ value, onChange, accent }) {
           key={i}
           type="button"
           onClick={() => onChange(i)}
-          className={`text-[11px] leading-none ${i <= value ? (accent ? 'text-amber-400' : 'text-muted-foreground') : 'text-muted-foreground/30'}`}
+          className={`text-[11px] leading-none cursor-pointer ${i <= value ? (accent ? 'text-amber-400' : 'text-muted-foreground') : 'text-muted-foreground/30'}`}
         >
           <Star className={`h-3 w-3 ${i <= value ? 'fill-current' : ''}`} />
         </button>
@@ -102,7 +102,7 @@ function SkillsList({ skills, setSkills, accent, placeholder }) {
             value={skill.name}
             onChange={(e) => updateName(idx, e.target.value)}
             placeholder={placeholder}
-            className="flex-1 rounded-md border border-input bg-background px-2.5 py-1.5 text-sm outline-none placeholder:text-muted-foreground focus:ring-1 focus:ring-ring"
+            className="w-[200px] rounded-md border border-input bg-background px-2.5 py-1.5 text-sm outline-none placeholder:text-muted-foreground focus:ring-1 focus:ring-ring"
           />
           <StarRating value={skill.weight} onChange={(w) => setWeight(idx, w)} accent={accent} />
           <span className={`text-[9px] font-bold px-1.5 py-0.5 rounded ${
@@ -160,7 +160,9 @@ function JobCreationStep({ jobs, loading, recruiters, onCreateJob, onEditJob, on
   // Job Details state
   const [requiredSkills, setRequiredSkills] = useState([]);
   const [preferredSkills, setPreferredSkills] = useState([]);
+  const [benefitOptions, setBenefitOptions] = useState(DEFAULT_BENEFITS);
   const [benefits, setBenefits] = useState([]);
+  const [newBenefit, setNewBenefit] = useState('');
   const [uploadedFile, setUploadedFile] = useState(null);
   const [generating, setGenerating] = useState(false);
   const fileInputRef = useRef(null);
@@ -226,6 +228,9 @@ function JobCreationStep({ jobs, loading, recruiters, onCreateJob, onEditJob, on
     });
     setRequiredSkills(job.required_skills || []);
     setPreferredSkills(job.preferred_skills || []);
+    const savedBenefits = job.benefits || [];
+    setBenefits(savedBenefits);
+    setBenefitOptions([...new Set([...DEFAULT_BENEFITS, ...savedBenefits])]);
     setEditingId(job.id);
     setShowForm(true);
   };
@@ -235,6 +240,8 @@ function JobCreationStep({ jobs, loading, recruiters, onCreateJob, onEditJob, on
     setRequiredSkills([]);
     setPreferredSkills([]);
     setBenefits([]);
+    setBenefitOptions(DEFAULT_BENEFITS);
+    setNewBenefit('');
     setUploadedFile(null);
     setEditingId(null);
     setShowForm(false);
@@ -386,11 +393,15 @@ function JobCreationStep({ jobs, loading, recruiters, onCreateJob, onEditJob, on
                   <Select value={form.recruiter} onValueChange={v => handleChange('recruiter', v)}>
                     <SelectTrigger className="w-full"><SelectValue placeholder="Select recruiter" /></SelectTrigger>
                     <SelectContent>
-                      {recruiters.map(r => (
-                        <SelectItem key={r.id} value={r.id.toString()}>
-                          {r.name}
-                        </SelectItem>
-                      ))}
+                      {recruiters.length === 0 ? (
+                        <div className="px-2 py-4 text-xs text-muted-foreground text-center">No recruiter available</div>
+                      ) : (
+                        recruiters.map(r => (
+                          <SelectItem key={r.id} value={r.id.toString()}>
+                            {r.name}
+                          </SelectItem>
+                        ))
+                      )}
                     </SelectContent>
                   </Select>
                   <span className="text-[10px] text-muted-foreground">This recruiter will manage all city pipelines for this job.</span>
@@ -457,7 +468,7 @@ function JobCreationStep({ jobs, loading, recruiters, onCreateJob, onEditJob, on
               <p className="text-xs font-semibold text-muted-foreground pt-2 border-t">Benefits</p>
 
               <div className="flex flex-wrap gap-3">
-                {BENEFITS_LIST.map(b => (
+                {benefitOptions.map(b => (
                   <label key={b} className="flex items-center gap-1.5 text-[11px] cursor-pointer select-none">
                     <input
                       type="checkbox"
@@ -468,6 +479,24 @@ function JobCreationStep({ jobs, loading, recruiters, onCreateJob, onEditJob, on
                     {b}
                   </label>
                 ))}
+              </div>
+              <div className="flex items-center gap-2">
+                <input
+                  type="text"
+                  value={newBenefit}
+                  onChange={e => setNewBenefit(e.target.value)}
+                  onKeyDown={e => {
+                    if (e.key === 'Enter' && newBenefit.trim()) {
+                      e.preventDefault();
+                      if (!benefitOptions.includes(newBenefit.trim())) {
+                        setBenefitOptions(prev => [...prev, newBenefit.trim()]);
+                      }
+                      setNewBenefit('');
+                    }
+                  }}
+                  placeholder="+ Add custom benefit"
+                  className="w-[200px] rounded-md border border-input bg-background px-2.5 py-1.5 text-[11px] outline-none placeholder:text-muted-foreground focus:ring-1 focus:ring-ring"
+                />
               </div>
             </CardContent>
           </Card>
@@ -555,7 +584,7 @@ function JobCreationStep({ jobs, loading, recruiters, onCreateJob, onEditJob, on
                     </button>
                   </div>
                   <Textarea
-                    className="min-h-[100px] text-xs border-0 rounded-none focus-visible:ring-0 resize-y"
+                    className="min-h-[200px] text-xs border-0 rounded-none focus-visible:ring-0 resize-y"
                     placeholder="Enter job description or use AI Generate..."
                     value={form.job_desc}
                     onChange={e => handleChange('job_desc', e.target.value)}
@@ -567,7 +596,7 @@ function JobCreationStep({ jobs, loading, recruiters, onCreateJob, onEditJob, on
               <div className="flex flex-col gap-1.5">
                 <Label className="text-[11px] text-muted-foreground font-semibold">Qualifications <span className="text-red-500">*</span></Label>
                 <Textarea
-                  className="min-h-[70px] text-xs resize-y"
+                  className="min-h-[150px] text-xs resize-y"
                   placeholder="Enter qualifications or use AI Generate..."
                   value={form.qualifications}
                   onChange={e => handleChange('qualifications', e.target.value)}
@@ -584,7 +613,7 @@ function JobCreationStep({ jobs, loading, recruiters, onCreateJob, onEditJob, on
                   skills={requiredSkills}
                   setSkills={setRequiredSkills}
                   accent
-                  placeholder="+ Add skill (weights pre-populate AI Matching)"
+                  placeholder="Enter Required Skill"
                 />
               </div>
 
@@ -595,7 +624,7 @@ function JobCreationStep({ jobs, loading, recruiters, onCreateJob, onEditJob, on
                   skills={preferredSkills}
                   setSkills={setPreferredSkills}
                   accent={false}
-                  placeholder="+ Add preferred skill"
+                  placeholder="Enter Preferred Skill"
                 />
               </div>
 
