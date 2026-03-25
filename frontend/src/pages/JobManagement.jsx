@@ -1,8 +1,8 @@
-import { useState, useEffect, useCallback, useRef } from 'react';
+import { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import {
   Briefcase, FileText, Send, Users, GitBranch, Check,
   Plus, Loader2, Pencil, Trash2, Upload, Sparkles, X, Star,
-  Bold, Italic, Underline, List, ListOrdered, Link, Bot,
+  Bold, Italic, Underline, List, ListOrdered, Link, Bot, ChevronLeft, ChevronRight,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -26,6 +26,8 @@ const CURRENCIES = ['AUD', 'HKD', 'IDR', 'MYR', 'NZD', 'PHP', 'SGD', 'THB', 'USD
 const PAY_DISPLAY_OPTIONS = ['Show', 'Hide'];
 const SENIORITY_LEVELS = ['Internship', 'Entry Level', 'Associate', 'Mid-Senior Level', 'Director', 'Executive'];
 const DEFAULT_BENEFITS = ['Health Insurance', 'Life Insurance', 'Housing', 'Company Car', 'Gym Membership', 'Training & Dev'];
+const STATUS_OPTIONS = ['Draft', 'Active', 'Running', 'Expired', 'Failed', 'Blocked'];
+const PAGE_SIZE = 3;
 
 const STEPS = [
   { key: 'creation', label: 'Job Creation', icon: FileText },
@@ -154,7 +156,7 @@ function StepPlaceholder({ title, stepNum }) {
 }
 
 // ── Job Creation Step ───────────────────────────────────────────────
-function JobCreationStep({ jobs, loading, recruiters, onCreateJob, onEditJob, onDeleteJob }) {
+function JobCreationStep({ jobs, loading, recruiters, onCreateJob, onEditJob, onDeleteJob, selectedJobId, onSelectJob }) {
   const [form, setForm] = useState(INITIAL_FORM);
   const [editingId, setEditingId] = useState(null);
   const [submitting, setSubmitting] = useState(false);
@@ -170,9 +172,69 @@ function JobCreationStep({ jobs, loading, recruiters, onCreateJob, onEditJob, on
   const [generating, setGenerating] = useState(false);
   const fileInputRef = useRef(null);
 
+  // Search, filter & pagination
+  const [searchQuery, setSearchQuery] = useState('');
+  const [statusFilter, setStatusFilter] = useState('all');
+  const [page, setPage] = useState(1);
+
+  const filteredJobs = useMemo(() => {
+    return jobs.filter(job => {
+      const matchesSearch = !searchQuery || job.job_title?.toLowerCase().includes(searchQuery.toLowerCase());
+      const matchesStatus = statusFilter === 'all' || job.status === statusFilter;
+      return matchesSearch && matchesStatus;
+    });
+  }, [jobs, searchQuery, statusFilter]);
+
+  const totalPages = Math.ceil(filteredJobs.length / PAGE_SIZE);
+  const paginatedJobs = filteredJobs.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
+
+  // Reset page when filters change
+  useEffect(() => { setPage(1); }, [searchQuery, statusFilter]);
+
+  // Auto-save draft state
+  const [saveStatus, setSaveStatus] = useState('idle');
+  const [draftId, setDraftId] = useState(null);
+  const savingRef = useRef(false);
+
   const handleChange = (field, value) => {
     setForm(prev => ({ ...prev, [field]: value }));
   };
+
+  // Debounce auto-save draft (2 seconds after last change)
+  useEffect(() => {
+    if (!showForm || !form.job_title.trim()) return;
+    if (savingRef.current) return;
+
+    setSaveStatus('idle');
+    const timer = setTimeout(async () => { // 5 second debounce
+      savingRef.current = true;
+      setSaveStatus('saving');
+      try {
+        const payload = { ...form, status: 'Draft' };
+        if (payload.pay_min) payload.pay_min = Number(payload.pay_min);
+        if (payload.pay_max) payload.pay_max = Number(payload.pay_max);
+        if (requiredSkills.length > 0) payload.required_skills = requiredSkills;
+        if (preferredSkills.length > 0) payload.preferred_skills = preferredSkills;
+        if (benefits.length > 0) payload.benefits = benefits;
+        Object.keys(payload).forEach(k => { if (payload[k] === '') delete payload[k]; });
+
+        const currentDraftId = editingId || draftId;
+        if (currentDraftId) {
+          await onEditJob(currentDraftId, payload);
+        } else {
+          const res = await onCreateJob(payload);
+          if (res?.id) setDraftId(res.id);
+        }
+        setSaveStatus('saved');
+      } catch {
+        setSaveStatus('error');
+      } finally {
+        savingRef.current = false;
+      }
+    }, 5000);
+
+    return () => clearTimeout(timer);
+  }, [form, requiredSkills, preferredSkills, benefits]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const isFormValid = () => {
     return form.job_title.trim() && form.job_location.trim() && form.work_option &&
@@ -194,8 +256,9 @@ function JobCreationStep({ jobs, loading, recruiters, onCreateJob, onEditJob, on
         if (payload[k] === '') delete payload[k];
       });
 
-      if (editingId) {
-        await onEditJob(editingId, payload);
+      const currentId = editingId || draftId;
+      if (currentId) {
+        await onEditJob(currentId, payload);
       } else {
         await onCreateJob(payload);
       }
@@ -205,6 +268,8 @@ function JobCreationStep({ jobs, loading, recruiters, onCreateJob, onEditJob, on
       setBenefits([]);
       setUploadedFile(null);
       setEditingId(null);
+      setDraftId(null);
+      setSaveStatus('idle');
       setShowForm(false);
     } finally {
       setSubmitting(false);
@@ -246,6 +311,8 @@ function JobCreationStep({ jobs, loading, recruiters, onCreateJob, onEditJob, on
     setBenefitOptions(DEFAULT_BENEFITS);
     setNewBenefit('');
     setUploadedFile(null);
+    setDraftId(null);
+    setSaveStatus('idle');
     setEditingId(null);
     setShowForm(false);
   };
@@ -309,7 +376,24 @@ function JobCreationStep({ jobs, loading, recruiters, onCreateJob, onEditJob, on
       <Dialog open={showForm} onOpenChange={(open) => { if (!open) handleCancel(); }}>
         <DialogContent className="max-w-[90vw] sm:max-w-[90vw] h-[90vh] overflow-hidden rounded-lg flex flex-col">
           <DialogHeader>
-            <DialogTitle>{editingId ? 'Edit Job' : 'New Job'}</DialogTitle>
+            <div className="flex items-center gap-3">
+              <DialogTitle>{editingId ? 'Edit Job' : 'New Job'}</DialogTitle>
+              {saveStatus === 'saving' && (
+                <span className="inline-flex items-center gap-1.5 text-[10px] font-semibold text-amber-600">
+                  <Loader2 className="h-3 w-3 animate-spin" /> Saving...
+                </span>
+              )}
+              {saveStatus === 'saved' && (
+                <span className="inline-flex items-center gap-1.5 text-[10px] font-semibold text-emerald-600">
+                  <Check className="h-3 w-3" /> Draft saved
+                </span>
+              )}
+              {saveStatus === 'error' && (
+                <span className="inline-flex items-center gap-1.5 text-[10px] font-semibold text-red-500">
+                  <X className="h-3 w-3" /> Save failed
+                </span>
+              )}
+            </div>
           </DialogHeader>
           <div className="flex-1 overflow-y-auto space-y-5 pr-3">
           <Card>
@@ -649,24 +733,46 @@ function JobCreationStep({ jobs, loading, recruiters, onCreateJob, onEditJob, on
 
       {/* Job List */}
       <Card>
-        <CardHeader className="pb-3">
+        <CardHeader className="pb-3 space-y-3">
           <CardTitle className="text-sm">All Jobs</CardTitle>
+          <div className="flex items-center gap-3">
+            <Input
+              placeholder="Search jobs..."
+              value={searchQuery}
+              onChange={e => setSearchQuery(e.target.value)}
+              className="max-w-[250px] text-xs"
+            />
+            <Select value={statusFilter} onValueChange={setStatusFilter}>
+              <SelectTrigger className="w-[150px] text-xs"><SelectValue /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All Status</SelectItem>
+                {STATUS_OPTIONS.map(s => <SelectItem key={s} value={s}>{s}</SelectItem>)}
+              </SelectContent>
+            </Select>
+          </div>
         </CardHeader>
         <CardContent>
           {loading ? (
             <div className="flex items-center justify-center py-10">
               <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
             </div>
-          ) : jobs.length === 0 ? (
+          ) : filteredJobs.length === 0 ? (
             <p className="text-xs text-muted-foreground text-center py-10">
-              No jobs created yet. Click &quot;New Job&quot; to get started.
+              {jobs.length === 0 ? 'No jobs created yet. Click "New Job" to get started.' : 'No jobs match your search.'}
             </p>
           ) : (
             <div className="space-y-2">
-              {jobs.map(job => (
+              {paginatedJobs.map(job => (
                 <div
                   key={job.id}
-                  className="flex items-center justify-between p-3 border rounded-lg hover:bg-muted/30 transition-colors"
+                  onClick={() => (job.status === 'Draft' || job.status === 'Reconfigure') && onSelectJob(selectedJobId === job.id ? null : job.id)}
+                  className={`flex items-center justify-between p-3 border rounded-lg transition-colors ${
+                    selectedJobId === job.id
+                      ? 'ring-2 ring-primary bg-primary/5'
+                      : (job.status === 'Draft' || job.status === 'Reconfigure')
+                        ? 'hover:bg-muted/30 cursor-pointer'
+                        : 'opacity-60'
+                  }`}
                 >
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2">
@@ -704,6 +810,46 @@ function JobCreationStep({ jobs, loading, recruiters, onCreateJob, onEditJob, on
               ))}
             </div>
           )}
+          <div className="flex flex-col items-center gap-2 pt-3 border-t mt-3">
+            <div className="flex items-center gap-1">
+              <Button variant="outline" size="sm" className="h-7 text-xs" disabled={page <= 1} onClick={() => setPage(p => p - 1)}>
+                Previous
+              </Button>
+              {(() => {
+                const pages = [];
+                pages.push(1);
+                if (page > 3) pages.push('...');
+                for (let i = Math.max(2, page - 1); i <= Math.min(totalPages - 1, page + 1); i++) {
+                  pages.push(i);
+                }
+                if (page < totalPages - 2) pages.push('...');
+                if (totalPages > 1) pages.push(totalPages);
+                return pages.map((p, idx) =>
+                  p === '...' ? (
+                    <span key={`dots-${idx}`} className="text-xs text-muted-foreground px-1">...</span>
+                  ) : (
+                    <Button
+                      key={p}
+                      variant={page === p ? 'default' : 'outline'}
+                      size="sm"
+                      className="h-7 w-7 text-xs p-0"
+                      onClick={() => setPage(p)}
+                    >
+                      {p}
+                    </Button>
+                  )
+                );
+              })()}
+              <Button variant="outline" size="sm" className="h-7 text-xs" disabled={page >= totalPages} onClick={() => setPage(p => p + 1)}>
+                Next
+              </Button>
+            </div>
+            <span className="text-[10px] text-muted-foreground">
+              {filteredJobs.length > 0
+                ? `Showing ${(page - 1) * PAGE_SIZE + 1}–${Math.min(page * PAGE_SIZE, filteredJobs.length)} of ${filteredJobs.length}`
+                : 'No results'}
+            </span>
+          </div>
         </CardContent>
       </Card>
     </div>
@@ -717,6 +863,8 @@ export default function JobManagementPage() {
   const [jobs, setJobs] = useState([]);
   const [loading, setLoading] = useState(true);
   const [recruiters, setRecruiters] = useState([]);
+  const [selectedJobId, setSelectedJobId] = useState(null);
+  const [validationErrors, setValidationErrors] = useState([]);
 
   const fetchJobs = useCallback(async () => {
     setLoading(true);
@@ -759,6 +907,42 @@ export default function JobManagementPage() {
     await fetchJobs();
   };
 
+  const REQUIRED_FIELDS = [
+    { key: 'job_title', label: 'Job Title' },
+    { key: 'job_location', label: 'Location' },
+    { key: 'work_option', label: 'Work Option' },
+    { key: 'work_type', label: 'Work Type' },
+    { key: 'company', label: 'Company' },
+    { key: 'seniority_level', label: 'Seniority Level' },
+    { key: 'company_url', label: 'Company URL' },
+    { key: 'job_desc', label: 'Job Description' },
+    { key: 'currency', label: 'Currency' },
+    { key: 'pay_type', label: 'Pay Type' },
+    { key: 'pay_min', label: 'Pay Min' },
+    { key: 'pay_max', label: 'Pay Max' },
+    { key: 'pay_display', label: 'Pay Display' },
+  ];
+
+  const handleNext = () => {
+    if (activeStep === 0) {
+      if (!selectedJobId) return;
+      const job = jobs.find(j => j.id === selectedJobId);
+      if (!job) return;
+      const missing = REQUIRED_FIELDS.filter(f => !job[f.key] || (typeof job[f.key] === 'string' && !job[f.key].trim()));
+      if (missing.length > 0) {
+        setValidationErrors(missing.map(f => f.label));
+        return;
+      }
+    }
+    setValidationErrors([]);
+    setActiveStep(prev => Math.min(prev + 1, STEPS.length - 1));
+  };
+
+  const handlePrev = () => {
+    setValidationErrors([]);
+    setActiveStep(prev => Math.max(prev - 1, 0));
+  };
+
   return (
     <div className="space-y-6">
       {/* Header */}
@@ -775,8 +959,7 @@ export default function JobManagementPage() {
       <div className="flex items-center justify-center gap-0 py-3 border-b">
         {STEPS.map((step, i) => (
           <div key={step.key} className="flex items-center">
-            <button
-              onClick={() => setActiveStep(i)}
+            <div
               className={`flex items-center gap-2 px-1 py-1 transition-all ${
                 i === activeStep ? 'text-primary' : 'text-muted-foreground'
               }`}
@@ -793,7 +976,7 @@ export default function JobManagementPage() {
               <span className={`text-[11px] font-bold transition-colors ${
                 i === activeStep ? 'text-primary' : 'text-muted-foreground'
               }`}>{step.label}</span>
-            </button>
+            </div>
             {i < STEPS.length - 1 && (
               <div className={`w-7 h-0.5 mx-1 ${i < activeStep ? 'bg-primary' : 'bg-muted'}`} />
             )}
@@ -804,22 +987,47 @@ export default function JobManagementPage() {
         Progress indicator — navigate using the tabs below
       </p>
 
-      {/* Tab Navigation */}
-      <div className="flex border-b -mt-2">
-        {STEPS.map((step, i) => (
-          <button
-            key={step.key}
-            onClick={() => setActiveStep(i)}
-            className={`px-4 py-2 text-xs font-semibold border-b-2 transition-all -mb-px ${
-              i === activeStep
-                ? 'text-primary border-primary'
-                : 'text-muted-foreground border-transparent hover:text-foreground hover:bg-accent/50'
-            }`}
+      {/* Step Navigation */}
+      <div className="flex justify-between items-center border-b -mt-2 pb-2">
+        {activeStep > 0 ? (
+          <Button variant="ghost" size="sm" className="text-xs" onClick={handlePrev}>
+            <ChevronLeft className="h-4 w-4 mr-1" />
+            Previous: {STEPS[activeStep - 1].label}
+          </Button>
+        ) : <div />}
+        {activeStep < STEPS.length - 1 ? (
+          <Button
+            variant="ghost"
+            size="sm"
+            className="text-xs"
+            disabled={activeStep === 0 && !selectedJobId}
+            onClick={handleNext}
           >
-            {step.label}
-          </button>
-        ))}
+            Next: {STEPS[activeStep + 1].label}
+            <ChevronRight className="h-4 w-4 ml-1" />
+          </Button>
+        ) : <div />}
       </div>
+
+      {/* Validation Error Modal */}
+      <Dialog open={validationErrors.length > 0} onOpenChange={() => setValidationErrors([])}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>Incomplete Job Information</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-2">
+            <p className="text-sm text-muted-foreground">The following required fields are missing:</p>
+            <ul className="list-disc pl-5 space-y-1">
+              {validationErrors.map(err => (
+                <li key={err} className="text-sm text-red-500">{err}</li>
+              ))}
+            </ul>
+          </div>
+          <DialogFooter>
+            <Button onClick={() => setValidationErrors([])}>OK</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       {/* Step Content */}
       {activeStep === 0 && (
@@ -830,6 +1038,8 @@ export default function JobManagementPage() {
           onCreateJob={handleCreateJob}
           onEditJob={handleEditJob}
           onDeleteJob={handleDeleteJob}
+          selectedJobId={selectedJobId}
+          onSelectJob={setSelectedJobId}
         />
       )}
       {activeStep === 1 && <StepPlaceholder title="Job Stages" stepNum={2} />}
