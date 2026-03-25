@@ -9,6 +9,9 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import {
+  Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter,
+} from '@/components/ui/dialog';
 import { Badge } from '@/components/ui/badge';
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
@@ -297,16 +300,18 @@ function JobCreationStep({ jobs, loading, recruiters, onCreateJob, onEditJob, on
       {/* Step Header */}
       <div className="flex items-center justify-between">
         <h3 className="text-base font-bold">Job Creation</h3>
-        {!showForm && (
-          <Button size="sm" onClick={() => setShowForm(true)}>
-            <Plus className="h-4 w-4 mr-1.5" /> New Job
-          </Button>
-        )}
+        <Button size="sm" onClick={() => setShowForm(true)}>
+          <Plus className="h-4 w-4 mr-1.5" /> New Job
+        </Button>
       </div>
 
-      {/* Job Form */}
-      {showForm && (
-        <>
+      {/* Job Form Dialog */}
+      <Dialog open={showForm} onOpenChange={(open) => { if (!open) handleCancel(); }}>
+        <DialogContent className="max-w-[90vw] sm:max-w-[90vw] h-[90vh] overflow-hidden rounded-lg flex flex-col">
+          <DialogHeader>
+            <DialogTitle>{editingId ? 'Edit Job' : 'New Job'}</DialogTitle>
+          </DialogHeader>
+          <div className="flex-1 overflow-y-auto space-y-5 pr-3">
           <Card>
             <CardHeader className="pb-3">
               <CardTitle className="text-sm">Job Information</CardTitle>
@@ -630,17 +635,17 @@ function JobCreationStep({ jobs, loading, recruiters, onCreateJob, onEditJob, on
 
             </CardContent>
           </Card>
+          </div>
 
-          {/* Form Actions */}
-          <div className="flex justify-end gap-2 pt-2 border-t">
+          <DialogFooter className="pt-2 border-t">
             <Button variant="outline" onClick={handleCancel} disabled={submitting}>Cancel</Button>
             <Button onClick={handleSubmit} disabled={submitting || !isFormValid()}>
               {submitting && <Loader2 className="h-4 w-4 mr-1.5 animate-spin" />}
-              {editingId ? 'Update Job' : 'Create Job'}
+              {editingId ? 'Update Job' : 'Save Job'}
             </Button>
-          </div>
-        </>
-      )}
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       {/* Job List */}
       <Card>
