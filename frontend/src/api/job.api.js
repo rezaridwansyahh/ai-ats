@@ -9,7 +9,7 @@ export const updateJob = (id, data) => api.put(`/job/${id}`, data);
 export const updateJobStatus = (id, status) => api.put(`/job/${id}/status`, { status });
 export const deleteJob = (id) => api.delete(`/job/${id}`);
 
-export const generateJobAI = async (formFields, file, onChunk) => {
+export const generateJobAI = async (formFields, file) => {
   const formData = new FormData();
   formData.append('fields', JSON.stringify(formFields));
   if (file) formData.append('file', file);
@@ -27,6 +27,7 @@ export const generateJobAI = async (formFields, file, onChunk) => {
   const reader = res.body.getReader();
   const decoder = new TextDecoder();
   let buffer = '';
+  let fullText = '';
 
   while (true) {
     const { done, value } = await reader.read();
@@ -37,9 +38,11 @@ export const generateJobAI = async (formFields, file, onChunk) => {
     for (const line of lines) {
       if (line.startsWith('data: ')) {
         const data = line.slice(6);
-        if (data === '[DONE]') return;
-        onChunk(data);
+        if (data === '[DONE]') return fullText;
+        try { fullText += JSON.parse(data).text; } catch { /* skip malformed */ }
       }
     }
   }
+
+  return fullText;
 };

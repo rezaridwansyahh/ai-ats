@@ -22,10 +22,9 @@ class AIService {
       prompt += `\nUse the document above as reference to tailor the job description and required qualifications.\n`;
     }
 
-    prompt += `\nPlease respond with two sections:\n`;
-    prompt += `1. **Job Description** — a compelling, detailed job description\n`;
-    prompt += `2. **Qualifications** — required and preferred qualifications as bullet points\n`;
-    prompt += `\nWrite in a professional tone. Do not include any markdown headers or labels like "Job Description:" — just write the content directly.`;
+    prompt += `\nIMPORTANT: You MUST structure your response using these EXACT tags. Do NOT omit them:\n\n`;
+    prompt += `[JOB_DESC]\nWrite the job description here\n[/JOB_DESC]\n[QUALIFICATIONS]\nWrite required and preferred qualifications as bullet points here\n[/QUALIFICATIONS]\n\n`;
+    prompt += `Rules:\n- Always start with [JOB_DESC] and end with [/QUALIFICATIONS]\n- Never skip the tags\n- Write in a professional tone`;
 
     return prompt;
   }

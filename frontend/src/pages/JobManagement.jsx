@@ -246,23 +246,36 @@ function JobCreationStep({ jobs, loading, recruiters, onCreateJob, onEditJob, on
     if (file) setUploadedFile(file);
   };
 
+  const parseAIResponse = (text) => {
+    // Try tag-based split first
+    const descMatch = text.match(/\[JOB_DESC\]([\s\S]*?)\[\/JOB_DESC\]/);
+    const qualMatch = text.match(/\[QUALIFICATIONS\]([\s\S]*?)\[\/QUALIFICATIONS\]/);
+    if (descMatch && qualMatch) {
+      return { job_desc: descMatch[1].trim(), qualifications: qualMatch[1].trim() };
+    }
+
+    // Fallback: split at "Required qualifications" or "Qualifications"
+    const splitMatch = text.match(/\n\s*(Required [Qq]ualifications|Qualifications)\s*:?\s*\n/);
+    if (splitMatch) {
+      const idx = text.indexOf(splitMatch[0]);
+      return {
+        job_desc: text.slice(0, idx).trim(),
+        qualifications: text.slice(idx).trim(),
+      };
+    }
+
+    return { job_desc: text.trim(), qualifications: '' };
+  };
+
   const handleGenerate = async () => {
     setGenerating(true);
-    let fullText = '';
     try {
-      await generateJobAI(form, uploadedFile, (chunk) => {
-        fullText += chunk;
-        // Split at the Qualifications boundary if present
-        const parts = fullText.split(/\n\n(?=\d\.\s|\*\*Qualifications\*\*|Qualifications)/i);
-        if (parts.length >= 2) {
-          handleChange('job_desc', parts[0].trim());
-          handleChange('qualifications', parts.slice(1).join('\n\n').trim());
-        } else {
-          handleChange('job_desc', fullText);
-        }
-      });
-    } catch {
-      // no-op
+      const fullText = await generateJobAI(form, uploadedFile);
+      console.log('AI response:', fullText);
+      const { job_desc, qualifications } = parseAIResponse(fullText);
+      setForm(prev => ({ ...prev, job_desc, qualifications }));
+    } catch (err) {
+      console.error('Generate error:', err);
     } finally {
       setGenerating(false);
     }
