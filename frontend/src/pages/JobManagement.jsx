@@ -18,6 +18,7 @@ import {
 } from '@/components/ui/select';
 import { getJobs, createJob, updateJob, deleteJob, generateJobAI } from '@/api/job.api';
 import { getRecruiters } from '@/api/recruiter.api';
+import JobStagesStep from '@/components/job-management/JobStagesStep';
 
 const WORK_OPTIONS = ['On-site', 'Hybrid', 'Remote'];
 const WORK_TYPES = ['Full-time', 'Part-time', 'Contract', 'Casual'];
@@ -1042,7 +1043,9 @@ export default function JobManagementPage() {
           onSelectJob={setSelectedJobId}
         />
       )}
-      {activeStep === 1 && <StepPlaceholder title="Job Stages" stepNum={2} />}
+      {activeStep === 1 && (
+        <JobStagesStep selectedJob={jobs.find(j => j.id === selectedJobId)} />
+      )}
       {activeStep === 2 && <StepPlaceholder title="Job Posting" stepNum={3} />}
       {activeStep === 3 && <StepPlaceholder title="Job Sourcing" stepNum={4} />}
       {activeStep === 4 && <StepPlaceholder title="Applicant Pipeline" stepNum={5} />}

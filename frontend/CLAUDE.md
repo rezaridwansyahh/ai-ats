@@ -26,7 +26,9 @@ src/
 │   ├── menus.api.js        # CRUD menus (RBAC)
 │   ├── job-accounts.api.js # CRUD job platform accounts
 │   ├── job-postings.api.js # CRUD core job postings
-│   └── job-posting-seek.api.js  # Seek-specific posting operations
+│   ├── job-posting-seek.api.js  # Seek-specific posting operations
+│   ├── job.api.js          # Job CRUD + AI generation (uses fetch for SSE streaming)
+│   └── recruiter.api.js    # Recruiter CRUD
 │
 ├── services/
 │   └── auth.js             # loginUser, registerUser, logoutUser, getCurrentUser
@@ -43,7 +45,9 @@ src/
 │   ├── user-management/    # Feature components: UserTable, UserFormDialog, etc.
 │   ├── role-management/    # Feature components: RoleTable, RoleFormDialog, etc.
 │   ├── job-account/        # Feature components: AccountTable, AccountFormDialog, etc.
-│   └── job-posting/        # Feature components: JobPostingTable, SeekFormDialog, etc.
+│   ├── job-posting/        # Feature components: JobPostingTable, SeekFormDialog, etc.
+│   ├── recruiter/          # Feature components: RecruiterTable, RecruiterFormDialog, etc.
+│   └── shared/             # Shared components: TablePagination
 │
 ├── pages/                  # Route entry points — own state, data fetching, CRUD logic
 │   ├── Login.jsx           # Renders LoginCard
@@ -53,6 +57,12 @@ src/
 │   ├── RoleManagement.jsx  # Role CRUD with permission assignment
 │   ├── Account.jsx         # Job account CRUD
 │   ├── Seek.jsx            # Seek posting CRUD with status tracking
+│   ├── SeekSourcing.jsx    # Seek sourcing management
+│   ├── CandidateSearch.jsx # Candidate search
+│   ├── DemoBooking.jsx     # Demo booking page
+│   ├── JobManagement.jsx   # Multi-step job creation with AI generation
+│   ├── Recruiters.jsx      # Recruiter CRUD with status tracking
+│   ├── Landing.jsx         # Public landing page
 │   └── Integrations.jsx    # Platform connection settings (placeholder)
 │
 ├── hooks/                  # Custom React hooks
@@ -76,13 +86,19 @@ src/
 All routes are defined in `App.jsx`. Authenticated pages are nested inside `<DashboardLayout />` which provides the sidebar shell + `<Outlet />`.
 
 ```
+/                              → LandingPage (public)
 /login, /register              → standalone pages
 /dashboard                     → DashboardLayout > DashboardPage
 /users/management              → DashboardLayout > UserManagementPage
 /users/role-management         → DashboardLayout > RoleManagementPage
+/users/demo-booking            → DashboardLayout > DemoBookingPage
+/users/recruiters              → DashboardLayout > RecruitersPage
 /settings/integrations         → DashboardLayout > IntegrationsPage
 /job-postings/account          → DashboardLayout > AccountPage
 /job-postings/seek             → DashboardLayout > SeekPage
+/job-management/seek-sourcing  → DashboardLayout > SeekSourcingPage
+/sourcing/job-management       → DashboardLayout > JobManagementPage
+/candidates/search             → DashboardLayout > CandidateSearchPage
 ```
 
 ### Page → Feature Component Flow
@@ -115,6 +131,12 @@ Dialog components receive these standard props:
 
 ### Sorting
 Use the `useSort()` hook which returns `{ toggle, apply, SortIcon }`. Call `toggle(field)` on header click, `apply(list)` to sort data, and `<SortIcon field="x" />` in column headers.
+
+### Pagination / Search / Filter
+Standard data flow across list pages: `fetchData → filter (search + status/role dropdown) → sort (useSort) → paginate → render`. Shared `TablePagination` component in `components/shared/` provides page size selector (10/25/50/100), row count display, and prev/next navigation.
+
+### AI Generation (JobManagement)
+`job.api.js` uses raw `fetch()` (not Axios) to stream SSE responses from `/api/job/generate`. The backend returns structured text with `[JOB_DESC]` and `[QUALIFICATIONS]` tags that get parsed client-side. Supports optional file upload (PDF/DOCX/TXT) for context.
 
 ## Configuration
 - **Path alias**: `@` → `./src` (defined in `vite.config.js` + `jsconfig.json`)

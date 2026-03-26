@@ -44,6 +44,8 @@ No test framework is currently configured.
 
 **Active code lives in `src/`**. Root-level `routes/`, `controllers/`, `middlewares/`, `model/` directories are legacy (unused).
 
+**AI & File Processing** — `src/shared/services/ai.service.js` uses OpenAI (GPT-4o-mini) with SSE streaming for job description generation. File uploads handled by Multer middleware (`src/shared/middleware/upload.middleware.js`, 10MB limit, PDF/DOCX/TXT). Text extraction via `src/shared/utils/file-parser.js` (pdf-parse, mammoth).
+
 API route prefixes:
 | Prefix | Module |
 |--------|--------|
@@ -55,6 +57,12 @@ API route prefixes:
 | `/api/menu` | menu |
 | `/api/job-account` | job-account |
 | `/api/job-posting` | job-post |
+| `/api/job` | job (core jobs with AI generation) |
+| `/api/candidate` | candidate |
+| `/api/sourcing` | sourcing |
+| `/api/recruiter` | recruiter |
+| `/api/email-notify` | email-notify |
+| `/api/landing` | landing |
 | `/api/seek` | platform/seek |
 | `/api/linkedin` | platform/linkedin |
 | `/api/cookies` | cookie |
@@ -62,11 +70,13 @@ API route prefixes:
 ### Frontend (React 19 + Vite 7 + Tailwind 4)
 - **UI library**: Shadcn UI (New York style, Radix primitives) — components in `src/components/ui/`
 - **Icons**: Lucide React
-- **HTTP**: Axios instance in `src/api/axios.js` with JWT interceptors, token expiry check, and 401 redirect
+- **HTTP**: Axios instance in `src/api/axios.js` with JWT interceptors, token expiry check, and 401 redirect. Exception: `job.api.js` uses raw `fetch()` for SSE streaming.
 - **Path alias**: `@` → `./src` (configured in both `vite.config.js` and `jsconfig.json`)
 - **State**: localStorage for auth (token, user, role, permissions, userData); component-level `useState` — no global state library
 - **API base URL**: Hardcoded ngrok URL in `src/api/axios.js` (changes per tunnel session)
 - **Routing**: React Router v7 in `App.jsx`. Authenticated pages nest inside `<DashboardLayout />` which provides sidebar + `<Outlet />`
+
+**Data flow pattern** across pages: `fetchData → filter (search/status) → sort (useSort) → paginate → render`. Shared `TablePagination` component in `src/components/shared/`.
 
 See `frontend/CLAUDE.md` for detailed frontend patterns and folder structure.
 
@@ -76,9 +86,9 @@ Permissions are structured as **Module → Menu → Functionality** (create/read
 ### Database Schema (PostgreSQL)
 Schema defined in `backend/src/db/setup.sql`. Seed data in `backend/src/db/data/` (modules, menus, permissions, roles, users, mappings).
 
-Key tables: `master_users`, `master_roles`, `mapping_users_roles`, `master_modules`, `master_menus`, `mapping_modules_menus`, `global_permissions`, `mapping_roles_permissions`, `master_job_account`, `core_job_posting`, `mapping_job_posting_seek`, `mapping_job_posting_linkedin`, `cookies`.
+Key tables: `master_users`, `master_roles`, `mapping_users_roles`, `master_modules`, `master_menus`, `mapping_modules_menus`, `global_permissions`, `mapping_roles_permissions`, `master_job_account`, `core_job_posting`, `mapping_job_posting_seek`, `mapping_job_posting_linkedin`, `cookies`, `core_job` (new consolidated job table with JSONB skills), `master_candidates`, `core_job_sourcing`, `master_recruiters`, `master_email_notify`.
 
-PostgreSQL ENUMs: `status_type` (Draft/Active/Running/Expired/Failed), `work_option_type`, `work_type_type`, `pay_type_type`, `currency_type`, `pay_display_type`, `platform_type` (seek/linkedin).
+PostgreSQL ENUMs: `status_type` (Draft/Active/Running/Expired/Failed), `work_option_type`, `work_type_type`, `pay_type_type`, `currency_type`, `pay_display_type`, `platform_type` (seek/linkedin), `recruiter_status_type` (Active/Onboarding), `booking_status_type` (pending/approved/rejected), `session_slot_type`.
 
 ### Job Posting RPA
 Seek RPA scripts live in `backend/src/modules/platform/seek/rpa/`. They use Puppeteer to automate form filling on Seek's website. Cookie-based session reuse avoids re-authentication.
