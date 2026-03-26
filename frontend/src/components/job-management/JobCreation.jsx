@@ -198,7 +198,7 @@ export default function JobCreationStep({ jobs, loading, recruiters, onCreateJob
           await onEditJob(currentDraftId, payload);
         } else {
           const res = await onCreateJob(payload);
-          if (res?.id) setDraftId(res.id);
+          if (res?.job?.id) setDraftId(res.job.id);
         }
         setSaveStatus('saved');
       } catch {
