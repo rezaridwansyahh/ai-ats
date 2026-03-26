@@ -44,6 +44,8 @@ export default function JobManagementPage() {
   const [recruiters, setRecruiters] = useState([]);
   const [selectedJobId, setSelectedJobId] = useState(null);
   const [validationErrors, setValidationErrors] = useState([]);
+  const [postingSummary, setPostingSummary] = useState(null);
+  const [showPostingConfirm, setShowPostingConfirm] = useState(false);
 
   const fetchJobs = useCallback(async () => {
     setLoading(true);
@@ -113,6 +115,10 @@ export default function JobManagementPage() {
         setValidationErrors(missing.map(f => f.label));
         return;
       }
+    }
+    if (activeStep === 2) {
+      setShowPostingConfirm(true);
+      return;
     }
     setValidationErrors([]);
     setActiveStep(prev => Math.min(prev + 1, STEPS.length - 1));
@@ -226,10 +232,71 @@ export default function JobManagementPage() {
         <JobStages selectedJob={jobs.find(j => j.id === selectedJobId)} />
       )}
       {activeStep === 2 && (
-        <JobPosting selectedJob={jobs.find(j => j.id === selectedJobId)} />
+        <JobPosting
+          selectedJob={jobs.find(j => j.id === selectedJobId)}
+          onSelectionChange={setPostingSummary}
+        />
       )}
       {activeStep === 3 && <StepPlaceholder title="Job Sourcing" stepNum={4} />}
       {activeStep === 4 && <StepPlaceholder title="Applicant Pipeline" stepNum={5} />}
+
+      {/* Posting Confirmation Modal */}
+      <Dialog open={showPostingConfirm} onOpenChange={setShowPostingConfirm}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>Confirm Publishing Selection</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-3">
+            <p className="text-sm text-muted-foreground">You are about to proceed with the following selection:</p>
+            {postingSummary?.public?.enabled && (
+              <div className="flex items-start gap-2 px-3 py-2 rounded-lg bg-emerald-50 border border-emerald-200">
+                <span className="h-2 w-2 rounded-full bg-emerald-500 mt-1.5 shrink-0" />
+                <div>
+                  <p className="text-xs font-bold text-emerald-800">Public</p>
+                  <p className="text-[11px] text-emerald-700">
+                    {postingSummary.public.channels.length > 0
+                      ? postingSummary.public.channels.join(', ')
+                      : 'No channels published yet'}
+                  </p>
+                </div>
+              </div>
+            )}
+            {postingSummary?.private?.enabled && (
+              <div className="flex items-start gap-2 px-3 py-2 rounded-lg bg-amber-50 border border-amber-200">
+                <span className="h-2 w-2 rounded-full bg-amber-500 mt-1.5 shrink-0" />
+                <div>
+                  <p className="text-xs font-bold text-amber-800">Private</p>
+                  <p className="text-[11px] text-amber-700">
+                    {postingSummary.private.channels.length > 0
+                      ? postingSummary.private.channels.join(', ')
+                      : 'No channels shared yet'}
+                  </p>
+                </div>
+              </div>
+            )}
+            {postingSummary?.internal?.enabled && (
+              <div className="flex items-start gap-2 px-3 py-2 rounded-lg bg-primary/5 border border-primary/20">
+                <span className="h-2 w-2 rounded-full bg-primary mt-1.5 shrink-0" />
+                <div>
+                  <p className="text-xs font-bold text-primary">Internal Hire Only</p>
+                  <p className="text-[11px] text-muted-foreground">
+                    Candidates will be sourced from talent pool
+                  </p>
+                </div>
+              </div>
+            )}
+            {!postingSummary?.public?.enabled && !postingSummary?.private?.enabled && !postingSummary?.internal?.enabled && (
+              <div className="px-3 py-2 rounded-lg bg-muted text-xs text-muted-foreground text-center">
+                No channels or groups selected.
+              </div>
+            )}
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setShowPostingConfirm(false)}>Back</Button>
+            <Button onClick={() => { setShowPostingConfirm(false); setActiveStep(3); }}>Confirm &amp; Continue</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
