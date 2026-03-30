@@ -76,25 +76,53 @@ class JobController {
   }
 
   async generate(req, res) {
-    res.setHeader('Content-Type', 'text/event-stream');
-    res.setHeader('Cache-Control', 'no-cache');
-    res.setHeader('Connection', 'keep-alive');
+    const { id } = req.body;
 
     try {
-      const formFields = JSON.parse(req.body.fields || '{}');
+      const form = await jobService.getById(id);
+
+      const requires = [
+        "job_title", 
+        "job_location", 
+        "work_option", 
+        "work_type", 
+        "company",
+        "seniority_level"
+      ];
+
+      const missing = [];
+
+      for(const require of requires) {
+        if(!form[require]) {
+          missing.push(require);
+        }
+      }
+
+      if(missing.length > 0) {
+        return res.status(400).json({ message: "Column missing", missing });
+      }
+
+      res.setHeader('Content-Type', 'text/event-stream');
+      res.setHeader('Cache-Control', 'no-cache');
+      res.setHeader('Connection', 'keep-alive');
+
       let fileText = null;
 
       if (req.file) {
         fileText = await parseFileToText(req.file);
       }
 
-      for await (const chunk of aiService.generateStream(formFields, fileText)) {
+      for await (const chunk of aiService.generateStream(form, fileText)) {
         res.write(`data: ${JSON.stringify({ text: chunk })}\n\n`);
       }
 
       res.write('data: [DONE]\n\n');
       res.end();
     } catch (err) {
+      if(!res.headersSent) {
+        return res.status(err.status || 500).json({ message: err.message });
+      }
+
       res.write(`data: ${JSON.stringify({ error: err.message })}\n\n`);
       res.end();
     }

@@ -147,6 +147,9 @@ export default function JobCreationStep({ jobs, loading, recruiters, onCreateJob
   const [generating, setGenerating] = useState(false);
   const fileInputRef = useRef(null);
 
+  // error validation handler
+  const [validationErrors, setValidationErrors] = useState([]);
+
   // Search, filter & pagination
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
@@ -320,12 +323,14 @@ export default function JobCreationStep({ jobs, loading, recruiters, onCreateJob
   const handleGenerate = async () => {
     setGenerating(true);
     try {
-      const fullText = await generateJobAI(form, uploadedFile);
+      const jobId = editingId || draftId;
+      const fullText = await generateJobAI(jobId, uploadedFile);
       console.log('AI response:', fullText);
       const { job_desc, qualifications } = parseAIResponse(fullText);
       setForm(prev => ({ ...prev, job_desc, qualifications }));
     } catch (err) {
-      console.error('Generate error:', err);
+      console.log(err);
+      setValidationErrors(err.missing || [err.message || 'Unknown Error']);
     } finally {
       setGenerating(false);
     }
@@ -337,6 +342,25 @@ export default function JobCreationStep({ jobs, loading, recruiters, onCreateJob
 
   return (
     <div className="space-y-5">
+      {/* Validation Error AI Generate */}
+      <Dialog open={validationErrors.length > 0} onOpenChange={() => setValidationErrors([])}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>Incomplete Job Information</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-2">
+            <p className="text-sm text-muted-foreground">The following required fields are missing:</p>
+            <ul className="list-disc pl-5 space-y-1">
+              {validationErrors.map(err => (
+                <li key={err} className="text-sm text-red-500">{err}</li>
+              ))}
+            </ul>
+          </div>
+          <DialogFooter>
+            <Button onClick={() => setValidationErrors([])}>OK</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
       {/* Step Header */}
       <div className="flex items-center justify-between">
         <h3 className="text-base font-bold">Job Creation</h3>
@@ -344,6 +368,7 @@ export default function JobCreationStep({ jobs, loading, recruiters, onCreateJob
           <Plus className="h-4 w-4 mr-1.5" /> New Job
         </Button>
       </div>
+      
 
       {/* Job Form Dialog */}
       <Dialog open={showForm} onOpenChange={(open) => { if (!open) handleCancel(); }}>
@@ -357,7 +382,7 @@ export default function JobCreationStep({ jobs, loading, recruiters, onCreateJob
                 </span>
               )}
               {saveStatus === 'saved' && (
-                <span className="inline-flex items-center gap-1.5 text-[10px] font-semibold text-emerald-600">
+                <span className="inline-flex items-center gap-1.5 tex-[10px] font-semibold text-emerald-600">
                   <Check className="h-3 w-3" /> Draft saved
                 </span>
               )}

@@ -9,9 +9,9 @@ export const updateJob = (id, data) => api.put(`/job/${id}`, data);
 export const updateJobStatus = (id, status) => api.put(`/job/${id}/status`, { status });
 export const deleteJob = (id) => api.delete(`/job/${id}`);
 
-export const generateJobAI = async (formFields, file) => {
+export const generateJobAI = async (id, file) => {
   const formData = new FormData();
-  formData.append('fields', JSON.stringify(formFields));
+  formData.append('id', JSON.stringify(id));
   if (file) formData.append('file', file);
 
   const token = localStorage.getItem('token');
@@ -23,6 +23,11 @@ export const generateJobAI = async (formFields, file) => {
     },
     body: formData,
   });
+
+  if(!res.ok) {
+    const error = await res.json();
+    throw error;
+  }
 
   const reader = res.body.getReader();
   const decoder = new TextDecoder();
