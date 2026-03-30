@@ -186,7 +186,7 @@ export default function JobManagementPage() {
             variant="ghost"
             size="sm"
             className="text-xs"
-            disabled={activeStep === 0 && !selectedJobId}
+            disabled={activeStep === 0 && !selectedJobId }
             onClick={handleNext}
           >
             Next: {STEPS[activeStep + 1].label}

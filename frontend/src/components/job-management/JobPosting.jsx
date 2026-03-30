@@ -8,6 +8,7 @@ import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
+import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group"
 import { Collapsible, CollapsibleContent } from '@/components/ui/collapsible';
 import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
@@ -47,13 +48,10 @@ const PERFORMANCE_DATA = [
 // ── Component ────────────────────────────────────────────────────────
 
 export default function JobPosting({ selectedJob, onSelectionChange }) {
-  const [groups, setGroups] = useState({ public: false, private: false, internal: false });
+  const [group, setGroup] = useState(null);
+  const [channels, setChannels] = useState({ "public": false, "private": false });
   const [publicChannels, setPublicChannels] = useState(INITIAL_PUBLIC);
   const [privateChannels, setPrivateChannels] = useState(INITIAL_PRIVATE);
-
-  const toggleGroup = (key) => {
-    setGroups(prev => ({ ...prev, [key]: !prev[key] }));
-  };
 
   const updatePublic = (id, field, value) => {
     setPublicChannels(prev => prev.map(ch => ch.id === id ? { ...ch, [field]: value } : ch));
@@ -63,28 +61,40 @@ export default function JobPosting({ selectedJob, onSelectionChange }) {
     setPrivateChannels(prev => prev.map(ch => ch.id === id ? { ...ch, [field]: value } : ch));
   };
 
+  const toggleChannels = (key) => {
+    setChannels(prev => ({ ...prev, [key]: !prev[key] }));
+  }
+
+  const toggleGroup = (group) => {
+    setGroup(group);
+    //reset other
+    setChannels({ "public": false, "private": false })
+    setPublicChannels(INITIAL_PUBLIC);
+    setPrivateChannels(INITIAL_PRIVATE);
+  }
+
   const handlePublishAll = () => {
-    if (groups.public) setPublicChannels(prev => prev.map(ch => ({ ...ch, published: true })));
-    if (groups.private) setPrivateChannels(prev => prev.map(ch => ({ ...ch, published: true })));
+    //if (channels.public) setPublicChannels(prev => prev.map(ch => ({ ...ch, published: true })));
+    //if (channels.private) setPrivateChannels(prev => prev.map(ch => ({ ...ch, published: true })));
   };
 
   // Notify parent of selection changes
   useEffect(() => {
     if (!onSelectionChange) return;
     onSelectionChange({
+      internal: {
+        enabled: group === 'internal',
+      },
       public: {
-        enabled: groups.public,
-        channels: groups.public ? publicChannels.filter(c => c.published).map(c => c.name) : [],
+        enabled: channels.public,
+        channels: channels.public ? publicChannels.filter(c => c.published).map(c => c.name) : [],
       },
       private: {
-        enabled: groups.private,
-        channels: groups.private ? privateChannels.filter(c => c.published).map(c => c.name) : [],
-      },
-      internal: {
-        enabled: groups.internal,
-      },
+        enabled: channels.public,
+        channels: channels.public ? privateChannels.filter(c => c.published).map(c => c.name) : [],
+      }
     });
-  }, [groups, publicChannels, privateChannels, onSelectionChange]);
+  }, [group, publicChannels, privateChannels, onSelectionChange]);
 
   // Guard
   if (!selectedJob) {
@@ -138,81 +148,92 @@ export default function JobPosting({ selectedJob, onSelectionChange }) {
       </div>
 
       {/* ── Internal Hire Only Card ── */}
-      <Card className="pt-0 gap-0">
-        <CardContent className="py-3.5 px-5">
-          <div
-            className="flex items-center gap-3 cursor-pointer"
-            onClick={() => toggleGroup('internal')}
-          >
-            <Checkbox checked={groups.internal} onCheckedChange={() => toggleGroup('internal')} onClick={e => e.stopPropagation()} />
-            <Home className="h-4 w-4 text-primary" />
-            <div>
-              <span className="text-xs font-bold">Internal Hire Only</span>
-              <p className="text-[10px] text-muted-foreground">Source from talent pool — no external posting</p>
+      <RadioGroup value={group} onValueChange={toggleGroup}>
+        <Card className="pt-0 gap-0">
+          <CardContent className="py-3.5 px-5">
+            <label htmlFor="internal">
+              <div className="flex items-center gap-3 cursor-pointer">
+                <RadioGroupItem value="internal" className="cursor-pointer" id="internal"/>
+                <Home className="h-4 w-4 text-primary" />
+                <div>
+                  <span className="text-xs font-bold">Internal Hire Only</span>
+                  <p className="text-[10px] text-muted-foreground">Source from talent pool — no external posting</p>
+                </div>
+              </div>
+            </label>
+          </CardContent>
+        </Card>
+
+        {/* ── Publish to Channels Card ── */}
+        <Card className="pt-0 gap-0">
+          <CardHeader className="py-3 px-5">
+            <label htmlFor="channels">
+              <div className="flex items-center gap-3 cursor-pointer">
+                <RadioGroupItem value="channels" className="cursor-pointer" id="channels"/>
+                <div>
+                  <CardTitle className="text-[13px] font-bold">Publish to Channels</CardTitle>
+                  <p className="text-[10px] text-muted-foreground mt-0.5">Select visibility groups to publish your job posting</p>
+                </div>
+              </div>
+            </label>
+          </CardHeader>
+          <CardContent className="p-0">
+            {/* Quota info banner */}
+            <div className="flex items-center gap-2 mx-5 mb-3 px-3 py-2 rounded-lg bg-primary/5 border border-primary/10">
+              <Info className="h-3.5 w-3.5 text-primary shrink-0" />
+              <p className="text-[10px] text-muted-foreground">
+                You can set per-channel applicant quotas. Once the quota is reached, the channel stops accepting applications for this job.
+              </p>
             </div>
-          </div>
-        </CardContent>
-      </Card>
+            
+            {group === 'channels' && 
+              <div>
+                {/* ── Group 1: Public ── */}
+                <VisibilityGroup
+                  checked={channels.public}
+                  onToggle={() => toggleChannels('public')}
+                  label="Public"
+                  subtitle="Publish to job boards — visible in search results"
+                  icon={<Globe className="h-4 w-4" />}
+                  indicatorColor="bg-emerald-500"
+                >
+                  {publicChannels.map(ch => (
+                    <ChannelRow
+                      key={ch.id}
+                      channel={ch}
+                      showQuota
+                      onPublish={() => updatePublic(ch.id, 'published', true)}
+                      onQuotaChange={v => updatePublic(ch.id, 'maxApplicants', v)}
+                      actionLabel="Publish"
+                    />
+                  ))}
+                </VisibilityGroup>
 
-      {/* ── Publish to Channels Card ── */}
-      <Card className="pt-0 gap-0">
-        <CardHeader className="py-3 px-5">
-          <div>
-            <CardTitle className="text-[13px] font-bold">Publish to Channels</CardTitle>
-            <p className="text-[10px] text-muted-foreground mt-0.5">Select visibility groups to publish your job posting</p>
-          </div>
-        </CardHeader>
-        <CardContent className="p-0">
-          {/* Quota info banner */}
-          <div className="flex items-center gap-2 mx-5 mb-3 px-3 py-2 rounded-lg bg-primary/5 border border-primary/10">
-            <Info className="h-3.5 w-3.5 text-primary shrink-0" />
-            <p className="text-[10px] text-muted-foreground">
-              You can set per-channel applicant quotas. Once the quota is reached, the channel stops accepting applications for this job.
-            </p>
-          </div>
-
-          {/* ── Group 1: Public ── */}
-          <VisibilityGroup
-            checked={groups.public}
-            onToggle={() => toggleGroup('public')}
-            label="Public"
-            subtitle="Publish to job boards — visible in search results"
-            icon={<Globe className="h-4 w-4" />}
-            indicatorColor="bg-emerald-500"
-          >
-            {publicChannels.map(ch => (
-              <ChannelRow
-                key={ch.id}
-                channel={ch}
-                showQuota
-                onPublish={() => updatePublic(ch.id, 'published', true)}
-                onQuotaChange={v => updatePublic(ch.id, 'maxApplicants', v)}
-                actionLabel="Publish"
-              />
-            ))}
-          </VisibilityGroup>
-
-          {/* ── Group 2: Private ── */}
-          <VisibilityGroup
-            checked={groups.private}
-            onToggle={() => toggleGroup('private')}
-            label="Private"
-            subtitle="Share via social media — direct link only, not indexed"
-            icon={<Lock className="h-4 w-4" />}
-            indicatorColor="bg-amber-500"
-          >
-            {privateChannels.map(ch => (
-              <ChannelRow
-                key={ch.id}
-                channel={ch}
-                showQuota={false}
-                onPublish={() => updatePrivate(ch.id, 'published', true)}
-                actionLabel={ch.id === 'whatsapp' ? 'Broadcast' : 'Share'}
-              />
-            ))}
-          </VisibilityGroup>
-        </CardContent>
-      </Card>
+                {/* ── Group 2: Private ── */}
+                <VisibilityGroup
+                  checked={channels.private}
+                  onToggle={() => toggleChannels('private')}
+                  label="Private"
+                  subtitle="Share via social media — direct link only, not indexed"
+                  icon={<Lock className="h-4 w-4" />}
+                  indicatorColor="bg-amber-500"
+                >
+                  {privateChannels.map(ch => (
+                    <ChannelRow
+                      key={ch.id}
+                      channel={ch}
+                      showQuota={false}
+                      onPublish={() => updatePrivate(ch.id, 'published', true)}
+                      actionLabel={ch.id === 'whatsapp' ? 'Broadcast' : 'Share'}
+                    />
+                  ))}
+                </VisibilityGroup>
+              </div>
+            }
+          </CardContent>
+        </Card>
+      </RadioGroup>
+      
 
       {/* ── Action Buttons ── */}
       <div className="grid grid-cols-[1fr_1fr_2fr] gap-3">
