@@ -1,0 +1,169 @@
+import { useState, useRef } from "react"
+import ReCAPTCHA from "react-google-recaptcha"
+import { create } from "@/api/landing.api.js"
+import BookingCalendar from "./BookingCalendar"
+
+const RECAPTCHA_SITE_KEY = import.meta.env.VITE_RECAPTCHA_SITE_KEY
+
+const SESSION_LABELS = { "10-12": "10 AM – 12 PM", "1-3": "1 PM – 3 PM", "4-6": "4 PM – 6 PM" }
+
+export default function ContactSection() {
+  const [form, setForm] = useState({ name: "", email: "", size: "1 – 100 employees", annual_hiring: "Up to 50 hires/year", message: "", booking_date: "", session_slot: "" })
+  const [loading, setLoading] = useState(false)
+  const [status, setStatus] = useState(null)
+  const [errorMessage, setErrorMessage] = useState("")
+  const [errors, setErrors] = useState({})
+  const [showCaptcha, setShowCaptcha] = useState(false)
+  const [calendarOpen, setCalendarOpen] = useState(false)
+  const captchaRef = useRef(null)
+
+  const validate = () => {
+    const e = {}
+    if (!form.name.trim()) e.name = "Full name is required"
+    if (!form.email.trim()) e.email = "Email is required"
+    if (!form.message.trim()) e.message = "Message is required"
+    if (!form.booking_date || !form.session_slot) e.slot = "Please select a preferred demo slot"
+    setErrors(e)
+    return Object.keys(e).length === 0
+  }
+
+  const handleSubmitClick = (e) => {
+    e.preventDefault()
+    setStatus(null)
+    if (!validate()) return
+    if (RECAPTCHA_SITE_KEY) {
+      setShowCaptcha(true)
+    } else {
+      submitForm(null)
+    }
+  }
+
+  const onCaptchaChange = (token) => {
+    if (!token) return
+    setShowCaptcha(false)
+    captchaRef.current?.reset()
+    submitForm(token)
+  }
+
+  const submitForm = async (captchaToken) => {
+    setLoading(true)
+    setStatus(null)
+    try {
+      await create({
+        name: form.name,
+        email: form.email,
+        company_size: form.size,
+        average_annual_hiring: form.annual_hiring,
+        message: form.message,
+        booking_date: form.booking_date,
+        session_slot: form.session_slot,
+        ...(captchaToken && { captcha_token: captchaToken }),
+      })
+      setStatus("success")
+      setForm({ name: "", email: "", size: "1 – 100 employees", annual_hiring: "Up to 50 hires/year", message: "", booking_date: "", session_slot: "" })
+      setErrors({})
+    } catch (err) {
+      setStatus("error")
+      setErrorMessage(err.response?.data?.message || "Something went wrong. Please try again.")
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  const update = (field) => (e) => {
+    setForm((f) => ({ ...f, [field]: e.target.value }))
+    if (errors[field]) setErrors((prev) => { const n = { ...prev }; delete n[field]; return n })
+  }
+
+  const handleCalendarConfirm = ({ date, session }) => {
+    setForm((f) => ({ ...f, booking_date: date, session_slot: session.key }))
+    setCalendarOpen(false)
+    if (errors.slot) setErrors((prev) => { const n = { ...prev }; delete n.slot; return n })
+  }
+
+  const selectedLabel = form.booking_date && form.session_slot
+    ? `${new Date(form.booking_date + "T12:00:00").toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })} · ${SESSION_LABELS[form.session_slot]}`
+    : null
+
+  return (
+    <section className="con" id="contact">
+      <div className="inn">
+        <div className="sl">GET IN TOUCH</div>
+        <div className="st">Let's Transform Your Hiring</div>
+        <p className="sd">Fill in your details and pick a demo slot that works for you.</p>
+        <div className="cog">
+          <form className="cof" onSubmit={handleSubmitClick}>
+            <div className="fg2">
+              <label>Full Name <span style={{ color: "#E11D48" }}>*</span></label>
+              <input type="text" placeholder="Your name" value={form.name} onChange={update("name")} />
+              {errors.name && <span className="fve">{errors.name}</span>}
+            </div>
+            <div className="fg2">
+              <label>Email <span style={{ color: "#E11D48" }}>*</span></label>
+              <input type="email" placeholder="you@company.com" value={form.email} onChange={update("email")} />
+              {errors.email && <span className="fve">{errors.email}</span>}
+            </div>
+            <div className="fg2">
+              <label>Company Size</label>
+              <select value={form.size} onChange={update("size")}>
+                <option>1 – 100 employees</option>
+                <option>101 – 500 employees</option>
+                <option>501 – 1,000 employees</option>
+                <option>1,001 – 2,500 employees</option>
+                <option>2,501 – 5,000 employees</option>
+                <option>5,001 – 10,000 employees</option>
+                <option>10,000+ employees</option>
+              </select>
+            </div>
+            <div className="fg2">
+              <label>Average Annual Hiring</label>
+              <select value={form.annual_hiring} onChange={update("annual_hiring")}>
+                <option>Up to 50 hires/year</option>
+                <option>51 – 100 hires/year</option>
+                <option>101 – 250 hires/year</option>
+                <option>251 – 500 hires/year</option>
+                <option>501 – 750 hires/year</option>
+                <option>751 – 1,000 hires/year</option>
+                <option>1,000+ hires/year</option>
+              </select>
+            </div>
+            <div className="fg2">
+              <label>Message <span style={{ color: "#E11D48" }}>*</span></label>
+              <textarea placeholder="Tell us about your hiring challenges..." value={form.message} onChange={update("message")} />
+              {errors.message && <span className="fve">{errors.message}</span>}
+            </div>
+            <div className="fg2">
+              <label>Date <span style={{ color: "#E11D48" }}>*</span></label>
+              <div className={`bcal-trigger${selectedLabel ? " has-value" : ""}`} onClick={() => setCalendarOpen(true)}>
+                {selectedLabel || "Select date & time →"}
+              </div>
+              {errors.slot && <span className="fve">{errors.slot}</span>}
+            </div>
+            {showCaptcha && RECAPTCHA_SITE_KEY && (
+              <div className="fcaptcha">
+                <ReCAPTCHA ref={captchaRef} sitekey={RECAPTCHA_SITE_KEY} onChange={onCaptchaChange} />
+              </div>
+            )}
+            {status === "success" && <p className="fsm fss">Thank you! We'll be in touch soon.</p>}
+            {status === "error" && <p className="fsm fse">{errorMessage}</p>}
+            <button type="submit" className="fsb" disabled={loading || showCaptcha}>
+              {loading ? "Submitting…" : "Schedule Your Free Demo →"}
+            </button>
+          </form>
+          <div className="coi">
+            <div className="coc"><h4>📧 Email</h4><p><a href="mailto:Info@myralix.com">Info@myralix.com</a></p></div>
+            <div className="coc"><h4>🌐 Website</h4><p><a href="https://www.myralix.com" target="_blank" rel="noopener noreferrer">www.myralix.com</a></p></div>
+            <div className="coc"><h4>📞 Phone</h4><p><a href="tel:+622150106260">+62 21 5010 6260</a></p></div>
+            <div className="coc"><h4>📱 WhatsApp</h4><p><a href="https://wa.me/6281382327732">+62 813 8232 7732</a> (Sales)<br/><a href="https://wa.me/628118886578">+62 811 888 6578</a> (Support)</p></div>
+            <div className="coc coc-full"><h4>📍 Office</h4><p>Menara Cakrawala, Jl. M.H. Thamrin No.9 Lt 12, Unit 1205A, Kebon Sirih, Kec. Menteng, Jakarta – 10340</p></div>
+            <div className="coc coc-full coc-pilot">
+              <h4>🎁 Pilot Program</h4>
+              <p>1-month complimentary strategic partnership to gain authentic experience. No credit card required.</p>
+            </div>
+          </div>
+        </div>
+      </div>
+      <BookingCalendar open={calendarOpen} onClose={() => setCalendarOpen(false)} onConfirm={handleCalendarConfirm} />
+    </section>
+  )
+}
