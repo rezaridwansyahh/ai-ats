@@ -1,8 +1,9 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import {
   Briefcase, MapPin, AlertTriangle, Eye, Save, Rocket,
   Info, BarChart3, ChevronDown, Globe, Lock, Home,
 } from 'lucide-react';
+import { getJobAccountsByUserId } from '@/api/job-accounts.api';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
@@ -13,6 +14,17 @@ import { Collapsible, CollapsibleContent } from '@/components/ui/collapsible';
 import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from '@/components/ui/table';
+
+// ── Channel → DB portal_name mapping ────────────────────────────────
+const CHANNEL_TO_PORTAL = {
+  linkedin: 'linkedin',
+  jobstreet: 'seek',
+  kalibrr: null,
+  glints: 'glints',
+  instagram: 'instagram',
+  facebook: 'facebook',
+  whatsapp: 'whatsapp',
+};
 
 // ── Constants ────────────────────────────────────────────────────────
 
@@ -52,6 +64,30 @@ export default function JobPosting({ selectedJob, onSelectionChange }) {
   const [channels, setChannels] = useState({ "public": false, "private": false });
   const [publicChannels, setPublicChannels] = useState(INITIAL_PUBLIC);
   const [privateChannels, setPrivateChannels] = useState(INITIAL_PRIVATE);
+  const [accounts, setAccounts] = useState([]);
+
+  const user = JSON.parse(localStorage.getItem('user') || '{}');
+  const userId = user?.id;
+
+  const fetchAccounts = useCallback(async () => {
+    if (!userId) return;
+    try {
+      const { data } = await getJobAccountsByUserId(userId);
+      setAccounts(data.accounts || []);
+    } catch (err) {
+      console.error('Failed to load job accounts:', err);
+    }
+  }, [userId]);
+
+  useEffect(() => { fetchAccounts(); }, [fetchAccounts]);
+
+  // Derive connection condition for a channel id
+  const getChannelCondition = (channelId) => {
+    const portalName = CHANNEL_TO_PORTAL[channelId];
+    if (!portalName) return 'Not Connected';
+    const account = accounts.find(a => a.portal_name === portalName);
+    return account?.condition || 'Not Connected';
+  };
 
   const updatePublic = (id, field, value) => {
     setPublicChannels(prev => prev.map(ch => ch.id === id ? { ...ch, [field]: value } : ch));
@@ -201,6 +237,7 @@ export default function JobPosting({ selectedJob, onSelectionChange }) {
                     <ChannelRow
                       key={ch.id}
                       channel={ch}
+                      condition={getChannelCondition(ch.id)}
                       showQuota
                       onPublish={() => updatePublic(ch.id, 'published', true)}
                       onQuotaChange={v => updatePublic(ch.id, 'maxApplicants', v)}
@@ -222,6 +259,7 @@ export default function JobPosting({ selectedJob, onSelectionChange }) {
                     <ChannelRow
                       key={ch.id}
                       channel={ch}
+                      condition={getChannelCondition(ch.id)}
                       showQuota={false}
                       onPublish={() => updatePrivate(ch.id, 'published', true)}
                       actionLabel={ch.id === 'whatsapp' ? 'Broadcast' : 'Share'}
@@ -326,7 +364,14 @@ function VisibilityGroup({ checked, onToggle, label, subtitle, icon, indicatorCo
   );
 }
 
-function ChannelRow({ channel: ch, showQuota, onPublish, onQuotaChange, actionLabel }) {
+function ChannelRow({ channel: ch, condition, showQuota, onPublish, onQuotaChange, actionLabel }) {
+  const isConnected = condition === 'Connected';
+  const conditionBadge = isConnected
+    ? 'bg-emerald-50 text-emerald-600 border-emerald-200'
+    : condition === 'Error'
+      ? 'bg-red-50 text-red-600 border-red-200'
+      : 'bg-red-50 text-red-600 border-red-200';
+
   return (
     <div className="flex items-center gap-3 px-5 py-3 border-b last:border-b-0">
       <div
@@ -342,7 +387,7 @@ function ChannelRow({ channel: ch, showQuota, onPublish, onQuotaChange, actionLa
       <div className="flex-1 min-w-0">
         <span className="text-xs font-semibold">{ch.name}</span>
         <div className="mt-0.5">
-          <Badge variant="outline" className="text-[9px] px-1.5 py-0 bg-emerald-50 text-emerald-600 border-emerald-200">Connected</Badge>
+          <Badge variant="outline" className={`text-[9px] px-1.5 py-0 ${conditionBadge}`}>{condition}</Badge>
         </div>
       </div>
       {showQuota && (
@@ -360,7 +405,7 @@ function ChannelRow({ channel: ch, showQuota, onPublish, onQuotaChange, actionLa
       {ch.published ? (
         <Badge className="bg-emerald-100 text-emerald-700 border-emerald-200 text-[10px] px-3 py-1">Published</Badge>
       ) : (
-        <Button size="sm" className="text-[11px] h-8 px-4" onClick={onPublish}>{actionLabel}</Button>
+        <Button size="sm" className="text-[11px] h-8 px-4" onClick={onPublish} disabled={!isConnected}>{actionLabel}</Button>
       )}
     </div>
   );
