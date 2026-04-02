@@ -3,14 +3,29 @@ import { RefreshCw, KeyRound, Plus, XCircle } from 'lucide-react';
 import { Button }   from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { StatCard }  from '@/components/cards/StatCard';
+import { Badge }    from '@/components/ui/badge';
 
 import { getJobAccounts, createJobAccount, updateJobAccount, deleteJobAccount } from '@/api/job-accounts.api';
 import { getUsers } from '@/api/users.api';
 import { hasPermission } from '@/utils/permissions';
 
-import { AccountTable }        from '@/components/job-account/AccountTable';
-import { AccountFormDialog }   from '@/components/job-account/AccountFormDialog';
-import { DeleteAccountDialog } from '@/components/job-account/DeleteAccountDialog';
+import linkedin from '@/assets/logos/linkedin.png';
+import seek from '@/assets/logos/seek.png';
+import glints from '@/assets/logos/glints.png';
+import instagram from '@/assets/logos/instagram.png';
+import facebook from '@/assets/logos/facebook.png';
+import whatsapp from '@/assets/logos/whatsapp.png';
+
+const LOGOS = { linkedin, seek, glints, instagram, facebook, whatsapp };
+
+const PLATFORMS = [
+  { id: 'linkedin', name: 'LinkedIn' },
+  { id: 'seek', name: 'Seek' },
+  { id: 'glints', name: 'Glints' },
+  { id: 'instagram', name: 'Instagram' },
+  { id: 'facebook', name: 'Facebook' },
+  { id: 'whatsapp', name: 'WhatsApp' }
+]
 
 export default function AccountPage() {
   const canCreate = hasPermission('Job Postings', 'Seek', 'create') || hasPermission('Job Postings', 'LinkedIn', 'create');
@@ -109,63 +124,27 @@ export default function AccountPage() {
         </div>
       </div>
 
-      {/* Stat card */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 stagger-children">
-        <StatCard
-          icon={<KeyRound className="h-5 w-5 text-orange-500" />}
-          label="Total Accounts"
-          value={accounts.length}
-          loading={loading}
-        />
-      </div>
-
       {/* Table card */}
-      <Card className="border shadow-sm">
-        <CardHeader className="pb-3">
-          <CardTitle className="text-sm font-semibold">All Job Accounts</CardTitle>
-          <CardDescription className="text-xs">
-            {loading ? 'Loading…' : `${accounts.length} account${accounts.length !== 1 ? 's' : ''}`}
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          {error ? (
-            <div className="flex flex-col items-center gap-2 py-16 text-destructive">
-              <XCircle className="h-8 w-8" />
-              <p className="text-sm font-medium">{error}</p>
-              <Button variant="outline" size="sm" onClick={fetchAccounts}>Try again</Button>
-            </div>
-          ) : (
-            <AccountTable
-              accounts={accounts}
-              loading={loading}
-              onEdit={openEdit}
-              onDelete={openDelete}
-              canEdit={canEdit}
-              canDelete={canDelete}
-            />
-          )}
-        </CardContent>
-      </Card>
-
-      {/* Dialogs */}
-      <AccountFormDialog
-        open={formOpen}
-        onOpenChange={setFormOpen}
-        account={selectedAccount}
-        users={users}
-        onSubmit={handleCreateOrUpdate}
-        loading={submitting}
-      />
-
-      {selectedAccount && (
-        <DeleteAccountDialog
-          open={deleteOpen}
-          onOpenChange={setDeleteOpen}
-          account={selectedAccount}
-          onConfirm={handleDelete}
-          loading={submitting}
-        />
-      )}
+      
+      {PLATFORMS.map((platform) => {
+        return (
+          <Card className="py-1">
+            <CardContent className="">
+              <div key={platform.id} className="flex items-center gap-3 py-3 border-b last:border-b-0">
+                <div className="h-10 w-10 rounded-lg flex items-center justify-center text-white text-[10px] font-bold shrink-0">
+                  <img src={LOGOS[platform.id]} />
+                </div>
+                <div className="flex-1 min-w-0">
+                  <span className="text-xs font-semibold">{platform.name}</span>
+                  <div className="mt-0.5">
+                    <Badge variant="outline" className="text-[9px] px-1.5 py-0 bg-emerald-50 text-emerald-600 border-emerald-200">Connected</Badge>
+                  </div>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        )
+      })}
     </div>
   );
 }

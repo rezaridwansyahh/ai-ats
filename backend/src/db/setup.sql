@@ -33,6 +33,7 @@ DROP TYPE IF EXISTS currency_type CASCADE;
 DROP TYPE IF EXISTS pay_display_type CASCADE;
 DROP TYPE IF EXISTS platform_type CASCADE;
 DROP TYPE IF EXISTS candidate_status_type CASCADE;
+DROP TYPE IF EXISTS condition_type CASCADE;
 
 -- Create ENUM type
 CREATE TYPE status_type AS ENUM ('Draft', 'Active', 'Running', 'Expired', 'Failed', 'Blocked');
@@ -46,6 +47,7 @@ CREATE TYPE candidate_status_type AS ENUM ('Kotak masuk', 'Prescreen', 'Terpilih
 CREATE TYPE recruiter_status_type AS ENUM ('Active', 'Onboarding');
 CREATE TYPE booking_status_type AS ENUM ('pending', 'approved', 'rejected');
 CREATE TYPE session_slot_type   AS ENUM ('10-12', '1-3', '4-6');
+CREATE TYPE condition_type AS ENUM ('Connected', 'Not Connected', 'Error');
 
 CREATE TABLE master_users (
   id SERIAL PRIMARY KEY,
@@ -105,6 +107,8 @@ CREATE TABLE master_job_account (
   password TEXT NOT NULL,
   user_id INTEGER NOT NULL REFERENCES master_users(id) ON DELETE CASCADE,
   is_active BOOLEAN NOT NULL DEFAULT TRUE,
+  condition condition_type NOT NULL,
+  last_sync TIMESTAMP,
   created_at TIMESTAMP NOT NULL DEFAULT NOW(),
   updated_at TIMESTAMP NOT NULL DEFAULT NOW()
 );
