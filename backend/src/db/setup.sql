@@ -1,5 +1,4 @@
 -- Drop tables in reverse dependency order (most dependent first)
-DROP TABLE IF EXISTS master_landing;
 DROP TABLE IF EXISTS mapping_job_sourcing_linkedin CASCADE;
 DROP TABLE IF EXISTS mapping_job_sourcing_seek CASCADE;
 DROP TABLE IF EXISTS core_job_sourcing CASCADE;
@@ -23,8 +22,6 @@ DROP TABLE IF EXISTS master_recruiters CASCADE;
 
 -- Drop enums after all tables are gone
 DROP TYPE IF EXISTS recruiter_status_type CASCADE;
-DROP TYPE IF EXISTS booking_status_type CASCADE;
-DROP TYPE IF EXISTS session_slot_type CASCADE;
 DROP TYPE IF EXISTS status_type CASCADE;
 DROP TYPE IF EXISTS work_option_type CASCADE;
 DROP TYPE IF EXISTS work_type_type CASCADE;
@@ -258,22 +255,6 @@ CREATE TABLE master_sourcing_recruite (
   date_created TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
-CREATE TABLE master_landing (
-  id SERIAL PRIMARY KEY,
-  name VARCHAR(255) NOT NULL,
-  email VARCHAR(255) NOT NULL,
-  company_size VARCHAR(100),
-  average_annual_hiring VARCHAR(100),
-  message TEXT,
-  booking_date DATE,
-  session_slot session_slot_type,
-  status booking_status_type NOT NULL DEFAULT 'pending',
-  rejection_reason TEXT,
-  conference_link TEXT,
-  created_at TIMESTAMP NOT NULL DEFAULT NOW(),
-  updated_at TIMESTAMP NOT NULL DEFAULT NOW()
-);
-
 CREATE TABLE master_recruiters (
   id SERIAL PRIMARY KEY,
   name VARCHAR(100) NOT NULL,
@@ -284,10 +265,3 @@ CREATE TABLE master_recruiters (
   updated_at TIMESTAMP NOT NULL DEFAULT NOW()
 );
 
-CREATE TABLE master_email_notify (
-  id SERIAL PRIMARY KEY,
-  email VARCHAR(255) NOT NULL UNIQUE,
-  label VARCHAR(100),
-  is_active BOOLEAN DEFAULT TRUE,
-  created_at TIMESTAMP DEFAULT NOW()
-);

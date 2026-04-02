@@ -19,8 +19,6 @@ import jobPosting from "./src/modules/job-post/job-post.router.js"
 import job from "./src/modules/job/job.route.js"
 import candidate from "./src/modules/candidate/candidate.route.js"
 import sourcing from "./src/modules/sourcing/sourcing.route.js"
-import landing from "./src/modules/landing/landing.route.js"
-import emailNotify from "./src/modules/email-notify/email-notify.route.js"
 import recruiter from "./src/modules/recruiter/recruiter.route.js"
 
 app.use(express.json());
@@ -40,8 +38,6 @@ app.use("/api/job-posting", jobPosting);
 app.use("/api/job", job);
 app.use("/api/candidate", candidate);
 app.use("/api/sourcing", sourcing);
-app.use("/api/landing", landing);
-app.use("/api/email-notify", emailNotify);
 app.use("/api/recruiter", recruiter);
 
 app.listen(3000, () => {

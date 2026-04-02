@@ -72,12 +72,6 @@ export default [
   role_id: 1,
   permission_id: 60 + i
 })),
-// Users -> Demo Booking (64–67)
-...Array.from({ length: 4 }, (_, i) => ({
-  id: 46 + i,
-  role_id: 1,
-  permission_id: 64 + i
-})),
 // Sourcing -> Job Management (68–71)
 ...Array.from({ length: 4 }, (_, i) => ({
   id: 50 + i,
@@ -154,11 +148,6 @@ export default [
   { id: 146, role_id: 2, permission_id: 61 },
   { id: 147, role_id: 2, permission_id: 62 },
 
-  // Users -> Demo Booking (64–66: read/create/update)
-  { id: 148, role_id: 2, permission_id: 64 },
-  { id: 149, role_id: 2, permission_id: 65 },
-  { id: 150, role_id: 2, permission_id: 66 },
-
   // Sourcing -> Job Management (68–70: read/create/update)
   { id: 151, role_id: 2, permission_id: 68 },
   { id: 152, role_id: 2, permission_id: 69 },
@@ -223,9 +212,6 @@ export default [
   { id: 230, role_id: 3, permission_id: 68 },
   { id: 231, role_id: 3, permission_id: 69 },
 
-  // Users -> Demo Booking (read only)
-  { id: 229, role_id: 3, permission_id: 64 },
-
   // Users -> Recruiters (read + create)
   { id: 232, role_id: 3, permission_id: 72 },
   { id: 233, role_id: 3, permission_id: 73 },
@@ -245,7 +231,6 @@ export default [
   { id: 312, role_id: 4, permission_id: 52 },  // Account (read)
   { id: 313, role_id: 4, permission_id: 56 },  // Seek Sourcing (read)
   { id: 314, role_id: 4, permission_id: 60 },  // LinkedIn Sourcing (read)
-  { id: 315, role_id: 4, permission_id: 64 },  // Demo Booking (read)
   { id: 316, role_id: 4, permission_id: 68 },  // Sourcing -> Job Management (read)
   { id: 317, role_id: 4, permission_id: 72 },  // Recruiters (read)
 

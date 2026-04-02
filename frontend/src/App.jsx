@@ -1,5 +1,4 @@
 import { Routes, Route } from "react-router-dom"
-import LandingPage from "./pages/Landing"
 import LoginPage from "./pages/Login"
 import RegisterPage from "./pages/Register"
 import DashboardPage from "./pages/Dashboard"
@@ -11,14 +10,13 @@ import AccountPage from "./pages/Account"
 import SeekPage from "./pages/Seek"
 import SeekSourcingPage from "./pages/SeekSourcing"
 import CandidateSearchPage from "./pages/CandidateSearch"
-import DemoBookingPage from "./pages/DemoBooking"
 import JobManagementPage from "./pages/JobManagement"
 import RecruitersPage from "./pages/Recruiters"
 
 function App() {
   return (
     <Routes>
-      <Route path="/" element={<LandingPage />} />
+      <Route path="/" element={<LoginPage />} />
       <Route path="/login" element={<LoginPage />} />
       <Route path="/register" element={<RegisterPage />} />
       <Route path="/dashboard" element={<DashboardLayout />}>
@@ -27,7 +25,6 @@ function App() {
       <Route path="/users" element={<DashboardLayout />}>
         <Route path="management"        element={<UserManagementPage />} />
         <Route path="role-management"   element={<RoleManagementPage />} />
-        <Route path="demo-booking"     element={<DemoBookingPage />} />
         <Route path="recruiters"      element={<RecruitersPage />} />
       </Route>
       <Route path="/settings" element={<DashboardLayout />}>
