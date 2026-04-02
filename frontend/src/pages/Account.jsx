@@ -127,17 +127,26 @@ export default function AccountPage() {
       {/* Table card */}
       
       {PLATFORMS.map((platform) => {
+        const account = accounts.find(acc => acc.portal_name === platform.id);
+
         return (
-          <Card className="py-1">
+          <Card key={platform.id} className="py-1">
             <CardContent className="">
-              <div key={platform.id} className="flex items-center gap-3 py-3 border-b last:border-b-0">
+              <div className="flex items-center gap-3 py-3 border-b last:border-b-0">
                 <div className="h-10 w-10 rounded-lg flex items-center justify-center text-white text-[10px] font-bold shrink-0">
                   <img src={LOGOS[platform.id]} />
                 </div>
                 <div className="flex-1 min-w-0">
                   <span className="text-xs font-semibold">{platform.name}</span>
                   <div className="mt-0.5">
-                    <Badge variant="outline" className="text-[9px] px-1.5 py-0 bg-emerald-50 text-emerald-600 border-emerald-200">Connected</Badge>
+                    {account ? 
+                      <Badge variant="outline" className="text-[9px] px-1.5 py-0 bg-emerald-50 text-emerald-600 border-emerald-200">
+                        {account.condition}
+                      </Badge> :
+                      <Badge variant="outline" className="text-[9px] px-1.5 py-0 bg-red-50 text-red-600 border-red-200">
+                        Not Connected
+                      </Badge>
+                    }
                   </div>
                 </div>
               </div>
