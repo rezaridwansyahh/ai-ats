@@ -3,6 +3,7 @@ import { SidebarProvider, SidebarTrigger, SidebarInset } from '@/components/ui/s
 import { AppSidebar } from '@/components/layout/app-sidebar'
 import { Separator } from '@/components/ui/separator'
 import { ChevronRight, Home } from 'lucide-react'
+import { Toaster } from "@/components/ui/sonner"
 
 const BREADCRUMB_MAP = {
   '/dashboard': ['Dashboard'],
@@ -20,6 +21,7 @@ export default function DashboardLayout() {
   const breadcrumbs = BREADCRUMB_MAP[location.pathname] || ['Dashboard']
 
   return (
+    
     <SidebarProvider>
       <AppSidebar />
 
@@ -60,6 +62,7 @@ export default function DashboardLayout() {
 
         {/* Main content */}
         <main className="p-5 min-h-[calc(100vh-3.25rem)]">
+          <Toaster />
           <Outlet />
         </main>
       </SidebarInset>
