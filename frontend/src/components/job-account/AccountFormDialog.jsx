@@ -7,7 +7,7 @@ import { Button } from '@/components/ui/button';
 import { Input }  from '@/components/ui/input';
 import { Label }  from '@/components/ui/label';
 
-export function AccountFormDialog({ open, onOpenChange, account, platform, onSubmit, loading }) {
+export function AccountFormDialog({ open, onOpenChange, account, user, platform, onSubmit, loading }) {
   const isEdit = !!account;
 
   const [email, setEmail]       = useState('');
@@ -33,8 +33,8 @@ export function AccountFormDialog({ open, onOpenChange, account, platform, onSub
     if (password.trim()) payload.password = password.trim();
 
     if (!isEdit && platform) {
-      payload.portal_name = platform.id;
-      payload.user_id = JSON.parse(localStorage.getItem('user') || '{}')?.id;
+      payload.portal_name = platform;
+      payload.user_id = user?.id;
     }
 
     try {

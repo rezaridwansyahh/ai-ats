@@ -1,51 +1,37 @@
 import { useState } from 'react';
 import { RefreshCw, KeyRound, Settings, Trash2, Link2 } from 'lucide-react';
 import { Button }   from '@/components/ui/button';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
+import { StatCard }  from '@/components/cards/StatCard';
+import { toast } from 'sonner'
+import { Badge }    from '@/components/ui/badge';
 
-// import { getJobAccounts, createJobAccount, updateJobAccount, deleteJobAccount } from '@/api/job-accounts.api';
+import { getJobAccounts, createJobAccount, updateJobAccount, deleteJobAccount, getJobAccountsByUserId } from '@/api/job-accounts.api';
+import { getUsers } from '@/api/users.api';
 import { hasPermission } from '@/utils/permissions';
 
 import { AccountFormDialog }   from '@/components/job-account/AccountFormDialog';
 import { DeleteAccountDialog } from '@/components/job-account/DeleteAccountDialog';
 
-import linkedin  from '@/assets/logos/linkedin.png';
-import seek      from '@/assets/logos/seek.png';
-import glints    from '@/assets/logos/glints.png';
+import linkedin from '@/assets/logos/linkedin.png';
+import seek from '@/assets/logos/seek.png';
+import glints from '@/assets/logos/glints.png';
 import instagram from '@/assets/logos/instagram.png';
 import facebook  from '@/assets/logos/facebook.png';
 import whatsapp  from '@/assets/logos/whatsapp.png';
 
 const LOGOS = { linkedin, seek, glints, instagram, facebook, whatsapp };
 
-const PLATFORM_GROUPS = [
-  {
-    label: 'Job Board API Credentials',
-    subtitle: 'Direct API publishing — applications flow back automatically',
-    icon: <KeyRound className="h-4 w-4" />,
-    platforms: [
-      { id: 'linkedin', name: 'LinkedIn Jobs',  badge: 'in', color: '#0A66C2' },
-      { id: 'seek',     name: 'JobStreet / Seek', badge: 'JS', color: '#5843BE' },
-      { id: 'glints',   name: 'Glints',          badge: 'G',  color: '#0A6E5C' },
-    ],
-  },
-  {
-    label: 'Social Media Accounts',
-    subtitle: 'Share job postings to social platforms',
-    icon: <Link2 className="h-4 w-4" />,
-    platforms: [
-      { id: 'instagram', name: 'Instagram', badge: 'IG', color: null },
-      { id: 'facebook',  name: 'Facebook',  badge: 'FB', color: '#1877F2' },
-    ],
-  },
-  {
-    label: 'Other Channels',
-    subtitle: 'Additional messaging and broadcast channels',
-    icon: <Settings className="h-4 w-4" />,
-    platforms: [
-      { id: 'whatsapp', name: 'WhatsApp Business', badge: 'WA', color: '#25D366' },
-    ],
-  },
+const PUBLIC_CHANNELS = [
+  { id: 'linkedin', name: 'LinkedIn' },
+  { id: 'seek', name: 'Seek' },
+  { id: 'glints', name: 'Glints' }
+];
+
+const PRIVATE_CHANNELS = [
+  { id: 'instagram', name: 'Instagram' },
+  { id: 'facebook', name: 'Facebook' },
+  { id: 'whatsapp', name: 'WhatsApp' }
 ];
 
 export default function AccountPage() {
@@ -55,35 +41,48 @@ export default function AccountPage() {
 
   // ── Data (mockup — no API calls) ──
   const [accounts, setAccounts] = useState([]);
-  const error = null;
+  const [loading,  setLoading]  = useState(true);
+  const [error,    setError]    = useState(null);
+
+  const [user] = useState(JSON.parse(localStorage.getItem('user')));
+
+  const fetchAccounts = useCallback(async () => {
+    setLoading(true);
+    setError(null);
+    try {
+      const { data } = await getJobAccountsByUserId(user.id);
+      setAccounts(data.accounts || []);
+    } catch (err) {
+      setError(err.response?.data?.message || err.message || 'Failed to load job accounts');
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+
+  useEffect(() => {
+    async function fetch() {
+      await fetchAccounts(user.id);
+    }
+    fetch();
+  }, [fetchAccounts]);
 
   // ── Dialog state ──
-  const [formOpen,        setFormOpen]        = useState(false);
-  const [deleteOpen,      setDeleteOpen]      = useState(false);
-  const [selectedAccount, setSelectedAccount] = useState(null);
-  const [selectedPlatform, setSelectedPlatform] = useState(null);
-  const [submitting,      setSubmitting]      = useState(false);
+  const [formOpen,         setFormOpen]         = useState(false);
+  const [deleteOpen,       setDeleteOpen]       = useState(false);
+  const [selectedAccount,  setSelectedAccount]  = useState(null);
+  const [selectedPlatform,  setSelectedPlatform]  = useState(null);
+  const [submitting,       setSubmitting]       = useState(false);
 
-  const openConnect = (platform) => {
-    setSelectedAccount(null);
+  
+  const openConfigure = (platform, account) => {
+    setSelectedAccount(account || null);
     setSelectedPlatform(platform);
     setFormOpen(true);
   };
 
-  const openEdit = (account, platform) => {
-    setSelectedAccount(account);
-    setSelectedPlatform(platform);
-    setFormOpen(true);
-  };
-
-  const openDelete = (account, platform) => {
-    setSelectedAccount(account);
-    setSelectedPlatform(platform);
-    setDeleteOpen(true);
-  };
-
-  // ── CRUD handlers (mockup — local state only) ──
-  let nextId = accounts.length + 1;
+  const openEdit   = (account) => { setSelectedAccount(account); setFormOpen(true); };
+  const openDelete = (account) => { setSelectedAccount(account); setDeleteOpen(true); };
 
   const handleCreateOrUpdate = async (payload, accountId) => {
     setSubmitting(true);
@@ -130,180 +129,138 @@ export default function AccountPage() {
             Manage job portal credentials and channel connections.
           </p>
         </div>
-        <Button variant="outline" size="sm" disabled>
-          <RefreshCw className="h-3.5 w-3.5" />
-          Refresh
-        </Button>
-      </div>
-
-      {/* Summary Stats */}
-      <div className="grid grid-cols-3 gap-3">
-        <Card className="py-3">
-          <CardContent className="flex items-center gap-3 py-0">
-            <div className="h-8 w-8 rounded-lg bg-emerald-50 flex items-center justify-center">
-              <div className="h-2.5 w-2.5 rounded-full bg-emerald-500" />
-            </div>
-            <div>
-              <p className="text-lg font-bold">{connectedCount}</p>
-              <p className="text-[10px] text-muted-foreground">Connected</p>
-            </div>
-          </CardContent>
-        </Card>
-        <Card className="py-3">
-          <CardContent className="flex items-center gap-3 py-0">
-            <div className="h-8 w-8 rounded-lg bg-red-50 flex items-center justify-center">
-              <div className="h-2.5 w-2.5 rounded-full bg-red-500" />
-            </div>
-            <div>
-              <p className="text-lg font-bold">{disconnectedCount < 0 ? 0 : disconnectedCount}</p>
-              <p className="text-[10px] text-muted-foreground">Not Connected</p>
-            </div>
-          </CardContent>
-        </Card>
-        <Card className="py-3">
-          <CardContent className="flex items-center gap-3 py-0">
-            <div className="h-8 w-8 rounded-lg bg-blue-50 flex items-center justify-center">
-              <div className="h-2.5 w-2.5 rounded-full bg-blue-500" />
-            </div>
-            <div>
-              <p className="text-lg font-bold">{PLATFORM_GROUPS.reduce((s, g) => s + g.platforms.length, 0)}</p>
-              <p className="text-[10px] text-muted-foreground">Total Channels</p>
-            </div>
-          </CardContent>
-        </Card>
-      </div>
-
-      {/* Error */}
-      {error && (
-        <div className="text-sm text-destructive text-center py-4">
-          {error}
-          <Button variant="outline" size="sm" className="ml-3">Try again</Button>
+        <div className="flex gap-2">
+          <Button variant="outline" size="sm" onClick={fetchAccounts} disabled={loading}>
+            <RefreshCw className={`h-3.5 w-3.5 ${loading ? 'animate-spin' : ''}`} />
+            Refresh
+          </Button>
         </div>
-      )}
+      </div>
 
-      {/* Platform Groups */}
-      {PLATFORM_GROUPS.map((group) => (
-        <Card key={group.label} className="pt-0 gap-0">
-          <CardHeader className="py-3 px-5 border-b">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-2">
-                <span className="text-muted-foreground">{group.icon}</span>
-                <CardTitle className="text-[13px] font-bold">{group.label}</CardTitle>
-              </div>
-              <span className="text-[10px] text-muted-foreground italic">{group.subtitle}</span>
+      {/* Public Channel */}
+      <Card className="py-0 gap-0">
+        <CardHeader className="border-b !pb-0 flex items-center h-15">
+          <CardTitle className="flex justify-between items-center w-full">
+            <div>
+              Public Channels
             </div>
-          </CardHeader>
-          <CardContent className="p-0">
-            {group.platforms.map((platform) => {
-              const account = getAccountForPlatform(platform.id);
-              const isConnected = account?.condition === 'Connected';
+            <div className="text-xs text-gray-400">
+              Direct API publishing — applications flow back automatically
+            </div>
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          {PUBLIC_CHANNELS.map((channels) => {
+            const account = accounts.find(acc => acc.portal_name === channels.id);
 
-              return (
-                <div
-                  key={platform.id}
-                  className="flex items-center gap-3 px-5 py-3.5 border-b last:border-b-0"
-                >
-                  {/* Platform logo */}
-                  <div className="h-10 w-10 rounded-lg flex items-center justify-center shrink-0 overflow-hidden">
-                    {LOGOS[platform.id] ? (
-                      <img src={LOGOS[platform.id]} alt={platform.name} className="h-10 w-10 object-contain" />
-                    ) : (
-                      <div
-                        className="h-10 w-10 rounded-lg flex items-center justify-center text-white text-[10px] font-bold"
-                        style={
-                          platform.id === 'instagram'
-                            ? { background: 'linear-gradient(135deg, #833AB4, #FD1D1D, #F77737)' }
-                            : { background: platform.color || '#666' }
-                        }
-                      >
-                        {platform.badge}
-                      </div>
-                    )}
-                  </div>
-
-                  {/* Platform info */}
-                  <div className="flex-1 min-w-0">
-                    <span className="text-xs font-semibold">{platform.name}</span>
-                    {account && (
-                      <p className="text-[10px] text-muted-foreground mt-0.5 truncate">
-                        {account.email}
-                        {account.last_sync && (
-                          <span> &middot; Last synced: {new Date(account.last_sync).toLocaleString()}</span>
-                        )}
-                      </p>
-                    )}
-                  </div>
-
-                  {/* Connection status */}
-                  <div className="flex items-center gap-2">
-                    <div className={`h-2 w-2 rounded-full shrink-0 ${isConnected ? 'bg-emerald-500' : 'bg-red-400'}`} />
-                    <span className={`text-[11px] font-medium ${isConnected ? 'text-emerald-600' : 'text-red-500'}`}>
-                      {isConnected ? 'Connected' : 'Not connected'}
-                    </span>
-                  </div>
-
-                  {/* Action buttons */}
-                  {account ? (
-                    <div className="flex items-center gap-2">
-                      {canEdit && (
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          className="text-[11px] h-8 px-3"
-                          onClick={() => openEdit(account, platform)}
-                        >
-                          <Settings className="h-3 w-3 mr-1" /> Manage
-                        </Button>
-                      )}
-                      {canDelete && (
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          className="text-[11px] h-8 px-3 text-destructive hover:text-destructive"
-                          onClick={() => openDelete(account, platform)}
-                        >
-                          <Trash2 className="h-3 w-3" />
-                        </Button>
-                      )}
+            return (
+              <div key={channels.id} className="flex justify-between items-center w-full border-b last:border-b-0">
+                <div className="flex items-center gap-10">
+                  <div className="flex items-center gap-3 py-3 border-b last:border-b-0">
+                    <div className="h-10 w-10 rounded-lg flex items-center justify-center text-white text-[10px] font-bold shrink-0">
+                      <img src={LOGOS[channels.id]} />
+                      
                     </div>
-                  ) : (
-                    canCreate && (
-                      <Button
-                        size="sm"
-                        className="text-[11px] h-8 px-4"
-                        onClick={() => openConnect(platform)}
-                      >
-                        Connect
-                      </Button>
-                    )
-                  )}
+                    <div className="flex-1 min-w-20">
+                      <span className="text-sm font-semibold">{channels.name}</span>
+                      <div className="">
+                        {account?.condition === 'Connected' ? 
+                          <Badge variant="outline" className="text-[9px] px-1.5 py-0 bg-emerald-50 text-emerald-600 border-emerald-200">
+                            Connected
+                          </Badge> :
+                          <Badge variant="outline" className="text-[9px] px-1.5 py-0 bg-red-50 text-red-600 border-red-200">
+                            Not Connected
+                          </Badge>
+                        }
+                      </div>
+                    </div>
+                  </div>
+                  <div className="text-xs text-gray-400">
+                    Last Sync: {account?.last_sync || '-'}
+                  </div>
                 </div>
-              );
-            })}
-          </CardContent>
-        </Card>
-      ))}
+
+                <div className="flex gap-5">
+                  <Button disabled={!account} onClick={() => toast.promise(new Promise(resolve => setTimeout(resolve, 3000)), { position: "top-center", loading: 'Sync Queued', success: 'Sync Success', error: 'Error Sync' })}>
+                    Sync
+                  </Button>
+                  <Button onClick={() => openConfigure(channels.id, account)}>
+                    Configure
+                  </Button>
+                </div>
+              </div>
+            )
+          })}
+        </CardContent>
+      </Card>
+
+      {/* Private Channels */}
+      <Card className="py-0 gap-0">
+        <CardHeader className="border-b !pb-0 flex items-center h-15">
+          <CardTitle className="flex justify-between items-center w-full">
+            <div>
+              Private Channels
+            </div>
+            <div className="text-xs text-gray-400">
+              Social sharing & broadcast channels
+            </div>
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          {PRIVATE_CHANNELS.map((channels) => {
+            const account = accounts.find(acc => acc.portal_name === channels.id);
+
+            return (
+              <div key={channels.id} className="flex justify-between items-center w-full border-b last:border-b-0">
+                <div className="flex items-center gap-10">
+                  <div key={channels.id} className="flex items-center gap-3 py-3">
+                    <div className="h-10 w-10 rounded-lg flex items-center justify-center text-white text-[10px] font-bold shrink-0">
+                      <img src={LOGOS[channels.id]} />
+                      
+                    </div>
+                    <div className="flex-1 min-w-20">
+                      <span className="text-sm font-semibold">{channels.name}</span>
+                      <div className="">
+                        {account ? 
+                          <Badge variant="outline" className="text-[9px] px-1.5 py-0 bg-emerald-50 text-emerald-600 border-emerald-200">
+                            {account.condition || 'Connected'} {/* still dummy db wrong */}
+                          </Badge> :
+                          <Badge variant="outline" className="text-[9px] px-1.5 py-0 bg-red-50 text-red-600 border-red-200">
+                            Not Connected
+                          </Badge>
+                        }
+                      </div>
+                    </div>
+                  </div>
+                  <div className="text-xs text-gray-400">
+                    Last Sync: {account?.last_sync || '-'}
+                  </div>
+                </div>
+
+                <div className="flex gap-5">
+                  <Button disabled={!account} onClick={() => toast.promise(new Promise(resolve => setTimeout(resolve, 3000)))}>
+                    Sync
+                  </Button>
+                  <Button onClick={() => openConfigure(channels.id, account)}>
+                    Configure
+                  </Button>
+                </div>
+              </div>
+            )
+          })}
+        </CardContent>
+      </Card>
 
       {/* Dialogs */}
       <AccountFormDialog
         open={formOpen}
         onOpenChange={setFormOpen}
         account={selectedAccount}
+        user={user}
         platform={selectedPlatform}
         onSubmit={handleCreateOrUpdate}
         loading={submitting}
       />
-
-      {selectedAccount && (
-        <DeleteAccountDialog
-          open={deleteOpen}
-          onOpenChange={setDeleteOpen}
-          account={selectedAccount}
-          platformName={selectedPlatform?.name}
-          onConfirm={handleDelete}
-          loading={submitting}
-        />
-      )}
     </div>
   );
 }
