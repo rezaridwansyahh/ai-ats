@@ -1,5 +1,5 @@
-import { useState } from 'react';
-import { RefreshCw, KeyRound, Settings, Trash2, Link2 } from 'lucide-react';
+import { useState, useEffect, useCallback } from 'react';
+import { RefreshCw, KeyRound, Plus, XCircle } from 'lucide-react';
 import { Button }   from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { StatCard }  from '@/components/cards/StatCard';
@@ -17,8 +17,8 @@ import linkedin from '@/assets/logos/linkedin.png';
 import seek from '@/assets/logos/seek.png';
 import glints from '@/assets/logos/glints.png';
 import instagram from '@/assets/logos/instagram.png';
-import facebook  from '@/assets/logos/facebook.png';
-import whatsapp  from '@/assets/logos/whatsapp.png';
+import facebook from '@/assets/logos/facebook.png';
+import whatsapp from '@/assets/logos/whatsapp.png';
 
 const LOGOS = { linkedin, seek, glints, instagram, facebook, whatsapp };
 
@@ -39,7 +39,7 @@ export default function AccountPage() {
   const canEdit   = hasPermission('Job Postings', 'Seek', 'update') || hasPermission('Job Postings', 'LinkedIn', 'update');
   const canDelete = hasPermission('Job Postings', 'Seek', 'delete') || hasPermission('Job Postings', 'LinkedIn', 'delete');
 
-  // ── Data (mockup — no API calls) ──
+  // ── Data ──
   const [accounts, setAccounts] = useState([]);
   const [loading,  setLoading]  = useState(true);
   const [error,    setError]    = useState(null);
@@ -74,7 +74,7 @@ export default function AccountPage() {
   const [selectedPlatform,  setSelectedPlatform]  = useState(null);
   const [submitting,       setSubmitting]       = useState(false);
 
-  
+
   const openConfigure = (platform, account) => {
     setSelectedAccount(account || null);
     setSelectedPlatform(platform);
@@ -84,20 +84,16 @@ export default function AccountPage() {
   const openEdit   = (account) => { setSelectedAccount(account); setFormOpen(true); };
   const openDelete = (account) => { setSelectedAccount(account); setDeleteOpen(true); };
 
+  // ── CRUD handlers ──
   const handleCreateOrUpdate = async (payload, accountId) => {
     setSubmitting(true);
     try {
       if (accountId) {
-        setAccounts(prev => prev.map(a => a.id === accountId ? { ...a, ...payload } : a));
+        await updateJobAccount(accountId, payload);
       } else {
-        setAccounts(prev => [...prev, {
-          id: nextId++,
-          portal_name: payload.portal_name,
-          email: payload.email,
-          condition: 'Connected',
-          last_sync: null,
-        }]);
+        await createJobAccount(payload);
       }
+      await fetchAccounts();
     } finally {
       setSubmitting(false);
     }
@@ -106,18 +102,12 @@ export default function AccountPage() {
   const handleDelete = async (accountId) => {
     setSubmitting(true);
     try {
-      setAccounts(prev => prev.filter(a => a.id !== accountId));
+      await deleteJobAccount(accountId);
+      await fetchAccounts();
     } finally {
       setSubmitting(false);
     }
   };
-
-  // ── Helpers ──
-  const getAccountForPlatform = (platformId) =>
-    accounts.find(acc => acc.portal_name === platformId);
-
-  const connectedCount    = accounts.filter(a => a.condition === 'Connected').length;
-  const disconnectedCount = PLATFORM_GROUPS.reduce((sum, g) => sum + g.platforms.length, 0) - accounts.length;
 
   return (
     <div className="flex flex-col gap-5 animate-fade-in-up">
@@ -126,7 +116,7 @@ export default function AccountPage() {
         <div>
           <h1 className="text-xl font-bold tracking-tight">Job Accounts</h1>
           <p className="text-xs text-muted-foreground mt-0.5">
-            Manage job portal credentials and channel connections.
+            Manage job portal credentials for users.
           </p>
         </div>
         <div className="flex gap-2">
@@ -159,12 +149,12 @@ export default function AccountPage() {
                   <div className="flex items-center gap-3 py-3 border-b last:border-b-0">
                     <div className="h-10 w-10 rounded-lg flex items-center justify-center text-white text-[10px] font-bold shrink-0">
                       <img src={LOGOS[channels.id]} />
-                      
+
                     </div>
                     <div className="flex-1 min-w-20">
                       <span className="text-sm font-semibold">{channels.name}</span>
                       <div className="">
-                        {account?.condition === 'Connected' ? 
+                        {account?.condition === 'Connected' ?
                           <Badge variant="outline" className="text-[9px] px-1.5 py-0 bg-emerald-50 text-emerald-600 border-emerald-200">
                             Connected
                           </Badge> :
@@ -216,12 +206,12 @@ export default function AccountPage() {
                   <div key={channels.id} className="flex items-center gap-3 py-3">
                     <div className="h-10 w-10 rounded-lg flex items-center justify-center text-white text-[10px] font-bold shrink-0">
                       <img src={LOGOS[channels.id]} />
-                      
+
                     </div>
                     <div className="flex-1 min-w-20">
                       <span className="text-sm font-semibold">{channels.name}</span>
                       <div className="">
-                        {account ? 
+                        {account ?
                           <Badge variant="outline" className="text-[9px] px-1.5 py-0 bg-emerald-50 text-emerald-600 border-emerald-200">
                             {account.condition || 'Connected'} {/* still dummy db wrong */}
                           </Badge> :
