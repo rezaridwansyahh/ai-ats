@@ -19,6 +19,8 @@ DROP TABLE IF EXISTS master_sourcing CASCADE;
 DROP TABLE IF EXISTS master_sourcing_recruite CASCADE;
 
 DROP TABLE IF EXISTS master_recruiters CASCADE;
+DROP TABLE IF EXISTS core_job_pipeline_stages CASCADE;
+DROP TABLE IF EXISTS core_job_pipeline CASCADE;
 
 -- Drop enums after all tables are gone
 DROP TYPE IF EXISTS recruiter_status_type CASCADE;
@@ -31,6 +33,7 @@ DROP TYPE IF EXISTS pay_display_type CASCADE;
 DROP TYPE IF EXISTS platform_type CASCADE;
 DROP TYPE IF EXISTS candidate_status_type CASCADE;
 DROP TYPE IF EXISTS condition_type CASCADE;
+DROP TYPE IF EXISTS stage_category_type CASCADE;
 
 -- Create ENUM type
 CREATE TYPE status_type AS ENUM ('Draft', 'Active', 'Running', 'Expired', 'Failed', 'Blocked');
@@ -45,6 +48,7 @@ CREATE TYPE recruiter_status_type AS ENUM ('Active', 'Onboarding');
 CREATE TYPE booking_status_type AS ENUM ('pending', 'approved', 'rejected');
 CREATE TYPE session_slot_type   AS ENUM ('10-12', '1-3', '4-6');
 CREATE TYPE condition_type AS ENUM ('Connected', 'Not Connected', 'Error');
+CREATE TYPE stage_category_type AS ENUM ('Job Management', 'Screening & Matching', 'Interview', 'Assessment', 'Background Check', 'Offering & Contract', 'Other');
 
 CREATE TABLE master_users (
   id SERIAL PRIMARY KEY,
@@ -146,6 +150,24 @@ CREATE TABLE core_job (
   status status_type NOT NULL DEFAULT 'Draft',
   created_at TIMESTAMP NOT NULL DEFAULT NOW(),
   updated_at TIMESTAMP NOT NULL DEFAULT NOW()
+);
+
+CREATE TABLE core_job_pipeline (
+  id SERIAL PRIMARY KEY,
+  job_id INTEGER NOT NULL UNIQUE REFERENCES core_job(id) ON DELETE CASCADE,
+  created_at TIMESTAMP NOT NULL DEFAULT NOW(),
+  updated_at TIMESTAMP NOT NULL DEFAULT NOW()
+);
+
+CREATE TABLE core_job_pipeline_stages (
+  id SERIAL PRIMARY KEY,
+  pipeline_id INTEGER NOT NULL REFERENCES core_job_pipeline(id) ON DELETE CASCADE,
+  stage_order INTEGER NOT NULL,
+  category stage_category_type NOT NULL,
+  name VARCHAR(255) NOT NULL,
+  created_at TIMESTAMP NOT NULL DEFAULT NOW(),
+  updated_at TIMESTAMP NOT NULL DEFAULT NOW(),
+  UNIQUE(pipeline_id, stage_order)
 );
 
 CREATE TABLE core_job_sourcing (

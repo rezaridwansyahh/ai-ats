@@ -1,6 +1,6 @@
 import { useState, useMemo } from 'react';
 import {
-  Plus, X, Lock, GripVertical, ArrowUp, ArrowDown, Check,
+  Plus, X, Lock, ArrowUp, ArrowDown, Check,
   Briefcase, MapPin, AlertTriangle, Zap, Clock, Mail,
 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -12,6 +12,9 @@ import { Slider } from '@/components/ui/slider';
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from '@/components/ui/select';
+import {
+  Table, TableHeader, TableBody, TableRow, TableHead, TableCell,
+} from '@/components/ui/table';
 
 // ── Constants ────────────────────────────────────────────────────────
 const STAGE_CATEGORIES = [
@@ -21,6 +24,7 @@ const STAGE_CATEGORIES = [
   'Assessment',
   'Background Check',
   'Offering & Contract',
+  'Other',
 ];
 
 const STAGE_COLORS = [
@@ -235,89 +239,114 @@ export default function JobStagesStep({ selectedJob }) {
           </div>
         </CardHeader>
         <CardContent className="p-0">
-          {stages.map((stage, idx) => (
-            <div key={stage.id} className="flex items-stretch border-b">
-              {/* Stage label */}
-              <div className="w-20 flex flex-col items-center justify-center py-3 border-r shrink-0">
-                <span className={`text-[10px] font-bold tracking-wide ${STAGE_COLORS[idx % STAGE_COLORS.length]}`}>
-                  Stage {idx + 1}
-                </span>
-              </div>
-              {/* Category select */}
-              <div className="flex-1 px-3 py-2.5 flex items-center">
-                <Select value={stage.category} onValueChange={v => updateStage(stage.id, 'category', v)}>
-                  <SelectTrigger className="h-9 text-xs">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {STAGE_CATEGORIES.map(cat => (
-                      <SelectItem key={cat} value={cat} className="text-xs">{cat}</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-              {/* Stage name */}
-              <div className="flex-1 px-3 py-2.5 flex items-center">
-                <Input
-                  value={stage.name}
-                  onChange={e => updateStage(stage.id, 'name', e.target.value)}
-                  placeholder="Stage name"
-                  className="h-9 text-xs"
-                />
-              </div>
-              {/* Actions */}
-              <div className="flex items-center gap-1 px-3">
-                <button
-                  onClick={() => moveStage(idx, -1)}
-                  disabled={idx === 0}
-                  className="p-1 text-muted-foreground hover:text-foreground disabled:opacity-30 transition-colors"
-                  title="Move up"
-                >
-                  <ArrowUp className="h-3.5 w-3.5" />
-                </button>
-                <button
-                  onClick={() => moveStage(idx, 1)}
-                  disabled={idx === stages.length - 1}
-                  className="p-1 text-muted-foreground hover:text-foreground disabled:opacity-30 transition-colors"
-                  title="Move down"
-                >
-                  <ArrowDown className="h-3.5 w-3.5" />
-                </button>
-                <button
-                  onClick={() => removeStage(stage.id)}
-                  className="p-1 text-muted-foreground hover:text-destructive transition-colors"
-                  title="Remove"
-                >
-                  <X className="h-3.5 w-3.5" />
-                </button>
-              </div>
-            </div>
-          ))}
+          <Table>
+            <TableHeader>
+              <TableRow className="bg-muted/40 hover:bg-muted/40 border-border/60">
+                <TableHead className="w-20 text-center text-[11px] font-bold uppercase tracking-wide text-muted-foreground">
+                  Stage
+                </TableHead>
+                <TableHead className="text-[11px] font-bold uppercase tracking-wide text-muted-foreground">
+                  Category
+                </TableHead>
+                <TableHead className="text-[11px] font-bold uppercase tracking-wide text-muted-foreground">
+                  Stage Name
+                </TableHead>
+                <TableHead className="w-28 text-center text-[11px] font-bold uppercase tracking-wide text-muted-foreground">
+                  Actions
+                </TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {stages.map((stage, idx) => (
+                <TableRow key={stage.id} className="border-border/40 hover:bg-primary/[0.03]">
+                  <TableCell className="text-center">
+                    <span className={`text-[10px] font-bold tracking-wide ${STAGE_COLORS[idx % STAGE_COLORS.length]}`}>
+                      Stage {idx + 1}
+                    </span>
+                  </TableCell>
+                  <TableCell>
+                    <Select value={stage.category} onValueChange={v => updateStage(stage.id, 'category', v)}>
+                      <SelectTrigger className="h-9 text-xs">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {STAGE_CATEGORIES.map(cat => (
+                          <SelectItem key={cat} value={cat} className="text-xs">{cat}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </TableCell>
+                  <TableCell>
+                    <Input
+                      value={stage.name}
+                      onChange={e => updateStage(stage.id, 'name', e.target.value)}
+                      placeholder="Stage name"
+                      className="h-9 text-xs"
+                    />
+                  </TableCell>
+                  <TableCell className="text-center">
+                    <div className="flex items-center justify-center gap-1">
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="h-7 w-7"
+                        onClick={() => moveStage(idx, -1)}
+                        disabled={idx === 0}
+                        title="Move up"
+                      >
+                        <ArrowUp className="h-3.5 w-3.5" />
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="h-7 w-7"
+                        onClick={() => moveStage(idx, 1)}
+                        disabled={idx === stages.length - 1}
+                        title="Move down"
+                      >
+                        <ArrowDown className="h-3.5 w-3.5" />
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="h-7 w-7 hover:text-destructive"
+                        onClick={() => removeStage(stage.id)}
+                        title="Remove"
+                      >
+                        <X className="h-3.5 w-3.5" />
+                      </Button>
+                    </div>
+                  </TableCell>
+                </TableRow>
+              ))}
 
-          {/* Add Stage */}
-          <div
-            onClick={addStage}
-            className="py-3 text-center text-xs font-semibold text-primary cursor-pointer border-b bg-muted/30 hover:bg-primary/5 transition-colors"
-          >
-            <Plus className="h-3.5 w-3.5 inline mr-1" />
-            Add Stage
-          </div>
+              {/* Add Stage */}
+              <TableRow className="hover:bg-primary/5 cursor-pointer border-border/40" onClick={addStage}>
+                <TableCell colSpan={4} className="text-center py-3">
+                  <span className="text-xs font-semibold text-primary">
+                    <Plus className="h-3.5 w-3.5 inline mr-1" />
+                    Add Stage
+                  </span>
+                </TableCell>
+              </TableRow>
 
-          {/* Final Stage (locked) */}
-          <div className="flex items-stretch bg-muted/40">
-            <div className="w-20 flex flex-col items-center justify-center py-3 border-r shrink-0">
-              <span className="text-[10px] font-bold tracking-wide text-emerald-600">Final</span>
-            </div>
-            <div className="flex-1 px-3 py-2.5 flex items-center">
-              <span className="text-xs font-semibold text-muted-foreground">Final</span>
-            </div>
-            <div className="flex-1 px-3 py-2.5 flex items-center">
-              <span className="text-xs text-muted-foreground">Final</span>
-            </div>
-            <div className="flex items-center gap-1 px-3">
-              <Lock className="h-3.5 w-3.5 text-muted-foreground" />
-            </div>
-          </div>
+              {/* Final Stage (locked) */}
+              <TableRow className="bg-muted/40 hover:bg-muted/40">
+                <TableCell className="text-center">
+                  <span className="text-[10px] font-bold tracking-wide text-emerald-600">Final</span>
+                </TableCell>
+                <TableCell>
+                  <span className="text-xs font-semibold text-muted-foreground">Final</span>
+                </TableCell>
+                <TableCell>
+                  <span className="text-xs text-muted-foreground">Final</span>
+                </TableCell>
+                <TableCell className="text-center">
+                  <Lock className="h-3.5 w-3.5 text-muted-foreground inline" />
+                </TableCell>
+              </TableRow>
+            </TableBody>
+          </Table>
         </CardContent>
       </Card>
 
