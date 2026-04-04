@@ -2,7 +2,7 @@ import seekService from "./seek.service.js";
 
 class SeekController {
   async jobPostRpa(req, res) {
-    const { user_id, account_id, service, dataForm } = req.body // data here not yet used, the data for job posting still hardcoded in the service (changed to req.body);
+    const { account_id, service, dataForm } = req.body 
 
     try {
       const jobPost = await seekService.jobPost(user_id, account_id, service, dataForm);

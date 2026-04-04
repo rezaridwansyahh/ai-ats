@@ -9,7 +9,7 @@ import extractJobPostRpa from "../seek/rpa/extract-job-post.rpa.js"
 import candidateModel from "../../candidate/candidate.model.js"
 
 class SeekService {
-  async jobPost(user_id, account_id, service, dataForm) {
+  async jobPost(account_id, service, dataForm) {
     const page = await cookieService.includeCookiesIfExist(account_id, service) // still hardcoded from req body (user_id, service);
     const account = await this.getAccountAndDecrypt(account_id);
 
