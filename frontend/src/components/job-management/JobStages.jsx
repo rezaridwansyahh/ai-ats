@@ -1,8 +1,9 @@
-import { useState, useMemo } from 'react';
+import { useState, useEffect, useRef, useMemo } from 'react';
 import {
   Plus, X, Lock, ArrowUp, ArrowDown, Check,
-  Briefcase, MapPin, AlertTriangle, Zap, Clock, Mail,
+  Briefcase, MapPin, AlertTriangle, Zap, Clock, Mail, Save,
 } from 'lucide-react';
+import { getJobPipeline, saveJobPipeline } from '@/api/pipeline.api';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
@@ -55,12 +56,14 @@ const STATUS_COLORS = {
   Blocked: 'bg-gray-50 text-gray-500 border-gray-200',
 };
 
-let nextId = 6;
-
 // ── Component ────────────────────────────────────────────────────────
 export default function JobStagesStep({ selectedJob }) {
+  const nextIdRef = useRef(DEFAULT_STAGES.length + 1);
   const [overallDeadline, setOverallDeadline] = useState(14);
   const [stages, setStages] = useState(DEFAULT_STAGES);
+  const [loadingStages, setLoadingStages] = useState(false);
+  const [savingStages, setSavingStages] = useState(false);
+  const [saveMessage, setSaveMessage] = useState(null);
   const [automation, setAutomation] = useState({
     aiScreening: true,
     aiFollowUp: true,
@@ -72,6 +75,65 @@ export default function JobStagesStep({ selectedJob }) {
     advanceThreshold: 80,
   });
 
+  // ── Load stages from API ──
+  useEffect(() => {
+    if (!selectedJob?.id) return;
+
+    let cancelled = false;
+    setLoadingStages(true);
+    setSaveMessage(null);
+
+    getJobPipeline(selectedJob.id)
+      .then(res => {
+        if (cancelled) return;
+        const data = res.data.data;
+        if (data.stages && data.stages.length > 0) {
+          setStages(data.stages.map(s => ({
+            id: s.id,
+            category: s.category,
+            name: s.name,
+            slaDays: 2,
+          })));
+          nextIdRef.current = Math.max(...data.stages.map(s => s.id)) + 1;
+        } else {
+          setStages(DEFAULT_STAGES);
+          nextIdRef.current = DEFAULT_STAGES.length + 1;
+        }
+      })
+      .catch(() => {
+        if (!cancelled) {
+          setStages(DEFAULT_STAGES);
+          nextIdRef.current = DEFAULT_STAGES.length + 1;
+        }
+      })
+      .finally(() => {
+        if (!cancelled) setLoadingStages(false);
+      });
+
+    return () => { cancelled = true; };
+  }, [selectedJob?.id]);
+
+  // ── Save stages to API ──
+  const handleSave = async () => {
+    if (!selectedJob?.id) return;
+    setSavingStages(true);
+    setSaveMessage(null);
+
+    try {
+      const payload = stages.map(s => ({
+        category: s.category,
+        name: s.name,
+      }));
+      await saveJobPipeline(selectedJob.id, payload);
+      setSaveMessage({ type: 'success', text: 'Pipeline saved successfully' });
+    } catch (err) {
+      const msg = err.response?.data?.message || 'Failed to save pipeline';
+      setSaveMessage({ type: 'error', text: msg });
+    } finally {
+      setSavingStages(false);
+    }
+  };
+
   const totalSla = useMemo(() => stages.reduce((sum, s) => sum + (s.slaDays || 0), 0), [stages]);
   const slaMatch = totalSla === overallDeadline;
 
@@ -81,7 +143,7 @@ export default function JobStagesStep({ selectedJob }) {
   };
 
   const addStage = () => {
-    setStages(prev => [...prev, { id: nextId++, category: 'Interview', name: '', slaDays: 2 }]);
+    setStages(prev => [...prev, { id: nextIdRef.current++, category: 'Interview', name: '', slaDays: 2 }]);
   };
 
   const removeStage = (id) => {
@@ -236,7 +298,26 @@ export default function JobStagesStep({ selectedJob }) {
               <CardTitle className="text-[13px] font-bold">Recruitment Pipeline</CardTitle>
               <p className="text-[10px] text-muted-foreground mt-0.5">Configure recruitment pipeline stages. Reorder using arrows. Final stage is locked.</p>
             </div>
+            <Button
+              size="sm"
+              className="text-xs gap-1.5"
+              onClick={handleSave}
+              disabled={savingStages || loadingStages || stages.length === 0}
+            >
+              <Save className="h-3.5 w-3.5" />
+              {savingStages ? 'Saving...' : 'Save Stages'}
+            </Button>
           </div>
+          {saveMessage && (
+            <div className={`text-xs px-3 py-2 rounded-lg mt-2 ${
+              saveMessage.type === 'success'
+                ? 'bg-emerald-50 text-emerald-600'
+                : 'bg-red-50 text-red-500'
+            }`}>
+              {saveMessage.type === 'success' ? <Check className="h-3.5 w-3.5 inline mr-1" /> : <AlertTriangle className="h-3.5 w-3.5 inline mr-1" />}
+              {saveMessage.text}
+            </div>
+          )}
         </CardHeader>
         <CardContent className="p-0">
           <Table>
