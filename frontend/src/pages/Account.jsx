@@ -72,7 +72,7 @@ export default function AccountPage() {
   const [selectedPlatform,  setSelectedPlatform]  = useState(null);
   const [submitting,       setSubmitting]       = useState(false);
 
-  
+
   const openConfigure = (platform, account) => {
     setSelectedAccount(account || null);
     setSelectedPlatform(platform);
@@ -151,7 +151,7 @@ export default function AccountPage() {
                     <div className="flex-1 min-w-20">
                       <span className="text-sm font-semibold">{channels.name}</span>
                       <div className="">
-                        {account?.condition === 'Connected' ? 
+                        {account?.condition === 'Connected' ?
                           <Badge variant="outline" className="text-[9px] px-1.5 py-0 bg-emerald-50 text-emerald-600 border-emerald-200">
                             Connected
                           </Badge> :
@@ -203,12 +203,12 @@ export default function AccountPage() {
                   <div key={channels.id} className="flex items-center gap-3 py-3">
                     <div className="h-10 w-10 rounded-lg flex items-center justify-center text-white text-[10px] font-bold shrink-0">
                       <img src={LOGOS[channels.id]} />
-                      
+
                     </div>
                     <div className="flex-1 min-w-20">
                       <span className="text-sm font-semibold">{channels.name}</span>
                       <div className="">
-                        {account ? 
+                        {account ?
                           <Badge variant="outline" className="text-[9px] px-1.5 py-0 bg-emerald-50 text-emerald-600 border-emerald-200">
                             {account.condition || 'Connected'} {/* still dummy db wrong */}
                           </Badge> :
