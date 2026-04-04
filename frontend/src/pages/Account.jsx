@@ -159,7 +159,6 @@ export default function AccountPage() {
                   <div className="flex items-center gap-3 py-3 border-b last:border-b-0">
                     <div className="h-10 w-10 rounded-lg flex items-center justify-center text-white text-[10px] font-bold shrink-0">
                       <img src={LOGOS[channels.id]} />
-                      
                     </div>
                     <div className="flex-1 min-w-20">
                       <span className="text-sm font-semibold">{channels.name}</span>
