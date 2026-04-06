@@ -21,6 +21,8 @@ DROP TABLE IF EXISTS master_sourcing_recruite CASCADE;
 DROP TABLE IF EXISTS master_recruiters CASCADE;
 DROP TABLE IF EXISTS core_job_pipeline_stages CASCADE;
 DROP TABLE IF EXISTS core_job_pipeline CASCADE;
+DROP TABLE IF EXISTS mapping_candidates_seek CASCADE;
+DROP TABLE IF EXISTS mapping_candidates_linkedin CASCADE;
 
 -- Drop enums after all tables are gone
 DROP TYPE IF EXISTS recruiter_status_type CASCADE;
@@ -34,6 +36,8 @@ DROP TYPE IF EXISTS platform_type CASCADE;
 DROP TYPE IF EXISTS candidate_status_type CASCADE;
 DROP TYPE IF EXISTS condition_type CASCADE;
 DROP TYPE IF EXISTS stage_category_type CASCADE;
+DROP TYPE IF EXISTS booking_status_type CASCADE;
+DROP TYPE IF EXISTS session_slot_type CASCADE;
 
 -- Create ENUM type
 CREATE TYPE status_type AS ENUM ('Draft', 'Active', 'Running', 'Expired', 'Failed', 'Blocked');
@@ -173,6 +177,7 @@ CREATE TABLE core_job_pipeline_stages (
 CREATE TABLE core_job_sourcing (
   id SERIAL PRIMARY KEY,
   account_id INTEGER REFERENCES master_job_account(id) ON DELETE CASCADE,
+  job_id INTEGER REFERENCES core_job(id) ON DELETE CASCADE,
   job_title VARCHAR(255) NOT NULL,
   platform platform_type NOT NULL,
   platform_job_id VARCHAR(255),

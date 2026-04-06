@@ -1,4 +1,4 @@
-import db from "../../../config/postgres.js"
+import getDb from "../../../config/postgres.js"
 
 class JobPostSeekModel {
   async getAll() {
@@ -27,7 +27,7 @@ class JobPostSeekModel {
       SELECT cj.job_title, cjs.account_id, mjss.*
       FROM mapping_job_sourcing_seek mjss
       JOIN core_job_sourcing cjs ON mjss.job_sourcing_id = cjs.id
-      JOIN core_job cj ON cjs.job_id = cj.id
+      LEFT JOIN core_job cj ON cjs.job_id = cj.id
       WHERE mjss.seek_id = $1
     `, [seek_id]);
     return result.rows[0];
@@ -62,7 +62,7 @@ class JobPostSeekModel {
         mjss.created_by
       FROM mapping_job_sourcing_seek mjss
       JOIN core_job_sourcing cjs ON mjss.job_sourcing_id = cjs.id
-      JOIN core_job cj ON cjs.job_id = cj.id
+      LEFT JOIN core_job cj ON cjs.job_id = cj.id
       WHERE mjss.job_sourcing_id = $1
     `, [job_sourcing_id]);
     return result.rows[0];
@@ -83,7 +83,7 @@ class JobPostSeekModel {
         mjss.created_date_seek,
         mjss.created_by
       FROM core_job_sourcing cjs
-      JOIN core_job cj ON cjs.job_id = cj.id
+      LEFT JOIN core_job cj ON cjs.job_id = cj.id
       JOIN master_job_account mja ON cjs.account_id = mja.id
       LEFT JOIN mapping_job_sourcing_seek mjss ON cjs.id = mjss.job_sourcing_id
       WHERE mja.user_id = $1 AND cjs.platform = 'seek'
@@ -92,13 +92,13 @@ class JobPostSeekModel {
     return result.rows;
   }
 
-  async create(job_sourcing_id, seek_id, candidate_count, created_date_seek, created_by) {
+  async create(job_sourcing_id, { seek_id = null, candidate_count = 0, created_date_seek = null, created_by = null, currency = null, pay_type = null, pay_min = null, pay_max = null, pay_display = null } = {}) {
     const result = await getDb().query(`
       INSERT INTO mapping_job_sourcing_seek
-        (job_sourcing_id, seek_id, candidate_count, created_date_seek, created_by)
-      VALUES ($1, $2, $3, $4, $5)
+        (job_sourcing_id, seek_id, candidate_count, created_date_seek, created_by, currency, pay_type, pay_min, pay_max, pay_display)
+      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
       RETURNING *
-    `, [job_sourcing_id, seek_id || null, candidate_count || 0, created_date_seek || null, created_by || null]);
+    `, [job_sourcing_id, seek_id, candidate_count, created_date_seek, created_by, currency, pay_type, pay_min, pay_max, pay_display]);
     return result.rows[0];
   }
 

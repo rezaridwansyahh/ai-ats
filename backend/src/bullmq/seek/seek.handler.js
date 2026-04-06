@@ -5,7 +5,7 @@ const createJobPostHandler = async (data) => {
 };
 
 const createJobPostDraftHandler = async (data) => {
-  await seekService.jobPostDraft(data.account_id, data.service, data.dataForm);
+  await seekService.jobPostDraft(data.account_id, data.service, data.job_id, data.dataForm);
 }
 
 const deleteJobPostDraftHandler = async (data) => {

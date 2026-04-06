@@ -11,10 +11,11 @@ class SeekProducer {
     return job;
   }
 
-  async createSeekJobPostDraft(account_id, service, dataForm) {
+  async createSeekJobPostDraft(account_id, service, job_id, dataForm) {
     const job = await seekQueue.add('seek-create-job-post-draft', {
       account_id,
       service,
+      job_id,
       dataForm
     });
   

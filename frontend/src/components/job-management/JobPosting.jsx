@@ -14,7 +14,8 @@ import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from '@/components/ui/table';
 
-import { getJobAccounts, createJobAccount, updateJobAccount, deleteJobAccount, getJobAccountsByUserId } from '@/api/job-accounts.api';
+import { getJobAccountsByUserId } from '@/api/job-accounts.api';
+import { submitSeekPosting } from '@/api/job-posting-seek.api';
 
 import linkedin from '@/assets/logos/linkedin.png';
 import seek from '@/assets/logos/seek.png';
@@ -66,6 +67,7 @@ export default function JobPosting({ selectedJob, onSelectionChange }) {
   const [accounts, setAccounts] = useState([]);
   const [loading,  setLoading]  = useState(true);
   const [error,    setError]    = useState(null);
+  const [publishingChannel, setPublishingChannel] = useState(null);
 
   const updatePublic = (id, field, value) => {
     setPublicChannels(prev => prev.map(ch => ch.id === id ? { ...ch, [field]: value } : ch));
@@ -87,9 +89,43 @@ export default function JobPosting({ selectedJob, onSelectionChange }) {
     setPrivateChannels(PRIVATE_CHANNELS);
   }
 
+  const handlePublishChannel = async (channelId) => {
+    const account = accounts.find(acc => acc.portal_name === channelId);
+    if (!account || !selectedJob) return;
+
+    setPublishingChannel(channelId);
+    try {
+      if (channelId === 'seek') {
+        await submitSeekPosting({
+          account_id: account.id,
+          service: 'seek',
+          job_id: selectedJob.id,
+          dataForm: {
+            job_title: selectedJob.job_title,
+            job_desc: selectedJob.job_desc || null,
+            job_location: selectedJob.job_location || null,
+            work_option: selectedJob.work_option || null,
+            work_type: selectedJob.work_type || null,
+            pay_type: selectedJob.pay_type || null,
+            currency: selectedJob.currency || null,
+            pay_min: selectedJob.pay_min || null,
+            pay_max: selectedJob.pay_max || null,
+            pay_display: selectedJob.pay_display || null,
+          },
+        });
+        updatePublic('seek', 'published', true);
+      }
+    } catch (err) {
+      console.error(`Failed to publish to ${channelId}:`, err);
+      setError(err.response?.data?.message || err.message || `Failed to publish to ${channelId}`);
+    } finally {
+      setPublishingChannel(null);
+    }
+  };
+
   const handlePublishAll = () => {
-    //if (channels.public) setPublicChannels(prev => prev.map(ch => ({ ...ch, published: true })));
-    //if (channels.private) setPrivateChannels(prev => prev.map(ch => ({ ...ch, published: true })));
+    const enabledPublic = channels.public ? publicChannels.filter(c => !c.published) : [];
+    enabledPublic.forEach(ch => handlePublishChannel(ch.id));
   };
 
   const [user] = useState(JSON.parse(localStorage.getItem('user')));
@@ -241,7 +277,8 @@ export default function JobPosting({ selectedJob, onSelectionChange }) {
                       key={ch.id}
                       channel={ch}
                       accounts={accounts}
-                      onPublish={() => updatePublic(ch.id, 'published', true)}
+                      onPublish={() => handlePublishChannel(ch.id)}
+                      publishing={publishingChannel === ch.id}
                       onQuotaChange={v => updatePublic(ch.id, 'maxApplicants', v)}
                       actionLabel="Publish"
                     />
@@ -365,9 +402,8 @@ function VisibilityGroup({ checked, onToggle, label, subtitle, icon, indicatorCo
   );
 }
 
-function ChannelRow({ channel: ch, accounts, onPublish, actionLabel }) {
+function ChannelRow({ channel: ch, accounts, onPublish, publishing, actionLabel }) {
   const account = accounts?.find(acc => acc.portal_name === ch.id);
-  console.log(account);
   return (
     <div key={ch.id} className="flex justify-between items-center w-full border-b last:border-b-0">
       <div className="flex items-center gap-10">
@@ -378,7 +414,7 @@ function ChannelRow({ channel: ch, accounts, onPublish, actionLabel }) {
           <div className="flex-1 min-w-20">
             <span className="text-sm font-semibold">{ch.name}</span>
             <div className="">
-              {account?.condition === 'Connected' ? 
+              {account?.condition === 'Connected' ?
                 <Badge variant="outline" className="text-[9px] px-1.5 py-0 bg-emerald-50 text-emerald-600 border-emerald-200">
                   Connected
                 </Badge> :
@@ -395,12 +431,14 @@ function ChannelRow({ channel: ch, accounts, onPublish, actionLabel }) {
       </div>
 
       {account
-        ? ch.published 
+        ? ch.published
           ? (
             <Badge className="bg-emerald-100 text-emerald-700 border-emerald-200 text-[10px] px-3 py-1">Published</Badge>
-          ) 
+          )
           : (
-            <Button size="sm" className="text-[11px] h-8 px-4" onClick={onPublish}>{actionLabel}</Button>
+            <Button size="sm" className="text-[11px] h-8 px-4" onClick={onPublish} disabled={publishing}>
+              {publishing ? 'Publishing…' : actionLabel}
+            </Button>
           )
         : (
           <Badge className="text-[9px] px-1.5 py-0 bg-red-50 text-red-600 border-red-200">Not Connected</Badge>

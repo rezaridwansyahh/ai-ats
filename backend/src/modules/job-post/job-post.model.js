@@ -67,13 +67,13 @@ class JobPostModel {
     return result.rows;
   }
 
-  async create(account_id, platform, job_title, job_desc, job_location, work_option, work_type, status = 'Running', candidate_count, additional) {
+  async create(account_id, job_id, platform, job_title, status = 'Active', additional = null) {
     const result = await getDb().query(`
       INSERT INTO core_job_sourcing
-        (account_id, platform, job_title, job_desc, job_location, work_option, work_type, status, candidate_count, additional)
-      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
+        (account_id, job_id, platform, job_title, status, additional)
+      VALUES ($1, $2, $3, $4, $5, $6)
       RETURNING *
-    `, [account_id, platform, job_title, job_desc, job_location, work_option, work_type, status, candidate_count, additional]);
+    `, [account_id, job_id, platform, job_title, status, additional]);
 
     return result.rows[0];
   }

@@ -41,7 +41,7 @@ class PipelineModel {
   }
 
   async replaceStages(pipelineId, stages) {
-    const client = await db.connect();
+    const client = await getDb().connect();
     try {
       await client.query('BEGIN');
 

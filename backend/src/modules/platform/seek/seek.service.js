@@ -24,9 +24,15 @@ class SeekService {
     }
   }
 
-  async jobPostDraft(account_id, service, dataForm) {
-    const jobPost = await jobPostModel.create(account_id, service, dataForm.job_title, dataForm.job_desc, dataForm.job_location, dataForm.work_option, dataForm.work_type);
-    const jobPostSeek = await jobPostSeekModel.create(jobPost.id, dataForm.currency, dataForm.pay_type, dataForm.pay_min, dataForm.pay_max, dataForm.pay_display);
+  async jobPostDraft(account_id, service, job_id, dataForm) {
+    const jobPost = await jobPostModel.create(account_id, job_id, service, dataForm.job_title);
+    const jobPostSeek = await jobPostSeekModel.create(jobPost.id, {
+      currency: dataForm.currency,
+      pay_type: dataForm.pay_type,
+      pay_min: dataForm.pay_min,
+      pay_max: dataForm.pay_max,
+      pay_display: dataForm.pay_display,
+    });
     const page = await cookieService.includeCookiesIfExist(account_id); // still hardcoded from req body (user_id, service);
 
     try {
@@ -37,7 +43,7 @@ class SeekService {
       if(message) {
         throw new Error(message);
       }
-    
+
       return { jobPost: update, jobPostSeek: updateSeek };
     } catch (err) {
       const update = await jobPostModel.updateStatus(jobPost.id, "Expired"); // change into failed in the db enum
@@ -49,7 +55,7 @@ class SeekService {
 
   async deleteJobPostDraft(job_posting_id, account_id) {
     const page = await cookieService.includeCookiesIfExist(account_id); // still hardcoded from req body (user_id, service);
-    const jobPostSeek = await jobPostSeekModel.getDetailsByJobPostingId(job_posting_id);
+    const jobPostSeek = await jobPostSeekModel.getDetailsByJobSourcingId(job_posting_id);
 
     try {
       await loginRpa.authenticatedPage(page, account_id);
@@ -67,7 +73,7 @@ class SeekService {
 
   async updateJobPostDraft(job_posting_id, account_id, dataForm) {
     const page = await cookieService.includeCookiesIfExist(account_id); // still hardcoded from req body (user_id, service);
-    const jobPostSeek = await jobPostSeekModel.getDetailsByJobPostingId(job_posting_id);
+    const jobPostSeek = await jobPostSeekModel.getDetailsByJobSourcingId(job_posting_id);
     const account = await this.getAccountAndDecrypt(account_id);
 
     try {
@@ -78,7 +84,7 @@ class SeekService {
         throw new Error(message);
       }
 
-      const updated = await jobPostModel.update(job_posting_id, { job_title: dataForm.job_title, job_desc: dataForm.job_desc, job_location: dataForm.job_location, work_option: dataForm.work_option, work_type: dataForm.work_type });
+      const updated = await jobPostModel.update(job_posting_id, { job_title: dataForm.job_title });
       const seekUpdated = await jobPostSeekModel.update(job_posting_id, { currency: dataForm.currency, pay_type: dataForm.pay_type, pay_min: dataForm.pay_min, pay_max: dataForm.pay_max, pay_display: dataForm.pay_display });
       
       return { updatedJobPost: updated, updatedSeek: seekUpdated};
@@ -90,7 +96,7 @@ class SeekService {
   }
   async extractCandidates(account_id, job_posting_id) {
     const page = await cookieService.includeCookiesIfExist(account_id);
-    const jobPostSeek = await jobPostSeekModel.getDetailsByJobPostingId(job_posting_id);
+    const jobPostSeek = await jobPostSeekModel.getDetailsByJobSourcingId(job_posting_id);
 
     try {
       await loginRpa.authenticatedPage(page, account_id);
@@ -158,12 +164,7 @@ class SeekService {
             // Update existing records
             await jobPostModel.update(existing.job_posting_id, {
               job_title: data.job_title,
-              job_desc: data.job_desc,
-              job_location: data.job_location,
-              work_option: data.work_option,
-              work_type: data.work_type,
               status: data.status,
-              candidate_count: data.candidate_count,
               additional: data.additional,
             });
             await jobPostSeekModel.update(existing.job_posting_id, {
@@ -179,28 +180,24 @@ class SeekService {
             // Create new records
             const jobPost = await jobPostModel.create(
               account_id,
+              null,
               'seek',
               data.job_title,
-              data.job_desc,
-              data.job_location,
-              data.work_option,
-              data.work_type,
               data.status,
-              data.candidate_count,
               data.additional
             );
 
-            await jobPostSeekModel.create(
-              jobPost.id,
-              data.currency,
-              data.pay_type,
-              data.pay_min,
-              data.pay_max,
-              data.pay_display,
-              data.created_date_seek,
-              data.created_by,
-              data.seek_id
-            );
+            await jobPostSeekModel.create(jobPost.id, {
+              seek_id: data.seek_id,
+              candidate_count: data.candidate_count,
+              created_date_seek: data.created_date_seek,
+              created_by: data.created_by,
+              currency: data.currency,
+              pay_type: data.pay_type,
+              pay_min: data.pay_min,
+              pay_max: data.pay_max,
+              pay_display: data.pay_display,
+            });
           }
         }
         

@@ -18,10 +18,10 @@ class SeekController {
   }
 
   async jobPostDraftRpa(req, res) {
-    const { account_id, service, dataForm } = req.body // data here not yet used, the data for job posting still hardcoded in the service (changed to req.body);
+    const { account_id, service, job_id, dataForm } = req.body;
 
     try {
-      const jobPost = await SeekProducer.createSeekJobPostDraft(account_id, service, dataForm);
+      const jobPost = await SeekProducer.createSeekJobPostDraft(account_id, service, job_id, dataForm);
       return res.status(200).json({ message: "create seek job post draft queued succesfully", jobPost }) // not yet good
     } catch(err) {
       return res.status(500).json({

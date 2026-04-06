@@ -1,4 +1,4 @@
-import db from '../../../config/postgres.js';
+import getDb from '../../../config/postgres.js';
 
 class JobPostLinkedinModel {
   async getByJobSourcingId(job_sourcing_id) {

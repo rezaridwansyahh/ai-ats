@@ -1,4 +1,4 @@
-import db from '../../config/postgres.js';
+import getDb from '../../config/postgres.js';
 // data
 import usersData from '../data/users.js';
 import rolesData from '../data/roles.js';
