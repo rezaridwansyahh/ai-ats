@@ -1,5 +1,6 @@
 import seekService from "./seek.service.js";
 import SeekProducer from "../../../bullmq/seek/seek.producer.js";
+import seekQueue from "../../../bullmq/seek/seek.queue.js";
 
 class SeekController {
   async jobPostRpa(req, res) {
@@ -67,6 +68,25 @@ class SeekController {
       return res.status(err.status || 500).json({
         message: err.message
       });
+    }
+  }
+
+  async getJobStatus(req, res) {
+    const { jobId } = req.params;
+    try {
+      const job = await seekQueue.getJob(jobId);
+      if (!job) {
+        return res.status(404).json({ message: 'Job not found' });
+      }
+      const state = await job.getState();
+      return res.status(200).json({
+        id: job.id,
+        state,
+        failedReason: job.failedReason || null,
+        finishedOn: job.finishedOn || null,
+      });
+    } catch (err) {
+      return res.status(500).json({ message: err.message });
     }
   }
 

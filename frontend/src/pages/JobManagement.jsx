@@ -9,6 +9,8 @@ import {
 } from '@/components/ui/dialog';
 import { getJobs, createJob, updateJob, deleteJob } from '@/api/job.api';
 import { getRecruiters } from '@/api/recruiter.api';
+import { submitSeekPosting, getSeekJobStatus } from '@/api/job-posting-seek.api';
+import { getJobAccountsByUserId } from '@/api/job-accounts.api';
 import JobCreation from '@/components/job-management/JobCreation';
 import JobStages from '@/components/job-management/JobStages';
 import JobPosting from '@/components/job-management/JobPosting';
@@ -46,6 +48,9 @@ export default function JobManagementPage() {
   const [validationErrors, setValidationErrors] = useState([]);
   const [postingSummary, setPostingSummary] = useState(null);
   const [showPostingConfirm, setShowPostingConfirm] = useState(false);
+  const [accounts, setAccounts] = useState([]);
+  const [publishing, setPublishing] = useState(false);
+  const [publishError, setPublishError] = useState(null);
 
   const fetchJobs = useCallback(async () => {
     setLoading(true);
@@ -68,10 +73,23 @@ export default function JobManagementPage() {
     }
   }, []);
 
+  const user = JSON.parse(localStorage.getItem('user') || '{}');
+
+  const fetchAccounts = useCallback(async () => {
+    if (!user?.id) return;
+    try {
+      const { data } = await getJobAccountsByUserId(user.id);
+      setAccounts(data.accounts || []);
+    } catch {
+      // no-op
+    }
+  }, [user?.id]);
+
   useEffect(() => {
     fetchJobs();
     fetchRecruiters();
-  }, [fetchJobs, fetchRecruiters]);
+    fetchAccounts();
+  }, [fetchJobs, fetchRecruiters, fetchAccounts]);
 
   const handleCreateJob = async (data) => {
     const res = await createJob(data);
@@ -87,6 +105,70 @@ export default function JobManagementPage() {
   const handleDeleteJob = async (id) => {
     await deleteJob(id);
     await fetchJobs();
+  };
+
+  const pollJobStatus = async (queueJobId) => {
+    const MAX_POLLS = 30;
+    for (let i = 0; i < MAX_POLLS; i++) {
+      await new Promise(r => setTimeout(r, 2000));
+      try {
+        const { data } = await getSeekJobStatus(queueJobId);
+        if (data.state === 'completed') return { success: true };
+        if (data.state === 'failed') return { success: false, error: data.failedReason };
+      } catch {
+        // polling error, keep trying
+      }
+    }
+    return { success: false, error: 'Timed out waiting for job to complete' };
+  };
+
+  const handleConfirmPublish = async () => {
+    setShowPostingConfirm(false);
+    setPublishing(true);
+    setPublishError(null);
+
+    const selectedJob = jobs.find(j => j.id === selectedJobId);
+
+    try {
+      if (postingSummary?.public?.channels?.includes('Seek')) {
+        const seekAccount = accounts.find(a => a.portal_name === 'seek');
+        if (seekAccount && selectedJob) {
+          const { data } = await submitSeekPosting({
+            account_id: seekAccount.id,
+            service: 'seek',
+            job_id: selectedJob.id,
+            dataForm: {
+              job_title: selectedJob.job_title,
+              job_desc: selectedJob.job_desc || null,
+              job_location: selectedJob.job_location || null,
+              work_option: selectedJob.work_option || null,
+              work_type: selectedJob.work_type || null,
+              pay_type: selectedJob.pay_type || null,
+              currency: selectedJob.currency || null,
+              pay_min: selectedJob.pay_min || null,
+              pay_max: selectedJob.pay_max || null,
+              pay_display: selectedJob.pay_display || null,
+            },
+          });
+
+          const queueJobId = data.jobPost?.id;
+          if (queueJobId) {
+            const result = await pollJobStatus(queueJobId);
+            if (!result.success) {
+              setPublishError(result.error || 'Seek posting failed');
+              setPublishing(false);
+              return;
+            }
+          }
+        }
+      }
+
+      setPublishing(false);
+      setActiveStep(3);
+    } catch (err) {
+      setPublishError(err.response?.data?.message || err.message || 'Publishing failed');
+      setPublishing(false);
+    }
   };
 
   const REQUIRED_FIELDS = [
@@ -293,10 +375,36 @@ export default function JobManagementPage() {
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setShowPostingConfirm(false)}>Back</Button>
-            <Button onClick={() => { setShowPostingConfirm(false); setActiveStep(3); }}>Confirm &amp; Continue</Button>
+            <Button onClick={handleConfirmPublish}>Confirm &amp; Continue</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/* Publishing overlay */}
+      {publishing && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/30">
+          <div className="bg-white rounded-xl px-8 py-6 shadow-lg flex flex-col items-center gap-3">
+            <div className="h-8 w-8 border-3 border-primary border-t-transparent rounded-full animate-spin" />
+            <p className="text-sm font-semibold">Publishing to channels...</p>
+            <p className="text-xs text-muted-foreground">This may take a moment while the RPA processes your job posting.</p>
+          </div>
+        </div>
+      )}
+
+      {/* Publish error banner */}
+      {publishError && (
+        <Dialog open={!!publishError} onOpenChange={() => setPublishError(null)}>
+          <DialogContent className="max-w-md">
+            <DialogHeader>
+              <DialogTitle>Publishing Failed</DialogTitle>
+            </DialogHeader>
+            <p className="text-sm text-red-500">{publishError}</p>
+            <DialogFooter>
+              <Button onClick={() => setPublishError(null)}>OK</Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+      )}
     </div>
   );
 }

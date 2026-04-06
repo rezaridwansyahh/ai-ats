@@ -37,16 +37,13 @@ class SeekService {
 
     try {
       await loginRpa.authenticatedPage(page, account_id);
-      const { message, draftId } = await jobPostRpa.fillFormJobPostDraft(page, dataForm); // remember to incl the data, still hardcoded on the job post rpa
-      const update = await jobPostModel.updateStatus(jobPost.id, "Draft" ); // change into failed in the db enum
+      const { draftId } = await jobPostRpa.fillFormJobPostDraft(page, dataForm);
+      const update = await jobPostModel.updateStatus(jobPost.id, "Draft");
       const updateSeek = await jobPostSeekModel.update(jobPost.id, { seek_id: draftId });
-      if(message) {
-        throw new Error(message);
-      }
 
       return { jobPost: update, jobPostSeek: updateSeek };
     } catch (err) {
-      const update = await jobPostModel.updateStatus(jobPost.id, "Expired"); // change into failed in the db enum
+      await jobPostModel.updateStatus(jobPost.id, "Failed");
       throw err
     } finally {
       await browserPuppeteer.close();

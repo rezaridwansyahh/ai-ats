@@ -15,3 +15,5 @@ export const syncSeekJobPosts = (accountId) =>
 
 export const extractSeekCandidates = (data) =>
   api.post('/seek/candidates/rpa/extract', data);
+
+export const getSeekJobStatus = (jobId) => api.get(`/seek/job-status/${jobId}`);

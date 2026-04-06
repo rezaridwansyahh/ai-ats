@@ -225,16 +225,16 @@ class SeekJobPostingService {
     await this.fillJobWorkType(page, data.work_type);
     await this.fillJobPayType(page, data.pay_type);
     await this.fillJobPayCurrencyRange(page, data.currency, data.pay_min, data.pay_max);
-    const message = await this.checkSalaryCorrect(page); // Range tak bisa terlalu besar
+    const message = await this.checkSalaryCorrect(page);
+    if (message) {
+      throw new Error(message);
+    }
     await this.fillJobPayDisplay(page, data.pay_display);
     await this.clickDraftButton(page);
     await this.redirectDraftPage(page);
     const draftId = await this.getSeekJobPostDraftId(page);
 
-    return {
-      message,
-      draftId
-    };
+    return { draftId };
   }
 
   async fillFormJobPost(page, data) {

@@ -18,6 +18,7 @@ import {
   submitSeekPosting,
   updateJobPosting,
   deleteJobPosting,
+  getSeekJobStatus,
 } from '@/api/job-posting-seek.api';
 import { getJobAccountsByUserId } from '@/api/job-accounts.api';
 import { hasPermission } from '@/utils/permissions';
@@ -145,6 +146,21 @@ export default function SeekPage() {
     setFormError('');
   };
 
+  const pollJobStatus = async (queueJobId) => {
+    const MAX_POLLS = 30;
+    for (let i = 0; i < MAX_POLLS; i++) {
+      await new Promise(r => setTimeout(r, 2000));
+      try {
+        const { data } = await getSeekJobStatus(queueJobId);
+        if (data.state === 'completed') return { success: true };
+        if (data.state === 'failed') return { success: false, error: data.failedReason };
+      } catch {
+        // polling error, keep trying
+      }
+    }
+    return { success: false, error: 'Timed out waiting for job to complete' };
+  };
+
   const handleCreate = async (e) => {
     e.preventDefault();
     setFormError('');
@@ -154,7 +170,7 @@ export default function SeekPage() {
 
     setSubmitting(true);
     try {
-      await submitSeekPosting({
+      const { data } = await submitSeekPosting({
         user_id: userId,
         account_id: Number(formAccountId),
         service: 'seek',
@@ -171,7 +187,16 @@ export default function SeekPage() {
           pay_display:  formDisplay             || null,
         },
       });
-      resetForm();
+
+      const queueJobId = data.jobPost?.id;
+      if (queueJobId) {
+        const result = await pollJobStatus(queueJobId);
+        if (result.success) {
+          resetForm();
+        } else {
+          setFormError(result.error || 'Seek posting failed');
+        }
+      }
       await fetchPostings();
     } catch (err) {
       setFormError(err.response?.data?.message || err.message || 'Something went wrong');

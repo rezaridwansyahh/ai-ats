@@ -1,4 +1,4 @@
-import { Worker } from 'bullmq';
+import { Worker, UnrecoverableError } from 'bullmq';
 import redisConfig from '../../config/redis.js';
 
 import handlers from "./seek.handler.js";
@@ -14,12 +14,13 @@ const scrapingWorker = new Worker(
       const handler = handlers[job.name];
 
       if(!handler) {
-        throw 'handler undefined';
+        throw new UnrecoverableError('handler undefined');
       }
 
       await handler(job.data);
     } catch(err) {
-      throw err;
+      if (err instanceof UnrecoverableError) throw err;
+      throw new UnrecoverableError(err.message || String(err));
     }
   },
   {
