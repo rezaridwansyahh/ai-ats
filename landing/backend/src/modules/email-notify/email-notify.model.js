@@ -2,7 +2,7 @@ import db from '../../config/postgres.js';
 
 class EmailNotify {
   async getAll() {
-    const result = await db.query(`
+    const result = await getDb().query(`
       SELECT * FROM master_email_notify
       ORDER BY created_at DESC
     `)
@@ -11,14 +11,14 @@ class EmailNotify {
   }
 
   async getById(id) {
-    const result = await db.query(`
+    const result = await getDb().query(`
       SELECT * FROM master_email_notify WHERE id = $1
     `, [id])
     return result.rows[0]
   }
 
   async getActive() {
-    const result = await db.query(`
+    const result = await getDb().query(`
       SELECT email FROM master_email_notify
       WHERE is_active = TRUE
     `)
@@ -26,7 +26,7 @@ class EmailNotify {
   }
 
   async create(email, label) {
-    const result = await db.query(`
+    const result = await getDb().query(`
       INSERT INTO master_email_notify (email, label)
       VALUES ($1, $2)
       RETURNING *
@@ -46,7 +46,7 @@ class EmailNotify {
       .map((key, index) => `"${key}" = $${index + 1}`)
       .join(', ');
 
-    const result = await db.query(`
+    const result = await getDb().query(`
       UPDATE master_email_notify
       SET ${setClause}
       WHERE id = $${keys.length + 1}
@@ -57,7 +57,7 @@ class EmailNotify {
   }
 
   async delete(id) {
-    const result = await db.query(`
+    const result = await getDb().query(`
       DELETE FROM master_email_notify WHERE id = $1 RETURNING *
     `, [id])
     return result.rows[0]

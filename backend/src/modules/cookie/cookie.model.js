@@ -1,8 +1,8 @@
-import db from "../../config/postgres.js";
+import getDb from "../../config/postgres.js";
 
 class CookieModel {
   async getByAccountId(accountId) {
-    const result = await db.query(
+    const result = await getDb().query(
       'SELECT * FROM cookies WHERE account_id = $1',
       [accountId]
     );
@@ -11,7 +11,7 @@ class CookieModel {
   }
 
   async save(accountId, cookies) {
-    const result = await db.query(`
+    const result = await getDb().query(`
       INSERT INTO cookies (account_id, cookies)
       VALUES ($1, $2)
       ON CONFLICT (account_id)
@@ -25,7 +25,7 @@ class CookieModel {
   }
 
   async delete(accountId) {
-    await db.query(
+    await getDb().query(
       'DELETE FROM cookies WHERE account_id = $1',
       [accountId]
     );

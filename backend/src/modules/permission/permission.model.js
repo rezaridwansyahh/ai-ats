@@ -1,8 +1,8 @@
-import db from "../../config/postgres.js"
+import getDb from "../../config/postgres.js"
 
 class PermissionModel {
   async getAll(){
-    const result = await db.query(`
+    const result = await getDb().query(`
       SELECT perm.*
       FROM global_permissions perm
       `);
@@ -11,7 +11,7 @@ class PermissionModel {
   }
 
   async getById(id) {
-    const result = await db.query(`
+    const result = await getDb().query(`
       SELECT perm.*
       FROM global_permissions perm
       WHERE perm.id = $1
@@ -21,7 +21,7 @@ class PermissionModel {
   }
 
   async getByIdDetails(id) {
-    const result = await db.query(`
+    const result = await getDb().query(`
       SELECT 
         perm.*,
         r.id AS role_id,
@@ -44,7 +44,7 @@ class PermissionModel {
   }
 
   async getAllWithDetails() {
-    const result = await db.query(`
+    const result = await getDb().query(`
       SELECT
         perm.id          AS permission_id,
         perm.functionality,
@@ -62,7 +62,7 @@ class PermissionModel {
   }
 
   async getByRoleIdDetails(role_id) {
-    const result = await db.query(`
+    const result = await getDb().query(`
       SELECT 
         perm.id AS permission_id,
         perm.functionality,
@@ -108,7 +108,7 @@ class PermissionModel {
     // Parameters: [moduleName, ...roleIds, menuName, functionality]
     const params = [moduleName, ...roleIds, menuName, functionality];
     
-    const result = await db.query(query, params);
+    const result = await getDb().query(query, params);
     return parseInt(result.rows[0].count) > 0;
   }
 
@@ -131,7 +131,7 @@ class PermissionModel {
     `;
     
     const params = [...roleIds];
-    const result = await db.query(query, params);
+    const result = await getDb().query(query, params);
     
     const permissions = [];
     
@@ -162,7 +162,7 @@ class PermissionModel {
   }
 
   async create(permission){
-    const result = await db.query(`
+    const result = await getDb().query(`
       INSERT INTO global_permissions (fuctionality, module_menu_id)
       VALUES ($1, $2)
       RETURNING *
@@ -176,7 +176,7 @@ class PermissionModel {
 
     const setClause = key.map((k, index) => `${k} = $${index + 1}`).join(', ');
 
-    const result = await db.query(`
+    const result = await getDb().query(`
       UPDATE global_permissions 
       SET ${setClause} 
       WHERE id = $${key.length + 1} 
@@ -187,7 +187,7 @@ class PermissionModel {
   }
 
   async delete(id){
-    const result = await db.query(`
+    const result = await getDb().query(`
       DELETE FROM global_permissions
       WHERE id = $1
       RETURNING *

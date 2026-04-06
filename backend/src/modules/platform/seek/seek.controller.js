@@ -1,4 +1,5 @@
 import seekService from "./seek.service.js";
+import SeekProducer from "../../../bullmq/seek/seek.producer.js";
 
 class SeekController {
   async jobPostRpa(req, res) {
@@ -20,8 +21,8 @@ class SeekController {
     const { account_id, service, dataForm } = req.body // data here not yet used, the data for job posting still hardcoded in the service (changed to req.body);
 
     try {
-      const jobPost = await seekService.jobPostDraft(account_id, service, dataForm);
-      return res.status(200).json({ message: "success", jobPost }) // not yet good
+      const jobPost = await SeekProducer.createSeekJobPostDraft(account_id, service, dataForm);
+      return res.status(200).json({ message: "create seek job post draft queued succesfully", jobPost }) // not yet good
     } catch(err) {
       return res.status(500).json({
         status: 'error',

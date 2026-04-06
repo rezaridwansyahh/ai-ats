@@ -2,28 +2,28 @@ import db from "../../../config/postgres.js"
 
 class JobPostSeekModel {
   async getAll() {
-    const result = await db.query(`
+    const result = await getDb().query(`
       SELECT * FROM mapping_job_sourcing_seek ORDER BY id ASC
     `);
     return result.rows;
   }
 
   async getById(id) {
-    const result = await db.query(`
+    const result = await getDb().query(`
       SELECT * FROM mapping_job_sourcing_seek WHERE id = $1
     `, [id]);
     return result.rows[0];
   }
 
   async getByJobSourcingId(job_sourcing_id) {
-    const result = await db.query(`
+    const result = await getDb().query(`
       SELECT * FROM mapping_job_sourcing_seek WHERE job_sourcing_id = $1
     `, [job_sourcing_id]);
     return result.rows[0];
   }
 
   async getBySeekId(seek_id) {
-    const result = await db.query(`
+    const result = await getDb().query(`
       SELECT cj.job_title, cjs.account_id, mjss.*
       FROM mapping_job_sourcing_seek mjss
       JOIN core_job_sourcing cjs ON mjss.job_sourcing_id = cjs.id
@@ -34,7 +34,7 @@ class JobPostSeekModel {
   }
 
   async getDetailsByJobSourcingId(job_sourcing_id) {
-    const result = await db.query(`
+    const result = await getDb().query(`
       SELECT
         cj.id AS job_id,
         cj.job_title,
@@ -69,7 +69,7 @@ class JobPostSeekModel {
   }
 
   async getSeekByUserId(user_id) {
-    const result = await db.query(`
+    const result = await getDb().query(`
       SELECT
         cj.*,
         cjs.id AS job_sourcing_id,
@@ -93,7 +93,7 @@ class JobPostSeekModel {
   }
 
   async create(job_sourcing_id, seek_id, candidate_count, created_date_seek, created_by) {
-    const result = await db.query(`
+    const result = await getDb().query(`
       INSERT INTO mapping_job_sourcing_seek
         (job_sourcing_id, seek_id, candidate_count, created_date_seek, created_by)
       VALUES ($1, $2, $3, $4, $5)
@@ -110,7 +110,7 @@ class JobPostSeekModel {
 
     const setClause = keys.map((key, i) => `"${key}" = $${i + 1}`).join(', ');
 
-    const result = await db.query(`
+    const result = await getDb().query(`
       UPDATE mapping_job_sourcing_seek
       SET ${setClause}, updated_at = NOW()
       WHERE job_sourcing_id = $${keys.length + 1}
@@ -120,7 +120,7 @@ class JobPostSeekModel {
   }
 
   async delete(job_sourcing_id) {
-    const result = await db.query(`
+    const result = await getDb().query(`
       DELETE FROM mapping_job_sourcing_seek
       WHERE job_sourcing_id = $1
       RETURNING *

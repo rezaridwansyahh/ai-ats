@@ -1,8 +1,8 @@
-import db from "../../config/postgres.js";
+import getDb from "../../config/postgres.js";
 
 class PipelineModel {
   async getByJobId(jobId) {
-    const result = await db.query(`
+    const result = await getDb().query(`
       SELECT
         p.id AS pipeline_id,
         p.job_id,
@@ -33,7 +33,7 @@ class PipelineModel {
   }
 
   async createPipeline(jobId) {
-    const result = await db.query(
+    const result = await getDb().query(
       `INSERT INTO core_job_pipeline (job_id) VALUES ($1) RETURNING *`,
       [jobId]
     );

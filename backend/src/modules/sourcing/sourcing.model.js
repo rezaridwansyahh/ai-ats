@@ -1,8 +1,8 @@
-import db from "../../config/postgres.js"
+import getDb from "../../config/postgres.js"
 
 class SourcingModel {
   async getAll() {
-    const result = await db.query(`
+    const result = await getDb().query(`
       SELECT *
       FROM master_sourcing
       ORDER BY id ASC
@@ -11,7 +11,7 @@ class SourcingModel {
   }
 
   async getById(id) {
-    const result = await db.query(`
+    const result = await getDb().query(`
       SELECT *
       FROM master_sourcing
       WHERE id = $1
@@ -25,7 +25,7 @@ class SourcingModel {
     const placeholders = keys.map((_, i) => `$${i + 1}`).join(', ');
     const columns = keys.map(k => `"${k}"`).join(', ');
 
-    const result = await db.query(`
+    const result = await getDb().query(`
       INSERT INTO master_sourcing (${columns})
       VALUES (${placeholders})
       RETURNING *
@@ -41,7 +41,7 @@ class SourcingModel {
       .map((key, i) => `"${key}" = $${i + 1}`)
       .join(', ');
 
-    const result = await db.query(`
+    const result = await getDb().query(`
       UPDATE master_sourcing
       SET ${setClause}
       WHERE id = $${keys.length + 1}
@@ -51,7 +51,7 @@ class SourcingModel {
   }
 
   async delete(id) {
-    const result = await db.query(`
+    const result = await getDb().query(`
       DELETE FROM master_sourcing
       WHERE id = $1
       RETURNING *
@@ -60,7 +60,7 @@ class SourcingModel {
   }
 
   async getNextId() {
-    const result = await db.query(`
+    const result = await getDb().query(`
       SELECT COALESCE(MAX(id), 0) + 1 AS next_id
       FROM master_sourcing
     `);
@@ -80,7 +80,7 @@ class SourcingModel {
     });
 
     const sql = `INSERT INTO sourcing (name, skill, email) VALUES ${values.join(', ')} RETURNING *`;
-    const result = await db.query(sql, params);
+    const result = await getDb().query(sql, params);
     return result.rows;
   }
 }

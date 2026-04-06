@@ -1,8 +1,8 @@
-import db from "../../config/postgres.js"
+import getDb from "../../config/postgres.js"
 
 class UserModel {
   async getByEmail(email) {
-    const result = await db.query(`
+    const result = await getDb().query(`
       SELECT *
       FROM master_users
       WHERE email = $1
@@ -12,7 +12,7 @@ class UserModel {
   }
 
   async getById(id) {
-    const result = await db.query(`
+    const result = await getDb().query(`
       SELECT *
       FROM master_users
       WHERE id = $1

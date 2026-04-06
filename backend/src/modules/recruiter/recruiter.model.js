@@ -1,8 +1,8 @@
-import db from "../../config/postgres.js"
+import getDb from "../../config/postgres.js"
 
 class RecruiterModel {
   async getAll() {
-    const result = await db.query(`
+    const result = await getDb().query(`
       SELECT *
       FROM master_recruiters
       ORDER BY id ASC
@@ -11,7 +11,7 @@ class RecruiterModel {
   }
 
   async getById(id) {
-    const result = await db.query(`
+    const result = await getDb().query(`
       SELECT *
       FROM master_recruiters
       WHERE id = $1
@@ -20,7 +20,7 @@ class RecruiterModel {
   }
 
   async create(name, email, jobs_assigned, status) {
-    const result = await db.query(`
+    const result = await getDb().query(`
       INSERT INTO master_recruiters (name, email, jobs_assigned, status)
       VALUES ($1, $2, $3, $4)
       RETURNING *
@@ -34,7 +34,7 @@ class RecruiterModel {
 
     const setClause = keys.map((k, i) => `${k} = $${i + 1}`).join(', ');
 
-    const result = await db.query(`
+    const result = await getDb().query(`
       UPDATE master_recruiters
       SET ${setClause}, updated_at = NOW()
       WHERE id = $${keys.length + 1}
@@ -44,7 +44,7 @@ class RecruiterModel {
   }
 
   async delete(id) {
-    const result = await db.query(`
+    const result = await getDb().query(`
       DELETE FROM master_recruiters
       WHERE id = $1
       RETURNING *

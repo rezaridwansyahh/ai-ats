@@ -1,8 +1,8 @@
-import db from "../../config/postgres.js"
+import getDb from "../../config/postgres.js"
 
 class JobAccountModel {
   async getAll() {
-    const result = await db.query(`
+    const result = await getDb().query(`
       SELECT *
       FROM master_job_account
     `);
@@ -11,7 +11,7 @@ class JobAccountModel {
   }
 
   async getById(id) {
-    const result = await db.query(`
+    const result = await getDb().query(`
       SELECT *
       FROM master_job_account
       WHERE id = $1
@@ -21,7 +21,7 @@ class JobAccountModel {
   }
 
   async getByUserId(user_id) {
-    const result = await db.query(`
+    const result = await getDb().query(`
       SELECT *
       FROM master_job_account
       WHERE user_id = $1
@@ -32,7 +32,7 @@ class JobAccountModel {
   }
 
   async getByUserIdAndPortal(user_id, portal_name) {
-    const result = await db.query(`
+    const result = await getDb().query(`
       SELECT *
       FROM master_job_account
       WHERE user_id = $1 AND portal_name = $2
@@ -42,7 +42,7 @@ class JobAccountModel {
   }
 
   async create(user_id, portal_name, email, password) {
-    const result = await db.query(`
+    const result = await getDb().query(`
       INSERT INTO master_job_account (user_id, portal_name, email, password)
       VALUES ($1, $2, $3, $4)
       RETURNING *
@@ -63,7 +63,7 @@ class JobAccountModel {
       .map((key, index) => `"${key}" = $${index + 1}`)
       .join(', ');
 
-    const result = await db.query(`
+    const result = await getDb().query(`
       UPDATE master_job_account
       SET ${setClause}, updated_at = NOW()
       WHERE id = $${keys.length + 1}
@@ -74,7 +74,7 @@ class JobAccountModel {
   }
 
   async delete(id) {
-    const result = await db.query(`
+    const result = await getDb().query(`
       DELETE FROM master_job_account
       WHERE id = $1
       RETURNING *

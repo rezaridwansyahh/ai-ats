@@ -1,8 +1,8 @@
-import db from "../../config/postgres.js"
+import getDb from "../../config/postgres.js"
 
 class LandingModel {
   async create(name, email, company_size, average_annual_hiring, message, booking_date, session_slot) {
-    const result = await db.query(
+    const result = await getDb().query(
       `INSERT INTO master_landing (name, email, company_size, average_annual_hiring, message, booking_date, session_slot)
        VALUES ($1, $2, $3, $4, $5, $6, $7)
        RETURNING *`,
@@ -12,7 +12,7 @@ class LandingModel {
   }
 
   async findRecentByEmail(email, booking_date) {
-    const result = await db.query(
+    const result = await getDb().query(
       `SELECT id, to_char(booking_date, 'YYYY-MM-DD') AS booking_date, session_slot, status
        FROM master_landing
        WHERE LOWER(email) = LOWER($1)
@@ -25,7 +25,7 @@ class LandingModel {
   }
 
   async getActiveForMonth(year_month) {
-    const result = await db.query(
+    const result = await getDb().query(
       `SELECT to_char(booking_date, 'YYYY-MM-DD') AS booking_date, session_slot, status
        FROM master_landing
        WHERE to_char(booking_date, 'YYYY-MM') = $1
@@ -36,7 +36,7 @@ class LandingModel {
   }
 
   async getAll() {
-    const result = await db.query(
+    const result = await getDb().query(
       `SELECT *, to_char(booking_date, 'YYYY-MM-DD') AS booking_date
        FROM master_landing ORDER BY created_at DESC`
     )
@@ -44,7 +44,7 @@ class LandingModel {
   }
 
   async getById(id) {
-    const result = await db.query(
+    const result = await getDb().query(
       `SELECT *, to_char(booking_date, 'YYYY-MM-DD') AS booking_date
        FROM master_landing WHERE id = $1`,
       [id]
@@ -53,7 +53,7 @@ class LandingModel {
   }
 
   async approve(id, conference_link) {
-    const result = await db.query(
+    const result = await getDb().query(
       `UPDATE master_landing
        SET status = 'approved', conference_link = $2, updated_at = NOW()
        WHERE id = $1
@@ -64,7 +64,7 @@ class LandingModel {
   }
 
   async reject(id, rejection_reason) {
-    const result = await db.query(
+    const result = await getDb().query(
       `UPDATE master_landing
        SET status = 'rejected', rejection_reason = $2, updated_at = NOW()
        WHERE id = $1

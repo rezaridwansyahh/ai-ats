@@ -1,29 +1,29 @@
-import db from "../../config/postgres.js"
+import getDb from "../../config/postgres.js"
 
 class JobModel {
   async getAll() {
-    const result = await db.query(`
+    const result = await getDb().query(`
       SELECT * FROM core_job ORDER BY created_at DESC
     `);
     return result.rows;
   }
 
   async getById(id) {
-    const result = await db.query(`
+    const result = await getDb().query(`
       SELECT * FROM core_job WHERE id = $1
     `, [id]);
     return result.rows[0];
   }
 
   async getByStatus(status) {
-    const result = await db.query(`
+    const result = await getDb().query(`
       SELECT * FROM core_job WHERE status = $1 ORDER BY created_at DESC
     `, [status]);
     return result.rows;
   }
 
   async getWithCandidates(id) {
-    const result = await db.query(`
+    const result = await getDb().query(`
       SELECT
         cj.*,
         json_agg(
@@ -52,7 +52,7 @@ class JobModel {
     const placeholders = keys.map((_, i) => `$${i + 1}`).join(', ');
     const columns = keys.map(k => `"${k}"`).join(', ');
 
-    const result = await db.query(`
+    const result = await getDb().query(`
       INSERT INTO core_job (${columns})
       VALUES (${placeholders})
       RETURNING *
@@ -68,7 +68,7 @@ class JobModel {
 
     const setClause = keys.map((key, i) => `"${key}" = $${i + 1}`).join(', ');
 
-    const result = await db.query(`
+    const result = await getDb().query(`
       UPDATE core_job
       SET ${setClause}, updated_at = NOW()
       WHERE id = $${keys.length + 1}
@@ -78,7 +78,7 @@ class JobModel {
   }
 
   async updateStatus(id, status) {
-    const result = await db.query(`
+    const result = await getDb().query(`
       UPDATE core_job
       SET status = $1, updated_at = NOW()
       WHERE id = $2
@@ -88,7 +88,7 @@ class JobModel {
   }
 
   async delete(id) {
-    const result = await db.query(`
+    const result = await getDb().query(`
       DELETE FROM core_job WHERE id = $1 RETURNING *
     `, [id]);
     return result.rows[0];

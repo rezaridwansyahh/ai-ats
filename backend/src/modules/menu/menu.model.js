@@ -1,8 +1,8 @@
-import db from "../../config/postgres.js"
+import getDb from "../../config/postgres.js"
 
 class Menu {
   static async getAll(){
-    const result = await db.query(`
+    const result = await getDb().query(`
       SELECT * 
       FROM master_menus`
     );
@@ -10,7 +10,7 @@ class Menu {
   }
 
   static async getById(id){
-    const result = await db.query(`
+    const result = await getDb().query(`
       SELECT * 
       FROM master_menus 
       WHERE id = $1`, 
@@ -19,7 +19,7 @@ class Menu {
   }
 
 static async getbyModuleId(module_id){
-    const result = await db.query(`
+    const result = await getDb().query(`
     SELECT mm.*
     FROM mapping_modules_menus mm
     JOIN master_modules m ON mm.module_id = m.id
@@ -29,7 +29,7 @@ static async getbyModuleId(module_id){
 }
 
   static async create(name){
-    const result = await db.query(`
+    const result = await getDb().query(`
       INSERT INTO master_menus (name) 
       VALUES ($1) 
       RETURNING *
@@ -38,7 +38,7 @@ static async getbyModuleId(module_id){
   }
 
   static async update(id, name){
-    const result = await db.query(`
+    const result = await getDb().query(`
       UPDATE master_menus 
       SET name = $1 
       WHERE id = $2 
@@ -48,7 +48,7 @@ static async getbyModuleId(module_id){
   }
 
   static async delete(id){
-    const result = await db.query(`
+    const result = await getDb().query(`
       DELETE FROM master_menus 
       WHERE id = $1 
       RETURNING *`, 

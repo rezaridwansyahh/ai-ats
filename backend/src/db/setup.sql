@@ -172,7 +172,8 @@ CREATE TABLE core_job_pipeline_stages (
 
 CREATE TABLE core_job_sourcing (
   id SERIAL PRIMARY KEY,
-  account_id INTEGER NOT NULL REFERENCES master_job_account(id) ON DELETE CASCADE,
+  account_id INTEGER REFERENCES master_job_account(id) ON DELETE CASCADE,
+  job_title VARCHAR(255) NOT NULL,
   platform platform_type NOT NULL,
   platform_job_id VARCHAR(255),
   status status_type NOT NULL DEFAULT 'Active',

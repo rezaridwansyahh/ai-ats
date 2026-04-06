@@ -1,8 +1,8 @@
-import db from "../../config/postgres.js";
+import getDb from "../../config/postgres.js";
 
 class CandidateModel {
   async create({ job_sourcing_id, name, last_position, address, education, information, date, attachment }) {
-    const result = await db.query(`
+    const result = await getDb().query(`
       INSERT INTO master_candidates
         (job_sourcing_id, name, last_position, address, education, information, date, attachment)
       VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
@@ -21,12 +21,12 @@ class CandidateModel {
   }
 
   async getAll() {
-    const result = await db.query(`SELECT * FROM master_candidates ORDER BY id ASC`);
+    const result = await getDb().query(`SELECT * FROM master_candidates ORDER BY id ASC`);
     return result.rows;
   }
 
   async getByJobSourcingId(job_sourcing_id) {
-    const result = await db.query(`
+    const result = await getDb().query(`
       SELECT * FROM master_candidates
       WHERE job_sourcing_id = $1
       ORDER BY id ASC
@@ -35,12 +35,12 @@ class CandidateModel {
   }
 
   async getById(id) {
-    const result = await db.query(`SELECT * FROM master_candidates WHERE id = $1`, [id]);
+    const result = await getDb().query(`SELECT * FROM master_candidates WHERE id = $1`, [id]);
     return result.rows[0];
   }
 
   async delete(id) {
-    const result = await db.query(`
+    const result = await getDb().query(`
       DELETE FROM master_candidates
       WHERE id = $1
       RETURNING *

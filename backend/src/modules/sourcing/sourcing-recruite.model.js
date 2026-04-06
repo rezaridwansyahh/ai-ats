@@ -1,8 +1,8 @@
-import db from "../../config/postgres.js"
+import getDb from "../../config/postgres.js"
 
 class SourcingRecruiteModel {
   async getBySourcingId(sourcing_id) {
-    const result = await db.query(`
+    const result = await getDb().query(`
       SELECT *
       FROM master_sourcing_recruite
       WHERE sourcing_id = $1
@@ -12,7 +12,7 @@ class SourcingRecruiteModel {
   }
 
   async getById(id) {
-    const result = await db.query(`
+    const result = await getDb().query(`
       SELECT *
       FROM master_sourcing_recruite
       WHERE id = $1
@@ -21,7 +21,7 @@ class SourcingRecruiteModel {
   }
 
   async create(id, sourcing_id, name, skill, information) {
-    const result = await db.query(`
+    const result = await getDb().query(`
       INSERT INTO master_sourcing_recruite (id, sourcing_id, name, skill, information)
       VALUES ($1, $2, $3, $4, $5)
       RETURNING *
@@ -42,7 +42,7 @@ class SourcingRecruiteModel {
       params.push(nextId + i, sourcing_id, r.name, r.skill, r.information ? JSON.stringify(r.information) : null);
     });
 
-    const result = await db.query(`
+    const result = await getDb().query(`
       INSERT INTO master_sourcing_recruite (id, sourcing_id, name, skill, information)
       VALUES ${values.join(', ')}
       RETURNING *
@@ -58,7 +58,7 @@ class SourcingRecruiteModel {
       .map((key, i) => `"${key}" = $${i + 1}`)
       .join(', ');
 
-    const result = await db.query(`
+    const result = await getDb().query(`
       UPDATE master_sourcing_recruite
       SET ${setClause}
       WHERE id = $${keys.length + 1}
@@ -68,7 +68,7 @@ class SourcingRecruiteModel {
   }
 
   async delete(id) {
-    const result = await db.query(`
+    const result = await getDb().query(`
       DELETE FROM master_sourcing_recruite
       WHERE id = $1
       RETURNING *
@@ -77,7 +77,7 @@ class SourcingRecruiteModel {
   }
 
   async deleteBySourcingId(sourcing_id) {
-    const result = await db.query(`
+    const result = await getDb().query(`
       DELETE FROM master_sourcing_recruite
       WHERE sourcing_id = $1
       RETURNING *
@@ -86,7 +86,7 @@ class SourcingRecruiteModel {
   }
 
   async getNextId() {
-    const result = await db.query(`
+    const result = await getDb().query(`
       SELECT COALESCE(MAX(id), 0) + 1 AS next_id
       FROM master_sourcing_recruite
     `);

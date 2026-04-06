@@ -1,17 +1,18 @@
-import { Pool } from "pg"
+import pkg from 'pg';
+const { Pool } = pkg;
 
-console.log("DB URL:", process.env.DATABASEURL ? "exists" : "MISSING!");
+let pool;
 
-const pool = new Pool({
-  connectionString: process.env.DATABASEURL,  // much simpler
-  ssl: process.env.NODE_ENV === 'production' 
-    ? { rejectUnauthorized: false } 
-    : false
-});
+const getDb = () => {
+  if (!pool) {
+    pool = new Pool({
+      connectionString: process.env.DATABASEURL,
+      ssl: process.env.NODE_ENV === 'production'
+        ? { rejectUnauthorized: false }
+        : false
+    });
+  }
+  return pool;
+};
 
-// Test the connection
-pool.query('SELECT NOW()')
-  .then(() => console.log("DB connected"))
-  .catch(err => console.error("DB connection failed:", err.message));
-
-export default pool;
+export default getDb;

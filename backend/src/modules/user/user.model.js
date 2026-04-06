@@ -1,8 +1,8 @@
-import db from "../../config/postgres.js"
+import getDb from "../../config/postgres.js"
 
 class UserModel {
   async getAll() {
-    const result = await db.query(`
+    const result = await getDb().query(`
       SELECT *
       FROM master_users
     `);
@@ -11,7 +11,7 @@ class UserModel {
   }
 
   async getAllWithRoles() {
-    const result = await db.query(`
+    const result = await getDb().query(`
       SELECT
         u.id,
         u.email,
@@ -38,7 +38,7 @@ class UserModel {
   }
 
   async getById(id) {
-    const result = await db.query(`
+    const result = await getDb().query(`
       SELECT *
       FROM master_users
       WHERE id = $1
@@ -48,7 +48,7 @@ class UserModel {
   }
 
   async getByEmail(email) {
-    const result = await db.query(`
+    const result = await getDb().query(`
       SELECT *
       FROM master_users
       WHERE email = $1
@@ -58,7 +58,7 @@ class UserModel {
   }
 
   async getByRoleId(role_id) {
-    const result = await db.query(`
+    const result = await getDb().query(`
       SELECT u.*
       FROM master_users u
       JOIN mapping_users_roles up ON u.id = up.role_id
@@ -67,7 +67,7 @@ class UserModel {
   }
 
   async create(email, password, username) {
-    const result = await db.query(`
+    const result = await getDb().query(`
       INSERT INTO master_users ( email, password, username)
       VALUES ($1, $2, $3)
       RETURNING *
@@ -77,7 +77,7 @@ class UserModel {
   }
 
   async delete(id) {
-    const result = await db.query(`
+    const result = await getDb().query(`
       DELETE FROM master_users
       WHERE id = $1
       RETURNING *
@@ -92,7 +92,7 @@ class UserModel {
 
     const setClause = key.map((k, index) => `${k} = $${index + 1}`).join(', ');
 
-    const result = await db.query(`
+    const result = await getDb().query(`
       UPDATE master_users
       SET ${setClause}
       WHERE id = $${key.length + 1}

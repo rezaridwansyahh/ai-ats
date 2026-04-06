@@ -2,7 +2,7 @@ import db from '../../../config/postgres.js';
 
 class JobPostLinkedinModel {
   async getByJobSourcingId(job_sourcing_id) {
-    const result = await db.query(`
+    const result = await getDb().query(`
       SELECT mjsl.*, cpl.project_id
       FROM mapping_job_sourcing_linkedin mjsl
       LEFT JOIN core_project_linkedin cpl ON cpl.id = mjsl.project_id
@@ -12,7 +12,7 @@ class JobPostLinkedinModel {
   }
 
   async getLinkedinByUserId(user_id) {
-    const result = await db.query(`
+    const result = await getDb().query(`
       SELECT
         cj.*,
         cjs.id AS job_sourcing_id,
@@ -34,7 +34,7 @@ class JobPostLinkedinModel {
   }
 
   async create(job_sourcing_id, linkedin_id, project_id) {
-    const result = await db.query(`
+    const result = await getDb().query(`
       INSERT INTO mapping_job_sourcing_linkedin
         (job_sourcing_id, linkedin_id, project_id)
       VALUES ($1, $2, $3)
@@ -51,7 +51,7 @@ class JobPostLinkedinModel {
 
     const setClause = keys.map((key, i) => `"${key}" = $${i + 1}`).join(', ');
 
-    const result = await db.query(`
+    const result = await getDb().query(`
       UPDATE mapping_job_sourcing_linkedin
       SET ${setClause}, updated_at = NOW()
       WHERE job_sourcing_id = $${keys.length + 1}
@@ -61,7 +61,7 @@ class JobPostLinkedinModel {
   }
 
   async delete(job_sourcing_id) {
-    const result = await db.query(`
+    const result = await getDb().query(`
       DELETE FROM mapping_job_sourcing_linkedin
       WHERE job_sourcing_id = $1
       RETURNING *

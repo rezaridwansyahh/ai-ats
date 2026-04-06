@@ -1,10 +1,10 @@
-import db from "../../config/postgres.js"
+import getDb from "../../config/postgres.js"
 
 class JobPostModel {
   async getAll() {
-    const result = await db.query(`
+    const result = await getDb().query(`
       SELECT *
-      FROM core_job_posting
+      FROM core_job_sourcing
       ORDER BY id ASC
     `);
 
@@ -12,9 +12,9 @@ class JobPostModel {
   }
 
   async getById(id) {
-    const result = await db.query(`
+    const result = await getDb().query(`
       SELECT *
-      FROM core_job_posting
+      FROM core_job_sourcing
       WHERE id = $1
     `, [id]);
 
@@ -22,9 +22,9 @@ class JobPostModel {
   }
 
   async getByAccountId(account_id) {
-    const result = await db.query(`
+    const result = await getDb().query(`
       SELECT *
-      FROM core_job_posting
+      FROM core_job_sourcing
       WHERE account_id = $1
       ORDER BY created_at DESC
     `, [account_id]);
@@ -33,9 +33,9 @@ class JobPostModel {
   }
 
   async getByUserId(user_id) {
-    const result = await db.query(`
+    const result = await getDb().query(`
       SELECT cjp.*
-      FROM core_job_posting cjp
+      FROM core_job_sourcing cjp
       JOIN master_job_account mja ON cjp.account_id = mja.id
       WHERE mja.user_id = $1
       ORDER BY cjp.created_at DESC
@@ -45,9 +45,9 @@ class JobPostModel {
   }
 
   async getByUserIdAndStatus(user_id, status) {
-    const result = await db.query(`
+    const result = await getDb().query(`
       SELECT cjp.*
-      FROM core_job_posting cjp
+      FROM core_job_sourcing cjp
       JOIN master_job_account mja ON cjp.account_id = mja.id
       WHERE mja.user_id = $1 AND cjp.status = $2
       ORDER BY cjp.created_at DESC
@@ -57,9 +57,9 @@ class JobPostModel {
   }
 
   async getByPlatform(platform) {
-    const result = await db.query(`
+    const result = await getDb().query(`
       SELECT *
-      FROM core_job_posting
+      FROM core_job_sourcing
       WHERE platform = $1
       ORDER BY created_at DESC
     `, [platform]);
@@ -68,8 +68,8 @@ class JobPostModel {
   }
 
   async create(account_id, platform, job_title, job_desc, job_location, work_option, work_type, status = 'Running', candidate_count, additional) {
-    const result = await db.query(`
-      INSERT INTO core_job_posting
+    const result = await getDb().query(`
+      INSERT INTO core_job_sourcing
         (account_id, platform, job_title, job_desc, job_location, work_option, work_type, status, candidate_count, additional)
       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
       RETURNING *
@@ -90,8 +90,8 @@ class JobPostModel {
       .map((key, index) => `"${key}" = $${index + 1}`)
       .join(', ');
 
-    const result = await db.query(`
-      UPDATE core_job_posting
+    const result = await getDb().query(`
+      UPDATE core_job_sourcing
       SET ${setClause}, updated_at = NOW()
       WHERE id = $${keys.length + 1}
       RETURNING *
@@ -101,8 +101,8 @@ class JobPostModel {
   }
 
   async updateStatus(id, status) {
-    const result = await db.query(`
-      UPDATE core_job_posting
+    const result = await getDb().query(`
+      UPDATE core_job_sourcing
       SET status = $1, updated_at = NOW()
       WHERE id = $2
       RETURNING *
@@ -112,8 +112,8 @@ class JobPostModel {
   }
 
   async delete(id) {
-    const result = await db.query(`
-      DELETE FROM core_job_posting
+    const result = await getDb().query(`
+      DELETE FROM core_job_sourcing
       WHERE id = $1
       RETURNING *
     `, [id]);

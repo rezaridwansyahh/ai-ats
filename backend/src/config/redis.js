@@ -1,7 +1,10 @@
-export default redis = {
+const redis = {
   connection: {
     host: process.env.REDIS_HOST || 'localhost',
     port: process.env.REDIS_PORT || 6379,
+    ...(process.env.REDIS_PASSWORD
+      ? { password: process.env.REDIS_PASSWORD }
+      : {})
     // maxRetriesPerRequest: null, // Important for BullMQ
   },
   defaultJobOptions: {
@@ -19,3 +22,5 @@ export default redis = {
     },
   },
 };
+
+export default redis;

@@ -1,8 +1,8 @@
-import db from "../../config/postgres.js"
+import getDb from "../../config/postgres.js"
 
 class RoleModel {
   async getAll() {
-    const result = await db.query(`
+    const result = await getDb().query(`
       SELECT * 
       FROM master_roles
     `);
@@ -11,7 +11,7 @@ class RoleModel {
   }
 
   async getById(id) {
-    const result = await db.query(`
+    const result = await getDb().query(`
       SELECT * 
       FROM master_roles 
       WHERE id = $1
@@ -21,7 +21,7 @@ class RoleModel {
   }
 
   async getByUserId(user_id) {
-    const result = await db.query(`
+    const result = await getDb().query(`
       SELECT 
         r.id,
         r.name,
@@ -35,7 +35,7 @@ class RoleModel {
   }
 
   async getByRoleId(role_id) {
-    const result = await db.query(`
+    const result = await getDb().query(`
       SELECT *
       FROM mapping_users_roles
       WHERE role_id = $1  
@@ -46,7 +46,7 @@ class RoleModel {
 
 
   async getByUserAndRole(user_id, role_id) {
-    const result = await db.query(`
+    const result = await getDb().query(`
       SELECT *
       FROM mapping_users_roles
       WHERE user_id = $1 AND role_id = $2
@@ -56,7 +56,7 @@ class RoleModel {
   }
 
   async getByUserAndRoleDetails(user_id, role_id) {
-    const result = await db.query(`
+    const result = await getDb().query(`
       SELECT 
         ur.user_id,
         u.email as user_email,
@@ -72,7 +72,7 @@ class RoleModel {
   }
 
   async getAllMasterRoles() {
-    const result = await db.query(`
+    const result = await getDb().query(`
       SELECT id, name, additional
       FROM master_roles
       ORDER BY id ASC
@@ -81,9 +81,9 @@ class RoleModel {
   }
 
   async replaceUserRoles(user_id, role_ids) {
-    await db.query(`DELETE FROM mapping_users_roles WHERE user_id = $1`, [user_id]);
+    await getDb().query(`DELETE FROM mapping_users_roles WHERE user_id = $1`, [user_id]);
     for (const role_id of role_ids) {
-      await db.query(
+      await getDb().query(
         `INSERT INTO mapping_users_roles (user_id, role_id) VALUES ($1, $2)`,
         [user_id, role_id]
       );
@@ -91,7 +91,7 @@ class RoleModel {
   }
 
   async getByPermissionId(permission_id) {
-    const result = await db.query(`
+    const result = await getDb().query(`
       SELECT r.*
       FROM mapping_roles_permissions rp
       JOIN master_roles r ON rp.role_id = r.id
@@ -101,9 +101,9 @@ class RoleModel {
   }
 
   async setRolePermissions(role_id, permission_ids) {
-    await db.query(`DELETE FROM mapping_roles_permissions WHERE role_id = $1`, [role_id]);
+    await getDb().query(`DELETE FROM mapping_roles_permissions WHERE role_id = $1`, [role_id]);
     for (const permission_id of permission_ids) {
-      await db.query(
+      await getDb().query(
         `INSERT INTO mapping_roles_permissions (role_id, permission_id) VALUES ($1, $2)`,
         [role_id, permission_id]
       );
@@ -111,7 +111,7 @@ class RoleModel {
   }
 
   async create(name, additional) {
-    const result = await db.query(
+    const result = await getDb().query(
       `
       INSERT INTO master_roles (name, additional) 
       VALUES ($1, $2) 
@@ -124,7 +124,7 @@ class RoleModel {
 
 
   async delete(id) {
-    const result = await db.query(`
+    const result = await getDb().query(`
       DELETE FROM master_roles WHERE id = $1 RETURNING *
     `, [id]);
     return result.rows[0];
@@ -142,7 +142,7 @@ class RoleModel {
       .map((key, index) => `"${key}" = $${index + 1}`)
       .join(", ");
 
-    const result = await db.query(
+    const result = await getDb().query(
       `
       UPDATE master_roles 
       SET ${setClause} 
