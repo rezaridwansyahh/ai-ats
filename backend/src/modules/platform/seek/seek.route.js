@@ -11,6 +11,8 @@ router.post('/job-post-draft/rpa/update', seekController.updateJobPostDraftRpa);
 
 router.post('/job-post/rpa/sync', seekController.jobPostSyncRpa);
 
+router.post('/check-connection', seekController.checkConnectionRpa);
+
 router.post('/candidates/rpa/extract', seekController.extractCandidatesRpa);
 
 router.get('/job-status/:jobId', seekController.getJobStatus);

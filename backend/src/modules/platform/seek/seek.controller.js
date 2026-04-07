@@ -1,6 +1,7 @@
 import seekService from "./seek.service.js";
 import SeekProducer from "../../../bullmq/seek/seek.producer.js";
 import seekQueue from "../../../bullmq/seek/seek.queue.js";
+import seekProducer from "../../../bullmq/seek/seek.producer.js";
 
 class SeekController {
   async jobPostRpa(req, res) {
@@ -94,13 +95,27 @@ class SeekController {
     const { account_id } = req.body;
 
     try {
-      const extractedJobPost = await seekService.syncJobPostAll(account_id);
+      const extractedJobPost = await seekProducer.syncSeekJobPost(account_id);
 
       return res.status(200).json({ message: "success", extractedJobPost });
     } catch(err) {
       return res.status(500).json({
         message: err.message
       });
+    }
+  }
+
+  async checkConnectionRpa(req, res) {
+    const { account_id } = req.body;
+
+    try {
+      const connection = await seekProducer.checkConnection(account_id);
+
+      return res.status(200).json({ message: "check connection queued", connection });
+    } catch(err) {
+      return res.status(500).json({
+        message: err.message
+      })
     }
   }
 }

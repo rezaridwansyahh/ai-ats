@@ -7,6 +7,7 @@ import jobPostSeekModel from "./job-post-seek.model.js"
 import browserPuppeteer from "../../../shared/services/puppeteer/browser.puppeteer.js"
 import extractJobPostRpa from "../seek/rpa/extract-job-post.rpa.js"
 import candidateModel from "../../candidate/candidate.model.js"
+import jobAccountModel from "../../job-account/job-account.model.js"
 
 class SeekService {
   async jobPost(account_id, service, dataForm) {
@@ -206,7 +207,24 @@ class SeekService {
     } finally {
       await browserPuppeteer.close();
     }
+  }
 
+  async checkConnection(account_id) {
+    const page = await cookieService.includeCookiesIfExist(account_id);
+
+    try {
+      const check = await loginRpa.authenticatedPage(page, account_id);
+
+      console.log(check);
+      if(check) {
+        return await jobAccountModel.updateCondition(account_id, 'Connected');
+      }
+    } catch(err) {
+      await jobAccountModel.updateCondition(account_id, 'Error');
+      throw err;
+    } finally {
+      await browserPuppeteer.close();
+    }
   }
 }
 

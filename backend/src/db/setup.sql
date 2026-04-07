@@ -34,7 +34,8 @@ DROP TYPE IF EXISTS currency_type CASCADE;
 DROP TYPE IF EXISTS pay_display_type CASCADE;
 DROP TYPE IF EXISTS platform_type CASCADE;
 DROP TYPE IF EXISTS candidate_status_type CASCADE;
-DROP TYPE IF EXISTS condition_type CASCADE;
+DROP TYPE IF EXISTS status_connection_type CASCADE;
+DROP TYPE IF EXISTS status_sync_type CASCADE;
 DROP TYPE IF EXISTS stage_category_type CASCADE;
 DROP TYPE IF EXISTS booking_status_type CASCADE;
 DROP TYPE IF EXISTS session_slot_type CASCADE;
@@ -51,7 +52,9 @@ CREATE TYPE candidate_status_type AS ENUM ('Kotak masuk', 'Prescreen', 'Terpilih
 CREATE TYPE recruiter_status_type AS ENUM ('Active', 'Onboarding');
 CREATE TYPE booking_status_type AS ENUM ('pending', 'approved', 'rejected');
 CREATE TYPE session_slot_type   AS ENUM ('10-12', '1-3', '4-6');
-CREATE TYPE condition_type AS ENUM ('Connected', 'Not Connected', 'Error');
+CREATE TYPE status_connection_type AS ENUM ('Connected', 'Not Connected', 'Error');
+CREATE TYPE status_sync_type AS ENUM ('Sync', 'Not Sync', 'Error');
+
 CREATE TYPE stage_category_type AS ENUM ('Job Management', 'Screening & Matching', 'Interview', 'Assessment', 'Background Check', 'Offering & Contract', 'Other');
 
 CREATE TABLE master_users (
@@ -111,11 +114,14 @@ CREATE TABLE master_job_account (
   email VARCHAR(255) NOT NULL,
   password TEXT NOT NULL,
   user_id INTEGER NOT NULL REFERENCES master_users(id) ON DELETE CASCADE,
-  is_active BOOLEAN NOT NULL DEFAULT TRUE,
-  condition condition_type NOT NULL DEFAULT 'Not Connected',
+  status_connection status_connection_type NOT NULL DEFAULT 'Not Connected',
+  status_sync status_sync_type NOT NULL DEFAULT 'Not Sync',
+  last_connect TIMESTAMP,
   last_sync TIMESTAMP,
   created_at TIMESTAMP NOT NULL DEFAULT NOW(),
-  updated_at TIMESTAMP NOT NULL DEFAULT NOW()
+  updated_at TIMESTAMP NOT NULL DEFAULT NOW(),
+
+  UNIQUE(user_id, portal_name)
 );
 
 CREATE TABLE cookies (

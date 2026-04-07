@@ -91,6 +91,7 @@ class SeekLoginService {
     const userAgent = await page.evaluate(() => navigator.userAgent);
 
     await cookieService.addCookies(account_id, { cookies: cleanCookies, userAgent });
+    console.log("done");
 
     return "Success - logged in fresh";
   }
