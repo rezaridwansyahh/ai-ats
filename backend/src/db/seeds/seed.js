@@ -8,11 +8,16 @@ import moduleMenusData from '../data/module_menu.js';
 import permissionsData from '../data/permissions.js';
 import rolePermissionsData from '../data/role_permissions.js';
 import userRolesData from '../data/user_role.js';
+import stageCategoriesData from '../data/stage_categories.js';
+import { templateStages, templateStageRows } from '../data/template_stages.js';
 
 const seed = async () => {
   await getDb().query('BEGIN');
 
   try {
+    await getDb().query('DELETE FROM recruitment_stage');
+    await getDb().query('DELETE FROM master_template_stage');
+    await getDb().query('DELETE FROM recruitment_stage_category');
     await getDb().query('DELETE FROM mapping_roles_permissions');
     await getDb().query('DELETE FROM global_permissions');
     await getDb().query('DELETE FROM mapping_modules_menus');
@@ -95,6 +100,33 @@ const seed = async () => {
         `INSERT INTO mapping_users_roles (id, user_id, role_id)
          VALUES ($1, $2, $3)`,
         [ur.id, ur.user_id, ur.role_id]
+      );
+    }
+
+    // 9. stage categories
+    for (const cat of stageCategoriesData) {
+      await getDb().query(
+        `INSERT INTO recruitment_stage_category (id, name)
+         VALUES ($1, $2)`,
+        [cat.id, cat.name]
+      );
+    }
+
+    // 10. template stages (master)
+    for (const tpl of templateStages) {
+      await getDb().query(
+        `INSERT INTO master_template_stage (id, name)
+         VALUES ($1, $2)`,
+        [tpl.id, tpl.name]
+      );
+    }
+
+    // 11. template stage rows (recruitment_stage with master_id)
+    for (const row of templateStageRows) {
+      await getDb().query(
+        `INSERT INTO recruitment_stage (master_id, stage_type_id, name, stage_order)
+         VALUES ($1, $2, $3, $4)`,
+        [row.master_id, row.stage_type_id, row.name, row.stage_order]
       );
     }
 

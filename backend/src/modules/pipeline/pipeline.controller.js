@@ -12,7 +12,8 @@ class PipelineController {
 
   async saveStages(req, res) {
     try {
-      const result = await PipelineService.saveStages(req.params.jobId, req.body.stages);
+      const { stages, templateId } = req.body;
+      const result = await PipelineService.saveStages(req.params.jobId, stages, templateId);
       res.status(200).json({ message: 'Pipeline stages saved', data: result });
     } catch (err) {
       res.status(err.status || 500).json({ message: err.message });

@@ -23,6 +23,8 @@ import candidate from "./src/modules/candidate/candidate.route.js"
 import sourcing from "./src/modules/sourcing/sourcing.route.js"
 import recruiter from "./src/modules/recruiter/recruiter.route.js"
 import pipeline from "./src/modules/pipeline/pipeline.route.js"
+import stageCategory from "./src/modules/stage-category/stage-category.route.js"
+import templateStage from "./src/modules/template-stage/template-stage.route.js"
 
 app.use(express.json());
 app.use(cors());
@@ -43,6 +45,8 @@ app.use("/api/candidate", candidate);
 app.use("/api/sourcing", sourcing);
 app.use("/api/recruiter", recruiter);
 app.use("/api/pipeline", pipeline);
+app.use("/api/stage-category", stageCategory);
+app.use("/api/template-stage", templateStage);
 
 app.listen(3000, () => {
   console.log(`Server is listening on port: 3000`);
