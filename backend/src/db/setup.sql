@@ -21,6 +21,10 @@ DROP TABLE IF EXISTS master_sourcing_recruite CASCADE;
 DROP TABLE IF EXISTS master_recruiters CASCADE;
 DROP TABLE IF EXISTS core_job_pipeline_stages CASCADE;
 DROP TABLE IF EXISTS core_job_pipeline CASCADE;
+DROP TABLE IF EXISTS recruitment_stage CASCADE;
+DROP TABLE IF EXISTS core_job_template CASCADE;
+DROP TABLE IF EXISTS master_template_stage CASCADE;
+DROP TABLE IF EXISTS recruitment_stage_category CASCADE;
 DROP TABLE IF EXISTS mapping_candidates_seek CASCADE;
 DROP TABLE IF EXISTS mapping_candidates_linkedin CASCADE;
 
@@ -52,7 +56,6 @@ CREATE TYPE recruiter_status_type AS ENUM ('Active', 'Onboarding');
 CREATE TYPE booking_status_type AS ENUM ('pending', 'approved', 'rejected');
 CREATE TYPE session_slot_type   AS ENUM ('10-12', '1-3', '4-6');
 CREATE TYPE condition_type AS ENUM ('Connected', 'Not Connected', 'Error');
-CREATE TYPE stage_category_type AS ENUM ('Job Management', 'Screening & Matching', 'Interview', 'Assessment', 'Background Check', 'Offering & Contract', 'Other');
 
 CREATE TABLE master_users (
   id SERIAL PRIMARY KEY,
@@ -128,6 +131,20 @@ CREATE TABLE cookies (
   UNIQUE(account_id)  -- prevent duplicates
 );
 
+CREATE TABLE recruitment_stage_category (
+  id SERIAL PRIMARY KEY,
+  name VARCHAR(100) NOT NULL UNIQUE,
+  created_at TIMESTAMP NOT NULL DEFAULT NOW(),
+  updated_at TIMESTAMP NOT NULL DEFAULT NOW()
+);
+
+CREATE TABLE master_template_stage (
+  id SERIAL PRIMARY KEY,
+  name VARCHAR(255) NOT NULL UNIQUE,
+  created_at TIMESTAMP NOT NULL DEFAULT NOW(),
+  updated_at TIMESTAMP NOT NULL DEFAULT NOW()
+);
+
 CREATE TABLE core_job (
   id SERIAL PRIMARY KEY,
   -- Common
@@ -156,22 +173,29 @@ CREATE TABLE core_job (
   updated_at TIMESTAMP NOT NULL DEFAULT NOW()
 );
 
-CREATE TABLE core_job_pipeline (
+CREATE TABLE core_job_template (
   id SERIAL PRIMARY KEY,
   job_id INTEGER NOT NULL UNIQUE REFERENCES core_job(id) ON DELETE CASCADE,
+  template_stage_id INTEGER NOT NULL REFERENCES master_template_stage(id) ON DELETE CASCADE,
   created_at TIMESTAMP NOT NULL DEFAULT NOW(),
   updated_at TIMESTAMP NOT NULL DEFAULT NOW()
 );
 
-CREATE TABLE core_job_pipeline_stages (
+CREATE TABLE recruitment_stage (
   id SERIAL PRIMARY KEY,
-  pipeline_id INTEGER NOT NULL REFERENCES core_job_pipeline(id) ON DELETE CASCADE,
-  stage_order INTEGER NOT NULL,
-  category stage_category_type NOT NULL,
+  master_id INTEGER REFERENCES master_template_stage(id) ON DELETE CASCADE,
+  job_id INTEGER REFERENCES core_job(id) ON DELETE CASCADE,
+  stage_type_id INTEGER NOT NULL REFERENCES recruitment_stage_category(id),
   name VARCHAR(255) NOT NULL,
+  stage_order INTEGER NOT NULL,
   created_at TIMESTAMP NOT NULL DEFAULT NOW(),
   updated_at TIMESTAMP NOT NULL DEFAULT NOW(),
-  UNIQUE(pipeline_id, stage_order)
+  CONSTRAINT chk_master_or_job CHECK (
+    (master_id IS NOT NULL AND job_id IS NULL) OR
+    (master_id IS NULL AND job_id IS NOT NULL)
+  ),
+  UNIQUE(master_id, stage_order),
+  UNIQUE(job_id, stage_order)
 );
 
 CREATE TABLE core_job_sourcing (
