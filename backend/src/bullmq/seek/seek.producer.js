@@ -56,7 +56,15 @@ class SeekProducer {
     });
 
     return job;
-  } 
+  }
+
+  async checkConnection(account_id) {
+    const job = await seekQueue.add('seek-check-connection', {
+      account_id
+    });
+
+    return job;
+  }
 }
 
 export default new SeekProducer();

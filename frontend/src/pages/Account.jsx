@@ -6,6 +6,8 @@ import { toast } from 'sonner'
 import { Badge }    from '@/components/ui/badge';
 
 import { getJobAccounts, createJobAccount, updateJobAccount, deleteJobAccount, getJobAccountsByUserId } from '@/api/job-accounts.api';
+import { checkConnection } from '@/api/job-posting-seek.api';
+
 import { hasPermission } from '@/utils/permissions';
 
 import { AccountFormDialog }   from '@/components/job-account/AccountFormDialog';
@@ -57,12 +59,14 @@ export default function AccountPage() {
     }
   }, []);
 
+  
 
   useEffect(() => {
     async function fetch() {
-      await fetchAccounts(user.id);
+      await fetchAccounts()
     }
-    fetch();
+
+    fetch()
   }, [fetchAccounts]);
 
   // ── Dialog state ──
@@ -151,25 +155,25 @@ export default function AccountPage() {
                     <div className="flex-1 min-w-20">
                       <span className="text-sm font-semibold">{channels.name}</span>
                       <div className="">
-                        {account?.condition === 'Connected' ?
+                        {account?.status_connection === 'Connected' ?
                           <Badge variant="outline" className="text-[9px] px-1.5 py-0 bg-emerald-50 text-emerald-600 border-emerald-200">
                             Connected
                           </Badge> :
                           <Badge variant="outline" className="text-[9px] px-1.5 py-0 bg-red-50 text-red-600 border-red-200">
-                            Not Connected
+                            {account?.status_connection || 'Not Connected'}
                           </Badge>
                         }
                       </div>
                     </div>
                   </div>
                   <div className="text-xs text-gray-400">
-                    Last Sync: {account?.last_sync || '-'}
+                    Last Connection: {account?.last_connect || '-'}
                   </div>
                 </div>
 
                 <div className="flex gap-5">
-                  <Button disabled={!account} onClick={() => toast.promise(new Promise(resolve => setTimeout(resolve, 3000)), { position: "top-center", loading: 'Sync Queued', success: 'Sync Success', error: 'Error Sync' })}>
-                    Sync
+                  <Button disabled={!account} onClick={() => toast.promise(checkConnection(account.id), { position: "top-center", loading: 'Connection Queued', success: 'Queued Created', error: 'Queued Error' })}>
+                    Re-connect
                   </Button>
                   <Button onClick={() => openConfigure(channels.id, account)}>
                     Configure
@@ -220,13 +224,13 @@ export default function AccountPage() {
                     </div>
                   </div>
                   <div className="text-xs text-gray-400">
-                    Last Sync: {account?.last_sync || '-'}
+                    Last Connection: {account?.last_connect || '-'}
                   </div>
                 </div>
 
                 <div className="flex gap-5">
                   <Button disabled={!account} onClick={() => toast.promise(new Promise(resolve => setTimeout(resolve, 3000)))}>
-                    Sync
+                    Re-connect
                   </Button>
                   <Button onClick={() => openConfigure(channels.id, account)}>
                     Configure

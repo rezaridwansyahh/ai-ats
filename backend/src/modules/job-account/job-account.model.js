@@ -73,6 +73,28 @@ class JobAccountModel {
     return result.rows[0];
   }
 
+  async updateCondition(id, connection) {
+    const result = await getDb().query(`
+      UPDATE master_job_account
+      SET status_connection = $1, last_connect = NOW()
+      WHERE id = $2
+      RETURNING *  
+    `, [connection, id]);
+
+    return result.rows[0];
+  }
+
+  async updateSync(id, sync) {
+    const result = await getDb().query(`
+      UPDATE master_job_account
+      SET status_sync = $1, last_sync = NOW()
+      WHERE id = $2
+      RETURNING *  
+    `, [sync, id]);
+
+    return result.rows[0];
+  }
+
   async delete(id) {
     const result = await getDb().query(`
       DELETE FROM master_job_account
