@@ -27,6 +27,7 @@ DROP TABLE IF EXISTS master_template_stage CASCADE;
 DROP TABLE IF EXISTS recruitment_stage_category CASCADE;
 DROP TABLE IF EXISTS mapping_candidates_seek CASCADE;
 DROP TABLE IF EXISTS mapping_candidates_linkedin CASCADE;
+DROP TABLE IF EXISTS job_stage_sla CASCADE;
 
 -- Drop enums after all tables are gone
 DROP TYPE IF EXISTS recruiter_status_type CASCADE;
@@ -176,6 +177,7 @@ CREATE TABLE core_job (
   preferred_skills JSONB,
   -- Status
   status status_type NOT NULL DEFAULT 'Draft',
+  sla_deadline_days INTEGER,
   created_at TIMESTAMP NOT NULL DEFAULT NOW(),
   updated_at TIMESTAMP NOT NULL DEFAULT NOW()
 );
@@ -322,5 +324,15 @@ CREATE TABLE master_recruiters (
   status recruiter_status_type NOT NULL DEFAULT 'Active',
   created_at TIMESTAMP NOT NULL DEFAULT NOW(),
   updated_at TIMESTAMP NOT NULL DEFAULT NOW()
+);
+
+CREATE TABLE job_stage_sla (
+  id SERIAL PRIMARY KEY,
+  job_id INTEGER NOT NULL REFERENCES core_job(id) ON DELETE CASCADE,
+  stage_id INTEGER NOT NULL REFERENCES recruitment_stage(id) ON DELETE CASCADE,
+  sla_days INTEGER NOT NULL,
+  created_at TIMESTAMP NOT NULL DEFAULT NOW(),
+  updated_at TIMESTAMP NOT NULL DEFAULT NOW(),
+  UNIQUE(job_id, stage_id)
 );
 
