@@ -32,6 +32,17 @@ class JobPostModel {
     return result.rows;
   }
 
+  async getByJobId(job_id) {
+    const result = await getDb().query(`
+      SELECT *
+      FROM core_job_sourcing
+      WHERE job_id = $1
+      ORDER BY created_at DESC  
+    `, [job_id]);
+
+    return result.rows;
+  }
+
   async getByUserId(user_id) {
     const result = await getDb().query(`
       SELECT cjp.*

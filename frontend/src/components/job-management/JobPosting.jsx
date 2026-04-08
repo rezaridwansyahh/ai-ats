@@ -15,6 +15,7 @@ import {
 } from '@/components/ui/table';
 
 import { getJobAccountsByUserId } from '@/api/job-accounts.api';
+import { getJobPostingByJobId } from '@/api/job-postings.api';
 
 import linkedin from '@/assets/logos/linkedin.png';
 import seek from '@/assets/logos/seek.png';
@@ -62,10 +63,12 @@ export default function JobPosting({ selectedJob, onSelectionChange }) {
   const [channels, setChannels] = useState({ "public": false, "private": false });
   const [publicChannels, setPublicChannels] = useState(PUBLIC_CHANNELS);
   const [privateChannels, setPrivateChannels] = useState(PRIVATE_CHANNELS);
+  const [selectedChannels, setSelectedChannels] = useState([])
 
   const [accounts, setAccounts] = useState([]);
   const [loading,  setLoading]  = useState(true);
   const [error,    setError]    = useState(null);
+  const [jobPost,  setJobPost]  = useState([]);
 
   const updatePublic = (id, field, value) => {
     setPublicChannels(prev => prev.map(ch => ch.id === id ? { ...ch, [field]: value } : ch));
@@ -98,12 +101,25 @@ export default function JobPosting({ selectedJob, onSelectionChange }) {
     setLoading(true);
     setError(null);
     try {
-      console.log(user.id);
       const { data } = await getJobAccountsByUserId(user.id);
       setAccounts(data.accounts || []);
     } catch (err) {
       console.log(err.response?.data?.message || err.message || 'Failed to load job accounts')
       setError(err.response?.data?.message || err.message || 'Failed to load job accounts');
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  const fetchJobSourcing = useCallback(async () => {
+    setLoading(true);
+    setError(null);
+    try {
+      const { data } = await getJobPostingByJobId(selectedJob.id);
+      setJobPost(data.postings);
+    } catch(err) {
+      console.log(err.response?.data?.message || err.message || 'Failed to load job post')
+      setError(err.response?.data?.message || err.message || 'Failed to load job post');
     } finally {
       setLoading(false);
     }
@@ -118,22 +134,23 @@ export default function JobPosting({ selectedJob, onSelectionChange }) {
       },
       public: {
         enabled: channels.public,
-        channels: channels.public ? publicChannels.filter(c => c.published).map(c => c.name) : [],
+        channels: channels.public ? publicChannels.filter(c => selectedChannels.includes(c.id)).map(c => c.name) : [],
       },
       private: {
         enabled: channels.private,
-        channels: channels.private ? privateChannels.filter(c => c.published).map(c => c.name) : [],
+        channels: channels.private ? publicChannels.filter(c => selectedChannels.includes(c.id)).map(c => c.name) : [],
       }
     });
-  }, [group, publicChannels, privateChannels, onSelectionChange]);
+  }, [group, publicChannels, privateChannels, selectedChannels, onSelectionChange, jobPost]);
 
   // Fetch Account
   useEffect(() => {
     async function fetch() {
       await fetchAccounts(user.id);
+      await fetchJobSourcing(selectedJob.id)
     }
     fetch();
-  }, [fetchAccounts])
+  }, [fetchAccounts, fetchJobSourcing])
 
   // Guard
   if (!selectedJob) {
@@ -145,6 +162,8 @@ export default function JobPosting({ selectedJob, onSelectionChange }) {
       </div>
     );
   }
+
+  
 
   return (
     <div className="space-y-5">
@@ -241,9 +260,13 @@ export default function JobPosting({ selectedJob, onSelectionChange }) {
                       key={ch.id}
                       channel={ch}
                       accounts={accounts}
-                      onPublish={() => updatePublic(ch.id, 'published', true)}
+                      jobPost={jobPost}
+                      onSelect={() => setSelectedChannels(prev => 
+                        prev.includes(ch.id) ? prev.filter(c => c !== ch.id) : [...prev, ch.id]
+                      )}
                       onQuotaChange={v => updatePublic(ch.id, 'maxApplicants', v)}
                       actionLabel="Publish"
+                      isSelected={selectedChannels.includes(ch.id)}
                     />
                   ))}
                 </VisibilityGroup>
@@ -262,8 +285,12 @@ export default function JobPosting({ selectedJob, onSelectionChange }) {
                       key={ch.id}
                       channel={ch}
                       accounts={accounts}
-                      onPublish={() => updatePrivate(ch.id, 'published', true)}
+                      jobPost={jobPost}
+                      onSelect={() => setSelectedChannels(prev => 
+                        prev.includes(ch.id) ? prev.filter(c => c !== ch.id) : [...prev, ch.id]
+                      )}
                       actionLabel={ch.id === 'whatsapp' ? 'Broadcast' : 'Share'}
+                      isSelected={selectedChannels.includes(ch.id)}
                     />
                   ))}
                 </VisibilityGroup>
@@ -373,8 +400,9 @@ function VisibilityGroup({ checked, onToggle, label, subtitle, icon, indicatorCo
   );
 }
 
-function ChannelRow({ channel: ch, accounts, onPublish, actionLabel }) {
+function ChannelRow({ channel: ch, accounts, jobPost, onSelect, actionLabel, isSelected}) {
   const account = accounts?.find(acc => acc.portal_name === ch.id);
+  const jobPosted = jobPost?.find(jobPost => jobPost.platform === ch.id);
   return (
     <div key={ch.id} className="flex justify-between items-center w-full border-b last:border-b-0">
       <div className="flex items-center gap-10">
@@ -382,37 +410,72 @@ function ChannelRow({ channel: ch, accounts, onPublish, actionLabel }) {
           <div className="h-10 w-10 rounded-lg flex items-center justify-center text-white text-[10px] font-bold shrink-0">
             <img src={LOGOS[ch.id]} />
           </div>
-          <div className="flex-1 min-w-20">
+          <div className="flex-1 min-w-50">
             <span className="text-sm font-semibold">{ch.name}</span>
-            <div className="">
-              {account?.condition === 'Connected' ?
-                <Badge variant="outline" className="text-[9px] px-1.5 py-0 bg-emerald-50 text-emerald-600 border-emerald-200">
-                  Connected
-                </Badge> :
-                <Badge variant="outline" className="text-[9px] px-1.5 py-0 bg-red-50 text-red-600 border-red-200">
-                  Not Connected
-                </Badge>
-              }
+            <div className="text-xs text-gray-400">
+              Account: {account ? account?.email : '-'}
             </div>
           </div>
         </div>
         <div className="text-xs text-gray-400">
-          Last Sync: {account?.last_sync || '-'}
+          Last Connection: {account?.last_connect || '-'}
         </div>
       </div>
 
-      {account
-        ? ch.published
-          ? (
-            <Badge className="bg-emerald-100 text-emerald-700 border-emerald-200 text-[10px] px-3 py-1">Published</Badge>
-          )
-          : (
-            <Button size="sm" className="text-[11px] h-8 px-4" onClick={onPublish}>{actionLabel}</Button>
-          )
-        : (
-          <Badge className="text-[9px] px-1.5 py-0 bg-red-50 text-red-600 border-red-200">Not Connected</Badge>
-        )
-      }
+      <div className="flex gap-5">
+        <div className="min-w-40 flex items-center justify-start">
+          <div className="text-xs text-gray-400 mr-5">
+            Status :
+          </div>
+          <div className="flex items-center">
+            { account?.status_connection === 'Connected' ?
+              <Badge variant="outline" className="text-[9px] px-1.5 py-0 bg-emerald-50 text-emerald-600 border-emerald-200">
+                Connected
+              </Badge> :
+              account?.status_connection === 'Re-connecting' ? 
+                <Badge variant="outline" className="text-[9px] px-1.5 py-0 bg-gray-50 text-gray-600 border-gray-200">
+                  Re-connecting...
+                </Badge> :
+                  <Badge variant="outline" className="text-[9px] px-1.5 py-0 bg-red-50 text-red-600 border-red-200">
+                    {account?.status_connection || 'Not Connected'}
+                  </Badge>
+              }
+          </div>
+        </div>
+        <div className="min-w-24 flex items-center justify-center">
+          {account
+            ? jobPosted
+              ? jobPosted.status === 'Running'
+                ? (
+                <Badge className="bg-gray-100 text-gray-700 border-gray-200 text-[10px] px-3 py-1">Running</Badge>
+                ) 
+                : (jobPosted.status ==='Active' || jobPosted.status === 'Draft')
+                  ? (
+                  <Badge className="bg-emerald-100 text-emerald-700 border-emerald-200 text-[10px] px-3 py-1">Published</Badge>
+                )
+                : (
+                  <Button 
+                    size="sm"
+                    className="text-[11px] h-8 px-4"
+                    variant={isSelected ? "default" : "outline"}
+                    onClick={onSelect}
+                    >{isSelected ? "Selected" : actionLabel}</Button>
+                )
+              : (
+                <Button 
+                  size="sm"
+                  className="text-[11px] h-8 px-4"
+                  variant={isSelected ? "default" : "outline"}
+                  onClick={onSelect}
+                >{isSelected ? "Selected" : actionLabel}</Button>
+              ) 
+            : (
+              <Badge className="text-[9px] px-1.5 py-0 bg-red-50 text-red-600 border-red-200">Not Connected</Badge>
+            )
+          }
+        </div>
+        
+      </div>
     </div>
   );
 }

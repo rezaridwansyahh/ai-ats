@@ -2,6 +2,7 @@ import JobPosting from './job-post.model.js';
 import JobPostingSeek from '../platform/seek/job-post-seek.model.js';
 import JobAccount from '../job-account/job-account.model.js';
 import User from '../user/user.model.js';
+import Job from '../job/job.model.js';
 
 class JobPostService {
   async getAll() {
@@ -20,6 +21,14 @@ class JobPostService {
 
     const postings = await JobPosting.getByUserId(user_id);
     return { user, postings };
+  }
+
+  async getByJobId(job_id) {
+    const job = await Job.getById(job_id);
+    if (!job) throw { status: 404, message: 'Job not found' };
+
+    const postings = await JobPosting.getByJobId(job_id);
+    return { job, postings };
   }
 
   async getByUserIdAndStatus(user_id, status) {

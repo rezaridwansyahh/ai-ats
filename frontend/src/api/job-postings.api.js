@@ -2,6 +2,9 @@ import api from './axios';
 
 export const getJobPostings = () => api.get('/job-posting');
 export const getJobPostingById = (id) => api.get(`/job-posting/${id}`);
+
+export const getJobPostingByJobId = (job_id) => api.get(`/job-posting/job/${job_id}`);
+
 export const getJobPostingsByUserId = (userId) => api.get(`/job-posting/user/${userId}`);
 export const getJobPostingFullById = (id) => api.get(`/job-posting/${id}/full`);
 export const getSeekPostingsByUserId = (userId) => api.get(`/job-posting/user/${userId}/full`);

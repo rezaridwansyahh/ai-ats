@@ -10,6 +10,9 @@ router.get('/', jobPostingController.getAll);
 router.get('/user/:user_id', jobPostingController.getByUserId);
 router.get('/user/:user_id/status', jobPostingController.getByUserIdAndStatus);
 router.get('/user/:user_id/full', jobPostingController.getSeekByUserId);
+
+router.get('/job/:job_id', jobPostingController.getByJobId);
+
 router.get('/:id', jobPostingController.getById);
 router.get('/:id/full', jobPostingController.getFullById);
 
