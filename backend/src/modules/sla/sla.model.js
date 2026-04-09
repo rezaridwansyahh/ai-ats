@@ -3,11 +3,10 @@ import getDb from "../../config/postgres.js";
 class SlaModel {
   async getByJobId(jobId) {
     const result = await getDb().query(`
-      SELECT jss.id, jss.job_id, jss.stage_id, jss.sla_days,
-             jss.created_at, jss.updated_at
-      FROM job_stage_sla jss
-      WHERE jss.job_id = $1
-      ORDER BY jss.id ASC
+      SELECT *
+      FROM job_stage_sla
+      WHERE job_id = $1
+      ORDER BY id ASC
     `, [jobId]);
     return result.rows;
   }
@@ -24,13 +23,10 @@ class SlaModel {
   }
 
   async deleteByJobId(jobId) {
-    await getDb().query(
-      `DELETE FROM job_stage_sla 
+    await getDb().query(`
+      DELETE FROM job_stage_sla
       WHERE job_id = $1
-      RETURNING *
-      `,
-      [jobId]
-    );
+    `, [jobId]);
   }
 
   async updateDeadline(jobId, deadlineDays) {
@@ -45,8 +41,8 @@ class SlaModel {
 
   async getDeadline(jobId) {
     const result = await getDb().query(`
-      SELECT sla_deadline_days 
-      FROM core_job 
+      SELECT sla_deadline_days
+      FROM core_job
       WHERE id = $1
     `, [jobId]);
     return result.rows[0]?.sla_deadline_days ?? null;

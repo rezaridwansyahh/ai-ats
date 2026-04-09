@@ -7,6 +7,7 @@ import { getJobPipeline, saveJobPipeline } from '@/api/pipeline.api';
 import { getStageCategories } from '@/api/stage-category.api';
 import { getTemplateStages, getTemplateStageById } from '@/api/template-stage.api';
 import { getSla, saveSla } from '@/api/sla.api';
+import { getAutomationSetting, createAutomationSetting } from '@/api/automation-setting.api';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
@@ -52,6 +53,8 @@ export default function JobStagesStep({ selectedJob }) {
   const [saveMessage, setSaveMessage] = useState(null);
   const [savingSla, setSavingSla] = useState(false);
   const [slaMessage, setSlaMessage] = useState(null);
+  const [savingAutomation, setSavingAutomation] = useState(false);
+  const [automationMessage, setAutomationMessage] = useState(null);
 
   // Template / Custom state
   const [isCustom, setIsCustom] = useState(false);
@@ -62,14 +65,14 @@ export default function JobStagesStep({ selectedJob }) {
   const [loadingTemplates, setLoadingTemplates] = useState(false);
 
   const [automation, setAutomation] = useState({
-    aiScreening: true,
-    aiFollowUp: true,
+    aiScreening: false,
+    aiFollowUp: false,
     autoSchedule: false,
     autoReject: false,
     autoAdvance: false,
     emailNotify: false,
-    rejectThreshold: 50,
-    advanceThreshold: 80,
+    rejectThreshold: 0,
+    advanceThreshold: 0,
   });
 
   // ── Load categories & templates on mount ──
@@ -98,8 +101,9 @@ export default function JobStagesStep({ selectedJob }) {
     Promise.all([
       getJobPipeline(selectedJob.id),
       getSla(selectedJob.id).catch(() => ({ data: { data: { stages: [], sla_deadline_days: null } } })),
+      getAutomationSetting(selectedJob.id).catch(() => ({ data: { data: null } })),
     ])
-      .then(([pipelineRes, slaRes]) => {
+      .then(([pipelineRes, slaRes, autoRes]) => {
         if (cancelled) return;
         const data = pipelineRes.data.data;
         const slaData = slaRes.data.data;
@@ -135,6 +139,20 @@ export default function JobStagesStep({ selectedJob }) {
         }
 
         setOverallDeadline(slaData.sla_deadline_days ?? '');
+
+        const autoData = autoRes.data.data;
+        if (autoData) {
+          setAutomation({
+            aiScreening: autoData.ai_screening,
+            aiFollowUp: autoData.ai_follow_up,
+            autoSchedule: autoData.auto_schedule,
+            autoReject: autoData.auto_reject,
+            autoAdvance: autoData.auto_advance,
+            emailNotify: autoData.email_notify,
+            rejectThreshold: autoData.reject_threshold,
+            advanceThreshold: autoData.advance_threshold,
+          });
+        }
       })
       .catch(() => {
         if (!cancelled) {
@@ -243,6 +261,33 @@ export default function JobStagesStep({ selectedJob }) {
       setSlaMessage({ type: 'error', text: msg });
     } finally {
       setSavingSla(false);
+    }
+  };
+
+  // ── Save Automation to API ──
+  const handleSaveAutomation = async () => {
+    if (!selectedJob?.id) return;
+    setSavingAutomation(true);
+    setAutomationMessage(null);
+
+    try {
+      await createAutomationSetting({
+        job_id: selectedJob.id,
+        ai_screening: automation.aiScreening,
+        ai_follow_up: automation.aiFollowUp,
+        auto_schedule: automation.autoSchedule,
+        auto_reject: automation.autoReject,
+        auto_advance: automation.autoAdvance,
+        email_notify: automation.emailNotify,
+        reject_threshold: automation.rejectThreshold,
+        advance_threshold: automation.advanceThreshold,
+      });
+      setAutomationMessage({ type: 'success', text: 'Automation settings saved successfully' });
+    } catch (err) {
+      const msg = err.response?.data?.message || 'Failed to save automation settings';
+      setAutomationMessage({ type: 'error', text: msg });
+    } finally {
+      setSavingAutomation(false);
     }
   };
 
@@ -659,10 +704,31 @@ export default function JobStagesStep({ selectedJob }) {
             <CardTitle className="text-[13px] font-bold text-amber-800">
               AI & Automation in Recruitment Process
             </CardTitle>
-            <Badge variant="outline" className="text-[9px] bg-red-50 text-red-500 border-red-200 font-bold">
-              Configure before publishing
-            </Badge>
+            <div className="flex items-center gap-2">
+              <Badge variant="outline" className="text-[9px] bg-red-50 text-red-500 border-red-200 font-bold">
+                Configure before publishing
+              </Badge>
+              <Button
+                size="sm"
+                className="text-xs gap-1.5 bg-amber-600 hover:bg-amber-700"
+                onClick={handleSaveAutomation}
+                disabled={savingAutomation}
+              >
+                <Save className="h-3.5 w-3.5" />
+                {savingAutomation ? 'Saving...' : 'Save Automation'}
+              </Button>
+            </div>
           </div>
+          {automationMessage && (
+            <div className={`text-xs px-3 py-2 rounded-lg ${
+              automationMessage.type === 'success'
+                ? 'bg-emerald-50 text-emerald-600'
+                : 'bg-red-50 text-red-500'
+            }`}>
+              {automationMessage.type === 'success' ? <Check className="h-3.5 w-3.5 inline mr-1" /> : <AlertTriangle className="h-3.5 w-3.5 inline mr-1" />}
+              {automationMessage.text}
+            </div>
+          )}
         </CardHeader>
         <CardContent className="p-5 pt-5 space-y-5">
 

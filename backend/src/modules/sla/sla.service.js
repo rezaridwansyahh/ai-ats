@@ -1,15 +1,9 @@
-import SlaModel from "./sla.model.js";
-import getDb from "../../config/postgres.js";
+import Sla from "./sla.model.js";
 
 class SlaService {
   async getByJobId(jobId) {
-    const jobCheck = await getDb().query('SELECT id FROM core_job WHERE id = $1', [jobId]);
-    if (jobCheck.rows.length === 0) {
-      throw { status: 404, message: 'Job not found' };
-    }
-
-    const slaRows = await SlaModel.getByJobId(jobId);
-    const deadline = await SlaModel.getDeadline(jobId);
+    const slaRows = await Sla.getByJobId(jobId);
+    const deadline = await Sla.getDeadline(jobId);
 
     return {
       job_id: Number(jobId),
@@ -21,12 +15,7 @@ class SlaService {
     };
   }
 
-  async save(jobId, stages, deadlineDays) {
-    const jobCheck = await getDb().query('SELECT id FROM core_job WHERE id = $1', [jobId]);
-    if (jobCheck.rows.length === 0) {
-      throw { status: 404, message: 'Job not found' };
-    }
-
+  async create(jobId, { stages, sla_deadline_days }) {
     if (!Array.isArray(stages) || stages.length === 0) {
       throw { status: 400, message: 'At least one stage SLA entry is required' };
     }
@@ -40,13 +29,13 @@ class SlaService {
       }
     }
 
-    await SlaModel.deleteByJobId(jobId);
+    await Sla.deleteByJobId(jobId);
     for (const s of stages) {
-      await SlaModel.upsert(jobId, s.stage_id, s.sla_days);
+      await Sla.upsert(jobId, s.stage_id, s.sla_days);
     }
 
-    if (deadlineDays !== undefined && deadlineDays !== null) {
-      await SlaModel.updateDeadline(jobId, deadlineDays);
+    if (sla_deadline_days !== undefined && sla_deadline_days !== null) {
+      await Sla.updateDeadline(jobId, sla_deadline_days);
     }
 
     return await this.getByJobId(jobId);

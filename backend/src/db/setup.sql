@@ -27,6 +27,7 @@ DROP TABLE IF EXISTS master_template_stage CASCADE;
 DROP TABLE IF EXISTS recruitment_stage_category CASCADE;
 DROP TABLE IF EXISTS mapping_candidates_seek CASCADE;
 DROP TABLE IF EXISTS mapping_candidates_linkedin CASCADE;
+DROP TABLE IF EXISTS job_automation_settings CASCADE;
 DROP TABLE IF EXISTS job_stage_sla CASCADE;
 
 -- Drop enums after all tables are gone
@@ -334,5 +335,20 @@ CREATE TABLE job_stage_sla (
   created_at TIMESTAMP NOT NULL DEFAULT NOW(),
   updated_at TIMESTAMP NOT NULL DEFAULT NOW(),
   UNIQUE(job_id, stage_id)
+);
+
+CREATE TABLE job_automation_settings (
+  id SERIAL PRIMARY KEY,
+  job_id INTEGER NOT NULL UNIQUE REFERENCES core_job(id) ON DELETE CASCADE,
+  ai_screening BOOLEAN NOT NULL,
+  ai_follow_up BOOLEAN NOT NULL,
+  auto_schedule BOOLEAN NOT NULL,
+  auto_reject BOOLEAN NOT NULL,
+  auto_advance BOOLEAN NOT NULL,
+  email_notify BOOLEAN NOT NULL,
+  reject_threshold INTEGER NOT NULL,
+  advance_threshold INTEGER NOT NULL,
+  created_at TIMESTAMP NOT NULL DEFAULT NOW(),
+  updated_at TIMESTAMP NOT NULL DEFAULT NOW()
 );
 
