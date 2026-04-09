@@ -152,17 +152,10 @@ export default function AccountPage() {
                     <div className="h-10 w-10 rounded-lg flex items-center justify-center text-white text-[10px] font-bold shrink-0">
                       <img src={LOGOS[channels.id]} />
                     </div>
-                    <div className="flex-1 min-w-20">
+                    <div className="flex-1 min-w-50">
                       <span className="text-sm font-semibold">{channels.name}</span>
-                      <div className="">
-                        {account?.status_connection === 'Connected' ?
-                          <Badge variant="outline" className="text-[9px] px-1.5 py-0 bg-emerald-50 text-emerald-600 border-emerald-200">
-                            Connected
-                          </Badge> :
-                          <Badge variant="outline" className="text-[9px] px-1.5 py-0 bg-red-50 text-red-600 border-red-200">
-                            {account?.status_connection || 'Not Connected'}
-                          </Badge>
-                        }
+                      <div className="text-xs text-gray-400">
+                        Account: {account ? account?.email : '-'}
                       </div>
                     </div>
                   </div>
@@ -172,7 +165,27 @@ export default function AccountPage() {
                 </div>
 
                 <div className="flex gap-5">
-                  <Button disabled={!account} onClick={() => toast.promise(checkConnection(account.id), { position: "top-center", loading: 'Connection Queued', success: 'Queued Created', error: 'Queued Error' })}>
+                  <div className="min-w-50 flex items-center justify-start">
+                    <div className="text-xs text-gray-400 mr-5">
+                      Status :
+                    </div>
+                    <div className="flex items-center">
+                      { account?.status_connection === 'Connected' ?
+                        <Badge variant="outline" className="text-[9px] px-1.5 py-0 bg-emerald-50 text-emerald-600 border-emerald-200">
+                          Connected
+                        </Badge> :
+                        account?.status_connection === 'Re-connecting' ? 
+                          <Badge variant="outline" className="text-[9px] px-1.5 py-0 bg-gray-50 text-gray-600 border-gray-200">
+                            Re-connecting...
+                          </Badge> :
+                            <Badge variant="outline" className="text-[9px] px-1.5 py-0 bg-red-50 text-red-600 border-red-200">
+                              {account?.status_connection || 'Not Connected'}
+                            </Badge>
+                        }
+                    </div>
+                  </div>
+                  
+                  <Button disabled={!account || account?.status_connection === 'Re-connecting'} onClick={() => toast.promise(checkConnection(account.id), { position: "top-center", loading: 'Connection Queued', success: 'Queued Created', error: 'Queued Error' })}>
                     Re-connect
                   </Button>
                   <Button onClick={() => openConfigure(channels.id, account)}>
