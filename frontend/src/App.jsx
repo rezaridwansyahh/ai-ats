@@ -12,6 +12,7 @@ import SeekSourcingPage from "./pages/SeekSourcing"
 import CandidateSearchPage from "./pages/CandidateSearch"
 import JobManagementPage from "./pages/JobManagement"
 import RecruitersPage from "./pages/Recruiters"
+import ComingSoonPage from "./pages/ComingSoon"
 
 function App() {
   return (
@@ -19,29 +20,28 @@ function App() {
       <Route path="/" element={<LoginPage />} />
       <Route path="/login" element={<LoginPage />} />
       <Route path="/register" element={<RegisterPage />} />
-      <Route path="/dashboard" element={<DashboardLayout />}>
-        <Route index element={<DashboardPage />} />
-      </Route>
-      <Route path="/users" element={<DashboardLayout />}>
-        <Route path="management"        element={<UserManagementPage />} />
-        <Route path="role-management"   element={<RoleManagementPage />} />
-        <Route path="recruiters"      element={<RecruitersPage />} />
-      </Route>
-      <Route path="/settings" element={<DashboardLayout />}>
-        <Route path="integrations" element={<IntegrationsPage />} />
-      </Route>
-      <Route path="/job-postings" element={<DashboardLayout />}>
-        <Route path="account"  element={<AccountPage />} />
-        <Route path="seek"     element={<SeekPage />} />
-      </Route>
-      <Route path="/job-management" element={<DashboardLayout />}>
-        <Route path="seek-sourcing" element={<SeekSourcingPage />} />
-      </Route>
-      <Route path="/sourcing" element={<DashboardLayout />}>
-        <Route path="job-management" element={<JobManagementPage />} />
-      </Route>
-      <Route path="/candidates" element={<DashboardLayout />}>
-        <Route path="search" element={<CandidateSearchPage />} />
+
+      {/* All authenticated routes share DashboardLayout */}
+      <Route element={<DashboardLayout />}>
+        <Route path="/dashboard" element={<DashboardPage />} />
+
+        <Route path="/users/management" element={<UserManagementPage />} />
+        <Route path="/users/role-management" element={<RoleManagementPage />} />
+        <Route path="/users/recruiters" element={<RecruitersPage />} />
+
+        <Route path="/settings/integrations" element={<IntegrationsPage />} />
+
+        <Route path="/job-postings/account" element={<AccountPage />} />
+        <Route path="/job-postings/seek" element={<SeekPage />} />
+
+        <Route path="/job-management/seek-sourcing" element={<SeekSourcingPage />} />
+
+        <Route path="/sourcing/job-management" element={<JobManagementPage />} />
+
+        <Route path="/candidates/search" element={<CandidateSearchPage />} />
+
+        {/* Catch-all: any unregistered path shows Coming Soon */}
+        <Route path="*" element={<ComingSoonPage />} />
       </Route>
     </Routes>
   )

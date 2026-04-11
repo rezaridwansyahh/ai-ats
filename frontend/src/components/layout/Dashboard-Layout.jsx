@@ -11,8 +11,10 @@ const BREADCRUMB_MAP = {
   '/users/role-management': ['Users', 'Role Management'],
   '/settings/integrations': ['Settings', 'Integrations'],
   '/job-postings/seek': ['Job Postings', 'Seek'],
+  '/job-postings/linkedin': ['Job Postings', 'LinkedIn'],
   '/job-postings/account': ['Job Postings', 'Account'],
   '/job-management/seek-sourcing': ['Job Management', 'Seek Sourcing'],
+  '/job-management/linkedin-sourcing': ['Job Management', 'LinkedIn Sourcing'],
   '/candidates/search': ['Candidates', 'Search'],
 }
 
