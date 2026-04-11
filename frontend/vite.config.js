@@ -5,6 +5,7 @@ import { defineConfig } from "vite"
 
 // https://vite.dev/config/
 export default defineConfig({
+  base: '/portal/',
   plugins: [react(), tailwindcss()],
   server: {
     allowedHosts: ["242c-180-247-60-184.ngrok-free.app"]

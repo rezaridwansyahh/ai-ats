@@ -12,7 +12,7 @@ export default function RegisterPage() {
         </div>
 
         <div className="relative z-10">
-          <img src="/Myralix_Logo_White.png" className="h-10 w-auto" alt="Myralix" />
+          <img src={`${import.meta.env.BASE_URL}Myralix_Logo_White.png`} className="h-10 w-auto" alt="Myralix" />
         </div>
 
         <div className="relative z-10 space-y-4">

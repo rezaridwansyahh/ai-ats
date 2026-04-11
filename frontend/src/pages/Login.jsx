@@ -26,7 +26,7 @@ export default function LoginPage() {
 
         {/* Logo */}
         <div className="relative z-10">
-          <img src="/Myralix_Logo_White.png" className="h-9 w-auto" alt="Myralix" />
+          <img src={`${import.meta.env.BASE_URL}Myralix_Logo_White.png`} className="h-9 w-auto" alt="Myralix" />
         </div>
 
         {/* Main content */}

@@ -29,7 +29,10 @@ import sla from "./src/modules/sla/sla.router.js"
 import automationSetting from "./src/modules/automation-setting/automation.route.js"
 
 app.use(express.json());
-app.use(cors());
+app.use(cors({
+  origin: process.env.CORS_ORIGIN ? process.env.CORS_ORIGIN.split(',') : '*',
+  credentials: true
+}));
 
 app.use("/api/auth", auth);
 app.use("/api/cookies", cookies);
@@ -52,6 +55,7 @@ app.use("/api/template-stage", templateStage);
 app.use("/api/sla", sla);
 app.use("/api/automation-setting", automationSetting);
 
-app.listen(3000, () => {
-  console.log(`Server is listening on port: 3000`);
+const PORT = process.env.PORT || 3000;
+app.listen(PORT, () => {
+  console.log(`Server is listening on port: ${PORT}`);
 });

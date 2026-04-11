@@ -15,11 +15,10 @@ export const generateJobAI = async (id, file) => {
   if (file) formData.append('file', file);
 
   const token = localStorage.getItem('token');
-  const res = await fetch('http://localhost:3000/api/job/generate', {
+  const res = await fetch('/portal/api/job/generate', {
     method: 'POST',
     headers: {
       ...(token ? { Authorization: `Bearer ${token}` } : {}),
-      'ngrok-skip-browser-warning': 'true',
     },
     body: formData,
   });

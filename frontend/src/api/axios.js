@@ -2,10 +2,7 @@
 import axios from "axios"
 
 const api = axios.create({
-  baseURL: "http://localhost:3000/api",
-  headers: {
-    "ngrok-skip-browser-warning": "true",
-  }
+  baseURL: "/portal/api",
 })
 
 function isTokenExpired(token) {
@@ -20,7 +17,7 @@ function isTokenExpired(token) {
 function handleExpired() {
   localStorage.removeItem('token');
   localStorage.removeItem('user');
-  window.location.href = '/login';
+  window.location.href = '/portal/login';
 }
 
 // Request interceptor — check token before every request

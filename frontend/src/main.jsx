@@ -6,7 +6,7 @@ import "./theme-override.css"
 import App from "./App"
 
 ReactDOM.createRoot(document.getElementById("root")).render(
-  <BrowserRouter>
+  <BrowserRouter basename="/portal">
     <App />
   </BrowserRouter>
 )

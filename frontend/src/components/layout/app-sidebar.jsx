@@ -190,7 +190,7 @@ export function AppSidebar() {
       {/* ── Header ── */}
       <SidebarHeader className="p-0">
         <div className="px-4 py-4 border-b border-sidebar-border/70">
-          <img src="/Myralix_Logo_Dark.png" className="h-8 w-auto object-contain" alt="Myralix" />
+          <img src={`${import.meta.env.BASE_URL}Myralix_Logo_Dark.png`} className="h-8 w-auto object-contain" alt="Myralix" />
         </div>
       </SidebarHeader>
 
