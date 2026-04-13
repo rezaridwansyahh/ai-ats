@@ -105,6 +105,20 @@ class SeekController {
     }
   }
 
+  async syncAllRpa(req, res) {
+    const { account_id } = req.body;
+
+    try {
+      const synced = await seekProducer.syncAll(account_id);
+
+      return res.status(200).json({ message: "success", synced });
+    } catch(err) {
+      return res.status(500).json({
+        message: err.message
+      });
+    }
+  }
+
   async checkConnectionRpa(req, res) {
     const { account_id } = req.body;
 

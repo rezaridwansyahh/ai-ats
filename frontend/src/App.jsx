@@ -11,6 +11,7 @@ import SeekPage from "./pages/Seek"
 import SeekSourcingPage from "./pages/SeekSourcing"
 import CandidateSearchPage from "./pages/CandidateSearch"
 import JobManagementPage from "./pages/JobManagement"
+import SourceManagementPage from "./pages/SourceManagement"
 import RecruitersPage from "./pages/Recruiters"
 import ComingSoonPage from "./pages/ComingSoon"
 
@@ -37,6 +38,7 @@ function App() {
         <Route path="/job-management/seek-sourcing" element={<SeekSourcingPage />} />
 
         <Route path="/sourcing/job-management" element={<JobManagementPage />} />
+        <Route path="/sourcing/source-management" element={<SourceManagementPage />} />
 
         <Route path="/candidates/search" element={<CandidateSearchPage />} />
 

@@ -65,6 +65,14 @@ class SeekProducer {
 
     return job;
   }
+
+  async syncAll(account_id) {
+    const job = await seekQueue.add('seek-sync-all', {
+      account_id
+    });
+
+    return job;
+  }
 }
 
 export default new SeekProducer();

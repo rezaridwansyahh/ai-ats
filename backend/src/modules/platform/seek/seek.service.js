@@ -92,8 +92,13 @@ class SeekService {
       await browserPuppeteer.close();
     }
   }
-  async extractCandidates(account_id, job_posting_id) {
-    const page = await cookieService.includeCookiesIfExist(account_id);
+  async extractCandidates(account_id, job_posting_id, page = null) {
+    const ownPage = !page;
+
+    if(!page) {
+      page = await cookieService.includeCookiesIfExist(account_id);
+    }
+    
     const jobPostSeek = await jobPostSeekModel.getDetailsByJobSourcingId(job_posting_id);
 
     try {
@@ -139,13 +144,17 @@ class SeekService {
     } catch (err) {
       throw err;
     } finally {
-      await browserPuppeteer.close();
+      if(ownPage) await browserPuppeteer.close();
     }
   }
 
-  async syncJobPostAll(account_id) {
+  async syncJobPostAll(account_id, page = null) {
     const types = ['open', 'expired', 'draft']; // 
-    const page = await cookieService.includeCookiesIfExist(account_id); // still hardcoded from req body (user_id, service);
+    const ownPage = !page;
+
+    if(!page) {
+      page = await cookieService.includeCookiesIfExist(account_id);
+    }
 
     try {
       await loginRpa.authenticatedPage(page, account_id);
@@ -199,9 +208,32 @@ class SeekService {
           }
         }
         
-        result.push(extracted)
+        result.push(extracted);
       }
       return result;
+    } catch(err) {
+      throw err;
+    } finally {
+      if(ownPage) await browserPuppeteer.close();
+    }
+  }
+
+  async syncAll(account_id) {
+    const page = await cookieService.includeCookiesIfExist(account_id); // still hardcoded from req body (user_id, service);
+    
+    try {
+      const syncJobPosts = await this.syncJobPostAll(account_id, page);
+      const jobPosts = await jobPostModel.getByAccountId(account_id);
+
+      const results = [];
+
+      for(const jobPost of jobPosts) {
+        const candidates = await this.extractCandidates(account_id, jobPost.id, page);
+
+        results.push(candidates);
+      }
+
+      return { jobPosts, candidates: results };
     } catch(err) {
       throw err;
     } finally {

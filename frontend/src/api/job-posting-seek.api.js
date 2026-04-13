@@ -19,4 +19,7 @@ export const checkConnection = (accountId) =>
 export const extractSeekCandidates = (data) =>
   api.post('/seek/candidates/rpa/extract', data);
 
+export const syncAll = (accountId) => 
+  api.post('/seek/sync-all', { account_id: accountId });
+
 export const getSeekJobStatus = (jobId) => api.get(`/seek/job-status/${jobId}`);

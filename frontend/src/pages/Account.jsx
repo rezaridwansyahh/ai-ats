@@ -6,7 +6,7 @@ import { toast } from 'sonner'
 import { Badge }    from '@/components/ui/badge';
 
 import { getJobAccounts, createJobAccount, updateJobAccount, deleteJobAccount, getJobAccountsByUserId } from '@/api/job-accounts.api';
-import { checkConnection } from '@/api/job-posting-seek.api';
+import { checkConnection, syncSeekJobPosts } from '@/api/job-posting-seek.api';
 
 import { hasPermission } from '@/utils/permissions';
 
@@ -159,32 +159,61 @@ export default function AccountPage() {
                       </div>
                     </div>
                   </div>
-                  <div className="text-xs text-gray-400">
-                    Last Connection: {account?.last_connect || '-'}
+                  <div>
+                    <div className="text-xs text-gray-400">
+                      Last Connection: {account?.last_connect || '-'}
+                    </div>
+                    <div className="text-xs text-gray-400">
+                      Last Sync: {account?.last_sync || '-'}
+                    </div>
                   </div>
                 </div>
 
                 <div className="flex gap-5">
-                  <div className="min-w-50 flex items-center justify-start">
-                    <div className="text-xs text-gray-400 mr-5">
-                      Status :
-                    </div>
-                    <div className="flex items-center">
-                      { account?.status_connection === 'Connected' ?
-                        <Badge variant="outline" className="text-[9px] px-1.5 py-0 bg-emerald-50 text-emerald-600 border-emerald-200">
-                          Connected
-                        </Badge> :
-                        account?.status_connection === 'Re-connecting' ? 
-                          <Badge variant="outline" className="text-[9px] px-1.5 py-0 bg-gray-50 text-gray-600 border-gray-200">
-                            Re-connecting...
+                  <div className="min-w-45 inline">
+                    <div className='flex justify-between'>
+                      <div className="text-xs text-gray-400 mr-5">
+                        Status :
+                      </div>
+                      <div className="flex items-center">
+                        { account?.status_connection === 'Connected' ?
+                          <Badge variant="outline" className="text-[9px] px-1.5 py-0 bg-emerald-50 text-emerald-600 border-emerald-200">
+                            Connected
                           </Badge> :
-                            <Badge variant="outline" className="text-[9px] px-1.5 py-0 bg-red-50 text-red-600 border-red-200">
-                              {account?.status_connection || 'Not Connected'}
-                            </Badge>
-                        }
+                          account?.status_connection === 'Re-connecting' ? 
+                            <Badge variant="outline" className="text-[9px] px-1.5 py-0 bg-gray-50 text-gray-600 border-gray-200">
+                              Re-connecting...
+                            </Badge> :
+                              <Badge variant="outline" className="text-[9px] px-1.5 py-0 bg-red-50 text-red-600 border-red-200">
+                                {account?.status_connection || 'Not Connected'}
+                              </Badge>
+                          }
+                      </div>
+                    </div>
+                    <div className='flex justify-between'>
+                      <div className="text-xs text-gray-400 mr-5">
+                        Sync Status :
+                      </div>
+                      <div className="flex items-center">
+                        { account?.status_sync === 'Connected' ?
+                          <Badge variant="outline" className="text-[9px] px-1.5 py-0 bg-emerald-50 text-emerald-600 border-emerald-200">
+                            Connected
+                          </Badge> :
+                          account?.status_sync === 'Re-sync' ? 
+                            <Badge variant="outline" className="text-[9px] px-1.5 py-0 bg-gray-50 text-gray-600 border-gray-200">
+                              Re-syncing...
+                            </Badge> :
+                              <Badge variant="outline" className="text-[9px] px-1.5 py-0 bg-red-50 text-red-600 border-red-200">
+                                {account?.status_sync || 'Not sync'}
+                              </Badge>
+                          }
+                      </div>
                     </div>
                   </div>
-                  
+
+                  <Button disabled={!account || account?.status_connection !== 'Connected'} onClick={() => toast.promise(syncSeekJobPosts(account.id), { position: "top-center", loading: 'Connection Queued', success: 'Queued Created', error: 'Queued Error' })}>
+                    Sync
+                  </Button>
                   <Button disabled={!account || account?.status_connection === 'Re-connecting'} onClick={() => toast.promise(checkConnection(account.id), { position: "top-center", loading: 'Connection Queued', success: 'Queued Created', error: 'Queued Error' })}>
                     Re-connect
                   </Button>

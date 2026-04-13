@@ -4,6 +4,9 @@ import "./src/bullmq/seek/seek.worker.js"; // ✅ add this
 
 import express from "express";
 import cors from 'cors';
+import { Router } from 'express';
+
+const portal = Router();
 
 const app = express();
 
@@ -35,6 +38,28 @@ app.use(cors({
   credentials: true
 }));
 
+portal.use("/api/auth", auth);
+portal.use("/api/cookies", cookies);
+portal.use("/api/linkedin", linkedin);
+portal.use("/api/seek", seek);
+portal.use("/api/role", role);
+portal.use("/api/user", user);
+portal.use("/api/permission", permission);
+portal.use("/api/module", module);
+portal.use("/api/menu", menu);
+portal.use("/api/job-account", jobAccount);
+portal.use("/api/job-posting", jobPosting);
+portal.use("/api/job", job);
+portal.use("/api/candidate", candidate);
+portal.use("/api/sourcing", sourcing);
+portal.use("/api/recruiter", recruiter);
+portal.use("/api/pipeline", pipeline);
+portal.use("/api/stage-category", stageCategory);
+portal.use("/api/template-stage", templateStage);
+portal.use("/api/sla", sla);
+portal.use("/api/automation-setting", automationSetting);
+
+app.use("/portal", portal);
 app.use("/api/auth", auth);
 app.use("/api/cookies", cookies);
 app.use("/api/linkedin", linkedin);

@@ -70,6 +70,7 @@ const routeMap = {
   'LinkedIn Sourcing': '/job-management/linkedin-sourcing',
   'Recruiters':        '/users/recruiters',
   'Job Management':    '/sourcing/job-management',
+  'Source Management': '/sourcing/source-management'
 };
 
 const useSidebarStructure = (permissions) => {
@@ -274,7 +275,7 @@ export function AppSidebar() {
                                   className={`cursor-pointer transition-all duration-200 rounded-md h-7 text-xs ${
                                     active
                                       ? 'bg-primary/10 text-primary font-semibold'
-                                      : 'text-muted-foreground hover:bg-accent/80 hover:text-foreground'
+                                      : 'text-muted-fore  er:bg-accent/80 hover:text-foreground'
                                   }`}
                                   onClick={() => handleNavigate(menuName)}
                                 >
