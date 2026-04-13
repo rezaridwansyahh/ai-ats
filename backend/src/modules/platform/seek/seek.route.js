@@ -15,6 +15,8 @@ router.post('/check-connection', seekController.checkConnectionRpa);
 
 router.post('/candidates/rpa/extract', seekController.extractCandidatesRpa);
 
+router.post('/sync-all', seekController.syncAllRpa);
+
 router.get('/job-status/:jobId', seekController.getJobStatus);
 
 export default router;

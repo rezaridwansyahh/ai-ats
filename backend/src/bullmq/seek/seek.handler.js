@@ -24,13 +24,18 @@ const checkConnectionSeekHandler = async (data) => {
   await seekService.checkConnection(data.account_id);
 }
 
+const syncAllSeekHandler = async (data) => {
+  await seekService.syncAll(data.account_id);
+}
+
 const handlers = {
   'seek-create-job-post': createJobPostHandler,
   'seek-create-job-post-draft': createJobPostDraftHandler,
   'seek-delete-job-post-draft': deleteJobPostDraftHandler,
   'seek-extract-candidate': extractCandidateHandler,
   'seek-sync-job-post': syncSeekJobPostHandler,
-  'seek-check-connection': checkConnectionSeekHandler
+  'seek-check-connection': checkConnectionSeekHandler,
+  'seek-sync-all': syncAllSeekHandler
 };
 
 export default handlers;

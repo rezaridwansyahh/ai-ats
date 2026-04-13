@@ -19,8 +19,7 @@ const STEPS = [
   { key: 'creation', label: 'Job Creation', icon: FileText },
   { key: 'stages', label: 'Job Stages', icon: GitBranch },
   { key: 'posting', label: 'Job Posting', icon: Send },
-  { key: 'sourcing', label: 'Job Sourcing', icon: Users },
-  { key: 'pipeline', label: 'Applicant Pipeline', icon: Briefcase },
+  { key: 'summary', label: 'List Posted', icon: Briefcase }
 ];
 
 // ── Step Placeholder ────────────────────────────────────────────────

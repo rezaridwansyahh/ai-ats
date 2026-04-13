@@ -35,9 +35,10 @@ export default [
      Sourcing (module_id: 8)
   ========================= */
   { id: 19, module_id: 8, menu_id: 19 }, // Sourcing -> Job Management
+  { id: 20, module_id: 8, menu_id: 20 }, // Sourcing -> Source Management
 
   /* =========================
      Users (module_id: 5) — continued
   ========================= */
-  { id: 20, module_id: 5, menu_id: 20 }, // Users -> Recruiters
+  { id: 21, module_id: 5, menu_id: 21 }, // Users -> Recruiters
 ];
