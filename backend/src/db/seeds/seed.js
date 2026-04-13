@@ -15,7 +15,7 @@ const seed = async () => {
   await getDb().query('BEGIN');
 
   try {
-    await getDb().query('DELETE FROM recruitment_stage');
+    await getDb().query('DELETE FROM job_stage');
     await getDb().query('DELETE FROM master_template_stage');
     await getDb().query('DELETE FROM recruitment_stage_category');
     await getDb().query('DELETE FROM mapping_roles_permissions');
@@ -121,10 +121,10 @@ const seed = async () => {
       );
     }
 
-    // 11. template stage rows (recruitment_stage with master_id)
+    // 11. template stage rows (job_stage with master_id)
     for (const row of templateStageRows) {
       await getDb().query(
-        `INSERT INTO recruitment_stage (master_id, stage_type_id, name, stage_order)
+        `INSERT INTO job_stage (master_id, stage_type_id, name, stage_order)
          VALUES ($1, $2, $3, $4)`,
         [row.master_id, row.stage_type_id, row.name, row.stage_order]
       );

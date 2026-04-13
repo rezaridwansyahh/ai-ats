@@ -20,6 +20,7 @@ import jobAccount from "./src/modules/job-account/job-account.route.js"
 import jobPosting from "./src/modules/job-post/job-post.router.js"
 import job from "./src/modules/job/job.route.js"
 import candidate from "./src/modules/candidate/candidate.route.js"
+import applicant from "./src/modules/applicant/applicant.route.js"
 import sourcing from "./src/modules/sourcing/sourcing.route.js"
 import recruiter from "./src/modules/recruiter/recruiter.route.js"
 import pipeline from "./src/modules/pipeline/pipeline.route.js"
@@ -47,6 +48,7 @@ app.use("/api/job-account", jobAccount);
 app.use("/api/job-posting", jobPosting);
 app.use("/api/job", job);
 app.use("/api/candidate", candidate);
+app.use("/api/applicant", applicant);
 app.use("/api/sourcing", sourcing);
 app.use("/api/recruiter", recruiter);
 app.use("/api/pipeline", pipeline);

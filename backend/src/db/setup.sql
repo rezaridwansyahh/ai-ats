@@ -21,9 +21,12 @@ DROP TABLE IF EXISTS master_sourcing_recruite CASCADE;
 DROP TABLE IF EXISTS master_recruiters CASCADE;
 DROP TABLE IF EXISTS core_job_pipeline_stages CASCADE;
 DROP TABLE IF EXISTS core_job_pipeline CASCADE;
-DROP TABLE IF EXISTS recruitment_stage CASCADE;
+DROP TABLE IF EXISTS applicants_stages CASCADE;
+DROP TABLE IF EXISTS applicants CASCADE;
+DROP TABLE IF EXISTS job_stage CASCADE;
 DROP TABLE IF EXISTS core_job_template CASCADE;
 DROP TABLE IF EXISTS master_template_stage CASCADE;
+DROP TABLE IF EXISTS job_stage_category CASCADE;
 DROP TABLE IF EXISTS recruitment_stage_category CASCADE;
 DROP TABLE IF EXISTS mapping_candidates_seek CASCADE;
 DROP TABLE IF EXISTS mapping_candidates_linkedin CASCADE;
@@ -191,7 +194,7 @@ CREATE TABLE core_job_template (
   updated_at TIMESTAMP NOT NULL DEFAULT NOW()
 );
 
-CREATE TABLE recruitment_stage (
+CREATE TABLE job_stage (
   id SERIAL PRIMARY KEY,
   master_id INTEGER REFERENCES master_template_stage(id) ON DELETE CASCADE,
   job_id INTEGER REFERENCES core_job(id) ON DELETE CASCADE,
@@ -330,7 +333,7 @@ CREATE TABLE master_recruiters (
 CREATE TABLE job_stage_sla (
   id SERIAL PRIMARY KEY,
   job_id INTEGER NOT NULL REFERENCES core_job(id) ON DELETE CASCADE,
-  stage_id INTEGER NOT NULL REFERENCES recruitment_stage(id) ON DELETE CASCADE,
+  stage_id INTEGER NOT NULL REFERENCES job_stage(id) ON DELETE CASCADE,
   sla_days INTEGER NOT NULL,
   created_at TIMESTAMP NOT NULL DEFAULT NOW(),
   updated_at TIMESTAMP NOT NULL DEFAULT NOW(),
@@ -350,5 +353,23 @@ CREATE TABLE job_automation_settings (
   advance_threshold INTEGER NOT NULL,
   created_at TIMESTAMP NOT NULL DEFAULT NOW(),
   updated_at TIMESTAMP NOT NULL DEFAULT NOW()
+);
+
+CREATE TABLE applicants(
+  id SERIAL PRIMARY KEY,
+  job_id INTEGER NOT NULL REFERENCES core_job(id) ON DELETE CASCADE,
+  candidate_id INTEGER NOT NULL REFERENCES master_candidates(id) ON DELETE CASCADE,
+  created_at TIMESTAMP NOT NULL DEFAULT NOW(),
+  updated_at TIMESTAMP NOT NULL DEFAULT NOW(),
+  latest_stage INTEGER NOT NULL
+);
+
+CREATE TABLE applicants_stages(
+  id SERIAL PRIMARY KEY,
+  applicant_id INTEGER NOT NULL REFERENCES applicants(id) ON DELETE CASCADE,
+  job_stage_id INTEGER NOT NULL REFERENCES job_stage(id) ON DELETE CASCADE,
+  created_at TIMESTAMP NOT NULL DEFAULT NOW(),
+  updated_at TIMESTAMP NOT NULL DEFAULT NOW(),  
+  decision JSONB NOT NULL
 );
 

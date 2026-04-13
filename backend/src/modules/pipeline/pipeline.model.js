@@ -15,7 +15,7 @@ class PipelineModel {
       FROM core_job cj
       LEFT JOIN core_job_template cjt ON cjt.job_id = cj.id
       LEFT JOIN master_template_stage mts ON mts.id = cjt.template_stage_id
-      LEFT JOIN recruitment_stage rs ON (
+      LEFT JOIN job_stage rs ON (
         CASE
           WHEN cjt.template_stage_id IS NOT NULL THEN rs.master_id = cjt.template_stage_id
           ELSE rs.job_id = cj.id
@@ -61,7 +61,7 @@ class PipelineModel {
 
       // Delete existing custom stages for this job
       await client.query(
-        `DELETE FROM recruitment_stage WHERE job_id = $1`,
+        `DELETE FROM job_stage WHERE job_id = $1`,
         [jobId]
       );
 
@@ -76,7 +76,7 @@ class PipelineModel {
         });
 
         await client.query(`
-          INSERT INTO recruitment_stage (job_id, stage_type_id, name, stage_order)
+          INSERT INTO job_stage (job_id, stage_type_id, name, stage_order)
           VALUES ${placeholders.join(', ')}
         `, values);
       }
@@ -104,7 +104,7 @@ class PipelineModel {
 
       // Remove any custom stages for this job
       await client.query(
-        `DELETE FROM recruitment_stage WHERE job_id = $1`,
+        `DELETE FROM job_stage WHERE job_id = $1`,
         [jobId]
       );
 

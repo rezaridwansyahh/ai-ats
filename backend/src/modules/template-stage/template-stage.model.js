@@ -24,7 +24,7 @@ class TemplateStageModel {
         rs.name,
         rs.stage_type_id,
         rsc.name AS category
-      FROM recruitment_stage rs
+      FROM job_stage rs
       JOIN recruitment_stage_category rsc ON rsc.id = rs.stage_type_id
       WHERE rs.master_id = $1
       ORDER BY rs.stage_order ASC
