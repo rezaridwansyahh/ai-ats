@@ -24,6 +24,9 @@ import jobPosting from "./src/modules/job-post/job-post.router.js"
 import job from "./src/modules/job/job.route.js"
 import candidate from "./src/modules/candidate/candidate.route.js"
 import applicant from "./src/modules/applicant/applicant.route.js"
+import participant from "./src/modules/assessment/participant/participant.route.js"
+import instructor from "./src/modules/assessment/instructor/instructor.route.js"
+import assessmentResult from "./src/modules/assessment/assessment-result/assessment-result.route.js"
 import sourcing from "./src/modules/sourcing/sourcing.route.js"
 import recruiter from "./src/modules/recruiter/recruiter.route.js"
 import pipeline from "./src/modules/pipeline/pipeline.route.js"
@@ -74,6 +77,9 @@ app.use("/api/job-posting", jobPosting);
 app.use("/api/job", job);
 app.use("/api/candidate", candidate);
 app.use("/api/applicant", applicant);
+app.use("/api/participant", participant);
+app.use("/api/instructor", instructor);
+app.use("/api/assessment-result", assessmentResult);
 app.use("/api/sourcing", sourcing);
 app.use("/api/recruiter", recruiter);
 app.use("/api/pipeline", pipeline);

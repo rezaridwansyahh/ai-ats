@@ -30,7 +30,8 @@ class ApplicantController {
 
   async create(req, res) {
     try {
-      const applicant = await applicantService.create(req.body);
+      const { job_id, candidate_id, latest_stage, job_stage_id, decision } = req.body;
+      const applicant = await applicantService.create(job_id, candidate_id, latest_stage, job_stage_id, decision);
       res.status(201).json({ message: 'Applicant created', applicant });
     } catch (err) {
       res.status(err.status || 500).json({ message: err.message });

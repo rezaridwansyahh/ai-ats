@@ -48,14 +48,21 @@ class Applicant {
     return result.rows;
   }
 
-  static async create({ job_id, candidate_id, latest_stage }) {
-    const result = await getDb().query(`
+  static async create({ job_id, candidate_id, latest_stage, job_stage_id, decision }){
+    const addApplicant = await getDb().query(`
       INSERT INTO applicants (job_id, candidate_id, latest_stage)
       VALUES ($1, $2, $3)
       RETURNING *
     `, [job_id, candidate_id, latest_stage]);
-    return result.rows[0];
-  }
+
+    const addApplicantStage = await getDb().query(`
+      INSERT INTO applicants_stages (applicant_id, job_stage_id, decision)
+      VALUES ($1, $2, $3)
+      RETURNING *
+      `, [addApplicant.rows[0].id, job_stage_id, decision]);
+    
+    return {applicant: addApplicant.rows[0], stage: addApplicantStage.rows[0]};
+  }  
 
   static async update(id, fields) {
     const keys = Object.keys(fields);

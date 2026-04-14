@@ -16,13 +16,11 @@ class ApplicantService {
     return await Applicant.getByJobId(job_id);
   }
 
-  async create({ job_id, candidate_id, latest_stage }) {
-    if (!job_id) throw { status: 400, message: 'job_id is required' };
-    if (!candidate_id) throw { status: 400, message: 'candidate_id is required' };
-    if (latest_stage === undefined || latest_stage === null) {
-      throw { status: 400, message: 'latest_stage is required' };
+  async create(job_id, candidate_id, latest_stage, job_stage_id, decision) {
+    if (!job_id || !candidate_id || latest_stage === undefined || latest_stage === null || !job_stage_id || !decision) {
+      throw { status: 400, message: 'job_id, candidate_id, latest_stage, job_stage_id, and decision are required' };
     }
-    return await Applicant.create({ job_id, candidate_id, latest_stage });
+    return await Applicant.create({ job_id, candidate_id, latest_stage, job_stage_id, decision });
   }
 
   async update(id, fields) {
