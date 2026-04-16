@@ -109,4 +109,20 @@ export default [
   { id: 74, module_menu_id: 20, functionality: 'update' },
   { id: 75, module_menu_id: 20, functionality: 'delete' },
 
+  /* ===================================================================
+     Selection -> Assessment (module_menu_id: 22)
+  =================================================================== */
+  { id: 76, module_menu_id: 22, functionality: 'read' },
+  { id: 77, module_menu_id: 22, functionality: 'create' },
+  { id: 78, module_menu_id: 22, functionality: 'update' },
+  { id: 79, module_menu_id: 22, functionality: 'delete' },
+
+  /* ===================================================================
+     Selection -> Report (module_menu_id: 23)
+  =================================================================== */
+  { id: 80, module_menu_id: 23, functionality: 'read' },
+  { id: 81, module_menu_id: 23, functionality: 'create' },
+  { id: 82, module_menu_id: 23, functionality: 'update' },
+  { id: 83, module_menu_id: 23, functionality: 'delete' },
+
 ];

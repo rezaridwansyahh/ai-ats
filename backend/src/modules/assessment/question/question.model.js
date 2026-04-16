@@ -1,11 +1,11 @@
 import getDb from "../../../config/postgres.js"
 
-class Instructor {
+class Question {
   static async getAll() {
     const result = await getDb().query(`
       SELECT *
-      FROM instructors
-      ORDER BY created_at DESC
+      FROM assessment_questions
+      ORDER BY id ASC
     `);
     return result.rows;
   }
@@ -13,27 +13,18 @@ class Instructor {
   static async getById(id) {
     const result = await getDb().query(`
       SELECT *
-      FROM instructors
+      FROM assessment_questions
       WHERE id = $1
     `, [id]);
     return result.rows[0];
   }
 
-  static async getByEmail(email) {
+  static async create({ text, options, correct, points }) {
     const result = await getDb().query(`
-      SELECT *
-      FROM instructors
-      WHERE email = $1
-    `, [email]);
-    return result.rows[0];
-  }
-
-  static async create({ name, email, position, department }) {
-    const result = await getDb().query(`
-      INSERT INTO instructors (name, email, position, department)
+      INSERT INTO assessment_questions (text, options, correct, points)
       VALUES ($1, $2, $3, $4)
       RETURNING *
-    `, [name, email, position, department]);
+    `, [text, JSON.stringify(options), correct, points]);
     return result.rows[0];
   }
 
@@ -44,7 +35,7 @@ class Instructor {
     const setClause = keys.map((k, i) => `${k} = $${i + 1}`).join(', ');
 
     const result = await getDb().query(`
-      UPDATE instructors
+      UPDATE assessment_questions
       SET ${setClause}, updated_at = NOW()
       WHERE id = $${keys.length + 1}
       RETURNING *
@@ -54,7 +45,7 @@ class Instructor {
 
   static async delete(id) {
     const result = await getDb().query(`
-      DELETE FROM instructors
+      DELETE FROM assessment_questions
       WHERE id = $1
       RETURNING *
     `, [id]);
@@ -62,4 +53,4 @@ class Instructor {
   }
 }
 
-export default Instructor;
+export default Question;

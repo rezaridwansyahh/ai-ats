@@ -1,8 +1,7 @@
 import AssessmentResult from './assessment-result.model.js';
 import Participant from '../participant/participant.model.js';
-import Instructor from '../instructor/instructor.model.js';
 
-const EDITABLE_FIELDS = ['test_name', 'date_test', 'score', 'instructor_id'];
+const EDITABLE_FIELDS = ['score', 'answers'];
 
 class AssessmentResultService {
   async getAll() {
@@ -22,21 +21,17 @@ class AssessmentResultService {
     return result;
   }
 
-  async getByInstructorId(instructor_id) {
-    if (!instructor_id) throw { status: 400, message: 'instructor_id is required' };
-    return await AssessmentResult.getByInstructorId(instructor_id);
-  }
+  async create(participant_id, score, answers) {
+    if (!participant_id || score === undefined || score === null || !Number.isInteger(Number(score))) {
+      throw { status: 400, message: 'participant_id and integer score are required' };
+    }
 
-  async create(participant_id, instructor_id, test_name, date_test, score) {
-    if (!participant_id || !instructor_id || !test_name || !date_test || score === undefined || score === null || !Number.isInteger(Number(score))) {
-      throw { status: 400, message: 'participant_id, instructor_id, test_name, date_test, and integer score are required' };
+    if (!answers || !Array.isArray(answers)) {
+      throw { status: 400, message: 'answers must be a non-empty array' };
     }
 
     const participant = await Participant.getById(participant_id);
     if (!participant) throw { status: 404, message: 'Participant not found' };
-
-    const instructor = await Instructor.getById(instructor_id);
-    if (!instructor) throw { status: 404, message: 'Instructor not found' };
 
     const existing = await AssessmentResult.getByParticipantId(participant_id);
     if (existing) {
@@ -45,10 +40,8 @@ class AssessmentResultService {
 
     return await AssessmentResult.create({
       participant_id,
-      instructor_id,
-      test_name,
-      date_test,
       score: Number(score),
+      answers,
     });
   }
 
@@ -69,11 +62,6 @@ class AssessmentResultService {
       throw { status: 400, message: 'score must be an integer' };
     }
     if (allowed.score !== undefined) allowed.score = Number(allowed.score);
-
-    if (allowed.instructor_id !== undefined) {
-      const instructor = await Instructor.getById(allowed.instructor_id);
-      if (!instructor) throw { status: 404, message: 'Instructor not found' };
-    }
 
     return await AssessmentResult.update(id, allowed);
   }

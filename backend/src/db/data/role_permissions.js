@@ -84,6 +84,18 @@ export default [
   role_id: 1,
   permission_id: 72 + i
 })),
+// Selection -> Assessment (76–79)
+...Array.from({ length: 4 }, (_, i) => ({
+  id: 58 + i,
+  role_id: 1,
+  permission_id: 76 + i
+})),
+// Selection -> Report (80–83)
+...Array.from({ length: 4 }, (_, i) => ({
+  id: 62 + i,
+  role_id: 1,
+  permission_id: 80 + i
+})),
 
 /* ============================================================================
    MANAGER (role_id: 2)
@@ -158,6 +170,16 @@ export default [
   { id: 161, role_id: 2, permission_id: 73 },
   { id: 162, role_id: 2, permission_id: 74 },
 
+  // Selection -> Assessment (76–78: read/create/update)
+  { id: 163, role_id: 2, permission_id: 76 },
+  { id: 164, role_id: 2, permission_id: 77 },
+  { id: 165, role_id: 2, permission_id: 78 },
+
+  // Selection -> Report (80–82: read/create/update)
+  { id: 166, role_id: 2, permission_id: 80 },
+  { id: 167, role_id: 2, permission_id: 81 },
+  { id: 168, role_id: 2, permission_id: 82 },
+
 /* ============================================================================
    STAFF (role_id: 3)
    read + create only
@@ -216,6 +238,14 @@ export default [
   { id: 232, role_id: 3, permission_id: 72 },
   { id: 233, role_id: 3, permission_id: 73 },
 
+  // Selection -> Assessment (read + create)
+  { id: 234, role_id: 3, permission_id: 76 },
+  { id: 235, role_id: 3, permission_id: 77 },
+
+  // Selection -> Report (read + create)
+  { id: 236, role_id: 3, permission_id: 80 },
+  { id: 237, role_id: 3, permission_id: 81 },
+
 /* ============================================================================
    INTERN (role_id: 4)
    READ ONLY
@@ -233,5 +263,7 @@ export default [
   { id: 314, role_id: 4, permission_id: 60 },  // LinkedIn Sourcing (read)
   { id: 316, role_id: 4, permission_id: 68 },  // Sourcing -> Job Management (read)
   { id: 317, role_id: 4, permission_id: 72 },  // Recruiters (read)
+  { id: 318, role_id: 4, permission_id: 76 },  // Selection -> Assessment (read)
+  { id: 319, role_id: 4, permission_id: 80 },  // Selection -> Report (read)
 
 ];

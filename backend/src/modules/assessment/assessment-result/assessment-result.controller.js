@@ -28,19 +28,10 @@ class AssessmentResultController {
     }
   }
 
-  async getByInstructorId(req, res) {
-    try {
-      const results = await assessmentResultService.getByInstructorId(req.params.instructor_id);
-      res.status(200).json({ message: 'Assessment results for instructor', results });
-    } catch (err) {
-      res.status(err.status || 500).json({ message: err.message });
-    }
-  }
-
   async create(req, res) {
     try {
-      const { participant_id, instructor_id, test_name, date_test, score } = req.body;
-      const result = await assessmentResultService.create(participant_id, instructor_id, test_name, date_test, score);
+      const { participant_id, score, answers } = req.body;
+      const result = await assessmentResultService.create(participant_id, score, answers);
       res.status(201).json({ message: 'Assessment result created', result });
     } catch (err) {
       res.status(err.status || 500).json({ message: err.message });

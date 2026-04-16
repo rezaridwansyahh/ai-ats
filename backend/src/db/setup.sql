@@ -33,7 +33,7 @@ DROP TABLE IF EXISTS mapping_candidates_linkedin CASCADE;
 DROP TABLE IF EXISTS job_automation_settings CASCADE;
 DROP TABLE IF EXISTS job_stage_sla CASCADE;
 DROP TABLE IF EXISTS assessment_results CASCADE;
-DROP TABLE IF EXISTS instructors CASCADE;
+DROP TABLE IF EXISTS assessment_questions CASCADE;
 DROP TABLE IF EXISTS participants CASCADE;
 
 -- Drop enums after all tables are gone
@@ -385,15 +385,15 @@ CREATE TABLE participants(
   education VARCHAR(255) NOT NULL,
   date_birth DATE NOT NULL,
   created_at TIMESTAMP NOT NULL DEFAULT NOW(),
-  updated_at TIMESTAMP NOT NULL DEFAULT NOW()  
+  updated_at TIMESTAMP NOT NULL DEFAULT NOW()
 );
 
-CREATE TABLE instructors(
+CREATE TABLE assessment_questions(
   id SERIAL PRIMARY KEY,
-  name VARCHAR(255) NOT NULL,
-  email VARCHAR(255) NOT NULL UNIQUE,
-  position VARCHAR(255) NOT NULL,
-  department VARCHAR(255) NOT NULL,
+  text VARCHAR(500) NOT NULL,
+  options JSONB NOT NULL,
+  correct INTEGER NOT NULL,
+  points INTEGER NOT NULL,
   created_at TIMESTAMP NOT NULL DEFAULT NOW(),
   updated_at TIMESTAMP NOT NULL DEFAULT NOW()
 );
@@ -401,10 +401,8 @@ CREATE TABLE instructors(
 CREATE TABLE assessment_results(
   id SERIAL PRIMARY KEY,
   participant_id INTEGER NOT NULL UNIQUE REFERENCES participants(id) ON DELETE CASCADE,
-  instructor_id INTEGER NOT NULL REFERENCES instructors(id) ON DELETE CASCADE,
-  test_name VARCHAR(255) NOT NULL,
-  date_test DATE NOT NULL,
   score INTEGER NOT NULL,
+  answers JSONB NOT NULL,
   created_at TIMESTAMP NOT NULL DEFAULT NOW(),
   updated_at TIMESTAMP NOT NULL DEFAULT NOW()
 );

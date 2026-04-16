@@ -8,7 +8,6 @@ router.use(authToken);
 
 router.get('/', assessmentResultController.getAll);
 router.get('/participant/:participant_id', assessmentResultController.getByParticipantId);
-router.get('/instructor/:instructor_id', assessmentResultController.getByInstructorId);
 router.get('/:id', assessmentResultController.getById);
 
 router.post('/', assessmentResultController.create);

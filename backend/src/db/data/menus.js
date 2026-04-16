@@ -14,4 +14,6 @@ export default [
   { id: 19, name: 'Job Management' },
   { id: 20, name: 'Source Management' },
   { id: 21, name: 'Recruiters'},
+  { id: 22, name: 'Assessment'},
+  { id: 23, name: 'Report'},
 ];
