@@ -61,6 +61,9 @@ portal.use("/api/stage-category", stageCategory);
 portal.use("/api/template-stage", templateStage);
 portal.use("/api/sla", sla);
 portal.use("/api/automation-setting", automationSetting);
+portal.use("/api/participant", participant);
+portal.use("/api/assessment-result", assessmentResult);
+portal.use("/api/question", question);
 
 app.use("/portal", portal);
 app.use("/api/auth", auth);
