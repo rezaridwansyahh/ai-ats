@@ -6,7 +6,6 @@ import {
 import { getJobPipeline, saveJobPipeline } from '@/api/pipeline.api';
 import { getStageCategories } from '@/api/stage-category.api';
 import { getTemplateStages, getTemplateStageById } from '@/api/template-stage.api';
-import { getSla, saveSla } from '@/api/sla.api';
 import { getAutomationSetting, createAutomationSetting } from '@/api/automation-setting.api';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -46,13 +45,10 @@ const STATUS_COLORS = {
 // ── Component ────────────────────────────────────────────────────────
 export default function JobStagesStep({ selectedJob }) {
   const nextIdRef = useRef(1);
-  const [overallDeadline, setOverallDeadline] = useState('');
   const [stages, setStages] = useState([]);
   const [loadingStages, setLoadingStages] = useState(false);
   const [savingStages, setSavingStages] = useState(false);
   const [saveMessage, setSaveMessage] = useState(null);
-  const [savingSla, setSavingSla] = useState(false);
-  const [slaMessage, setSlaMessage] = useState(null);
   const [savingAutomation, setSavingAutomation] = useState(false);
   const [automationMessage, setAutomationMessage] = useState(null);
 
@@ -100,23 +96,16 @@ export default function JobStagesStep({ selectedJob }) {
 
     Promise.all([
       getJobPipeline(selectedJob.id),
-      getSla(selectedJob.id).catch(() => ({ data: { data: { stages: [], sla_deadline_days: null } } })),
       getAutomationSetting(selectedJob.id).catch(() => ({ data: { data: null } })),
     ])
-      .then(([pipelineRes, slaRes, autoRes]) => {
+      .then(([pipelineRes, autoRes]) => {
         if (cancelled) return;
         const data = pipelineRes.data.data;
-        const slaData = slaRes.data.data;
-
-        const slaMap = {};
-        slaData.stages.forEach(s => { slaMap[s.stage_id] = s.sla_days; });
-
         const mapStage = (s) => ({
           id: s.id,
           stage_type_id: s.stage_type_id,
           category: s.category,
           name: s.name,
-          slaDays: slaMap[s.id] ?? '',
         });
 
         if (data.template_stage_id) {
@@ -137,8 +126,6 @@ export default function JobStagesStep({ selectedJob }) {
           setStages([]);
           nextIdRef.current = 1;
         }
-
-        setOverallDeadline(slaData.sla_deadline_days ?? '');
 
         const autoData = autoRes.data.data;
         if (autoData) {
@@ -174,20 +161,17 @@ export default function JobStagesStep({ selectedJob }) {
     const id = Number(templateId);
     setSelectedTemplateId(id);
     try {
-      const [templateRes, slaRes] = await Promise.all([
+      const [templateRes] = await Promise.all([
         getTemplateStageById(id),
-        selectedJob?.id ? getSla(selectedJob.id).catch(() => ({ data: { data: { stages: [] } } })) : { data: { data: { stages: [] } } },
       ]);
       const data = templateRes.data.data;
-      const slaMap = {};
-      slaRes.data.data.stages.forEach(s => { slaMap[s.stage_id] = s.sla_days; });
+
 
       setStages(data.stages.map(s => ({
         id: s.id,
         stage_type_id: s.stage_type_id,
         category: s.category,
         name: s.name,
-        slaDays: slaMap[s.id] ?? '',
       })));
       nextIdRef.current = data.stages.length > 0
         ? Math.max(...data.stages.map(s => s.id)) + 1
@@ -240,30 +224,6 @@ export default function JobStagesStep({ selectedJob }) {
     }
   };
 
-  // ── Save SLA to API ──
-  const handleSaveSla = async () => {
-    if (!selectedJob?.id || stages.length === 0) return;
-    setSavingSla(true);
-    setSlaMessage(null);
-
-    try {
-      const slaStages = stages
-        .filter(s => s.slaDays > 0)
-        .map(s => ({ stage_id: s.id, sla_days: s.slaDays }));
-
-      await saveSla(selectedJob.id, {
-        stages: slaStages,
-        sla_deadline_days: overallDeadline || null,
-      });
-      setSlaMessage({ type: 'success', text: 'SLA saved successfully' });
-    } catch (err) {
-      const msg = err.response?.data?.message || 'Failed to save SLA';
-      setSlaMessage({ type: 'error', text: msg });
-    } finally {
-      setSavingSla(false);
-    }
-  };
-
   // ── Save Automation to API ──
   const handleSaveAutomation = async () => {
     if (!selectedJob?.id) return;
@@ -291,10 +251,6 @@ export default function JobStagesStep({ selectedJob }) {
     }
   };
 
-  const canSaveSla = stages.length > 0 && stages.every(s => s.slaDays >= 1);
-
-  const totalSla = useMemo(() => stages.reduce((sum, s) => sum + (s.slaDays || 0), 0), [stages]);
-  const slaMatch = totalSla === overallDeadline;
 
   // ── Stage handlers ──
   const updateStage = (id, field, value) => {
@@ -308,7 +264,6 @@ export default function JobStagesStep({ selectedJob }) {
       stage_type_id: defaultCategoryId,
       category: categories[0]?.name || '',
       name: '',
-      slaDays: '',
     }]);
   };
 
@@ -611,77 +566,6 @@ export default function JobStagesStep({ selectedJob }) {
         </CardContent>
       </Card>
 
-      {/* ── Section C: SLA Timers ── */}
-      <Card className="pt-0 gap-0">
-        <CardHeader className="py-3 px-5 rounded-t-xl border-b-2 border-amber-400 space-y-3"
-          style={{ background: 'linear-gradient(90deg, #FEF3C7, #FFFBEB)' }}>
-          <div className="flex items-center justify-between">
-            <CardTitle className="text-[13px] font-bold text-amber-800 flex items-center gap-2">
-              <Clock className="h-4 w-4" /> Per-Stage SLA Timers
-            </CardTitle>
-            <div className="flex items-center gap-3">
-              <div className="flex items-center gap-2">
-                <span className="text-[10px] text-amber-700">Overall deadline:</span>
-                <Input
-                  type="number"
-                  min={1}
-                  value={overallDeadline}
-                  onChange={e => setOverallDeadline(parseInt(e.target.value) || 0)}
-                  className="w-14 h-7 text-center text-xs border-amber-300 bg-white"
-                />
-                <span className="text-[10px] text-amber-700">calendar days</span>
-              </div>
-              <Button
-                size="sm"
-                className="text-xs gap-1.5 bg-amber-600 hover:bg-amber-700"
-                onClick={handleSaveSla}
-                disabled={savingSla || !canSaveSla}
-              >
-                <Save className="h-3.5 w-3.5" />
-                {savingSla ? 'Saving...' : 'Save SLA'}
-              </Button>
-            </div>
-          </div>
-          {slaMessage && (
-            <div className={`text-xs px-3 py-2 rounded-lg ${
-              slaMessage.type === 'success'
-                ? 'bg-emerald-50 text-emerald-600'
-                : 'bg-red-50 text-red-500'
-            }`}>
-              {slaMessage.type === 'success' ? <Check className="h-3.5 w-3.5 inline mr-1" /> : <AlertTriangle className="h-3.5 w-3.5 inline mr-1" />}
-              {slaMessage.text}
-            </div>
-          )}
-        </CardHeader>
-        <CardContent className="p-4 pt-4 space-y-3">
-          <p className="text-[11px] text-muted-foreground">
-            Set a maximum number of days allowed per stage. If a candidate exceeds the SLA, the assigned recruiter is automatically notified and the breach appears in Reports.
-          </p>
-          <div className="flex flex-col gap-1.5">
-            {stages.map(stage => (
-              <div key={stage.id} className="grid grid-cols-[1fr_80px_80px] gap-2 items-center px-3 py-2 bg-muted/50 rounded-lg">
-                <span className="text-xs font-semibold">{stage.name || '(unnamed)'}</span>
-                <Input
-                  type="number"
-                  min={1}
-                  value={stage.slaDays}
-                  onChange={e => updateStage(stage.id, 'slaDays', Math.max(1, parseInt(e.target.value) || 1))}
-                  className="h-7 text-center text-xs"
-                />
-                <span className="text-[10px] text-muted-foreground">days max</span>
-              </div>
-            ))}
-          </div>
-          <div className={`flex items-center gap-2 px-3 py-2 rounded-lg text-[11px] font-semibold ${
-            slaMatch
-              ? 'bg-emerald-50 text-emerald-600'
-              : 'bg-amber-50 text-amber-600'
-          }`}>
-            {slaMatch ? <Check className="h-3.5 w-3.5" /> : <AlertTriangle className="h-3.5 w-3.5" />}
-            Total SLA: {totalSla} days {slaMatch ? '— matches overall deadline.' : `— does not match overall deadline (${overallDeadline} days).`}
-          </div>
-        </CardContent>
-      </Card>
 
       {/* ── Automation Rules Reminder ── */}
       <div className="flex items-center justify-between px-4 py-3 rounded-xl border-l-4 border-primary"
