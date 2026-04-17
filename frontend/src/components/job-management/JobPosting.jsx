@@ -443,7 +443,7 @@ function ChannelRow({ channel: ch, accounts, jobPost, onSelect, actionLabel, isS
           </div>
         </div>
         <div className="min-w-24 flex items-center justify-center">
-          {account
+          {account?.status_connection === 'Connected'
             ? jobPosted
               ? jobPosted.status === 'Running'
                 ? (
@@ -452,8 +452,7 @@ function ChannelRow({ channel: ch, accounts, jobPost, onSelect, actionLabel, isS
                 : (jobPosted.status ==='Active' || jobPosted.status === 'Draft')
                   ? (
                   <Badge className="bg-emerald-100 text-emerald-700 border-emerald-200 text-[10px] px-3 py-1">Published</Badge>
-                )
-                : (
+                ) : (
                   <Button 
                     size="sm"
                     className="text-[11px] h-8 px-4"

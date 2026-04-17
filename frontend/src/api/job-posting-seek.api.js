@@ -10,6 +10,10 @@ export const updateJobPosting = (data) => api.post('/seek/job-post-draft/rpa/upd
 
 export const deleteJobPosting = (data) => api.post('/seek/job-post-draft/rpa/delete', data);
 
+export const publishJob = (data) => api.post(`/job-posting/publish`, data);
+
+export const getByJobId = (jobId) => api.get(`/job-posting/job/${jobId}`);
+
 export const syncSeekJobPosts = (accountId) =>
   api.post('/seek/job-post/rpa/sync', { account_id: accountId });
 

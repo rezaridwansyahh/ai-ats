@@ -53,10 +53,10 @@ class LinkedInController {
     }
   }
   async extractApplicantRpa(req, res) {
-    const { account_id, job_posting_id, limit } = req.body;
+    const { account_id, job_sourcing_id, limit } = req.body;
 
     try {
-      const result = await linkedinService.extractApplicant(account_id, job_posting_id, limit);
+      const result = await linkedinService.extractApplicant(account_id, job_sourcing_id, limit);
       return res.status(200).json({ message: "success", result });
     } catch(err) {
       return res.status(500).json({

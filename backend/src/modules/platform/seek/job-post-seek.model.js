@@ -27,7 +27,8 @@ class JobPostSeekModel {
       SELECT cj.job_title, cjs.account_id, mjss.*
       FROM mapping_job_sourcing_seek mjss
       JOIN core_job_sourcing cjs ON mjss.job_sourcing_id = cjs.id
-      LEFT JOIN core_job cj ON cjs.job_id = cj.id
+      LEFT JOIN job_post jp ON cjs.job_post_id = jp.id
+      LEFT JOIN core_job cj ON jp.job_id = cj.id
       WHERE mjss.seek_id = $1
     `, [seek_id]);
     return result.rows[0];
@@ -62,7 +63,8 @@ class JobPostSeekModel {
         mjss.created_by
       FROM mapping_job_sourcing_seek mjss
       JOIN core_job_sourcing cjs ON mjss.job_sourcing_id = cjs.id
-      LEFT JOIN core_job cj ON cjs.job_id = cj.id
+      LEFT JOIN job_post jp ON cjs.job_post_id = jp.id
+      LEFT JOIN core_job cj ON jp.job_id = cj.id
       WHERE mjss.job_sourcing_id = $1
     `, [job_sourcing_id]);
     return result.rows[0];
@@ -83,7 +85,8 @@ class JobPostSeekModel {
         mjss.created_date_seek,
         mjss.created_by
       FROM core_job_sourcing cjs
-      LEFT JOIN core_job cj ON cjs.job_id = cj.id
+      LEFT JOIN job_post jp ON cjs.job_post_id = jp.id
+      LEFT JOIN core_job cj ON jp.job_id = cj.id
       JOIN master_job_account mja ON cjs.account_id = mja.id
       LEFT JOIN mapping_job_sourcing_seek mjss ON cjs.id = mjss.job_sourcing_id
       WHERE mja.user_id = $1 AND cjs.platform = 'seek'

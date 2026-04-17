@@ -59,8 +59,6 @@ export default function AccountPage() {
     }
   }, []);
 
-  
-
   useEffect(() => {
     async function fetch() {
       await fetchAccounts()

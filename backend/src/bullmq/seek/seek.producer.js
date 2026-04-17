@@ -11,29 +11,29 @@ class SeekProducer {
     return job;
   }
 
-  async createSeekJobPostDraft(account_id, service, job_id, dataForm) {
+  async createSeekJobPostDraft(account_id, service, job_post_id, dataForm) {
     const job = await seekQueue.add('seek-create-job-post-draft', {
       account_id,
       service,
-      job_id,
+      job_post_id,
       dataForm
     });
-  
+
     return job;
   }
 
-  async deleteSeekJobPostDraft(job_posting_id, account_id) {
+  async deleteSeekJobPostDraft(job_sourcing_id, account_id) {
     const job = await seekQueue.add('seek-delete-job-post-draft', {
-      job_posting_id,
+      job_sourcing_id,
       account_id
     });
 
     return job;
   }
 
-  async updateSeekJobPostDraft(job_posting_id, account_id, dataForm) {
+  async updateSeekJobPostDraft(job_sourcing_id, account_id, dataForm) {
     const job = await seekQueue.add('seek-update-job-post-draft', {
-      job_posting_id,
+      job_sourcing_id,
       account_id,
       dataForm
     });
@@ -41,10 +41,10 @@ class SeekProducer {
     return job;
   }
 
-  async extractSeekCandidate(account_id, job_posting_id) {
+  async extractSeekCandidate(account_id, job_sourcing_id) {
     const job = await seekQueue.add('seek-extract-candidate', {
       account_id,
-      job_posting_id
+      job_sourcing_id
     });
 
     return job;

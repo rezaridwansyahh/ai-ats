@@ -4,7 +4,7 @@ class JobPostModel {
   async getAll() {
     const result = await getDb().query(`
       SELECT *
-      FROM core_job_sourcing
+      FROM job_post
       ORDER BY id ASC
     `);
 
@@ -14,77 +14,42 @@ class JobPostModel {
   async getById(id) {
     const result = await getDb().query(`
       SELECT *
-      FROM core_job_sourcing
+      FROM job_post
       WHERE id = $1
     `, [id]);
 
     return result.rows[0];
   }
 
-  async getByAccountId(account_id) {
-    const result = await getDb().query(`
-      SELECT *
-      FROM core_job_sourcing
-      WHERE account_id = $1
-      ORDER BY created_at DESC
-    `, [account_id]);
-
-    return result.rows;
-  }
-
   async getByJobId(job_id) {
     const result = await getDb().query(`
       SELECT *
-      FROM core_job_sourcing
+      FROM job_post
       WHERE job_id = $1
-      ORDER BY created_at DESC  
+      ORDER BY created_at DESC
     `, [job_id]);
 
-    return result.rows;
+    return result.rows[0];
   }
 
-  async getByUserId(user_id) {
-    const result = await getDb().query(`
-      SELECT cjp.*
-      FROM core_job_sourcing cjp
-      JOIN master_job_account mja ON cjp.account_id = mja.id
-      WHERE mja.user_id = $1
-      ORDER BY cjp.created_at DESC
-    `, [user_id]);
-
-    return result.rows;
-  }
-
-  async getByUserIdAndStatus(user_id, status) {
-    const result = await getDb().query(`
-      SELECT cjp.*
-      FROM core_job_sourcing cjp
-      JOIN master_job_account mja ON cjp.account_id = mja.id
-      WHERE mja.user_id = $1 AND cjp.status = $2
-      ORDER BY cjp.created_at DESC
-    `, [user_id, status]);
-
-    return result.rows;
-  }
-
-  async getByPlatform(platform) {
+  async getByJobIdAndType(job_id, type) {
     const result = await getDb().query(`
       SELECT *
-      FROM core_job_sourcing
-      WHERE platform = $1
+      FROM job_post
+      WHERE job_id = $1 AND type = $2
       ORDER BY created_at DESC
-    `, [platform]);
+    `, [job_id, type]);
 
     return result.rows;
   }
 
-  async create(account_id, job_id, platform, job_title, status = 'Active', additional = null) {
+  async create(job_id, type) {
     const result = await getDb().query(`
-      INSERT INTO core_job_sourcing
-        (account_id, job_id, platform, job_title, status, additional)
-      VALUES ($1, $2, $3, $4, $5, $6)
+      INSERT INTO job_post
+        (job_id, type)
+      VALUES ($1, $2)
       RETURNING *
-    `, [account_id, job_id, platform, job_title, status, additional]);
+    `, [job_id, type]);
 
     return result.rows[0];
   }
@@ -102,7 +67,7 @@ class JobPostModel {
       .join(', ');
 
     const result = await getDb().query(`
-      UPDATE core_job_sourcing
+      UPDATE job_post
       SET ${setClause}, updated_at = NOW()
       WHERE id = $${keys.length + 1}
       RETURNING *
@@ -111,20 +76,9 @@ class JobPostModel {
     return result.rows[0];
   }
 
-  async updateStatus(id, status) {
-    const result = await getDb().query(`
-      UPDATE core_job_sourcing
-      SET status = $1, updated_at = NOW()
-      WHERE id = $2
-      RETURNING *
-    `, [status, id]);
-
-    return result.rows[0];
-  }
-
   async delete(id) {
     const result = await getDb().query(`
-      DELETE FROM core_job_sourcing
+      DELETE FROM job_post
       WHERE id = $1
       RETURNING *
     `, [id]);

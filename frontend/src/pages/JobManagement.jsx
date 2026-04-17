@@ -7,13 +7,14 @@ import { Button } from '@/components/ui/button';
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter,
 } from '@/components/ui/dialog';
-import { getJobs, createJob, updateJob, deleteJob } from '@/api/job.api';
+import { getJobs, createJob, updateJob, deleteJob, updateJobStatus } from '@/api/job.api';
 import { getRecruiters } from '@/api/recruiter.api';
-import { submitSeekPosting } from '@/api/job-posting-seek.api';
+import { publishJob } from '@/api/job-posting-seek.api';
 import { getJobAccountsByUserId } from '@/api/job-accounts.api';
 import JobCreation from '@/components/job-management/JobCreation';
 import JobStages from '@/components/job-management/JobStages';
 import JobPosting from '@/components/job-management/JobPosting';
+import JobList from '@/components/job-management/JobList';
 
 const STEPS = [
   { key: 'creation', label: 'Job Creation', icon: FileText },
@@ -43,7 +44,7 @@ export default function JobManagementPage() {
   const [jobs, setJobs] = useState([]);
   const [loading, setLoading] = useState(true);
   const [recruiters, setRecruiters] = useState([]);
-  const [selectedJobId, setSelectedJobId] = useState(null);
+  const [selectedJob, setSelectedJob] = useState(null);
   const [validationErrors, setValidationErrors] = useState([]);
   const [postingSummary, setPostingSummary] = useState(null);
   const [showPostingConfirm, setShowPostingConfirm] = useState(false);
@@ -106,31 +107,18 @@ export default function JobManagementPage() {
 
   const handleConfirmPublish = async () => {
     setShowPostingConfirm(false);
-    const selectedJob = jobs.find(j => j.id === selectedJobId);
 
     try {
-      if (postingSummary?.public?.channels?.includes('Seek')) {
-        const seekAccount = accounts.find(a => a.portal_name === 'seek');
-        if (seekAccount && selectedJob) {
-          await submitSeekPosting({
-            account_id: seekAccount.id,
-            service: 'seek',
-            job_id: selectedJob.id,
-            dataForm: {
-              job_title: selectedJob.job_title,
-              job_desc: selectedJob.job_desc || null,
-              job_location: selectedJob.job_location || null,
-              work_option: selectedJob.work_option || null,
-              work_type: selectedJob.work_type || null,
-              pay_type: selectedJob.pay_type || null,
-              currency: selectedJob.currency || null,
-              pay_min: selectedJob.pay_min || null,
-              pay_max: selectedJob.pay_max || null,
-              pay_display: selectedJob.pay_display || null,
-            },
-          });
-        }
+      if(postingSummary?.internal?.enabled) await publishJob({ job_id: selectedJob.id, type: 'Internal', user_id: user.id });
+
+      if(postingSummary?.public?.enabled || postingSummary?.private?.enabled) {
+        const platform = [...postingSummary?.public?.channels , ...postingSummary?.private?.channels];
+        console.log(platform);
+        console.log({job_id: selectedJob.id, type: 'Publish', user_id: user.id, platform});
+        await publishJob({job_id: selectedJob.id, type: 'Publish', user_id: user.id, platform});
       }
+
+      await updateJobStatus(selectedJob.id, 'Active');
     } catch (err) {
       console.error('Failed to queue posting:', err);
     }
@@ -156,19 +144,23 @@ export default function JobManagementPage() {
 
   const handleNext = () => {
     if (activeStep === 0) {
-      if (!selectedJobId) return;
-      const job = jobs.find(j => j.id === selectedJobId);
-      if (!job) return;
-      const missing = REQUIRED_FIELDS.filter(f => !job[f.key] || (typeof job[f.key] === 'string' && !job[f.key].trim()));
+      if (!selectedJob) return;
+      const missing = REQUIRED_FIELDS.filter(f => !selectedJob[f.key] || (typeof selectedJob[f.key] === 'string' && !selectedJob[f.key].trim()));
       if (missing.length > 0) {
         setValidationErrors(missing.map(f => f.label));
         return;
       }
+
+      if(selectedJob.status === 'Active') {
+        setActiveStep(3);
+      }
     }
     if (activeStep === 2) {
       setShowPostingConfirm(true);
+
       return;
     }
+
     setValidationErrors([]);
     setActiveStep(prev => Math.min(prev + 1, STEPS.length - 1));
   };
@@ -224,7 +216,7 @@ export default function JobManagementPage() {
 
       {/* Step Navigation */}
       <div className="flex justify-between items-center border-b -mt-2 pb-2">
-        {activeStep > 0 ? (
+        {activeStep > 0 && activeStep !== 3 ? (
           <Button variant="ghost" size="sm" className="text-xs" onClick={handlePrev}>
             <ChevronLeft className="h-4 w-4 mr-1" />
             Previous: {STEPS[activeStep - 1].label}
@@ -235,7 +227,7 @@ export default function JobManagementPage() {
             variant="ghost"
             size="sm"
             className="text-xs"
-            disabled={activeStep === 0 && !selectedJobId }
+            disabled={activeStep === 0 && !selectedJob }
             onClick={handleNext}
           >
             Next: {STEPS[activeStep + 1].label}
@@ -273,21 +265,24 @@ export default function JobManagementPage() {
           onCreateJob={handleCreateJob}
           onEditJob={handleEditJob}
           onDeleteJob={handleDeleteJob}
-          selectedJobId={selectedJobId}
-          onSelectJob={setSelectedJobId}
+          selectedJob={selectedJob}
+          onSelectJob={setSelectedJob}
         />
       )}
       {activeStep === 1 && (
-        <JobStages selectedJob={jobs.find(j => j.id === selectedJobId)} />
+        <JobStages selectedJob={selectedJob} />
       )}
       {activeStep === 2 && (
         <JobPosting
-          selectedJob={jobs.find(j => j.id === selectedJobId)}
+          selectedJob={selectedJob}
           onSelectionChange={setPostingSummary}
         />
       )}
-      {activeStep === 3 && <StepPlaceholder title="Job Sourcing" stepNum={4} />}
-      {activeStep === 4 && <StepPlaceholder title="Applicant Pipeline" stepNum={5} />}
+      {activeStep === 3 && (
+        <JobList
+          selectedJob={selectedJob}
+        />
+      )}
 
       {/* Posting Confirmation Modal */}
       <Dialog open={showPostingConfirm} onOpenChange={setShowPostingConfirm}>

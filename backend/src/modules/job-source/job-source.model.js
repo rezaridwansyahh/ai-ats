@@ -1,0 +1,148 @@
+import getDb from "../../config/postgres.js"
+
+class JobSourceModel {
+  async getAll() {
+    const result = await getDb().query(`
+      SELECT *
+      FROM core_job_sourcing
+      ORDER BY id ASC
+    `);
+
+    return result.rows;
+  }
+
+  async getById(id) {
+    const result = await getDb().query(`
+      SELECT *
+      FROM core_job_sourcing
+      WHERE id = $1
+    `, [id]);
+
+    return result.rows[0];
+  }
+
+  async getByAccountId(account_id) {
+    const result = await getDb().query(`
+      SELECT *
+      FROM core_job_sourcing
+      WHERE account_id = $1
+      ORDER BY created_at DESC
+    `, [account_id]);
+
+    return result.rows;
+  }
+
+  async getByJobId(job_id) {
+    const result = await getDb().query(`
+      SELECT cjs.*
+      FROM core_job_sourcing cjs
+      JOIN job_post jp ON cjs.job_post_id = jp.id
+      WHERE jp.job_id = $1
+      ORDER BY cjs.created_at DESC
+    `, [job_id]);
+
+    return result.rows;
+  }
+
+  async getByJobPostId(job_post_id) {
+    const result = await getDb().query(`
+      SELECT *
+      FROM core_job_sourcing
+      WHERE job_post_id = $1
+      ORDER BY created_at DESC
+    `, [job_post_id]);
+
+    return result.rows;
+  }
+
+  async getByUserId(user_id) {
+    const result = await getDb().query(`
+      SELECT cjp.*
+      FROM core_job_sourcing cjp
+      JOIN master_job_account mja ON cjp.account_id = mja.id
+      WHERE mja.user_id = $1
+      ORDER BY cjp.created_at DESC
+    `, [user_id]);
+
+    return result.rows;
+  }
+
+  async getByUserIdAndStatus(user_id, status) {
+    const result = await getDb().query(`
+      SELECT cjp.*
+      FROM core_job_sourcing cjp
+      JOIN master_job_account mja ON cjp.account_id = mja.id
+      WHERE mja.user_id = $1 AND cjp.status = $2
+      ORDER BY cjp.created_at DESC
+    `, [user_id, status]);
+
+    return result.rows;
+  }
+
+  async getByPlatform(platform) {
+    const result = await getDb().query(`
+      SELECT *
+      FROM core_job_sourcing
+      WHERE platform = $1
+      ORDER BY created_at DESC
+    `, [platform]);
+
+    return result.rows;
+  }
+
+  async create(account_id, job_post_id, platform, job_title, status = 'Active', additional = null) {
+    const result = await getDb().query(`
+      INSERT INTO core_job_sourcing
+        (account_id, job_post_id, platform, job_title, status, additional)
+      VALUES ($1, $2, $3, $4, $5, $6)
+      RETURNING *
+    `, [account_id, job_post_id, platform, job_title, status, additional]);
+
+    return result.rows[0];
+  }
+
+  async update(id, fields) {
+    const keys = Object.keys(fields);
+    const values = Object.values(fields);
+
+    if (keys.length === 0) {
+      throw new Error('No fields provided for update');
+    }
+
+    const setClause = keys
+      .map((key, index) => `"${key}" = $${index + 1}`)
+      .join(', ');
+
+    const result = await getDb().query(`
+      UPDATE core_job_sourcing
+      SET ${setClause}, updated_at = NOW()
+      WHERE id = $${keys.length + 1}
+      RETURNING *
+    `, [...values, id]);
+
+    return result.rows[0];
+  }
+
+  async updateStatus(id, status) {
+    const result = await getDb().query(`
+      UPDATE core_job_sourcing
+      SET status = $1, updated_at = NOW()
+      WHERE id = $2
+      RETURNING *
+    `, [status, id]);
+
+    return result.rows[0];
+  }
+
+  async delete(id) {
+    const result = await getDb().query(`
+      DELETE FROM core_job_sourcing
+      WHERE id = $1
+      RETURNING *
+    `, [id]);
+
+    return result.rows[0];
+  }
+}
+
+export default new JobSourceModel();

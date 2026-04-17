@@ -86,7 +86,7 @@ Permissions are structured as **Module → Menu → Functionality** (create/read
 ### Database Schema (PostgreSQL)
 Schema defined in `backend/src/db/setup.sql`. Seed data in `backend/src/db/data/` (modules, menus, permissions, roles, users, mappings).
 
-Key tables: `master_users`, `master_roles`, `mapping_users_roles`, `master_modules`, `master_menus`, `mapping_modules_menus`, `global_permissions`, `mapping_roles_permissions`, `master_job_account`, `core_job_sourcing`, `mapping_job_posting_seek`, `mapping_job_posting_linkedin`, `cookies`, `core_job` (new consolidated job table with JSONB skills), `master_candidates`, `core_job_sourcing`, `master_recruiters`, `master_email_notify`.
+Key tables: `master_users`, `master_roles`, `mapping_users_roles`, `master_modules`, `master_menus`, `mapping_modules_menus`, `global_permissions`, `mapping_roles_permissions`, `master_job_account`, `core_job_sourcing`, `mapping_job_posting_seek`, `mapping_job_posting_linkedin`, `cookies`, `core_job` (new consolidated job table with JSONB skills), `master_applicant`, `core_job_sourcing`, `master_recruiters`, `master_email_notify`.
 
 PostgreSQL ENUMs: `status_type` (Draft/Active/Running/Expired/Failed), `work_option_type`, `work_type_type`, `pay_type_type`, `currency_type`, `pay_display_type`, `platform_type` (seek/linkedin), `recruiter_status_type` (Active/Onboarding), `booking_status_type` (pending/approved/rejected), `session_slot_type`.
 

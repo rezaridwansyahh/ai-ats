@@ -5,15 +5,15 @@ const createJobPostHandler = async (data) => {
 };
 
 const createJobPostDraftHandler = async (data) => {
-  await seekService.jobPostDraft(data.account_id, data.service, data.job_id, data.dataForm);
+  await seekService.jobPostDraft(data.account_id, data.service, data.job_post_id, data.dataForm);
 }
 
 const deleteJobPostDraftHandler = async (data) => {
-  await seekService.deleteJobPostDraft(data.job_posting_id, data.account_id);
+  await seekService.deleteJobPostDraft(data.job_sourcing_id, data.account_id);
 }
 
 const extractCandidateHandler = async (data) => {
-  await seekService.extractCandidates(data.account_id, data.job_posting_id);
+  await seekService.extractCandidates(data.account_id, data.job_sourcing_id);
 }
 
 const syncSeekJobPostHandler = async (data) => {

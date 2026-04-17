@@ -24,7 +24,8 @@ class JobPostLinkedinModel {
         mjsl.linkedin_id,
         mjsl.project_id
       FROM core_job_sourcing cjs
-      JOIN core_job cj ON cjs.job_id = cj.id
+      LEFT JOIN job_post jp ON cjs.job_post_id = jp.id
+      LEFT JOIN core_job cj ON jp.job_id = cj.id
       JOIN master_job_account mja ON cjs.account_id = mja.id
       LEFT JOIN mapping_job_sourcing_linkedin mjsl ON cjs.id = mjsl.job_sourcing_id
       WHERE mja.user_id = $1 AND cjs.platform = 'linkedin'

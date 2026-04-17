@@ -21,9 +21,10 @@ import module from "./src/modules/module/module.route.js"
 import menu from "./src/modules/menu/menu.route.js"
 import jobAccount from "./src/modules/job-account/job-account.route.js"
 import jobPosting from "./src/modules/job-post/job-post.router.js"
+import jobSourcing from './src/modules/job-source/job-source.router.js'
 import job from "./src/modules/job/job.route.js"
-import candidate from "./src/modules/candidate/candidate.route.js"
 import applicant from "./src/modules/applicant/applicant.route.js"
+import candidatePipeline from "./src/modules/candidate-pipeline/candidate-pipeline.route.js"
 import sourcing from "./src/modules/sourcing/sourcing.route.js"
 import recruiter from "./src/modules/recruiter/recruiter.route.js"
 import pipeline from "./src/modules/pipeline/pipeline.route.js"
@@ -49,8 +50,10 @@ portal.use("/api/module", module);
 portal.use("/api/menu", menu);
 portal.use("/api/job-account", jobAccount);
 portal.use("/api/job-posting", jobPosting);
+portal.use("/api/job-sourcing", jobSourcing);
 portal.use("/api/job", job);
-portal.use("/api/candidate", candidate);
+portal.use("/api/applicant", applicant);
+portal.use("/api/candidate-pipeline", candidatePipeline);
 portal.use("/api/sourcing", sourcing);
 portal.use("/api/recruiter", recruiter);
 portal.use("/api/pipeline", pipeline);
@@ -72,8 +75,8 @@ app.use("/api/menu", menu);
 app.use("/api/job-account", jobAccount);
 app.use("/api/job-posting", jobPosting);
 app.use("/api/job", job);
-app.use("/api/candidate", candidate);
 app.use("/api/applicant", applicant);
+app.use("/api/candidate-pipeline", candidatePipeline);
 app.use("/api/sourcing", sourcing);
 app.use("/api/recruiter", recruiter);
 app.use("/api/pipeline", pipeline);

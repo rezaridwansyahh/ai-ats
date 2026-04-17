@@ -131,11 +131,12 @@ function SkillsList({ skills, setSkills, accent, placeholder }) {
 }
 
 // ── Job Creation Step ───────────────────────────────────────────────
-export default function JobCreationStep({ jobs, loading, recruiters, onCreateJob, onEditJob, onDeleteJob, selectedJobId, onSelectJob }) {
+export default function JobCreationStep({ jobs, loading, recruiters, onCreateJob, onEditJob, onDeleteJob, selectedJob, onSelectJob }) {
   const [form, setForm] = useState(INITIAL_FORM);
   const [editingId, setEditingId] = useState(null);
   const [submitting, setSubmitting] = useState(false);
   const [showForm, setShowForm] = useState(false);
+  const [isActive, setIsActive] = useState(false);
 
   // Job Details state
   const [requiredSkills, setRequiredSkills] = useState([]);
@@ -763,11 +764,11 @@ export default function JobCreationStep({ jobs, loading, recruiters, onCreateJob
               {paginatedJobs.map(job => (
                 <div
                   key={job.id}
-                  onClick={() => (job.status === 'Draft' || job.status === 'Reconfigure') && onSelectJob(selectedJobId === job.id ? null : job.id)}
+                  onClick={() => (job.status === 'Draft' || job.status === 'Reconfigure' || job.status === 'Active') && onSelectJob(selectedJob === job ? null : job)}
                   className={`flex items-center justify-between p-3 border rounded-lg transition-colors ${
-                    selectedJobId === job.id
+                    selectedJob === job
                       ? 'ring-2 ring-primary bg-primary/5'
-                      : (job.status === 'Draft' || job.status === 'Reconfigure')
+                      : (job.status === 'Draft' || job.status === 'Reconfigure' || job.status === 'Active')
                         ? 'hover:bg-muted/30 cursor-pointer'
                         : 'opacity-60'
                   }`}
@@ -797,10 +798,10 @@ export default function JobCreationStep({ jobs, loading, recruiters, onCreateJob
                     </div>
                   </div>
                   <div className="flex items-center gap-1">
-                    <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => handleEdit(job)}>
+                    <Button disabled={job.status === 'Active'} variant="ghost" size="icon" className="h-7 w-7" onClick={() => handleEdit(job)}>
                       <Pencil className="h-3.5 w-3.5" />
                     </Button>
-                    <Button variant="ghost" size="icon" className="h-7 w-7 text-red-500 hover:text-red-600" onClick={() => onDeleteJob(job.id)}>
+                    <Button disabled={job.status === 'Active'} variant="ghost" size="icon" className="h-7 w-7 text-red-500 hover:text-red-600" onClick={() => onDeleteJob(job.id)}>
                       <Trash2 className="h-3.5 w-3.5" />
                     </Button>
                   </div>

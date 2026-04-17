@@ -20,10 +20,10 @@ class SeekController {
   }
 
   async jobPostDraftRpa(req, res) {
-    const { account_id, service, job_id, dataForm } = req.body;
+    const { account_id, service, job_post_id, dataForm } = req.body;
 
     try {
-      const jobPost = await SeekProducer.createSeekJobPostDraft(account_id, service, job_id, dataForm);
+      const jobPost = await SeekProducer.createSeekJobPostDraft(account_id, service, job_post_id, dataForm);
       return res.status(200).json({ message: "create seek job post draft queued succesfully", jobPost }) // not yet good
     } catch(err) {
       return res.status(500).json({
@@ -35,10 +35,10 @@ class SeekController {
   }
 
   async deleteJobPostDraftRpa(req, res) {
-    const { job_posting_id, user_id, account_id, service } = req.body;
+    const { job_sourcing_id, account_id } = req.body;
 
     try {
-      const deleteJobPost = await seekService.deleteJobPostDraft(job_posting_id, account_id, user_id, service);
+      const deleteJobPost = await seekService.deleteJobPostDraft(job_sourcing_id, account_id);
       return res.status(200).json({ message: "success delete", deleteJobPost });
     } catch(err) {
       return res.status(500).json({
@@ -48,10 +48,10 @@ class SeekController {
   }
 
   async updateJobPostDraftRpa(req, res) {
-    const { job_posting_id, account_id, dataForm } = req.body;
+    const { job_sourcing_id, account_id, dataForm } = req.body;
 
     try {
-      const updateJobPostDraft = await seekService.updateJobPostDraft(job_posting_id, account_id, dataForm);
+      const updateJobPostDraft = await seekService.updateJobPostDraft(job_sourcing_id, account_id, dataForm);
       return res.status(200).json({ message: "success update", updateJobPostDraft });
     } catch(err) {
       return res.status(500).json({
@@ -60,10 +60,10 @@ class SeekController {
     }
   }
   async extractCandidatesRpa(req, res) {
-    const { account_id, job_posting_id } = req.body;
+    const { account_id, job_sourcing_id } = req.body;
 
     try {
-      const result = await seekService.extractCandidates(account_id, job_posting_id);
+      const result = await seekService.extractCandidates(account_id, job_sourcing_id);
       return res.status(200).json({ message: "success", ...result });
     } catch (err) {
       return res.status(err.status || 500).json({

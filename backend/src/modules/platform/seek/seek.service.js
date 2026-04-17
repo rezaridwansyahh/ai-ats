@@ -2,11 +2,11 @@ import cookieService from "../../cookie/cookie.service.js"
 import loginRpa from "./rpa/login.rpa.js"
 import jobPostRpa from "./rpa/job-post.rpa.js"
 import extractCandidateRpa from "./rpa/extract-candidate.rpa.js"
-import jobPostModel from "../../job-post/job-post.model.js"
+import jobSourceModel from "../../job-source/job-source.model.js"
 import jobPostSeekModel from "./job-post-seek.model.js"
 import browserPuppeteer from "../../../shared/services/puppeteer/browser.puppeteer.js"
 import extractJobPostRpa from "../seek/rpa/extract-job-post.rpa.js"
-import candidateModel from "../../candidate/candidate.model.js"
+import applicantModel from "../../applicant/applicant.model.js"
 import jobAccountModel from "../../job-account/job-account.model.js"
 
 class SeekService {
@@ -25,9 +25,9 @@ class SeekService {
     }
   }
 
-  async jobPostDraft(account_id, service, job_id, dataForm) {
-    const jobPost = await jobPostModel.create(account_id, job_id, service, dataForm.job_title);
-    const jobPostSeek = await jobPostSeekModel.create(jobPost.id, {
+  async jobPostDraft(account_id, service, job_post_id, dataForm) {
+    const sourcing = await jobSourceModel.create(account_id, job_post_id, service, dataForm.job_title);
+    const jobPostSeek = await jobPostSeekModel.create(sourcing.id, {
       currency: dataForm.currency,
       pay_type: dataForm.pay_type,
       pay_min: dataForm.pay_min,
@@ -39,29 +39,29 @@ class SeekService {
     try {
       await loginRpa.authenticatedPage(page, account_id);
       const { draftId } = await jobPostRpa.fillFormJobPostDraft(page, dataForm);
-      const update = await jobPostModel.updateStatus(jobPost.id, "Draft");
-      const updateSeek = await jobPostSeekModel.update(jobPost.id, { seek_id: draftId });
+      const update = await jobSourceModel.updateStatus(sourcing.id, "Draft");
+      const updateSeek = await jobPostSeekModel.update(sourcing.id, { seek_id: draftId });
 
       return { jobPost: update, jobPostSeek: updateSeek };
     } catch (err) {
-      await jobPostModel.updateStatus(jobPost.id, "Failed");
+      await jobSourceModel.updateStatus(sourcing.id, "Failed");
       throw err
     } finally {
       await browserPuppeteer.close();
     }
   }
 
-  async deleteJobPostDraft(job_posting_id, account_id) {
+  async deleteJobPostDraft(job_sourcing_id, account_id) {
     const page = await cookieService.includeCookiesIfExist(account_id); // still hardcoded from req body (user_id, service);
-    const jobPostSeek = await jobPostSeekModel.getDetailsByJobSourcingId(job_posting_id);
+    const jobPostSeek = await jobPostSeekModel.getDetailsByJobSourcingId(job_sourcing_id);
 
     try {
       await loginRpa.authenticatedPage(page, account_id);
       await jobPostRpa.deleteJobPostDraft(page, jobPostSeek.seek_id);
 
-      const deleteJobPost = await jobPostModel.delete(job_posting_id);
+      const deleted = await jobSourceModel.delete(job_sourcing_id);
 
-      return deleteJobPost;
+      return deleted;
     } catch (err) {
       throw err
     } finally {
@@ -69,9 +69,9 @@ class SeekService {
     }
   }
 
-  async updateJobPostDraft(job_posting_id, account_id, dataForm) {
+  async updateJobPostDraft(job_sourcing_id, account_id, dataForm) {
     const page = await cookieService.includeCookiesIfExist(account_id); // still hardcoded from req body (user_id, service);
-    const jobPostSeek = await jobPostSeekModel.getDetailsByJobSourcingId(job_posting_id);
+    const jobPostSeek = await jobPostSeekModel.getDetailsByJobSourcingId(job_sourcing_id);
     const account = await this.getAccountAndDecrypt(account_id);
 
     try {
@@ -82,9 +82,9 @@ class SeekService {
         throw new Error(message);
       }
 
-      const updated = await jobPostModel.update(job_posting_id, { job_title: dataForm.job_title });
-      const seekUpdated = await jobPostSeekModel.update(job_posting_id, { currency: dataForm.currency, pay_type: dataForm.pay_type, pay_min: dataForm.pay_min, pay_max: dataForm.pay_max, pay_display: dataForm.pay_display });
-      
+      const updated = await jobSourceModel.update(job_sourcing_id, { job_title: dataForm.job_title });
+      const seekUpdated = await jobPostSeekModel.update(job_sourcing_id, { currency: dataForm.currency, pay_type: dataForm.pay_type, pay_min: dataForm.pay_min, pay_max: dataForm.pay_max, pay_display: dataForm.pay_display });
+
       return { updatedJobPost: updated, updatedSeek: seekUpdated};
     } catch (err) {
       throw err
@@ -92,14 +92,14 @@ class SeekService {
       await browserPuppeteer.close();
     }
   }
-  async extractCandidates(account_id, job_posting_id, page = null) {
+  async extractCandidates(account_id, job_sourcing_id, page = null) {
     const ownPage = !page;
 
     if(!page) {
       page = await cookieService.includeCookiesIfExist(account_id);
     }
-    
-    const jobPostSeek = await jobPostSeekModel.getDetailsByJobSourcingId(job_posting_id);
+
+    const jobPostSeek = await jobPostSeekModel.getDetailsByJobSourcingId(job_sourcing_id);
 
     try {
       await loginRpa.authenticatedPage(page, account_id);
@@ -123,10 +123,8 @@ class SeekService {
         for (const candidate of candidates) {
           if (!candidate.candidate_id) continue;
 
-          await candidateModel.upsert({
-            job_posting_id,
-            candidate_status: bucket.name,
-            candidate_id: parseInt(candidate.candidate_id),
+          await applicantModel.create({
+            job_sourcing_id,
             name: candidate.name,
             last_position: candidate.last_position,
             address: candidate.address,
@@ -169,12 +167,12 @@ class SeekService {
 
           if (existing) {
             // Update existing records
-            await jobPostModel.update(existing.job_posting_id, {
+            await jobSourceModel.update(existing.job_sourcing_id, {
               job_title: data.job_title,
               status: data.status,
               additional: data.additional,
             });
-            await jobPostSeekModel.update(existing.job_posting_id, {
+            await jobPostSeekModel.update(existing.job_sourcing_id, {
               currency: data.currency,
               pay_type: data.pay_type,
               pay_min: data.pay_min,
@@ -184,8 +182,8 @@ class SeekService {
               created_by: data.created_by,
             });
           } else {
-            // Create new records
-            const jobPost = await jobPostModel.create(
+            // Create new records (synced from Seek without a corresponding job_post)
+            const sourcing = await jobSourceModel.create(
               account_id,
               null,
               'seek',
@@ -194,7 +192,7 @@ class SeekService {
               data.additional
             );
 
-            await jobPostSeekModel.create(jobPost.id, {
+            await jobPostSeekModel.create(sourcing.id, {
               seek_id: data.seek_id,
               candidate_count: data.candidate_count,
               created_date_seek: data.created_date_seek,
@@ -220,20 +218,20 @@ class SeekService {
 
   async syncAll(account_id) {
     const page = await cookieService.includeCookiesIfExist(account_id); // still hardcoded from req body (user_id, service);
-    
+
     try {
-      const syncJobPosts = await this.syncJobPostAll(account_id, page);
-      const jobPosts = await jobPostModel.getByAccountId(account_id);
+      await this.syncJobPostAll(account_id, page);
+      const sourcings = await jobSourceModel.getByAccountId(account_id);
 
       const results = [];
 
-      for(const jobPost of jobPosts) {
-        const candidates = await this.extractCandidates(account_id, jobPost.id, page);
+      for(const sourcing of sourcings) {
+        const candidates = await this.extractCandidates(account_id, sourcing.id, page);
 
         results.push(candidates);
       }
 
-      return { jobPosts, candidates: results };
+      return { sourcings, candidates: results };
     } catch(err) {
       throw err;
     } finally {

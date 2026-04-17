@@ -8,9 +8,9 @@ import extractDataRpa from "./rpa/extract-data.rpa.js"
 import sourcingModel from "../../sourcing/sourcing.model.js"
 import sourcingRecruiteModel from "../../sourcing/sourcing-recruite.model.js"
 import loginRpa from "./rpa/login.rpa.js"
-import jobPostModel from "../../job-post/job-post.model.js"
+import jobSourceModel from "../../job-source/job-source.model.js"
 import jobPostLinkedinModel from "./job-post-linkedin.model.js"
-import candidateModel from "../../candidate/candidate.model.js"
+import applicantModel from "../../applicant/applicant.model.js"
 
 import { joinArrayFields } from '../../../shared/utils/format.js';
 
@@ -85,10 +85,10 @@ class LinkedInService {
       await browserPuppeteer.close();
     }
   }
-  async extractApplicant(account_id, job_posting_id, limit) {
+  async extractApplicant(account_id, job_sourcing_id, limit) {
     const page = await cookieService.includeCookiesIfExist(account_id);
-    const jobPost = await jobPostModel.getById(job_posting_id);
-    const jobPostLinkedin = await jobPostLinkedinModel.getByJobPostingId(job_posting_id);
+    const sourcing = await jobSourceModel.getById(job_sourcing_id);
+    const jobPostLinkedin = await jobPostLinkedinModel.getByJobSourcingId(job_sourcing_id);
 
     if (!page) {
       throw new Error("No cookies found");
@@ -104,14 +104,14 @@ class LinkedInService {
 
       const candidates = await extractDataRpa.extractApplicant(page, {
         account_id,
-        job_name: jobPost.job_title,
+        job_name: sourcing.job_title,
         linkedin_id: jobPostLinkedin.linkedin_id,
         limit
       });
 
       for (const candidate of candidates) {
-        await candidateModel.create({
-          job_posting_id,
+        await applicantModel.create({
+          job_sourcing_id,
           name: candidate.name,
           last_position: candidate.last_position,
           address: candidate.address,

@@ -7,14 +7,9 @@ import authToken from '../../shared/middleware/auth.middleware.js';
 router.use(authToken);
 
 router.get('/', applicantController.getAll);
-router.get('/job/:job_id', applicantController.getByJobId);
-router.get('/:id/stages', applicantController.getStages);
+router.get('/job-sourcing/:job_sourcing_id', applicantController.getByJobSourcingId);
 router.get('/:id', applicantController.getById);
-
-router.post('/', applicantController.create);
-router.post('/:id/stages', applicantController.addStage);
-
-router.put('/:id', applicantController.update);
+router.get('/:id/cv', applicantController.downloadCv);
 
 router.delete('/:id', applicantController.delete);
 

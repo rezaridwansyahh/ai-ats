@@ -3,27 +3,17 @@ import jobPostService from './job-post.service.js';
 class JobPostController {
   async getAll(req, res) {
     try {
-      const postings = await jobPostService.getAll();
-      res.status(200).json({ message: 'List all Job Postings', postings });
+      const jobPosts = await jobPostService.getAll();
+      res.status(200).json({ message: "List all job posts", jobPosts });
     } catch (err) {
       res.status(err.status || 500).json({ message: err.message });
     }
   }
 
   async getById(req, res) {
-    const { id } = req.params
     try {
-      const posting = await jobPostService.getById(id);
-      res.status(200).json({ message: 'Job Posting found', posting });
-    } catch (err) {
-      res.status(err.status || 500).json({ message: err.message });
-    }
-  }
-
-  async getByUserId(req, res) {
-    try {
-      const { user, postings } = await jobPostService.getByUserId(req.params.user_id);
-      res.status(200).json({ message: 'List of Job Postings for this User', user, postings });
+      const jobPost = await jobPostService.getById(req.params.id);
+      res.status(200).json({ message: "Job post details", jobPost });
     } catch (err) {
       res.status(err.status || 500).json({ message: err.message });
     }
@@ -31,45 +21,17 @@ class JobPostController {
 
   async getByJobId(req, res) {
     try {
-      const { job, postings } = await jobPostService.getByJobId(req.params.job_id);
-      res.status(200).json({ message: 'List of Job Postings for this Job', postings });
+      const jobPosts = await jobPostService.getByJobId(req.params.job_id);
+      res.status(200).json({ message: "Job posts for job", jobPosts });
     } catch (err) {
       res.status(err.status || 500).json({ message: err.message });
     }
   }
 
-  async getByUserIdAndStatus(req, res) {
+  async create(req, res) {
     try {
-      const { user, postings, status } = await jobPostService.getByUserIdAndStatus(req.params.user_id, req.query.status);
-      res.status(200).json({ message: `List of ${status} Job Postings for this User`, user, postings });
-    } catch (err) {
-      res.status(err.status || 500).json({ message: err.message });
-    }
-  }
-
-  async getFullById(req, res) {
-    try {
-      const fullPosting = await jobPostService.getFullById(req.params.id);
-      res.status(200).json({ message: 'Full Job Posting details', posting: fullPosting });
-    } catch (err) {
-      res.status(err.status || 500).json({ message: err.message });
-    }
-  }
-
-  async getSeekByUserId(req, res) {
-    try {
-      const { user, postings } = await jobPostService.getSeekByUserId(req.params.user_id);
-      res.status(200).json({ message: 'List of full Job Postings for this User', user, postings });
-    } catch (err) {
-      res.status(err.status || 500).json({ message: err.message });
-    }
-  }
-
-  async submitSeek(req, res) {
-    try {
-      const { user_id, service, dataForm } = req.body;
-      const result = await jobPostService.submitSeek(user_id, service, dataForm);
-      res.status(201).json({ message: 'Seek Job Posting submitted', ...result });
+      const jobPost = await jobPostService.create(req.body);
+      res.status(201).json({ message: "Job post created successfully", jobPost });
     } catch (err) {
       res.status(err.status || 500).json({ message: err.message });
     }
@@ -77,25 +39,8 @@ class JobPostController {
 
   async update(req, res) {
     try {
-      const { job_title, job_desc, job_location, work_option, work_type } = req.body;
-      const fields = {};
-      if (job_title)    fields.job_title    = job_title;
-      if (job_desc)     fields.job_desc     = job_desc;
-      if (job_location) fields.job_location = job_location;
-      if (work_option)  fields.work_option  = work_option;
-      if (work_type)    fields.work_type    = work_type;
-
-      const updatedPosting = await jobPostService.update(req.params.id, fields);
-      res.status(200).json({ message: 'Job Posting updated', updatedPosting });
-    } catch (err) {
-      res.status(err.status || 500).json({ message: err.message });
-    }
-  }
-
-  async updateStatus(req, res) {
-    try {
-      const updatedPosting = await jobPostService.updateStatus(req.params.id, req.body.status);
-      res.status(200).json({ message: `Job Posting status updated to ${req.body.status}`, updatedPosting });
+      const jobPost = await jobPostService.update(req.params.id, req.body);
+      res.status(200).json({ message: "Job post updated successfully", jobPost });
     } catch (err) {
       res.status(err.status || 500).json({ message: err.message });
     }
@@ -103,8 +48,18 @@ class JobPostController {
 
   async delete(req, res) {
     try {
-      const posting = await jobPostService.delete(req.params.id);
-      res.status(200).json({ message: 'Job Posting deleted', posting });
+      const jobPost = await jobPostService.delete(req.params.id);
+      res.status(200).json({ message: "Job post deleted successfully", jobPost });
+    } catch (err) {
+      res.status(err.status || 500).json({ message: err.message });
+    }
+  }
+
+  async publish(req, res) {
+    try {
+      const user_id = req.user?.id ?? req.body.user_id;
+      const result = await jobPostService.publish({ ...req.body, user_id });
+      res.status(201).json({ message: "Job published", ...result });
     } catch (err) {
       res.status(err.status || 500).json({ message: err.message });
     }

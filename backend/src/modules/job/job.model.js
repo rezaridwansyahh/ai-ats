@@ -39,7 +39,7 @@ class JobModel {
           )
         ) FILTER (WHERE mc.id IS NOT NULL) AS candidates
       FROM core_job cj
-      LEFT JOIN master_candidates mc ON cj.id = mc.job_id
+      LEFT JOIN master_candidate mc ON cj.id = mc.job_id
       WHERE cj.id = $1
       GROUP BY cj.id
     `, [id]);

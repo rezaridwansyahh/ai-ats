@@ -344,6 +344,7 @@ export default function JobStagesStep({ selectedJob }) {
     ? stages.length > 0 && stages.every(s => s.name?.trim())
     : selectedTemplateId !== null;
 
+  console.log(selectedJob);
   return (
     <div className="space-y-5">
 
