@@ -10,11 +10,13 @@ import rolePermissionsData from '../data/role_permissions.js';
 import userRolesData from '../data/user_role.js';
 import stageCategoriesData from '../data/stage_categories.js';
 import { templateStages, templateStageRows } from '../data/template_stages.js';
+import questionsData from '../data/questions.js';
 
 const seed = async () => {
   await getDb().query('BEGIN');
 
   try {
+    await getDb().query('DELETE FROM assessment_questions');
     await getDb().query('DELETE FROM job_stage');
     await getDb().query('DELETE FROM master_template_stage');
     await getDb().query('DELETE FROM recruitment_stage_category');
@@ -127,6 +129,15 @@ const seed = async () => {
         `INSERT INTO job_stage (master_id, stage_type_id, name, stage_order)
          VALUES ($1, $2, $3, $4)`,
         [row.master_id, row.stage_type_id, row.name, row.stage_order]
+      );
+    }
+
+    // 12. assessment questions
+    for (const q of questionsData) {
+      await getDb().query(
+        `INSERT INTO assessment_questions (id, text, options, correct, points)
+         VALUES ($1, $2, $3, $4, $5)`,
+        [q.id, q.text, JSON.stringify(q.options), q.correct, q.points]
       );
     }
 

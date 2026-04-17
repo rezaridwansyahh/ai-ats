@@ -14,6 +14,8 @@ import JobManagementPage from "./pages/JobManagement"
 import SourceManagementPage from "./pages/SourceManagement"
 import RecruitersPage from "./pages/Recruiters"
 import ComingSoonPage from "./pages/ComingSoon"
+import AssessmentPage from "./pages/Assessment"
+import ReportPage from "./pages/Report"
 
 function App() {
   return (
@@ -41,7 +43,8 @@ function App() {
         <Route path="/sourcing/source-management" element={<SourceManagementPage />} />
 
         <Route path="/candidates/search" element={<CandidateSearchPage />} />
-
+        <Route path="/selection/assessment" element={<AssessmentPage />} />
+        <Route path="/selection/report" element={<ReportPage />} />
         {/* Catch-all: any unregistered path shows Coming Soon */}
         <Route path="*" element={<ComingSoonPage />} />
       </Route>

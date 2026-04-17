@@ -41,4 +41,10 @@ export default [
      Users (module_id: 5) — continued
   ========================= */
   { id: 21, module_id: 5, menu_id: 21 }, // Users -> Recruiters
+
+  /* =========================
+     Selection (module_id: 9)
+  ========================= */
+  { id: 22, module_id: 9, menu_id: 22 }, // Selection -> Assessment
+  { id: 23, module_id: 9, menu_id: 23 }, // Selection -> Report
 ];

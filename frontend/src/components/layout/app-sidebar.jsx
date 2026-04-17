@@ -42,6 +42,7 @@ import {
   ChevronsUpDown,
   Briefcase,
   Search,
+  ClipboardList
 } from 'lucide-react';
 
 const iconMap = {
@@ -52,6 +53,7 @@ const iconMap = {
   'Job Postings':   Package,
   'Job Management': Briefcase,
   'Sourcing':       Briefcase,
+  'Selection':      ClipboardList
 };
 
 const routeMap = {
@@ -70,7 +72,9 @@ const routeMap = {
   'LinkedIn Sourcing': '/job-management/linkedin-sourcing',
   'Recruiters':        '/users/recruiters',
   'Job Management':    '/sourcing/job-management',
-  'Source Management': '/sourcing/source-management'
+  'Source Management': '/sourcing/source-management',
+  'Assessment':        '/selection/assessment',
+  'Report':            '/selection/report'
 };
 
 const useSidebarStructure = (permissions) => {

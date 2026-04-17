@@ -25,6 +25,9 @@ import jobSourcing from './src/modules/job-source/job-source.router.js'
 import job from "./src/modules/job/job.route.js"
 import applicant from "./src/modules/applicant/applicant.route.js"
 import candidatePipeline from "./src/modules/candidate-pipeline/candidate-pipeline.route.js"
+import participant from "./src/modules/assessment/participant/participant.route.js"
+import assessmentResult from "./src/modules/assessment/assessment-result/assessment-result.route.js"
+import question from "./src/modules/assessment/question/question.route.js"
 import sourcing from "./src/modules/sourcing/sourcing.route.js"
 import recruiter from "./src/modules/recruiter/recruiter.route.js"
 import pipeline from "./src/modules/pipeline/pipeline.route.js"
@@ -61,6 +64,9 @@ portal.use("/api/stage-category", stageCategory);
 portal.use("/api/template-stage", templateStage);
 portal.use("/api/sla", sla);
 portal.use("/api/automation-setting", automationSetting);
+portal.use("/api/participant", participant);
+portal.use("/api/assessment-result", assessmentResult);
+portal.use("/api/question", question);
 
 app.use("/portal", portal);
 app.use("/api/auth", auth);
@@ -77,6 +83,9 @@ app.use("/api/job-posting", jobPosting);
 app.use("/api/job", job);
 app.use("/api/applicant", applicant);
 app.use("/api/candidate-pipeline", candidatePipeline);
+app.use("/api/participant", participant);
+app.use("/api/assessment-result", assessmentResult);
+app.use("/api/question", question);
 app.use("/api/sourcing", sourcing);
 app.use("/api/recruiter", recruiter);
 app.use("/api/pipeline", pipeline);
