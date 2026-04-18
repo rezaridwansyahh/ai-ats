@@ -33,7 +33,6 @@ DROP TABLE IF EXISTS master_template_stage CASCADE;
 DROP TABLE IF EXISTS job_stage_category CASCADE;
 DROP TABLE IF EXISTS recruitment_stage_category CASCADE;
 DROP TABLE IF EXISTS job_automation_settings CASCADE;
-DROP TABLE IF EXISTS job_stage_sla CASCADE;
 DROP TABLE IF EXISTS assessment_results CASCADE;
 DROP TABLE IF EXISTS assessment_questions CASCADE;
 DROP TABLE IF EXISTS participants CASCADE;
@@ -188,7 +187,9 @@ CREATE TABLE core_job (
   preferred_skills JSONB,
   -- Status
   status status_type NOT NULL DEFAULT 'Draft',
-  sla_deadline_days INTEGER,
+  sla_start_date DATE NULL DEFAULT NOW(),
+  sla_end_date DATE NULL DEFAULT NOW(),
+
   created_at TIMESTAMP NOT NULL DEFAULT NOW(),
   updated_at TIMESTAMP NOT NULL DEFAULT NOW()
 );
@@ -359,16 +360,6 @@ CREATE TABLE master_recruiters (
   status recruiter_status_type NOT NULL DEFAULT 'Active',
   created_at TIMESTAMP NOT NULL DEFAULT NOW(),
   updated_at TIMESTAMP NOT NULL DEFAULT NOW()
-);
-
-CREATE TABLE job_stage_sla (
-  id SERIAL PRIMARY KEY,
-  job_id INTEGER NOT NULL REFERENCES core_job(id) ON DELETE CASCADE,
-  stage_id INTEGER NOT NULL REFERENCES job_stage(id) ON DELETE CASCADE,
-  sla_days INTEGER NOT NULL,
-  created_at TIMESTAMP NOT NULL DEFAULT NOW(),
-  updated_at TIMESTAMP NOT NULL DEFAULT NOW(),
-  UNIQUE(job_id, stage_id)
 );
 
 CREATE TABLE job_automation_settings (

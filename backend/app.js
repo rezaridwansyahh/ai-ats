@@ -33,7 +33,6 @@ import recruiter from "./src/modules/recruiter/recruiter.route.js"
 import pipeline from "./src/modules/pipeline/pipeline.route.js"
 import stageCategory from "./src/modules/stage-category/stage-category.route.js"
 import templateStage from "./src/modules/template-stage/template-stage.route.js"
-import sla from "./src/modules/sla/sla.router.js"
 import automationSetting from "./src/modules/automation-setting/automation.route.js"
 
 app.use(express.json());
@@ -62,7 +61,6 @@ portal.use("/api/recruiter", recruiter);
 portal.use("/api/pipeline", pipeline);
 portal.use("/api/stage-category", stageCategory);
 portal.use("/api/template-stage", templateStage);
-portal.use("/api/sla", sla);
 portal.use("/api/automation-setting", automationSetting);
 portal.use("/api/participant", participant);
 portal.use("/api/assessment-result", assessmentResult);
@@ -91,7 +89,6 @@ app.use("/api/recruiter", recruiter);
 app.use("/api/pipeline", pipeline);
 app.use("/api/stage-category", stageCategory);
 app.use("/api/template-stage", templateStage);
-app.use("/api/sla", sla);
 app.use("/api/automation-setting", automationSetting);
 
 const PORT = process.env.PORT || 3000;

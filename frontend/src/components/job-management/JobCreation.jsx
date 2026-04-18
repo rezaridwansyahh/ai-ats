@@ -2,6 +2,7 @@ import { useState, useEffect, useRef, useMemo } from 'react';
 import {
   Plus, Loader2, Pencil, Trash2, Upload, Sparkles, X, Star, Check,
   Bold, Italic, Underline, List, ListOrdered, Link, Bot,
+  Calendar as CalendarIcon,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -16,6 +17,8 @@ import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from '@/components/ui/select';
 import { generateJobAI } from '@/api/job.api';
+import { Popover, PopoverTrigger, PopoverContent } from '@/components/ui/popover';
+import { Calendar } from '@/components/ui/calendar';
 
 const WORK_OPTIONS = ['On-site', 'Hybrid', 'Remote'];
 const WORK_TYPES = ['Full-time', 'Part-time', 'Contract', 'Casual'];
@@ -43,7 +46,17 @@ const INITIAL_FORM = {
   company_url: '',
   recruiter: '',
   qualifications: '',
+  sla_start_date: '',
+  sla_end_date: '',
 };
+
+// ── Date helpers (timezone-safe YYYY-MM-DD ↔ Date) ─────────────────
+const parseLocalDate = (str) => {
+  const [y, m, d] = str.split('-').map(Number);
+  return new Date(y, m - 1, d);
+};
+const formatLocalDate = (d) =>
+  `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
 
 // ── Star Rating Component ───────────────────────────────────────────
 function StarRating({ value, onChange, accent }) {
@@ -170,6 +183,14 @@ export default function JobCreationStep({ jobs, loading, recruiters, onCreateJob
   // Reset page when filters change
   useEffect(() => { setPage(1); }, [searchQuery, statusFilter]);
 
+  const slaDuration = useMemo(() => {
+    if (!form.sla_start_date || !form.sla_end_date) return null;
+    const start = new Date(form.sla_start_date);
+    const end = new Date(form.sla_end_date);
+    const days = Math.round((end - start) / (1000 * 60 * 60 * 24)) + 1;
+    return days > 0 ? days : null;
+  }, [form.sla_start_date, form.sla_end_date]);
+
   // Auto-save draft state
   const [saveStatus, setSaveStatus] = useState('idle');
   const [draftId, setDraftId] = useState(null);
@@ -272,6 +293,8 @@ export default function JobCreationStep({ jobs, loading, recruiters, onCreateJob
       company_url: job.company_url || '',
       recruiter: '',
       qualifications: job.qualifications || '',
+      sla_start_date: job.sla_start_date ? formatLocalDate(new Date(job.sla_start_date)) : '',
+      sla_end_date: job.sla_end_date ? formatLocalDate(new Date(job.sla_end_date)) : '',
     });
     setRequiredSkills(job.required_skills || []);
     setPreferredSkills(job.preferred_skills || []);
@@ -716,6 +739,65 @@ export default function JobCreationStep({ jobs, loading, recruiters, onCreateJob
                 />
               </div>
 
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader className="pb-3">
+              <CardTitle className="text-sm">Timeline for job </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-3">
+              <Popover>
+                <PopoverTrigger asChild>
+                  <div
+                    role="button"
+                    tabIndex={0}
+                    className="grid grid-cols-2 rounded-md border border-input bg-background cursor-pointer hover:bg-muted/30 transition-colors focus:outline-none focus:ring-1 focus:ring-ring"
+                  >
+                    <div className="flex flex-col gap-1 p-3 border-r">
+                      <span className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wide">Start Date</span>
+                      <div className="flex items-center gap-2">
+                        <CalendarIcon className="h-4 w-4 text-muted-foreground shrink-0" />
+                        <span className={`text-sm ${form.sla_start_date ? 'font-medium' : 'text-muted-foreground'}`}>
+                          {form.sla_start_date || 'Pick start date'}
+                        </span>
+                      </div>
+                    </div>
+                    <div className="flex flex-col gap-1 p-3">
+                      <span className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wide">End Date</span>
+                      <div className="flex items-center gap-2">
+                        <CalendarIcon className="h-4 w-4 text-muted-foreground shrink-0" />
+                        <span className={`text-sm ${form.sla_end_date ? 'font-medium' : 'text-muted-foreground'}`}>
+                          {form.sla_end_date || 'Pick end date'}
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+                </PopoverTrigger>
+                <PopoverContent className="w-auto p-0" align="center">
+                  <Calendar
+                    mode="range"
+                    selected={{
+                      from: form.sla_start_date ? parseLocalDate(form.sla_start_date) : undefined,
+                      to: form.sla_end_date ? parseLocalDate(form.sla_end_date) : undefined,
+                    }}
+                    onSelect={(range) => {
+                      handleChange('sla_start_date', range?.from ? formatLocalDate(range.from) : '');
+                      handleChange('sla_end_date', range?.to ? formatLocalDate(range.to) : '');
+                    }}
+                    numberOfMonths={2}
+                  />
+                </PopoverContent>
+              </Popover>
+
+              {slaDuration && (
+                <div className="flex items-center gap-2">
+                  <span className="text-[11px] text-muted-foreground">Duration:</span>
+                  <Badge variant="secondary" className="bg-primary/10 text-primary border-0 text-[10px] font-semibold">
+                    {slaDuration} {slaDuration === 1 ? 'day' : 'days'}
+                  </Badge>
+                </div>
+              )}
             </CardContent>
           </Card>
           </div>
