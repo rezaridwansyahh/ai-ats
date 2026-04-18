@@ -28,18 +28,6 @@ import whatsapp from '@/assets/logos/whatsapp.png';
 
 const LOGOS = { linkedin, seek, glints, instagram, facebook, whatsapp };
 
-const PUBLIC_CHANNELS = [
-  { id: 'linkedin', name: 'LinkedIn' },
-  { id: 'seek', name: 'Seek' },
-  { id: 'glints', name: 'Glints' }
-];
-
-const PRIVATE_CHANNELS = [
-  { id: 'instagram', name: 'Instagram' },
-  { id: 'facebook', name: 'Facebook' },
-  { id: 'whatsapp', name: 'WhatsApp' }
-];
-
 const STATUS_COLORS = {
   Draft: 'bg-orange-50 text-orange-600 border-orange-200',
   Active: 'bg-emerald-50 text-emerald-600 border-emerald-200',
@@ -51,9 +39,8 @@ const STATUS_COLORS = {
 
 export default function JobListStep({ selectedJob }) {
   const [jobPost, setJobPost] = useState(null);
-  const [jobSourcing, setJobSourcing] = useState([]);
   const [loading, setLoading] = useState(false);
-  const [error, setError] = useState(null)
+  const [error, setError] = useState(null);
 
   const navigate = useNavigate();
 

@@ -62,7 +62,7 @@ CREATE TYPE work_type_type AS ENUM ('Full-time', 'Part-time', 'Contract', 'Casua
 CREATE TYPE pay_type_type AS ENUM ('Hourly', 'Monthly', 'Annually');
 CREATE TYPE currency_type AS ENUM ('AUD', 'HKD', 'IDR', 'MYR', 'NZD', 'PHP', 'SGD', 'THB', 'USD');
 CREATE TYPE pay_display_type AS ENUM ('Show', 'Hide');
-CREATE TYPE platform_type AS ENUM ('linkedin', 'seek', 'glints', 'instagram', 'facebook', 'whatsapp');
+CREATE TYPE platform_type AS ENUM ('linkedin', 'seek', 'glints', 'instagram', 'facebook', 'whatsapp', 'internal');
 CREATE TYPE candidate_status_type AS ENUM ('Kotak masuk', 'Prescreen', 'Terpilih', 'Wawancara', 'Penawaran', 'Menerima Tawaran', 'Tidak cocok');
 CREATE TYPE recruiter_status_type AS ENUM ('Active', 'Onboarding');
 CREATE TYPE booking_status_type AS ENUM ('pending', 'approved', 'rejected');

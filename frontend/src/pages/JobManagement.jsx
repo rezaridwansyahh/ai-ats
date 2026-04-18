@@ -48,7 +48,6 @@ export default function JobManagementPage() {
   const [validationErrors, setValidationErrors] = useState([]);
   const [postingSummary, setPostingSummary] = useState(null);
   const [showPostingConfirm, setShowPostingConfirm] = useState(false);
-  const [accounts, setAccounts] = useState([]);
 
   const fetchJobs = useCallback(async () => {
     setLoading(true);
@@ -71,23 +70,10 @@ export default function JobManagementPage() {
     }
   }, []);
 
-  const user = JSON.parse(localStorage.getItem('user') || '{}');
-
-  const fetchAccounts = useCallback(async () => {
-    if (!user?.id) return;
-    try {
-      const { data } = await getJobAccountsByUserId(user.id);
-      setAccounts(data.accounts || []);
-    } catch {
-      // no-op
-    }
-  }, [user?.id]);
-
   useEffect(() => {
     fetchJobs();
     fetchRecruiters();
-    fetchAccounts();
-  }, [fetchJobs, fetchRecruiters, fetchAccounts]);
+  }, [fetchJobs, fetchRecruiters]);
 
   const handleCreateJob = async (data) => {
     const res = await createJob(data);

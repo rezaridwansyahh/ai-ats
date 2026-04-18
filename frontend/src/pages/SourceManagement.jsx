@@ -10,6 +10,8 @@ import {
 import { getJobs, createJob, updateJob, deleteJob } from '@/api/job.api';
 import { getJobAccountsByUserId } from '@/api/job-accounts.api';
 import JobSelection from '@/components/source-management/JobSelection';
+import ListSource from '@/components/source-management/ListSource';
+import SourceSetup from '@/components/source-management/SourceSetup';
 
 const STEPS = [
   { key: 'selection', label: 'Job Select', icon: FileText },
@@ -37,7 +39,7 @@ export default function SourceManagementPage() {
   const [activeStep, setActiveStep] = useState(0);
   const [jobs, setJobs] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [selectedJobId, setSelectedJobId] = useState(null);
+  const [selectedJob, setSelectedJob] = useState(null);
   const [validationErrors, setValidationErrors] = useState([]);
 
   const fetchJobs = useCallback(async () => {
@@ -52,22 +54,9 @@ export default function SourceManagementPage() {
     }
   }, []);
 
-  const user = JSON.parse(localStorage.getItem('user') || '{}');
-
-  const fetchAccounts = useCallback(async () => {
-    if (!user?.id) return;
-    try {
-      const { data } = await getJobAccountsByUserId(user.id);
-      setAccounts(data.accounts || []);
-    } catch {
-      // no-op
-    }
-  }, [user?.id]);
-
   useEffect(() => {
     fetchJobs();
-    fetchAccounts();
-  }, [fetchJobs, fetchAccounts]);
+  }, [fetchJobs]);
 
   const handleNext = () => {
     if (activeStep === 2) {
@@ -140,7 +129,7 @@ export default function SourceManagementPage() {
             variant="ghost"
             size="sm"
             className="text-xs"
-            disabled={activeStep === 0 && !selectedJobId }
+            disabled={activeStep === 0 && !selectedJob }
             onClick={handleNext}
           >
             Next: {STEPS[activeStep + 1].label}
@@ -154,8 +143,20 @@ export default function SourceManagementPage() {
         <JobSelection
           jobs={jobs}
           loading={loading}
-          selectedJobId={selectedJobId}
-          onSelectJob={setSelectedJobId}
+          selectedJob={selectedJob}
+          onSelectJob={setSelectedJob}
+        />
+      )}
+
+      {activeStep === 1 && (
+        <ListSource
+          selectedJob={selectedJob}
+        />
+      )}
+
+      {activeStep === 2 && (
+        <SourceSetup
+          selectedJob={selectedJob}
         />
       )}
     </div>

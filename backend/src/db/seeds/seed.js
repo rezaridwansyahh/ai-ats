@@ -11,11 +11,15 @@ import userRolesData from '../data/user_role.js';
 import stageCategoriesData from '../data/stage_categories.js';
 import { templateStages, templateStageRows } from '../data/template_stages.js';
 import questionsData from '../data/questions.js';
+import { jobAccounts, coreJobs, jobSourcing } from '../data/job_sourcing.js';
 
 const seed = async () => {
   await getDb().query('BEGIN');
 
   try {
+    await getDb().query('DELETE FROM core_job_sourcing');
+    await getDb().query('DELETE FROM core_job');
+    await getDb().query('DELETE FROM master_job_account');
     await getDb().query('DELETE FROM assessment_questions');
     await getDb().query('DELETE FROM job_stage');
     await getDb().query('DELETE FROM master_template_stage');
@@ -138,6 +142,41 @@ const seed = async () => {
         `INSERT INTO assessment_questions (id, text, options, correct, points)
          VALUES ($1, $2, $3, $4, $5)`,
         [q.id, q.text, JSON.stringify(q.options), q.correct, q.points]
+      );
+    }
+
+    // 13. master_job_account
+    for (const acc of jobAccounts) {
+      await getDb().query(
+        `INSERT INTO master_job_account (id, portal_name, email, password, user_id, status_connection, status_sync)
+         VALUES ($1, $2, $3, $4, $5, $6, $7)`,
+        [acc.id, acc.portal_name, acc.email, acc.password, acc.user_id, acc.status_connection, acc.status_sync]
+      );
+    }
+
+    // 14. core_job
+    for (const job of coreJobs) {
+      await getDb().query(
+        `INSERT INTO core_job (
+           id, job_title, job_desc, job_location, work_option, work_type,
+           pay_type, currency, pay_min, pay_max, pay_display, status
+         )
+         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)`,
+        [
+          job.id, job.job_title, job.job_desc, job.job_location, job.work_option, job.work_type,
+          job.pay_type, job.currency, job.pay_min, job.pay_max, job.pay_display, job.status
+        ]
+      );
+    }
+
+    // 15. core_job_sourcing (job_post_id left null — posts are created via SaaS publish flow)
+    for (const s of jobSourcing) {
+      await getDb().query(
+        `INSERT INTO core_job_sourcing (
+           id, account_id, job_post_id, job_title, platform, platform_job_id, status, last_sync
+         )
+         VALUES ($1, $2, $3, $4, $5, $6, $7, $8)`,
+        [s.id, s.account_id, s.job_post_id, s.job_title, s.platform, s.platform_job_id, s.status, s.last_sync]
       );
     }
 

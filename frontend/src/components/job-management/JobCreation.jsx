@@ -25,7 +25,7 @@ const PAY_DISPLAY_OPTIONS = ['Show', 'Hide'];
 const SENIORITY_LEVELS = ['Internship', 'Entry Level', 'Associate', 'Mid-Senior Level', 'Director', 'Executive'];
 const DEFAULT_BENEFITS = ['Health Insurance', 'Life Insurance', 'Housing', 'Company Car', 'Gym Membership', 'Training & Dev'];
 const STATUS_OPTIONS = ['Draft', 'Active', 'Running', 'Expired', 'Failed', 'Blocked'];
-const PAGE_SIZE = 3;
+const PAGE_SIZE = 5;
 
 const INITIAL_FORM = {
   job_title: '',
