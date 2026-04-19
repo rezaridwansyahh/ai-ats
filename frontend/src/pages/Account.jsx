@@ -150,7 +150,7 @@ export default function AccountPage() {
                     <div className="h-10 w-10 rounded-lg flex items-center justify-center text-white text-[10px] font-bold shrink-0">
                       <img src={LOGOS[channels.id]} />
                     </div>
-                    <div className="flex-1 min-w-50">
+                    <div className="flex-1 min-w-80">
                       <span className="text-sm font-semibold">{channels.name}</span>
                       <div className="text-xs text-gray-400">
                         Account: {account ? account?.email : '-'}
@@ -193,9 +193,9 @@ export default function AccountPage() {
                         Sync Status :
                       </div>
                       <div className="flex items-center">
-                        { account?.status_sync === 'Connected' ?
+                        { account?.status_sync === 'Sync' ?
                           <Badge variant="outline" className="text-[9px] px-1.5 py-0 bg-emerald-50 text-emerald-600 border-emerald-200">
-                            Connected
+                            Synced
                           </Badge> :
                           account?.status_sync === 'Re-sync' ? 
                             <Badge variant="outline" className="text-[9px] px-1.5 py-0 bg-gray-50 text-gray-600 border-gray-200">

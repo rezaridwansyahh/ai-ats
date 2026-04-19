@@ -17,9 +17,9 @@ import {
 } from '@/components/ui/select';
 
 const STATUS_OPTIONS = ['Active', 'Running'];
-const PAGE_SIZE = 3;
+const PAGE_SIZE = 5;
 
-export default function JobSelectionStep({ jobs, loading, selectedJobId, onSelectJob}) {
+export default function JobSelectionStep({ jobs, loading, selectedJob, onSelectJob}) {
   // Search, filter & pagination
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
@@ -75,11 +75,11 @@ export default function JobSelectionStep({ jobs, loading, selectedJobId, onSelec
               {paginatedJobs.map(job => (
                 <div
                   key={job.id}
-                  onClick={() => (job.status === 'Draft' || job.status === 'Reconfigure') && onSelectJob(selectedJobId === job.id ? null : job.id)}
+                  onClick={() => (job.status === 'Active') && onSelectJob(selectedJob === job ? null : job)}
                   className={`flex items-center justify-between p-3 border rounded-lg transition-colors ${
-                    selectedJobId === job.id
+                    selectedJob === job
                       ? 'ring-2 ring-primary bg-primary/5'
-                      : (job.status === 'Draft' || job.status === 'Reconfigure')
+                      : (job.status === 'Active')
                         ? 'hover:bg-muted/30 cursor-pointer'
                         : 'opacity-60'
                   }`}
