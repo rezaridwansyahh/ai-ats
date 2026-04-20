@@ -32,6 +32,8 @@ DROP TABLE IF EXISTS master_template_stage CASCADE;
 DROP TABLE IF EXISTS job_stage_category CASCADE;
 DROP TABLE IF EXISTS recruitment_stage_category CASCADE;
 DROP TABLE IF EXISTS job_automation_settings CASCADE;
+DROP TABLE IF EXISTS assessment_battery_results CASCADE;
+DROP TABLE IF EXISTS assessment_sessions CASCADE;
 DROP TABLE IF EXISTS assessment_results CASCADE;
 DROP TABLE IF EXISTS assessment_questions CASCADE;
 DROP TABLE IF EXISTS participants CASCADE;
@@ -70,8 +72,10 @@ CREATE TYPE status_connection_type AS ENUM ('Connected', 'Not Connected', 'Error
 CREATE TYPE status_sync_type AS ENUM ('Sync', 'Not Sync', 'Error');
 CREATE TYPE job_post_type AS ENUM ('Internal', 'Publish');
 CREATE TYPE sourcing_status_type AS ENUM ('Pending', 'Processing', 'Done', 'Failed');
-
 CREATE TYPE stage_category_type AS ENUM ('Job Management', 'Screening & Matching', 'Interview', 'Assessment', 'Background Check', 'Offering & Contract', 'Other');
+CREATE TYPE battery_type AS ENUM ('A', 'B', 'C', 'D');
+CREATE TYPE status_session_type AS ENUM ('invited', 'in_progress', 'completed', 'expired');
+CREATE EXTENSION IF NOT EXISTS pgcrypto;
 
 CREATE TABLE master_users (
   id SERIAL PRIMARY KEY,
@@ -421,6 +425,34 @@ CREATE TABLE assessment_results(
   participant_id INTEGER NOT NULL UNIQUE REFERENCES participants(id) ON DELETE CASCADE,
   score INTEGER NOT NULL,
   answers JSONB NOT NULL,
+  created_at TIMESTAMP NOT NULL DEFAULT NOW(),
+  updated_at TIMESTAMP NOT NULL DEFAULT NOW()
+);
+
+CREATE TABLE assessment_sessions(
+  id SERIAL PRIMARY KEY,
+  token UUID NOT NULL UNIQUE DEFAULT gen_random_uuid(),
+  battery battery_type NOT NULL,
+  participant_id INTEGER REFERENCES participants(id) ON SET NULL,
+  job_id INTEGER REFERENCES core_job(id) ON SET NULL,
+  created_by INTEGER REFERENCES master_users(id) ON DELETE SET NULL,
+  status status_session_type NOT NULL DEFAULT 'invited',
+  expired_at TIMESTAMP NOT NULL,
+  submitted_at TIMESTAMP,
+  notes TEXT,
+  created_at TIMESTAMP NOT NULL DEFAULT NOW(),
+  updated_at TIMESTAMP NOT NULL DEFAULT NOW()
+);
+
+CREATE TABLE assessment_battery_results(
+  id SERIAL PRIMARY KEY,
+  session_id INTEGER NOT NULL UNIQUE REFERENCES assessment_sessions(id) ON DELETE CASCADE,
+  profile JSONB NOT NULL,
+  result JSONB NOT NULL,
+  scores JSONB,
+  report JSONB,
+  recruiter_recommendation VARCHAR(255),
+  recruiter_note TEXT,
   created_at TIMESTAMP NOT NULL DEFAULT NOW(),
   updated_at TIMESTAMP NOT NULL DEFAULT NOW()
 );
