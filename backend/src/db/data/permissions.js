@@ -102,12 +102,20 @@ export default [
   { id: 71, module_menu_id: 19, functionality: 'delete' },
 
   /* ===================================================================
-     Users -> Recruiters (module_menu_id: 20)
+     Sourcing -> Talent Pool (module_menu_id: 24)
   =================================================================== */
-  { id: 72, module_menu_id: 20, functionality: 'read' },
-  { id: 73, module_menu_id: 20, functionality: 'create' },
-  { id: 74, module_menu_id: 20, functionality: 'update' },
-  { id: 75, module_menu_id: 20, functionality: 'delete' },
+  { id: 72, module_menu_id: 24, functionality: 'read' },
+  { id: 73, module_menu_id: 24, functionality: 'create' },
+  { id: 74, module_menu_id: 24, functionality: 'update' },
+  { id: 75, module_menu_id: 24, functionality: 'delete' },
+
+  /* ===================================================================
+     Sourcing -> Source Candidate (module_menu_id: 25)
+  =================================================================== */
+  { id: 84, module_menu_id: 25, functionality: 'read' },
+  { id: 85, module_menu_id: 25, functionality: 'create' },
+  { id: 86, module_menu_id: 25, functionality: 'update' },
+  { id: 87, module_menu_id: 25, functionality: 'delete' },
 
   /* ===================================================================
      Selection -> Assessment (module_menu_id: 22)

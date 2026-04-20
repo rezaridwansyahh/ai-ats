@@ -78,7 +78,7 @@ export default [
   role_id: 1,
   permission_id: 68 + i
 })),
-// Users -> Recruiters (72–75)
+// Sourcing -> Talent Pool (72–75)
 ...Array.from({ length: 4 }, (_, i) => ({
   id: 54 + i,
   role_id: 1,
@@ -95,6 +95,12 @@ export default [
   id: 62 + i,
   role_id: 1,
   permission_id: 80 + i
+})),
+// Sourcing -> Source Candidate (84–87)
+...Array.from({ length: 4 }, (_, i) => ({
+  id: 66 + i,
+  role_id: 1,
+  permission_id: 84 + i
 })),
 
 /* ============================================================================
@@ -165,7 +171,7 @@ export default [
   { id: 152, role_id: 2, permission_id: 69 },
   { id: 153, role_id: 2, permission_id: 70 },
 
-  // Users -> Recruiters (72–74: read/create/update)
+  // Sourcing -> Talent Pool (72–74: read/create/update)
   { id: 160, role_id: 2, permission_id: 72 },
   { id: 161, role_id: 2, permission_id: 73 },
   { id: 162, role_id: 2, permission_id: 74 },
@@ -179,6 +185,11 @@ export default [
   { id: 166, role_id: 2, permission_id: 80 },
   { id: 167, role_id: 2, permission_id: 81 },
   { id: 168, role_id: 2, permission_id: 82 },
+
+  // Sourcing -> Source Candidate (84–86: read/create/update)
+  { id: 169, role_id: 2, permission_id: 84 },
+  { id: 170, role_id: 2, permission_id: 85 },
+  { id: 171, role_id: 2, permission_id: 86 },
 
 /* ============================================================================
    STAFF (role_id: 3)
@@ -234,7 +245,7 @@ export default [
   { id: 230, role_id: 3, permission_id: 68 },
   { id: 231, role_id: 3, permission_id: 69 },
 
-  // Users -> Recruiters (read + create)
+  // Sourcing -> Talent Pool (read + create)
   { id: 232, role_id: 3, permission_id: 72 },
   { id: 233, role_id: 3, permission_id: 73 },
 
@@ -245,6 +256,10 @@ export default [
   // Selection -> Report (read + create)
   { id: 236, role_id: 3, permission_id: 80 },
   { id: 237, role_id: 3, permission_id: 81 },
+
+  // Sourcing -> Source Candidate (read + create)
+  { id: 238, role_id: 3, permission_id: 84 },
+  { id: 239, role_id: 3, permission_id: 85 },
 
 /* ============================================================================
    INTERN (role_id: 4)
@@ -262,8 +277,9 @@ export default [
   { id: 313, role_id: 4, permission_id: 56 },  // Seek Sourcing (read)
   { id: 314, role_id: 4, permission_id: 60 },  // LinkedIn Sourcing (read)
   { id: 316, role_id: 4, permission_id: 68 },  // Sourcing -> Job Management (read)
-  { id: 317, role_id: 4, permission_id: 72 },  // Recruiters (read)
+  { id: 317, role_id: 4, permission_id: 72 },  // Sourcing -> Talent Pool (read)
   { id: 318, role_id: 4, permission_id: 76 },  // Selection -> Assessment (read)
   { id: 319, role_id: 4, permission_id: 80 },  // Selection -> Report (read)
+  { id: 320, role_id: 4, permission_id: 84 },  // Sourcing -> Source Candidate (read)
 
 ];

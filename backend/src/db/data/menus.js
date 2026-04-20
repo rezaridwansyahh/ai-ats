@@ -12,8 +12,9 @@ export default [
   { id: 16, name: 'Seek Sourcing'},
   { id: 17, name: 'LinkedIn Sourcing'},
   { id: 19, name: 'Job Management' },
-  { id: 20, name: 'Source Management' },
   { id: 21, name: 'Recruiters'},
   { id: 22, name: 'Assessment'},
   { id: 23, name: 'Report'},
+  { id: 24, name: 'Talent Pool'},
+  { id: 25, name: 'Source Candidate'},
 ];

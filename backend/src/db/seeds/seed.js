@@ -12,11 +12,13 @@ import stageCategoriesData from '../data/stage_categories.js';
 import { templateStages, templateStageRows } from '../data/template_stages.js';
 import questionsData from '../data/questions.js';
 import { jobAccounts, coreJobs, jobSourcing } from '../data/job_sourcing.js';
+import applicantsData from '../data/applicants.js';
 
 const seed = async () => {
   await getDb().query('BEGIN');
 
   try {
+    await getDb().query('DELETE FROM master_applicant');
     await getDb().query('DELETE FROM core_job_sourcing');
     await getDb().query('DELETE FROM core_job');
     await getDb().query('DELETE FROM master_job_account');
@@ -177,6 +179,21 @@ const seed = async () => {
          )
          VALUES ($1, $2, $3, $4, $5, $6, $7, $8)`,
         [s.id, s.account_id, s.job_post_id, s.job_title, s.platform, s.platform_job_id, s.status, s.last_sync]
+      );
+    }
+
+    // 16. master_applicant
+    for (const a of applicantsData) {
+      await getDb().query(
+        `INSERT INTO master_applicant (
+           id, job_sourcing_id, name, last_position, address, education, information, date, attachment
+         )
+         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)`,
+        [
+          a.id, a.job_sourcing_id, a.name, a.last_position, a.address,
+          a.education, a.information ? JSON.stringify(a.information) : null,
+          a.date, a.attachment
+        ]
       );
     }
 
