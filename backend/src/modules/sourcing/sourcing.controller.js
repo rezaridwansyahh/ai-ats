@@ -48,6 +48,15 @@ class SourcingController {
     }
   }
 
+  async search(req, res) {
+    try {
+      const result = await sourcingService.search(req.body);
+      res.status(202).json({ message: 'Search queued', ...result });
+    } catch (err) {
+      res.status(err.status || 500).json({ message: err.message });
+    }
+  }
+
   // ─── Sourcing Recruite ───
 
   async getRecruits(req, res) {

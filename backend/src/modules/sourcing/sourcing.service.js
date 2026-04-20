@@ -1,5 +1,6 @@
 import SourcingModel from './sourcing.model.js';
 import SourcingRecruiteModel from './sourcing-recruite.model.js';
+import linkedinProducer from '../../bullmq/linkedin/linkedin.producer.js';
 
 class SourcingService {
   // ─── Sourcing ───
@@ -69,6 +70,38 @@ class SourcingService {
     await SourcingRecruiteModel.deleteBySourcingId(id);
     await SourcingModel.delete(id);
     return sourcing;
+  }
+
+  async search({ account_id, job_title, location, skill, company, school, year_graduate, industry, keyword }) {
+    if (!account_id) throw { status: 400, message: 'account_id is required' };
+
+    const hasAtLeastOne = job_title || location || skill || company || school || year_graduate || industry || keyword;
+    if (!hasAtLeastOne) {
+      throw { status: 400, message: 'At least one search field is required' };
+    }
+
+    const fields = { account_id };
+    const nextId = await SourcingModel.getNextId();
+    fields.id = nextId;
+    if (job_title)     fields.job_title = job_title;
+    if (location)      fields.location = location;
+    if (skill)         fields.skill = skill;
+    if (company)       fields.company = company;
+    if (school)        fields.school = school;
+    if (year_graduate) fields.year_graduate = year_graduate;
+    if (industry)      fields.industry = industry;
+    if (keyword)       fields.keyword = keyword;
+
+    const sourcing = await SourcingModel.create(fields);
+
+    const dataForm = { job_title, location, skill, company, school, year_graduate, industry, keyword };
+    const queued = await linkedinProducer.recruiteSearch(sourcing.id, account_id, dataForm);
+
+    return { sourcing, queue_job_id: queued.id };
+  }
+
+  async updateStatus(id, status, error_message = null) {
+    return await SourcingModel.updateStatus(id, status, error_message);
   }
 
   // ─── Sourcing Recruite ───

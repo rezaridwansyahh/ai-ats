@@ -72,7 +72,8 @@ const routeMap = {
   'LinkedIn Sourcing': '/job-management/linkedin-sourcing',
   'Recruiters':        '/users/recruiters',
   'Job Management':    '/sourcing/job-management',
-  'Source Management': '/sourcing/source-management',
+  'Talent Pool':       '/sourcing/talent-pool',
+  'Source Candidate':  '/sourcing/source-candidate',
   'Assessment':        '/selection/assessment',
   'Report':            '/selection/report'
 };

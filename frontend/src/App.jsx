@@ -12,6 +12,8 @@ import SeekSourcingPage from "./pages/SeekSourcing"
 import CandidateSearchPage from "./pages/CandidateSearch"
 import JobManagementPage from "./pages/JobManagement"
 import SourceManagementPage from "./pages/SourceManagement"
+import TalentPoolPage from "./pages/TalentPool"
+import SourceCandidatePage from "./pages/SourceCandidate"
 import RecruitersPage from "./pages/Recruiters"
 import ComingSoonPage from "./pages/ComingSoon"
 import AssessmentPage from "./pages/Assessment"
@@ -41,6 +43,8 @@ function App() {
 
         <Route path="/sourcing/job-management" element={<JobManagementPage />} />
         <Route path="/sourcing/source-management" element={<SourceManagementPage />} />
+        <Route path="/sourcing/talent-pool" element={<TalentPoolPage />} />
+        <Route path="/sourcing/source-candidate" element={<SourceCandidatePage />} />
 
         <Route path="/candidates/search" element={<CandidateSearchPage />} />
         <Route path="/selection/assessment" element={<AssessmentPage />} />

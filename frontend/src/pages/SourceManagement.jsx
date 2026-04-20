@@ -12,6 +12,7 @@ import { getJobAccountsByUserId } from '@/api/job-accounts.api';
 import JobSelection from '@/components/source-management/JobSelection';
 import ListSource from '@/components/source-management/ListSource';
 import SourceSetup from '@/components/source-management/SourceSetup';
+import ListCandidate from '@/components/source-management/ListCandidate';
 
 const STEPS = [
   { key: 'selection', label: 'Job Select', icon: FileText },
@@ -59,10 +60,6 @@ export default function SourceManagementPage() {
   }, [fetchJobs]);
 
   const handleNext = () => {
-    if (activeStep === 2) {
-      setShowPostingConfirm(true);
-      return;
-    }
     setValidationErrors([]);
     setActiveStep(prev => Math.min(prev + 1, STEPS.length - 1));
   };
@@ -156,6 +153,12 @@ export default function SourceManagementPage() {
 
       {activeStep === 2 && (
         <SourceSetup
+          selectedJob={selectedJob}
+        />
+      )}
+
+      {activeStep === 3 && (
+        <ListCandidate
           selectedJob={selectedJob}
         />
       )}

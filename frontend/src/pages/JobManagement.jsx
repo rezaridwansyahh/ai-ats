@@ -14,13 +14,13 @@ import { getJobAccountsByUserId } from '@/api/job-accounts.api';
 import JobCreation from '@/components/job-management/JobCreation';
 import JobStages from '@/components/job-management/JobStages';
 import JobPosting from '@/components/job-management/JobPosting';
-import JobList from '@/components/job-management/JobList';
+import ListSource from '@/components/job-management/ListSource';
 
 const STEPS = [
   { key: 'creation', label: 'Job Creation', icon: FileText },
   { key: 'stages', label: 'Job Stages', icon: GitBranch },
   { key: 'posting', label: 'Job Posting', icon: Send },
-  { key: 'summary', label: 'List Posted', icon: Briefcase }
+  { key: 'source', label: 'List Source', icon: Briefcase }
 ];
 
 // ── Step Placeholder ────────────────────────────────────────────────
@@ -61,6 +61,8 @@ export default function JobManagementPage() {
     }
   }, []);
 
+  const user = JSON.parse(localStorage.getItem('user') || '{}');
+
   const fetchRecruiters = useCallback(async () => {
     try {
       const res = await getRecruiters();
@@ -98,10 +100,8 @@ export default function JobManagementPage() {
       if(postingSummary?.internal?.enabled) await publishJob({ job_id: selectedJob.id, type: 'Internal', user_id: user.id });
 
       if(postingSummary?.public?.enabled || postingSummary?.private?.enabled) {
-        const platform = [...postingSummary?.public?.channels , ...postingSummary?.private?.channels];
-        console.log(platform);
-        console.log({job_id: selectedJob.id, type: 'Publish', user_id: user.id, platform});
-        await publishJob({job_id: selectedJob.id, type: 'Publish', user_id: user.id, platform});
+        const platforms = [...(postingSummary?.public?.channels || []), ...(postingSummary?.private?.channels || [])];
+        await publishJob({ job_id: selectedJob.id, type: 'Publish', user_id: user.id, platforms });
       }
 
       await updateJobStatus(selectedJob.id, 'Active');
@@ -138,7 +138,7 @@ export default function JobManagementPage() {
       }
 
       if(selectedJob.status === 'Active') {
-        setActiveStep(3);
+        setActiveStep(1);
       }
     }
     if (activeStep === 2) {
@@ -265,7 +265,7 @@ export default function JobManagementPage() {
         />
       )}
       {activeStep === 3 && (
-        <JobList
+        <ListSource
           selectedJob={selectedJob}
         />
       )}

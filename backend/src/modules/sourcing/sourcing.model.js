@@ -50,6 +50,16 @@ class SourcingModel {
     return result.rows[0];
   }
 
+  async updateStatus(id, status, error_message = null) {
+    const result = await getDb().query(`
+      UPDATE master_sourcing
+      SET status = $1, error_message = $2, updated_at = NOW()
+      WHERE id = $3
+      RETURNING *
+    `, [status, error_message, id]);
+    return result.rows[0];
+  }
+
   async delete(id) {
     const result = await getDb().query(`
       DELETE FROM master_sourcing

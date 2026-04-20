@@ -8,6 +8,7 @@ router.use(authToken);
 
 // Sourcing
 router.get('/', sourcingController.getAll);
+router.post('/search', sourcingController.search);
 router.get('/:id', sourcingController.getById);
 router.post('/', sourcingController.create);
 router.put('/:id', sourcingController.update);
