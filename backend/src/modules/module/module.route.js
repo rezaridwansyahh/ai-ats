@@ -9,7 +9,7 @@ router.use(authToken);
 
 router.get('/', moduleController.getAll);
 router.get('/menu/:menu_id', moduleController.getByMenuId);
-router.get('/:id', checkPermission('Settings', 'General', 'read', { allowedRoles: ['Admin', 'Manager', 'Staff'] }), moduleController.getById);
+router.get('/:id', checkPermission('Settings', 'Integrations', 'read', { allowedRoles: ['Admin', 'Manager', 'Staff'] }), moduleController.getById);
 
 router.post('/', moduleController.create);
 router.put('/:id', moduleController.update);

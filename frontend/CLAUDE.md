@@ -89,12 +89,11 @@ All routes are defined in `App.jsx`. Authenticated pages are nested inside `<Das
 /                              → LandingPage (public)
 /login, /register              → standalone pages
 /dashboard                     → DashboardLayout > DashboardPage
-/users/management              → DashboardLayout > UserManagementPage
-/users/role-management         → DashboardLayout > RoleManagementPage
-/users/demo-booking            → DashboardLayout > DemoBookingPage
-/users/recruiters              → DashboardLayout > RecruitersPage
+/settings/user-management      → DashboardLayout > UserManagementPage
+/settings/role-management      → DashboardLayout > RoleManagementPage
+/settings/recruiters           → DashboardLayout > RecruitersPage
+/settings/account              → DashboardLayout > AccountPage
 /settings/integrations         → DashboardLayout > IntegrationsPage
-/job-postings/account          → DashboardLayout > AccountPage
 /job-postings/seek             → DashboardLayout > SeekPage
 /job-management/seek-sourcing  → DashboardLayout > SeekSourcingPage
 /sourcing/job-management       → DashboardLayout > JobManagementPage

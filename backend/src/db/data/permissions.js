@@ -9,27 +9,6 @@ export default [
   { id: 4,  module_menu_id: 1, functionality: 'delete' },
 
   /* ===================================================================
-     Settings -> General (module_menu_id: 7)
-  =================================================================== */
-  { id: 23, module_menu_id: 7, functionality: 'read' },
-  { id: 24, module_menu_id: 7, functionality: 'create' },
-  { id: 25, module_menu_id: 7, functionality: 'update' },
-  { id: 26, module_menu_id: 7, functionality: 'delete' },
-
-  /* ===================================================================
-     Settings -> Company List (module_menu_id: 8)
-  =================================================================== */
-  { id: 27, module_menu_id: 8, functionality: 'read' },
-  { id: 28, module_menu_id: 8, functionality: 'create' },
-  { id: 29, module_menu_id: 8, functionality: 'update' },
-  { id: 30, module_menu_id: 8, functionality: 'delete' },
-
-  /* ===================================================================
-     Settings -> Help (module_menu_id: 9)
-  =================================================================== */
-  { id: 31, module_menu_id: 9, functionality: 'read' },
-
-  /* ===================================================================
      Settings -> Integrations (module_menu_id: 11)
   =================================================================== */
   { id: 32, module_menu_id: 11, functionality: 'read' },
@@ -38,7 +17,7 @@ export default [
   { id: 35, module_menu_id: 11, functionality: 'delete' },
 
   /* ===================================================================
-     Users -> User Management (module_menu_id: 10)
+     Settings -> User Management (module_menu_id: 10)
   =================================================================== */
   { id: 36, module_menu_id: 10, functionality: 'read' },
   { id: 37, module_menu_id: 10, functionality: 'create' },
@@ -46,7 +25,7 @@ export default [
   { id: 39, module_menu_id: 10, functionality: 'delete' },
 
   /* ===================================================================
-     Users -> Role Management (module_menu_id: 12)
+     Settings -> Role Management (module_menu_id: 12)
   =================================================================== */
   { id: 40, module_menu_id: 12, functionality: 'read' },
   { id: 41, module_menu_id: 12, functionality: 'create' },
@@ -70,7 +49,7 @@ export default [
   { id: 51, module_menu_id: 14, functionality: 'delete' },
 
   /* ===================================================================
-     Job Postings -> Account (module_menu_id: 15)
+     Settings -> Account (module_menu_id: 15)
   =================================================================== */
   { id: 52, module_menu_id: 15, functionality: 'read' },
   { id: 53, module_menu_id: 15, functionality: 'create' },
@@ -102,12 +81,12 @@ export default [
   { id: 71, module_menu_id: 19, functionality: 'delete' },
 
   /* ===================================================================
-     Users -> Recruiters (module_menu_id: 20)
+     Settings -> Recruiters (module_menu_id: 21)
   =================================================================== */
-  { id: 72, module_menu_id: 20, functionality: 'read' },
-  { id: 73, module_menu_id: 20, functionality: 'create' },
-  { id: 74, module_menu_id: 20, functionality: 'update' },
-  { id: 75, module_menu_id: 20, functionality: 'delete' },
+  { id: 72, module_menu_id: 21, functionality: 'read' },
+  { id: 73, module_menu_id: 21, functionality: 'create' },
+  { id: 74, module_menu_id: 21, functionality: 'update' },
+  { id: 75, module_menu_id: 21, functionality: 'delete' },
 
   /* ===================================================================
      Selection -> Assessment (module_menu_id: 22)
@@ -124,5 +103,13 @@ export default [
   { id: 81, module_menu_id: 23, functionality: 'create' },
   { id: 82, module_menu_id: 23, functionality: 'update' },
   { id: 83, module_menu_id: 23, functionality: 'delete' },
+
+  /* ===================================================================
+     Sourcing -> Source Management (module_menu_id: 20)
+  =================================================================== */
+  { id: 84, module_menu_id: 20, functionality: 'read' },
+  { id: 85, module_menu_id: 20, functionality: 'create' },
+  { id: 86, module_menu_id: 20, functionality: 'update' },
+  { id: 87, module_menu_id: 20, functionality: 'delete' },
 
 ];

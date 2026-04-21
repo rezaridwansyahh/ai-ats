@@ -15,9 +15,9 @@ import { RoleFormDialog }   from '@/components/role-management/RoleFormDialog';
 import { DeleteRoleDialog } from '@/components/role-management/DeleteRoleDialog';
 
 export default function RoleManagementPage() {
-  const canCreate = hasPermission('Users', 'Role Management', 'create');
-  const canEdit   = hasPermission('Users', 'Role Management', 'update');
-  const canDelete = hasPermission('Users', 'Role Management', 'delete');
+  const canCreate = hasPermission('Settings', 'Role Management', 'create');
+  const canEdit   = hasPermission('Settings', 'Role Management', 'update');
+  const canDelete = hasPermission('Settings', 'Role Management', 'delete');
 
   // ── Data ──────────────────────────────────────────────────────────────────
   const [roles,      setRoles]      = useState([]);

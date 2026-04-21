@@ -28,13 +28,12 @@ function App() {
       <Route element={<DashboardLayout />}>
         <Route path="/dashboard" element={<DashboardPage />} />
 
-        <Route path="/users/management" element={<UserManagementPage />} />
-        <Route path="/users/role-management" element={<RoleManagementPage />} />
-        <Route path="/users/recruiters" element={<RecruitersPage />} />
-
+        <Route path="/settings/user-management" element={<UserManagementPage />} />
+        <Route path="/settings/role-management" element={<RoleManagementPage />} />
+        <Route path="/settings/recruiters" element={<RecruitersPage />} />
+        <Route path="/settings/account" element={<AccountPage />} />
         <Route path="/settings/integrations" element={<IntegrationsPage />} />
 
-        <Route path="/job-postings/account" element={<AccountPage />} />
         <Route path="/job-postings/seek" element={<SeekPage />} />
 
         <Route path="/job-management/seek-sourcing" element={<SeekSourcingPage />} />

@@ -34,7 +34,6 @@ import {
 import {
   Home,
   Settings,
-  Users,
   Package,
   ChevronDown,
   User,
@@ -49,7 +48,6 @@ const iconMap = {
   'Dashboard':      Home,
   'Candidates':     Search,
   'Settings':       Settings,
-  'Users':          Users,
   'Job Postings':   Package,
   'Job Management': Briefcase,
   'Sourcing':       Briefcase,
@@ -59,18 +57,15 @@ const iconMap = {
 const routeMap = {
   'dashboard':         '/dashboard',
   'Search':            '/candidates/search',
-  'General':           '/settings/general',
-  'Company List':      '/settings/companies',
-  'Help':              '/settings/help',
-  'User Management':   '/users/management',
-  'Role Management':   '/users/role-management',
+  'User Management':   '/settings/user-management',
+  'Role Management':   '/settings/role-management',
+  'Recruiters':        '/settings/recruiters',
+  'Account':           '/settings/account',
   'Integrations':      '/settings/integrations',
   'Seek':              '/job-postings/seek',
   'LinkedIn':          '/job-postings/linkedin',
-  'Account':           '/job-postings/account',
   'Seek Sourcing':     '/job-management/seek-sourcing',
   'LinkedIn Sourcing': '/job-management/linkedin-sourcing',
-  'Recruiters':        '/users/recruiters',
   'Job Management':    '/sourcing/job-management',
   'Source Management': '/sourcing/source-management',
   'Assessment':        '/selection/assessment',
@@ -279,7 +274,7 @@ export function AppSidebar() {
                                   className={`cursor-pointer transition-all duration-200 rounded-md h-7 text-xs ${
                                     active
                                       ? 'bg-primary/10 text-primary font-semibold'
-                                      : 'text-muted-fore  er:bg-accent/80 hover:text-foreground'
+                                      : 'text-muted-foreground hover:bg-accent/80 hover:text-foreground'
                                   }`}
                                   onClick={() => handleNavigate(menuName)}
                                 >

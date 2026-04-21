@@ -29,7 +29,7 @@ class JobService {
     const { job_title, job_desc, job_location, work_option, work_type,
             pay_type, currency, pay_min, pay_max, pay_display,
             company, seniority_level, company_url,
-            qualifications, required_skills, preferred_skills,
+            qualifications, required_skills, preferred_skills, benefits,
             sla_start_date, sla_end_date } = data;
 
     if (!job_title) throw { status: 400, message: 'job_title is required' };
@@ -51,6 +51,7 @@ class JobService {
     if (qualifications) fields.qualifications = qualifications;
     if (required_skills) fields.required_skills = JSON.stringify(required_skills);
     if (preferred_skills) fields.preferred_skills = JSON.stringify(preferred_skills);
+    if (benefits) fields.benefits = JSON.stringify(benefits);
     if (sla_start_date) fields.sla_start_date = sla_start_date;
     if (sla_end_date) fields.sla_end_date = sla_end_date;
 
@@ -64,13 +65,15 @@ class JobService {
     const allowedFields = ['job_title', 'job_desc', 'job_location', 'work_option', 'work_type',
                            'pay_type', 'currency', 'pay_min', 'pay_max', 'pay_display',
                            'company', 'seniority_level', 'company_url', 'status',
-                           'qualifications', 'required_skills', 'preferred_skills',
+                           'qualifications', 'required_skills', 'preferred_skills', 'benefits',
                            'sla_start_date', 'sla_end_date'];
+
+    const jsonFields = new Set(['required_skills', 'preferred_skills', 'benefits']);
 
     const fields = {};
     for (const key of allowedFields) {
       if (data[key] !== undefined) {
-        if ((key === 'required_skills' || key === 'preferred_skills') && typeof data[key] !== 'string') {
+        if (jsonFields.has(key) && typeof data[key] !== 'string') {
           fields[key] = JSON.stringify(data[key]);
         } else {
           fields[key] = data[key];

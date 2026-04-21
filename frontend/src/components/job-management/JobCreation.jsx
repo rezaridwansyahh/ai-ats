@@ -591,7 +591,7 @@ export default function JobCreationStep({ jobs, loading, recruiters, onCreateJob
                   </label>
                 ))}
               </div>
-              <div className="flex items-center gap-2">
+              <div className="flex flex-col gap-1">
                 <input
                   type="text"
                   value={newBenefit}
@@ -599,15 +599,22 @@ export default function JobCreationStep({ jobs, loading, recruiters, onCreateJob
                   onKeyDown={e => {
                     if (e.key === 'Enter' && newBenefit.trim()) {
                       e.preventDefault();
-                      if (!benefitOptions.includes(newBenefit.trim())) {
-                        setBenefitOptions(prev => [...prev, newBenefit.trim()]);
+                      const trimmed = newBenefit.trim();
+                      if (!benefitOptions.includes(trimmed)) {
+                        setBenefitOptions(prev => [...prev, trimmed]);
+                      }
+                      if (!benefits.includes(trimmed)) {
+                        setBenefits(prev => [...prev, trimmed]);
                       }
                       setNewBenefit('');
                     }
                   }}
                   placeholder="+ Add custom benefit"
-                  className="w-[200px] rounded-md border border-input bg-background px-2.5 py-1.5 text-[11px] outline-none placeholder:text-muted-foreground focus:ring-1 focus:ring-ring"
+                  className="w-[240px] rounded-md border border-input bg-background px-2.5 py-1.5 text-[11px] outline-none placeholder:text-muted-foreground focus:ring-1 focus:ring-ring"
                 />
+                <span className="text-[10px] text-muted-foreground">
+                  Type a benefit and press <kbd className="px-1 py-0.5 rounded bg-muted text-[9px] font-semibold">Enter</kbd> to add it to the list.
+                </span>
               </div>
             </CardContent>
           </Card>

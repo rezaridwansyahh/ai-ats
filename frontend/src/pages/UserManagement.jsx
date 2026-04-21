@@ -21,9 +21,9 @@ function getRoles(user) {
 }
 
 export default function UserManagementPage() {
-  const canCreate = hasPermission('Users', 'User Management', 'create');
-  const canEdit   = hasPermission('Users', 'User Management', 'update');
-  const canDelete = hasPermission('Users', 'User Management', 'delete');
+  const canCreate = hasPermission('Settings', 'User Management', 'create');
+  const canEdit   = hasPermission('Settings', 'User Management', 'update');
+  const canDelete = hasPermission('Settings', 'User Management', 'delete');
 
   // ── Data fetching ──
   const [users, setUsers]     = useState([]);

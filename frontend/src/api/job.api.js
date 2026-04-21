@@ -15,7 +15,7 @@ export const generateJobAI = async (id, file) => {
   if (file) formData.append('file', file);
 
   const token = localStorage.getItem('token');
-  const res = await fetch('/portal/api/job/generate', {
+  const res = await fetch('http://localhost:3000/portal/api/job/generate', {
     method: 'POST',
     headers: {
       ...(token ? { Authorization: `Bearer ${token}` } : {}),
@@ -24,7 +24,13 @@ export const generateJobAI = async (id, file) => {
   });
 
   if(!res.ok) {
-    const error = await res.json();
+    const text = await res.text();
+    let error;
+    try {
+      error = text ? JSON.parse(text) : { message: `Request failed with status ${res.status}` };
+    } catch {
+      error = { message: text || `Request failed with status ${res.status}` };
+    }
     throw error;
   }
 

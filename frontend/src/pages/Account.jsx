@@ -35,9 +35,9 @@ const PRIVATE_CHANNELS = [
 ];
 
 export default function AccountPage() {
-  const canCreate = hasPermission('Job Postings', 'Seek', 'create') || hasPermission('Job Postings', 'LinkedIn', 'create');
-  const canEdit   = hasPermission('Job Postings', 'Seek', 'update') || hasPermission('Job Postings', 'LinkedIn', 'update');
-  const canDelete = hasPermission('Job Postings', 'Seek', 'delete') || hasPermission('Job Postings', 'LinkedIn', 'delete');
+  const canCreate = hasPermission('Settings', 'Account', 'create');
+  const canEdit   = hasPermission('Settings', 'Account', 'update');
+  const canDelete = hasPermission('Settings', 'Account', 'delete');
 
   // ── Data ──
   const [accounts, setAccounts] = useState([]);
