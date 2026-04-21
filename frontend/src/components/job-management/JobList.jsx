@@ -117,9 +117,19 @@ export default function JobListStep({ selectedJob }) {
               </CardContent>
             </Card>
           ) : (
-            <div>
-
-            </div>
+            <Card>
+              <CardContent>
+                <label htmlFor="internal">
+                  <div className="flex items-center gap-3">
+                    <Home className="h-4 w-4 text-primary" /> 
+                    <div>
+                      <span className="text-xs font-bold">Internal Hire Only</span>
+                      <p className="text-[10px] text-muted-foreground">Source from talent pool — no external posting</p>
+                    </div>
+                  </div>
+                </label>
+              </CardContent>
+            </Card>
           )}
         </CardContent>
         <CardFooter className="flex justify-center">

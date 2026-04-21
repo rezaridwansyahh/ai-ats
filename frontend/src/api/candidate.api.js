@@ -11,3 +11,9 @@ export const deleteCandidate = (id) =>
 
 export const downloadCandidateCv = (id) =>
   api.get(`/candidate/${id}/cv`, { responseType: 'blob' });
+
+export const addApplicantToJob = (applicant_id, job_id) =>
+  api.post(`/candidate-pipeline`, { applicant_id, job_id });
+
+export const getCandidatesByApplicantId = (applicant_id) =>
+  api.get(`/candidate-pipeline/applicant/${applicant_id}`);

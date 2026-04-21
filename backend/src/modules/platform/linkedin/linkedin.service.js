@@ -68,11 +68,11 @@ class LinkedInService {
       await loginRpa.authenticatedPage(page, account_id);
       const form = await recruiteSearchRpa.fillFormRecruiteSearch(page, dataForm);
       const sourcing = joinArrayFields(form);
-      
+
       const source = await sourcingModel.create(sourcing);
 
       const recruiteData = await extractDataRpa.extractRecruite(page, dataForm);
-      
+
       const recruite = await sourcingRecruiteModel.bulkCreate(source.id, recruiteData);
       return {
         source,
@@ -81,6 +81,31 @@ class LinkedInService {
     } catch (err) {
       console.log(err)
       throw err
+    } finally {
+      await browserPuppeteer.close();
+    }
+  }
+
+  async recruiteSearchQueued(sourcing_id, account_id, dataForm) {
+    await sourcingModel.updateStatus(sourcing_id, 'Processing');
+
+    const page = await cookieService.includeCookiesIfExist(account_id);
+    if (!page) {
+      await sourcingModel.updateStatus(sourcing_id, 'Failed', 'No cookies found for this LinkedIn account');
+      throw new Error('No cookies found');
+    }
+
+    try {
+      await loginRpa.authenticatedPage(page, account_id);
+      await recruiteSearchRpa.fillFormRecruiteSearch(page, dataForm);
+      const recruiteData = await extractDataRpa.extractRecruite(page, dataForm);
+      const recruits = await sourcingRecruiteModel.bulkCreate(sourcing_id, recruiteData);
+
+      await sourcingModel.updateStatus(sourcing_id, 'Done');
+      return { sourcing_id, count: recruits.length };
+    } catch (err) {
+      await sourcingModel.updateStatus(sourcing_id, 'Failed', err.message || String(err));
+      throw err;
     } finally {
       await browserPuppeteer.close();
     }

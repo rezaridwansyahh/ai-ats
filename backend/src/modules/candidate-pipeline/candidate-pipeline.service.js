@@ -16,13 +16,30 @@ class CandidatePipelineService {
     return await CandidatePipeline.getByJobId(job_id);
   }
 
-  async create({ job_id, candidate_id, latest_stage }) {
+  async getByApplicantId(applicant_id) {
+    if (!applicant_id) throw { status: 400, message: 'applicant_id is required' };
+    return await CandidatePipeline.getByApplicantId(applicant_id);
+  }
+
+  async create({ applicant_id, job_id }) {
+    if (!applicant_id) throw { status: 400, message: 'applicant_id is required' };
     if (!job_id) throw { status: 400, message: 'job_id is required' };
-    if (!candidate_id) throw { status: 400, message: 'candidate_id is required' };
-    if (latest_stage === undefined || latest_stage === null) {
-      throw { status: 400, message: 'latest_stage is required' };
+
+    try {
+      const candidate = await CandidatePipeline.createFromApplicant(applicant_id, job_id);
+      if (!candidate) {
+        throw { status: 404, message: 'Applicant not found' };
+      }
+      return candidate;
+    } catch (err) {
+      if (err.code === '23505') {
+        throw { status: 409, message: 'This applicant is already a candidate for this job' };
+      }
+      if (err.code === '23503') {
+        throw { status: 400, message: 'Invalid applicant_id or job_id' };
+      }
+      throw err;
     }
-    return await CandidatePipeline.create({ job_id, candidate_id, latest_stage });
   }
 
   async update(id, fields) {

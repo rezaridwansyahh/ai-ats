@@ -1,6 +1,7 @@
 import "./src/config/env.js"; // must be first
 
 import "./src/bullmq/seek/seek.worker.js"; // ✅ add this
+import "./src/bullmq/linkedin/linkedin.worker.js";
 
 import express from "express";
 import cors from 'cors';

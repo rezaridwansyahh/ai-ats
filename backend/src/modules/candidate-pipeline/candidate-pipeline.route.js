@@ -8,6 +8,7 @@ router.use(authToken);
 
 router.get('/', candidatePipelineController.getAll);
 router.get('/job/:job_id', candidatePipelineController.getByJobId);
+router.get('/applicant/:applicant_id', candidatePipelineController.getByApplicantId);
 router.get('/:id/stages', candidatePipelineController.getStages);
 router.get('/:id', candidatePipelineController.getById);
 

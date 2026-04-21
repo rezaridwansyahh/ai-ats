@@ -10,3 +10,4 @@ SELECT setval('mapping_users_roles_id_seq',       (SELECT MAX(id) FROM mapping_u
 SELECT setval('master_job_account_id_seq',        (SELECT MAX(id) FROM master_job_account));
 SELECT setval('core_job_id_seq',                  (SELECT MAX(id) FROM core_job));
 SELECT setval('core_job_sourcing_id_seq',         (SELECT MAX(id) FROM core_job_sourcing));
+SELECT setval('master_applicant_id_seq',          (SELECT MAX(id) FROM master_applicant));

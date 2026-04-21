@@ -28,34 +28,6 @@ class ApplicantController {
     }
   }
 
-  async getByJobId(req, res) {
-    try {
-      const applicants = await applicantService.getByJobId(req.params.job_id);
-      res.status(200).json({ message: 'Applicants for job', applicants });
-    } catch (err) {
-      res.status(err.status || 500).json({ message: err.message });
-    }
-  }
-
-  async create(req, res) {
-    try {
-      const { job_id, candidate_id, latest_stage, job_stage_id, decision } = req.body;
-      const applicant = await applicantService.create(job_id, candidate_id, latest_stage, job_stage_id, decision);
-      res.status(201).json({ message: 'Applicant created', applicant });
-    } catch (err) {
-      res.status(err.status || 500).json({ message: err.message });
-    }
-  }
-
-  async update(req, res) {
-    try {
-      const applicant = await applicantService.update(req.params.id, req.body);
-      res.status(200).json({ message: 'Applicant updated', applicant });
-    } catch (err) {
-      res.status(err.status || 500).json({ message: err.message });
-    }
-  }
-
   async delete(req, res) {
     try {
       const applicant = await applicantService.delete(req.params.id);

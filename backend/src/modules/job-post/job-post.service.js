@@ -4,7 +4,8 @@ import JobAccount from '../job-account/job-account.model.js';
 import seekProducer from '../../bullmq/seek/seek.producer.js';
 
 const VALID_TYPES = ['Internal', 'Publish'];
-const SUPPORTED_PLATFORMS = ['seek'];
+const SUPPORTED_PLATFORMS = ['seek', 'linkedin'];
+const INTERNAL_PLATFORM = 'internal';
 
 class JobPostService {
   async getAll() {
@@ -21,15 +22,25 @@ class JobPostService {
     return await JobPost.getByJobId(job_id);
   }
 
-  async create({ job_id, type }) {
-    if (!job_id || !type) {
-      throw { status: 400, message: 'job_id and type are required' };
+  async create({ job_id, type, platform }) {
+    if (!job_id || !type || !platform) {
+      throw { status: 400, message: 'job_id, type, and platform are required' };
     }
     if (!VALID_TYPES.includes(type)) {
       throw { status: 400, message: `Invalid type. Must be one of: ${VALID_TYPES.join(', ')}` };
     }
+    const validPlatforms = [...SUPPORTED_PLATFORMS, INTERNAL_PLATFORM];
+    if (!validPlatforms.includes(platform)) {
+      throw { status: 400, message: `Invalid platform. Must be one of: ${validPlatforms.join(', ')}` };
+    }
+    if (type === 'Internal' && platform !== INTERNAL_PLATFORM) {
+      throw { status: 400, message: `Internal type must use platform '${INTERNAL_PLATFORM}'` };
+    }
+    if (type === 'Publish' && !SUPPORTED_PLATFORMS.includes(platform)) {
+      throw { status: 400, message: `Publish type must use one of: ${SUPPORTED_PLATFORMS.join(', ')}` };
+    }
 
-    return await JobPost.create(job_id, type);
+    return await JobPost.create(job_id, type, platform);
   }
 
   async update(id, fields) {
@@ -70,8 +81,8 @@ class JobPostService {
     if (!job) throw { status: 404, message: 'Job not found' };
 
     if (type === 'Internal') {
-      const jobPost = await JobPost.create(job_id, 'Internal');
-      return { jobPost, queued: [] };
+      const jobPost = await JobPost.create(job_id, 'Internal', INTERNAL_PLATFORM);
+      return { jobPosts: [jobPost], queued: [] };
     }
 
     if (!user_id) {
@@ -95,8 +106,6 @@ class JobPostService {
       accounts[platform] = account;
     }
 
-    const jobPost = await JobPost.create(job_id, 'Publish');
-
     const platformForm = {
       job_title: job.job_title,
       job_desc: job.job_desc,
@@ -110,9 +119,12 @@ class JobPostService {
       pay_display: job.pay_display,
     };
 
+    const jobPosts = [];
     const queued = [];
     for (const platform of platforms) {
       const account = accounts[platform];
+      const jobPost = await JobPost.create(job_id, 'Publish', platform);
+      jobPosts.push(jobPost);
 
       if (platform === 'seek') {
         const queuedJob = await seekProducer.createSeekJobPostDraft(
@@ -121,11 +133,11 @@ class JobPostService {
           jobPost.id,
           platformForm
         );
-        queued.push({ platform, queue_job_id: queuedJob.id });
+        queued.push({ platform, job_post_id: jobPost.id, queue_job_id: queuedJob.id });
       }
     }
 
-    return { jobPost, queued };
+    return { jobPosts, queued };
   }
 }
 

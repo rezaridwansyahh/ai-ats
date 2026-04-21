@@ -59,6 +59,7 @@ const PERFORMANCE_DATA = [
 // ── Component ────────────────────────────────────────────────────────
 
 export default function JobPosting({ selectedJob, onSelectionChange }) {
+  const [jobPosts, setJobPosts] = useState(null);
   const [group, setGroup] = useState(null);
   const [channels, setChannels] = useState({ "public": false, "private": false });
   const [publicChannels, setPublicChannels] = useState(PUBLIC_CHANNELS);
@@ -112,18 +113,22 @@ export default function JobPosting({ selectedJob, onSelectionChange }) {
   }, []);
 
   const fetchJobSourcing = useCallback(async () => {
+    if (selectedJob?.status !== 'Active') {
+      setJobPost([]);
+      return;
+    }
     setLoading(true);
     setError(null);
     try {
       const { data } = await getJobPostingByJobId(selectedJob.id);
-      setJobPost(data.postings);
+      setJobPost(data.jobPosts || []);
     } catch(err) {
       console.log(err.response?.data?.message || err.message || 'Failed to load job post')
       setError(err.response?.data?.message || err.message || 'Failed to load job post');
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [selectedJob?.id, selectedJob?.status]);
 
   // Notify parent of selection changes
   useEffect(() => {
@@ -134,11 +139,11 @@ export default function JobPosting({ selectedJob, onSelectionChange }) {
       },
       public: {
         enabled: channels.public,
-        channels: channels.public ? publicChannels.filter(c => selectedChannels.includes(c.id)).map(c => c.name) : [],
+        channels: channels.public ? publicChannels.filter(c => selectedChannels.includes(c.id)).map(c => c.id) : [],
       },
       private: {
         enabled: channels.private,
-        channels: channels.private ? publicChannels.filter(c => selectedChannels.includes(c.id)).map(c => c.name) : [],
+        channels: channels.private ? privateChannels.filter(c => selectedChannels.includes(c.id)).map(c => c.id) : [],
       }
     });
   }, [group, publicChannels, privateChannels, selectedChannels, onSelectionChange, jobPost]);
@@ -151,6 +156,30 @@ export default function JobPosting({ selectedJob, onSelectionChange }) {
     }
     fetch();
   }, [fetchAccounts, fetchJobSourcing])
+
+  // Prefill selection from existing job_post when job is Active
+  useEffect(() => {
+    if (selectedJob?.status !== 'Active' || !Array.isArray(jobPost) || jobPost.length === 0) return;
+
+    const publicIds = PUBLIC_CHANNELS.map(c => c.id);
+    const privateIds = PRIVATE_CHANNELS.map(c => c.id);
+
+    const hasInternal = jobPost.some(p => p.type === 'Internal' || p.platform === 'internal');
+    const postedPublic = jobPost.filter(p => publicIds.includes(p.platform)).map(p => p.platform);
+    const postedPrivate = jobPost.filter(p => privateIds.includes(p.platform)).map(p => p.platform);
+
+    if (hasInternal && postedPublic.length === 0 && postedPrivate.length === 0) {
+      setGroup('internal');
+      return;
+    }
+
+    setGroup('channels');
+    setChannels({
+      public: postedPublic.length > 0,
+      private: postedPrivate.length > 0,
+    });
+    setSelectedChannels([...postedPublic, ...postedPrivate]);
+  }, [jobPost, selectedJob?.status]);
 
   // Guard
   if (!selectedJob) {

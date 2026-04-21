@@ -18,7 +18,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter,
 } from '@/components/ui/dialog';
@@ -267,7 +267,7 @@ export default function ListSourceStep({ selectedJob }) {
                 placeholder="e.g. Senior Frontend Developer"
                 value=""
                 onChange=""
-                required
+                requiredc
               />
             </div>
 
@@ -278,6 +278,11 @@ export default function ListSourceStep({ selectedJob }) {
             
           </div>
         </CardContent>
+        <CardFooter>
+          <Button size="sm" onClick={() => navigate(`/sourcing/talent-pool`)}>
+            Go to Talent Pool
+          </Button>
+        </CardFooter>
       </Card>
     </div>
   )

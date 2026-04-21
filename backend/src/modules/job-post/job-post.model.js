@@ -29,7 +29,7 @@ class JobPostModel {
       ORDER BY created_at DESC
     `, [job_id]);
 
-    return result.rows[0];
+    return result.rows;
   }
 
   async getByJobIdAndType(job_id, type) {
@@ -43,13 +43,13 @@ class JobPostModel {
     return result.rows;
   }
 
-  async create(job_id, type) {
+  async create(job_id, type, platform) {
     const result = await getDb().query(`
       INSERT INTO job_post
-        (job_id, type)
-      VALUES ($1, $2)
+        (job_id, type, platform)
+      VALUES ($1, $2, $3)
       RETURNING *
-    `, [job_id, type]);
+    `, [job_id, type, platform]);
 
     return result.rows[0];
   }

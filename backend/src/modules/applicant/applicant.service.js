@@ -7,46 +7,28 @@ class ApplicantService {
     return await applicantModel.getAll();
   }
 
-  async getByJobSourcingId(job_sourcing_id) {
-    return await applicantModel.getByJobSourcingId(job_sourcing_id);
-  }
-
   async getById(id) {
     const applicant = await applicantModel.getById(id);
     if (!applicant) throw { status: 404, message: 'Applicant not found' };
     return applicant;
   }
 
-  async getByJobId(job_id) {
-    if (!job_id) throw { status: 400, message: 'job_id is required' };
-    return await Applicant.getByJobId(job_id);
+  async getByJobSourcingId(job_sourcing_id) {
+    if (!job_sourcing_id) throw { status: 400, message: 'job_sourcing_id is required' };
+    return await applicantModel.getByJobSourcingId(job_sourcing_id);
   }
 
-  async create(job_id, candidate_id, latest_stage, job_stage_id, decision) {
-    if (!job_id || !candidate_id || latest_stage === undefined || latest_stage === null || !job_stage_id || !decision) {
-      throw { status: 400, message: 'job_id, candidate_id, latest_stage, job_stage_id, and decision are required' };
+  async create(payload) {
+    const { job_sourcing_id, name, last_position, address } = payload;
+    if (!job_sourcing_id || !name || !last_position || !address) {
+      throw { status: 400, message: 'job_sourcing_id, name, last_position, and address are required' };
     }
-    return await Applicant.create({ job_id, candidate_id, latest_stage, job_stage_id, decision });
-  }
-
-  async update(id, fields) {
-    const applicant = await Applicant.getById(id);
-    if (!applicant) throw { status: 404, message: 'Applicant not found' };
-
-    const allowed = {};
-    if (fields.latest_stage !== undefined) allowed.latest_stage = fields.latest_stage;
-
-    if (Object.keys(allowed).length === 0) {
-      throw { status: 400, message: 'No valid fields to update' };
-    }
-
-    return await Applicant.update(id, allowed);
+    return await applicantModel.create(payload);
   }
 
   async delete(id) {
     const applicant = await applicantModel.getById(id);
     if (!applicant) throw { status: 404, message: 'Applicant not found' };
-
     return await applicantModel.delete(id);
   }
 

@@ -24,8 +24,7 @@ DROP TABLE IF EXISTS master_sourcing_recruite CASCADE;
 DROP TABLE IF EXISTS master_recruiters CASCADE;
 DROP TABLE IF EXISTS core_job_pipeline_stages CASCADE;
 DROP TABLE IF EXISTS core_job_pipeline CASCADE;
-DROP TABLE IF EXISTS applicants_stages CASCADE;
-DROP TABLE IF EXISTS applicants CASCADE;
+DROP TABLE IF EXISTS candidate_stages CASCADE;
 DROP TABLE IF EXISTS job_stage CASCADE;
 DROP TABLE IF EXISTS job_post CASCADE;
 DROP TABLE IF EXISTS core_job_template CASCADE;
@@ -55,6 +54,7 @@ DROP TYPE IF EXISTS stage_category_type CASCADE;
 DROP TYPE IF EXISTS booking_status_type CASCADE;
 DROP TYPE IF EXISTS session_slot_type CASCADE;
 DROP TYPE IF EXISTS job_post_type CASCADE;
+DROP TYPE IF EXISTS sourcing_status_type CASCADE;
 
 -- Create ENUM type
 CREATE TYPE status_type AS ENUM ('Draft', 'Active', 'Running', 'Expired', 'Failed', 'Blocked');
@@ -71,6 +71,7 @@ CREATE TYPE session_slot_type   AS ENUM ('10-12', '1-3', '4-6');
 CREATE TYPE status_connection_type AS ENUM ('Connected', 'Not Connected', 'Error');
 CREATE TYPE status_sync_type AS ENUM ('Sync', 'Not Sync', 'Error');
 CREATE TYPE job_post_type AS ENUM ('Internal', 'Publish');
+CREATE TYPE sourcing_status_type AS ENUM ('Pending', 'Processing', 'Done', 'Failed');
 CREATE TYPE stage_category_type AS ENUM ('Job Management', 'Screening & Matching', 'Interview', 'Assessment', 'Background Check', 'Offering & Contract', 'Other');
 CREATE TYPE battery_type AS ENUM ('A', 'B', 'C', 'D');
 CREATE TYPE status_session_type AS ENUM ('invited', 'in_progress', 'completed', 'expired');
@@ -228,6 +229,7 @@ CREATE TABLE job_post (
   id SERIAL PRIMARY KEY,
   job_id INTEGER REFERENCES core_job(id) ON DELETE CASCADE,
   type job_post_type NOT NULL,
+  platform platform_type NOT NULL,
   created_at TIMESTAMP NOT NULL DEFAULT NOW(),
   updated_at TIMESTAMP NOT NULL DEFAULT NOW()
 );
@@ -308,6 +310,7 @@ CREATE TABLE master_candidate (
   information JSONB,
   date TIMESTAMPTZ,
   attachment VARCHAR(255),
+  latest_stage INTEGER REFERENCES job_stage(id) ON DELETE SET NULL,
   created_at TIMESTAMP NOT NULL DEFAULT NOW(),
   updated_at TIMESTAMP NOT NULL DEFAULT NOW(),
   UNIQUE (name, job_id)
@@ -328,6 +331,7 @@ CREATE TABLE mapping_applicant_linkedin (
 
 CREATE TABLE master_sourcing (
   id SERIAL PRIMARY KEY,
+  account_id INTEGER REFERENCES master_job_account(id) ON DELETE SET NULL,
   job_title VARCHAR(255),
   location VARCHAR(255),
   skill VARCHAR(255),
@@ -336,6 +340,10 @@ CREATE TABLE master_sourcing (
   year_graduate INTEGER,
   industry VARCHAR(255),
   keyword VARCHAR(255),
+  status sourcing_status_type NOT NULL DEFAULT 'Pending',
+  error_message TEXT,
+  created_at TIMESTAMP NOT NULL DEFAULT NOW(),
+  updated_at TIMESTAMP NOT NULL DEFAULT NOW(),
   CONSTRAINT at_least_one_field_filled CHECK (
     job_title IS NOT NULL OR
     location IS NOT NULL OR
@@ -382,21 +390,12 @@ CREATE TABLE job_automation_settings (
   updated_at TIMESTAMP NOT NULL DEFAULT NOW()
 );
 
-CREATE TABLE applicants(
+CREATE TABLE candidate_stages(
   id SERIAL PRIMARY KEY,
-  job_id INTEGER NOT NULL REFERENCES core_job(id) ON DELETE CASCADE,
   candidate_id INTEGER NOT NULL REFERENCES master_candidate(id) ON DELETE CASCADE,
-  created_at TIMESTAMP NOT NULL DEFAULT NOW(),
-  updated_at TIMESTAMP NOT NULL DEFAULT NOW(),
-  latest_stage INTEGER NOT NULL
-);
-
-CREATE TABLE applicants_stages(
-  id SERIAL PRIMARY KEY,
-  applicant_id INTEGER NOT NULL REFERENCES applicants(id) ON DELETE CASCADE,
   job_stage_id INTEGER NOT NULL REFERENCES job_stage(id) ON DELETE CASCADE,
   created_at TIMESTAMP NOT NULL DEFAULT NOW(),
-  updated_at TIMESTAMP NOT NULL DEFAULT NOW(),  
+  updated_at TIMESTAMP NOT NULL DEFAULT NOW(),
   decision JSONB NOT NULL
 );
 

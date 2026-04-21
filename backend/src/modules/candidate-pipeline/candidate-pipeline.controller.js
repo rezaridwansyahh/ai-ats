@@ -28,6 +28,15 @@ class CandidatePipelineController {
     }
   }
 
+  async getByApplicantId(req, res) {
+    try {
+      const pipelines = await candidatePipelineService.getByApplicantId(req.params.applicant_id);
+      res.status(200).json({ message: 'Candidate pipelines for applicant', pipelines });
+    } catch (err) {
+      res.status(err.status || 500).json({ message: err.message });
+    }
+  }
+
   async create(req, res) {
     try {
       const pipeline = await candidatePipelineService.create(req.body);
