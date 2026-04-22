@@ -41,7 +41,8 @@ import {
   ChevronsUpDown,
   Briefcase,
   Search,
-  ClipboardList
+  ClipboardList,
+  FileText
 } from 'lucide-react';
 
 const iconMap = {
@@ -51,7 +52,8 @@ const iconMap = {
   'Job Postings':   Package,
   'Job Management': Briefcase,
   'Sourcing':       Briefcase,
-  'Selection':      ClipboardList
+  'Selection':      ClipboardList,
+  'asesmen':        FileText
 };
 
 const routeMap = {
@@ -70,7 +72,8 @@ const routeMap = {
   'Talent Pool':       '/sourcing/talent-pool',
   'Source Candidate':  '/sourcing/source-candidate',
   'Assessment':        '/selection/assessment',
-  'Report':            '/selection/report'
+  'Report':            '/selection/report',
+  'asesmen a':         '/asesmen/asesmen-a'
 };
 
 const useSidebarStructure = (permissions) => {
