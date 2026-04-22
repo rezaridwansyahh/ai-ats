@@ -1,0 +1,1590 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Myralix v10 · Laporan Simulasi Psikologis — 8 Kandidat</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,wght@0,400;0,600;0,700;1,500&family=DM+Sans:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+:root {
+  --teal:#0A6E5C; --teal-dk:#064E3B; --teal-lt:#EDF7F5;
+  --cream:#FAF7F2; --paper:#FEFDFA;
+  --navy:#0F172A; --slate:#334155; --slate-md:#64748B; --slate-lt:#94A3B8;
+  --border:#E2E8F0; --border-lt:#F1F5F9;
+  --hd:'Fraunces','Playfair Display',Georgia,serif;
+  --bd:'DM Sans','Inter',system-ui,sans-serif;
+  --mono:'JetBrains Mono',Menlo,Consolas,monospace;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:var(--bd);font-size:14px;line-height:1.65;color:var(--navy);background:var(--cream)}
+.wrap{max-width:1100px;margin:0 auto;padding:0 24px}
+
+/* ── TOP TITLE ── */
+.doc-head{padding:56px 0 36px;text-align:center;border-bottom:1px solid var(--border);margin-bottom:40px}
+.doc-title{font-family:var(--hd);font-weight:700;font-size:42px;color:var(--navy);letter-spacing:-.02em;line-height:1.1;margin-bottom:10px}
+.doc-title em{font-style:italic;color:var(--teal);font-weight:600}
+.doc-sub{font-size:16px;color:var(--slate);max-width:680px;margin:0 auto 20px}
+.doc-meta{font-size:12px;color:var(--slate-lt);font-family:var(--mono)}
+
+/* ── TOC ── */
+.toc-section{background:#fff;border:1px solid var(--border);border-radius:12px;padding:24px 28px;margin-bottom:40px;box-shadow:0 2px 10px rgba(15,23,42,.04)}
+.toc-title{font-family:var(--hd);font-weight:700;font-size:18px;color:var(--navy);margin-bottom:14px}
+.toc-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:10px}
+.toc-item{display:flex;align-items:center;gap:12px;padding:12px 16px;background:var(--border-lt);border-radius:8px;text-decoration:none;color:var(--navy);transition:all .15s;border-left:3px solid var(--border-lt)}
+.toc-item:hover{background:#fff;box-shadow:0 2px 10px rgba(15,23,42,.08)}
+.toc-item.pass{border-left-color:#16A34A}
+.toc-item.fail{border-left-color:#DC2626}
+.toc-item.warn{border-left-color:#D97706}
+.toc-badge{font-family:var(--hd);font-weight:700;font-size:18px;min-width:42px;height:42px;border-radius:50%;background:#fff;display:flex;align-items:center;justify-content:center;color:var(--teal)}
+.toc-info{flex:1}
+.toc-name{font-family:var(--hd);font-weight:600;font-size:15px;color:var(--navy)}
+.toc-role{font-size:12px;color:var(--slate-md)}
+.toc-verd{font-size:11px;font-weight:600;padding:4px 10px;border-radius:12px;font-family:var(--mono)}
+.toc-verd.pass{background:#DCFCE7;color:#14532D}
+.toc-verd.fail{background:#FEE2E2;color:#991B1B}
+.toc-verd.warn{background:#FEF3C7;color:#92400E}
+
+/* ── CANDIDATE REPORT ── */
+.cand-report{background:#fff;border:1px solid var(--border);border-radius:16px;margin-bottom:36px;overflow:hidden;box-shadow:0 6px 20px rgba(15,23,42,.05);scroll-margin-top:16px;page-break-before:always}
+.cand-report:first-of-type{page-break-before:auto}
+
+.cand-header{padding:32px 36px 28px;background:linear-gradient(135deg,var(--bat-bg) 0%,#fff 100%);border-bottom:1px solid var(--border);position:relative}
+.cand-badge{display:inline-block;background:var(--bat-fg);color:#fff;padding:5px 14px;border-radius:12px;font-size:11px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;margin-bottom:12px;font-family:var(--mono)}
+.cand-name{font-family:var(--hd);font-weight:700;font-size:32px;color:var(--navy);line-height:1.1;letter-spacing:-.02em;margin-bottom:12px}
+.cand-meta{display:flex;flex-wrap:wrap;gap:18px;font-size:13px;color:var(--slate);margin-bottom:16px}
+.cand-bat-strip{font-family:var(--mono);font-size:11px;color:var(--bat-fg);font-weight:600;letter-spacing:.05em;text-transform:uppercase}
+
+/* ── VERDICT BANNER ── */
+.verdict-banner{padding:24px 32px;display:flex;align-items:center;gap:24px;border-top:none;border-bottom:1px solid var(--border);border-left:6px solid}
+.v-emoji{font-size:48px;line-height:1}
+.v-text{flex:1}
+.v-label{font-size:11px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;margin-bottom:2px;opacity:.7}
+.v-verdict{font-family:var(--hd);font-weight:700;font-size:28px;letter-spacing:-.01em}
+.v-overall{text-align:right}
+.v-overall-label{font-size:11px;font-weight:600;letter-spacing:.05em;text-transform:uppercase;margin-bottom:2px;opacity:.7}
+.v-overall-val{font-family:var(--hd);font-weight:700;font-size:40px;letter-spacing:-.02em}
+.v-overall-val span{font-size:18px;opacity:.6;font-weight:500}
+
+/* ── PILLAR SECTION ── */
+.pillar-section{padding:28px 36px;border-bottom:1px solid var(--border-lt);background:var(--paper)}
+.pillar-section h2{font-family:var(--hd);font-weight:600;font-size:20px;color:var(--navy);margin-bottom:8px;letter-spacing:-.01em}
+.pillar-intro{font-size:13px;color:var(--slate);margin-bottom:18px;font-style:italic}
+.pillars{display:flex;flex-direction:column;gap:10px}
+.pillar-row{display:grid;grid-template-columns:240px 1fr 60px;gap:16px;align-items:center}
+.pillar-label{font-size:13px;font-weight:600;color:var(--navy)}
+.pillar-bar-wrap{position:relative;height:22px;display:flex;align-items:center}
+.pillar-track{position:absolute;inset:0;background:var(--border-lt);border-radius:11px;z-index:1}
+.pillar-bar{position:relative;height:100%;border-radius:11px;z-index:2;transition:width .5s}
+.pillar-val{font-family:var(--mono);font-weight:700;font-size:15px;text-align:right}
+.pillar-na{font-family:var(--mono);font-size:11px;color:var(--slate-lt);font-style:italic}
+
+/* ── TEST SECTIONS ── */
+.test-section{padding:28px 36px;border-bottom:1px solid var(--border-lt)}
+.test-section:last-child{border-bottom:none}
+.test-head{margin-bottom:20px}
+.test-title{font-family:var(--hd);font-weight:600;font-size:20px;color:var(--navy);letter-spacing:-.01em}
+.test-sub{font-size:12px;color:var(--slate-md);margin-top:2px;font-style:italic}
+.test-body p{color:var(--slate);margin-bottom:12px;line-height:1.7}
+.test-body strong{color:var(--navy)}
+
+/* ── SCORE CHIPS ── */
+.score-chips{display:flex;flex-wrap:wrap;gap:10px;margin-bottom:18px}
+.score-chip{flex:1;min-width:120px;background:var(--border-lt);border-radius:8px;padding:12px 14px;text-align:center}
+.sc-label{font-size:11px;font-weight:600;color:var(--slate-md);text-transform:uppercase;letter-spacing:.05em;margin-bottom:2px}
+.sc-value{font-family:var(--hd);font-weight:700;font-size:26px;line-height:1.1;margin:2px 0}
+.sc-grade{font-size:11px;font-weight:600}
+.sc-note{font-family:var(--mono);font-size:10px;color:var(--slate-lt);margin-top:2px}
+
+/* ── TK WRAP ── */
+.tk-wrap{display:grid;grid-template-columns:200px 1fr;gap:24px;align-items:start}
+.composite-box{text-align:center;padding:18px 16px;background:var(--paper);border:1px solid var(--border);border-radius:12px}
+.comp-label{font-size:11px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--slate-md);margin-bottom:8px}
+.comp-val{font-family:var(--hd);font-weight:700;font-size:60px;line-height:1;letter-spacing:-.03em}
+.comp-note{font-size:11px;color:var(--slate);margin-top:8px;font-style:italic}
+
+/* ── INSTR BLOCKS ── */
+.instr-block{background:var(--paper);border:1px solid var(--border);border-radius:12px;padding:18px 22px;margin-bottom:16px}
+.instr-title{font-family:var(--hd);font-weight:600;font-size:15px;color:var(--navy);margin-bottom:14px;padding-bottom:10px;border-bottom:1px solid var(--border-lt)}
+.instr-head{display:flex;align-items:center;gap:18px;margin-bottom:10px}
+.instr-big{font-family:var(--hd);font-weight:700;font-size:32px;letter-spacing:-.02em;line-height:1}
+.instr-name{font-weight:600;font-size:14px;color:var(--navy)}
+.instr-breakdown{font-family:var(--mono);font-size:12px;color:var(--slate-md);margin-top:2px}
+
+/* ── TINY CHIPS ── */
+.tiny-chips{display:flex;flex-wrap:wrap;gap:6px;margin-top:6px}
+.tiny-chip{display:inline-block;font-family:var(--mono);font-size:11px;background:var(--border-lt);color:var(--slate);padding:3px 8px;border-radius:10px;font-weight:500}
+
+/* ── NARRATIVE LIST ── */
+.narr-list{margin:0;padding-left:0;list-style:none}
+.narr-list li{padding:8px 0 8px 22px;position:relative;color:var(--slate);line-height:1.7;border-bottom:1px dashed var(--border-lt)}
+.narr-list li:last-child{border-bottom:none}
+.narr-list li::before{content:"▸";position:absolute;left:0;top:8px;color:var(--teal);font-weight:700}
+.narr{color:var(--slate);line-height:1.7;margin-bottom:10px}
+
+.disclaimer{font-size:11px;color:var(--slate-md);background:#FFFBEB;border:1px solid #FDE68A;border-radius:6px;padding:8px 12px;margin-top:12px;font-style:italic}
+
+/* ── FINAL SECTION ── */
+.final-section{padding:28px 36px;background:linear-gradient(135deg,var(--paper) 0%,var(--cream) 100%);border-top:2px solid var(--border)}
+.final-section h2{font-family:var(--hd);font-weight:600;font-size:22px;color:var(--navy);margin-bottom:16px;letter-spacing:-.01em}
+.verdict-narr{border-left:5px solid;padding:20px 24px;border-radius:0 8px 8px 0}
+.verdict-narr p{margin-bottom:12px;line-height:1.75}
+.verdict-narr p:last-child{margin-bottom:0;font-weight:500}
+
+/* ── FOOTER ── */
+.doc-foot{text-align:center;padding:48px 20px 40px;color:var(--slate-lt);font-size:12px;border-top:1px solid var(--border-lt);margin-top:40px;font-family:var(--hd);font-style:italic}
+
+/* ── PRINT ── */
+@media print{
+  body{background:#fff;font-size:11.5px}
+  .doc-head{padding:24px 0;page-break-after:always}
+  .toc-section{page-break-after:always}
+  .cand-report{box-shadow:none;border:1px solid #000;page-break-inside:avoid;margin-bottom:24px}
+  .pillar-section,.test-section,.final-section,.cand-header,.verdict-banner{page-break-inside:avoid}
+}
+
+/* ── RESPONSIVE ── */
+@media (max-width:700px){
+  .doc-title{font-size:28px}
+  .tk-wrap{grid-template-columns:1fr}
+  .pillar-row{grid-template-columns:1fr;gap:4px}
+  .pillar-label{font-size:12px}
+  .cand-name{font-size:26px}
+  .v-verdict{font-size:22px}
+  .v-overall-val{font-size:30px}
+  .toc-grid{grid-template-columns:1fr}
+}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<header class="doc-head">
+  <div class="doc-title">Laporan <em>Simulasi Psikologis</em></div>
+  <div class="doc-sub">Simulasi Myralix v10 untuk 8 kandidat lintas 4 tipe battery. Setiap kandidat telah melewati penilaian menyeluruh dengan output 3-Pillar Bridge dan verdict psikolog.</div>
+  <div class="doc-meta">Myralix v10 · April 2026 · Internal Simulation Document · Rahasia</div>
+</header>
+
+<section class="toc-section">
+  <div class="toc-title">Daftar Kandidat</div>
+  <div class="toc-grid">
+    
+    <a class="toc-item pass" href="#cand-S">
+      <div class="toc-badge">S</div>
+      <div class="toc-info">
+        <div class="toc-name">Sari Handayani</div>
+        <div class="toc-role">Battery A · Staf Administrasi Umum</div>
+      </div>
+      <div class="toc-verd pass">Lolos</div>
+    </a>
+    <a class="toc-item fail" href="#cand-T">
+      <div class="toc-badge">T</div>
+      <div class="toc-info">
+        <div class="toc-name">Tono Wibawa</div>
+        <div class="toc-role">Battery A · Staf Administrasi Umum</div>
+      </div>
+      <div class="toc-verd fail">Tidak Lolos</div>
+    </a>
+    <a class="toc-item pass" href="#cand-U">
+      <div class="toc-badge">U</div>
+      <div class="toc-info">
+        <div class="toc-name">Umar Prasetyo</div>
+        <div class="toc-role">Battery B · Software Engineer</div>
+      </div>
+      <div class="toc-verd pass">Lolos</div>
+    </a>
+    <a class="toc-item fail" href="#cand-W">
+      <div class="toc-badge">W</div>
+      <div class="toc-info">
+        <div class="toc-name">Wahyu Setiawan</div>
+        <div class="toc-role">Battery B · Junior Data Analyst</div>
+      </div>
+      <div class="toc-verd fail">Tidak Lolos</div>
+    </a>
+    <a class="toc-item pass" href="#cand-V">
+      <div class="toc-badge">V</div>
+      <div class="toc-info">
+        <div class="toc-name">Vina Kusuma</div>
+        <div class="toc-role">Battery C · Team Lead Operations</div>
+      </div>
+      <div class="toc-verd pass">Lolos</div>
+    </a>
+    <a class="toc-item fail" href="#cand-X">
+      <div class="toc-badge">X</div>
+      <div class="toc-info">
+        <div class="toc-name">Xaverius Hartono</div>
+        <div class="toc-role">Battery C · Team Lead Operations</div>
+      </div>
+      <div class="toc-verd fail">Tidak Lolos</div>
+    </a>
+    <a class="toc-item pass" href="#cand-Y">
+      <div class="toc-badge">Y</div>
+      <div class="toc-info">
+        <div class="toc-name">Yuliana Dewi</div>
+        <div class="toc-role">Battery D · Branch Manager</div>
+      </div>
+      <div class="toc-verd pass">Lolos</div>
+    </a>
+    <a class="toc-item fail" href="#cand-Z">
+      <div class="toc-badge">Z</div>
+      <div class="toc-info">
+        <div class="toc-name">Zainal Abidin</div>
+        <div class="toc-role">Battery D · Branch Manager</div>
+      </div>
+      <div class="toc-verd fail">Tidak Lolos</div>
+    </a>
+  </div>
+</section>
+
+
+    <section class="cand-report" id="cand-S">
+      
+    <div class="cand-header" style="--bat-fg:#0A6E5C;--bat-bg:#EDF7F5">
+      <div class="cand-badge">Kandidat S</div>
+      <h1 class="cand-name">Sari Handayani</h1>
+      <div class="cand-meta">
+        <span>👤 24 tahun · Perempuan</span>
+        <span>🎓 SMK Perkantoran</span>
+        <span>💼 Melamar: <strong>Staf Administrasi Umum</strong></span>
+      </div>
+      <div class="cand-bat-strip">
+        Battery A · Operasional &amp; Staf Umum · v10
+      </div>
+    </div>
+      
+    <div class="verdict-banner" style="background:#F0FDF4;border-color:#16A34A;color:#15803D">
+      <div class="v-emoji">✅</div>
+      <div class="v-text">
+        <div class="v-label">HASIL ASESMEN</div>
+        <div class="v-verdict">LOLOS</div>
+      </div>
+      <div class="v-overall">
+        <div class="v-overall-label">Skor komposit</div>
+        <div class="v-overall-val">82<span>/100</span></div>
+      </div>
+    </div>
+      
+    <div class="pillar-section">
+      <h2>3-Pillar Bridge</h2>
+      <p class="pillar-intro">Arsitektur penilaian menggunakan tiga pilar kualitatif, dengan pilar kognitif sebagai <em>gate kuantitatif</em> utama. Pilar kepribadian dan sikap kerja adalah profil qualitatif (bukan untuk akumulasi skor).</p>
+      <div class="pillars">
+        
+    <div class="pillar-row">
+      <div class="pillar-label">I · Kognitif (TK · gate kuantitatif)</div>
+      <div class="pillar-bar-wrap">
+        <div class="pillar-bar" style="width:72%;background:#15803D"></div>
+        <div class="pillar-track"></div>
+      </div>
+      <div class="pillar-val" style="color:#15803D">72</div>
+    </div>
+        
+    <div class="pillar-row">
+      <div class="pillar-label">II · Kepribadian</div>
+      <div class="pillar-bar-wrap">
+        <div class="pillar-bar" style="width:76%;background:#15803D"></div>
+        <div class="pillar-track"></div>
+      </div>
+      <div class="pillar-val" style="color:#15803D">76</div>
+    </div>
+        
+    <div class="pillar-row">
+      <div class="pillar-label">III · Sikap Kerja</div>
+      <div class="pillar-bar-wrap">
+        <div class="pillar-bar" style="width:98%;background:#15803D"></div>
+        <div class="pillar-track"></div>
+      </div>
+      <div class="pillar-val" style="color:#15803D">98</div>
+    </div>
+      </div>
+    </div>
+      
+    <div class="test-section">
+      <div class="test-head">
+        <div class="test-title">1. Tes Kemampuan Umum</div>
+        <div class="test-sub">WPT (Wonderlic-style) + DAT (Differential Aptitude)</div>
+      </div>
+      <div class="test-body">
+        
+    <div class="tk-wrap">
+      <div class="tk-left">
+        
+    <div class="composite-box">
+      <div class="comp-label">Komposit Kognitif (TK)</div>
+      <div class="comp-val" style="color:#15803D">7.2<span style="font-size:20px;color:#94A3B8">/10</span></div>
+      <div class="comp-note">Gate kuantitatif · tinggi</div>
+    </div>
+      </div>
+      <div class="tk-right">
+        <div class="score-chips">
+    <div class="score-chip">
+      <div class="sc-label">WPT · Kemampuan Umum</div>
+      <div class="sc-value" style="color:#D97706">72</div>
+      <div class="sc-grade" style="color:#D97706">C · Rata-rata</div>
+      <div class="sc-note">raw 34</div>
+    </div>
+    <div class="score-chip">
+      <div class="sc-label">DAT · Clerical Speed</div>
+      <div class="sc-value" style="color:#D97706">70</div>
+      <div class="sc-grade" style="color:#D97706">C · Rata-rata</div>
+      <div class="sc-note">raw 28</div>
+    </div></div>
+        <p class="narr">Kandidat menunjukkan kapasitas kognitif yang berada di atas rata-rata umum (komposit 7.2/10). Kemampuan memproses informasi, memahami instruksi tertulis, serta menyelesaikan persoalan yang membutuhkan penalaran logis cukup kuat.</p>
+        <p class="narr">Skor WPT (persentil 72) berada pada kategori <strong>Rata-rata</strong> — kapasitas belajar memadai namun tidak luar biasa.</p>
+        <p class="narr">Pada DAT Clerical Speed (persentil 70), kandidat unggul dalam kecepatan dan ketelitian pemeriksaan data — relevan untuk tugas administratif yang membutuhkan akurasi.</p>
+      </div>
+    </div>
+      </div>
+    </div>
+    <div class="test-section">
+      <div class="test-head">
+        <div class="test-title">2. Profil Kepribadian</div>
+        <div class="test-sub">Big Five Inventory (BFI-44)</div>
+      </div>
+      <div class="test-body">
+        
+    <div class="score-chips">
+    <div class="score-chip">
+      <div class="sc-label">Openness</div>
+      <div class="sc-value" style="color:#D97706">58</div>
+      <div class="sc-grade" style="color:#D97706">C · Rata-rata</div>
+      
+    </div>
+    <div class="score-chip">
+      <div class="sc-label">Conscientiousness</div>
+      <div class="sc-value" style="color:#1D4ED8">78</div>
+      <div class="sc-grade" style="color:#1D4ED8">B · Tinggi</div>
+      
+    </div>
+    <div class="score-chip">
+      <div class="sc-label">Extraversion</div>
+      <div class="sc-value" style="color:#D97706">62</div>
+      <div class="sc-grade" style="color:#D97706">C · Rata-rata</div>
+      
+    </div>
+    <div class="score-chip">
+      <div class="sc-label">Agreeableness</div>
+      <div class="sc-value" style="color:#D97706">72</div>
+      <div class="sc-grade" style="color:#D97706">C · Rata-rata</div>
+      
+    </div>
+    <div class="score-chip">
+      <div class="sc-label">Neuroticism</div>
+      <div class="sc-value" style="color:#DC2626">22</div>
+      <div class="sc-grade" style="color:#DC2626">D · Rendah</div>
+      
+    </div></div>
+    <ul class="narr-list">
+      <li><strong>Conscientiousness 78</strong> (tinggi) — kandidat menunjukkan disiplin kerja, keteraturan, dan tanggung jawab yang baik. Cocok untuk peran yang menuntut konsistensi dan ketelitian.</li><li><strong>Neuroticism 22</strong> (rendah) — stabilitas emosi baik. Kandidat cenderung tenang menghadapi tekanan dan tidak mudah terganggu oleh stressor rutin.</li><li><strong>Agreeableness 72</strong> (cukup tinggi) — kooperatif, mudah bekerja sama dengan rekan, dan cenderung menghindari konflik — positif untuk lingkungan kerja yang membutuhkan kolaborasi tim.</li>
+    </ul>
+      </div>
+    </div>
+    <div class="test-section">
+      <div class="test-head">
+        <div class="test-title">3. Sikap Kerja &amp; Minat</div>
+        <div class="test-sub">DISC (24 tetrads) + Holland RIASEC (108 items)</div>
+      </div>
+      <div class="test-body">
+        
+    <div class="instr-block">
+      <div class="instr-title">DISC · Gaya Interaksi Kerja</div>
+      <div class="instr-head">
+        <div class="instr-big" style="color:#15803D">S</div>
+        <div>
+          <div class="instr-name">Steadiness-dominant</div>
+          <div class="instr-breakdown">D=4 · I=5 · S=9 · C=6</div>
+        </div>
+      </div>
+      <p class="narr">Kandidat stabil, sabar, loyal, dan lebih menyukai lingkungan kerja yang dapat diprediksi. <strong>Profil ideal untuk peran operasional/staf umum</strong> — kecocokan tinggi dengan tuntutan pekerjaan rutin.</p>
+    </div>
+    <div class="instr-block">
+      <div class="instr-title">Holland RIASEC · Minat Kejuruan</div>
+      <div class="instr-head">
+        <div class="instr-big">CSR</div>
+        <div>
+          <div class="instr-name">Conventional-Social-Realistic</div>
+          <div class="tiny-chips"><span class="tiny-chip">R=8</span><span class="tiny-chip">I=4</span><span class="tiny-chip">A=3</span><span class="tiny-chip">S=9</span><span class="tiny-chip">E=5</span><span class="tiny-chip">C=11</span></div>
+        </div>
+      </div>
+      <p class="narr">Kode Holland <strong>CSR</strong> (Conventional-Social-Realistic) menunjukkan preferensi kuat terhadap pekerjaan terstruktur, tertib, dan sosial — <strong>sesuai untuk peran operasional/administratif</strong>.</p>
+    </div>
+      </div>
+    </div>
+      
+    <div class="final-section">
+      <h2>Rekomendasi Psikolog</h2>
+      <div class="verdict-narr" style="border-color:#16A34A;background:#F0FDF4">
+        <p>Berdasarkan hasil asesmen menyeluruh, <strong>Sari Handayani</strong> <strong style='color:#15803D'>MEMENUHI</strong> syarat kualifikasi untuk posisi <em>Staf Administrasi Umum</em>.</p><p>Kapasitas kognitif (pilar I: 72/100) memadai untuk tuntutan peran.</p><p>Profil kepribadian (pilar II: 76/100) dan sikap kerja (pilar III: 98/100) menunjukkan kecocokan kualitatif dengan ekspektasi jabatan.</p><p><strong>Rekomendasi:</strong> kandidat dapat dilanjutkan ke tahap seleksi berikutnya (MCU, wawancara akhir, referensi). Tidak ditemukan red flag signifikan pada dimensi utama.</p>
+      </div>
+    </div>
+    </section>
+    <section class="cand-report" id="cand-T">
+      
+    <div class="cand-header" style="--bat-fg:#0A6E5C;--bat-bg:#EDF7F5">
+      <div class="cand-badge">Kandidat T</div>
+      <h1 class="cand-name">Tono Wibawa</h1>
+      <div class="cand-meta">
+        <span>👤 27 tahun · Laki-laki</span>
+        <span>🎓 SMA</span>
+        <span>💼 Melamar: <strong>Staf Administrasi Umum</strong></span>
+      </div>
+      <div class="cand-bat-strip">
+        Battery A · Operasional &amp; Staf Umum · v10
+      </div>
+    </div>
+      
+    <div class="verdict-banner" style="background:#FFF1F2;border-color:#DC2626;color:#991B1B">
+      <div class="v-emoji">❌</div>
+      <div class="v-text">
+        <div class="v-label">HASIL ASESMEN</div>
+        <div class="v-verdict">TIDAK LOLOS</div>
+      </div>
+      <div class="v-overall">
+        <div class="v-overall-label">Skor komposit</div>
+        <div class="v-overall-val">47<span>/100</span></div>
+      </div>
+    </div>
+      
+    <div class="pillar-section">
+      <h2>3-Pillar Bridge</h2>
+      <p class="pillar-intro">Arsitektur penilaian menggunakan tiga pilar kualitatif, dengan pilar kognitif sebagai <em>gate kuantitatif</em> utama. Pilar kepribadian dan sikap kerja adalah profil qualitatif (bukan untuk akumulasi skor).</p>
+      <div class="pillars">
+        
+    <div class="pillar-row">
+      <div class="pillar-label">I · Kognitif (TK · gate kuantitatif)</div>
+      <div class="pillar-bar-wrap">
+        <div class="pillar-bar" style="width:38%;background:#DC2626"></div>
+        <div class="pillar-track"></div>
+      </div>
+      <div class="pillar-val" style="color:#DC2626">38</div>
+    </div>
+        
+    <div class="pillar-row">
+      <div class="pillar-label">II · Kepribadian</div>
+      <div class="pillar-bar-wrap">
+        <div class="pillar-bar" style="width:34%;background:#DC2626"></div>
+        <div class="pillar-track"></div>
+      </div>
+      <div class="pillar-val" style="color:#DC2626">34</div>
+    </div>
+        
+    <div class="pillar-row">
+      <div class="pillar-label">III · Sikap Kerja</div>
+      <div class="pillar-bar-wrap">
+        <div class="pillar-bar" style="width:68%;background:#D97706"></div>
+        <div class="pillar-track"></div>
+      </div>
+      <div class="pillar-val" style="color:#D97706">68</div>
+    </div>
+      </div>
+    </div>
+      
+    <div class="test-section">
+      <div class="test-head">
+        <div class="test-title">1. Tes Kemampuan Umum</div>
+        <div class="test-sub">WPT (Wonderlic-style) + DAT (Differential Aptitude)</div>
+      </div>
+      <div class="test-body">
+        
+    <div class="tk-wrap">
+      <div class="tk-left">
+        
+    <div class="composite-box">
+      <div class="comp-label">Komposit Kognitif (TK)</div>
+      <div class="comp-val" style="color:#DC2626">3.8<span style="font-size:20px;color:#94A3B8">/10</span></div>
+      <div class="comp-note">Gate kuantitatif · di bawah rata-rata</div>
+    </div>
+      </div>
+      <div class="tk-right">
+        <div class="score-chips">
+    <div class="score-chip">
+      <div class="sc-label">WPT · Kemampuan Umum</div>
+      <div class="sc-value" style="color:#D97706">36</div>
+      <div class="sc-grade" style="color:#D97706">C · Rata-rata</div>
+      <div class="sc-note">raw 18</div>
+    </div>
+    <div class="score-chip">
+      <div class="sc-label">DAT · Clerical Speed</div>
+      <div class="sc-value" style="color:#D97706">40</div>
+      <div class="sc-grade" style="color:#D97706">C · Rata-rata</div>
+      <div class="sc-note">raw 16</div>
+    </div></div>
+        <p class="narr">Kapasitas kognitif kandidat berada di bawah rata-rata yang dipersyaratkan untuk posisi ini (komposit 3.8/10). Kemungkinan besar kandidat akan menemui kesulitan dalam tugas yang membutuhkan penalaran abstrak, kecepatan memproses data, atau pemecahan masalah multi-langkah.</p>
+        <p class="narr">Skor WPT (persentil 36) berada pada kategori <strong>Rata-rata</strong> — kapasitas belajar memadai namun tidak luar biasa.</p>
+        <p class="narr">Pada DAT Clerical Speed (persentil 40), performa berada pada level cukup — ketelitian memadai untuk pekerjaan administratif rutin.</p>
+      </div>
+    </div>
+      </div>
+    </div>
+    <div class="test-section">
+      <div class="test-head">
+        <div class="test-title">2. Profil Kepribadian</div>
+        <div class="test-sub">Big Five Inventory (BFI-44)</div>
+      </div>
+      <div class="test-body">
+        
+    <div class="score-chips">
+    <div class="score-chip">
+      <div class="sc-label">Openness</div>
+      <div class="sc-value" style="color:#D97706">45</div>
+      <div class="sc-grade" style="color:#D97706">C · Rata-rata</div>
+      
+    </div>
+    <div class="score-chip">
+      <div class="sc-label">Conscientiousness</div>
+      <div class="sc-value" style="color:#D97706">32</div>
+      <div class="sc-grade" style="color:#D97706">C · Rata-rata</div>
+      
+    </div>
+    <div class="score-chip">
+      <div class="sc-label">Extraversion</div>
+      <div class="sc-value" style="color:#D97706">52</div>
+      <div class="sc-grade" style="color:#D97706">C · Rata-rata</div>
+      
+    </div>
+    <div class="score-chip">
+      <div class="sc-label">Agreeableness</div>
+      <div class="sc-value" style="color:#D97706">38</div>
+      <div class="sc-grade" style="color:#D97706">C · Rata-rata</div>
+      
+    </div>
+    <div class="score-chip">
+      <div class="sc-label">Neuroticism</div>
+      <div class="sc-value" style="color:#D97706">68</div>
+      <div class="sc-grade" style="color:#D97706">C · Rata-rata</div>
+      
+    </div></div>
+    <ul class="narr-list">
+      <li><strong>Conscientiousness 32</strong> (cukup rendah) — kecenderungan kurang terorganisir dan mungkin sulit mempertahankan konsistensi. Perlu pengawasan lebih ketat pada tugas rutin.</li><li><strong>Neuroticism 68</strong> (cukup tinggi) — stabilitas emosi pada tingkat rata-rata; dapat menghadapi tekanan kerja ringan dengan baik.</li><li><strong>Agreeableness 38</strong> (cukup rendah) — kecenderungan kerjasama pada level rata-rata.</li>
+    </ul>
+      </div>
+    </div>
+    <div class="test-section">
+      <div class="test-head">
+        <div class="test-title">3. Sikap Kerja &amp; Minat</div>
+        <div class="test-sub">DISC (24 tetrads) + Holland RIASEC (108 items)</div>
+      </div>
+      <div class="test-body">
+        
+    <div class="instr-block">
+      <div class="instr-title">DISC · Gaya Interaksi Kerja</div>
+      <div class="instr-head">
+        <div class="instr-big" style="color:#D97706">I</div>
+        <div>
+          <div class="instr-name">Influence-dominant</div>
+          <div class="instr-breakdown">D=6 · I=11 · S=3 · C=4</div>
+        </div>
+      </div>
+      <p class="narr">Kandidat komunikatif, persuasif, dan antusias secara sosial. Namun untuk pekerjaan administratif yang membutuhkan ketelitian dan konsistensi, dominansi I dapat menjadi mismatch — perlu dipertimbangkan.</p>
+    </div>
+    <div class="instr-block">
+      <div class="instr-title">Holland RIASEC · Minat Kejuruan</div>
+      <div class="instr-head">
+        <div class="instr-big">EAR</div>
+        <div>
+          <div class="instr-name">Enterprising-Artistic-Realistic</div>
+          <div class="tiny-chips"><span class="tiny-chip">R=7</span><span class="tiny-chip">I=3</span><span class="tiny-chip">A=9</span><span class="tiny-chip">S=5</span><span class="tiny-chip">E=10</span><span class="tiny-chip">C=2</span></div>
+        </div>
+      </div>
+      <p class="narr">Kode Holland <strong>EAR</strong> (Enterprising-Artistic-Realistic) mengindikasikan preferensi pada peran yang menuntut kepemimpinan, persuasi, dan pengambilan keputusan — <strong>sesuai untuk peran supervisor/manajerial</strong>.</p>
+    </div>
+      </div>
+    </div>
+      
+    <div class="final-section">
+      <h2>Rekomendasi Psikolog</h2>
+      <div class="verdict-narr" style="border-color:#DC2626;background:#FFF1F2">
+        <p>Berdasarkan hasil asesmen menyeluruh, <strong>Tono Wibawa</strong> <strong style='color:#991B1B'>BELUM MEMENUHI</strong> syarat kualifikasi untuk posisi <em>Staf Administrasi Umum</em>.</p><p>Pilar kognitif (38/100) berada di bawah ambang yang diperlukan untuk tuntutan peran ini — ini adalah penghambat utama; secara arsitektur assessment, pilar kognitif merupakan hard quantitative gate.</p><p>Pilar kepribadian (34/100) juga menunjukkan mismatch dengan tuntutan peran — profil yang muncul tidak selaras dengan ekspektasi jabatan.</p><p><strong>Rekomendasi:</strong> kandidat <strong>tidak direkomendasikan untuk posisi ini</strong>. Dapat dipertimbangkan untuk peran dengan tuntutan kognitif yang lebih rendah, atau disarankan untuk pengembangan terlebih dahulu sebelum melamar posisi serupa.</p>
+      </div>
+    </div>
+    </section>
+    <section class="cand-report" id="cand-U">
+      
+    <div class="cand-header" style="--bat-fg:#7C3AED;--bat-bg:#F5F3FF">
+      <div class="cand-badge">Kandidat U</div>
+      <h1 class="cand-name">Umar Prasetyo</h1>
+      <div class="cand-meta">
+        <span>👤 28 tahun · Laki-laki</span>
+        <span>🎓 S1 Teknik Informatika</span>
+        <span>💼 Melamar: <strong>Software Engineer</strong></span>
+      </div>
+      <div class="cand-bat-strip">
+        Battery B · Profesional · v10
+      </div>
+    </div>
+      
+    <div class="verdict-banner" style="background:#F0FDF4;border-color:#16A34A;color:#15803D">
+      <div class="v-emoji">✅</div>
+      <div class="v-text">
+        <div class="v-label">HASIL ASESMEN</div>
+        <div class="v-verdict">LOLOS</div>
+      </div>
+      <div class="v-overall">
+        <div class="v-overall-label">Skor komposit</div>
+        <div class="v-overall-val">84<span>/100</span></div>
+      </div>
+    </div>
+      
+    <div class="pillar-section">
+      <h2>3-Pillar Bridge</h2>
+      <p class="pillar-intro">Arsitektur penilaian menggunakan tiga pilar kualitatif, dengan pilar kognitif sebagai <em>gate kuantitatif</em> utama. Pilar kepribadian dan sikap kerja adalah profil qualitatif (bukan untuk akumulasi skor).</p>
+      <div class="pillars">
+        
+    <div class="pillar-row">
+      <div class="pillar-label">I · Kognitif (TK · gate kuantitatif)</div>
+      <div class="pillar-bar-wrap">
+        <div class="pillar-bar" style="width:78%;background:#15803D"></div>
+        <div class="pillar-track"></div>
+      </div>
+      <div class="pillar-val" style="color:#15803D">78</div>
+    </div>
+        
+    <div class="pillar-row">
+      <div class="pillar-label">II · Kepribadian</div>
+      <div class="pillar-bar-wrap">
+        <div class="pillar-bar" style="width:82%;background:#15803D"></div>
+        <div class="pillar-track"></div>
+      </div>
+      <div class="pillar-val" style="color:#15803D">82</div>
+    </div>
+        
+    <div class="pillar-row">
+      <div class="pillar-label">III · Sikap Kerja</div>
+      <div class="pillar-bar-wrap">
+        <div class="pillar-bar" style="width:92%;background:#15803D"></div>
+        <div class="pillar-track"></div>
+      </div>
+      <div class="pillar-val" style="color:#15803D">92</div>
+    </div>
+      </div>
+    </div>
+      
+    <div class="test-section">
+      <div class="test-head">
+        <div class="test-title">1. Tes Kemampuan Umum</div>
+        <div class="test-sub">WPT (Wonderlic-style) + DAT (Differential Aptitude)</div>
+      </div>
+      <div class="test-body">
+        
+    <div class="tk-wrap">
+      <div class="tk-left">
+        
+    <div class="composite-box">
+      <div class="comp-label">Komposit Kognitif (TK)</div>
+      <div class="comp-val" style="color:#15803D">7.8<span style="font-size:20px;color:#94A3B8">/10</span></div>
+      <div class="comp-note">Gate kuantitatif · tinggi</div>
+    </div>
+      </div>
+      <div class="tk-right">
+        <div class="score-chips">
+    <div class="score-chip">
+      <div class="sc-label">WPT · Kemampuan Umum</div>
+      <div class="sc-value" style="color:#1D4ED8">82</div>
+      <div class="sc-grade" style="color:#1D4ED8">B · Tinggi</div>
+      <div class="sc-note">raw 39</div>
+    </div>
+    <div class="score-chip">
+      <div class="sc-label">DAT · Verbal Reasoning</div>
+      <div class="sc-value" style="color:#1D4ED8">76</div>
+      <div class="sc-grade" style="color:#1D4ED8">B · Tinggi</div>
+      
+    </div>
+    <div class="score-chip">
+      <div class="sc-label">DAT · Numerical</div>
+      <div class="sc-value" style="color:#1D4ED8">80</div>
+      <div class="sc-grade" style="color:#1D4ED8">B · Tinggi</div>
+      
+    </div>
+    <div class="score-chip">
+      <div class="sc-label">DAT · Abstract Reasoning</div>
+      <div class="sc-value" style="color:#D97706">72</div>
+      <div class="sc-grade" style="color:#D97706">C · Rata-rata</div>
+      
+    </div>
+    <div class="score-chip">
+      <div class="sc-label">DAT · Space Relations</div>
+      <div class="sc-value" style="color:#D97706">68</div>
+      <div class="sc-grade" style="color:#D97706">C · Rata-rata</div>
+      
+    </div></div>
+        <p class="narr">Kandidat menunjukkan kapasitas kognitif yang berada di atas rata-rata umum (komposit 7.8/10). Kemampuan memproses informasi, memahami instruksi tertulis, serta menyelesaikan persoalan yang membutuhkan penalaran logis cukup kuat.</p>
+        <p class="narr">Skor WPT (persentil 82) menempatkan kandidat pada kategori <strong>Tinggi</strong> — mengindikasikan kecepatan belajar dan adaptasi terhadap pelatihan baru yang baik.</p>
+        <p class="narr">Profil subtes DAT menunjukkan kekuatan pada <strong>Numerical Reasoning</strong> (persentil 80) dan area yang lebih lemah pada <strong>Space Relations</strong> (persentil 68).</p>
+      </div>
+    </div>
+      </div>
+    </div>
+    <div class="test-section">
+      <div class="test-head">
+        <div class="test-title">2. Profil Motivasi &amp; Kepribadian</div>
+        <div class="test-sub">EPPS — 225 pasangan pilihan paksa</div>
+      </div>
+      <div class="test-body">
+        
+    <div class="instr-block">
+      <div class="instr-title">EPPS · Edwards Personal Preference Schedule (15 needs)</div>
+      <p class="narr">Skor konsistensi <strong>12/15 (tinggi)</strong> — respons kandidat konsisten antar soal duplikat, profil hasil dapat dipercaya.</p>
+      <p class="narr">Kebutuhan dominan: <strong>Achievement</strong> (dorongan untuk mencapai target dan mengungguli standar), <strong>Intraception</strong> (kecenderungan untuk memahami motif diri dan orang lain), <strong>Autonomy</strong> (kebutuhan akan kemandirian dan kebebasan bertindak).</p>
+      <p class="narr">Kebutuhan paling rendah: <strong>Deference</strong> (kecenderungan untuk patuh dan mengikuti arahan), <strong>Abasement</strong> (kecenderungan merendahkan diri dan merasa bersalah).</p>
+    </div>
+      </div>
+    </div>
+    <div class="test-section">
+      <div class="test-head">
+        <div class="test-title">3. Sikap Kerja &amp; Minat</div>
+        <div class="test-sub">PAPI Kostick + Holland RIASEC</div>
+      </div>
+      <div class="test-body">
+        
+    <div class="instr-block">
+      <div class="instr-title">PAPI Kostick · Profil Kerja</div>
+      <ul class="narr-list">
+        <li><strong>C=8</strong> (tinggi) — Hati-hati, teliti, detail-oriented. Profil mendukung untuk peran ini.</li><li><strong>T=7</strong> (tinggi) — Peran analitis dan mendalami. Profil mendukung untuk peran ini.</li><li><strong>W=5</strong> (sedang) — Ketaatan pada prosedur — W tinggi artinya sangat patuh aturan.</li>
+      </ul>
+    </div>
+    <div class="instr-block">
+      <div class="instr-title">Holland RIASEC · Minat Kejuruan</div>
+      <div class="instr-head">
+        <div class="instr-big">IEC</div>
+        <div>
+          <div class="instr-name">Investigative-Enterprising-Conventional</div>
+          <div class="tiny-chips"><span class="tiny-chip">R=6</span><span class="tiny-chip">I=12</span><span class="tiny-chip">A=4</span><span class="tiny-chip">S=3</span><span class="tiny-chip">E=7</span><span class="tiny-chip">C=5</span></div>
+        </div>
+      </div>
+      <p class="narr">Kode Holland <strong>IEC</strong> (Investigative-Enterprising-Conventional) menunjukkan minat kuat pada pekerjaan analitis, pemecahan masalah, dan kompleksitas kognitif — <strong>sangat sesuai untuk peran profesional/teknis</strong>.</p>
+    </div>
+      </div>
+    </div>
+      
+    <div class="final-section">
+      <h2>Rekomendasi Psikolog</h2>
+      <div class="verdict-narr" style="border-color:#16A34A;background:#F0FDF4">
+        <p>Berdasarkan hasil asesmen menyeluruh, <strong>Umar Prasetyo</strong> <strong style='color:#15803D'>MEMENUHI</strong> syarat kualifikasi untuk posisi <em>Software Engineer</em>.</p><p>Kapasitas kognitif (pilar I: 78/100) jelas di atas tuntutan peran, mendukung pembelajaran cepat dan adaptasi.</p><p>Profil kepribadian (pilar II: 82/100) dan sikap kerja (pilar III: 92/100) menunjukkan kecocokan kualitatif dengan ekspektasi jabatan.</p><p><strong>Rekomendasi:</strong> kandidat dapat dilanjutkan ke tahap seleksi berikutnya (MCU, wawancara akhir, referensi). Tidak ditemukan red flag signifikan pada dimensi utama.</p>
+      </div>
+    </div>
+    </section>
+    <section class="cand-report" id="cand-W">
+      
+    <div class="cand-header" style="--bat-fg:#7C3AED;--bat-bg:#F5F3FF">
+      <div class="cand-badge">Kandidat W</div>
+      <h1 class="cand-name">Wahyu Setiawan</h1>
+      <div class="cand-meta">
+        <span>👤 26 tahun · Laki-laki</span>
+        <span>🎓 S1 Ekonomi</span>
+        <span>💼 Melamar: <strong>Junior Data Analyst</strong></span>
+      </div>
+      <div class="cand-bat-strip">
+        Battery B · Profesional · v10
+      </div>
+    </div>
+      
+    <div class="verdict-banner" style="background:#FFF1F2;border-color:#DC2626;color:#991B1B">
+      <div class="v-emoji">❌</div>
+      <div class="v-text">
+        <div class="v-label">HASIL ASESMEN</div>
+        <div class="v-verdict">TIDAK LOLOS</div>
+      </div>
+      <div class="v-overall">
+        <div class="v-overall-label">Skor komposit</div>
+        <div class="v-overall-val">59<span>/100</span></div>
+      </div>
+    </div>
+      
+    <div class="pillar-section">
+      <h2>3-Pillar Bridge</h2>
+      <p class="pillar-intro">Arsitektur penilaian menggunakan tiga pilar kualitatif, dengan pilar kognitif sebagai <em>gate kuantitatif</em> utama. Pilar kepribadian dan sikap kerja adalah profil qualitatif (bukan untuk akumulasi skor).</p>
+      <div class="pillars">
+        
+    <div class="pillar-row">
+      <div class="pillar-label">I · Kognitif (TK · gate kuantitatif)</div>
+      <div class="pillar-bar-wrap">
+        <div class="pillar-bar" style="width:42%;background:#DC2626"></div>
+        <div class="pillar-track"></div>
+      </div>
+      <div class="pillar-val" style="color:#DC2626">42</div>
+    </div>
+        
+    <div class="pillar-row">
+      <div class="pillar-label">II · Kepribadian</div>
+      <div class="pillar-bar-wrap">
+        <div class="pillar-bar" style="width:66%;background:#D97706"></div>
+        <div class="pillar-track"></div>
+      </div>
+      <div class="pillar-val" style="color:#D97706">66</div>
+    </div>
+        
+    <div class="pillar-row">
+      <div class="pillar-label">III · Sikap Kerja</div>
+      <div class="pillar-bar-wrap">
+        <div class="pillar-bar" style="width:68%;background:#D97706"></div>
+        <div class="pillar-track"></div>
+      </div>
+      <div class="pillar-val" style="color:#D97706">68</div>
+    </div>
+      </div>
+    </div>
+      
+    <div class="test-section">
+      <div class="test-head">
+        <div class="test-title">1. Tes Kemampuan Umum</div>
+        <div class="test-sub">WPT (Wonderlic-style) + DAT (Differential Aptitude)</div>
+      </div>
+      <div class="test-body">
+        
+    <div class="tk-wrap">
+      <div class="tk-left">
+        
+    <div class="composite-box">
+      <div class="comp-label">Komposit Kognitif (TK)</div>
+      <div class="comp-val" style="color:#DC2626">4.2<span style="font-size:20px;color:#94A3B8">/10</span></div>
+      <div class="comp-note">Gate kuantitatif · di bawah rata-rata</div>
+    </div>
+      </div>
+      <div class="tk-right">
+        <div class="score-chips">
+    <div class="score-chip">
+      <div class="sc-label">WPT · Kemampuan Umum</div>
+      <div class="sc-value" style="color:#D97706">42</div>
+      <div class="sc-grade" style="color:#D97706">C · Rata-rata</div>
+      <div class="sc-note">raw 20</div>
+    </div>
+    <div class="score-chip">
+      <div class="sc-label">DAT · Verbal Reasoning</div>
+      <div class="sc-value" style="color:#D97706">38</div>
+      <div class="sc-grade" style="color:#D97706">C · Rata-rata</div>
+      
+    </div>
+    <div class="score-chip">
+      <div class="sc-label">DAT · Numerical</div>
+      <div class="sc-value" style="color:#D97706">32</div>
+      <div class="sc-grade" style="color:#D97706">C · Rata-rata</div>
+      
+    </div>
+    <div class="score-chip">
+      <div class="sc-label">DAT · Abstract Reasoning</div>
+      <div class="sc-value" style="color:#D97706">45</div>
+      <div class="sc-grade" style="color:#D97706">C · Rata-rata</div>
+      
+    </div>
+    <div class="score-chip">
+      <div class="sc-label">DAT · Space Relations</div>
+      <div class="sc-value" style="color:#D97706">50</div>
+      <div class="sc-grade" style="color:#D97706">C · Rata-rata</div>
+      
+    </div></div>
+        <p class="narr">Kapasitas kognitif kandidat berada di bawah rata-rata yang dipersyaratkan untuk posisi ini (komposit 4.2/10). Kemungkinan besar kandidat akan menemui kesulitan dalam tugas yang membutuhkan penalaran abstrak, kecepatan memproses data, atau pemecahan masalah multi-langkah.</p>
+        <p class="narr">Skor WPT (persentil 42) berada pada kategori <strong>Rata-rata</strong> — kapasitas belajar memadai namun tidak luar biasa.</p>
+        <p class="narr">Profil subtes DAT relatif datar dengan <strong>Numerical Reasoning</strong> (persentil 32) sebagai titik terlemah — tidak ada kekuatan yang menonjol.</p>
+      </div>
+    </div>
+      </div>
+    </div>
+    <div class="test-section">
+      <div class="test-head">
+        <div class="test-title">2. Profil Motivasi &amp; Kepribadian</div>
+        <div class="test-sub">EPPS — 225 pasangan pilihan paksa</div>
+      </div>
+      <div class="test-body">
+        
+    <div class="instr-block">
+      <div class="instr-title">EPPS · Edwards Personal Preference Schedule (15 needs)</div>
+      <p class="narr">Skor konsistensi <strong>6/15 (rendah)</strong> — indikasi respons kurang konsisten, pembacaan profil perlu dilakukan dengan hati-hati; mungkin ada kelelahan, ketidakseriusan, atau social desirability.</p>
+      <p class="narr">Kebutuhan dominan: <strong>Succorance</strong> (kebutuhan akan dukungan dan bantuan dari orang lain), <strong>Abasement</strong> (kecenderungan merendahkan diri dan merasa bersalah), <strong>Heterosexuality</strong> (ketertarikan pada hubungan romantis).</p>
+      <p class="narr">Kebutuhan paling rendah: <strong>Achievement</strong> (dorongan untuk mencapai target dan mengungguli standar), <strong>Endurance</strong> (kegigihan dalam menyelesaikan tugas), <strong>Order</strong> (kebutuhan akan keteraturan dan sistematisasi).</p>
+    </div>
+      </div>
+    </div>
+    <div class="test-section">
+      <div class="test-head">
+        <div class="test-title">3. Sikap Kerja &amp; Minat</div>
+        <div class="test-sub">PAPI Kostick + Holland RIASEC</div>
+      </div>
+      <div class="test-body">
+        
+    <div class="instr-block">
+      <div class="instr-title">PAPI Kostick · Profil Kerja</div>
+      <ul class="narr-list">
+        <li><strong>C=3</strong> (rendah) — Hati-hati, teliti, detail-oriented. Mungkin kurang mendukung.</li><li><strong>T=2</strong> (rendah) — Peran analitis dan mendalami. Mungkin kurang mendukung.</li><li><strong>W=9</strong> (tinggi) — Ketaatan pada prosedur — W tinggi artinya sangat patuh aturan. Profil perlu dipertimbangkan untuk peran ini.</li>
+      </ul>
+    </div>
+    <div class="instr-block">
+      <div class="instr-title">Holland RIASEC · Minat Kejuruan</div>
+      <div class="instr-head">
+        <div class="instr-big">CAS</div>
+        <div>
+          <div class="instr-name">Conventional-Artistic-Social</div>
+          <div class="tiny-chips"><span class="tiny-chip">R=4</span><span class="tiny-chip">I=5</span><span class="tiny-chip">A=8</span><span class="tiny-chip">S=7</span><span class="tiny-chip">E=4</span><span class="tiny-chip">C=9</span></div>
+        </div>
+      </div>
+      <p class="narr">Kode Holland <strong>CAS</strong> (Conventional-Artistic-Social) menunjukkan preferensi kuat terhadap pekerjaan terstruktur, tertib, dan sosial — <strong>sesuai untuk peran operasional/administratif</strong>.</p>
+    </div>
+      </div>
+    </div>
+      
+    <div class="final-section">
+      <h2>Rekomendasi Psikolog</h2>
+      <div class="verdict-narr" style="border-color:#DC2626;background:#FFF1F2">
+        <p>Berdasarkan hasil asesmen menyeluruh, <strong>Wahyu Setiawan</strong> <strong style='color:#991B1B'>BELUM MEMENUHI</strong> syarat kualifikasi untuk posisi <em>Junior Data Analyst</em>.</p><p>Pilar kognitif (42/100) berada di bawah ambang yang diperlukan untuk tuntutan peran ini — ini adalah penghambat utama; secara arsitektur assessment, pilar kognitif merupakan hard quantitative gate.</p><p>Pilar kepribadian (66/100) dan sikap kerja (68/100) menunjukkan ruang ketidakselarasan dengan tuntutan peran.</p><p><strong>Rekomendasi:</strong> kandidat <strong>tidak direkomendasikan untuk posisi ini</strong>. Dapat dipertimbangkan untuk peran dengan tuntutan kognitif yang lebih rendah, atau disarankan untuk pengembangan terlebih dahulu sebelum melamar posisi serupa.</p>
+      </div>
+    </div>
+    </section>
+    <section class="cand-report" id="cand-V">
+      
+    <div class="cand-header" style="--bat-fg:#D97706;--bat-bg:#FEF3C7">
+      <div class="cand-badge">Kandidat V</div>
+      <h1 class="cand-name">Vina Kusuma</h1>
+      <div class="cand-meta">
+        <span>👤 31 tahun · Perempuan</span>
+        <span>🎓 S1 Manajemen</span>
+        <span>💼 Melamar: <strong>Team Lead Operations</strong></span>
+      </div>
+      <div class="cand-bat-strip">
+        Battery C · Supervisor · v10
+      </div>
+    </div>
+      
+    <div class="verdict-banner" style="background:#F0FDF4;border-color:#16A34A;color:#15803D">
+      <div class="v-emoji">✅</div>
+      <div class="v-text">
+        <div class="v-label">HASIL ASESMEN</div>
+        <div class="v-verdict">LOLOS</div>
+      </div>
+      <div class="v-overall">
+        <div class="v-overall-label">Skor komposit</div>
+        <div class="v-overall-val">82<span>/100</span></div>
+      </div>
+    </div>
+      
+    <div class="pillar-section">
+      <h2>3-Pillar Bridge</h2>
+      <p class="pillar-intro">Arsitektur penilaian menggunakan tiga pilar kualitatif, dengan pilar kognitif sebagai <em>gate kuantitatif</em> utama. Pilar kepribadian dan sikap kerja adalah profil qualitatif (bukan untuk akumulasi skor).</p>
+      <div class="pillars">
+        
+    <div class="pillar-row">
+      <div class="pillar-label">I · Kognitif (TK · gate kuantitatif)</div>
+      <div class="pillar-bar-wrap">
+        <div class="pillar-bar" style="width:75%;background:#15803D"></div>
+        <div class="pillar-track"></div>
+      </div>
+      <div class="pillar-val" style="color:#15803D">75</div>
+    </div>
+        
+    <div class="pillar-row">
+      <div class="pillar-label">II · Kepribadian</div>
+      <div class="pillar-bar-wrap">
+        <div class="pillar-bar" style="width:81%;background:#15803D"></div>
+        <div class="pillar-track"></div>
+      </div>
+      <div class="pillar-val" style="color:#15803D">81</div>
+    </div>
+        
+    <div class="pillar-row">
+      <div class="pillar-label">III · Sikap Kerja</div>
+      <div class="pillar-bar-wrap">
+        <div class="pillar-bar" style="width:90%;background:#15803D"></div>
+        <div class="pillar-track"></div>
+      </div>
+      <div class="pillar-val" style="color:#15803D">90</div>
+    </div>
+      </div>
+    </div>
+      
+    <div class="test-section">
+      <div class="test-head">
+        <div class="test-title">1. Tes Kemampuan Umum</div>
+        <div class="test-sub">WPT (Wonderlic-style) + DAT (Differential Aptitude)</div>
+      </div>
+      <div class="test-body">
+        
+    <div class="tk-wrap">
+      <div class="tk-left">
+        
+    <div class="composite-box">
+      <div class="comp-label">Komposit Kognitif (TK)</div>
+      <div class="comp-val" style="color:#15803D">7.5<span style="font-size:20px;color:#94A3B8">/10</span></div>
+      <div class="comp-note">Gate kuantitatif · tinggi</div>
+    </div>
+      </div>
+      <div class="tk-right">
+        <div class="score-chips">
+    <div class="score-chip">
+      <div class="sc-label">WPT · Kemampuan Umum</div>
+      <div class="sc-value" style="color:#1D4ED8">76</div>
+      <div class="sc-grade" style="color:#1D4ED8">B · Tinggi</div>
+      <div class="sc-note">raw 36</div>
+    </div>
+    <div class="score-chip">
+      <div class="sc-label">DAT · Verbal Reasoning</div>
+      <div class="sc-value" style="color:#D97706">72</div>
+      <div class="sc-grade" style="color:#D97706">C · Rata-rata</div>
+      
+    </div>
+    <div class="score-chip">
+      <div class="sc-label">DAT · Numerical</div>
+      <div class="sc-value" style="color:#1D4ED8">78</div>
+      <div class="sc-grade" style="color:#1D4ED8">B · Tinggi</div>
+      
+    </div>
+    <div class="score-chip">
+      <div class="sc-label">DAT · Abstract Reasoning</div>
+      <div class="sc-value" style="color:#D97706">70</div>
+      <div class="sc-grade" style="color:#D97706">C · Rata-rata</div>
+      
+    </div>
+    <div class="score-chip">
+      <div class="sc-label">DAT · Space Relations</div>
+      <div class="sc-value" style="color:#D97706">65</div>
+      <div class="sc-grade" style="color:#D97706">C · Rata-rata</div>
+      
+    </div></div>
+        <p class="narr">Kandidat menunjukkan kapasitas kognitif yang berada di atas rata-rata umum (komposit 7.5/10). Kemampuan memproses informasi, memahami instruksi tertulis, serta menyelesaikan persoalan yang membutuhkan penalaran logis cukup kuat.</p>
+        <p class="narr">Skor WPT (persentil 76) menempatkan kandidat pada kategori <strong>Tinggi</strong> — mengindikasikan kecepatan belajar dan adaptasi terhadap pelatihan baru yang baik.</p>
+        <p class="narr">Profil subtes DAT menunjukkan kekuatan pada <strong>Numerical Reasoning</strong> (persentil 78) dan area yang lebih lemah pada <strong>Space Relations</strong> (persentil 65).</p>
+      </div>
+    </div>
+      </div>
+    </div>
+    <div class="test-section">
+      <div class="test-head">
+        <div class="test-title">2. Profil Kepribadian &amp; Penilaian Situasional</div>
+        <div class="test-sub">EPPS + SJT (22 skenario)</div>
+      </div>
+      <div class="test-body">
+        
+    <div class="instr-block">
+      <div class="instr-title">EPPS · Edwards Personal Preference Schedule</div>
+      <p class="narr">Skor konsistensi <strong>11/15 (tinggi)</strong> — respons kandidat konsisten antar soal duplikat, profil hasil dapat dipercaya.</p>
+      <p class="narr">Kebutuhan dominan: <strong>Dominance</strong> (dorongan untuk memimpin dan memengaruhi), <strong>Achievement</strong> (dorongan untuk mencapai target dan mengungguli standar), <strong>Intraception</strong> (kecenderungan untuk memahami motif diri dan orang lain).</p>
+      <p class="narr">Kebutuhan paling rendah: <strong>Abasement</strong> (kecenderungan merendahkan diri dan merasa bersalah), <strong>Succorance</strong> (kebutuhan akan dukungan dan bantuan dari orang lain).</p>
+    </div>
+    <div class="instr-block">
+      <div class="instr-title">SJT · Situational Judgment Test</div>
+      <p class="narr">Performa keseluruhan <strong>82%</strong> — kandidat menunjukkan penilaian situasional yang matang dan keputusan yang tepat dalam skenario kerja.</p>
+      <p class="narr">Area terkuat: <strong>Leadership</strong> (85%). Area terlemah: <strong>Conflict</strong> (78%).</p>
+      <div class="tiny-chips"><span class="tiny-chip">Leadership=85%</span><span class="tiny-chip">Conflict=78%</span><span class="tiny-chip">Decision=84%</span><span class="tiny-chip">Delegation=80%</span></div>
+    </div>
+      </div>
+    </div>
+    <div class="test-section">
+      <div class="test-head">
+        <div class="test-title">3. Sikap Kerja &amp; Kepemimpinan Awal</div>
+        <div class="test-sub">PAPI Kostick — fokus pada faktor L, I, K, F</div>
+      </div>
+      <div class="test-body">
+        
+    <div class="instr-block">
+      <div class="instr-title">PAPI Kostick · Fit Kepemimpinan</div>
+      <ul class="narr-list">
+        <li><strong>L=7</strong> (tinggi) — Leadership — memimpin dan mengambil inisiatif. Profil mendukung untuk peran ini.</li><li><strong>I=6</strong> (sedang) — Integrity — kemauan ambil keputusan.</li><li><strong>K=3</strong> (rendah) — Kepatuhan — K tinggi = patuh, kurang inisiatif. Profil menguntungkan.</li><li><strong>F=3</strong> (rendah) — Need for rules — F tinggi = butuh struktur ketat. Profil menguntungkan.</li>
+      </ul>
+    </div>
+      </div>
+    </div>
+      
+    <div class="final-section">
+      <h2>Rekomendasi Psikolog</h2>
+      <div class="verdict-narr" style="border-color:#16A34A;background:#F0FDF4">
+        <p>Berdasarkan hasil asesmen menyeluruh, <strong>Vina Kusuma</strong> <strong style='color:#15803D'>MEMENUHI</strong> syarat kualifikasi untuk posisi <em>Team Lead Operations</em>.</p><p>Kapasitas kognitif (pilar I: 75/100) jelas di atas tuntutan peran, mendukung pembelajaran cepat dan adaptasi.</p><p>Profil kepribadian (pilar II: 81/100) dan sikap kerja (pilar III: 90/100) menunjukkan kecocokan kualitatif dengan ekspektasi jabatan.</p><p><strong>Rekomendasi:</strong> kandidat dapat dilanjutkan ke tahap seleksi berikutnya (MCU, wawancara akhir, referensi). Tidak ditemukan red flag signifikan pada dimensi utama.</p>
+      </div>
+    </div>
+    </section>
+    <section class="cand-report" id="cand-X">
+      
+    <div class="cand-header" style="--bat-fg:#D97706;--bat-bg:#FEF3C7">
+      <div class="cand-badge">Kandidat X</div>
+      <h1 class="cand-name">Xaverius Hartono</h1>
+      <div class="cand-meta">
+        <span>👤 29 tahun · Laki-laki</span>
+        <span>🎓 D3 Administrasi</span>
+        <span>💼 Melamar: <strong>Team Lead Operations</strong></span>
+      </div>
+      <div class="cand-bat-strip">
+        Battery C · Supervisor · v10
+      </div>
+    </div>
+      
+    <div class="verdict-banner" style="background:#FFF1F2;border-color:#DC2626;color:#991B1B">
+      <div class="v-emoji">❌</div>
+      <div class="v-text">
+        <div class="v-label">HASIL ASESMEN</div>
+        <div class="v-verdict">TIDAK LOLOS</div>
+      </div>
+      <div class="v-overall">
+        <div class="v-overall-label">Skor komposit</div>
+        <div class="v-overall-val">51<span>/100</span></div>
+      </div>
+    </div>
+      
+    <div class="pillar-section">
+      <h2>3-Pillar Bridge</h2>
+      <p class="pillar-intro">Arsitektur penilaian menggunakan tiga pilar kualitatif, dengan pilar kognitif sebagai <em>gate kuantitatif</em> utama. Pilar kepribadian dan sikap kerja adalah profil qualitatif (bukan untuk akumulasi skor).</p>
+      <div class="pillars">
+        
+    <div class="pillar-row">
+      <div class="pillar-label">I · Kognitif (TK · gate kuantitatif)</div>
+      <div class="pillar-bar-wrap">
+        <div class="pillar-bar" style="width:48%;background:#DC2626"></div>
+        <div class="pillar-track"></div>
+      </div>
+      <div class="pillar-val" style="color:#DC2626">48</div>
+    </div>
+        
+    <div class="pillar-row">
+      <div class="pillar-label">II · Kepribadian</div>
+      <div class="pillar-bar-wrap">
+        <div class="pillar-bar" style="width:54%;background:#D97706"></div>
+        <div class="pillar-track"></div>
+      </div>
+      <div class="pillar-val" style="color:#D97706">54</div>
+    </div>
+        
+    <div class="pillar-row">
+      <div class="pillar-label">III · Sikap Kerja</div>
+      <div class="pillar-bar-wrap">
+        <div class="pillar-bar" style="width:50%;background:#D97706"></div>
+        <div class="pillar-track"></div>
+      </div>
+      <div class="pillar-val" style="color:#D97706">50</div>
+    </div>
+      </div>
+    </div>
+      
+    <div class="test-section">
+      <div class="test-head">
+        <div class="test-title">1. Tes Kemampuan Umum</div>
+        <div class="test-sub">WPT (Wonderlic-style) + DAT (Differential Aptitude)</div>
+      </div>
+      <div class="test-body">
+        
+    <div class="tk-wrap">
+      <div class="tk-left">
+        
+    <div class="composite-box">
+      <div class="comp-label">Komposit Kognitif (TK)</div>
+      <div class="comp-val" style="color:#DC2626">4.8<span style="font-size:20px;color:#94A3B8">/10</span></div>
+      <div class="comp-note">Gate kuantitatif · di bawah rata-rata</div>
+    </div>
+      </div>
+      <div class="tk-right">
+        <div class="score-chips">
+    <div class="score-chip">
+      <div class="sc-label">WPT · Kemampuan Umum</div>
+      <div class="sc-value" style="color:#D97706">46</div>
+      <div class="sc-grade" style="color:#D97706">C · Rata-rata</div>
+      <div class="sc-note">raw 22</div>
+    </div>
+    <div class="score-chip">
+      <div class="sc-label">DAT · Verbal Reasoning</div>
+      <div class="sc-value" style="color:#D97706">50</div>
+      <div class="sc-grade" style="color:#D97706">C · Rata-rata</div>
+      
+    </div>
+    <div class="score-chip">
+      <div class="sc-label">DAT · Numerical</div>
+      <div class="sc-value" style="color:#D97706">42</div>
+      <div class="sc-grade" style="color:#D97706">C · Rata-rata</div>
+      
+    </div>
+    <div class="score-chip">
+      <div class="sc-label">DAT · Abstract Reasoning</div>
+      <div class="sc-value" style="color:#D97706">55</div>
+      <div class="sc-grade" style="color:#D97706">C · Rata-rata</div>
+      
+    </div>
+    <div class="score-chip">
+      <div class="sc-label">DAT · Space Relations</div>
+      <div class="sc-value" style="color:#D97706">48</div>
+      <div class="sc-grade" style="color:#D97706">C · Rata-rata</div>
+      
+    </div></div>
+        <p class="narr">Kapasitas kognitif kandidat berada di bawah rata-rata yang dipersyaratkan untuk posisi ini (komposit 4.8/10). Kemungkinan besar kandidat akan menemui kesulitan dalam tugas yang membutuhkan penalaran abstrak, kecepatan memproses data, atau pemecahan masalah multi-langkah.</p>
+        <p class="narr">Skor WPT (persentil 46) berada pada kategori <strong>Rata-rata</strong> — kapasitas belajar memadai namun tidak luar biasa.</p>
+        <p class="narr">Profil subtes DAT relatif datar dengan <strong>Numerical Reasoning</strong> (persentil 42) sebagai titik terlemah — tidak ada kekuatan yang menonjol.</p>
+      </div>
+    </div>
+      </div>
+    </div>
+    <div class="test-section">
+      <div class="test-head">
+        <div class="test-title">2. Profil Kepribadian &amp; Penilaian Situasional</div>
+        <div class="test-sub">EPPS + SJT (22 skenario)</div>
+      </div>
+      <div class="test-body">
+        
+    <div class="instr-block">
+      <div class="instr-title">EPPS · Edwards Personal Preference Schedule</div>
+      <p class="narr">Skor konsistensi <strong>5/15 (rendah)</strong> — indikasi respons kurang konsisten, pembacaan profil perlu dilakukan dengan hati-hati; mungkin ada kelelahan, ketidakseriusan, atau social desirability.</p>
+      <p class="narr">Kebutuhan dominan: <strong>Deference</strong> (kecenderungan untuk patuh dan mengikuti arahan), <strong>Abasement</strong> (kecenderungan merendahkan diri dan merasa bersalah), <strong>Succorance</strong> (kebutuhan akan dukungan dan bantuan dari orang lain).</p>
+      <p class="narr">Kebutuhan paling rendah: <strong>Dominance</strong> (dorongan untuk memimpin dan memengaruhi), <strong>Achievement</strong> (dorongan untuk mencapai target dan mengungguli standar).</p>
+    </div>
+    <div class="instr-block">
+      <div class="instr-title">SJT · Situational Judgment Test</div>
+      <p class="narr">Performa keseluruhan <strong>45%</strong> — indikasi penilaian situasional yang lemah; kandidat sering memilih opsi yang kurang optimal dalam skenario sulit.</p>
+      <p class="narr">Area terkuat: <strong>Delegation</strong> (50%). Area terlemah: <strong>Leadership</strong> (38%).</p>
+      <div class="tiny-chips"><span class="tiny-chip">Leadership=38%</span><span class="tiny-chip">Conflict=48%</span><span class="tiny-chip">Decision=42%</span><span class="tiny-chip">Delegation=50%</span></div>
+    </div>
+      </div>
+    </div>
+    <div class="test-section">
+      <div class="test-head">
+        <div class="test-title">3. Sikap Kerja &amp; Kepemimpinan Awal</div>
+        <div class="test-sub">PAPI Kostick — fokus pada faktor L, I, K, F</div>
+      </div>
+      <div class="test-body">
+        
+    <div class="instr-block">
+      <div class="instr-title">PAPI Kostick · Fit Kepemimpinan</div>
+      <ul class="narr-list">
+        <li><strong>L=2</strong> (rendah) — Leadership — memimpin dan mengambil inisiatif. Mungkin kurang mendukung.</li><li><strong>I=2</strong> (rendah) — Integrity — kemauan ambil keputusan. Mungkin kurang mendukung.</li><li><strong>K=8</strong> (tinggi) — Kepatuhan — K tinggi = patuh, kurang inisiatif. Profil perlu dipertimbangkan untuk peran ini.</li><li><strong>F=7</strong> (tinggi) — Need for rules — F tinggi = butuh struktur ketat. Profil perlu dipertimbangkan untuk peran ini.</li>
+      </ul>
+    </div>
+      </div>
+    </div>
+      
+    <div class="final-section">
+      <h2>Rekomendasi Psikolog</h2>
+      <div class="verdict-narr" style="border-color:#DC2626;background:#FFF1F2">
+        <p>Berdasarkan hasil asesmen menyeluruh, <strong>Xaverius Hartono</strong> <strong style='color:#991B1B'>BELUM MEMENUHI</strong> syarat kualifikasi untuk posisi <em>Team Lead Operations</em>.</p><p>Pilar kognitif (48/100) berada di bawah ambang yang diperlukan untuk tuntutan peran ini — ini adalah penghambat utama; secara arsitektur assessment, pilar kognitif merupakan hard quantitative gate.</p><p>Pilar kepribadian (54/100) dan sikap kerja (50/100) menunjukkan ruang ketidakselarasan dengan tuntutan peran.</p><p><strong>Rekomendasi:</strong> kandidat <strong>tidak direkomendasikan untuk posisi ini</strong>. Dapat dipertimbangkan untuk peran dengan tuntutan kognitif yang lebih rendah, atau disarankan untuk pengembangan terlebih dahulu sebelum melamar posisi serupa.</p>
+      </div>
+    </div>
+    </section>
+    <section class="cand-report" id="cand-Y">
+      
+    <div class="cand-header" style="--bat-fg:#0369A1;--bat-bg:#E0F2FE">
+      <div class="cand-badge">Kandidat Y</div>
+      <h1 class="cand-name">Yuliana Dewi</h1>
+      <div class="cand-meta">
+        <span>👤 36 tahun · Perempuan</span>
+        <span>🎓 S2 Manajemen</span>
+        <span>💼 Melamar: <strong>Branch Manager</strong></span>
+      </div>
+      <div class="cand-bat-strip">
+        Battery D · Manajerial · v10
+      </div>
+    </div>
+      
+    <div class="verdict-banner" style="background:#F0FDF4;border-color:#16A34A;color:#15803D">
+      <div class="v-emoji">✅</div>
+      <div class="v-text">
+        <div class="v-label">HASIL ASESMEN</div>
+        <div class="v-verdict">LOLOS</div>
+      </div>
+      <div class="v-overall">
+        <div class="v-overall-label">Skor komposit</div>
+        <div class="v-overall-val">82<span>/100</span></div>
+      </div>
+    </div>
+      
+    <div class="pillar-section">
+      <h2>3-Pillar Bridge</h2>
+      <p class="pillar-intro">Arsitektur penilaian menggunakan tiga pilar kualitatif, dengan pilar kognitif sebagai <em>gate kuantitatif</em> utama. Pilar kepribadian dan sikap kerja adalah profil qualitatif (bukan untuk akumulasi skor).</p>
+      <div class="pillars">
+        
+    <div class="pillar-row">
+      <div class="pillar-label">I · Kognitif (TK · gate kuantitatif)</div>
+      <div class="pillar-bar-wrap">
+        <div class="pillar-bar" style="width:80%;background:#15803D"></div>
+        <div class="pillar-track"></div>
+      </div>
+      <div class="pillar-val" style="color:#15803D">80</div>
+    </div>
+        
+    <div class="pillar-row">
+      <div class="pillar-label">II · Kepribadian</div>
+      <div class="pillar-bar-wrap">
+        <div class="pillar-bar" style="width:78%;background:#15803D"></div>
+        <div class="pillar-track"></div>
+      </div>
+      <div class="pillar-val" style="color:#15803D">78</div>
+    </div>
+        
+    <div class="pillar-row">
+      <div class="pillar-label">III · Sikap Kerja</div>
+      <div class="pillar-bar-wrap">
+        <div class="pillar-bar" style="width:88%;background:#15803D"></div>
+        <div class="pillar-track"></div>
+      </div>
+      <div class="pillar-val" style="color:#15803D">88</div>
+    </div>
+      </div>
+    </div>
+      
+    <div class="test-section">
+      <div class="test-head">
+        <div class="test-title">1. Tes Kemampuan Umum</div>
+        <div class="test-sub">WPT (Wonderlic-style) + DAT (Differential Aptitude)</div>
+      </div>
+      <div class="test-body">
+        
+    <div class="tk-wrap">
+      <div class="tk-left">
+        
+    <div class="composite-box">
+      <div class="comp-label">Komposit Kognitif (TK)</div>
+      <div class="comp-val" style="color:#15803D">8.0<span style="font-size:20px;color:#94A3B8">/10</span></div>
+      <div class="comp-note">Gate kuantitatif · tinggi</div>
+    </div>
+      </div>
+      <div class="tk-right">
+        <div class="score-chips">
+    <div class="score-chip">
+      <div class="sc-label">WPT · Kemampuan Umum</div>
+      <div class="sc-value" style="color:#1D4ED8">85</div>
+      <div class="sc-grade" style="color:#1D4ED8">B · Tinggi</div>
+      <div class="sc-note">raw 40</div>
+    </div>
+    <div class="score-chip">
+      <div class="sc-label">DAT · Verbal Reasoning</div>
+      <div class="sc-value" style="color:#1D4ED8">80</div>
+      <div class="sc-grade" style="color:#1D4ED8">B · Tinggi</div>
+      
+    </div>
+    <div class="score-chip">
+      <div class="sc-label">DAT · Numerical</div>
+      <div class="sc-value" style="color:#1D4ED8">82</div>
+      <div class="sc-grade" style="color:#1D4ED8">B · Tinggi</div>
+      
+    </div>
+    <div class="score-chip">
+      <div class="sc-label">DAT · Abstract Reasoning</div>
+      <div class="sc-value" style="color:#1D4ED8">78</div>
+      <div class="sc-grade" style="color:#1D4ED8">B · Tinggi</div>
+      
+    </div></div>
+        <p class="narr">Kandidat menunjukkan kapasitas kognitif yang berada di atas rata-rata umum (komposit 8.0/10). Kemampuan memproses informasi, memahami instruksi tertulis, serta menyelesaikan persoalan yang membutuhkan penalaran logis cukup kuat.</p>
+        <p class="narr">Skor WPT (persentil 85) menempatkan kandidat pada kategori <strong>Tinggi</strong> — mengindikasikan kecepatan belajar dan adaptasi terhadap pelatihan baru yang baik.</p>
+        <p class="narr">Profil subtes DAT menunjukkan kekuatan pada <strong>Numerical Reasoning</strong> (persentil 82) dan area yang lebih lemah pada <strong>Abstract Reasoning</strong> (persentil 78).</p>
+      </div>
+    </div>
+      </div>
+    </div>
+    <div class="test-section">
+      <div class="test-head">
+        <div class="test-title">2. Profil Kepribadian Manajerial</div>
+        <div class="test-sub">SJT + 16PF — fokus pada executive factors</div>
+      </div>
+      <div class="test-body">
+        
+    <div class="instr-block">
+      <div class="instr-title">SJT · Situational Judgment (konteks manajerial)</div>
+      <p class="narr">Performa keseluruhan <strong>86%</strong> — kandidat menunjukkan penilaian situasional yang matang dan keputusan yang tepat dalam skenario kerja.</p>
+      <p class="narr">Area terkuat: <strong>Strategic</strong> (88%). Area terlemah: <strong>Crisis</strong> (82%).</p>
+      <div class="tiny-chips"><span class="tiny-chip">Strategic=88%</span><span class="tiny-chip">Crisis=82%</span><span class="tiny-chip">Stakeholder=85%</span><span class="tiny-chip">Delegation=88%</span></div>
+    </div>
+    <div class="instr-block">
+      <div class="instr-title">16PF · Sixteen Personality Factor (Executive Factors)</div>
+      <ul class="narr-list">
+        <li><strong>Faktor C (Emotional Stability) = 8/10</strong> — kandidat menunjukkan kematangan emosi yang baik, mampu menghadapi tekanan tanpa kehilangan performa.</li><li><strong>Faktor E (Dominance) = 7/10</strong> — orientasi kepemimpinan dan kemauan mempengaruhi orang lain cukup kuat.</li><li><strong>Faktor H (Social Boldness) = 7/10</strong> — kandidat nyaman dalam situasi sosial yang menuntut, termasuk interaksi dengan stakeholder senior.</li><li><strong>Faktor Q3 (Self-Discipline) = 8/10</strong> — kontrol diri dan ketaatan pada standar internal kuat; dapat mengelola prioritas dengan baik.</li>
+      </ul>
+      <div class="disclaimer">Catatan: instrumen 16PF pada Battery D saat ini mengandung 105 dari 185 item kanonik. Reliability per-faktor cukup untuk profil indikatif; Global Factors belum diimplementasikan.</div>
+    </div>
+      </div>
+    </div>
+    <div class="test-section">
+      <div class="test-head">
+        <div class="test-title">3. Gaya Manajerial &amp; Kepemimpinan</div>
+        <div class="test-sub">MSDT + PAPI-L Leadership</div>
+      </div>
+      <div class="test-body">
+        
+    <div class="instr-block">
+      <div class="instr-title">MSDT · Management Style Diagnostic Test</div>
+      <div class="instr-head">
+        <div class="instr-big" style="color:#15803D;font-size:22px">Executive</div>
+        <div>
+          <div class="instr-name">Efektivitas 85%</div>
+        </div>
+      </div>
+      <p class="narr">Efektivitas gaya manajerial <strong>85%</strong> — kandidat terampil menyesuaikan pendekatan dengan situasi.</p>
+      <p class="narr">Gaya dominan: <strong>Executive</strong> — style ideal — mampu menyeimbangkan orientasi tugas dan orientasi hubungan dengan efektif.</p>
+    </div>
+    <div class="instr-block">
+      <div class="instr-title">PAPI-L Leadership · Profil Kepemimpinan</div>
+      <ul class="narr-list">
+        <li><strong>L=6</strong> (sedang) — Leadership role — inisiatif memimpin.</li><li><strong>I=6</strong> (sedang) — Integrity in decisions.</li><li><strong>O=6</strong> (sedang) — Need to be noticed.</li><li><strong>P=0</strong> (rendah) — Need to control others. .</li><li><strong>K=3</strong> (rendah) — Kepatuhan. Profil menguntungkan.</li><li><strong>F=3</strong> (rendah) — Need for rules. Profil menguntungkan.</li>
+      </ul>
+    </div>
+      </div>
+    </div>
+      
+    <div class="final-section">
+      <h2>Rekomendasi Psikolog</h2>
+      <div class="verdict-narr" style="border-color:#16A34A;background:#F0FDF4">
+        <p>Berdasarkan hasil asesmen menyeluruh, <strong>Yuliana Dewi</strong> <strong style='color:#15803D'>MEMENUHI</strong> syarat kualifikasi untuk posisi <em>Branch Manager</em>.</p><p>Kapasitas kognitif (pilar I: 80/100) jelas di atas tuntutan peran, mendukung pembelajaran cepat dan adaptasi.</p><p>Profil kepribadian (pilar II: 78/100) dan sikap kerja (pilar III: 88/100) menunjukkan kecocokan kualitatif dengan ekspektasi jabatan.</p><p><strong>Rekomendasi:</strong> kandidat dapat dilanjutkan ke tahap seleksi berikutnya (MCU, wawancara akhir, referensi). Tidak ditemukan red flag signifikan pada dimensi utama.</p>
+      </div>
+    </div>
+    </section>
+    <section class="cand-report" id="cand-Z">
+      
+    <div class="cand-header" style="--bat-fg:#0369A1;--bat-bg:#E0F2FE">
+      <div class="cand-badge">Kandidat Z</div>
+      <h1 class="cand-name">Zainal Abidin</h1>
+      <div class="cand-meta">
+        <span>👤 38 tahun · Laki-laki</span>
+        <span>🎓 S1 Hukum</span>
+        <span>💼 Melamar: <strong>Branch Manager</strong></span>
+      </div>
+      <div class="cand-bat-strip">
+        Battery D · Manajerial · v10
+      </div>
+    </div>
+      
+    <div class="verdict-banner" style="background:#FFF1F2;border-color:#DC2626;color:#991B1B">
+      <div class="v-emoji">❌</div>
+      <div class="v-text">
+        <div class="v-label">HASIL ASESMEN</div>
+        <div class="v-verdict">TIDAK LOLOS</div>
+      </div>
+      <div class="v-overall">
+        <div class="v-overall-label">Skor komposit</div>
+        <div class="v-overall-val">43<span>/100</span></div>
+      </div>
+    </div>
+      
+    <div class="pillar-section">
+      <h2>3-Pillar Bridge</h2>
+      <p class="pillar-intro">Arsitektur penilaian menggunakan tiga pilar kualitatif, dengan pilar kognitif sebagai <em>gate kuantitatif</em> utama. Pilar kepribadian dan sikap kerja adalah profil qualitatif (bukan untuk akumulasi skor).</p>
+      <div class="pillars">
+        
+    <div class="pillar-row">
+      <div class="pillar-label">I · Kognitif (TK · gate kuantitatif)</div>
+      <div class="pillar-bar-wrap">
+        <div class="pillar-bar" style="width:45%;background:#DC2626"></div>
+        <div class="pillar-track"></div>
+      </div>
+      <div class="pillar-val" style="color:#DC2626">45</div>
+    </div>
+        
+    <div class="pillar-row">
+      <div class="pillar-label">II · Kepribadian</div>
+      <div class="pillar-bar-wrap">
+        <div class="pillar-bar" style="width:38%;background:#DC2626"></div>
+        <div class="pillar-track"></div>
+      </div>
+      <div class="pillar-val" style="color:#DC2626">38</div>
+    </div>
+        
+    <div class="pillar-row">
+      <div class="pillar-label">III · Sikap Kerja</div>
+      <div class="pillar-bar-wrap">
+        <div class="pillar-bar" style="width:46%;background:#DC2626"></div>
+        <div class="pillar-track"></div>
+      </div>
+      <div class="pillar-val" style="color:#DC2626">46</div>
+    </div>
+      </div>
+    </div>
+      
+    <div class="test-section">
+      <div class="test-head">
+        <div class="test-title">1. Tes Kemampuan Umum</div>
+        <div class="test-sub">WPT (Wonderlic-style) + DAT (Differential Aptitude)</div>
+      </div>
+      <div class="test-body">
+        
+    <div class="tk-wrap">
+      <div class="tk-left">
+        
+    <div class="composite-box">
+      <div class="comp-label">Komposit Kognitif (TK)</div>
+      <div class="comp-val" style="color:#DC2626">4.5<span style="font-size:20px;color:#94A3B8">/10</span></div>
+      <div class="comp-note">Gate kuantitatif · di bawah rata-rata</div>
+    </div>
+      </div>
+      <div class="tk-right">
+        <div class="score-chips">
+    <div class="score-chip">
+      <div class="sc-label">WPT · Kemampuan Umum</div>
+      <div class="sc-value" style="color:#D97706">45</div>
+      <div class="sc-grade" style="color:#D97706">C · Rata-rata</div>
+      <div class="sc-note">raw 22</div>
+    </div>
+    <div class="score-chip">
+      <div class="sc-label">DAT · Verbal Reasoning</div>
+      <div class="sc-value" style="color:#D97706">42</div>
+      <div class="sc-grade" style="color:#D97706">C · Rata-rata</div>
+      
+    </div>
+    <div class="score-chip">
+      <div class="sc-label">DAT · Numerical</div>
+      <div class="sc-value" style="color:#D97706">48</div>
+      <div class="sc-grade" style="color:#D97706">C · Rata-rata</div>
+      
+    </div>
+    <div class="score-chip">
+      <div class="sc-label">DAT · Abstract Reasoning</div>
+      <div class="sc-value" style="color:#D97706">50</div>
+      <div class="sc-grade" style="color:#D97706">C · Rata-rata</div>
+      
+    </div></div>
+        <p class="narr">Kapasitas kognitif kandidat berada di bawah rata-rata yang dipersyaratkan untuk posisi ini (komposit 4.5/10). Kemungkinan besar kandidat akan menemui kesulitan dalam tugas yang membutuhkan penalaran abstrak, kecepatan memproses data, atau pemecahan masalah multi-langkah.</p>
+        <p class="narr">Skor WPT (persentil 45) berada pada kategori <strong>Rata-rata</strong> — kapasitas belajar memadai namun tidak luar biasa.</p>
+        <p class="narr">Profil subtes DAT relatif datar dengan <strong>Verbal Reasoning</strong> (persentil 42) sebagai titik terlemah — tidak ada kekuatan yang menonjol.</p>
+      </div>
+    </div>
+      </div>
+    </div>
+    <div class="test-section">
+      <div class="test-head">
+        <div class="test-title">2. Profil Kepribadian Manajerial</div>
+        <div class="test-sub">SJT + 16PF — fokus pada executive factors</div>
+      </div>
+      <div class="test-body">
+        
+    <div class="instr-block">
+      <div class="instr-title">SJT · Situational Judgment (konteks manajerial)</div>
+      <p class="narr">Performa keseluruhan <strong>42%</strong> — indikasi penilaian situasional yang lemah; kandidat sering memilih opsi yang kurang optimal dalam skenario sulit.</p>
+      <p class="narr">Area terkuat: <strong>Crisis</strong> (45%). Area terlemah: <strong>Strategic</strong> (38%).</p>
+      <div class="tiny-chips"><span class="tiny-chip">Strategic=38%</span><span class="tiny-chip">Crisis=45%</span><span class="tiny-chip">Stakeholder=40%</span><span class="tiny-chip">Delegation=45%</span></div>
+    </div>
+    <div class="instr-block">
+      <div class="instr-title">16PF · Sixteen Personality Factor (Executive Factors)</div>
+      <ul class="narr-list">
+        <li><strong>Faktor C (Emotional Stability) = 4/10</strong> — stabilitas emosi di bawah level yang diharapkan untuk peran manajerial; rentan terhadap reaktivitas saat tekanan tinggi.</li><li><strong>Faktor E (Dominance) = 4/10</strong> — cenderung submisif dan kurang asertif — tidak ideal untuk peran manajerial yang menuntut pengambilan keputusan tegas.</li><li><strong>Faktor H (Social Boldness) = 3/10</strong> — kecenderungan pemalu atau ragu dalam situasi sosial yang menuntut — bisa menjadi kendala dalam representasi eksternal.</li><li><strong>Faktor Q3 (Self-Discipline) = 4/10</strong> — kontrol diri di bawah level yang dipersyaratkan; mungkin kesulitan mempertahankan fokus pada prioritas jangka panjang.</li><li><strong>Faktor Q4 (Tension) = 7/10</strong> — kandidat menunjukkan tingkat ketegangan dan kegelisahan yang tinggi — indikasi potensi burnout pada peran berbeban tinggi.</li><li><strong>Faktor O (Apprehension) = 8/10</strong> — kecenderungan cemas dan khawatir tinggi — dapat menghambat pengambilan keputusan dalam situasi ambigu.</li>
+      </ul>
+      <div class="disclaimer">Catatan: instrumen 16PF pada Battery D saat ini mengandung 105 dari 185 item kanonik. Reliability per-faktor cukup untuk profil indikatif; Global Factors belum diimplementasikan.</div>
+    </div>
+      </div>
+    </div>
+    <div class="test-section">
+      <div class="test-head">
+        <div class="test-title">3. Gaya Manajerial &amp; Kepemimpinan</div>
+        <div class="test-sub">MSDT + PAPI-L Leadership</div>
+      </div>
+      <div class="test-body">
+        
+    <div class="instr-block">
+      <div class="instr-title">MSDT · Management Style Diagnostic Test</div>
+      <div class="instr-head">
+        <div class="instr-big" style="color:#DC2626;font-size:22px">Missionary</div>
+        <div>
+          <div class="instr-name">Efektivitas 42%</div>
+        </div>
+      </div>
+      <p class="narr">Efektivitas gaya manajerial <strong>42%</strong> — kemampuan menyesuaikan gaya dengan situasi di bawah standar; kandidat cenderung kaku dalam pendekatan kepemimpinan.</p>
+      <p class="narr">Gaya dominan: <strong>Missionary</strong> — fokus berlebihan pada hubungan, kurang tegas pada target — dapat menurunkan produktivitas.</p>
+    </div>
+    <div class="instr-block">
+      <div class="instr-title">PAPI-L Leadership · Profil Kepemimpinan</div>
+      <ul class="narr-list">
+        <li><strong>L=2</strong> (rendah) — Leadership role — inisiatif memimpin. Mungkin kurang mendukung.</li><li><strong>I=2</strong> (rendah) — Integrity in decisions. Mungkin kurang mendukung.</li><li><strong>O=3</strong> (rendah) — Need to be noticed. .</li><li><strong>P=0</strong> (rendah) — Need to control others. .</li><li><strong>K=7</strong> (tinggi) — Kepatuhan. Profil perlu dipertimbangkan untuk peran ini.</li><li><strong>F=7</strong> (tinggi) — Need for rules. Profil perlu dipertimbangkan untuk peran ini.</li>
+      </ul>
+    </div>
+      </div>
+    </div>
+      
+    <div class="final-section">
+      <h2>Rekomendasi Psikolog</h2>
+      <div class="verdict-narr" style="border-color:#DC2626;background:#FFF1F2">
+        <p>Berdasarkan hasil asesmen menyeluruh, <strong>Zainal Abidin</strong> <strong style='color:#991B1B'>BELUM MEMENUHI</strong> syarat kualifikasi untuk posisi <em>Branch Manager</em>.</p><p>Pilar kognitif (45/100) berada di bawah ambang yang diperlukan untuk tuntutan peran ini — ini adalah penghambat utama; secara arsitektur assessment, pilar kognitif merupakan hard quantitative gate.</p><p>Pilar kepribadian (38/100) juga menunjukkan mismatch dengan tuntutan peran — profil yang muncul tidak selaras dengan ekspektasi jabatan.</p><p><strong>Rekomendasi:</strong> kandidat <strong>tidak direkomendasikan untuk posisi ini</strong>. Dapat dipertimbangkan untuk peran dengan tuntutan kognitif yang lebih rendah, atau disarankan untuk pengembangan terlebih dahulu sebelum melamar posisi serupa.</p>
+      </div>
+    </div>
+    </section>
+
+<footer class="doc-foot">
+  Myralix Assessment Platform · Simulasi v10 · Dokumen internal — bukan untuk distribusi eksternal
+</footer>
+
+</div>
+</body>
+</html>

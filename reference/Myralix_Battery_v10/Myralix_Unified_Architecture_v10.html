@@ -1,0 +1,1685 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Myralix · Unified Architecture Guide</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Fraunces:ital,wght@0,400;0,600;0,700;0,900;1,400;1,600&family=DM+Sans:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap');
+
+:root{
+  --teal:#0A6E5C; --teal-dk:#064E3B; --teal-md:#0D9488;
+  --teal-lt:#C7E8E3; --teal-xlt:#EDF7F5;
+  --amber:#F59E0B; --amber-bg:#FEF3C7; --amber-dk:#92400E;
+  --purple:#7C3AED; --purple-bg:#F5F3FF; --purple-dk:#5B21B6;
+  --blue:#2563EB; --blue-bg:#EFF6FF; --blue-dk:#1D4ED8;
+  --green:#16A34A; --green-bg:#F0FDF4;
+  --red:#DC2626; --red-bg:#FEF2F2;
+  --orange:#C2410C; --orange-bg:#FFF7ED;
+  --navy:#0F172A; --slate:#334155; --slate-md:#64748B; --slate-lt:#94A3B8;
+  --cream:#FAF7F2; --paper:#FEFDFA;
+  --border:#E2E8F0; --border-lt:#F1F5F9;
+  --hd:'Fraunces',Georgia,serif;
+  --bd:'DM Sans',system-ui,sans-serif;
+  --mono:'JetBrains Mono',monospace;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+html{scroll-behavior:smooth}
+body{background:var(--cream);color:var(--navy);font-family:var(--bd);font-size:15px;line-height:1.7;-webkit-font-smoothing:antialiased}
+
+/* Nav */
+.nav{background:linear-gradient(135deg,var(--teal-dk) 0%,var(--teal) 60%,var(--teal-md) 100%);padding:14px 30px;position:sticky;top:0;z-index:100;box-shadow:0 2px 24px rgba(6,78,59,.18);display:flex;align-items:center;justify-content:space-between;gap:20px;flex-wrap:wrap}
+.brand{display:flex;align-items:center;gap:12px;color:#fff}
+.brand-logo{width:32px;height:32px;background:rgba(255,255,255,.15);border:1px solid rgba(255,255,255,.25);border-radius:8px;display:flex;align-items:center;justify-content:center;font-family:var(--hd);font-weight:900;font-size:18px;letter-spacing:-.02em}
+.brand-name{font-family:var(--hd);font-weight:700;font-size:17px;letter-spacing:.06em}
+.brand-sub{font-size:10px;color:rgba(255,255,255,.7);font-weight:500;letter-spacing:.06em;text-transform:uppercase;margin-top:1px}
+.nav-links{display:flex;gap:2px;flex-wrap:wrap}
+.nav-link{color:rgba(255,255,255,.85);font-size:11.5px;font-weight:600;text-decoration:none;padding:6px 11px;border-radius:16px;transition:.15s}
+.nav-link:hover{background:rgba(255,255,255,.15);color:#fff}
+.nav-link.pI{background:rgba(199,232,227,.18)}
+.nav-link.pII{background:rgba(253,230,138,.18)}
+.nav-link.pIII{background:rgba(221,214,254,.18)}
+.nav-link.pIV{background:rgba(191,219,254,.18)}
+.nav-cta{background:#fff;color:var(--teal-dk);padding:7px 15px;border-radius:7px;font-size:12px;font-weight:700;text-decoration:none;border:none;cursor:pointer;font-family:inherit}
+
+/* Layout */
+.wrap{max-width:1180px;margin:0 auto;padding:40px 32px 80px}
+
+/* Hero */
+.hero{padding:60px 0 50px;position:relative}
+.hero-eyebrow{display:inline-block;font-family:var(--mono);font-size:11px;font-weight:600;color:var(--teal-dk);background:var(--teal-xlt);padding:5px 12px;border-radius:12px;letter-spacing:.04em;margin-bottom:20px}
+.hero h1{font-family:var(--hd);font-size:54px;font-weight:700;line-height:1.08;letter-spacing:-.02em;color:var(--navy);margin-bottom:22px}
+.hero h1 em{font-style:italic;color:var(--teal);font-weight:600}
+.hero-lead{font-size:17px;line-height:1.65;color:var(--slate);max-width:820px}
+.hero-meta{display:grid;grid-template-columns:repeat(4,1fr);gap:20px;margin-top:36px;padding-top:28px;border-top:1px solid var(--border)}
+.hero-meta-item{}
+.hero-meta-label{font-family:var(--mono);font-size:10px;font-weight:600;color:var(--slate-md);text-transform:uppercase;letter-spacing:.06em;margin-bottom:6px}
+.hero-meta-value{font-size:14px;font-weight:600;color:var(--navy)}
+
+/* Part dividers */
+.part{padding:50px 0 28px;border-bottom:1px solid var(--border);margin-bottom:40px;display:flex;align-items:center;gap:22px}
+.part-num{font-family:var(--hd);font-size:72px;font-weight:700;font-style:italic;color:var(--teal);line-height:.8;letter-spacing:-.03em}
+.part-I .part-num{color:var(--teal)}
+.part-II .part-num{color:var(--amber-dk)}
+.part-III .part-num{color:var(--purple-dk)}
+.part-IV .part-num{color:var(--blue-dk)}
+.part-label{font-family:var(--mono);font-size:10.5px;font-weight:600;color:var(--slate-md);text-transform:uppercase;letter-spacing:.1em;margin-bottom:6px}
+.part-title{font-family:var(--hd);font-size:32px;font-weight:700;color:var(--navy);line-height:1.15}
+.part-sub{font-size:14px;color:var(--slate-md);margin-top:6px}
+
+/* Section head */
+.sec{margin-bottom:60px}
+.sec-head{display:flex;align-items:flex-start;gap:16px;margin-bottom:24px}
+.sec-num{font-family:var(--hd);font-size:32px;font-weight:700;font-style:italic;color:var(--teal);line-height:1;width:54px;flex-shrink:0}
+.sec-title{font-family:var(--hd);font-size:27px;font-weight:700;color:var(--navy);line-height:1.2;letter-spacing:-.01em}
+.sec-sub{font-size:13.5px;color:var(--slate-md);margin-top:5px;font-style:italic}
+
+p{margin-bottom:14px;color:var(--slate)}
+p strong{color:var(--navy);font-weight:600}
+code{font-family:var(--mono);font-size:12.5px;background:var(--border-lt);color:var(--navy);padding:2px 6px;border-radius:4px}
+
+/* Callouts */
+.callout{display:flex;gap:14px;padding:18px 22px;border-radius:10px;margin:18px 0;border-left:3px solid}
+.callout-icon{font-size:20px;flex-shrink:0;line-height:1.2}
+.callout-body{font-size:14px;line-height:1.65;color:var(--slate)}
+.callout-body strong{color:var(--navy)}
+.callout.green{background:var(--green-bg);border-left-color:var(--green)}
+.callout.amber{background:var(--amber-bg);border-left-color:var(--amber)}
+.callout.blue{background:var(--blue-bg);border-left-color:var(--blue)}
+.callout.red{background:var(--red-bg);border-left-color:var(--red)}
+.callout.purple{background:var(--purple-bg);border-left-color:var(--purple)}
+.callout.key{background:linear-gradient(135deg,var(--teal-xlt),#fff);border-left-color:var(--teal);box-shadow:0 2px 8px rgba(10,110,92,.06)}
+
+/* Tables */
+.tbl-wrap{overflow-x:auto;margin:18px 0;border:1px solid var(--border);border-radius:10px}
+table{width:100%;border-collapse:collapse;font-size:13.5px}
+table th{background:var(--border-lt);text-align:left;padding:12px 14px;font-weight:700;color:var(--navy);font-size:12.5px;border-bottom:1px solid var(--border);letter-spacing:.01em}
+table td{padding:12px 14px;border-bottom:1px solid var(--border-lt);vertical-align:top;color:var(--slate)}
+table tr:last-child td{border-bottom:none}
+table td strong{color:var(--navy)}
+table code{font-size:11.5px}
+.row-label{font-weight:600;color:var(--navy);background:#FAFCFC;width:180px}
+
+/* Source badges */
+.src-badge{display:inline-block;font-family:var(--mono);font-size:9.5px;font-weight:600;padding:2px 7px;border-radius:10px;letter-spacing:.04em;margin-left:6px;vertical-align:middle}
+.src-v8{background:#C7E8E3;color:var(--teal-dk)}
+.src-p3{background:#DDD6FE;color:var(--purple-dk)}
+.src-cmp{background:#FEF3C7;color:var(--amber-dk)}
+.src-new{background:#DBEAFE;color:var(--blue-dk)}
+
+/* Component cards (trio) */
+.trio{display:grid;grid-template-columns:repeat(3,1fr);gap:18px;margin:24px 0}
+.comp{background:#fff;border:1px solid var(--border);border-radius:14px;padding:22px;box-shadow:0 2px 10px rgba(15,23,42,.04)}
+.comp.plat{border-top:3px solid var(--teal)}
+.comp.card{border-top:3px solid var(--purple)}
+.comp.lap{border-top:3px solid var(--amber)}
+.comp-badge{display:inline-block;font-family:var(--mono);font-size:10px;font-weight:600;padding:4px 9px;border-radius:10px;margin-bottom:12px;letter-spacing:.04em}
+.comp.plat .comp-badge{background:var(--teal-xlt);color:var(--teal-dk)}
+.comp.card .comp-badge{background:var(--purple-bg);color:var(--purple-dk)}
+.comp.lap .comp-badge{background:var(--amber-bg);color:var(--amber-dk)}
+.comp h3{font-family:var(--hd);font-size:21px;font-weight:700;color:var(--navy);margin-bottom:4px;letter-spacing:-.01em}
+.comp-tag{font-size:12px;color:var(--slate-md);margin-bottom:18px;font-style:italic}
+.comp-field{margin-bottom:12px;padding-bottom:10px;border-bottom:1px dashed var(--border-lt)}
+.comp-field:last-child{border-bottom:none}
+.comp-field-label{font-family:var(--mono);font-size:10px;font-weight:600;color:var(--slate-lt);text-transform:uppercase;letter-spacing:.06em;margin-bottom:4px}
+.comp-field-val{font-size:13px;line-height:1.55;color:var(--slate)}
+.comp-field-val strong{color:var(--navy)}
+
+/* Diagram frame */
+.diag{background:#fff;border:1px solid var(--border);border-radius:14px;padding:22px;margin:18px 0;box-shadow:0 2px 10px rgba(15,23,42,.04)}
+.diag svg{width:100%;height:auto}
+.diag-cap{margin-top:14px;padding-top:12px;border-top:1px solid var(--border-lt);font-size:12.5px;color:var(--slate-md);font-style:italic;line-height:1.55}
+.diag-cap strong{color:var(--navy);font-style:normal}
+
+/* Roles */
+.roles{display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin:22px 0}
+.role{background:#fff;border:1px solid var(--border);border-radius:12px;padding:18px;text-align:center}
+.role-ic{font-size:32px;margin-bottom:8px}
+.role-name{font-family:var(--hd);font-size:16px;font-weight:700;color:var(--navy);margin-bottom:8px}
+.role-use{font-size:12px;color:var(--slate-md);margin-bottom:12px;line-height:1.5;min-height:54px}
+.role-access{display:flex;flex-wrap:wrap;gap:4px;justify-content:center;margin-bottom:10px}
+.acc{font-family:var(--mono);font-size:9.5px;font-weight:600;padding:3px 7px;border-radius:8px}
+.acc.y{background:var(--green-bg);color:#15803D}
+.acc.n{background:var(--red-bg);color:var(--red)}
+.acc.p{background:var(--amber-bg);color:var(--amber-dk)}
+.role-focus{font-size:11.5px;color:var(--slate);line-height:1.5;text-align:left;margin-top:8px;padding-top:10px;border-top:1px dashed var(--border)}
+
+/* Contract cards */
+.contracts{display:grid;grid-template-columns:repeat(2,1fr);gap:16px;margin:20px 0}
+.contract{background:#fff;border:1px solid var(--border);border-radius:12px;padding:20px}
+.contract h4{font-family:var(--hd);font-size:17px;font-weight:700;color:var(--navy);margin-bottom:8px}
+.contract-key{font-family:var(--mono);font-size:12.5px;font-weight:600;color:var(--purple-dk);background:var(--purple-bg);padding:6px 10px;border-radius:6px;display:inline-block;margin-bottom:14px}
+.contract-flow{display:flex;gap:10px;margin-bottom:10px;font-size:12.5px;align-items:flex-start}
+.cf-actor{font-family:var(--mono);font-size:10px;font-weight:700;padding:3px 8px;border-radius:10px;flex-shrink:0;line-height:1.3;letter-spacing:.04em}
+.cf-actor.w{background:var(--purple-bg);color:var(--purple-dk)}
+.cf-actor.r{background:var(--blue-bg);color:var(--blue-dk)}
+.cf-actor.rw{background:var(--amber-bg);color:var(--amber-dk)}
+.cf-actor.warn{background:var(--red-bg);color:var(--red)}
+.cf-desc{line-height:1.55;color:var(--slate)}
+.cf-desc strong{color:var(--navy)}
+
+/* Numbered decision list */
+.dec-mx{margin:20px 0}
+.dec-row{display:grid;grid-template-columns:40px 260px 1fr 90px;gap:16px;align-items:flex-start;padding:14px 0;border-bottom:1px solid var(--border-lt)}
+.dec-row:last-child{border-bottom:none}
+.dec-num{font-family:var(--hd);font-size:20px;font-weight:700;color:var(--teal-md);font-style:italic;line-height:1}
+.dec-q{font-weight:600;color:var(--navy);font-size:13.5px;line-height:1.5}
+.dec-a{font-size:13px;color:var(--slate);line-height:1.6}
+.dec-a strong{color:var(--navy)}
+.dec-src{text-align:right}
+
+/* Checklist */
+.chk{display:grid;gap:10px;margin:18px 0}
+.chk-item{display:grid;grid-template-columns:44px 1fr 120px;gap:14px;align-items:flex-start;background:#fff;border:1px solid var(--border);border-radius:10px;padding:14px 16px}
+.chk-ic{font-size:22px;font-weight:700;line-height:1;padding-top:2px}
+.chk.done .chk-ic{color:var(--green)}
+.chk.todo .chk-ic{color:var(--amber)}
+.chk.future .chk-ic{color:var(--blue)}
+.chk-body h5{font-family:var(--hd);font-size:15px;font-weight:700;color:var(--navy);margin-bottom:4px}
+.chk-body p{font-size:12.5px;color:var(--slate);margin:0;line-height:1.55}
+.chk-tag{font-family:var(--mono);font-size:10px;font-weight:600;color:var(--slate-md);text-align:right;padding:3px 8px;border-radius:8px;background:var(--border-lt);align-self:flex-start}
+.chk.done .chk-tag{background:var(--green-bg);color:#15803D}
+.chk.todo .chk-tag{background:var(--amber-bg);color:var(--amber-dk)}
+.chk.future .chk-tag{background:var(--blue-bg);color:var(--blue-dk)}
+
+/* Plan steps */
+.plan{display:grid;gap:12px;margin:20px 0}
+.plan-step{background:#fff;border:1px solid var(--border);border-radius:10px;padding:16px 20px;border-left:3px solid var(--slate-lt)}
+.plan-step.crit{border-left-color:var(--red);background:linear-gradient(90deg,var(--red-bg) 0%,#fff 40%)}
+.plan-step.wk1{border-left-color:var(--amber)}
+.plan-step.wk2{border-left-color:var(--purple)}
+.plan-step.wk3{border-left-color:var(--blue)}
+.plan-step.wk4{border-left-color:var(--green)}
+.plan-lbl{font-family:var(--mono);font-size:10.5px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--slate-md);margin-bottom:4px}
+.plan-step.crit .plan-lbl{color:var(--red)}
+.plan-title{font-family:var(--hd);font-size:17px;font-weight:700;color:var(--navy);margin-bottom:6px}
+.plan-desc{font-size:13px;color:var(--slate);line-height:1.6}
+.plan-desc code{font-size:11.5px}
+
+/* Infra spec */
+.spec-card{background:linear-gradient(135deg,#EFF6FF 0%,#fff 100%);border:1px solid #BFDBFE;border-radius:14px;padding:24px;margin:18px 0}
+.spec-eyebrow{font-family:var(--mono);font-size:10px;font-weight:600;color:var(--blue-dk);text-transform:uppercase;letter-spacing:.06em;margin-bottom:8px}
+.spec-title{font-family:var(--hd);font-size:22px;font-weight:700;color:var(--navy);margin-bottom:4px}
+.spec-sub{font-size:12.5px;color:var(--slate-md);margin-bottom:18px;font-style:italic}
+.specs{display:grid;grid-template-columns:repeat(3,1fr);gap:12px}
+.spec-box{background:#fff;border:1px solid var(--border);border-radius:8px;padding:12px 14px}
+.spec-label{font-family:var(--mono);font-size:9.5px;font-weight:600;color:var(--slate-md);text-transform:uppercase;letter-spacing:.04em;margin-bottom:4px}
+.spec-val{font-family:var(--hd);font-size:17px;font-weight:700;color:var(--navy);line-height:1.2}
+.spec-desc{font-size:11px;color:var(--slate-md);margin-top:2px}
+
+/* Stack layers */
+.stack{display:grid;gap:10px;margin:16px 0}
+.slayer{display:grid;grid-template-columns:42px 1fr auto;gap:14px;align-items:center;background:#fff;border:1px solid var(--border);border-radius:10px;padding:14px 18px}
+.slayer-ic{font-size:24px;line-height:1}
+.slayer-name{font-family:var(--hd);font-size:15px;font-weight:700;color:var(--navy);margin-bottom:3px}
+.slayer-desc{font-size:12px;color:var(--slate-md);line-height:1.5}
+.slayer-tag{font-family:var(--mono);font-size:10px;font-weight:600;padding:3px 9px;border-radius:8px;white-space:nowrap}
+
+/* Footer */
+.foot{border-top:1px solid var(--border);padding:30px 0;margin-top:50px;text-align:center}
+.foot-brand{font-family:var(--hd);font-weight:700;font-size:14px;color:var(--navy);letter-spacing:.03em;margin-bottom:6px}
+.foot-sub{font-size:12px;color:var(--slate-md);margin-bottom:4px}
+.foot-legal{font-size:11px;color:var(--slate-lt);font-style:italic}
+
+/* Mini: evolution timeline */
+.tl{display:grid;grid-template-columns:repeat(3,1fr);gap:16px;margin:22px 0;position:relative}
+.tl-item{background:#fff;border:1px solid var(--border);border-radius:12px;padding:18px;position:relative}
+.tl-item.past{border-top:3px solid var(--amber)}
+.tl-item.present{border-top:3px solid var(--teal);box-shadow:0 3px 14px rgba(10,110,92,.1)}
+.tl-item.future{border-top:3px solid var(--blue);border-style:solid solid solid solid;opacity:.92}
+.tl-when{font-family:var(--mono);font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:.06em;color:var(--slate-md);margin-bottom:8px}
+.tl-item.past .tl-when{color:var(--amber-dk)}
+.tl-item.present .tl-when{color:var(--teal-dk)}
+.tl-item.future .tl-when{color:var(--blue-dk)}
+.tl-title{font-family:var(--hd);font-size:16px;font-weight:700;color:var(--navy);margin-bottom:8px;line-height:1.25}
+.tl-desc{font-size:12.5px;color:var(--slate);line-height:1.55}
+
+@media (max-width:900px){
+  .trio,.roles,.contracts,.tl,.specs{grid-template-columns:1fr}
+  .hero h1{font-size:38px}
+  .hero-meta{grid-template-columns:repeat(2,1fr)}
+  .dec-row{grid-template-columns:30px 1fr;gap:10px}
+  .dec-row .dec-q,.dec-row .dec-a,.dec-row .dec-src{grid-column:2}
+  .chk-item{grid-template-columns:32px 1fr}
+  .chk-tag{grid-column:1 / -1;justify-self:flex-end}
+  .plan-step{}
+}
+@media print{
+  .nav{position:static}
+  body{background:#fff}
+  .sec{break-inside:avoid}
+}
+</style>
+</head>
+<body>
+
+<nav class="nav">
+  <div class="brand">
+    <div class="brand-logo">M</div>
+    <div>
+      <div class="brand-name">MYRALIX</div>
+      <div class="brand-sub">Unified Architecture</div>
+    </div>
+  </div>
+  <div class="nav-links">
+    <a class="nav-link" href="#overview">Overview</a>
+    <a class="nav-link" href="#reconcile">Reconciliation</a>
+    <a class="nav-link pI" href="#partI">Part I · Current</a>
+    <a class="nav-link pII" href="#partII">Part II · Platform</a>
+    <a class="nav-link pIII" href="#partIII">Part III · Migration</a>
+    <a class="nav-link pIV" href="#partIV">Part IV · Decisions</a>
+  </div>
+  <button class="nav-cta" onclick="window.print()">🖨 Print</button>
+</nav>
+
+<div class="wrap">
+
+<!-- HERO -->
+<header class="hero" id="overview">
+  <div class="hero-eyebrow">Unified Architecture · Apr 2026 · Integrates v8 + Phase 3 Review + Complete Guide</div>
+  <h1>One architecture, <em>three documents reconciled</em>.</h1>
+  <p class="hero-lead">
+    This guide integrates the <strong>Architecture Guide v8</strong> (current built state), the <strong>Phase 3 Architecture Review</strong> (migration critique and plan), and the <strong>Complete Architecture Guide</strong> (wider platform and infrastructure framing) into a single reference. The three source documents describe the same product from three different vantage points in time — earlier strategic framing, critical review, and current reality. Read together, they tell a consistent story; read in isolation, they conflict on where the Laporan lives, whether a Hub exists, and where score normalisation happens. This document resolves those conflicts by pinning <strong>v8 as the current state</strong> and treating the other two as the <em>strategic surroundings</em> and the <em>path forward</em>.
+  </p>
+  <div class="hero-meta">
+    <div class="hero-meta-item">
+      <div class="hero-meta-label">Current Battery</div>
+      <div class="hero-meta-value">v8 · April 2026</div>
+    </div>
+    <div class="hero-meta-item">
+      <div class="hero-meta-label">Storage Contract</div>
+      <div class="hero-meta-value">2 localStorage keys</div>
+    </div>
+    <div class="hero-meta-item">
+      <div class="hero-meta-label">Target Infrastructure</div>
+      <div class="hero-meta-value">Biznet NEO · Jakarta-2</div>
+    </div>
+    <div class="hero-meta-item">
+      <div class="hero-meta-label">Migration Horizon</div>
+      <div class="hero-meta-value">4 weeks to Phase 3</div>
+    </div>
+  </div>
+</header>
+
+
+<!-- SECTION 0: RECONCILIATION -->
+<section class="sec" id="reconcile">
+  <div class="sec-head">
+    <div class="sec-num">00</div>
+    <div>
+      <div class="sec-title">How the three source documents fit together</div>
+      <div class="sec-sub">Three vantage points, one evolving product — the conflicts are temporal, not substantive</div>
+    </div>
+  </div>
+
+  <p>Each source document was written against a different version of Myralix and with a different goal. Reading them as peers produces contradictions; reading them <em>chronologically</em> produces a coherent story. The table below locates each document in the product's evolution.</p>
+
+  <div class="tbl-wrap">
+    <table>
+      <thead>
+        <tr>
+          <th style="width:22%">Source document</th>
+          <th style="width:14%">Vantage</th>
+          <th style="width:14%">Battery ref</th>
+          <th>Core framing &amp; what it contributes to the integrated view</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td><strong>Complete Architecture Guide</strong> <span class="src-badge src-cmp">Complete</span><br><span style="font-size:11.5px;color:var(--slate-md)">Earlier strategic framing</span></td>
+          <td>Past — mid-phase</td>
+          <td>v11 references</td>
+          <td>Three <em>layers</em>: Cards → Assessment Hub (with Laporan embedded) → ATS Platform. Introduces MCU dual-track, Biznet infrastructure, Layer 3 mockup v45. <strong>Kept for:</strong> wider platform context (MCU, ATS pipeline) and infrastructure assessment.</td>
+        </tr>
+        <tr>
+          <td><strong>Phase 3 Architecture Review</strong> <span class="src-badge src-p3">Phase 3</span><br><span style="font-size:11.5px;color:var(--slate-md)">Critical migration plan</span></td>
+          <td>Transitional</td>
+          <td>v3 references</td>
+          <td>Argues against a standalone Hub and against four Laporan HTMLs as a destination. Proposes backend module + two React portal pages. <strong>Kept for:</strong> migration target, gap list (rate limiting, RBAC, B/C/D normalisation, battery-type validation), four-week sequenced plan.</td>
+        </tr>
+        <tr>
+          <td><strong>Architecture Guide v8</strong> <span class="src-badge src-v8">v8</span><br><span style="font-size:11.5px;color:var(--slate-md)">Current built state</span></td>
+          <td>Present — Apr 2026</td>
+          <td>v8 (current)</td>
+          <td>Three <em>components</em>: Platform ↔ Card ↔ Laporan (separate HTML per battery, no Hub). Two localStorage keys: <code>myx-bat-{x}-v8</code>, <code>myx-rpt-{x}-v8</code>. Manager View + Psikolog View merged into one Laporan file. <strong>Kept as:</strong> canonical description of what exists today.</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="callout key">
+    <span class="callout-icon">🔑</span>
+    <div class="callout-body">
+      <strong>The key insight.</strong> The Complete Guide describes a "Hub-centric" world that the team has since moved past. The Phase 3 Review argued that Hub should go and the Laporan HTMLs should become portal pages. The v8 Guide shows the Hub <em>has been deleted</em> (partial acceptance of the Phase 3 Review), but the Laporan HTMLs <em>remain per-battery</em> (Phase 3 Review's portal-pages recommendation is still future work). So v8 is an intermediate state: Hub retired, portal pages not yet built, Laporan HTMLs doing double duty.
+    </div>
+  </div>
+
+  <h3 style="font-family:var(--hd);font-size:20px;font-weight:700;color:var(--navy);margin:32px 0 14px">The five substantive conflicts, and how this guide resolves each</h3>
+
+  <div class="dec-mx">
+    <div class="dec-row">
+      <div class="dec-num">1</div>
+      <div class="dec-q">Does the Assessment Hub exist as a distinct surface?</div>
+      <div class="dec-a"><strong>No — deleted.</strong> Complete Guide had it as Layer 2; Phase 3 Review recommended retiring it; v8 has acted on that. The functions it used to hold (read card data, compute composites, render Laporan) are now split: reading and rendering happen inside each Laporan HTML; composite calculation happens inside the Card before save.</div>
+      <div class="dec-src"><span class="src-badge src-v8">v8 wins</span></div>
+    </div>
+    <div class="dec-row">
+      <div class="dec-num">2</div>
+      <div class="dec-q">Where does the Laporan Psikologis live?</div>
+      <div class="dec-a"><strong>Now:</strong> standalone HTML file per battery — one file per A/B/C/D — with Manager View on top and Psikolog View expandable below. <strong>Phase 3 target:</strong> two React pages inside the Myralix portal (<code>BatterySessions.jsx</code> list + <code>BatteryResultDetail.jsx</code>), with the HTML files retained only as offline fallback until the portal pages are stable, then retired.</div>
+      <div class="dec-src"><span class="src-badge src-v8">v8 now</span><br><span class="src-badge src-p3">P3 target</span></div>
+    </div>
+    <div class="dec-row">
+      <div class="dec-num">3</div>
+      <div class="dec-q">Where does score normalisation happen (1–10 composite → 0–100 three-pillar)?</div>
+      <div class="dec-a"><strong>Now:</strong> each Laporan's <code>calc3Pillar()</code> does this on read. <strong>Phase 3 target:</strong> backend <code>normaliseScores()</code>, called once on submit, result stored in <code>battery_results.scores_normalised</code>. The <em>output format</em> (Cognitive / Personality / Work Attitude, each 0–100, plus Overall) is unchanged.</div>
+      <div class="dec-src"><span class="src-badge src-v8">v8 now</span><br><span class="src-badge src-p3">P3 target</span></div>
+    </div>
+    <div class="dec-row">
+      <div class="dec-num">4</div>
+      <div class="dec-q">Does the battery architecture own Medical Check (MCU)?</div>
+      <div class="dec-a"><strong>No.</strong> MCU is a parallel track inside the Myralix ATS platform (Layer 3), not part of the battery system. The Platform runs the dual gate (Psych AND MCU must pass); the Card and Laporan are unaware of MCU. This matches Complete Guide's framing and is not contradicted by v8 or Phase 3 Review — they simply didn't cover it.</div>
+      <div class="dec-src"><span class="src-badge src-cmp">Complete</span></div>
+    </div>
+    <div class="dec-row">
+      <div class="dec-num">5</div>
+      <div class="dec-q">What is the role of the Biznet NEO server?</div>
+      <div class="dec-a"><strong>Today:</strong> idle as far as the battery system is concerned (everything is client-side). <strong>Near-term (Phase 2b):</strong> serve Battery HTMLs at stable URLs via Nginx. <strong>Phase 3:</strong> run the full backend — Express API, PostgreSQL, Anthropic proxy — eliminating the exposed API key and the localStorage bridge simultaneously.</div>
+      <div class="dec-src"><span class="src-badge src-cmp">Complete</span></div>
+    </div>
+  </div>
+
+  <p style="margin-top:24px">With those five resolutions in place, the three documents stop contradicting each other. The rest of this guide describes the integrated architecture that results.</p>
+</section>
+
+
+<!-- PART I DIVIDER -->
+<div class="part part-I" id="partI">
+  <div class="part-num">I</div>
+  <div>
+    <div class="part-label">Part One</div>
+    <div class="part-title">Current Architecture (v8)</div>
+    <div class="part-sub">What exists today — three components, two localStorage keys, no Hub</div>
+  </div>
+</div>
+
+<!-- SECTION 1: THREE COMPONENTS -->
+<section class="sec" id="components">
+  <div class="sec-head">
+    <div class="sec-num">01</div>
+    <div>
+      <div class="sec-title">The three components <span class="src-badge src-v8">v8</span></div>
+      <div class="sec-sub">Who they are, what they do, and why they exist as separate surfaces</div>
+    </div>
+  </div>
+
+  <p>The battery system ships as three independent but tightly integrated surfaces. There is no "Hub" — that concept was retired. Each component has exactly one primary user and one job, and they exchange data through two shared localStorage keys.</p>
+
+  <div class="trio">
+    <div class="comp plat">
+      <div class="comp-badge">🏢 System of Record</div>
+      <h3>Myralix Platform</h3>
+      <div class="comp-tag">Dashboard for Recruiters &amp; HR Admin</div>
+      <div class="comp-field">
+        <div class="comp-field-label">Primary User</div>
+        <div class="comp-field-val">Recruiter · HR Admin · Hiring Coordinator</div>
+      </div>
+      <div class="comp-field">
+        <div class="comp-field-label">Purpose</div>
+        <div class="comp-field-val">Orchestrate the <strong>end-to-end recruitment pipeline</strong> — jobs, candidates, stages, analytics.</div>
+      </div>
+      <div class="comp-field">
+        <div class="comp-field-label">Access</div>
+        <div class="comp-field-val">Login-gated SaaS dashboard. Multi-tenant, role-based.</div>
+      </div>
+      <div class="comp-field">
+        <div class="comp-field-label">Assessment Role</div>
+        <div class="comp-field-val">Assigns battery to candidate · displays <code>3-pillar</code> results in table · gates advancement · opens Laporan via 📄 icon.</div>
+      </div>
+      <div class="comp-field">
+        <div class="comp-field-label">Session Duration</div>
+        <div class="comp-field-val">Long-lived — days to weeks per candidate</div>
+      </div>
+    </div>
+
+    <div class="comp card">
+      <div class="comp-badge">🧠 Assessment Runner</div>
+      <h3>Candidate Card</h3>
+      <div class="comp-tag">Test Interface for Job Candidates</div>
+      <div class="comp-field">
+        <div class="comp-field-label">Primary User</div>
+        <div class="comp-field-val">Job candidate taking the psychometric assessment</div>
+      </div>
+      <div class="comp-field">
+        <div class="comp-field-label">Purpose</div>
+        <div class="comp-field-val">Administer <strong>one of four batteries</strong> (A/B/C/D) matched to role level, compute raw scores client-side.</div>
+      </div>
+      <div class="comp-field">
+        <div class="comp-field-label">Access</div>
+        <div class="comp-field-val">Single-use tokenised link. No login. Shareable by email / SMS / WhatsApp.</div>
+      </div>
+      <div class="comp-field">
+        <div class="comp-field-label">Content</div>
+        <div class="comp-field-val">5 sequential tests per battery. Instrument names <strong>obfuscated</strong> — candidates see only neutral progress labels.</div>
+      </div>
+      <div class="comp-field">
+        <div class="comp-field-label">Output</div>
+        <div class="comp-field-val">Raw scores saved to <code>myx-bat-{x}-v8</code> · candidate sees only <strong>"✅ Tes Selesai"</strong>.</div>
+      </div>
+      <div class="comp-field">
+        <div class="comp-field-label">Session Duration</div>
+        <div class="comp-field-val">60–90 minutes · single sitting</div>
+      </div>
+    </div>
+
+    <div class="comp lap">
+      <div class="comp-badge">📋 Report &amp; Decision</div>
+      <h3>Laporan Psikologis</h3>
+      <div class="comp-tag">Combined Manager + Psikolog view</div>
+      <div class="comp-field">
+        <div class="comp-field-label">Primary User</div>
+        <div class="comp-field-val">Recruiter · Hiring Manager · Psikolog / HR Specialist</div>
+      </div>
+      <div class="comp-field">
+        <div class="comp-field-label">Purpose</div>
+        <div class="comp-field-val">Translate raw scores into <strong>interpretable narrative + final recommendation</strong>.</div>
+      </div>
+      <div class="comp-field">
+        <div class="comp-field-label">Access</div>
+        <div class="comp-field-val">Opened from Platform's results table (📄 icon) or direct file access. One HTML file per battery.</div>
+      </div>
+      <div class="comp-field">
+        <div class="comp-field-label">Content Layers</div>
+        <div class="comp-field-val"><strong>Manager View</strong> (visible): 3-pillar chart + verdict + plain narrative<br><strong>Psikolog Detail</strong> (expandable): per-instrument analysis + AI narratives generated via Anthropic API</div>
+      </div>
+      <div class="comp-field">
+        <div class="comp-field-label">Output</div>
+        <div class="comp-field-val">Qualitative ratings · edited AI narratives · final verdict — all saved to <code>myx-rpt-{x}-v8</code>.</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="callout amber">
+    <span class="callout-icon">⚠️</span>
+    <div class="callout-body">
+      <strong>Security note carried forward from Phase 3 Review.</strong> The current Laporan HTML calls the Anthropic API directly from the browser, meaning the API key is embedded in the file and inspectable by anyone who opens it in a text editor. This is treated as a live security incident, not a "Phase 3 improvement" — the prerequisite actions in Part III address it.
+    </div>
+  </div>
+</section>
+
+<!-- SECTION 2: PROCESS FLOW -->
+<section class="sec" id="flow">
+  <div class="sec-head">
+    <div class="sec-num">02</div>
+    <div>
+      <div class="sec-title">End-to-end process flow <span class="src-badge src-v8">v8</span></div>
+      <div class="sec-sub">From job creation to final verdict, across all three components</div>
+    </div>
+  </div>
+
+  <div class="diag">
+    <svg viewBox="0 0 1040 520" xmlns="http://www.w3.org/2000/svg">
+      <defs>
+        <marker id="ar-t" markerWidth="10" markerHeight="10" refX="8" refY="3" orient="auto"><path d="M0,0 L0,6 L9,3 z" fill="#0A6E5C"/></marker>
+        <marker id="ar-p" markerWidth="10" markerHeight="10" refX="8" refY="3" orient="auto"><path d="M0,0 L0,6 L9,3 z" fill="#7C3AED"/></marker>
+        <marker id="ar-a" markerWidth="10" markerHeight="10" refX="8" refY="3" orient="auto"><path d="M0,0 L0,6 L9,3 z" fill="#92400E"/></marker>
+        <linearGradient id="gPlat" x1="0%" y1="0%" x2="0%" y2="100%"><stop offset="0%" stop-color="#EDF7F5"/><stop offset="100%" stop-color="#FAFDFC"/></linearGradient>
+        <linearGradient id="gCard" x1="0%" y1="0%" x2="0%" y2="100%"><stop offset="0%" stop-color="#F5F3FF"/><stop offset="100%" stop-color="#FBFAFF"/></linearGradient>
+        <linearGradient id="gLap" x1="0%" y1="0%" x2="0%" y2="100%"><stop offset="0%" stop-color="#FEF3C7"/><stop offset="100%" stop-color="#FEFBEF"/></linearGradient>
+      </defs>
+
+      <text x="520" y="20" text-anchor="middle" font-family="Fraunces,serif" font-size="14" font-weight="700" fill="#0F172A">Candidate journey across three components</text>
+      <text x="520" y="40" text-anchor="middle" font-family="DM Sans,sans-serif" font-size="11" fill="#64748B">Time flows left → right · Each lane is one component · Dashed arrows cross component boundaries</text>
+
+      <!-- Lanes -->
+      <rect x="20" y="70" width="1000" height="120" fill="url(#gPlat)" rx="14" stroke="#C7E8E3"/>
+      <text x="30" y="94" font-family="DM Sans,sans-serif" font-size="10" font-weight="700" fill="#0A6E5C" letter-spacing="1">🏢 MYRALIX PLATFORM</text>
+      <text x="30" y="108" font-family="DM Sans,sans-serif" font-size="9.5" fill="#64748B">Recruiter actions · Pipeline management</text>
+
+      <rect x="20" y="210" width="1000" height="110" fill="url(#gCard)" rx="14" stroke="#DDD6FE"/>
+      <text x="30" y="234" font-family="DM Sans,sans-serif" font-size="10" font-weight="700" fill="#5B21B6" letter-spacing="1">🧠 CANDIDATE CARD</text>
+      <text x="30" y="248" font-family="DM Sans,sans-serif" font-size="9.5" fill="#64748B">Candidate completes the battery</text>
+
+      <rect x="20" y="340" width="1000" height="120" fill="url(#gLap)" rx="14" stroke="#FDE68A"/>
+      <text x="30" y="364" font-family="DM Sans,sans-serif" font-size="10" font-weight="700" fill="#92400E" letter-spacing="1">📋 LAPORAN PSIKOLOGIS</text>
+      <text x="30" y="378" font-family="DM Sans,sans-serif" font-size="9.5" fill="#64748B">Multi-audience review &amp; decision</text>
+
+      <!-- Steps -->
+      <g><rect x="40" y="125" width="120" height="50" fill="#fff" stroke="#0A6E5C" stroke-width="1.5" rx="8"/><text x="100" y="143" text-anchor="middle" font-family="DM Sans,sans-serif" font-size="11" font-weight="700" fill="#0F172A">1 · Create Job</text><text x="100" y="158" text-anchor="middle" font-family="DM Sans,sans-serif" font-size="9" fill="#64748B">pick Battery A/B/C/D</text><text x="100" y="170" text-anchor="middle" font-family="DM Sans,sans-serif" font-size="9" fill="#64748B">set thresholds</text></g>
+      <g><rect x="180" y="125" width="120" height="50" fill="#fff" stroke="#0A6E5C" stroke-width="1.5" rx="8"/><text x="240" y="143" text-anchor="middle" font-family="DM Sans,sans-serif" font-size="11" font-weight="700" fill="#0F172A">2 · Screen CV</text><text x="240" y="158" text-anchor="middle" font-family="DM Sans,sans-serif" font-size="9" fill="#64748B">AI scoring 0–100</text><text x="240" y="170" text-anchor="middle" font-family="DM Sans,sans-serif" font-size="9" fill="#64748B">move to Assessment</text></g>
+      <g><rect x="320" y="125" width="140" height="50" fill="#fff" stroke="#0A6E5C" stroke-width="1.5" rx="8"/><text x="390" y="143" text-anchor="middle" font-family="DM Sans,sans-serif" font-size="11" font-weight="700" fill="#0F172A">3 · Send Invitation</text><text x="390" y="158" text-anchor="middle" font-family="DM Sans,sans-serif" font-size="9" fill="#64748B">unique link · email/SMS</text><text x="390" y="170" text-anchor="middle" font-family="DM Sans,sans-serif" font-size="9" fill="#64748B">5 units/candidate</text></g>
+
+      <g><rect x="480" y="232" width="120" height="50" fill="#fff" stroke="#7C3AED" stroke-width="1.5" rx="8"/><text x="540" y="250" text-anchor="middle" font-family="DM Sans,sans-serif" font-size="11" font-weight="700" fill="#0F172A">4 · Open Link</text><text x="540" y="265" text-anchor="middle" font-family="DM Sans,sans-serif" font-size="9" fill="#64748B">no login</text><text x="540" y="277" text-anchor="middle" font-family="DM Sans,sans-serif" font-size="9" fill="#64748B">profile setup</text></g>
+      <g><rect x="620" y="232" width="140" height="50" fill="#fff" stroke="#7C3AED" stroke-width="1.5" rx="8"/><text x="690" y="250" text-anchor="middle" font-family="DM Sans,sans-serif" font-size="11" font-weight="700" fill="#0F172A">5 · Complete Tests</text><text x="690" y="265" text-anchor="middle" font-family="DM Sans,sans-serif" font-size="9" fill="#64748B">5 sequential · ~75 min</text><text x="690" y="277" text-anchor="middle" font-family="DM Sans,sans-serif" font-size="9" fill="#64748B">auto-save progress</text></g>
+      <g><rect x="780" y="232" width="130" height="50" fill="#fff" stroke="#7C3AED" stroke-width="1.5" rx="8"/><text x="845" y="250" text-anchor="middle" font-family="DM Sans,sans-serif" font-size="11" font-weight="700" fill="#0F172A">6 · Compute</text><text x="845" y="265" text-anchor="middle" font-family="DM Sans,sans-serif" font-size="9" fill="#64748B">scores saved</text><text x="845" y="277" text-anchor="middle" font-family="DM Sans,sans-serif" font-size="9" fill="#64748B">candidate sees "✅"</text></g>
+
+      <g><rect x="645" y="125" width="130" height="50" fill="#fff" stroke="#0A6E5C" stroke-width="1.5" rx="8"/><text x="710" y="143" text-anchor="middle" font-family="DM Sans,sans-serif" font-size="11" font-weight="700" fill="#0F172A">7 · Display Scores</text><text x="710" y="158" text-anchor="middle" font-family="DM Sans,sans-serif" font-size="9" fill="#64748B">3-pillar in table</text><text x="710" y="170" text-anchor="middle" font-family="DM Sans,sans-serif" font-size="9" fill="#64748B">Passed/Failed chip</text></g>
+      <g><rect x="795" y="125" width="130" height="50" fill="#fff" stroke="#0A6E5C" stroke-width="1.5" rx="8"/><text x="860" y="143" text-anchor="middle" font-family="DM Sans,sans-serif" font-size="11" font-weight="700" fill="#0F172A">8 · Click 📄</text><text x="860" y="158" text-anchor="middle" font-family="DM Sans,sans-serif" font-size="9" fill="#64748B">open Laporan</text><text x="860" y="170" text-anchor="middle" font-family="DM Sans,sans-serif" font-size="9" fill="#64748B">new tab / drawer</text></g>
+
+      <g><rect x="480" y="385" width="130" height="50" fill="#fff" stroke="#92400E" stroke-width="1.5" rx="8"/><text x="545" y="403" text-anchor="middle" font-family="DM Sans,sans-serif" font-size="11" font-weight="700" fill="#0F172A">9 · Manager View</text><text x="545" y="418" text-anchor="middle" font-family="DM Sans,sans-serif" font-size="9" fill="#64748B">3-pillar + verdict</text><text x="545" y="430" text-anchor="middle" font-family="DM Sans,sans-serif" font-size="9" fill="#64748B">plain narrative</text></g>
+      <g><rect x="630" y="385" width="130" height="50" fill="#fff" stroke="#92400E" stroke-width="1.5" rx="8" stroke-dasharray="3,3"/><text x="695" y="403" text-anchor="middle" font-family="DM Sans,sans-serif" font-size="11" font-weight="700" fill="#0F172A">10 · Psikolog View</text><text x="695" y="418" text-anchor="middle" font-family="DM Sans,sans-serif" font-size="9" fill="#64748B">expand detail</text><text x="695" y="430" text-anchor="middle" font-family="DM Sans,sans-serif" font-size="9" fill="#64748B">AI narratives</text></g>
+      <g><rect x="780" y="385" width="130" height="50" fill="#fff" stroke="#92400E" stroke-width="1.5" rx="8"/><text x="845" y="403" text-anchor="middle" font-family="DM Sans,sans-serif" font-size="11" font-weight="700" fill="#0F172A">11 · Set Verdict</text><text x="845" y="418" text-anchor="middle" font-family="DM Sans,sans-serif" font-size="9" fill="#64748B">Direkomendasikan /</text><text x="845" y="430" text-anchor="middle" font-family="DM Sans,sans-serif" font-size="9" fill="#64748B">Pertimbangkan / Tidak</text></g>
+
+      <g><rect x="930" y="125" width="90" height="50" fill="#fff" stroke="#0A6E5C" stroke-width="1.5" rx="8"/><text x="975" y="143" text-anchor="middle" font-family="DM Sans,sans-serif" font-size="11" font-weight="700" fill="#0F172A">12 · Advance</text><text x="975" y="158" text-anchor="middle" font-family="DM Sans,sans-serif" font-size="9" fill="#64748B">Interview /</text><text x="975" y="170" text-anchor="middle" font-family="DM Sans,sans-serif" font-size="9" fill="#64748B">Reject</text></g>
+
+      <line x1="160" y1="150" x2="180" y2="150" stroke="#0A6E5C" stroke-width="1.5" marker-end="url(#ar-t)"/>
+      <line x1="300" y1="150" x2="320" y2="150" stroke="#0A6E5C" stroke-width="1.5" marker-end="url(#ar-t)"/>
+      <path d="M 390 176 Q 390 200 450 232 L 478 244" stroke="#7C3AED" stroke-width="1.5" stroke-dasharray="4,3" fill="none" marker-end="url(#ar-p)"/>
+      <text x="405" y="210" font-family="DM Sans,sans-serif" font-size="9" font-style="italic" fill="#7C3AED">sends link</text>
+      <line x1="600" y1="257" x2="620" y2="257" stroke="#7C3AED" stroke-width="1.5" marker-end="url(#ar-p)"/>
+      <line x1="760" y1="257" x2="780" y2="257" stroke="#7C3AED" stroke-width="1.5" marker-end="url(#ar-p)"/>
+      <path d="M 845 232 Q 845 200 780 180 L 777 176" stroke="#0A6E5C" stroke-width="1.5" stroke-dasharray="4,3" fill="none" marker-end="url(#ar-t)"/>
+      <text x="740" y="205" font-family="DM Sans,sans-serif" font-size="9" font-style="italic" fill="#0A6E5C">scores synced</text>
+      <line x1="775" y1="150" x2="795" y2="150" stroke="#0A6E5C" stroke-width="1.5" marker-end="url(#ar-t)"/>
+      <path d="M 860 176 Q 860 280 600 385 L 608 402" stroke="#92400E" stroke-width="1.5" stroke-dasharray="4,3" fill="none" marker-end="url(#ar-a)"/>
+      <text x="780" y="310" font-family="DM Sans,sans-serif" font-size="9" font-style="italic" fill="#92400E">opens report</text>
+      <line x1="610" y1="410" x2="630" y2="410" stroke="#92400E" stroke-width="1.5" marker-end="url(#ar-a)"/>
+      <line x1="760" y1="410" x2="780" y2="410" stroke="#92400E" stroke-width="1.5" marker-end="url(#ar-a)"/>
+      <path d="M 910 385 Q 970 300 970 180 L 970 176" stroke="#0A6E5C" stroke-width="1.5" stroke-dasharray="4,3" fill="none" marker-end="url(#ar-t)"/>
+      <text x="935" y="290" font-family="DM Sans,sans-serif" font-size="9" font-style="italic" fill="#0A6E5C">verdict synced</text>
+
+      <rect x="30" y="475" width="430" height="30" fill="#F1F5F9" rx="6" opacity=".7"/>
+      <text x="245" y="494" text-anchor="middle" font-family="DM Sans,sans-serif" font-size="10" font-weight="700" fill="#334155" letter-spacing="1">PRE-ASSESSMENT</text>
+      <rect x="470" y="475" width="310" height="30" fill="#F5F3FF" rx="6" opacity=".7"/>
+      <text x="625" y="494" text-anchor="middle" font-family="DM Sans,sans-serif" font-size="10" font-weight="700" fill="#5B21B6" letter-spacing="1">ASSESSMENT IN-PROGRESS</text>
+      <rect x="790" y="475" width="230" height="30" fill="#FEF3C7" rx="6" opacity=".7"/>
+      <text x="905" y="494" text-anchor="middle" font-family="DM Sans,sans-serif" font-size="10" font-weight="700" fill="#92400E" letter-spacing="1">POST-ASSESSMENT</text>
+    </svg>
+    <div class="diag-cap">
+      Three phases: <strong>Pre-Assessment</strong> (job setup + screening) → <strong>Assessment</strong> (candidate takes the battery) → <strong>Post-Assessment</strong> (report review + decision). Solid arrows stay inside one lane; dashed arrows cross component boundaries and represent the localStorage handoffs (which become API calls in Phase 3).
+    </div>
+  </div>
+</section>
+
+<!-- SECTION 3: DATA CONTRACTS -->
+<section class="sec" id="contracts">
+  <div class="sec-head">
+    <div class="sec-num">03</div>
+    <div>
+      <div class="sec-title">Data contracts &amp; storage <span class="src-badge src-v8">v8</span></div>
+      <div class="sec-sub">Two localStorage keys today — one REST schema in Phase 3</div>
+    </div>
+  </div>
+
+  <p>The three components exchange data through exactly two keys. The Card is the sole writer of scores; the Laporan owns the report state; the Platform only reads. This single-writer rule is what keeps the model honest — and it is what makes the Phase 3 migration to a backend so mechanical: each key becomes a table, each access pattern becomes an endpoint.</p>
+
+  <div class="contracts">
+    <div class="contract">
+      <h4>📊 Candidate scores</h4>
+      <div class="contract-key">myx-bat-{a|b|c|d}-v8</div>
+      <div class="contract-flow">
+        <span class="cf-actor w">WRITE</span>
+        <div class="cf-desc"><strong>Candidate Card</strong> — on test completion, saves profile + raw per-instrument scores + computed composites</div>
+      </div>
+      <div class="contract-flow">
+        <span class="cf-actor r">READ</span>
+        <div class="cf-desc"><strong>Platform</strong> — to display 3-pillar scores in the Assessment Results Table</div>
+      </div>
+      <div class="contract-flow">
+        <span class="cf-actor r">READ</span>
+        <div class="cf-desc"><strong>Laporan</strong> — to build the report content (3-pillar bridge + per-instrument detail sections)</div>
+      </div>
+      <div class="contract-flow">
+        <span class="cf-actor warn">RULE</span>
+        <div class="cf-desc" style="color:var(--slate-md);font-size:12px"><strong>Never</strong> modified by Platform or Laporan — this key is the source of truth for what the candidate answered.</div>
+      </div>
+    </div>
+
+    <div class="contract">
+      <h4>📝 Recruiter decisions</h4>
+      <div class="contract-key">myx-rpt-{a|b|c|d}-v8</div>
+      <div class="contract-flow">
+        <span class="cf-actor rw">READ + WRITE</span>
+        <div class="cf-desc"><strong>Laporan</strong> — stores qualitative ratings per instrument, edited AI narratives, final verdict, assessor notes</div>
+      </div>
+      <div class="contract-flow">
+        <span class="cf-actor r">READ</span>
+        <div class="cf-desc"><strong>Platform</strong> — reads final verdict to update candidate status in the pipeline</div>
+      </div>
+      <div class="contract-flow">
+        <span class="cf-actor warn">RULE</span>
+        <div class="cf-desc" style="color:var(--slate-md);font-size:12px">Candidate Card has <strong>no knowledge</strong> of this key — ensures candidates cannot see recruiter notes or verdicts under any circumstance.</div>
+      </div>
+    </div>
+  </div>
+
+  <h3 style="font-family:var(--hd);font-size:18px;font-weight:700;color:var(--navy);margin:28px 0 12px">Example payload shape</h3>
+  <p style="font-size:13px">A snapshot of what the Card writes after a Battery A completion (Operasional &amp; Staf Umum):</p>
+  <div style="background:#0F172A;color:#E2E8F0;border-radius:10px;padding:18px 22px;font-family:var(--mono);font-size:12px;line-height:1.75;overflow-x:auto;margin:10px 0">
+<span style="color:#94A3B8">// localStorage["myx-bat-a-v8"]</span><br>
+{<br>
+&nbsp;&nbsp;<span style="color:#5EEAD4">profile</span>: { name: <span style="color:#FCD34D">"Sari Wijaya"</span>, position: <span style="color:#FCD34D">"Staf Administrasi"</span>, dob: <span style="color:#FCD34D">"1997-05-12"</span> },<br>
+&nbsp;&nbsp;<span style="color:#5EEAD4">results</span>: {<br>
+&nbsp;&nbsp;&nbsp;&nbsp;<span style="color:#F5B8FE">tk</span>: { composite: <span style="color:#93C5FD">8.0</span>, sub: { GI: {score10: <span style="color:#93C5FD">8.2</span>, iq: <span style="color:#93C5FD">130</span>}, KA: {score10: <span style="color:#93C5FD">7.6</span>} } },<br>
+&nbsp;&nbsp;&nbsp;&nbsp;<span style="color:#F5B8FE">bigfive</span>: { pct: {E:<span style="color:#93C5FD">80</span>, A:<span style="color:#93C5FD">100</span>, C:<span style="color:#93C5FD">87</span>, N:<span style="color:#93C5FD">25</span>, O:<span style="color:#93C5FD">62</span>} },<br>
+&nbsp;&nbsp;&nbsp;&nbsp;<span style="color:#F5B8FE">disc</span>: { dominant: <span style="color:#FCD34D">"S"</span>, adaptive: <span style="color:#FCD34D">"SC"</span>, natural: <span style="color:#FCD34D">"CS"</span> },<br>
+&nbsp;&nbsp;&nbsp;&nbsp;<span style="color:#F5B8FE">holland</span>: { code3: <span style="color:#FCD34D">"SCR"</span>, consistency: <span style="color:#FCD34D">"Tinggi"</span> }<br>
+&nbsp;&nbsp;}<br>
+}
+  </div>
+
+  <div class="callout blue">
+    <span class="callout-icon">🔁</span>
+    <div class="callout-body">
+      <strong>Phase 3 mapping.</strong> <code>myx-bat-{x}-v8</code> becomes the <code>battery_results</code> table (JSONB <code>raw_results</code> column + typed <code>scores_normalised</code> column). <code>myx-rpt-{x}-v8</code> becomes the <code>laporan</code> JSONB field on the same row, plus a structured <code>final_verdict</code> column. The single-writer rule translates directly into API write permissions: the public <code>POST /api/battery/submit</code> endpoint writes <code>raw_results</code>; authenticated recruiter endpoints update <code>laporan</code> and <code>final_verdict</code>.
+    </div>
+  </div>
+</section>
+
+<!-- SECTION 4: SCORING BRIDGE -->
+<section class="sec" id="scoring">
+  <div class="sec-head">
+    <div class="sec-num">04</div>
+    <div>
+      <div class="sec-title">The scoring bridge <span class="src-badge src-v8">v8</span><span class="src-badge src-cmp">Complete</span></div>
+      <div class="sec-sub">From 1–10 battery composites to 0–100 three-pillar output for Platform display</div>
+    </div>
+  </div>
+
+  <p>The Card stores raw instrument scores and battery composites on a 1–10 scale (psychometric convention). The Platform's Assessment Results Table expects a 0–100 scale across three dimensions — Cognitive, Personality, Work Attitude — plus an Overall. The <code>calc3Pillar()</code> function bridges the two. It lives inside each Laporan today and moves to <code>backend/src/modules/battery/service.ts :: normaliseScores()</code> in Phase 3.</p>
+
+  <div class="tbl-wrap">
+    <table>
+      <thead>
+        <tr>
+          <th style="width:16%">Pillar</th>
+          <th style="width:34%">Instruments contributing</th>
+          <th style="width:14%">Scale in</th>
+          <th style="width:14%">Scale out</th>
+          <th style="width:14%">Default pass</th>
+          <th>Treatment</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td><strong>Cognitive</strong></td>
+          <td>WPT × 65% + DAT-CS × 35% (Battery A); broader DAT subtest set for B/C/D</td>
+          <td>1–10 composite</td>
+          <td>0–100</td>
+          <td style="color:var(--teal-dk);font-weight:700">≥ 70</td>
+          <td><strong>Hard gate.</strong> Fully weighted as <code>TK: 1.0</code> in the overall composite.</td>
+        </tr>
+        <tr>
+          <td><strong>Personality</strong></td>
+          <td>Big Five (BFI-44) + DISC (A); + EPPS / 16PF / PAPI per battery</td>
+          <td>Per-dimension %</td>
+          <td>0–100 aggregate</td>
+          <td style="color:var(--teal-dk);font-weight:700">≥ 65</td>
+          <td><strong>Profile-only.</strong> <code>profileOnly: true, weight: 0</code>. Surfaced qualitatively as ✅ Sesuai / ⚠️ Pertimbangkan / ❌ Tidak Sesuai — not composited.</td>
+        </tr>
+        <tr>
+          <td><strong>Work Attitude</strong></td>
+          <td>Holland RIASEC + DISC + (SJT / PAPI Kostick for B+/C+)</td>
+          <td>Mixed</td>
+          <td>0–100</td>
+          <td style="color:var(--teal-dk);font-weight:700">≥ 65</td>
+          <td>Weighted blend — weights per battery in <code>SCORING.json</code>.</td>
+        </tr>
+        <tr style="background:var(--teal-xlt)">
+          <td><strong>Overall</strong></td>
+          <td>Cognitive hard gate + weighted personality/work-attitude signal</td>
+          <td>—</td>
+          <td>0–100</td>
+          <td style="color:var(--teal-dk);font-weight:700">✅ Pass / Review / Fail</td>
+          <td>Drives the Platform status chip. Written back to Laporan as <code>finalRec</code>.</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="callout key">
+    <span class="callout-icon">🎯</span>
+    <div class="callout-body">
+      <strong>Architectural principle — two-layer scoring.</strong> Cognitive is a quantitative gate. Personality and behavioural instruments (GPP-I, DISC, 16PF, EPPS) are <em>qualitative profiles</em>, not composite inputs. This was the confirmed architectural direction in earlier iterations and remains correct: personality instruments measure fit, not ability, so they should not be arithmetically composited into a pass/fail score. The Laporan surfaces them as recruiter judgement prompts.
+    </div>
+  </div>
+</section>
+
+<!-- SECTION 5: ROLE MATRIX -->
+<section class="sec" id="roles">
+  <div class="sec-head">
+    <div class="sec-num">05</div>
+    <div>
+      <div class="sec-title">Who uses what <span class="src-badge src-v8">v8</span></div>
+      <div class="sec-sub">Four roles × three components — access map</div>
+    </div>
+  </div>
+
+  <div class="roles">
+    <div class="role">
+      <div class="role-ic">👩‍💼</div>
+      <div class="role-name">Recruiter</div>
+      <div class="role-use">Runs day-to-day hiring operations. Owns the pipeline end-to-end.</div>
+      <div class="role-access">
+        <span class="acc y">Platform ✓</span>
+        <span class="acc n">Card ✗</span>
+        <span class="acc y">Laporan ✓</span>
+      </div>
+      <div class="role-focus">Creates jobs, invites candidates, reviews every Laporan, and sets the final recruiter verdict that Platform reads back.</div>
+    </div>
+    <div class="role">
+      <div class="role-ic">👤</div>
+      <div class="role-name">Candidate</div>
+      <div class="role-use">Only interacts with the Card. Never sees the Platform or Laporan.</div>
+      <div class="role-access">
+        <span class="acc n">Platform ✗</span>
+        <span class="acc y">Card ✓</span>
+        <span class="acc n">Laporan ✗</span>
+      </div>
+      <div class="role-focus">Receives a tokenised link, completes the battery, sees only a simple "Tes Selesai" confirmation. No scores, no framework names, ever.</div>
+    </div>
+    <div class="role">
+      <div class="role-ic">👔</div>
+      <div class="role-name">Hiring Manager</div>
+      <div class="role-use">Non-psychology domain expert. Makes the hire / no-hire call on direct reports.</div>
+      <div class="role-access">
+        <span class="acc y">Platform ✓</span>
+        <span class="acc n">Card ✗</span>
+        <span class="acc p">Laporan (Mgr) ✓</span>
+      </div>
+      <div class="role-focus">Opens the Laporan, reads 3-pillar + plain summary, clicks one of three action buttons. Rarely expands the Psikolog detail.</div>
+    </div>
+    <div class="role">
+      <div class="role-ic">🧑‍⚕️</div>
+      <div class="role-name">Psikolog / HR Specialist</div>
+      <div class="role-use">Deep psychometric expertise. Final sign-off on clinical appropriateness of narrative.</div>
+      <div class="role-access">
+        <span class="acc y">Platform ✓</span>
+        <span class="acc n">Card ✗</span>
+        <span class="acc y">Laporan (Full) ✓</span>
+      </div>
+      <div class="role-focus">Expands the Psikolog View, edits AI narratives, validates instrument-level interpretation, signs the report.</div>
+    </div>
+  </div>
+</section>
+
+<!-- PART II DIVIDER -->
+<div class="part part-II" id="partII">
+  <div class="part-num">II</div>
+  <div>
+    <div class="part-label">Part Two</div>
+    <div class="part-title">Wider platform context</div>
+    <div class="part-sub">What's being built around the battery system — the full ATS pipeline, MCU dual-track, and combined gate</div>
+  </div>
+</div>
+
+<!-- SECTION 6: ATS PIPELINE -->
+<section class="sec" id="pipeline">
+  <div class="sec-head">
+    <div class="sec-num">06</div>
+    <div>
+      <div class="sec-title">The full ATS pipeline <span class="src-badge src-cmp">Complete</span></div>
+      <div class="sec-sub">Assessment is stage 4 of 6 — the battery system is one stage inside a larger product</div>
+    </div>
+  </div>
+
+  <p>The battery system is not the whole product. Myralix's six-stage ATS pipeline places <strong>Assessment</strong> after Interview and before BG Check. The v8 Guide and Phase 3 Review focus tightly on the Assessment stage; the Complete Architecture Guide provides the wider context, which is included here so decisions inside the battery system stay aligned with what happens upstream and downstream.</p>
+
+  <div class="diag">
+    <svg viewBox="0 0 1020 130" xmlns="http://www.w3.org/2000/svg">
+      <defs>
+        <marker id="pa" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse"><path d="M2 1L8 5L2 9" fill="none" stroke="#0A6E5C" stroke-width="1.5" stroke-linecap="round"/></marker>
+      </defs>
+      <text x="510" y="22" text-anchor="middle" font-family="Fraunces,serif" font-size="14" font-weight="700" fill="#0F172A">Myralix ATS Pipeline — 6 Stages</text>
+
+      <rect x="20" y="44" width="136" height="54" rx="8" fill="#F8FAFC" stroke="#CBD5E1" stroke-width="1.5"/>
+      <text x="88" y="68" text-anchor="middle" font-family="DM Sans,sans-serif" font-size="11.5" font-weight="700" fill="#475569">Job Mgmt</text>
+      <text x="88" y="84" text-anchor="middle" font-family="DM Sans,sans-serif" font-size="10" fill="#94A3B8">&amp; Sourcing</text>
+      <line x1="156" y1="71" x2="172" y2="71" stroke="#0A6E5C" stroke-width="1.5" marker-end="url(#pa)"/>
+
+      <rect x="174" y="44" width="136" height="54" rx="8" fill="#F8FAFC" stroke="#CBD5E1" stroke-width="1.5"/>
+      <text x="242" y="68" text-anchor="middle" font-family="DM Sans,sans-serif" font-size="11.5" font-weight="700" fill="#475569">Screening</text>
+      <text x="242" y="84" text-anchor="middle" font-family="DM Sans,sans-serif" font-size="10" fill="#94A3B8">AI CV matching</text>
+      <line x1="310" y1="71" x2="326" y2="71" stroke="#0A6E5C" stroke-width="1.5" marker-end="url(#pa)"/>
+
+      <rect x="328" y="44" width="136" height="54" rx="8" fill="#F8FAFC" stroke="#CBD5E1" stroke-width="1.5"/>
+      <text x="396" y="68" text-anchor="middle" font-family="DM Sans,sans-serif" font-size="11.5" font-weight="700" fill="#475569">Interview</text>
+      <text x="396" y="84" text-anchor="middle" font-family="DM Sans,sans-serif" font-size="10" fill="#94A3B8">HR + Technical</text>
+      <line x1="464" y1="71" x2="480" y2="71" stroke="#0A6E5C" stroke-width="1.5" marker-end="url(#pa)"/>
+
+      <rect x="482" y="38" width="156" height="66" rx="9" fill="#ECFDF5" stroke="#0A6E5C" stroke-width="2"/>
+      <text x="560" y="60" text-anchor="middle" font-family="DM Sans,sans-serif" font-size="11.5" font-weight="700" fill="#064E3B">Assessment</text>
+      <text x="560" y="76" text-anchor="middle" font-family="DM Sans,sans-serif" font-size="10" fill="#059669">Psikotes + MCU</text>
+      <text x="560" y="92" text-anchor="middle" font-family="DM Sans,sans-serif" font-size="9.5" fill="#0A6E5C">← battery system lives here</text>
+      <line x1="638" y1="71" x2="654" y2="71" stroke="#0A6E5C" stroke-width="1.5" marker-end="url(#pa)"/>
+
+      <rect x="656" y="44" width="136" height="54" rx="8" fill="#F8FAFC" stroke="#CBD5E1" stroke-width="1.5"/>
+      <text x="724" y="68" text-anchor="middle" font-family="DM Sans,sans-serif" font-size="11.5" font-weight="700" fill="#475569">BG Check</text>
+      <text x="724" y="84" text-anchor="middle" font-family="DM Sans,sans-serif" font-size="10" fill="#94A3B8">SKCK + References</text>
+      <line x1="792" y1="71" x2="808" y2="71" stroke="#0A6E5C" stroke-width="1.5" marker-end="url(#pa)"/>
+
+      <rect x="810" y="44" width="196" height="54" rx="8" fill="#F8FAFC" stroke="#CBD5E1" stroke-width="1.5"/>
+      <text x="908" y="68" text-anchor="middle" font-family="DM Sans,sans-serif" font-size="11.5" font-weight="700" fill="#475569">Offering &amp; Contract</text>
+      <text x="908" y="84" text-anchor="middle" font-family="DM Sans,sans-serif" font-size="10" fill="#94A3B8">Onboarding handoff</text>
+    </svg>
+    <div class="diag-cap">
+      Full Myralix pipeline. The battery system sits inside stage 4 and handles the <em>psychological</em> half of Assessment — the medical half is handled by external lab partners and aggregated in the Platform.
+    </div>
+  </div>
+</section>
+
+<!-- SECTION 7: DUAL TRACK -->
+<section class="sec" id="dual">
+  <div class="sec-head">
+    <div class="sec-num">07</div>
+    <div>
+      <div class="sec-title">Assessment is a dual-track gate <span class="src-badge src-cmp">Complete</span></div>
+      <div class="sec-sub">Psychological (this battery system) + Medical (external labs) — both must pass</div>
+    </div>
+  </div>
+
+  <p>Inside the Assessment stage, two parallel tracks run simultaneously to shorten time-to-hire by 3–5 days. Track A is the psychometric battery this architecture describes. Track B is a medical check (MCU) scheduled with external partners — Prodia, Kimia Farma, etc. Both must clear before a candidate advances to BG Check. This dual-track logic lives entirely in the Platform; the Card and Laporan know nothing about it.</p>
+
+  <div class="diag">
+    <svg viewBox="0 0 1020 320" xmlns="http://www.w3.org/2000/svg">
+      <defs>
+        <marker id="da" markerWidth="10" markerHeight="10" refX="8" refY="3" orient="auto"><path d="M0,0 L0,6 L9,3 z" fill="#64748B"/></marker>
+        <linearGradient id="gPsych" x1="0%" y1="0%" x2="100%" y2="0%"><stop offset="0%" stop-color="#F5F3FF"/><stop offset="100%" stop-color="#FBFAFF"/></linearGradient>
+        <linearGradient id="gMcu" x1="0%" y1="0%" x2="100%" y2="0%"><stop offset="0%" stop-color="#EFF6FF"/><stop offset="100%" stop-color="#F8FBFF"/></linearGradient>
+      </defs>
+
+      <text x="510" y="22" text-anchor="middle" font-family="Fraunces,serif" font-size="14" font-weight="700" fill="#0F172A">Dual-track Assessment — Combined Gate</text>
+      <text x="510" y="40" text-anchor="middle" font-family="DM Sans,sans-serif" font-size="11" fill="#64748B">Both tracks launch simultaneously; both must pass to unlock advancement</text>
+
+      <!-- Start node -->
+      <rect x="40" y="130" width="120" height="60" rx="10" fill="#ECFDF5" stroke="#0A6E5C" stroke-width="1.5"/>
+      <text x="100" y="158" text-anchor="middle" font-family="DM Sans,sans-serif" font-size="11" font-weight="700" fill="#064E3B">Advance to</text>
+      <text x="100" y="174" text-anchor="middle" font-family="DM Sans,sans-serif" font-size="11" font-weight="700" fill="#064E3B">Assessment</text>
+
+      <!-- Psych track -->
+      <rect x="200" y="60" width="560" height="90" rx="12" fill="url(#gPsych)" stroke="#DDD6FE" stroke-width="1.5"/>
+      <text x="220" y="80" font-family="DM Sans,sans-serif" font-size="10" font-weight="700" fill="#5B21B6" letter-spacing="1">🧠 TRACK A — PSIKOTES (this battery system)</text>
+      <rect x="220" y="92" width="140" height="46" rx="7" fill="#fff" stroke="#A78BFA" stroke-width="1"/>
+      <text x="290" y="110" text-anchor="middle" font-family="DM Sans,sans-serif" font-size="10.5" font-weight="700" fill="#0F172A">Send Card link</text>
+      <text x="290" y="124" text-anchor="middle" font-family="DM Sans,sans-serif" font-size="9" fill="#64748B">tokenised URL</text>
+      <rect x="380" y="92" width="140" height="46" rx="7" fill="#fff" stroke="#A78BFA" stroke-width="1"/>
+      <text x="450" y="110" text-anchor="middle" font-family="DM Sans,sans-serif" font-size="10.5" font-weight="700" fill="#0F172A">Candidate completes</text>
+      <text x="450" y="124" text-anchor="middle" font-family="DM Sans,sans-serif" font-size="9" fill="#64748B">~75 min</text>
+      <rect x="540" y="92" width="200" height="46" rx="7" fill="#fff" stroke="#A78BFA" stroke-width="1"/>
+      <text x="640" y="110" text-anchor="middle" font-family="DM Sans,sans-serif" font-size="10.5" font-weight="700" fill="#0F172A">3-pillar + Laporan verdict</text>
+      <text x="640" y="124" text-anchor="middle" font-family="DM Sans,sans-serif" font-size="9" fill="#64748B">≥ 70 cognitive · personality profile OK</text>
+
+      <!-- MCU track -->
+      <rect x="200" y="170" width="560" height="90" rx="12" fill="url(#gMcu)" stroke="#BFDBFE" stroke-width="1.5"/>
+      <text x="220" y="190" font-family="DM Sans,sans-serif" font-size="10" font-weight="700" fill="#1D4ED8" letter-spacing="1">🏥 TRACK B — MCU (external labs)</text>
+      <rect x="220" y="202" width="140" height="46" rx="7" fill="#fff" stroke="#93C5FD" stroke-width="1"/>
+      <text x="290" y="220" text-anchor="middle" font-family="DM Sans,sans-serif" font-size="10.5" font-weight="700" fill="#0F172A">Schedule lab</text>
+      <text x="290" y="234" text-anchor="middle" font-family="DM Sans,sans-serif" font-size="9" fill="#64748B">Prodia / Kimia Farma</text>
+      <rect x="380" y="202" width="140" height="46" rx="7" fill="#fff" stroke="#93C5FD" stroke-width="1"/>
+      <text x="450" y="220" text-anchor="middle" font-family="DM Sans,sans-serif" font-size="10.5" font-weight="700" fill="#0F172A">Candidate attends</text>
+      <text x="450" y="234" text-anchor="middle" font-family="DM Sans,sans-serif" font-size="9" fill="#64748B">2–3 days scheduling</text>
+      <rect x="540" y="202" width="200" height="46" rx="7" fill="#fff" stroke="#93C5FD" stroke-width="1"/>
+      <text x="640" y="220" text-anchor="middle" font-family="DM Sans,sans-serif" font-size="10.5" font-weight="700" fill="#0F172A">Fit / Conditional / Not Fit</text>
+      <text x="640" y="234" text-anchor="middle" font-family="DM Sans,sans-serif" font-size="9" fill="#64748B">per-parameter results</text>
+
+      <!-- Gate -->
+      <rect x="810" y="130" width="180" height="60" rx="10" fill="#FEF3C7" stroke="#92400E" stroke-width="1.5"/>
+      <text x="900" y="155" text-anchor="middle" font-family="DM Sans,sans-serif" font-size="11.5" font-weight="700" fill="#92400E">🔒 Combined Gate</text>
+      <text x="900" y="173" text-anchor="middle" font-family="DM Sans,sans-serif" font-size="9.5" fill="#92400E">Psych ✓ AND MCU ✓ → advance</text>
+
+      <!-- Arrows -->
+      <path d="M 160 160 Q 180 160 200 120" stroke="#64748B" stroke-width="1.5" fill="none" marker-end="url(#da)"/>
+      <path d="M 160 160 Q 180 160 200 210" stroke="#64748B" stroke-width="1.5" fill="none" marker-end="url(#da)"/>
+      <path d="M 760 115 Q 790 115 810 150" stroke="#64748B" stroke-width="1.5" stroke-dasharray="4,3" fill="none" marker-end="url(#da)"/>
+      <path d="M 760 225 Q 790 225 810 175" stroke="#64748B" stroke-width="1.5" stroke-dasharray="4,3" fill="none" marker-end="url(#da)"/>
+
+      <!-- Saving -->
+      <rect x="200" y="280" width="560" height="28" fill="#F1F5F9" rx="6" opacity=".8"/>
+      <text x="480" y="298" text-anchor="middle" font-family="DM Sans,sans-serif" font-size="10.5" font-weight="600" fill="#334155">⚡ Parallel execution saves 3–5 days vs running the tracks sequentially</text>
+    </svg>
+    <div class="diag-cap">
+      The battery system (Track A) is fully described in Part I. The MCU track (Track B) is external; its results flow into the Platform's <strong>Medical Check tab</strong>, independent of anything the Laporan knows about. The gate is enforced by the Platform, and only opens when both tracks return a pass.
+    </div>
+  </div>
+
+  <p><strong>Why this matters for the battery architecture.</strong> It explains why the Laporan only outputs a <em>psychological</em> verdict (Direkomendasikan / Pertimbangkan / Tidak) rather than a pipeline advancement action — advancement requires MCU clearance as well, and that's a decision only the Platform can make. It also explains why the battery system is deliberately scoped narrow: trying to put MCU awareness into the Laporan was an earlier temptation and is explicitly ruled out.</p>
+</section>
+
+<!-- PART III DIVIDER -->
+<div class="part part-III" id="partIII">
+  <div class="part-num">III</div>
+  <div>
+    <div class="part-label">Part Three</div>
+    <div class="part-title">Migration plan to Phase 3</div>
+    <div class="part-sub">Current localStorage world → backend-hosted world on Biznet NEO · 4 weeks · sequenced to keep Phase 2 working throughout</div>
+  </div>
+</div>
+
+<!-- SECTION 8: CURRENT VS TARGET -->
+<section class="sec" id="current-target">
+  <div class="sec-head">
+    <div class="sec-num">08</div>
+    <div>
+      <div class="sec-title">Current state vs Phase 3 target <span class="src-badge src-p3">Phase 3</span></div>
+      <div class="sec-sub">Same three components — different substrate</div>
+    </div>
+  </div>
+
+  <p>The count of <em>concepts</em> stays the same — four candidate surfaces, one recruiter surface, one platform. The count of <em>files and runtimes</em> changes substantially. Keeping this distinction clear is what makes the migration safe: the mental model the team already has does not need to be rewritten.</p>
+
+  <div class="tbl-wrap">
+    <table>
+      <thead>
+        <tr>
+          <th style="width:22%">Surface</th>
+          <th style="width:36%">Now (v8 · localStorage)</th>
+          <th>Phase 3 target (Biznet backend)</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td><strong>Candidate</strong></td>
+          <td>4 standalone HTMLs downloaded or opened from a file link. Scores save to browser localStorage.</td>
+          <td>Same 4 HTMLs, served at <code>assess.myralix.id/battery-{a,b,c,d}?token=…</code>. On test completion they <code>POST /api/battery/submit</code> with the token; localStorage kept as offline fallback only.</td>
+        </tr>
+        <tr>
+          <td><strong>Recruiter</strong></td>
+          <td>One Laporan HTML per battery, opened from Platform via 📄 icon. AI narratives generated by in-browser Anthropic calls (<strong>API key exposed</strong>).</td>
+          <td>Two React pages inside the existing Myralix portal: <code>BatterySessions.jsx</code> (list with filters: status, battery, job) + <code>BatteryResultDetail.jsx</code> (scores, Laporan, review form). Anthropic calls go through the server.</td>
+        </tr>
+        <tr>
+          <td><strong>Platform</strong></td>
+          <td>Reads localStorage keys directly (only works if Platform and Laporan are in the same browser session).</td>
+          <td>No new module to build from scratch — <code>backend/src/modules/battery/</code> joins the existing <code>assessment</code>, <code>applicant</code>, <code>pipeline</code> modules. 4 new files + 1 migration.</td>
+        </tr>
+        <tr>
+          <td><strong>Data store</strong></td>
+          <td>2 browser localStorage keys: <code>myx-bat-{x}-v8</code>, <code>myx-rpt-{x}-v8</code>.</td>
+          <td>2 PostgreSQL tables: <code>battery_sessions</code> (the invite) + <code>battery_results</code> (the completion payload, JSONB for raw + typed columns for normalised).</td>
+        </tr>
+        <tr>
+          <td><strong>AI narratives</strong></td>
+          <td>Browser → Anthropic directly. <span style="color:var(--red);font-weight:600">API key visible in HTML source.</span></td>
+          <td>Browser → <code>POST /api/battery/laporan</code> → server → Anthropic. Key lives only in <code>backend/.env.dev</code>.</td>
+        </tr>
+        <tr>
+          <td><strong>Laporan HTMLs</strong></td>
+          <td>First-class deliverable — one file per battery.</td>
+          <td>Retained as offline fallback during transition. Retired once the portal detail page is stable (and prints cleanly to PDF).</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="diag">
+    <svg viewBox="0 0 1000 360" xmlns="http://www.w3.org/2000/svg">
+      <defs>
+        <marker id="ta" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse"><path d="M2 1L8 5L2 9" fill="none" stroke="#64748B" stroke-width="1.5" stroke-linecap="round"/></marker>
+      </defs>
+      <text x="500" y="22" text-anchor="middle" font-family="Fraunces,serif" font-size="14" font-weight="700" fill="#0F172A">Phase 3 target architecture</text>
+      <text x="500" y="40" text-anchor="middle" font-family="DM Sans,sans-serif" font-size="11" fill="#64748B">Candidate on the left, Recruiter on the right, Biznet server in the middle</text>
+
+      <!-- External -->
+      <rect x="400" y="60" width="200" height="40" rx="8" fill="#FEF3C7" stroke="#92400E" stroke-width="1" stroke-dasharray="5 3"/>
+      <text x="500" y="78" text-anchor="middle" font-family="DM Sans,sans-serif" font-size="12" font-weight="700" fill="#633806">Anthropic API</text>
+      <text x="500" y="92" text-anchor="middle" font-family="DM Sans,sans-serif" font-size="10" fill="#854F0B">external · key never leaves server</text>
+
+      <!-- Candidate column -->
+      <text x="120" y="130" text-anchor="middle" font-family="DM Sans,sans-serif" font-size="12" font-weight="700" fill="#0F172A">Candidate</text>
+      <rect x="30" y="140" width="180" height="190" rx="12" fill="#E1F5EE" stroke="#0F6E56" stroke-width="1"/>
+      <text x="120" y="170" text-anchor="middle" font-family="Fraunces,serif" font-size="15" font-weight="700" fill="#085041">Battery cards</text>
+      <text x="120" y="188" text-anchor="middle" font-family="Fraunces,serif" font-size="15" font-weight="700" fill="#085041">A · B · C · D</text>
+      <text x="120" y="206" text-anchor="middle" font-family="DM Sans,sans-serif" font-size="11" fill="#0F6E56">4 HTMLs</text>
+      <line x1="50" y1="220" x2="190" y2="220" stroke="#0F6E56" stroke-width=".6" opacity=".3"/>
+      <text x="120" y="244" text-anchor="middle" font-family="DM Sans,sans-serif" font-size="11" font-weight="600" fill="#085041">served at</text>
+      <text x="120" y="260" text-anchor="middle" font-family="DM Sans,sans-serif" font-size="11" fill="#0F6E56">/assess/*</text>
+      <text x="120" y="284" text-anchor="middle" font-family="DM Sans,sans-serif" font-size="11" font-weight="600" fill="#085041">?token=… in URL</text>
+      <text x="120" y="300" text-anchor="middle" font-family="DM Sans,sans-serif" font-size="11" fill="#0F6E56">auto-submit on finish</text>
+      <text x="120" y="320" text-anchor="middle" font-family="DM Sans,sans-serif" font-size="10" fill="#0F6E56" font-style="italic">download = offline fallback</text>
+
+      <!-- Server column -->
+      <text x="500" y="130" text-anchor="middle" font-family="DM Sans,sans-serif" font-size="12" font-weight="700" fill="#0F172A">Myralix server (Biznet NEO)</text>
+      <rect x="240" y="140" width="520" height="190" rx="12" fill="none" stroke="#888780" stroke-width="1" stroke-dasharray="6 4"/>
+      <text x="500" y="156" text-anchor="middle" font-family="DM Sans,sans-serif" font-size="10.5" fill="#6b7a75" font-style="italic">myralix.com · Apache → Express + PM2</text>
+
+      <rect x="260" y="170" width="480" height="42" rx="7" fill="#F1EFE8" stroke="#5F5E5A" stroke-width=".8"/>
+      <text x="500" y="188" text-anchor="middle" font-family="DM Sans,sans-serif" font-size="13" font-weight="700" fill="#2C2C2A">Battery module</text>
+      <text x="500" y="204" text-anchor="middle" font-family="DM Sans,sans-serif" font-size="11" fill="#444441">/api/battery · 6 routes (submit · sessions · detail · laporan · verdict · sign)</text>
+
+      <rect x="260" y="222" width="480" height="54" rx="7" fill="#F1EFE8" stroke="#5F5E5A" stroke-width=".8"/>
+      <text x="500" y="240" text-anchor="middle" font-family="DM Sans,sans-serif" font-size="13" font-weight="700" fill="#2C2C2A">PostgreSQL</text>
+      <text x="500" y="256" text-anchor="middle" font-family="DM Sans,sans-serif" font-size="11" fill="#444441">battery_sessions · battery_results</text>
+      <text x="500" y="270" text-anchor="middle" font-family="DM Sans,sans-serif" font-size="10" fill="#444441" font-style="italic">FKs into core_job, applicants, master_users</text>
+
+      <rect x="260" y="286" width="480" height="36" rx="7" fill="#FAEEDA" stroke="#BA7517" stroke-width=".8"/>
+      <text x="500" y="308" text-anchor="middle" font-family="DM Sans,sans-serif" font-size="12" font-weight="700" fill="#633806">Anthropic SDK · API key in .env only</text>
+
+      <!-- Recruiter column -->
+      <text x="880" y="130" text-anchor="middle" font-family="DM Sans,sans-serif" font-size="12" font-weight="700" fill="#0F172A">Recruiter</text>
+      <rect x="790" y="140" width="180" height="105" rx="12" fill="#EEEDFE" stroke="#534AB7" stroke-width=".8"/>
+      <text x="880" y="168" text-anchor="middle" font-family="Fraunces,serif" font-size="14" font-weight="700" fill="#3C3489">Myralix portal</text>
+      <text x="880" y="186" text-anchor="middle" font-family="DM Sans,sans-serif" font-size="11" fill="#534AB7">React · JWT</text>
+      <text x="880" y="202" text-anchor="middle" font-family="DM Sans,sans-serif" font-size="11" fill="#534AB7">primary path</text>
+      <text x="880" y="224" text-anchor="middle" font-family="DM Sans,sans-serif" font-size="10.5" fill="#534AB7" font-style="italic">BatterySessions +</text>
+      <text x="880" y="238" text-anchor="middle" font-family="DM Sans,sans-serif" font-size="10.5" fill="#534AB7" font-style="italic">BatteryResultDetail</text>
+
+      <rect x="790" y="255" width="180" height="75" rx="12" fill="none" stroke="#534AB7" stroke-width=".8" stroke-dasharray="5 4"/>
+      <text x="880" y="278" text-anchor="middle" font-family="Fraunces,serif" font-size="13" font-weight="700" fill="#3C3489">Laporan HTML</text>
+      <text x="880" y="296" text-anchor="middle" font-family="DM Sans,sans-serif" font-size="10.5" fill="#534AB7">offline fallback</text>
+      <text x="880" y="312" text-anchor="middle" font-family="DM Sans,sans-serif" font-size="10" fill="#534AB7" font-style="italic">retired once portal is stable</text>
+
+      <!-- Arrows -->
+      <text x="225" y="205" text-anchor="middle" font-family="DM Sans,sans-serif" font-size="10.5" fill="#6b7a75">public</text>
+      <line x1="212" y1="215" x2="258" y2="215" stroke="#6b7a75" stroke-width="1.5" marker-end="url(#ta)"/>
+      <text x="775" y="205" text-anchor="middle" font-family="DM Sans,sans-serif" font-size="10.5" fill="#6b7a75">JWT</text>
+      <line x1="788" y1="215" x2="742" y2="215" stroke="#6b7a75" stroke-width="1.5" marker-end="url(#ta)"/>
+      <path d="M 740 300 L 768 300 L 768 80 L 602 80" fill="none" stroke="#6b7a75" stroke-width="1.5" marker-end="url(#ta)"/>
+    </svg>
+    <div class="diag-cap">
+      Candidate submissions are public (tokenised). Recruiter calls are JWT-protected. <strong>Every Anthropic call routes through the server</strong>, which is the Phase 3 change that actually matters — the key stops living in browser-loadable files.
+    </div>
+  </div>
+</section>
+
+<!-- SECTION 9: BIZNET INFRA -->
+<section class="sec" id="biznet">
+  <div class="sec-head">
+    <div class="sec-num">09</div>
+    <div>
+      <div class="sec-title">Biznet NEO infrastructure <span class="src-badge src-cmp">Complete</span></div>
+      <div class="sec-sub">SM8.4 instance · Jakarta-2 · Rp 650K/month · sufficient for MVP through early-scale</div>
+    </div>
+  </div>
+
+  <p>The existing NEO Virtual Compute instance ("main-network") is not being used by the battery system today and becomes its home in Phase 3. One caveat: the instance name suggests it may already be running other infrastructure — verify current workload before repurposing, and provision a dedicated instance if needed. A second SM8.4 costs another Rp 650K/month.</p>
+
+  <div class="spec-card">
+    <div class="spec-eyebrow">PT Biznet Gio Nusantara · NEO Virtual Compute · Active Service</div>
+    <div class="spec-title">main-network</div>
+    <div class="spec-sub">Verify current workload before repurposing — the name suggests it may already serve a production role</div>
+    <div class="specs">
+      <div class="spec-box"><div class="spec-label">Flavor</div><div class="spec-val">SM8.4</div><div class="spec-desc">~4 vCPU / 8 GB RAM</div></div>
+      <div class="spec-box"><div class="spec-label">OS</div><div class="spec-val">Ubuntu 22.04</div><div class="spec-desc">LTS — supported to 2027</div></div>
+      <div class="spec-box"><div class="spec-label">Region</div><div class="spec-val">Jakarta-2</div><div class="spec-desc">Low latency for ID users</div></div>
+      <div class="spec-box"><div class="spec-label">Bandwidth</div><div class="spec-val">Free</div><div class="spec-desc">Up to 10 Gbps included</div></div>
+      <div class="spec-box"><div class="spec-label">Billing</div><div class="spec-val">Rp 650K</div><div class="spec-desc">per month · ~$40 USD</div></div>
+      <div class="spec-box"><div class="spec-label">Support</div><div class="spec-val">24/7</div><div class="spec-desc">support@biznetgio.com</div></div>
+    </div>
+  </div>
+
+  <h3 style="font-family:var(--hd);font-size:18px;font-weight:700;color:var(--navy);margin:26px 0 12px">Phase 3 stack on this one instance</h3>
+
+  <div class="stack">
+    <div class="slayer">
+      <div class="slayer-ic">🔀</div>
+      <div>
+        <div class="slayer-name">Apache (existing) + Nginx (static)</div>
+        <div class="slayer-desc">ProxyPass the <code>/api/battery/*</code> routes to the Express process; serve Battery card HTMLs at stable URLs via <code>/assess/*</code>; SSL termination on myralix.com.</div>
+      </div>
+      <div class="slayer-tag" style="background:#FED7AA;color:#7C2D12">Phase 2b+</div>
+    </div>
+    <div class="slayer">
+      <div class="slayer-ic">⚡</div>
+      <div>
+        <div class="slayer-name">Node.js + Express + PM2</div>
+        <div class="slayer-desc">The <code>backend/src/modules/battery/</code> module — 6 routes, controller, service, model. Runs under PM2 alongside existing modules (<code>assessment</code>, <code>applicant</code>, <code>pipeline</code>). No new process manager needed.</div>
+      </div>
+      <div class="slayer-tag" style="background:#BBF7D0;color:#14532D">Phase 3</div>
+    </div>
+    <div class="slayer">
+      <div class="slayer-ic">🗄️</div>
+      <div>
+        <div class="slayer-name">PostgreSQL — battery_sessions &amp; battery_results</div>
+        <div class="slayer-desc">Two new tables alongside the existing schema. JSONB for <code>raw_results</code> and <code>laporan</code> (lets each battery evolve without migrations). FKs into <code>core_job</code>, <code>applicants</code>, <code>master_users</code>. One composite index recommended: <code>(status, created_at)</code>.</div>
+      </div>
+      <div class="slayer-tag" style="background:#BFDBFE;color:#1E3A8A">Phase 3</div>
+    </div>
+    <div class="slayer">
+      <div class="slayer-ic">🤖</div>
+      <div>
+        <div class="slayer-name">Anthropic SDK — proxy for AI narratives</div>
+        <div class="slayer-desc">Server-to-server calls only. API key in <code>backend/.env.dev</code>, never in any browser-loadable file. This is the single most important security change in the whole migration.</div>
+      </div>
+      <div class="slayer-tag" style="background:#E9D5FF;color:#4C1D95">Security</div>
+    </div>
+    <div class="slayer">
+      <div class="slayer-ic">📦</div>
+      <div>
+        <div class="slayer-name">Biznet NEO Object Storage (companion)</div>
+        <div class="slayer-desc">S3-compatible, same datacentre, zero egress fees. Stores Laporan PDF exports. At 500 candidates/month × 1–5 MB per PDF, this grows indefinitely — keep it off the compute instance's disk. ~Rp 75K/month.</div>
+      </div>
+      <div class="slayer-tag" style="background:#FED7AA;color:#7C2D12">Recommended</div>
+    </div>
+  </div>
+
+  <div class="tbl-wrap" style="margin-top:18px">
+    <table>
+      <thead>
+        <tr>
+          <th>Component</th>
+          <th style="width:130px">Monthly cost</th>
+          <th>Covers in Phase 3</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td><strong>NEO SM8.4</strong><br>4 vCPU · 8 GB · 10 Gbps</td>
+          <td>Rp 650,000</td>
+          <td>Apache + Express API + PostgreSQL + Anthropic proxy — the full backend at MVP scale</td>
+        </tr>
+        <tr>
+          <td>+ NEO Object Storage<br>~50 GB/month estimate</td>
+          <td>~Rp 75,000</td>
+          <td>Laporan PDF file storage</td>
+        </tr>
+        <tr style="background:var(--teal-xlt)">
+          <td><strong>Total Phase 3 infra</strong></td>
+          <td><strong>~Rp 725,000</strong></td>
+          <td><strong>~$45 USD/month total</strong> — 2–3× cheaper than equivalent AWS/GCP Singapore specs</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="callout amber">
+    <span class="callout-icon">📈</span>
+    <div class="callout-body">
+      <strong>Scaling horizon.</strong> SM8.4 comfortably handles dozens of concurrent assessment sessions — appropriate for a startup through Series A stage. When Myralix scales to hundreds of simultaneous assessments, split the API server and PostgreSQL onto separate instances, or move to Biznet's managed PostgreSQL. This is not a blocker for Phase 3 launch.
+    </div>
+  </div>
+</section>
+
+<!-- SECTION 10: PREREQS -->
+<section class="sec" id="prereqs">
+  <div class="sec-head">
+    <div class="sec-num">10</div>
+    <div>
+      <div class="sec-title">Critical prerequisites — this week <span class="src-badge src-p3">Phase 3</span></div>
+      <div class="sec-sub">Two live issues that are not "Phase 3 improvements" — ship them immediately regardless of when the rest starts</div>
+    </div>
+  </div>
+
+  <p>Two items currently sitting inside the Phase 3 plan are misfiled — they are live production problems, not migration work, and should be decoupled and shipped in isolation.</p>
+
+  <div class="chk">
+    <div class="chk-item todo">
+      <div class="chk-ic">⚠</div>
+      <div class="chk-body">
+        <h5>Fix <code>axios.js</code> baseURL (still pointing at ngrok)</h5>
+        <p>The current baseURL points at an ngrok tunnel on a developer laptop. The whole ATS breaks when that laptop sleeps. Change to <code>https://myralix.com</code>. One-line change, tested locally, deployed same day.</p>
+      </div>
+      <div class="chk-tag">This week</div>
+    </div>
+    <div class="chk-item todo">
+      <div class="chk-ic">⚠</div>
+      <div class="chk-body">
+        <h5>Relocate the Anthropic API key out of the Assessment Hub HTML</h5>
+        <p>The key is currently inside a browser-loadable file and inspectable by anyone who opens it. SSH to the server, add <code>ANTHROPIC_API_KEY</code> to <code>backend/.env.dev</code>, verify <code>.gitignore</code> excludes it, and <strong>rotate the key</strong> — assume the old one is compromised. This is a security incident, not a refactor.</p>
+      </div>
+      <div class="chk-tag">This week</div>
+    </div>
+  </div>
+
+  <div class="callout red">
+    <span class="callout-icon">🚨</span>
+    <div class="callout-body">
+      <strong>Rule: do nothing else this week.</strong> Both changes are ~one hour of work but high-consequence. Keeping them isolated means a rollback, if needed, affects nothing else. Start the multi-week Phase 3 plan only after these two are green.
+    </div>
+  </div>
+</section>
+
+<!-- SECTION 11: FOUR GAPS -->
+<section class="sec" id="gaps">
+  <div class="sec-head">
+    <div class="sec-num">11</div>
+    <div>
+      <div class="sec-title">Four gaps the Phase 3 plan doesn't call out <span class="src-badge src-p3">Phase 3</span></div>
+      <div class="sec-sub">Production hardening the backend module needs before launch</div>
+    </div>
+  </div>
+
+  <p>The Phase 3 Implementation Guide's backend is solid on happy-path shape but silent on four production concerns. These are small changes individually, but skipping any one of them means the module is not actually production-ready.</p>
+
+  <div class="tbl-wrap">
+    <table>
+      <thead>
+        <tr>
+          <th style="width:22%">Gap</th>
+          <th style="width:36%">What it is</th>
+          <th>Why it matters &amp; what to add</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td><strong>1. Rate limiting</strong></td>
+          <td><code>POST /api/battery/submit</code> is public on the open internet with no throttle.</td>
+          <td>A trivial DDoS target. Add <code>express-rate-limit</code> keyed on <code>token</code> (one submit per token anyway) with an IP-based secondary. Block abusive IPs at the Apache layer as the second line of defence.</td>
+        </tr>
+        <tr>
+          <td><strong>2. Battery-type validation</strong></td>
+          <td>The submit controller accepts whatever payload the Card sends without checking it matches the session's battery.</td>
+          <td>Someone could submit a Battery B payload against a Battery A token. Add a single check in <code>submitResults()</code>: <code>if (payload.battery !== session.battery) throw 400</code>. Logs the mismatch for monitoring.</td>
+        </tr>
+        <tr>
+          <td><strong>3. B/C/D score normalisation</strong></td>
+          <td><code>normaliseScores()</code> is written for Battery A only. B, C, D silently fall through to zeros.</td>
+          <td>Silently wrong is worse than loudly missing. Either implement all four normalisations before launch, or throw on unknown battery types. Never ship with the silent-zero failure mode intact.</td>
+        </tr>
+        <tr>
+          <td><strong>4. RBAC registration</strong></td>
+          <td>Routes are mounted behind <code>authMiddleware</code> but the "Battery" module is not registered in the RBAC seed.</td>
+          <td>Any authenticated user can hit every endpoint. Add <code>Battery</code> to the permissions module list with per-role grants (recruiter: read + create invite; psikolog: read + edit Laporan; admin: all).</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+</section>
+
+<!-- SECTION 12: SEQUENCED PLAN -->
+<section class="sec" id="plan">
+  <div class="sec-head">
+    <div class="sec-num">12</div>
+    <div>
+      <div class="sec-title">Four-week sequenced plan <span class="src-badge src-p3">Phase 3</span></div>
+      <div class="sec-sub">Each week leaves the previous working state intact — there is never a moment where candidates can't complete a test</div>
+    </div>
+  </div>
+
+  <div class="plan">
+    <div class="plan-step crit">
+      <div class="plan-lbl">Week 0 · Critical, this week</div>
+      <div class="plan-title">Fix the two prerequisites — nothing else</div>
+      <div class="plan-desc">Change <code>axios.js</code> baseURL from ngrok to <code>https://myralix.com</code>. Move <code>ANTHROPIC_API_KEY</code> to <code>backend/.env.dev</code>, verify <code>.gitignore</code>, rotate the exposed key. Do not start database work in the same week.</div>
+    </div>
+    <div class="plan-step wk1">
+      <div class="plan-lbl">Week 1</div>
+      <div class="plan-title">Database + backend module + Apache routing</div>
+      <div class="plan-desc">Run the SQL migration creating <code>battery_sessions</code> + <code>battery_results</code>. Write the four module files (route, controller, service, model). Add the Apache <code>ProxyPass</code> rule <strong>before</strong> the generic <code>/api</code> rule. Test all six endpoints with curl before touching any frontend code.</div>
+    </div>
+    <div class="plan-step wk2">
+      <div class="plan-lbl">Week 2</div>
+      <div class="plan-title">Battery cards — token reader + auto-submit</div>
+      <div class="plan-desc">Modify Battery A card first: read <code>?token=</code> from URL, add <code>submitResultsToBackend()</code>, display success/error status, keep the localStorage + download button as offline fallback. End-to-end test on a phone (the real candidate environment). Then clone the change into B/C/D — the code is identical.</div>
+    </div>
+    <div class="plan-step wk3">
+      <div class="plan-lbl">Week 3</div>
+      <div class="plan-title">Recruiter portal pages — skip the Hub-paste-JWT interim</div>
+      <div class="plan-desc">Build <code>BatterySessions.jsx</code> (list view with filters for status/battery/job) and <code>BatteryResultDetail.jsx</code> (scores, Laporan renderer, recruiter review form). Both follow existing portal patterns — reuse <code>axios.js</code>, <code>useSort</code>, <code>TablePagination</code>, sidebar registration. Skipping the Hub-paste-JWT flow the guide proposes saves a second discarded UI.</div>
+    </div>
+    <div class="plan-step wk4">
+      <div class="plan-lbl">Week 4</div>
+      <div class="plan-title">Harden &amp; integrate</div>
+      <div class="plan-desc">Add RBAC permissions for the Battery module. Add rate limiting to the public submit endpoint. Fill in B/C/D score normalisation (the four gaps above). Wire battery sessions into the applicant pipeline (so a session can be attached to a pipeline stage). Retire the four Laporan HTMLs once the portal detail page prints cleanly to PDF.</div>
+    </div>
+  </div>
+
+  <div class="callout green">
+    <span class="callout-icon">🚀</span>
+    <div class="callout-body">
+      <strong>Safety property.</strong> At every step of this plan, if something breaks, the previous working state is still intact. The Phase 2 localStorage + file-handoff fallback remains wired in through the whole process — there is no moment where candidates cannot complete a test.
+    </div>
+  </div>
+</section>
+
+<!-- SECTION 13: LAPORAN EVOLUTION -->
+<section class="sec" id="laporan-evolution">
+  <div class="sec-head">
+    <div class="sec-num">13</div>
+    <div>
+      <div class="sec-title">Laporan evolution timeline <span class="src-badge src-new">Integrated</span></div>
+      <div class="sec-sub">The single most contested architectural decision across the three documents — resolved here</div>
+    </div>
+  </div>
+
+  <p>The Complete Guide treated the Laporan as embedded inside an Assessment Hub. The v8 Guide has them as first-class standalone HTMLs, one per battery. The Phase 3 Review argued they should become React pages in the portal. All three are defensible from their vantage point; the honest path is a staged evolution that starts where v8 is today and ends where Phase 3 Review wants to be.</p>
+
+  <div class="tl">
+    <div class="tl-item past">
+      <div class="tl-when">Phase 2 (current)</div>
+      <div class="tl-title">Standalone HTML per battery</div>
+      <div class="tl-desc">Four Laporan HTMLs (<code>Myralix_Battery_{A,B,C,D}_Report.html</code>). Manager View and Psikolog View merged into one file. Reads both localStorage keys; writes <code>myx-rpt-{x}-v8</code>. Opened from Platform's 📄 icon. Anthropic calls direct from browser (key exposed — fix per Section 10).</div>
+    </div>
+    <div class="tl-item present">
+      <div class="tl-when">Phase 2b (near-term)</div>
+      <div class="tl-title">Same HTMLs, served from Biznet</div>
+      <div class="tl-desc">The same four files, now hosted at stable URLs via Nginx on the Biznet instance (e.g. <code>assess.myralix.id/report/A</code>). Eliminates the file-emailing workflow. Still client-side; still localStorage-backed. A one-week, low-risk infrastructure change that unlocks candidate access from anywhere.</div>
+    </div>
+    <div class="tl-item future">
+      <div class="tl-when">Phase 3 (target)</div>
+      <div class="tl-title">React portal pages + HTML retired</div>
+      <div class="tl-desc">Two React pages inside the Myralix portal become the canonical surface: <code>BatterySessions.jsx</code> (list) and <code>BatteryResultDetail.jsx</code> (report + review). Data comes from PostgreSQL via JWT-authenticated API. Printable via browser or server-side PDF export. HTMLs retained only as offline fallback during the transition, then deleted once the portal detail page prints cleanly.</div>
+    </div>
+  </div>
+
+  <div class="callout purple">
+    <span class="callout-icon">🎯</span>
+    <div class="callout-body">
+      <strong>Why not skip Phase 2b?</strong> Because it's a 1-week change with an immediate UX payoff (no more file email), zero dependency on Phase 3 work, and it creates the <code>assess.myralix.id</code> vanity domain that Phase 3 will reuse for the candidate token URLs. Doing it in sequence means the domain is already live when Phase 3 launches.
+    </div>
+  </div>
+</section>
+
+<!-- PART IV DIVIDER -->
+<div class="part part-IV" id="partIV">
+  <div class="part-num">IV</div>
+  <div>
+    <div class="part-label">Part Four</div>
+    <div class="part-title">Unified decisions</div>
+    <div class="part-sub">A single answer to every question the three source documents each answered differently — plus what's built, what's TODO, and what's explicitly parked</div>
+  </div>
+</div>
+
+<!-- SECTION 14: DECISION MATRIX -->
+<section class="sec" id="decisions">
+  <div class="sec-head">
+    <div class="sec-num">14</div>
+    <div>
+      <div class="sec-title">The unified decision matrix <span class="src-badge src-new">Integrated</span></div>
+      <div class="sec-sub">If a future document contradicts any row here, that document is out of date — not this one</div>
+    </div>
+  </div>
+
+  <div class="tbl-wrap">
+    <table>
+      <thead>
+        <tr>
+          <th style="width:32%">Question</th>
+          <th style="width:45%">Decision</th>
+          <th>Anchored in</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td>Should Candidate Cards be separate from recruiter surfaces?</td>
+          <td>✅ Yes — Card is candidate-only, standalone HTML, no login, obfuscated instrument labels.</td>
+          <td><span class="src-badge src-v8">v8</span> <span class="src-badge src-cmp">Complete</span></td>
+        </tr>
+        <tr>
+          <td>Does a standalone "Assessment Hub" still exist?</td>
+          <td>❌ No — deleted in v8. Its functions redistributed to Platform (tracking), Card (composite calc), Laporan (rendering + normalisation).</td>
+          <td><span class="src-badge src-v8">v8</span> <span class="src-badge src-p3">Phase 3</span></td>
+        </tr>
+        <tr>
+          <td>Where does the Laporan live today?</td>
+          <td>📄 Standalone HTML per battery. Four files: one each for A / B / C / D. Manager View + Psikolog View merged.</td>
+          <td><span class="src-badge src-v8">v8</span></td>
+        </tr>
+        <tr>
+          <td>Where does the Laporan live in Phase 3?</td>
+          <td>🖥️ React pages inside the Myralix portal (<code>BatterySessions.jsx</code> + <code>BatteryResultDetail.jsx</code>). HTMLs retained as offline fallback during transition, then deleted.</td>
+          <td><span class="src-badge src-p3">Phase 3</span></td>
+        </tr>
+        <tr>
+          <td>What score scale does the Platform display?</td>
+          <td>⚙️ 0–100 on three pillars (Cognitive / Personality / Work Attitude) + Overall. Battery internals stay 1–10; bridge function does the conversion.</td>
+          <td><span class="src-badge src-v8">v8</span> <span class="src-badge src-cmp">Complete</span></td>
+        </tr>
+        <tr>
+          <td>Where does the 1–10 → 0–100 bridge run?</td>
+          <td>Today: each Laporan's <code>calc3Pillar()</code>. Phase 3: backend <code>normaliseScores()</code>, called once on submit, stored on the row.</td>
+          <td><span class="src-badge src-v8">v8</span> → <span class="src-badge src-p3">Phase 3</span></td>
+        </tr>
+        <tr>
+          <td>Are personality instruments composited into a pass/fail score?</td>
+          <td>❌ No. <code>profileOnly: true, weight: 0</code>. Surfaced qualitatively (Sesuai / Pertimbangkan / Tidak Sesuai) for recruiter judgement. Only cognitive is a hard gate.</td>
+          <td><span class="src-badge src-v8">v8</span></td>
+        </tr>
+        <tr>
+          <td>Does the battery architecture own Medical Check (MCU)?</td>
+          <td>❌ No — MCU is a parallel track inside the Platform's Assessment stage, handled by external lab partners. Card and Laporan know nothing of it.</td>
+          <td><span class="src-badge src-cmp">Complete</span></td>
+        </tr>
+        <tr>
+          <td>Is the Biznet server useful today?</td>
+          <td>🟡 Not for the battery system as currently architected (everything is client-side). Becomes useful in Phase 2b (static hosting) and critical in Phase 3 (full backend).</td>
+          <td><span class="src-badge src-cmp">Complete</span></td>
+        </tr>
+        <tr>
+          <td>Is the SM8.4 tier sufficient for Phase 3?</td>
+          <td>✅ Yes, through Series A stage. Rp 725K/month total (compute + object storage) is 2–3× cheaper than AWS/GCP Singapore.</td>
+          <td><span class="src-badge src-cmp">Complete</span></td>
+        </tr>
+        <tr>
+          <td>What's the very next action (this week)?</td>
+          <td>🚨 Fix the <code>axios.js</code> ngrok URL, relocate &amp; rotate the Anthropic API key. Decouple from Phase 3 proper. Nothing else.</td>
+          <td><span class="src-badge src-p3">Phase 3</span></td>
+        </tr>
+        <tr>
+          <td>What's the shape of the Phase 3 backend module?</td>
+          <td>4 files in <code>backend/src/modules/battery/</code> (route, controller, service, model) + 1 SQL migration creating <code>battery_sessions</code> and <code>battery_results</code>, both JSONB-friendly.</td>
+          <td><span class="src-badge src-p3">Phase 3</span></td>
+        </tr>
+        <tr>
+          <td>What's the public attack surface?</td>
+          <td>One endpoint: <code>POST /api/battery/submit</code>. Public, tokenised, must be rate-limited and must validate battery-type match.</td>
+          <td><span class="src-badge src-p3">Phase 3</span></td>
+        </tr>
+        <tr>
+          <td>Is the Hub-paste-JWT flow a destination?</td>
+          <td>❌ No — it's a developer-convenience hack. Skip it; build portal pages directly in Week 3.</td>
+          <td><span class="src-badge src-p3">Phase 3</span></td>
+        </tr>
+        <tr>
+          <td>What happens to the existing <code>assessment</code> module?</td>
+          <td>Named as tech debt — to archive, re-point, or leave alone. Not urgent. Worth deciding before it becomes permanent by default.</td>
+          <td><span class="src-badge src-p3">Phase 3</span></td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+</section>
+
+<!-- SECTION 15: BUILT / TODO / PARKED -->
+<section class="sec" id="status">
+  <div class="sec-head">
+    <div class="sec-num">15</div>
+    <div>
+      <div class="sec-title">What's built, what's TODO, what's parked <span class="src-badge src-new">Integrated</span></div>
+      <div class="sec-sub">Consolidated status across the three source documents</div>
+    </div>
+  </div>
+
+  <h3 style="font-family:var(--hd);font-size:17px;font-weight:700;color:var(--navy);margin:18px 0 10px">Built — working in v8</h3>
+  <div class="chk">
+    <div class="chk-item done">
+      <div class="chk-ic">✓</div>
+      <div class="chk-body">
+        <h5>Candidate Cards produce scores in standard format</h5>
+        <p>All 4 batteries write to <code>myx-bat-{x}-v8</code> with consistent schema. Card is ready for Platform consumption and for Phase 3 POST-to-backend.</p>
+      </div>
+      <div class="chk-tag">v8</div>
+    </div>
+    <div class="chk-item done">
+      <div class="chk-ic">✓</div>
+      <div class="chk-body">
+        <h5>Laporan has 3-pillar bridge</h5>
+        <p><code>calc3Pillar()</code> in each Laporan maps battery composites to Cognitive / Personality / Work Attitude / Overall (0–100). Matches Platform table columns.</p>
+      </div>
+      <div class="chk-tag">v8</div>
+    </div>
+    <div class="chk-item done">
+      <div class="chk-ic">✓</div>
+      <div class="chk-body">
+        <h5>Manager View + Psikolog View merged</h5>
+        <p>Single Laporan file per battery. Manager sees the summary on top; Psikolog expands detail on demand. Print-friendly.</p>
+      </div>
+      <div class="chk-tag">v8</div>
+    </div>
+    <div class="chk-item done">
+      <div class="chk-ic">✓</div>
+      <div class="chk-body">
+        <h5>Two-key localStorage contract</h5>
+        <p>Card writes scores, Laporan reads scores + writes verdict, Platform reads both. Single-writer rule enforced by convention.</p>
+      </div>
+      <div class="chk-tag">v8</div>
+    </div>
+    <div class="chk-item done">
+      <div class="chk-ic">✓</div>
+      <div class="chk-body">
+        <h5>Two-layer scoring model</h5>
+        <p>Cognitive as hard gate (TK: 1.0); personality/behavioural instruments as qualitative profiles (<code>profileOnly: true, weight: 0</code>). Confirmed correct architectural direction.</p>
+      </div>
+      <div class="chk-tag">v8</div>
+    </div>
+  </div>
+
+  <h3 style="font-family:var(--hd);font-size:17px;font-weight:700;color:var(--navy);margin:26px 0 10px">TODO — Platform side (unblocks end-to-end flow)</h3>
+  <div class="chk">
+    <div class="chk-item todo">
+      <div class="chk-ic">⚠</div>
+      <div class="chk-body">
+        <h5>Update Assessment Type labels in Platform</h5>
+        <p>Change "Full Battery" → "Battery A · Operasional" / "Battery B · Profesional" / "Battery C · Supervisor" / "Battery D · Manajerial". Small CSS + label change.</p>
+      </div>
+      <div class="chk-tag">Platform</div>
+    </div>
+    <div class="chk-item todo">
+      <div class="chk-ic">⚠</div>
+      <div class="chk-body">
+        <h5>Wire 📄 click to open the matching Laporan</h5>
+        <p>When recruiter clicks the 📄 icon on a candidate row, Platform opens the correct Laporan file (same-origin iframe or new tab) with candidate data pre-loaded.</p>
+      </div>
+      <div class="chk-tag">Platform</div>
+    </div>
+    <div class="chk-item todo">
+      <div class="chk-ic">⚠</div>
+      <div class="chk-body">
+        <h5>Ingest final verdict for pipeline advancement</h5>
+        <p>Read <code>myx-rpt-{x}-v8.finalRec</code> (or the equivalent API field in Phase 3) and auto-advance the candidate stage when verdict = <code>direkomendasikan</code> AND MCU has cleared.</p>
+      </div>
+      <div class="chk-tag">Platform</div>
+    </div>
+    <div class="chk-item todo">
+      <div class="chk-ic">⚠</div>
+      <div class="chk-body">
+        <h5>Battery routing based on job role</h5>
+        <p>Logic to pick the right Battery (A/B/C/D) from the job's level/seniority. New Job Management field: "Assessment Battery" with dropdown.</p>
+      </div>
+      <div class="chk-tag">Platform</div>
+    </div>
+  </div>
+
+  <h3 style="font-family:var(--hd);font-size:17px;font-weight:700;color:var(--navy);margin:26px 0 10px">Phase 3 — backend migration deliverables</h3>
+  <div class="chk">
+    <div class="chk-item future">
+      <div class="chk-ic">◎</div>
+      <div class="chk-body">
+        <h5>Backend module + schema</h5>
+        <p><code>backend/src/modules/battery/</code> — 4 files. <code>battery_sessions</code> + <code>battery_results</code> tables. Composite index on <code>(status, created_at)</code>.</p>
+      </div>
+      <div class="chk-tag">Phase 3</div>
+    </div>
+    <div class="chk-item future">
+      <div class="chk-ic">◎</div>
+      <div class="chk-body">
+        <h5>Move <code>calc3Pillar()</code> server-side</h5>
+        <p>Becomes <code>normaliseScores()</code>. Called once on submit. Result stored on the row. Must cover all four batteries (gap #3).</p>
+      </div>
+      <div class="chk-tag">Phase 3</div>
+    </div>
+    <div class="chk-item future">
+      <div class="chk-ic">◎</div>
+      <div class="chk-body">
+        <h5>Two React portal pages</h5>
+        <p><code>BatterySessions.jsx</code> + <code>BatteryResultDetail.jsx</code>. Reuse existing <code>axios.js</code>, <code>useSort</code>, <code>TablePagination</code>, sidebar registration patterns.</p>
+      </div>
+      <div class="chk-tag">Phase 3</div>
+    </div>
+    <div class="chk-item future">
+      <div class="chk-ic">◎</div>
+      <div class="chk-body">
+        <h5>Production hardening (4 gaps)</h5>
+        <p>Rate limiting on submit; battery-type payload validation; B/C/D normalisation; RBAC module registration.</p>
+      </div>
+      <div class="chk-tag">Phase 3</div>
+    </div>
+    <div class="chk-item future">
+      <div class="chk-ic">◎</div>
+      <div class="chk-body">
+        <h5>Biznet NEO Object Storage for Laporan PDFs</h5>
+        <p>S3-compatible, same datacentre, ~Rp 75K/month. Offloads PDF storage from compute disk.</p>
+      </div>
+      <div class="chk-tag">Phase 3</div>
+    </div>
+    <div class="chk-item future">
+      <div class="chk-ic">◎</div>
+      <div class="chk-body">
+        <h5>Retire the four Laporan HTMLs</h5>
+        <p>Once portal detail page prints cleanly to PDF, delete the standalone HTMLs. One canonical renderer, one source of truth.</p>
+      </div>
+      <div class="chk-tag">Phase 3</div>
+    </div>
+  </div>
+
+  <h3 style="font-family:var(--hd);font-size:17px;font-weight:700;color:var(--navy);margin:26px 0 10px">Parked — content gaps, not code</h3>
+  <p style="font-size:13.5px;color:var(--slate-md);margin-bottom:12px">These are flagged for content-team action rather than engineering work. They don't block Phase 3 but should be tracked alongside.</p>
+  <div class="chk">
+    <div class="chk-item todo">
+      <div class="chk-ic">◆</div>
+      <div class="chk-body">
+        <h5>16PF missing items &amp; Global Factors</h5>
+        <p>~80 items missing from the 185-item set; Global Factors layer not implemented. Affects Battery D depth.</p>
+      </div>
+      <div class="chk-tag">Content</div>
+    </div>
+    <div class="chk-item todo">
+      <div class="chk-ic">◆</div>
+      <div class="chk-body">
+        <h5>GPP-I tetrad position bias</h5>
+        <p>Flagged risk of response position influencing rankings in the tetrad format. Needs psychometric review.</p>
+      </div>
+      <div class="chk-tag">Content</div>
+    </div>
+    <div class="chk-item todo">
+      <div class="chk-ic">◆</div>
+      <div class="chk-body">
+        <h5>Norm table validation across all instruments</h5>
+        <p>Current norms are proxy/simplified approximations. Full Indonesian occupational norm validation is a longer-horizon requirement.</p>
+      </div>
+      <div class="chk-tag">Content · long-term</div>
+    </div>
+  </div>
+</section>
+
+<!-- SECTION 16: ONE-PAGE SUMMARY -->
+<section class="sec" id="summary">
+  <div class="sec-head">
+    <div class="sec-num">16</div>
+    <div>
+      <div class="sec-title">The one-page summary <span class="src-badge src-new">Integrated</span></div>
+      <div class="sec-sub">If you read nothing else in this document, read this</div>
+    </div>
+  </div>
+
+  <div class="callout key">
+    <span class="callout-icon">📌</span>
+    <div class="callout-body" style="font-size:14.5px;line-height:1.75">
+      <strong>The architecture in one paragraph.</strong> Myralix's psychometric assessment is delivered through three components: the <strong>Platform</strong> (recruiter dashboard, orchestrates the pipeline), the <strong>Candidate Card</strong> (4 HTMLs, one per battery, administers tests with obfuscated labels), and the <strong>Laporan Psikologis</strong> (4 HTMLs, one per battery, translates scores into a narrative verdict). They exchange data through two localStorage keys today, and through PostgreSQL + REST in Phase 3. The battery system sits inside stage 4 of a 6-stage ATS pipeline, where it runs in parallel with a medical check (MCU) that the Platform — not the battery — owns. Cognitive is a hard quantitative gate (0–100, ≥70); personality instruments are qualitative profiles, not composited. The migration to Phase 3 is a 4-week plan on a single Rp 725K/month Biznet instance, with two one-hour prerequisite fixes that ship <em>this week</em> regardless.
+    </div>
+  </div>
+
+  <div class="tl" style="margin-top:26px">
+    <div class="tl-item past">
+      <div class="tl-when">Where we came from</div>
+      <div class="tl-title">Hub-centric world (Complete Guide)</div>
+      <div class="tl-desc">Three <em>layers</em> with a standalone Assessment Hub as Layer 2, embedding the Laporan inside it. MCU dual-track and Biznet infrastructure introduced here. The Hub concept has since been retired.</div>
+    </div>
+    <div class="tl-item present">
+      <div class="tl-when">Where we are (v8, Apr 2026)</div>
+      <div class="tl-title">Three components, two keys</div>
+      <div class="tl-desc">Platform ↔ Card ↔ Laporan. Two localStorage keys. Laporan is a standalone HTML per battery with Manager+Psikolog views merged. API key still in browser HTML — <strong>fix this week</strong>.</div>
+    </div>
+    <div class="tl-item future">
+      <div class="tl-when">Where we're going (Phase 3)</div>
+      <div class="tl-title">Biznet-hosted backend + portal pages</div>
+      <div class="tl-desc">Backend module on existing Biznet instance. PostgreSQL replaces localStorage. Two React portal pages replace Laporan HTMLs. Four production gaps closed. API key lives only in <code>.env</code>.</div>
+    </div>
+  </div>
+</section>
+
+<!-- FOOTER -->
+<footer class="foot">
+  <div class="foot-brand">MYRALIX · UNIFIED ARCHITECTURE GUIDE</div>
+  <div class="foot-sub">
+    Integrates: Architecture Guide v8 <span class="src-badge src-v8">v8</span> ·
+    Phase 3 Architecture Review <span class="src-badge src-p3">Phase 3</span> ·
+    Complete Architecture Guide <span class="src-badge src-cmp">Complete</span>
+  </div>
+  <div class="foot-sub" style="margin-top:8px">Battery v8 · Apr 2026 · Internal product documentation</div>
+  <div class="foot-legal">© PT Myralix Indonesia · Not for external distribution</div>
+</footer>
+
+</div><!-- /wrap -->
+
+</body>
+</html>

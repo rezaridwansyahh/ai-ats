@@ -1,0 +1,1593 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Myralix — Battery A · Asesmen Kandidat v8</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,600;0,700;1,600&family=DM+Sans:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+<style>
+:root{
+  --teal:#0A6E5C;--teal-dk:#064E3B;--teal-md:#0D9488;--teal-lt:#C7E8E3;--teal-xlt:#EDF7F5;
+  --amber:#D97706;--amber-lt:#FFFBEB;--cream:#FAFAF8;--white:#fff;
+  --border:#E2E8F0;--navy:#0F172A;--slate:#334155;--slate-md:#64748B;--slate-lt:#94A3B8;
+  --pass:#059669;--fail:#DC2626;--warn:#D97706;--r:14px;--rs:9px;
+  --sh:0 1px 4px rgba(15,23,42,.07),0 4px 16px rgba(15,23,42,.05);
+  --sh-md:0 8px 32px rgba(15,23,42,.12),0 2px 8px rgba(15,23,42,.06);
+}
+*{box-sizing:border-box;margin:0;padding:0}
+body{background:var(--cream);color:var(--slate);font-family:'DM Sans',system-ui,sans-serif;min-height:100vh;font-size:14px}
+h1,h2,h3{font-family:'Playfair Display',Georgia,serif}
+.navbar{background:linear-gradient(135deg,var(--teal-dk) 0%,var(--teal) 100%);padding:0 22px;position:sticky;top:0;z-index:200;box-shadow:0 2px 12px rgba(6,78,59,.25)}
+.nav-inner{max-width:900px;margin:0 auto;display:flex;align-items:center;justify-content:space-between;height:56px}
+.nav-logo{display:flex;align-items:center;gap:10px}
+.logo-txt{font-family:'Playfair Display',Georgia,serif;font-size:16px;font-weight:700;color:#fff;letter-spacing:.04em}
+.nav-badge{background:rgba(255,255,255,.18);color:#fff;padding:4px 12px;border-radius:20px;font-size:11px;font-weight:700}
+.nav-dots{display:flex;align-items:center;gap:7px}
+.ndot{width:8px;height:8px;border-radius:50%;background:rgba(255,255,255,.3);transition:.3s}
+.ndot.done{background:#fff}
+.ndot.active{background:#F59E0B;width:10px;height:10px}
+.timer-bar{background:var(--teal-dk);padding:0 22px;position:sticky;top:56px;z-index:190;display:none}
+.timer-bar.show{display:block}
+.timer-inner{max-width:900px;margin:0 auto;padding:8px 0;display:flex;align-items:center;gap:12px}
+.t-badge{font-size:10px;font-weight:700;padding:3px 9px;border-radius:20px;flex-shrink:0}
+.t-disp{font-family:'Playfair Display',Georgia,serif;font-size:20px;font-weight:700;color:#fff;letter-spacing:.06em;min-width:60px}
+.t-disp.warn{color:#FCA5A5;animation:blink 1s infinite}
+@keyframes blink{0%,100%{opacity:1}50%{opacity:.4}}
+.t-track{flex:1;background:rgba(255,255,255,.2);border-radius:99px;height:5px;overflow:hidden}
+.t-fill{height:5px;border-radius:99px;background:#fff;transition:width .5s linear}
+.t-fill.warn{background:#FCA5A5}
+.t-info{font-size:11px;color:rgba(255,255,255,.65);flex-shrink:0}
+.q-bar{background:#fff;border-bottom:1px solid var(--border);padding:0 22px;position:sticky;top:56px;z-index:90;box-shadow:0 1px 3px rgba(0,0,0,.04)}
+.q-bar.with-timer{top:calc(56px + 41px)}
+.q-bar-inner{max-width:900px;margin:0 auto;padding:8px 0;display:flex;align-items:center;gap:10px}
+.q-num-b{padding:3px 10px;border-radius:20px;background:var(--teal-lt);color:var(--teal);font-size:11px;font-weight:700;white-space:nowrap}
+.q-track{flex:1;background:var(--border);border-radius:99px;height:5px;overflow:hidden}
+.q-fill{height:5px;border-radius:99px;background:var(--teal);transition:width .4s}
+.q-pct{font-size:11px;color:var(--slate-lt);white-space:nowrap}
+.wrap{max-width:900px;margin:0 auto;padding:24px 18px 80px}
+@keyframes fu{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}
+.anim{animation:fu .3s ease}
+.card{background:#fff;border:1px solid var(--border);border-radius:var(--r);padding:22px;box-shadow:var(--sh);margin-bottom:16px}
+.flabel{display:block;font-size:11px;font-weight:700;letter-spacing:.07em;text-transform:uppercase;color:var(--slate-md);margin-bottom:4px}
+.finput,.fsel{width:100%;background:#FAFAFA;border:1.5px solid var(--border);border-radius:var(--rs);padding:10px 13px;color:var(--slate);font-size:14px;font-family:inherit;outline:none;transition:.2s;appearance:none}
+.finput:focus,.fsel:focus{border-color:var(--teal);box-shadow:0 0 0 3px rgba(10,110,92,.08);background:#fff}
+.fg2{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:12px}
+.fg1{margin-bottom:12px}
+@media(max-width:480px){.fg2{grid-template-columns:1fr}}
+.btn-main{background:linear-gradient(135deg,var(--teal-dk),var(--teal));color:#fff;padding:12px 24px;border-radius:var(--rs);font-size:14px;font-weight:600;cursor:pointer;border:none;font-family:inherit;width:100%;margin-top:8px;transition:.2s}
+.btn-main:hover{opacity:.9;transform:translateY(-1px)}
+.btn-sec{background:none;border:1.5px solid var(--border);color:var(--slate-md);padding:10px 18px;border-radius:var(--rs);font-size:13px;font-weight:600;cursor:pointer;font-family:inherit;transition:.2s}
+.btn-sec:hover{border-color:var(--teal);color:var(--teal);background:var(--teal-xlt)}
+.setup-hero{background:linear-gradient(135deg,#0A2A22 0%,var(--teal-dk) 45%,var(--teal) 100%);border-radius:var(--r);padding:32px;color:#fff;margin-bottom:20px;position:relative;overflow:hidden;box-shadow:var(--sh-md)}
+.setup-hero::before{content:'A';position:absolute;right:-5px;top:-15px;font-family:'Playfair Display',Georgia,serif;font-size:140px;font-weight:700;opacity:.06;line-height:1}
+.test-item{background:#fff;border:1.5px solid var(--border);border-radius:var(--rs);padding:16px;display:flex;align-items:center;gap:14px;margin-bottom:10px;transition:.2s}
+.test-item.active{border-color:var(--teal);background:var(--teal-xlt);cursor:pointer}
+.test-item.active:hover{box-shadow:var(--sh-md)}
+.test-item.done{border-color:#BBF7D0;background:#ECFDF5}
+.test-item.locked{opacity:.5}
+.ti-num{width:38px;height:38px;border-radius:50%;display:grid;place-items:center;font-family:'Playfair Display',Georgia,serif;font-size:14px;font-weight:700;flex-shrink:0;border:2px solid}
+.test-item.done .ti-num{background:#059669;border-color:#059669;color:#fff}
+.test-item.active .ti-num{background:var(--teal);border-color:var(--teal);color:#fff;animation:pulse 2s infinite}
+.test-item.locked .ti-num{background:var(--border);border-color:var(--border);color:var(--slate-lt)}
+@keyframes pulse{0%,100%{box-shadow:0 0 0 0 rgba(10,110,92,.3)}50%{box-shadow:0 0 0 8px rgba(10,110,92,0)}}
+.ti-info{flex:1;min-width:0}
+.ti-name{font-size:13px;font-weight:700;margin-bottom:2px}
+.ti-desc{font-size:11px;color:var(--slate-md);line-height:1.5}
+.ti-pills{display:flex;gap:5px;flex-wrap:wrap;margin-top:5px}
+.ti-pill{padding:2px 8px;border-radius:5px;font-size:10px;font-weight:700}
+.ti-status{flex-shrink:0;text-align:center;min-width:64px}
+.ti-icon{font-size:22px}
+.ti-lbl{font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;margin-top:2px}
+.ti-btn{margin-top:6px;background:var(--teal);color:#fff;border:none;padding:5px 10px;border-radius:var(--rs);font-size:11px;font-weight:700;cursor:pointer;font-family:inherit;display:block;width:100%}
+.q-card{background:#fff;border:1px solid var(--border);border-radius:var(--r);padding:22px;box-shadow:var(--sh);margin-bottom:16px}
+.q-stem{font-size:15px;line-height:1.7;color:var(--slate);font-weight:500;margin-bottom:14px;white-space:pre-wrap}
+.choices{display:flex;flex-direction:column;gap:8px}
+.choice{display:flex;align-items:flex-start;gap:11px;padding:11px 14px;border-radius:var(--rs);border:1.5px solid var(--border);background:#FAFAFA;cursor:pointer;transition:.14s}
+.choice:hover{border-color:var(--teal);background:var(--teal-xlt);transform:translateX(2px)}
+.choice.sel{border-color:var(--teal);background:var(--teal-lt)}
+.ch-let{width:26px;height:26px;border-radius:6px;border:1.5px solid var(--border);display:grid;place-items:center;font-size:11px;font-weight:800;flex-shrink:0;transition:.14s}
+.choice.sel .ch-let{background:var(--teal);border-color:var(--teal);color:#fff}
+.ch-txt{font-size:13px;line-height:1.55}
+.cs-choices{display:flex;flex-wrap:wrap;gap:7px;margin-bottom:14px}
+.cs-choice{flex:1;min-width:calc(20% - 7px);background:#FAFAFA;border:2px solid var(--border);border-radius:var(--rs);padding:10px 6px;cursor:pointer;transition:all .16s;display:flex;flex-direction:column;align-items:center;gap:6px;text-align:center}
+.cs-choice:hover{border-color:var(--teal);background:var(--teal-xlt)}
+.cs-choice.sel{background:var(--teal-lt);border-color:var(--teal)}
+.cs-ch-let{width:24px;height:24px;border-radius:5px;background:#fff;border:1.5px solid var(--border);display:grid;place-items:center;font-weight:800;font-size:11px;flex-shrink:0;transition:.16s}
+.cs-choice.sel .cs-ch-let{background:var(--teal);border-color:var(--teal);color:#fff}
+.cs-ch-txt{font-size:11.5px;font-weight:600;color:var(--slate);font-family:'Courier New',monospace;word-break:break-all;line-height:1.5}
+.q-card-single{background:#fff;border:1px solid var(--border);border-radius:var(--r);padding:22px 24px;box-shadow:var(--sh);margin-bottom:14px}
+.q-opts-wrap{display:flex;flex-direction:column;gap:7px;margin-bottom:16px}
+.q-opt{background:var(--cream);border:2px solid var(--border);border-radius:var(--rs);padding:11px 16px;cursor:pointer;transition:all .15s;display:flex;align-items:flex-start;gap:10px;user-select:none}
+.q-opt:hover{border-color:var(--teal);background:var(--teal-xlt)}
+.q-opt.sel{border-color:var(--teal);background:var(--teal-xlt)}
+.q-opt-let{width:26px;height:26px;border-radius:6px;background:#fff;border:1.5px solid var(--border);display:grid;place-items:center;font-weight:800;font-size:12px;color:var(--slate-md);flex-shrink:0;transition:.15s}
+.q-opt.sel .q-opt-let{background:var(--teal);border-color:var(--teal);color:#fff}
+.q-opt-txt{font-size:13px;color:var(--slate);line-height:1.5}
+.q-input-wpt{width:100%;max-width:300px;border:1.5px solid var(--border);border-radius:var(--rs);padding:9px 13px;font-size:14px;font-family:inherit;color:var(--slate);background:#FAFAFA;outline:none;transition:.15s;display:block}
+.q-input-wpt:focus{border-color:var(--teal);background:#fff;box-shadow:0 0 0 3px rgba(10,110,92,.07)}
+.q-input-wpt.filled{border-color:var(--teal-lt);background:var(--teal-xlt)}
+.q-hint-wpt{font-size:11px;color:var(--slate-lt);margin-top:5px;line-height:1.4}
+.qnav-wrap{margin:14px 0 2px}
+.qnav-dots{display:flex;flex-wrap:wrap;gap:3px}
+.qd{width:14px;height:14px;border-radius:3px;background:transparent;cursor:pointer;transition:.12s;flex-shrink:0;border:1.5px solid var(--border)}
+.qd.done{background:var(--teal-lt);border-color:var(--teal)}
+.qd.cur{background:var(--teal);border-color:var(--teal-dk)}
+.qd:hover{border-color:var(--teal);opacity:.8}
+.q-stem-box{border-radius:var(--rs);padding:14px 16px;margin-bottom:14px}
+.q-stem-lead{font-size:10px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;margin-bottom:6px}
+/* Likert */
+.likert-wrap{display:flex;flex-direction:column;gap:3px;margin-bottom:10px}
+.likert-labels{display:flex;justify-content:space-between;padding:0 2px;margin-bottom:4px}
+.likert-label{font-size:10px;color:var(--slate-md);font-weight:600;text-align:center;flex:1;line-height:1.3}
+.likert-row{display:flex;gap:8px}
+.likert-btn{flex:1;aspect-ratio:1;border-radius:50%;border:2px solid var(--border);background:#FAFAFA;cursor:pointer;transition:all .14s;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:700;color:var(--slate-md)}
+.likert-btn:hover{border-color:var(--teal);background:var(--teal-xlt);transform:scale(1.08)}
+.likert-btn.sel{border-color:var(--teal);background:var(--teal);color:#fff}
+/* DISC Most/Least */
+.disc-group{background:#fff;border:1px solid var(--border);border-radius:var(--r);padding:20px;box-shadow:var(--sh);margin-bottom:14px}
+.disc-opts{display:flex;flex-direction:column;gap:8px;margin-bottom:14px}
+.disc-opt-row{display:flex;align-items:center;gap:8px;padding:10px 12px;border-radius:var(--rs);border:1.5px solid var(--border);background:#FAFAFA;transition:.14s}
+.disc-opt-row.sel-m{border-color:#0369A1;background:#EFF6FF}
+.disc-opt-row.sel-l{border-color:#DC2626;background:#FEF2F2}
+.disc-opt-row.sel-m.sel-l{border-color:#7C3AED;background:#F5F3FF}
+.disc-opt-txt{flex:1;font-size:13px;line-height:1.55;color:var(--slate)}
+.disc-btns{display:flex;gap:6px;flex-shrink:0}
+.disc-btn-m,.disc-btn-l{width:36px;height:28px;border-radius:6px;border:1.5px solid var(--border);cursor:pointer;font-size:10px;font-weight:800;background:#fff;transition:.14s;font-family:inherit}
+.disc-btn-m:hover{border-color:#0369A1;background:#EFF6FF;color:#0369A1}
+.disc-btn-l:hover{border-color:#DC2626;background:#FEF2F2;color:#DC2626}
+.disc-btn-m.active{background:#0369A1;border-color:#0369A1;color:#fff}
+.disc-btn-l.active{background:#DC2626;border-color:#DC2626;color:#fff}
+.disc-legend{display:flex;gap:12px;margin-bottom:10px;font-size:12px}
+.disc-leg-m{color:#0369A1;font-weight:700}
+.disc-leg-l{color:#DC2626;font-weight:700}
+/* Holland Yes/No */
+.hol-yn-row{display:flex;gap:10px;margin-bottom:6px}
+.hol-btn{flex:1;padding:12px;border-radius:var(--rs);border:2px solid var(--border);background:#FAFAFA;cursor:pointer;font-size:13px;font-weight:700;transition:.14s;font-family:inherit}
+.hol-btn:hover{transform:translateY(-1px)}
+.hol-btn.yes:hover,.hol-btn.yes.sel{border-color:#059669;background:#ECFDF5;color:#059669}
+.hol-btn.no:hover,.hol-btn.no.sel{border-color:#DC2626;background:#FEF2F2;color:#DC2626}
+/* Intro */
+.intro-card{background:#fff;border:1px solid var(--border);border-radius:var(--r);padding:34px 28px;text-align:center;box-shadow:var(--sh-md)}
+.intro-icon{font-size:52px;margin-bottom:12px}
+.intro-title{font-family:'Playfair Display',Georgia,serif;font-size:24px;margin-bottom:4px}
+.im{padding:10px 16px;border-radius:var(--rs);border:1px solid var(--border);text-align:center}
+.im-v{font-family:'Playfair Display',Georgia,serif;font-size:22px;font-weight:700;line-height:1}
+.im-l{font-size:11px;color:var(--slate-lt);margin-top:3px}
+.instr-panel{background:#F8FAFC;border-radius:var(--rs);padding:14px 16px;margin-bottom:16px;text-align:left}
+.ip-t{font-size:11px;font-weight:700;letter-spacing:.07em;text-transform:uppercase;color:var(--slate-md);margin-bottom:6px}
+.ip-d{font-size:13px;color:var(--slate-md);line-height:1.72}
+.tip-card{background:var(--amber-lt);border:1px solid #FDE68A;border-radius:var(--r);padding:18px;margin-bottom:14px}
+.tip-title{font-size:13px;font-weight:700;color:#92400E;margin-bottom:10px}
+.tip-list{font-size:12px;color:#78350F;line-height:1.85}
+.tab-warn{background:#FEF2F2;border:1px solid #FCA5A5;border-radius:var(--rs);padding:9px 14px;font-size:12px;color:#DC2626;margin-bottom:12px;display:flex;align-items:center;gap:8px}
+.q-foot{display:flex;align-items:center;gap:10px;margin-top:14px;padding-top:14px;border-top:1px solid var(--border)}
+.btn-prev{background:none;border:1.5px solid var(--border);color:var(--slate-md);padding:9px 16px;border-radius:var(--rs);font-size:12px;font-weight:600;cursor:pointer;font-family:inherit;transition:.2s}
+.btn-prev:hover:not(:disabled){border-color:var(--teal);color:var(--teal)}
+.btn-prev:disabled{opacity:.35;cursor:not-allowed}
+.btn-next{background:var(--teal);color:#fff;padding:9px 18px;border-radius:var(--rs);font-size:12px;font-weight:700;cursor:pointer;border:none;font-family:inherit;transition:.2s}
+.btn-next:hover:not(:disabled){background:var(--teal-dk)}
+.btn-next:disabled{opacity:.35;cursor:not-allowed}
+.pbar-wrap{background:rgba(255,255,255,.2);border-radius:99px;height:8px;overflow:hidden;margin:12px 0 6px}
+.pbar-fill{height:8px;border-radius:99px;background:#fff;transition:width 1s ease}
+.plabel{display:flex;justify-content:space-between;font-size:11px;opacity:.8}
+@media print{.navbar,.no-print{display:none!important}.wrap{padding:0}body{background:#fff}}
+</style>
+</head>
+<body>
+<nav class="navbar">
+  <div class="nav-inner">
+    <div class="nav-logo">
+      <svg width="26" height="26" viewBox="-50 -10 220 220" xmlns="http://www.w3.org/2000/svg">
+        <path d="M30,10 C70,30 90,70 60,100 C30,130 70,170 90,190" stroke="url(#lga1)" stroke-width="6" fill="none" stroke-linecap="round"/>
+        <path d="M90,10 C50,30 30,70 60,100 C90,130 70,170 30,190" stroke="url(#lga2)" stroke-width="6" fill="none" stroke-linecap="round"/>
+        <circle cx="60" cy="100" r="8" fill="#fff" opacity=".9"/>
+        <defs><linearGradient id="lga1" x1="0%" y1="0%" x2="100%" y2="100%"><stop offset="0%" stop-color="#0A6E5C"/><stop offset="100%" stop-color="#14B8A6"/></linearGradient><linearGradient id="lga2" x1="100%" y1="0%" x2="0%" y2="100%"><stop offset="0%" stop-color="#F59E0B"/><stop offset="50%" stop-color="#14B8A6"/><stop offset="100%" stop-color="#0A6E5C"/></linearGradient></defs>
+      </svg>
+      <span class="logo-txt">MYRALIX</span>
+    </div>
+    <div style="display:flex;align-items:center;gap:8px">
+      <div class="nav-dots" id="nav-dots"></div>
+      <div class="nav-badge">Battery A · v8</div>
+      <a href="Myralix_Battery_A_Laporan_Psikologis_v10.html" target="_blank" id="nav-report-btn" style="display:none;background:rgba(255,255,255,.15);border:1px solid rgba(255,255,255,.35);color:#fff;padding:4px 12px;border-radius:20px;font-size:11px;font-weight:700;text-decoration:none;white-space:nowrap">📊 Laporan →</a>
+    </div>
+  </div>
+</nav>
+<div class="timer-bar" id="timer-bar">
+  <div class="timer-inner">
+    <div class="t-badge" id="t-badge"></div>
+    <div class="t-disp" id="t-disp">00:00</div>
+    <div class="t-track"><div class="t-fill" id="t-fill" style="width:100%"></div></div>
+    <div class="t-info" id="t-info"></div>
+  </div>
+</div>
+<div id="app" class="wrap anim"></div>
+
+<script>
+/* v10 relaunch — retains v9.1 DISC tetrad rebalance (SSE 166→6) + v9 obfuscation, dead-code, tab-warn fixes · Apr 2026 */
+
+// ═══ MYRALIX BATTERY A — CANDIDATE CARD v10 ═══
+// Tests: TK(GI+KA) · BigFive · DISC · Holland
+// Storage: myx-bat-a-v8 (preserved across v9/v9.1/v10 for drop-in compat)
+
+// ── TK DATA ──
+const SUBS={
+  GI:{code:'GI',name:'Kemampuan Umum',nameID:'Kemampuan Umum',icon:'🧠',color:'#0A6E5C',bg:'#F0F8F6',
+    time:12*60,items:50,weight:0.30,
+    function:'Mengukur kecepatan belajar, kapasitas pemecahan masalah, dan kemampuan berpikir lintas domain — verbal, numerik, logis, dan spasial secara terpadu.',
+    instruction:'Kerjakan 50 soal beragam (verbal, numerik, logika, spasial) semampu mungkin dalam 12 menit. Lewati soal sulit dan lanjutkan ke soal berikutnya.',
+    sample:{q:'PANAS adalah lawan kata dari: (1) dingin (2) hangat (3) terik',a:'1 (Dingin)',explain:'Lawan kata panas adalah dingin.'},
+    career:'Semua jabatan — GI adalah prediktor umum performa kerja.'},
+  PV:{code:'PV',name:'Penalaran Verbal',nameID:'Penalaran Verbal',icon:'📖',color:'#0369A1',bg:'#EFF6FF',
+    time:15*60,items:25,weight:0.175,
+    function:'Kemampuan memahami konsep verbal, menemukan hubungan antar kata, dan berpikir abstrak melalui bahasa.',
+    instruction:'Setiap soal terdiri dari kalimat analogi yang belum lengkap. Pilih pasangan kata (A–E) yang paling tepat.',
+    sample:{q:'"Buku" adalah untuk "Membaca" sebagaimana "Garpu" adalah untuk _____',a:'Makan (A)',explain:'Buku digunakan untuk membaca; garpu untuk makan.'},
+    career:'Hukum, Manajemen Senior, Jurnalistik, Penelitian, Konsultan, HR.'},
+  KN:{code:'KN',name:'Kemampuan Numerik',nameID:'Kemampuan Numerik',icon:'🔢',color:'#7C3AED',bg:'#F5F3FF',
+    time:25*60,items:40,weight:0.175,
+    function:'Kemampuan menalar dengan angka, memahami hubungan numerik, dan memecahkan masalah matematika dengan efisien.',
+    instruction:'Selesaikan masalah numerik atau matematika. Pilih satu jawaban. Tidak diperbolehkan menggunakan kalkulator.',
+    sample:{q:'Jika 2x + 6 = 18, maka x = ?',a:'6 (C)',explain:'2x = 12, x = 6.'},
+    career:'Akuntansi, Keuangan, Teknik, Pemrograman, Statistik, Perbankan.'},
+  PA:{code:'PA',name:'Penalaran Abstrak',nameID:'Penalaran Abstrak',icon:'🔷',color:'#059669',bg:'#ECFDF5',
+    time:20*60,items:40,weight:0.175,
+    function:'Kemampuan menemukan pola dalam materi non-verbal. Mengukur kecerdasan umum (fluid intelligence).',
+    instruction:'Temukan aturan deret angka, huruf, atau pola logis dan pilih elemen yang paling tepat.',
+    sample:{q:'2, 4, 8, 16, ____ ?',a:'32 (C)',explain:'Setiap angka dikali 2: 16×2 = 32.'},
+    career:'Teknik, Ilmu Komputer, Matematika, Sains, Desain, R&D.'},
+  KA:{code:'KA',name:'Kecepatan & Akurasi',nameID:'Kecepatan & Akurasi Klerikal',icon:'📋',color:'#DB2777',bg:'#FDF2F8',
+    time:8*60,items:40,weight:0.175,
+    function:'Kemampuan memindai dan membandingkan informasi (kode, nama, angka) dengan cepat dan akurat.',
+    instruction:'Pilih jawaban yang IDENTIK dengan referensi, atau yang BERBEDA dari empat lainnya. Kerjakan secepat dan setepat mungkin.',
+    sample:{q:'Ref: AB-1234-XY. Identik: (A) AB-1243-XY (B) AB-1234-XY (C) AB-1234-YX',a:'B',explain:'Hanya B yang persis sama.'},
+    career:'Administrasi, Audit, Perbankan, Data Entry, Akuntansi, Logistik.'},
+};;
+const IQ_TABLE=[59,59,61,64,67,69,71,73,75,78,80,81,83,86,88,90,93,95,97,98,100,102,104,106,108,111,113,114,116,118,120,121,123,125,126,128,130,132,134,136,138,140,142,143,146,146,146,146,146,146,146];
+const IQ_CLASSES=[{min:130,labelID:'Sangat Superior',color:'#059669'},{min:120,labelID:'Superior',color:'#0369A1'},{min:110,labelID:'Di Atas Rata-rata',color:'#7C3AED'},{min:90,labelID:'Rata-rata',color:'#D97706'},{min:80,labelID:'Di Bawah Rata-rata',color:'#D97706'},{min:70,labelID:'Batas Bawah',color:'#DC2626'},{min:0,labelID:'Sangat Rendah',color:'#DC2626'}];
+const ORDER_A=['GI','KA'];
+const KEYS={1:'3',2:'1',3:'4',4:'ya',5:'4',6:'1',7:'3',8:'11',9:'1',10:'4',11:'3',12:'6000',13:'1',14:'2',15:'20',16:'2',17:'a',18:'13',19:'3',20:'1',21:'20',22:'s',23:'2,5',24:'2',25:'3',26:'1',27:'1/30',28:'3',29:'6',30:'10',31:'1/9',32:'ya',33:'3',34:'20',35:'0.25',36:'24',37:'0.0625',38:'4,6',39:'2',40:'1',41:'1,4',42:'5,13',43:'0.33',44:'2',45:'24',46:'2',47:'3',48:'175',49:'1,2,4,5',50:'12'};
+const WPT_RAW_QS = [
+  {n:1,type:'mc',text:'Bulan terakhir di kuartal pertama tahun ini adalah',opts:['1. Januari','2. Februari','3. Maret','4. April','5. Juni']},
+  {n:2,type:'mc',text:'PANAS adalah lawan kata dari',opts:['1. dingin','2. hangat','3. terik','4. sejuk','5. mendidih']},
+  {n:3,type:'mc',text:'Sebagian besar hal di bawah ini serupa satu sama lain. Manakah salah satu di antaranya yang kurang serupa dengan yang lain?',opts:['1. Ayam','2. Bebek','3. Elang','4. Ikan','5. Burung Hantu']},
+  {n:4,type:'mc',text:'Jawablah dengan menuliskan YA atau TIDAK. Apakah "ATM" berarti "Anjungan Tunai Mandiri"?',opts:['YA','TIDAK']},
+  {n:5,type:'mc',text:'Dalam kelompok kata berikut, manakah kata yang berbeda dari kata yang lain?',opts:['1. meja','2. kursi','3. lemari','4. berlari','5. tempat tidur']},
+  {n:6,type:'mc',text:'TERANG adalah lawan kata dari',opts:['1. gelap','2. cahaya','3. bersinar','4. siang','5. cerah']},
+  {n:7,type:'mc',text:'Gambar manakah yang dibentuk dari dua gambar di dalam tanda kurung?',opts:['1','2','3','4','5'],svgHtml:`<svg viewBox="0 0 760 150" xmlns="http://www.w3.org/2000/svg"
+  style="width:100%;max-width:760px;display:block;margin:8px 0;border:1px solid #e5e7eb;border-radius:8px;background:#fafafa">
+<style>
+.sh{fill:none;stroke:#1a1a1a;stroke-width:2.2;stroke-linejoin:round;stroke-linecap:round}
+.lb{font:bold 14px Arial,sans-serif;fill:#1a1a1a;text-anchor:middle;dominant-baseline:middle}
+.br{font:bold 50px Georgia,serif;fill:#555;dominant-baseline:middle}
+</style>
+
+<!-- SOURCE LABEL -->
+<text x="18" y="16" font-size="11" fill="#888" font-family="Arial,sans-serif">Sumber:</text>
+
+<!-- Left brace -->
+<text x="18" y="82" class="br">{</text>
+<!-- Source A: upright rectangle (small) -->
+<rect x="40" y="42" width="34" height="50" class="sh"/>
+<!-- Source B: right triangle, right-angle at bottom-right -->
+<polygon points="103,40 75,90 131,90" class="sh"/>
+<!-- Right brace -->
+<text x="122" y="82" class="br">}</text>
+
+<!-- Divider -->
+<line x1="164" y1="10" x2="164" y2="142" stroke="#ddd" stroke-width="1.5"/>
+
+<!-- OPTION 1: only a rectangle (larger) — wrong -->
+<text x="210" y="16" class="lb">1</text>
+<rect x="182" y="30" width="56" height="90" class="sh"/>
+
+<!-- OPTION 2: only a triangle (larger) — wrong -->
+<text x="310" y="16" class="lb">2</text>
+<polygon points="280,120 340,120 340,30" class="sh"/>
+
+<!-- OPTION 3: HOUSE SHAPE = rectangle + triangle on top ← CORRECT -->
+<text x="420" y="16" class="lb">3</text>
+<rect x="385" y="72" width="70" height="58" class="sh"/>
+<polygon points="385,72 420,28 455,72" class="sh"/>
+
+<!-- OPTION 4: two shapes side by side (separate, not merged) — wrong -->
+<text x="530" y="16" class="lb">4</text>
+<rect x="498" y="55" width="32" height="65" class="sh"/>
+<polygon points="536,55 536,120 563,120" class="sh"/>
+
+<!-- OPTION 5: rhombus — wrong (different shape entirely) -->
+<text x="650" y="16" class="lb">5</text>
+<polygon points="616,75 650,28 684,75 650,122" class="sh"/>
+</svg>`},
+  {n:8,type:'input',text:'Perhatikan urutan angka berikut. Angka berapa yang selanjutnya muncul? 1 — 3 — 5 — 7 — 9 — ?',hint:'Masukkan angka jawaban'},
+  {n:9,type:'mc',text:'Guru dan Pengajar — Apakah kata-kata ini:',opts:['1. memiliki arti yang sama','2. memiliki arti berlawanan','3. tidak memiliki arti sama atau berlawanan']},
+  {n:10,type:'mc',text:'Manakah kata berikut ini yang berhubungan dengan PENDENGARAN?',opts:['1. mata','2. hidung','3. lidah','4. telinga','5. jari']},
+  {n:11,type:'mc',text:'MUSIM GUGUR adalah lawan dari:',opts:['1. liburan','2. musim panas','3. musim semi','4. musim dingin','5. musim gugur']},
+  {n:12,type:'input',text:'Sebuah pesawat terbang 300 kaki dalam ½ detik. Pada kecepatan yang sama berapa kaki ia terbang dalam 10 detik?',hint:'Masukkan angka jawaban'},
+  {n:13,type:'mc',text:'Anggaplah dua pernyataan pertama adalah benar. Apakah yang terakhir: "Anak-anak lelaki ini adalah anak yang normal. Semua anak normal sifatnya aktif. Anak-anak lelaki ini aktif."',opts:['1. benar','2. salah','3. tidak tahu']},
+  {n:14,type:'mc',text:'JAUH adalah lawan kata dari',opts:['1. terpencil','2. dekat','3. jauh','4. terburu-buru','5. pasti']},
+  {n:15,type:'input',text:'3 permen lemon seharga 10 rupiah. Berapa harga ½ lusin?',hint:'Masukkan angka'},
+  {n:16,type:'input',text:'Berapa banyak duplikasi yang sama dari lima pasangan angka ini?\n84721 — 84721\n9210651 — 9210561\n14201201 — 14210210\n96101101 — 96101161\n88884444 — 88884444',hint:'Hitung berapa pasang yang identik'},
+  {n:17,type:'input',text:'Susun kata-kata berikut menjadi pernyataan yang benar, lalu tulis huruf TERAKHIR dari kata TERAKHIR sebagai jawaban:\n"Selalu sebuah kata kerja kalimat suatu memiliki"',hint:'Tulis satu huruf saja'},
+  {n:18,type:'input',text:'Anak lelaki berumur 5 tahun dan saudara perempuannya dua kali lebih tua. Ketika anak lelaki itu berumur 8 tahun, berapa umur saudara perempuannya?',hint:'Masukkan angka'},
+  {n:19,type:'mc',text:"IT'S — ITS — Apakah kata ini:",opts:['1. memiliki arti yang sama','2. memiliki arti yang berlawanan','3. tidak memiliki arti yang sama atau berlawanan']},
+  {n:20,type:'mc',text:'Anggaplah dua pernyataan pertama adalah benar. Apakah pernyataan terakhir: "John seusia dengan Sally. Sally lebih muda dari Bill. John lebih muda dari Bill."',opts:['1. benar','2. salah','3. tidak tahu']},
+  {n:21,type:'input',text:'Seorang dealer membeli beberapa barrel seharga 4.000 rupiah. Ia menjual dengan harga 5.000 rupiah, mendapat untung 50 rupiah setiap barrel. Berapa banyak barrel yang dijual?',hint:'Masukkan angka'},
+  {n:22,type:'mc',text:'Susun kata-kata berikut menjadi kalimat lengkap: "telur menghasilkan semua ayam". Jika kalimat itu BENAR tulis B, jika SALAH tulis S.',opts:['B (Benar)','S (Salah)']},
+  {n:23,type:'mc',text:'Dua dari peribahasa berikut ini memiliki arti sama. Manakah itu?\n1. Semakin banyak memiliki sapi, akan memiliki satu anak sapi yang buruk.\n2. Anak seperti Ayahnya.\n3. Bila tertinggal sama jauhnya dengan satu mil\n4. Seorang dikenal dari persahabatan yang dijalin\n5. Mereka adalah benih dari mangkuk yang sama.',opts:['1 dan 2','2 dan 5','1 dan 4','3 dan 4','4 dan 5'],hint:'Pilih dua peribahasa dengan arti sama'},
+  {n:24,type:'input',text:'Sebuah jam terlambat 1 menit 18 detik dalam 39 hari. Berapa detik ia terlambat dalam sehari?',hint:'Masukkan angka (dalam detik)'},
+  {n:25,type:'mc',text:'CANVASS — CANVAS — Apakah kata-kata ini:',opts:['1. memiliki arti yang sama','2. memiliki arti yang berlawanan','3. tidak memiliki arti sama atau berlawanan']},
+  {n:26,type:'mc',text:'Anggaplah dua pernyataan pertama adalah benar. Pernyataan terakhir: "Semua siswa mengikuti ujian. Beberapa orang diruangan ini adalah siswa. Beberapa orang diruangan ini mengikuti ujian."',opts:['1. benar','2. salah','3. tidak tahu']},
+  {n:27,type:'input',text:'Dalam 30 hari seorang menabung 1 dolar. Berapa rata-rata tabungannya setiap hari?',hint:'Masukkan angka atau pecahan, contoh: 2/5'},
+  {n:28,type:'mc',text:'INGENIOUS — INGENUOUS — Apakah kata-kata ini:',opts:['1. memiliki arti sama','2. memiliki arti berlawanan','3. tidak memiliki arti sama atau berlawanan']},
+  {n:29,type:'input',text:'Dua orang menangkap 36 ikan. X menangkap 5 kali lebih banyak dari Y. Berapa ikan yang ditangkap Y?',hint:'Masukkan angka'},
+  {n:30,type:'input',text:'Sebuah kotak segi empat, yang terisi penuh, memuat 800 kubik kaki gandum. Jika satu kotak lebarnya 8 kaki dan panjangnya 10 kaki, berapa kedalaman kotak itu?',hint:'Masukkan angka (dalam kaki)'},
+  {n:31,type:'input',text:'Satu angka dari rangkaian berikut tidak cocok dengan pola angka yang lainnya. Angka berapakah itu?\n½  ¼  1/6  1/8  1/9  1/12',hint:'Masukkan angka yang tidak cocok (dalam bentuk pecahan, misal: 1/6)'},
+  {n:32,type:'mc',text:'Apakah P.M. berarti "post merediem"?',opts:['YA','TIDAK'],hint:'Ketik YA atau TIDAK'},
+  {n:33,type:'mc',text:'DAPAT DIPERCAYA — GAMPANG PERCAYA — Apakah kata-kata ini:',opts:['1. memiliki arti sama','2. memiliki arti berlawanan','3. tidak memiliki arti sama atau berlawanan']},
+  {n:34,type:'input',text:'Sebuah rok membutuhkan 2¼ meter kain. Berapa banyak potong yang dihasilkan dari 45 meter kain?',hint:'Masukkan angka'},
+  {n:35,type:'input',text:'Sebuah jam menunjuk tepat pukul 12 siang hari Senin. Pada pukul 2 siang hari Rabu, jam itu terlambat 26 detik. Pada rata-rata yang sama, berapa banyak jam itu terlambat dalam ½ jam?',hint:'Masukkan angka (dalam detik)'},
+  {n:36,type:'input',text:'Tim bisbol kami kalah 9 permainan dalam musim ini. Ini merupakan 3/8 bagian dari semua pertandingan mereka. Berapa banyak pertandingan yang mereka mainkan dalam musim kompetisi saat ini?',hint:'Masukkan angka'},
+  {n:37,type:'input',text:'Apakah angka selanjutnya dari seri ini? 1 — .5 — .25 — .125 — ?',hint:'Masukkan angka desimal'},
+  {n:38,type:'input',text:'Bentuk geometris berikut dapat dibagi oleh satu garis lurus menjadi dua bagian yang disatukan membentuk persegi sempurna. Tuliskan dua angka yang dihubungkan oleh garis tersebut.',hint:'Format: angka,angka — contoh: 4,6',svgHtml:`<svg viewBox="0 0 380 305" xmlns="http://www.w3.org/2000/svg"
+  style="width:100%;max-width:380px;display:block;margin:8px 0;border:1px solid #e5e7eb;border-radius:8px;background:#fafafa">
+<polygon points="40,265 115,265 190,265 265,265 340,40 265,40 190,40 115,40" fill="#edf7f5" stroke="#1a1a1a" stroke-width="2.2" stroke-linejoin="round"/>
+<circle cx="40" cy="265" r="17" fill="white" stroke="#0d7c63" stroke-width="2.5"/><text x="40" y="265" font-family="Arial,sans-serif" font-size="13" font-weight="bold" fill="#0d7c63" text-anchor="middle" dominant-baseline="middle">1</text><circle cx="115" cy="265" r="17" fill="white" stroke="#0d7c63" stroke-width="2.5"/><text x="115" y="265" font-family="Arial,sans-serif" font-size="13" font-weight="bold" fill="#0d7c63" text-anchor="middle" dominant-baseline="middle">2</text><circle cx="190" cy="265" r="17" fill="white" stroke="#0d7c63" stroke-width="2.5"/><text x="190" y="265" font-family="Arial,sans-serif" font-size="13" font-weight="bold" fill="#0d7c63" text-anchor="middle" dominant-baseline="middle">3</text><circle cx="265" cy="265" r="17" fill="white" stroke="#0d7c63" stroke-width="2.5"/><text x="265" y="265" font-family="Arial,sans-serif" font-size="13" font-weight="bold" fill="#0d7c63" text-anchor="middle" dominant-baseline="middle">4</text><circle cx="340" cy="40" r="17" fill="white" stroke="#0d7c63" stroke-width="2.5"/><text x="340" y="40" font-family="Arial,sans-serif" font-size="13" font-weight="bold" fill="#0d7c63" text-anchor="middle" dominant-baseline="middle">5</text><circle cx="265" cy="40" r="17" fill="white" stroke="#0d7c63" stroke-width="2.5"/><text x="265" y="40" font-family="Arial,sans-serif" font-size="13" font-weight="bold" fill="#0d7c63" text-anchor="middle" dominant-baseline="middle">6</text><circle cx="190" cy="40" r="17" fill="white" stroke="#0d7c63" stroke-width="2.5"/><text x="190" y="40" font-family="Arial,sans-serif" font-size="13" font-weight="bold" fill="#0d7c63" text-anchor="middle" dominant-baseline="middle">7</text><circle cx="115" cy="40" r="17" fill="white" stroke="#0d7c63" stroke-width="2.5"/><text x="115" y="40" font-family="Arial,sans-serif" font-size="13" font-weight="bold" fill="#0d7c63" text-anchor="middle" dominant-baseline="middle">8</text>
+</svg>`},
+  {n:39,type:'mc',text:'Apakah arti dari kalimat berikut:\n"Sebuah sapu yang baru menyapu dengan bersih. Sepatu yang sudah lama sifatnya makin lunak."',opts:['1. sama','2. berlawanan','3. tidak sama atau berlawanan']},
+  {n:40,type:'input',text:'Berapa duplikasi dari pasangan kata berikut ini?\nRexford, J.D. — Rockford, J.D\nSingleton, M.O. — Simbleten, M.O.\nRichards, W.E. — Richad, W.E.\nSiegel, A.B. — Seigel, A.B.\nWood, A.O. — Wood, A.O.',hint:'Hitung berapa pasang yang identik'},
+  {n:41,type:'mc',text:'Dua dari peribahasa ini memiliki makna yang serupa. Manakah itu?\n1. Anda tidak dapat membuat dompet sutra dari kuping babi betina.\n2. Orang yang mencuri telur akan mencuri sapi.\n3. Batu yang berguling tidak akan mengumpulkan lumut.\n4. Anda tidak mungkin menghancurkan kapal yang sudah rusak.\n5. Ini ketidakmungkinan yang terjadi.',opts:['1 dan 4','2 dan 5','1 dan 3','3 dan 4','2 dan 4']},
+  {n:42,type:'input',text:'Bentuk geometris berikut dapat dibagi oleh satu garis lurus menjadi dua bagian yang disatukan membentuk persegi sempurna. Tuliskan dua angka yang dihubungkan oleh garis tersebut.',hint:'Format: angka,angka — contoh: 5,13',svgHtml:`<svg viewBox="0 0 524 304" xmlns="http://www.w3.org/2000/svg"
+  style="width:100%;max-width:524px;display:block;margin:8px 0;border:1px solid #e5e7eb;border-radius:8px;background:#fafafa">
+<polygon points="42,262 97,262 152,262 207,262 262,262 317,207 372,152 427,97 482,42 427,42 372,42 317,42 262,42 207,97 152,152 97,207" fill="#edf7f5" stroke="#1a1a1a" stroke-width="2.2" stroke-linejoin="round"/>
+
+<circle cx="42" cy="262" r="15" fill="white" stroke="#0d7c63" stroke-width="2.2"/><text x="42" y="262" font-family="Arial,sans-serif" font-size="12" font-weight="bold" fill="#0d7c63" text-anchor="middle" dominant-baseline="middle">1</text><circle cx="97" cy="262" r="15" fill="white" stroke="#0d7c63" stroke-width="2.2"/><text x="97" y="262" font-family="Arial,sans-serif" font-size="12" font-weight="bold" fill="#0d7c63" text-anchor="middle" dominant-baseline="middle">2</text><circle cx="152" cy="262" r="15" fill="white" stroke="#0d7c63" stroke-width="2.2"/><text x="152" y="262" font-family="Arial,sans-serif" font-size="12" font-weight="bold" fill="#0d7c63" text-anchor="middle" dominant-baseline="middle">3</text><circle cx="207" cy="262" r="15" fill="white" stroke="#0d7c63" stroke-width="2.2"/><text x="207" y="262" font-family="Arial,sans-serif" font-size="12" font-weight="bold" fill="#0d7c63" text-anchor="middle" dominant-baseline="middle">4</text><circle cx="262" cy="262" r="15" fill="white" stroke="#0d7c63" stroke-width="2.8"/><text x="262" y="262" font-family="Arial,sans-serif" font-size="12" font-weight="bold" fill="#0d7c63" text-anchor="middle" dominant-baseline="middle">5</text><circle cx="317" cy="207" r="15" fill="white" stroke="#0d7c63" stroke-width="2.2"/><text x="317" y="207" font-family="Arial,sans-serif" font-size="12" font-weight="bold" fill="#0d7c63" text-anchor="middle" dominant-baseline="middle">6</text><circle cx="372" cy="152" r="15" fill="white" stroke="#0d7c63" stroke-width="2.2"/><text x="372" y="152" font-family="Arial,sans-serif" font-size="12" font-weight="bold" fill="#0d7c63" text-anchor="middle" dominant-baseline="middle">7</text><circle cx="427" cy="97" r="15" fill="white" stroke="#0d7c63" stroke-width="2.2"/><text x="427" y="97" font-family="Arial,sans-serif" font-size="12" font-weight="bold" fill="#0d7c63" text-anchor="middle" dominant-baseline="middle">8</text><circle cx="482" cy="42" r="15" fill="white" stroke="#0d7c63" stroke-width="2.2"/><text x="482" y="42" font-family="Arial,sans-serif" font-size="12" font-weight="bold" fill="#0d7c63" text-anchor="middle" dominant-baseline="middle">9</text><circle cx="427" cy="42" r="15" fill="white" stroke="#0d7c63" stroke-width="2.2"/><text x="427" y="42" font-family="Arial,sans-serif" font-size="10" font-weight="bold" fill="#0d7c63" text-anchor="middle" dominant-baseline="middle">10</text><circle cx="372" cy="42" r="15" fill="white" stroke="#0d7c63" stroke-width="2.2"/><text x="372" y="42" font-family="Arial,sans-serif" font-size="10" font-weight="bold" fill="#0d7c63" text-anchor="middle" dominant-baseline="middle">11</text><circle cx="317" cy="42" r="15" fill="white" stroke="#0d7c63" stroke-width="2.2"/><text x="317" y="42" font-family="Arial,sans-serif" font-size="10" font-weight="bold" fill="#0d7c63" text-anchor="middle" dominant-baseline="middle">12</text><circle cx="262" cy="42" r="15" fill="white" stroke="#0d7c63" stroke-width="2.8"/><text x="262" y="42" font-family="Arial,sans-serif" font-size="10" font-weight="bold" fill="#0d7c63" text-anchor="middle" dominant-baseline="middle">13</text><circle cx="207" cy="97" r="15" fill="white" stroke="#0d7c63" stroke-width="2.2"/><text x="207" y="97" font-family="Arial,sans-serif" font-size="10" font-weight="bold" fill="#0d7c63" text-anchor="middle" dominant-baseline="middle">14</text><circle cx="152" cy="152" r="15" fill="white" stroke="#0d7c63" stroke-width="2.2"/><text x="152" y="152" font-family="Arial,sans-serif" font-size="10" font-weight="bold" fill="#0d7c63" text-anchor="middle" dominant-baseline="middle">15</text><circle cx="97" cy="207" r="15" fill="white" stroke="#0d7c63" stroke-width="2.2"/><text x="97" y="207" font-family="Arial,sans-serif" font-size="10" font-weight="bold" fill="#0d7c63" text-anchor="middle" dominant-baseline="middle">16</text>
+</svg>`},
+  {n:43,type:'mc',text:'Dalam kelompok angka berikut ini, manakah angka yang terkecil?',opts:['10','1','.999','.33','11']},
+  {n:44,type:'mc',text:'Apakah makna dari kalimat berikut:\n"Tidak ada orang jujur meminta maaf atas kejujurannya. Kejujuran dihormati dan lapar pujian."',opts:['1. sama','2. berlawanan','3. tidak sama atau berlawanan']},
+  {n:45,type:'input',text:'Dengan harga 1.80 dolar, seorang grosir membeli satu kardus buah yang berisi 12 lusin. Ia tahu dua lusin akan busuk sebelum dijual. Dengan harga berapa per lusin dia harus menjual untuk mendapat 1/3 dari harga seluruhnya?',hint:'Masukkan angka (dalam sen)'},
+  {n:46,type:'mc',text:'Dalam rangkaian kata berikut ini, manakah kata yang berbeda dari yang lainnya?',opts:['1. koloni','2. perkawanan','3. kawanan','4. kru','5. konstelasi']},
+  {n:47,type:'mc',text:'Anggaplah dua pernyataan pertama ini benar. Apakah pertanyaan terakhir:\n"Orang besar dibodohi. Saya dibodohi. Saya adalah orang besar."',opts:['1. benar','2. salah','3. tidak tahu']},
+  {n:48,type:'input',text:'Tiga orang membentuk kemitraan dan setuju membagi keuntungan secara rata. X menginvestasi 4.500 dolar, Y sebesar 3.500 dolar, dan Z sebesar 2.000 dolar. Jika keuntungan mencapai 1.500 dolar, lebih kurang berapa yang akan diperoleh X dibanding jika keuntungan dibagi berdasarkan besarnya investasi?',hint:'Masukkan angka (dalam dolar)'},
+  {n:49,type:'mc',text:'Empat dari 5 bagian ini dapat digabungkan menjadi sebuah segitiga siku-siku besar. Manakah keempat bagian tersebut?',opts:['1,2,3,4','1,2,4,5','1,3,4,5','2,3,4,5','1,2,3,5'],svgHtml:`<svg viewBox="0 0 860 155" xmlns="http://www.w3.org/2000/svg"
+  style="width:100%;max-width:860px;display:block;margin:8px 0;border:1px solid #e5e7eb;border-radius:8px;background:#fafafa">
+<style>
+.sp{fill:#fff;stroke:#1a1a1a;stroke-width:2.4;stroke-linejoin:round;stroke-linecap:round}
+.nm{font-family:Arial,sans-serif;font-size:14px;font-weight:bold;fill:#1a1a1a;text-anchor:middle;dominant-baseline:middle}
+</style>
+
+<!-- 1: Large right triangle — right angle bottom-right, tall -->
+<polygon points="18,142 102,14 102,142" class="sp"/>
+<text x="68" y="110" class="nm">1</text>
+
+<!-- 2: L-shaped piece (rectangle with small notch) — fits into triangle -->
+<polygon points="148,142 148,36 218,36 218,76 196,76 196,142" class="sp"/>
+<text x="173" y="112" class="nm">2</text>
+
+<!-- 3: SQUARE — does NOT fit to make triangle (this is the "wrong" piece) -->
+<rect x="258" y="22" width="108" height="108" class="sp"/>
+<text x="312" y="76" class="nm">3</text>
+
+<!-- 4: Medium right triangle — right angle bottom-left, wider shape -->
+<polygon points="408,142 560,142 408,44" class="sp"/>
+<text x="444" y="118" class="nm">4</text>
+
+<!-- 5: Small square — fits together with others -->
+<rect x="596" y="50" width="100" height="60" class="sp"/>
+<text x="646" y="80" class="nm">5</text>
+</svg>`},
+  {n:50,type:'input',text:'Untuk mencetak artikel berisi 30.000 kata, percetakan memakai dua ukuran jenis. Tipe besar: 1.200 kata/halaman. Tipe kecil: 1.500 kata/halaman. Artikel masuk dalam 22 halaman. Berapa banyak halaman untuk tipe yang lebih kecil?',hint:'Masukkan angka'},
+];
+const DATQS = {
+
+// ── PV: 25 PENALARAN VERBAL ────────────────────────────────
+PV:[
+  {s:'_____ adalah untuk Menyanyi sebagaimana Pena adalah untuk _____',o:{A:'Suara — Menulis',B:'Penyanyi — Kertas',C:'Mikrofon — Tinta',D:'Musik — Buku',E:'Nada — Menulis'},a:'A'},
+  {s:'Lapar adalah untuk Makan sebagaimana Haus adalah untuk _____',o:{A:'Air',B:'Minum',C:'Tenggorokan',D:'Dahaga',E:'Minuman'},a:'B'},
+  {s:'Dokter adalah untuk Pasien sebagaimana Guru adalah untuk _____',o:{A:'Kelas',B:'Buku',C:'Murid',D:'Pelajaran',E:'Sekolah'},a:'C'},
+  {s:'Panas adalah untuk Api sebagaimana Dingin adalah untuk _____',o:{A:'Beku',B:'Suhu',C:'Angin',D:'Es',E:'Salju'},a:'D'},
+  {s:'Kucing adalah untuk Meong sebagaimana Sapi adalah untuk _____',o:{A:'Susu',B:'Kandang',C:'Moo',D:'Hewan',E:'Ternak'},a:'C'},
+  {s:'Biru adalah untuk Langit sebagaimana Hijau adalah untuk _____',o:{A:'Daun',B:'Warna',C:'Cat',D:'Alami',E:'Tumbuhan'},a:'A'},
+  {s:'Novel adalah untuk Pengarang sebagaimana Lukisan adalah untuk _____',o:{A:'Kanvas',B:'Cat',C:'Pelukis',D:'Seni',E:'Galeri'},a:'C'},
+  {s:'Kunci adalah untuk Pintu sebagaimana Sandi adalah untuk _____',o:{A:'Rahasia',B:'Komputer',C:'Keamanan',D:'Kode',E:'Akun'},a:'E'},
+  {s:'Kaki adalah untuk Berjalan sebagaimana Tangan adalah untuk _____',o:{A:'Jari',B:'Menggenggam',C:'Tubuh',D:'Cincin',E:'Kuku'},a:'B'},
+  {s:'Peta adalah untuk Geografi sebagaimana Diagram adalah untuk _____',o:{A:'Gambar',B:'Garis',C:'Ilmu',D:'Informasi',E:'Data'},a:'D'},
+  {s:'Bunga adalah untuk Taman sebagaimana Ikan adalah untuk _____',o:{A:'Air',B:'Laut',C:'Sirip',D:'Aquarium',E:'Kolam'},a:'B'},
+  {s:'Baca adalah untuk Teliti sebagaimana Dengar adalah untuk _____',o:{A:'Telinga',B:'Suara',C:'Seksama',D:'Musik',E:'Keras'},a:'C'},
+  {s:'Siang adalah untuk Matahari sebagaimana Malam adalah untuk _____',o:{A:'Gelap',B:'Bulan',C:'Bintang',D:'Tidur',E:'Mimpi'},a:'B'},
+  {s:'Laut adalah untuk Ikan sebagaimana Hutan adalah untuk _____',o:{A:'Pohon',B:'Binatang',C:'Hijau',D:'Udara',E:'Satwa Liar'},a:'E'},
+  {s:'Jam adalah untuk Waktu sebagaimana Timbangan adalah untuk _____',o:{A:'Berat',B:'Mengukur',C:'Neraca',D:'Gram',E:'Kilogram'},a:'A'},
+  {s:'Kata adalah untuk Kalimat sebagaimana Bata adalah untuk _____',o:{A:'Semen',B:'Rumah',C:'Bangunan',D:'Tembok',E:'Konstruksi'},a:'D'},
+  {s:'Komposer adalah untuk Simfoni sebagaimana Arsitek adalah untuk _____',o:{A:'Bangunan',B:'Desain',C:'Gambar',D:'Konstruksi',E:'Cetak Biru'},a:'E'},
+  {s:'Cerita adalah untuk Tokoh sebagaimana Drama adalah untuk _____',o:{A:'Panggung',B:'Sutradara',C:'Pemain',D:'Naskah',E:'Penonton'},a:'C'},
+  {s:'Lampu adalah untuk Cahaya sebagaimana Speaker adalah untuk _____',o:{A:'Musik',B:'Suara',C:'Kabel',D:'Elektronik',E:'Listrik'},a:'B'},
+  {s:'Garam adalah untuk Asin sebagaimana Gula adalah untuk _____',o:{A:'Manis',B:'Putih',C:'Karbohidrat',D:'Makanan',E:'Bumbu'},a:'A'},
+  {s:'Mata adalah untuk Melihat sebagaimana Hidung adalah untuk _____',o:{A:'Napas',B:'Wajah',C:'Mencium',D:'Indera',E:'Lubang'},a:'C'},
+  {s:'Pelaut adalah untuk Laut sebagaimana Petani adalah untuk _____',o:{A:'Panen',B:'Sawah',C:'Cangkul',D:'Tanah',E:'Beras'},a:'B'},
+  {s:'Cepat adalah untuk Kura-kura sebagaimana Kuat adalah untuk _____',o:{A:'Lemah',B:'Semut',C:'Otot',D:'Besi',E:'Beban'},a:'B'},
+  {s:'Layang-layang adalah untuk Angin sebagaimana Perahu adalah untuk _____',o:{A:'Dayung',B:'Laut',C:'Air',D:'Pelabuhan',E:'Berlayar'},a:'C'},
+  {s:'Demam adalah untuk Obat sebagaimana Kelaparan adalah untuk _____',o:{A:'Uang',B:'Makanan',C:'Lapar',D:'Perut',E:'Restoran'},a:'B'},
+],
+
+// ── NA: 40 NUMERIK ────────────────────────────────────────
+KN:[
+  {s:'Berapa nilai x jika 3x + 9 = 24?',o:{A:'3',B:'4',C:'5',D:'6',E:'7'},a:'C'},
+  {s:'Sebuah produk dijual Rp 80.000 dengan diskon 20%. Berapa harga setelah diskon?',o:{A:'Rp 60.000',B:'Rp 64.000',C:'Rp 68.000',D:'Rp 72.000',E:'Rp 76.000'},a:'B'},
+  {s:'Deret: 3, 6, 12, 24, 48. Angka selanjutnya?',o:{A:'72',B:'84',C:'96',D:'84',E:'72'},a:'C'},
+  {s:'Jika 35% dari suatu bilangan adalah 70, berapa bilangan tersebut?',o:{A:'180',B:'200',C:'220',D:'240',E:'250'},a:'B'},
+  {s:'Sebuah mobil menempuh 240 km dalam 3 jam. Berapa kecepatan rata-ratanya?',o:{A:'60 km/j',B:'70 km/j',C:'80 km/j',D:'90 km/j',E:'100 km/j'},a:'C'},
+  {s:'Rata-rata 4 nilai adalah 75. Nilai ke-5 berapa agar rata-rata menjadi 77?',o:{A:'81',B:'83',C:'85',D:'87',E:'89'},a:'C'},
+  {s:'Luas persegi panjang 10×6 cm adalah?',o:{A:'32 cm²',B:'48 cm²',C:'56 cm²',D:'60 cm²',E:'72 cm²'},a:'D'},
+  {s:'Jika 4 printer mencetak 120 halaman dalam 30 menit, berapa halaman yang dicetak 1 printer dalam 1 jam?',o:{A:'30',B:'45',C:'60',D:'90',E:'120'},a:'C'},
+  {s:'Berapa persen 36 dari 120?',o:{A:'25%',B:'28%',C:'30%',D:'33%',E:'36%'},a:'C'},
+  {s:'Modal Rp 8.000.000 dengan bunga sederhana 6% per tahun selama 2 tahun. Total?',o:{A:'Rp 8.480.000',B:'Rp 8.960.000',C:'Rp 9.000.000',D:'Rp 9.200.000',E:'Rp 9.440.000'},a:'B'},
+  {s:'5x - 3 = 2x + 12. Berapa x?',o:{A:'3',B:'4',C:'5',D:'6',E:'7'},a:'C'},
+  {s:'Lingkaran jari-jari 7 cm. Luas lingkaran? (π = 22/7)',o:{A:'132 cm²',B:'144 cm²',C:'154 cm²',D:'162 cm²',E:'176 cm²'},a:'C'},
+  {s:'Keran A mengisi bak dalam 10 menit. Keran B dalam 15 menit. Jika keduanya dibuka bersamaan, berapa menit bak penuh?',o:{A:'4',B:'5',C:'6',D:'7',E:'8'},a:'C'},
+  {s:'Harga naik 25% lalu turun 20%. Perubahan dari harga asal?',o:{A:'Naik 5%',B:'Naik 2,5%',C:'Turun 0%',D:'Tetap',E:'Turun 2,5%'},a:'C'},
+  {s:'a:b = 3:4 dan b:c = 5:6. Berapa a:c?',o:{A:'12:20',B:'15:24',C:'5:8',D:'3:8',E:'9:16'},a:'B'},
+  {s:'Sisi miring segitiga siku-siku = 17 cm, satu sisi = 8 cm. Sisi ketiga?',o:{A:'12 cm',B:'13 cm',C:'14 cm',D:'15 cm',E:'16 cm'},a:'D'},
+  {s:'Tiga bilangan berurutan jumlahnya 90. Bilangan terbesar?',o:{A:'28',B:'29',C:'30',D:'31',E:'32'},a:'D'},
+  {s:'Toko membeli 50 unit seharga Rp 2.000.000. Dijual habis Rp 2.600.000. % keuntungan?',o:{A:'25%',B:'28%',C:'30%',D:'32%',E:'35%'},a:'C'},
+  {s:'log₂ 32 = ?',o:{A:'4',B:'5',C:'6',D:'7',E:'8'},a:'B'},
+  {s:'Populasi naik 10% per tahun. Dari 50.000, setelah 2 tahun?',o:{A:'60.000',B:'60.500',C:'60.550',D:'61.000',E:'61.050'},a:'C'},
+  {s:'2/3 + 3/4 = ?',o:{A:'5/7',B:'17/12',C:'6/7',D:'11/12',E:'5/12'},a:'B'},
+  {s:'Sebuah persegi sisi 9 cm. Luas total?',o:{A:'36 cm²',B:'54 cm²',C:'72 cm²',D:'81 cm²',E:'90 cm²'},a:'D'},
+  {s:'Jika 15% dari x sama dengan 45, berapa x?',o:{A:'200',B:'250',C:'300',D:'350',E:'400'},a:'C'},
+  {s:'Deret: 1, 4, 9, 16, 25, 36. Selanjutnya?',o:{A:'42',B:'44',C:'46',D:'48',E:'49'},a:'E'},
+  {s:'Sebuah ruangan 8×6×3 meter. Volume (m³)?',o:{A:'96',B:'112',C:'124',D:'136',E:'144'},a:'E'},
+  {s:'3³ + 4² = ?',o:{A:'37',B:'39',C:'41',D:'43',E:'45'},a:'C'},
+  {s:'x² - 5x + 6 = 0. Nilai x?',o:{A:'x=1 atau x=6',B:'x=2 atau x=3',C:'x=-2 atau x=-3',D:'x=1 atau x=5',E:'x=2 atau x=4'},a:'B'},
+  {s:'Seseorang berjalan 3 km ke utara lalu 4 km ke timur. Jarak terdekat dari titik awal?',o:{A:'4 km',B:'5 km',C:'6 km',D:'7 km',E:'8 km'},a:'B'},
+  {s:'Jika P = 2(l+w) = 40 dan l = 12, berapa w?',o:{A:'6',B:'7',C:'8',D:'9',E:'10'},a:'C'},
+  {s:'Saham dibeli Rp 5.000/lembar, dividen Rp 400/lembar/tahun. Yield per tahun?',o:{A:'6%',B:'7%',C:'8%',D:'9%',E:'10%'},a:'C'},
+  {s:'Kecepatan cahaya ≈ 3×10⁸ m/s. Waktu cahaya dari matahari ke bumi (1,5×10¹¹ m)?',o:{A:'250 detik',B:'400 detik',C:'500 detik',D:'600 detik',E:'750 detik'},a:'C'},
+  {s:'Distribusi normal: mean=70, SD=10. Berapa % antara 60–80?',o:{A:'50%',B:'55%',C:'60%',D:'68%',E:'75%'},a:'D'},
+  {s:'Dalam sebuah perlombaan, tersedia 8 peserta untuk mengisi posisi Juara 1 dan Juara 2. Berapa banyak kemungkinan pasangan Juara 1 & 2 yang berbeda (urutan penting)?',o:{A:'28',B:'42',C:'56',D:'64',E:'72'},a:'C'},
+  {s:'Pinjaman Rp 10.000.000, bunga majemuk 5% per tahun, 3 tahun. Total?',o:{A:'Rp 11.500.000',B:'Rp 11.550.000',C:'Rp 11.576.250',D:'Rp 11.600.000',E:'Rp 12.000.000'},a:'C'},
+  {s:'Jika sin 30° = 0.5, berapa nilai sin² 30° + cos² 30°?',o:{A:'0.5',B:'0.75',C:'1',D:'1.25',E:'1.5'},a:'C'},
+  {s:'Dalam grafik fungsi f(x) = 2x + 3, nilai f(7) = ?',o:{A:'14',B:'15',C:'16',D:'17',E:'18'},a:'D'},
+  {s:'Median dari: 4, 7, 2, 9, 5, 1, 8, 3, 6 adalah?',o:{A:'4',B:'5',C:'6',D:'7',E:'8'},a:'B'},
+  {s:'Jika matriks A = [[2,1],[3,4]], determinan A?',o:{A:'3',B:'5',C:'7',D:'8',E:'11'},a:'B'},
+  {s:'Sebuah kubus volume 125 cm³. Panjang sisi?',o:{A:'4 cm',B:'5 cm',C:'6 cm',D:'7 cm',E:'8 cm'},a:'B'},
+  {s:'Persamaan garis melalui (2,3) dan (4,7). Gradiennya?',o:{A:'1',B:'1.5',C:'2',D:'2.5',E:'3'},a:'C'},
+],
+
+// ── AR: 40 PENALARAN ABSTRAK ──────────────────────────────
+PA:[
+  {s:'Deret: 1, 2, 4, 7, 11, 16. Angka selanjutnya?',o:{A:'20',B:'21',C:'22',D:'23',E:'24'},a:'C'},
+  {s:'Deret huruf: A, C, F, J, O. Huruf selanjutnya?',o:{A:'U',B:'V',C:'W',D:'X',E:'Y'},a:'A'},
+  {s:'Pola: 2, 3, 5, 8, 13, 21. Angka selanjutnya?',o:{A:'28',B:'30',C:'32',D:'34',E:'36'},a:'D'},
+  {s:'Deret: Z, W, T, Q, N. Huruf selanjutnya?',o:{A:'J',B:'K',C:'L',D:'M',E:'N'},a:'B'},
+  {s:'100, 91, 82, 73, 64. Pola? Selanjutnya?',o:{A:'53',B:'54',C:'55',D:'56',E:'57'},a:'C'},
+  {s:'Kode: A=1, B=2, ... Z=26. Nilai SUM?',o:{A:'55',B:'54',C:'53',D:'52',E:'51'},a:'B'},
+  {s:'Deret: 1, 1, 2, 4, 3, 9, 4, 16. Angka ke-9?',o:{A:'4',B:'5',C:'6',D:'7',E:'8'},a:'B'},
+  {s:'Warna berulang: Merah, Biru, Hijau, Kuning, Merah, Biru, Hijau... Warna ke-18?',o:{A:'Merah',B:'Biru',C:'Hijau',D:'Kuning',E:'Ungu'},a:'B'},
+  {s:'Deret: 2, 3, 5, 7, 11, 13, 17. Angka ke-8?',o:{A:'18',B:'19',C:'20',D:'21',E:'22'},a:'B'},
+  {s:'Matriks: baris 1 = (1,2,3), baris 2 = (4,5,6), baris 3 = (7,8,?). Nilai?',o:{A:'7',B:'8',C:'9',D:'10',E:'11'},a:'C'},
+  {s:'4, 12, 36, 108. Angka selanjutnya?',o:{A:'216',B:'324',C:'432',D:'540',E:'648'},a:'B'},
+  {s:'Kode jam: setiap huruf = posisi jam (A=1, B=2 … L=12). M,N,O = ?',o:{A:'1,2,3',B:'2,3,4',C:'3,4,5',D:'4,5,6',E:'5,6,7'},a:'A'},
+  {s:'Deret: 1, 3, 7, 15, 31. Angka selanjutnya?',o:{A:'55',B:'60',C:'63',D:'65',E:'70'},a:'C'},
+  {s:'Segitiga bertingkat: baris 1=1 titik, baris 2=3, baris 3=6, baris 4=10. Baris 5?',o:{A:'13',B:'14',C:'15',D:'16',E:'17'},a:'C'},
+  {s:'Jika △=3, ○=5, □=7. Nilai △+○+□?',o:{A:'13',B:'14',C:'15',D:'16',E:'17'},a:'C'},
+  {s:'Deret: 2, 6, 12, 20, 30, 42. Angka selanjutnya?',o:{A:'52',B:'54',C:'56',D:'58',E:'60'},a:'C'},
+  {s:'Kode: ■■○ = 221, ■○■ = 212. Nilai ○■■?',o:{A:'112',B:'122',C:'211',D:'221',E:'212'},a:'B'},
+  {s:'Deret: 1000, 500, 250, 125. Selanjutnya?',o:{A:'60',B:'62.5',C:'65',D:'70',E:'75'},a:'B'},
+  {s:'Jika A>B, B>C, C>D. Perbandingan A dan D?',o:{A:'A<D',B:'A=D',C:'A>D',D:'Tidak dapat ditentukan',E:'A≤D'},a:'C'},
+  {s:'Deret: 0, 1, 3, 6, 10, 15, 21. Angka selanjutnya?',o:{A:'26',B:'27',C:'28',D:'29',E:'30'},a:'C'},
+  {s:'Pola titik: Langkah 1 = 4 titik, Langkah 2 = 6 titik, Langkah 3 = 8 titik, Langkah 4 = 10 titik. Langkah ke-5 memiliki berapa titik?',o:{A:'12',B:'13',C:'14',D:'15',E:'16'},a:'A'},
+  {s:'Deret abjad terbalik: Z, Y, X, W. Huruf ke-8 dari deret ini?',o:{A:'T',B:'S',C:'R',D:'Q',E:'P'},a:'B'},
+  {s:'Bila hari ini Selasa, 100 hari lagi hari apa?',o:{A:'Senin',B:'Selasa',C:'Rabu',D:'Kamis',E:'Jumat'},a:'D'},
+  {s:'Kode biner: 1=●, 0=○. Representasi biner dari bilangan 5 adalah?',o:{A:'●○●',B:'○●○',C:'●●○',D:'○○●',E:'●○○'},a:'A'},
+  {s:'Jika fungsi f(n) = n² - n + 1, nilai f(5)?',o:{A:'19',B:'20',C:'21',D:'22',E:'23'},a:'C'},
+  {s:'Deret: 1/2, 1/4, 1/8, 1/16. Selanjutnya?',o:{A:'1/20',B:'1/24',C:'1/28',D:'1/32',E:'1/36'},a:'D'},
+  {s:'Kata kode: MAJU = PDMX. Dengan pola yang sama, kode RAPI = ?',o:{A:'UBSL',B:'UDSL',C:'UDTL',D:'VDSL',E:'UCSL'},a:'B'},
+  {s:'Deret: 7, 14, 28, 56, 112. Selanjutnya?',o:{A:'168',B:'196',C:'224',D:'252',E:'280'},a:'C'},
+  {s:'Jika semua P adalah Q, dan semua Q adalah R, maka...',o:{A:'Semua R adalah P',B:'Semua P adalah R',C:'Semua Q adalah P',D:'Beberapa P bukan R',E:'Tidak dapat disimpulkan'},a:'B'},
+  {s:'Deret: 4, 8, 7, 14, 13, 26, 25. Angka selanjutnya?',o:{A:'48',B:'50',C:'52',D:'54',E:'56'},a:'B'},
+  {s:'Sebuah persegi dibagi oleh kedua diagonalnya. Berapa TOTAL segitiga (kecil maupun gabungan) yang terbentuk?',o:{A:'4',B:'6',C:'8',D:'10',E:'12'},a:'C'},
+  {s:'Rotasi: gambar panah arah ↑ diputar 90° searah jarum jam 3 kali. Arah akhir?',o:{A:'↑',B:'→',C:'↓',D:'←',E:'↗'},a:'D'},
+  {s:'Deret huruf: AZ, BY, CX, DW. Pasangan selanjutnya?',o:{A:'EV',B:'EU',C:'FV',D:'FU',E:'EW'},a:'A'},
+  {s:'Kode: 1A, 2B, 3C, 4D. Pola ke-15?',o:{A:'15O',B:'15N',C:'14O',D:'15P',E:'16O'},a:'A'},
+  {s:'Deret: 1, 8, 27, 64, 125. Angka selanjutnya?',o:{A:'196',B:'210',C:'216',D:'225',E:'243'},a:'C'},
+  {s:'Jika hari ini tanggal 10 Maret, 45 hari lagi tanggal berapa?',o:{A:'23 April',B:'24 April',C:'25 April',D:'26 April',E:'27 April'},a:'C'},
+  {s:'Pola: setiap kelompok menambah 1 elemen: ●, ●●, ●●●... Berapa jumlah total elemen dari 6 kelompok pertama?',o:{A:'18',B:'19',C:'20',D:'21',E:'22'},a:'D'},
+  {s:'Kode angka: setiap huruf = (posisi)². A=1, B=4, C=9. Nilai D+E?',o:{A:'40',B:'41',C:'42',D:'43',E:'44'},a:'B'},
+  {s:'Deret: 3, 5, 9, 17, 33, 65. Angka selanjutnya?',o:{A:'119',B:'120',C:'121',D:'129',E:'131'},a:'D'},
+  {s:'Jika kunci = "MYRALIX" dan shift+3, kode pertama Y+3 = ?',o:{A:'B',B:'L',C:'M',D:'N',E:'P'},a:'A'},
+],
+
+// ── CS: 40 KECEPATAN & AKURASI KLERIKAL ──────────────────
+KA:[
+  // Format A: Pilih yang IDENTIK dengan referensi (25 soal)
+  {s:'Referensi: P-7734-BX. Pilih yang IDENTIK:',o:{A:'P-7743-BX',B:'P-7734-BX',C:'P-7734-Bx',D:'P-7734-XB',E:'Q-7734-BX'},a:'B'},
+  {s:'Referensi: SANTOSO, Budi — 082024. Pilih yang IDENTIK:',o:{A:'SANTOSA, Budi — 082024',B:'SANTOSO, Bodi — 082024',C:'SANTOSO, Budi — 082024',D:'SANTOSO, Budi — 082042',E:'SANTOSO, Budi — 08202'},a:'C'},
+  {s:'Referensi: INV/2024/03/1189. Pilih yang IDENTIK:',o:{A:'INV/2024/03/1198',B:'INV/2024/03/1189',C:'INV/2024/30/1189',D:'INV/2024/03/1889',E:'INV/2023/03/1189'},a:'B'},
+  {s:'Referensi: KTP-3273-0809-1991. Pilih yang IDENTIK:',o:{A:'KTP-3237-0809-1991',B:'KTP-3273-0809-1991',C:'KTP-3273-0890-1991',D:'KTP-3273-0809-1919',E:'KTP-3273-0908-1991'},a:'B'},
+  {s:'Referensi: XY-4429-MK. Pilih yang IDENTIK:',o:{A:'XY-4492-MK',B:'XY-4429-MK',C:'XY-4429-Mk',D:'XY-4429-KM',E:'YX-4429-MK'},a:'B'},
+  {s:'Referensi: WIJAYANTI, Sari L. Pilih yang IDENTIK:',o:{A:'WIJAYANTI, Sari I.',B:'WIJAYANTI, Sari L.',C:'WIAYANTI, Sari L.',D:'WIJAYANTI, Sar L.',E:'WIJAYANTI, Sari L '},a:'B'},
+  {s:'Referensi: REF/HR/2024/0751. Pilih yang IDENTIK:',o:{A:'REF/HR/2024/0715',B:'REF/HR/2024/0751',C:'REF/HH/2024/0751',D:'REF/HR/20240751',E:'REF/HR/2024/0571'},a:'B'},
+  {s:'Referensi: TRK-9981-22C. Pilih yang IDENTIK:',o:{A:'TRK-9981-22C',B:'TRK-9918-22C',C:'TRK-9981-22G',D:'TRK-9981-2C',E:'TRK-9981-22 C'},a:'A'},
+  {s:'Referensi: PRASETYO, Andi W. — S1. Pilih yang IDENTIK:',o:{A:'PRASETYO, Andi W — S1',B:'PRASETYO, Andi W. — S1',C:'PRASETIO, Andi W. — S1',D:'PRASETYO, Andi M. — S1',E:'PRASETYO, Andi W. — SI'},a:'B'},
+  {s:'Referensi: 15-Mar-2024 / BDG-0042. Pilih yang IDENTIK:',o:{A:'15-Mar-2024 / BDG-0042',B:'15-Mar-2024 / BGD-0042',C:'15-Mar-2024 / BDG-0024',D:'15-Mar-2042 / BDG-0042',E:'15-Mar-2024 / BDG-00042'},a:'A'},
+  {s:'Referensi: LMP-6634-KV. Pilih yang IDENTIK:',o:{A:'LMP-6634-KV',B:'LMP-6634-VK',C:'LMP-6634-Kv',D:'LMP-6643-KV',E:'LMP-6634-KW'},a:'A'},
+  {s:'Referensi: KUSUMA, Indah — 19980712. Pilih yang IDENTIK:',o:{A:'KUSUMA, Indah — 19980721',B:'KUSUMA, Indah — 19980712',C:'KUSUMA, Indah — 19890712',D:'KUSUMA, Indra — 19980712',E:'KUSUMA, Indah — 19981712'},a:'B'},
+  {s:'Referensi: SKU-A2293-TL. Pilih yang IDENTIK:',o:{A:'SKU-A2293-LT',B:'SKU-A2293-TL',C:'SKU-A2239-TL',D:'SKU-A2293-TI',E:'SKU-B2293-TL'},a:'B'},
+  {s:'Referensi: DOC/LGL/2024/4422. Pilih yang IDENTIK:',o:{A:'DOC/LGL/2024/4242',B:'DOC/LGL/2024/4422',C:'DOC/LGl/2024/4422',D:'DOC/LGL/2014/4422',E:'DOC/LGL/2024/4224'},a:'B'},
+  {s:'Referensi: ZX-8801-FGH. Pilih yang IDENTIK:',o:{A:'ZX-8801-FGH',B:'ZX-8801-FHG',C:'ZX-8810-FGH',D:'XZ-8801-FGH',E:'ZX-8801-FGN'},a:'A'},
+  {s:'Referensi: MAHENDRA, Bagas P. Pilih yang IDENTIK:',o:{A:'MAHENDRA, Bagas P',B:'MAHENDRA, Bagas P.',C:'MAHENDRA, Bagus P.',D:'MAHENDRA, Bagas Q.',E:'MAHINDRA, Bagas P.'},a:'B'},
+  {s:'Referensi: EMP/2024/MKT/0089. Pilih yang IDENTIK:',o:{A:'EMP/2024/MKT/0098',B:'EMP/2024/MKT/0089',C:'EMP/2024/MTK/0089',D:'EMP/2024/MKT/089',E:'EMP/2023/MKT/0089'},a:'B'},
+  {s:'Referensi: NIP-197605142003011002. Pilih yang IDENTIK:',o:{A:'NIP-197605142003011002',B:'NIP-197605142003011020',C:'NIP-197605142030011002',D:'NIP-197605142003001002',E:'NIP-197650142003011002'},a:'A'},
+  {s:'Referensi: Q7-RR-2291-KL. Pilih yang IDENTIK:',o:{A:'Q7-RR-2219-KL',B:'Q7-RR-2291-KL',C:'Q7-RR-2291-LK',D:'Q7-RR-2291-KI',E:'07-RR-2291-KL'},a:'B'},
+  {s:'Referensi: RAHAYU, Dwi A. — 14-Jul-1990. Pilih yang IDENTIK:',o:{A:'RAHAYU, Dwi A. — 14-Jun-1990',B:'RAHAYU, Dwi A. — 14-Jul-1990',C:'RAHAYU, Dwi A. — 14-Jul-1909',D:'RAHAYU, Dwi A — 14-Jul-1990',E:'RAHAYU, Dwie A. — 14-Jul-1990'},a:'B'},
+  {s:'Referensi: INV-B/2024/XII/0067. Pilih yang IDENTIK:',o:{A:'INV-B/2024/XII/0076',B:'INV-B/2024/XII/0067',C:'INV-B/2024/XII/067',D:'INV-B/2024/IXX/0067',E:'INV-B/2024/XlI/0067'},a:'B'},
+  {s:'Referensi: VND-4423-XY-09. Pilih yang IDENTIK:',o:{A:'VND-4423-XY-09',B:'VND-4432-XY-09',C:'VND-4423-YX-09',D:'VND-4423-XY-90',E:'VNK-4423-XY-09'},a:'A'},
+  {s:'Referensi: HARSONO, Bambang T. Pilih yang IDENTIK:',o:{A:'HARSONO, Bambang T',B:'HARSONO, Bambang T.',C:'HARSONO, Bambanq T.',D:'HASSONO, Bambang T.',E:'HARSONO, Bambamg T.'},a:'B'},
+  {s:'Referensi: PO/2024/VI/3341-A. Pilih yang IDENTIK:',o:{A:'PO/2024/VI/3314-A',B:'PO/2024/VI/3341-A',C:'PO/2024/VI/3341-B',D:'PO/2024/IV/3341-A',E:'PO/2024/VI/33411-A'},a:'B'},
+  {s:'Referensi: MBL-7711-ZZ-3. Pilih yang IDENTIK:',o:{A:'MBL-7711-ZZ-3',B:'MBL-7711-ZZ-3.',C:'MBL-7711-ZZ-8',D:'MBL-7711-ZZ3',E:'MBL-7117-ZZ-3'},a:'A'},
+  // Format B: Pilih yang BERBEDA dari keempat lainnya (15 soal)
+  {s:'Pilih kode yang BERBEDA dari empat lainnya:',o:{A:'BG-2291-MK',B:'BG-2291-MK',C:'BG-2291-MK',D:'BG-2921-MK',E:'BG-2291-MK'},a:'D'},
+  {s:'Pilih data yang BERBEDA dari empat lainnya:',o:{A:'PUTRA, Riko L. — 2024',B:'PUTRA, Riko L. — 2024',C:'PUTRA, Riko L. — 2024',D:'PUTRA, Riko L. — 2024',E:'PUTRA, Rico L. — 2024'},a:'E'},
+  {s:'Pilih kode yang BERBEDA dari empat lainnya:',o:{A:'REF-4412-AX',B:'REF-4412-AX',C:'REF-4412-AX',D:'REF-4412-AX',E:'REF-4412-XA'},a:'E'},
+  {s:'Pilih nomor faktur yang BERBEDA dari empat lainnya:',o:{A:'INV/2024/07/0881',B:'INV/2024/07/0881',C:'INV/2024/07/0881',D:'INV/2024/07/0818',E:'INV/2024/07/0881'},a:'D'},
+  {s:'Pilih nama yang BERBEDA dari empat lainnya:',o:{A:'SUSANTO, Heri W.',B:'SUSANTO, Heri W.',C:'SUSANTO, Heri W.',D:'SUSANTO, Heri W.',E:'SUSANTO, Heri W,'},a:'E'},
+  {s:'Pilih kode yang BERBEDA dari empat lainnya:',o:{A:'TR-9920-CF',B:'TR-9920-CF',C:'TR-9920-FC',D:'TR-9920-CF',E:'TR-9920-CF'},a:'C'},
+  {s:'Pilih nomor yang BERBEDA dari empat lainnya:',o:{A:'3311-2294-5567',B:'3311-2294-5567',C:'3311-2294-5567',D:'3311-2294-5567',E:'3311-2294-5576'},a:'E'},
+  {s:'Pilih kode produk yang BERBEDA dari empat lainnya:',o:{A:'SKU-FG-88-010',B:'SKU-FG-88-001',C:'SKU-FG-88-001',D:'SKU-FG-88-001',E:'SKU-FG-88-001'},a:'A'},
+  {s:'Pilih tanggal yang BERBEDA dari empat lainnya:',o:{A:'2024-09-15',B:'2024-09-15',C:'2024-09-15',D:'2024-09-51',E:'2024-09-15'},a:'D'},
+  {s:'Pilih nama kota yang BERBEDA dari empat lainnya:',o:{A:'Bandung, Jawa Barat',B:'Bandung, Jawa Barat',C:'Bandung, Jawa Barat',D:'Bandung, Jawa Barat',E:'Bandung, Jawa Baret'},a:'E'},
+  {s:'Pilih kode rekening yang BERBEDA dari empat lainnya:',o:{A:'1234-5678-9012',B:'1234-5678-9012',C:'1234-5678-9012',D:'1234-5687-9012',E:'1234-5678-9012'},a:'D'},
+  {s:'Pilih kode departemen yang BERBEDA dari empat lainnya:',o:{A:'HR/MGT/001',B:'HR/MGT/001',C:'HR/MGT/001',D:'HR/MGT/001',E:'HR/MKT/001'},a:'E'},
+  {s:'Pilih nomor faktur yang BERBEDA dari empat lainnya:',o:{A:'FK-2024-0033-B',B:'FK-2024-0330-B',C:'FK-2024-0033-B',D:'FK-2024-0033-B',E:'FK-2024-0033-B'},a:'B'},
+  {s:'Pilih kode item yang BERBEDA dari empat lainnya:',o:{A:'PRD-9912-AA',B:'PRD-9912-AA',C:'PRD-9921-AA',D:'PRD-9912-AA',E:'PRD-9912-AA'},a:'C'},
+  {s:'Pilih data karyawan yang BERBEDA dari empat lainnya:',o:{A:'NUGROHO, Sigit — HR — Lv.3',B:'NUGROHO, Sigit — HR — Lv.3',C:'NUGROHO, Sigit — HR — Lv.3',D:'NUGROHO, Sigit — HR — Lv.3',E:'NUGROHO, Sigit — HH — Lv.3'},a:'E'},
+],
+};;
+const DISPLAY_QS = WPT_RAW_QS;
+const GI_QS = DISPLAY_QS;
+const QS_MAP = {GI:GI_QS, PV:DATQS.PV, KN:DATQS.KN, PA:DATQS.PA, KA:DATQS.KA}
+function normalizeAns(raw,qn){
+  if(!raw&&raw!==0)return'';
+  let s=String(raw).trim().toLowerCase().replace(/\s+/g,' ');
+  s=s.replace(/rp\.?|rupiah|dolar|\$|kaki|cm|meter/g,'').trim();
+  if(s.includes(','))return s.split(',').map(p=>p.trim()).sort().join(',');
+  return s;
+}
+function checkAnswer(qn,userAns){
+  const norm=normalizeAns(userAns,qn);
+  const key=String(KEYS[qn]).trim().toLowerCase();
+  if(norm===key)return true;
+  const specials={4:['tidak','t','no','n'],22:['s','salah'],32:['ya','y','yes'],27:['1/30','0.03','0.033','0.0333'],31:['1/9','0.111','0.1111'],8:['0.125','1/8','⅛'],35:['0.25','1/4','¼'],37:['0.0625','1/16'],43:['0.33','.33']};
+  if(specials[qn]&&specials[qn].includes(norm))return true;
+  if(qn===22&&(norm==='s'||norm.startsWith('s ')||norm==='salah'))return true;
+  return false;
+}
+
+// ── BIG FIVE DATA ──
+const TRAITS={
+  E:{name:'Extraversion',nameID:'Ekstraversion',color:'#0369A1',bg:'#EFF6FF',
+    low:'Introvert, cenderung pendiam, lebih menyukai kesendirian, dan kurang menonjolkan diri di lingkungan sosial.',
+    mid:'Menunjukkan keseimbangan antara ekstroversi dan introversi — nyaman di keramaian maupun kesendirian tergantung situasi.',
+    high:'Memiliki tingkat motivasi yang tinggi dalam bergaul, menjalin hubungan dengan sesama dan cenderung dominan dalam lingkungannya. Aktif, enerjik, dan antusias.',
+    keywords:['Aktif Berbicara','Penuh Tenaga','Bergaul','Antusias','Terbuka'],
+    tips:'Tingkat tinggi: manfaatkan energi sosial untuk memimpin dan menginspirasi tim. Tingkat rendah: kerjakan tugas yang membutuhkan fokus mendalam.'},
+  A:{name:'Agreeableness',nameID:'Agreeableness',color:'#059669',bg:'#ECFDF5',
+    low:'Cenderung kompetitif, skeptis, dan lebih mengutamakan kepentingan sendiri. Mungkin sulit berkompromi dalam situasi kelompok.',
+    mid:'Menunjukkan keseimbangan antara kepercayaan dan skeptisisme — kooperatif namun tetap asertif dalam mempertahankan pendapat.',
+    high:'Ramah, memiliki kepribadian yang kooperatif, menghindari konflik dan memiliki kecenderungan untuk mengikuti orang lain. Mudah memaafkan dan penuh perhatian.',
+    keywords:['Kooperatif','Ramah','Memaafkan','Dipercaya','Empatik'],
+    tips:'Tingkat tinggi: jadikan kekuatan dalam membangun hubungan tim. Tingkat rendah: gunakan ketegasan untuk negosiasi dan pengambilan keputusan.'},
+  C:{name:'Conscientiousness',nameID:'Conscientiousness',color:'#0891B2',bg:'#ECFEFF',
+    low:'Cenderung spontan, fleksibel, dan menyukai kebebasan dari prosedur ketat. Mungkin kurang teratur dalam pengelolaan waktu dan tugas.',
+    mid:'Menunjukkan tingkat kedisiplinan yang seimbang — terorganisir dalam hal penting namun fleksibel dalam hal lainnya.',
+    high:'Memiliki kontrol terhadap lingkungan sosial, berpikir sebelum bertindak, menunda kepuasan, mengikuti peraturan dan norma, terencana, terorganisir, dan memprioritaskan tugas.',
+    keywords:['Terorganisir','Disiplin','Dapat Diandalkan','Terencana','Efisien'],
+    tips:'Tingkat tinggi: ideal untuk peran yang membutuhkan presisi dan manajemen. Tingkat rendah: cocok untuk pekerjaan kreatif yang membutuhkan fleksibilitas.'},
+  N:{name:'Neuroticism',nameID:'Neurotisisme',color:'#DC2626',bg:'#FEF2F2',
+    low:'Stabil secara emosional, tenang, dan tidak mudah dipengaruhi tekanan. Mampu mengatasi stres dengan efektif.',
+    mid:'Dapat mengendalikan diri meskipun pada saat cemas. Menunjukkan tingkat stabilitas emosional yang cukup baik dengan sesekali merasakan tekanan.',
+    high:'Mudah mengalami kecemasan, kekhawatiran berlebihan, dan perubahan suasana hati. Perlu dukungan lebih dalam menghadapi situasi penuh tekanan.',
+    keywords:['Emosi Stabil','Tenang','Kecemasan','Ketegangan','Suasana Hati'],
+    tips:'Tingkat rendah: manfaatkan stabilitas emosi untuk peran kepemimpinan di bawah tekanan. Tingkat tinggi: kembangkan strategi manajemen stres dan mindfulness.'},
+  O:{name:'Openness',nameID:'Openness',color:'#7C3AED',bg:'#F5F3FF',
+    low:'Cenderung konvensional, praktis, dan menyukai hal-hal yang sudah familiar. Lebih menyukai rutinitas dan prosedur yang sudah terbukti.',
+    mid:'Mudah bertoleransi, memiliki kapasitas untuk menyerap informasi baru sambil tetap menghargai tradisi dan cara-cara yang sudah terbukti.',
+    high:'Mudah bertoleransi, memiliki kapasitas untuk menyerap informasi, menjadi sangat fokus dan mampu untuk waspada pada berbagai perasaan, pemikiran dan impulsivitas. Kreatif dan imajinatif.',
+    keywords:['Kreatif','Imajinatif','Ingin Tahu','Estetika','Inovatif'],
+    tips:'Tingkat tinggi: cocok untuk peran yang membutuhkan kreativitas dan inovasi. Tingkat rendah: unggul dalam pekerjaan yang membutuhkan ketelitian dan konsistensi.'},
+};;
+const TRAIT_MAX={E:40,A:45,C:45,N:40,O:50};
+const LIKERT=['Sangat Tidak Sesuai','Tidak Sesuai','Netral','Sesuai','Sangat Sesuai'];
+const BF_ITEMS = [
+  // [qnum, trait, reversed]
+  [1,'E',false],[2,'A',true],[3,'C',false],[4,'N',false],[5,'O',false],
+  [6,'E',true],[7,'A',false],[8,'C',true],[9,'N',true],[10,'O',false],
+  [11,'E',false],[12,'A',true],[13,'C',false],[14,'N',false],[15,'O',false],
+  [16,'E',false],[17,'A',false],[18,'C',true],[19,'N',false],[20,'O',false],
+  [21,'E',true],[22,'A',false],[23,'C',true],[24,'N',true],[25,'O',false],
+  [26,'E',false],[27,'A',true],[28,'C',false],[29,'N',false],[30,'O',false],
+  [31,'E',true],[32,'A',false],[33,'C',false],[34,'N',true],[35,'O',true],
+  [36,'E',false],[37,'A',true],[38,'C',false],[39,'N',false],[40,'O',false],
+  [41,'O',true],[42,'A',false],[43,'C',true],[44,'O',false],
+];
+const BF_QS=[
+  'Aktif Berbicara','Mencari Kelemahan Orang Lain','Mengerjakan Tugas dengan Serius',
+  'Merasa Tertekan','Orang Unik yang Penuh dengan Gagasan Baru','Suka Menyendiri',
+  'Suka Menolong dan Tidak Iri pada Orang Lain','Bertindak Asal-asalan',
+  'Orang yang Santai dan Mampu Mengatasi Stres',
+  'Memiliki Rasa Ingin Tahu Terhadap Sesuatu yang Berbeda',
+  'Penuh Tenaga','Berselisih dengan Orang Lain','Pekerja yang Dapat Diandalkan',
+  'Mudah Merasa Tegang','Orang Yang Berbakat dan Pemikir','Dapat Membangkitkan Kegembiraan',
+  'Mudah Memaafkan','Cenderung Berkerja Tidak Teratur','Terlalu Sering Khawatir',
+  'Memiliki Imajinasi yang Aktif','Cenderung Pendiam','Secara Umum Dapat Dipercaya',
+  'Cenderung Pemalas','Memiliki Perasaan yang Stabil dan Tidak Mudah Sedih','Kreatif',
+  'Terbuka','Dingin dan Kurang Bersahabat','Dapat Memusatkan Diri Pada Pekerjaan',
+  'Dipengaruhi Oleh Suasana Hati','Menyukai Artistik dan Estetika','Orang Yang Pemalu',
+  'Ramah dan Penuh Perhatian','Melakukan Sesuatu dengan Efisien',
+  'Merasa Tenang Meski dalam Situasi Menegangkan','Menyukai Pekerjaan Yang Rutin',
+  'Suka Bergaul','Kadang Berperilaku Kasar','Merencanakan Dan Memusatkan Pada Rencana Tersebut',
+  'Mudah Merasa Cemas','Merefleksi dan Mengolah Gagasan Baru','Kurang Tertarik dengan Seni',
+  'Menyukai Bekerjasama dengan Orang Lain','Memiliki Perhatian yang Mudah Terpecah',
+  'Memiliki Keahlian dalam Kesenian dan Literatur',
+];
+
+// ── DISC DATA ──
+const GROUPS = [
+  {no:1, options:[
+    {t:'Petualang, suka mengambil resiko', p:'*', k:'D'},
+    {t:'Mudah bergaul, ramah, mudah setuju', p:'S', k:'S'},
+    {t:'Mempercayai, percaya pada orang lain', p:'I', k:'I'},
+    {t:'Penuh toleransi, menghormati orang lain', p:'C', k:'C'}]},
+  {no:2, options:[
+    {t:'Kerjakan bersama-sama', p:'S', k:'S'},
+    {t:'Kerjakan dengan benar, ketepatan sangat penting', p:'D', k:'D'},
+    {t:'Yang penting adalah hasil', p:'C', k:'*'},
+    {t:'Buat agar menyenangkan', p:'*', k:'I'}]},
+  {no:3, options:[
+    {t:'Sosial, pertemuan kelompok', p:'D', k:'*'},
+    {t:'Keselamatan, keamanan', p:'*', k:'S'},
+    {t:'Pendidikan, kebudayaan', p:'I', k:'I'},
+    {t:'Prestasi, penghargaan', p:'*', k:'C'}]},
+  {no:4, options:[
+    {t:'Pusat perhatian, suka bersosialisasi', p:'*', k:'I'},
+    {t:'Pendamai, membawa ketenangan', p:'D', k:'D'},
+    {t:'Visioner, pandangan ke masa depan', p:'S', k:'S'},
+    {t:'Lembut, tertutup', p:'C', k:'C'}]},
+  {no:5, options:[
+    {t:'Menahan diri, bisa hidup tanpa memiliki', p:'I', k:'*'},
+    {t:'Membeli karena dorongan hati/impuls', p:'D', k:'D'},
+    {t:'Akan menunggu, tanpa tekanan', p:'S', k:'S'},
+    {t:'Akan membeli apa yang diinginkan', p:'*', k:'C'}]},
+  {no:6, options:[
+    {t:'Suka bergaul, antusias', p:'D', k:'D'},
+    {t:'Waspada, berhati-hati', p:'S', k:'S'},
+    {t:'Mudah diterka, konsisten', p:'I', k:'I'},
+    {t:'Mengambil kendali, bersikap langsung/direct', p:'C', k:'*'}]},
+  {no:7, options:[
+    {t:'Ingin menetapkan goal/tujuan', p:'*', k:'D'},
+    {t:'Berusaha mencapai kesempurnaan', p:'I', k:'I'},
+    {t:'Menjadi bagian dari tim/kelompok', p:'*', k:'C'},
+    {t:'Menyemangati orang lain', p:'S', k:'*'}]},
+  {no:8, options:[
+    {t:'Bersahabat, mudah bergaul', p:'I', k:'I'},
+    {t:'Unik, bosan dari rutinitas', p:'S', k:'S'},
+    {t:'Aktif melakukan perubahan', p:'C', k:'C'},
+    {t:'Ingin segala sesuatu akurat dan pasti', p:'D', k:'D'}]},
+  {no:9, options:[
+    {t:'Melaksanakan sesuai perintah', p:'C', k:'C'},
+    {t:'Bersemangat, riang', p:'*', k:'I'},
+    {t:'Sulit dikalahkan/ditundukkan', p:'D', k:'D'},
+    {t:'Ingin keteraturan, rapi', p:'*', k:'S'}]},
+  {no:10, options:[
+    {t:'Memendam perasaan dalam hati', p:'D', k:'*'},
+    {t:'Berani menghadapi oposisi', p:'I', k:'C'},
+    {t:'Menyampaikan sudut pandang pribadi', p:'S', k:'*'},
+    {t:'Menjadi frustrasi', p:'*', k:'D'}]},
+  {no:11, options:[
+    {t:'Berubah pada menit-menit terakhir', p:'D', k:'D'},
+    {t:'Mendesak/memaksa, agak kasar', p:'C', k:'C'},
+    {t:'Penuh dengan hal-hal kecil/detail', p:'*', k:'I'},
+    {t:'Mengalah, tidak suka pertentangan', p:'S', k:'*'}]},
+  {no:12, options:[
+    {t:'Saya akan pengaruhi/bujuk mereka', p:'I', k:'I'},
+    {t:'Saya akan pimpin mereka', p:'*', k:'S'},
+    {t:'Saya akan ikut/mengikuti', p:'C', k:'*'},
+    {t:'Saya akan mendapatkan fakta-faktanya', p:'D', k:'D'}]},
+  {no:13, options:[
+    {t:'Berusaha patuh pada peraturan', p:'*', k:'C'},
+    {t:'Cepat, penuh keyakinan', p:'S', k:'*'},
+    {t:'Hidup/lincah, banyak bicara', p:'D', k:'D'},
+    {t:'Berusaha menjaga keseimbangan', p:'I', k:'*'}]},
+  {no:14, options:[
+    {t:'Ingin kemajuan/peningkatan', p:'C', k:'C'},
+    {t:'Puas dengan keadaan, tenang/mudah puas', p:'I', k:'I'},
+    {t:'Menunjukkan perasaan dengan terbuka', p:'S', k:'*'},
+    {t:'Rendah hati, sederhana', p:'D', k:'D'}]},
+  {no:15, options:[
+    {t:'Memikirkan orang dahulu', p:'S', k:'S'},
+    {t:'Suka bersaing/kompetitif, suka tantangan', p:'C', k:'*'},
+    {t:'Optimis, berpikir positif', p:'I', k:'I'},
+    {t:'Sistematis, berpikir logis', p:'D', k:'D'}]},
+  {no:16, options:[
+    {t:'Mengelola waktu dengan efisien', p:'*', k:'D'},
+    {t:'Sering terburu-buru, merasa ditekan', p:'C', k:'*'},
+    {t:'Suka menyelesaikan hal yang sudah dimulai', p:'S', k:'S'},
+    {t:'Hal-hal sosial adalah penting', p:'I', k:'I'}]},
+  {no:17, options:[
+    {t:'Tenang, pendiam, tertutup', p:'*', k:'C'},
+    {t:'Menyolok, berani', p:'I', k:'*'},
+    {t:'Gembira, bebas, riang', p:'D', k:'D'},
+    {t:'Menyenangkan, baik hati', p:'S', k:'S'}]},
+  {no:18, options:[
+    {t:'Pendiam, tertutup, tenang', p:'C', k:'*'},
+    {t:'Menyenangkan orang lain, ramah, penurut', p:'D', k:'D'},
+    {t:'Pemberani, tegas', p:'*', k:'S'},
+    {t:'Tertawa lepas, hidup', p:'*', k:'I'}]},
+  {no:19, options:[
+    {t:'Cenderung terlalu banyak berjanji', p:'S', k:'*'},
+    {t:'Tidak takut untuk berkelahi', p:'*', k:'C'},
+    {t:'Menolak perubahan yang mendadak', p:'D', k:'D'},
+    {t:'Mundur apabila berada di bawah tekanan', p:'I', k:'I'}]},
+  {no:20, options:[
+    {t:'Menerima penghargaan atas pencapaian target', p:'C', k:'*'},
+    {t:'Menuju petualangan baru', p:'I', k:'I'},
+    {t:'Menyediakan waktu untuk orang lain', p:'D', k:'*'},
+    {t:'Merencanakan masa depan, bersiap-siap', p:'S', k:'S'}]},
+  {no:21, options:[
+    {t:'Ingin wewenang/kekuasaan lebih', p:'S', k:'S'},
+    {t:'Ingin kesempatan baru', p:'D', k:'D'},
+    {t:'Ingin arahan yang jelas', p:'*', k:'C'},
+    {t:'Menghindari perselisihan/konflik', p:'I', k:'I'}]},
+  {no:22, options:[
+    {t:'Penganalisa yang baik', p:'D', k:'D'},
+    {t:'Pendengar yang baik', p:'*', k:'I'},
+    {t:'Pendelegasi yang baik/pandai membagi tugas', p:'C', k:'C'},
+    {t:'Penyemangat/pendukung yang baik', p:'S', k:'S'}]},
+  {no:23, options:[
+    {t:'Peraturan membuat menjadi menyenangkan', p:'S', k:'S'},
+    {t:'Peraturan membuat menjadi aman', p:'*', k:'C'},
+    {t:'Peraturan perlu diuji', p:'*', k:'D'},
+    {t:'Peraturan membuat menjadi adil', p:'I', k:'*'}]},
+  {no:24, options:[
+    {t:'Kreatif, unik', p:'I', k:'I'},
+    {t:'Memegang teguh standar yang tinggi, akurat', p:'C', k:'*'},
+    {t:'Dapat dipercaya dan diandalkan', p:'*', k:'S'},
+    {t:'Berorientasi pada hasil/profil/untung', p:'D', k:'*'}]}
+];
+const DISC_PROFILES = {
+  D:{
+    letter:'D', name:'Dominance', color:'#DC2626', colorLt:'#FEF2F2',
+    tagline:'Pemimpin yang Tegas dan Berorientasi Hasil',
+    short:'Individualis, kompetitif, berorientasi pada tugas, menyukai tantangan dan kebebasan',
+    desc:'Anda memiliki tingkat ketegasan yang tinggi dan tingkat pengendalian yang tinggi. Ketegasan yang tinggi membuat Anda menjadi kurang sabar melihat hasil — dengan kata lain, ingin cepat memperoleh hasil, dan hal ini menimbulkan perasaan akan kepentingan (sense of urgency) terhadap tugas. Pengendalian diri Anda yang kuat membuat Anda bersikap individual dan kurang terbuka kepada orang lain, namun menimbulkan motivasi diri yang kuat dan lebih suka bekerja secara mandiri. Orang lain akan cenderung memandang Anda sebagai seseorang yang tertutup, menuntut, suka bersaing dan ambisius.',
+    strengths:['Langsung dan to the point','Cepat membuat keputusan','Menyukai perubahan dan inovasi','Menetapkan banyak sasaran','Berani mengambil resiko','Inovatif, kompetitif, efisien','Menghargai waktu','Memiliki inisiatif yang kuat'],
+    weaknesses:['Suka melawan/mendebat','Selalu tergesa-gesa','Cenderung melanggar peraturan','Tidak sabar dengan orang lain','Kurang suka mendengar pendapat orang lain','Kurang taktis dan diplomasi','Terlalu berfokus pada tugas'],
+    tendencies:['Keinginan memperoleh hasil secara langsung','Cepat mengambil tindakan','Menyukai tantangan dan hal-hal baru','Cepat membuat keputusan','Tidak menyukai status quo','Memiliki tanggung jawab dan mengambil wewenang','Memecahkan masalah dengan efisien'],
+    environment:['Kekuasaan dan kewenangan','Kewibawaan dan tantangan','Kesempatan pencapaian dan pengembangan individual','Lingkup operasional yang luas','Jawaban langsung (direct answers)','Kebebasan dari pengendalian dan supervisi','Aktivitas-aktivitas baru dan bervariasi'],
+    improvements:['Mempertimbangkan setuju dan tidak setuju','Memperhitungkan resiko dengan cermat','Menggunakan prinsip kehati-hatian','Menciptakan lingkungan yang dapat diprediksi','Mempelajari fakta-fakta terlebih dahulu','Berhati-hati sebelum memutuskan','Mengakui dan menghargai kebutuhan orang lain','Memahami bahwa Anda membutuhkan bantuan orang lain'],
+    positions:'Attorney, Peneliti, Sales Representative, Planning Consultant, Produksi (Direktur, Manajer, Supervisor), Teknolog, Strategic Planning, Trouble Shooting, Marketing Services, Konsultan, Engineering (Direktur, Manajer, Supervisor), Wirausaha.'
+  },
+  I:{
+    letter:'I', name:'Influence', color:'#D97706', colorLt:'#FFFBEB',
+    tagline:'Komunikator yang Antusias dan Penuh Semangat',
+    short:'Sosial, antusias, optimis, berorientasi pada hubungan manusia dan kerja tim',
+    desc:'Anda memiliki tingkat ketegasan yang tinggi dan tingkat keterbukaan yang tinggi. Tingkat keterbukaan yang tinggi membuat Anda lebih sosial, bersahabat, dapat menerima pendapat orang lain dan suka berkelompok. Sedangkan ketegasan yang tinggi membuat Anda antusias dalam melaksanakan tugas. Namun dalam kenyataan Anda lebih mementingkan hubungan positif dengan orang lain dibandingkan penyelesaian tugas. Anda dikenal sebagai individu yang inspirasional dan pandai memotivasi orang lain.',
+    strengths:['Cepat membuat keputusan','Optimistik dan penuh semangat','Kreatif dalam mencari solusi masalah','Memotivasi orang lain menuju sasaran','Memiliki rasa humor yang positif','Senang bekerja sama dalam tim','Mampu mengatasi konflik','Pandai berbicara dan menjual ide'],
+    weaknesses:['Impulsif (mengandalkan perasaan)','Tidak sistematis','Kurang mampu menentukan sasaran secara baik','Terlalu mempercayai orang lain','Kurang memperhatikan detail','Cenderung memberikan delegasi berlebihan','Pendengar situasional (bergantung apakah tertarik)'],
+    tendencies:['Menghubungi dan berinteraksi dengan orang lain','Membuat kesan yang menarik dan meyakinkan','Pandai berbicara dan mengemukakan pendapat','Menciptakan lingkungan yang bergairah','Membangkitkan antusiasme dan semangat','Menghibur dan menjamu orang lain','Memandang orang dan situasi dengan optimisme'],
+    environment:['Popularitas dan pengakuan sosial','Pengakuan publik terhadap kemampuan','Kebebasan berekspresi','Aktivitas kelompok di luar pekerjaan','Hubungan demokratik','Kebebasan dari pengendalian yang terlalu spesifik','Pembimbingan dan pelatihan','Suasana kerja yang menyenangkan'],
+    improvements:['Berkonsentrasi pada penyelesaian tugas','Memperhitungkan resiko','Menggunakan prinsip kehati-hatian','Menciptakan lingkungan yang dapat diprediksi','Mempelajari fakta-fakta','Berhati-hati sebelum memutuskan','Menjaga komitmen terhadap janji','Lebih sistematis dalam penyelesaian pekerjaan'],
+    positions:'Sales dan Marketing (Direktur, Manajer, Sales Person), Public Relations, Recruitment Consultant, Politikus, Direktur, Wirausaha, Hotelier, Travel Agent, Trainer, Hospitality, Pengacara, Motivator, Team Leader, Dosen, Theatrical Agent, General Management.'
+  },
+  S:{
+    letter:'S', name:'Steadiness', color:'#16A34A', colorLt:'#F0FDF4',
+    tagline:'Pendukung Setia yang Stabil dan Dapat Diandalkan',
+    short:'Sabar, loyal, konsisten, berorientasi pada hubungan jangka panjang dan stabilitas',
+    desc:'Anda memiliki tingkat penerimaan yang tinggi dan tingkat keterbukaan yang tinggi. Orang-orang yang memiliki tingkat penerimaan tinggi tidak menunjukan tingkat energi yang cukup untuk bersikap tegas, sehingga Anda tampak lebih sabar, mendatar, tidak menuntut dan tenang. Orang tipe S tidak menyukai perubahan atau ketidakpastian, sehingga mereka merencanakan tindakan secara berhati-hati dan cenderung bekerja secara gigih dan terus menerus pada tugas-tugas yang telah ditetapkan. Anda memiliki tingkat keterbukaan yang tinggi untuk menerima orang lain yang ditunjukan dalam keramah-tamahan dan kemurahan hati.',
+    strengths:['Dapat dipercaya dan diandalkan','Bekerja keras untuk suatu alasan','Pendengar yang ulung','Sabar dan empati','Mampu mendamaikan orang yang berkonflik','Senang bekerja sama dalam tim','Logika dan seksama','Mampu membangun hubungan jangka panjang'],
+    weaknesses:['Tidak suka dikritik','Cenderung tidak menyukai perubahan','Kurang memiliki inisiatif untuk aktivitas baru','Terlalu mempercayai orang lain','Cenderung tidak mampu menetapkan prioritas','Kurang sensitif terhadap hal-hal yang kurang penting','Kurang teliti dan hati-hati'],
+    tendencies:['Melaksanakan tugas secara konsisten','Menunjukan kesabaran','Mengembangkan keterampilan khusus','Senang membantu orang lain','Menunjukan loyalitas','Menjadi pendengar yang baik','Menciptakan lingkungan kerja yang stabil dan harmonis'],
+    environment:['Penghargaan atas kesetiaan','Pengakuan atas kontribusi','Kestabilan lingkungan kerja','Aktivitas kelompok yang menyenangkan','Hubungan yang demokratik','Kebebasan dari perubahan mendadak','Pembimbingan yang personal'],
+    improvements:['Berkonsentrasi pada tugas','Memperhitungkan resiko','Berani mengambil inisiatif','Menciptakan target yang terukur','Mempelajari fakta-fakta','Lebih berani berpendapat dan menyuarakan ide','Bersedia menghadapi perubahan','Lebih tegas dalam menetapkan prioritas'],
+    positions:'Administrative Work, Engineering and Production (Sales, Services, Project), Chef, Accounting, Telemarketing/Tele-Sales, Research and Development, Administrator, Retail-General, Sales-General, Accounting-General, Service-General, Landscape Gardener.'
+  },
+  C:{
+    letter:'C', name:'Compliance', color:'#2563EB', colorLt:'#EFF6FF',
+    tagline:'Pemikir Analitis yang Presisi dan Terstruktur',
+    short:'Teliti, sistematis, analitis, menjaga standar tinggi, berorientasi pada kualitas dan akurasi',
+    desc:'Anda memiliki tingkat penerimaan yang tinggi dan tingkat pengendalian yang tinggi. Orang-orang yang memiliki tingkat penerimaan tinggi tidak menunjukan tingkat energi yang cukup untuk bersikap tegas, sehingga Anda tampak kurang tegas dan bersikap reaktif. Namun tingkat pengendalian yang tinggi membuat Anda bersikap individual dan lebih suka bekerja secara mandiri. Orang-orang tipe C cenderung melihat kehidupan dalam bentuk struktur dan peraturan-peraturan dan berusaha untuk mencapai keakuratan dan ketelitian setinggi mungkin.',
+    strengths:['Berfikir objektif dan analitis','Hati-hati dan teliti','Mempertahankan standar tinggi','Menanyakan hal-hal yang benar','Keterampilan diplomatik','Memberikan perhatian sampai terperinci','Logika dan seksama','Menyelesaikan masalah secara ilmiah'],
+    weaknesses:['Ragu-ragu dalam bertindak','Cenderung rewel terhadap hal-hal detail','Cenderung bersikap defensif bila dikritik','Memilih-milih orang yang seperti dirinya','Cenderung hanya memberikan instruksi tanpa menjelaskan','Terlalu perfeksionis'],
+    tendencies:['Mengikuti standar-standar dan petunjuk-petunjuk','Berkonsentrasi pada hal-hal terperinci','Berpikir analitikal','Memeriksa keakuratan dan menganalisis kinerja','Menggunakan pendekatan sistematik','Menjadi kaku atau formal ketika berhubungan dengan orang lain'],
+    environment:['Ekspresi kinerja yang terdefinisi secara jelas','Nilai-nilai kualitas dan akurasi','Kesempatan untuk menunjukan keahlian','Pengendalian terhadap faktor-faktor yang mempengaruhi kinerja','Kesempatan untuk bertanya mengapa?','Pengakuan terhadap keterampilan khusus beserta pencapaiannya'],
+    improvements:['Mendelegasikan tugas-tugas penting','Cepat membuat keputusan','Menggunakan kebijakan hanya sebagai petunjuk','Berkompromi dengan orang lain','Memulai dan memfasilitasi diskusi','Mendukung kerjasama','Membuat perencanaan secara hati-hati','Mengembangkan toleransi untuk menghadapi konflik'],
+    positions:'Planner, Engineer (Installation, Technical), Technical/Research (Chemist Technician), Academic, Statistician, Government Worker, IT Management, Quality Controller, Prison Officer, Architect, Medical Specialist, Psychologist, Accountant.'
+  }
+};;
+function computeScores(answers){
+  const line1={D:0,I:0,S:0,C:0}; // Most / Adaptive
+  const line2={D:0,I:0,S:0,C:0}; // Least / Natural (under pressure)
+  answers.forEach((ans,gi)=>{
+    const group=GROUPS[gi];
+    if(ans.m!==null){
+      const dim=group.options[ans.m].p;
+      if(dim!=='*')line1[dim]++;
+    }
+    if(ans.l!==null){
+      const dim=group.options[ans.l].k;
+      if(dim!=='*')line2[dim]++;
+    }
+  });
+  const line3={
+    D:line1.D-line2.D,
+    I:line1.I-line2.I,
+    S:line1.S-line2.S,
+    C:line1.C-line2.C
+  };
+  return{line1,line2,line3};
+}
+function getDominant(line3){
+  const sorted=Object.entries(line3).sort((a,b)=>b[1]-a[1]);
+  return sorted[0][0];
+}
+function getAdaptive(line1){
+  const sorted=Object.entries(line1).sort((a,b)=>b[1]-a[1]);
+  return sorted[0][0];
+}
+function getNatural(line2){
+  const sorted=Object.entries(line2).sort((a,b)=>b[1]-a[1]);
+  return sorted[0][0];
+}
+function pctToScore10(pct){return Math.max(1,Math.min(10,Math.round(pct/10)));};
+function getVerdict(s10){
+  if(s10>=7)return{v:'pass',label:'LOLOS',emoji:'✅',full:'REKOMENDASI: KUAT',color:'#15803D',bg:'#F0FDF4',br:'#16A34A'};
+  if(s10>=5)return{v:'warn',label:'PERTIMBANGKAN',emoji:'⚠️',full:'PERLU EVALUASI LEBIH LANJUT',color:'#92400E',bg:'#FFFBEB',br:'#D97706'};
+  return{v:'fail',label:'TIDAK LOLOS',emoji:'❌',full:'TIDAK DIREKOMENDASIKAN',color:'#991B1B',bg:'#FFF1F2',br:'#DC2626'};
+}
+
+// ── HOLLAND DATA ──
+const HOL_TC = {
+  R:{name:'Realistic',nameID:'Realistik',color:'#DC2626',bg:'#FEF2F2',
+    desc:'Orang dengan minat Realistis menyukai pekerjaan yang mencakup masalah dan jawaban praktis dan langsung. Menyukai kegiatan yang melibatkan keterampilan motorik, peralatan, mesin. Seringkali tidak menyukai karier yang melibatkan banyak dokumen atau bekerja sama dengan orang lain.',
+    jobs:'Atlet, Operator, Pilot, Koki, Mekanik, Polisi, Insinyur, Pengawas Bangunan, Petani, Peternak Modern.'},
+  I:{name:'Investigative',nameID:'Investigatif',color:'#7C3AED',bg:'#F5F3FF',
+    desc:'Orang dengan minat Investigatif menyukai pekerjaan yang berkaitan dengan ide dan pemikiran. Memilih kegiatan penyelidikan yang observasional, simbolis, sistematis dan kreatif atas fenomena fisik, biologis dan kultural. Berprestasi di bidang akademik dan ilmiah, serta biasanya kurang menyukai aktivitas fisik atau memimpin orang.',
+    jobs:'Ahli Antropologi, Astronomi, Biologi, Botani, Kimia, Editor Penerbitan Ilmiah, Geologi, Pekerjaan Penelitian, dan pekerjaan ilmiah sejenis.'},
+  A:{name:'Artistic',nameID:'Artistik',color:'#DB2777',bg:'#FDF2F8',
+    desc:'Orang dengan minat Artistik menyukai pekerjaan dan aktivitas yang bebas dan tidak sistematis, ambisius dalam usahanya memanipulasi material fisik, verbal dan humanistik untuk tujuan menciptakan bentuk-bentuk atau produk-produk seni. Memiliki kompetensi artistik, bahasa, musik, drama, mengarang.',
+    jobs:'Desainer, Penulis, Musisi, Arsitek, Wartawan, Penari, Translator, Artis, dan pekerjaan seni sejenis.'},
+  S:{name:'Social',nameID:'Sosial',color:'#059669',bg:'#ECFDF5',
+    desc:'Orang dengan minat Sosial menyukai aktivitas yang melibatkan berelasi, berkomunikasi dan mengajar orang. Dilambangkan dengan keterampilan sosial dan kebutuhan untuk interaksi sosial. Pekerjaannya sering melibatkan membantu atau memberikan layanan kepada orang lain.',
+    jobs:'Guru, Terapis, Tour Guide, Perawat, Hakim, Konselor, Psikolog, Sejarawan, Pekerja Sosial, dan pekerjaan pelayanan sejenis.'},
+  E:{name:'Enterprising',nameID:'Wirausaha',color:'#D97706',bg:'#FFFBEB',
+    desc:'Orang dengan minat Enterprising mendorong individu untuk menikmati memanipulasi kegiatan orang lain demi mencapai tujuan organisasi atau keuntungan ekonomi. Mengarah pada kompetensi kepemimpinan, hubungan persuasif, dan kemampuan verbal untuk mengarahkan dan mempengaruhi orang lain.',
+    jobs:'Pengacara, Pelobi, Politikus, Pegawai Humas, Manajer Penjualan, Staf Penjualan, Perwakilan Dagang, dan pekerjaan bisnis sejenis.'},
+  C:{name:'Conventional',nameID:'Konvensional',color:'#0369A1',bg:'#EFF6FF',
+    desc:'Orang dengan minat Konvensional menyukai aktivitas yang teratur dan sistematis seperti mengarsipkan sesuatu, mereproduksi material, mencatat data, mengolah data, dan menyukai pekerjaan yang mengikuti prosedur dan rutinitas yang ditetapkan. Memiliki kompetensi klerikal dan operasional bisnis.',
+    jobs:'Akuntan, Aktuaris, Ahli Statistik, Analis Keuangan, Operator Komputer, Pustakawan, Programmer Bisnis, Pengarsip, dan pekerjaan administrasi sejenis.'},
+};;
+const CONSISTENCY = {
+  RI:'Tinggi',RC:'Tinggi',IR:'Tinggi',IA:'Tinggi',AI:'Tinggi',AS:'Tinggi',
+  SA:'Tinggi',SE:'Tinggi',ES:'Tinggi',CE:'Tinggi',EC:'Tinggi',CR:'Tinggi',
+  RA:'Sedang',RE:'Sedang',IS:'Sedang',IC:'Sedang',AR:'Sedang',AE:'Sedang',
+  SI:'Sedang',SC:'Sedang',EA:'Sedang',ER:'Sedang',CS:'Sedang',CI:'Sedang',
+  RS:'Rendah',IE:'Rendah',AC:'Rendah',SR:'Rendah',EI:'Rendah',CA:'Rendah',
+};;
+const COMBOS = {
+  AC:{title:'Pendekatan Kreatif & Terstruktur',jobs:'Graphic Designer, Proofreader, Web/Mobile Design, UI Designer & Visual Designer'},
+  AS:{title:'Pendekatan Kreatif & Berorientasi Manusia',jobs:'Guru, Translator, Nanny, Career Advisor & Interpreter'},
+  EC:{title:'Pendekatan Giat & Berbasis Proses',jobs:'General Manager, Air Traffic Controller, Branch Manager, Fundraiser, Recruiter & Shop Assistant'},
+  IA:{title:'Pendekatan Analitis & Kreatif',jobs:'Architect, Technical Writer, Animator & Desktop Publisher'},
+  IC:{title:'Pendekatan Analitis & Berbasis Proses',jobs:'Pengembang Perangkat Lunak, UX Designer, Paralegal, Data Analyst & Quality Controller'},
+  IE:{title:'Pendekatan Analitis & Giat',jobs:'Consultant, Detektif, Solicitor, Market Researcher, Business Controller & Online Marketer'},
+  IS:{title:'Pendekatan Analitis & Sosial',jobs:'Dokter, Physics Teacher, Nurse, Physiotherapist & Coach'},
+  RA:{title:'Pendekatan Fisik & Kreatif',jobs:'Photographer, Tailor, Artist, Pastry Chef & Furniture Designer'},
+  RE:{title:'Pendekatan Fisik & Giat',jobs:'Koki, Engineering Manager, Police Officer, Process Operator & Taxi Driver'},
+  AE:{title:'Pendekatan Kreatif & Giat',jobs:'Design Interior, Illustrator, Entrepreneur, Journalist, Producer, Art Director, Copywriter & Actor'},
+  RI:{title:'Pendekatan Fisik & Analitis',jobs:'Network Engineer, Mechanical Engineer, Automotive Engineer, Electronic Engineer, Pilot, Laboratory Technician'},
+  RS:{title:'Pendekatan Fisik & Sosial',jobs:'Asisten Perawatan, Fire Fighter, Masseur, Sports Coach & Veterinary Assistant'},
+  SC:{title:'Pendekatan Sosial & Terstruktur',jobs:'Librarian, Telephone Operator, Medical Assistant & Teaching Assistant'},
+  RC:{title:'Pendekatan Fisik & Terstruktur',jobs:'Lorry Driver, Machine Operator, Security Guard, Plumber, Warehouse Operative & Service Technician'},
+  SE:{title:'Pendekatan Sosial & Giat',jobs:'HR Manager, Account Manager, Customer Service Advisor & Waiter/Waitress'},
+};;
+const HOL_QS = [
+  {n:1,t:'A',q:'Senang menonton drama'},
+  {n:2,t:'S',q:'Senang Melatih Orang'},
+  {n:3,t:'A',q:'Mampu bermain dalam drama / berakting'},
+  {n:4,t:'I',q:'Suka membaca mengenai topik-topik khusus atas keinginan sendiri'},
+  {n:5,t:'I',q:'Mampu melakukan percobaan atau penelitian ilmiah'},
+  {n:6,t:'A',q:'Artistik'},
+  {n:7,t:'I',q:'Mampu memprogram komputer untuk mempelajari masalah ilmiah'},
+  {n:8,t:'R',q:'Tertarik menjadi pengawas konstruksi bangunan'},
+  {n:9,t:'I',q:'Suka dalam memecahkan soal eksak'},
+  {n:10,t:'C',q:'Mampu melakukan dan menyukai tugas administratif'},
+  {n:11,t:'E',q:'Bisa mempengaruhi dan membujuk orang lain'},
+  {n:12,t:'C',q:'Prosedural (Mengikuti aturan)'},
+  {n:13,t:'C',q:'Suka menggunakan aplikasi pencatatan keuangan'},
+  {n:14,t:'R',q:'Suka memperbaiki motor'},
+  {n:15,t:'A',q:'Bisa mengekspresikan diri secara kreatif'},
+  {n:16,t:'C',q:'Ingin bekerja dibagian Staff keuangan'},
+  {n:17,t:'I',q:'Mampu menyebutkan makanan yang memiliki protein tinggi'},
+  {n:18,t:'S',q:'Suka melakukan pekerjaan sosial'},
+  {n:19,t:'E',q:'Mampu mengetahui bagaimana menjadi pemimpin yang baik / berhasil'},
+  {n:20,t:'R',q:'Tidak suka menyatakan perasaan'},
+  {n:21,t:'E',q:'Percaya diri'},
+  {n:22,t:'I',q:'Suka menerapkan matematika dalam masalah praktis'},
+  {n:23,t:'A',q:'Emosional'},
+  {n:24,t:'R',q:'Menyukai memperbaiki peralatan mekanik'},
+  {n:25,t:'S',q:'Mampu menghibur dan menemani orang yang lebih tua dari saya'},
+  {n:26,t:'E',q:'Senang memulai proyek baru'},
+  {n:27,t:'I',q:'Suka kegiatan akademis'},
+  {n:28,t:'S',q:'Ramah'},
+  {n:29,t:'C',q:'Efisien dan Terstruktur'},
+  {n:30,t:'R',q:'Suka menggunakan perkakas bengkel dan mesin'},
+  {n:31,t:'S',q:'Suka menjaga / mengurus / mengawasi anak-anak'},
+  {n:32,t:'I',q:'Senang menganalisa dan mengevaluasi'},
+  {n:33,t:'R',q:'Senang melatih binatang'},
+  {n:34,t:'A',q:'Tertarik menjadi aktor / aktris'},
+  {n:35,t:'A',q:'Mampu memainkan alat musik'},
+  {n:36,t:'S',q:'Tertarik menjadi konselor masalah pribadi'},
+  {n:37,t:'A',q:'Ingin menjadi pemain dalam kelompok musik'},
+  {n:38,t:'I',q:'Tertarik menjadi ahli biologi / hayati'},
+  {n:39,t:'S',q:'Tertarik menjadi pekerja sosial'},
+  {n:40,t:'E',q:'Energetik'},
+  {n:41,t:'S',q:'Suka bekerja dalam kelompok'},
+  {n:42,t:'I',q:'Suka membaca buku / majalah ilmiah'},
+  {n:43,t:'R',q:'Suka mengutak-atik mesin / alat elektronik'},
+  {n:44,t:'R',q:'Suka kegiatan di luar ruangan'},
+  {n:45,t:'A',q:'Senang memotret atau menjadi videographer'},
+  {n:46,t:'A',q:'Suka membuat lukisan / foto orang'},
+  {n:47,t:'A',q:'Senang bekerja di situasi yang bebas'},
+  {n:48,t:'C',q:'Membuat hari saya terstruktur'},
+  {n:49,t:'S',q:'Mampu menarik perhatian orang untuk menceritakan masalah mereka'},
+  {n:50,t:'C',q:'Memperhatikan detailnya'},
+  {n:51,t:'C',q:'Sering diminta mengumpulkan data'},
+  {n:52,t:'A',q:'Suka membuat sketsa, mendesain atau melukis'},
+  {n:53,t:'S',q:'Mampu mengajar orang dewasa dengan mudah'},
+  {n:54,t:'S',q:'Antusias berpartisipasi dalam pencarian dana / amal'},
+  {n:55,t:'S',q:'Mampu mudah berbicara dengan semua orang'},
+  {n:56,t:'I',q:'Suka mempelajari teori ilmiah'},
+  {n:57,t:'I',q:'Tertarik menjadi pekerja riset ilmiah'},
+  {n:58,t:'E',q:'Mampu mengatur pekerjaan orang lain'},
+  {n:59,t:'R',q:'Bisa menguasai diri'},
+  {n:60,t:'E',q:'Mampu membuat kelompok sosial / kerja berjalan dengan baik'},
+  {n:61,t:'R',q:'Tertarik menjadi insinyur otomotif'},
+  {n:62,t:'C',q:'Suka membuat catatan pengeluaran yang terperinci'},
+  {n:63,t:'I',q:'Kompleks'},
+  {n:64,t:'E',q:'Mampu mengelola usaha kecil'},
+  {n:65,t:'A',q:'Rumit'},
+  {n:66,t:'R',q:'Tertarik menjadi spesialis perikanan / margasatwa'},
+  {n:67,t:'E',q:'Suka memimpin kelompok dalam meraih tujuan tertentu'},
+  {n:68,t:'E',q:'Suka menjual suatu barang'},
+  {n:69,t:'E',q:'Tegas'},
+  {n:70,t:'C',q:'Mampu mencatat dengan cermat pembayaran / penjualan'},
+  {n:71,t:'I',q:'Suka mengerjakan proyek ilmiah'},
+  {n:72,t:'S',q:'Bisa menyatakan perasaan dengan jelas'},
+  {n:73,t:'R',q:'Menyusun sesuatu atau merakit model'},
+  {n:74,t:'I',q:'Senang mengamati'},
+  {n:75,t:'E',q:'Mampu memengaruhi orang lain supaya melakukan sesuatu dengan caranya'},
+  {n:76,t:'A',q:'Senang mengerjakan kerajinan tangan'},
+  {n:77,t:'R',q:'Suka bekerja menggunakan tangan'},
+  {n:78,t:'S',q:'Suka membantu orang lain dengan masalah pribadinya'},
+  {n:79,t:'R',q:'Senang kegiatan fisik'},
+  {n:80,t:'I',q:'Tertarik menjadi ahli teknisi laboratorium medis'},
+  {n:81,t:'A',q:'Ingin menjadi seniman'},
+  {n:82,t:'R',q:'Mampu melakukan perbaikan kecil pada pipa air, kran, dan lain-lain'},
+  {n:83,t:'R',q:'Mampu membuat gambar dengan skala'},
+  {n:84,t:'C',q:'Prosedural (Suka mengikuti aturan)'},
+  {n:85,t:'C',q:'Suka mengarsip surat dan berkas-berkas lain'},
+  {n:86,t:'E',q:'Mampu menjadi seorang pembicara di depan umum yang baik'},
+  {n:87,t:'S',q:'Mampu memimpin diskusi kelompok'},
+  {n:88,t:'C',q:'Suka melakukan pekerjaan surat menyurat / masalah perkantoran'},
+  {n:89,t:'E',q:'Senang bertemu orang baru'},
+  {n:90,t:'C',q:'Bisa bekerja dengan baik dalam sistem / aturan'},
+  {n:91,t:'A',q:'Suka merancang perabotan, pakaian atau poster'},
+  {n:92,t:'E',q:'Tertarik menjadi pembawa acara / MC'},
+  {n:93,t:'I',q:'Tertarik menjadi ilmuwan peneliti'},
+  {n:94,t:'R',q:'Suka memperbaiki alat-alat listrik'},
+  {n:95,t:'E',q:'Terbuka'},
+  {n:96,t:'C',q:'Tertarik menjadi penaksir biaya'},
+  {n:97,t:'S',q:'Suka mendamaikan orang'},
+  {n:98,t:'I',q:'Suka mengerjakan teka-teki'},
+  {n:99,t:'S',q:'Mampu mengajar anak-anak dengan mudah'},
+  {n:100,t:'C',q:'Suka membuat daftar inventaris dari persediaan / produk'},
+  {n:101,t:'R',q:'Suka olahraga'},
+  {n:102,t:'A',q:'Bisa menulis karya sastra'},
+  {n:103,t:'S',q:'Tertarik menjadi konselor kejuruan dan pekerjaan'},
+  {n:104,t:'A',q:'Sensitif'},
+  {n:105,t:'E',q:'Senang petualangan / mengambil risiko'},
+  {n:106,t:'E',q:'Ambisius dan cenderung berbicara apa adanya (Spontan)'},
+  {n:107,t:'C',q:'Penurut'},
+  {n:108,t:'C',q:'Suka menyusun sistem pengarsipan'},
+];
+
+// ── STORAGE & TESTS ──
+const SKEY='myx-bat-a-v8';
+const TESTS=['tk','bigfive','disc','holland'];
+const TEST_META={
+  tk:{name:'Tes Kemampuan Kognitif',icon:'🧠',color:'#0A6E5C',time:'~20 menit',items:'90 soal (2 subtes)',
+    desc:'Dua subtes bertimer: GI Kemampuan Umum (50 soal, 12 menit) dan KA Kecepatan & Akurasi (40 soal, 8 menit). Setiap subtes memiliki timer aktif.'},
+  bigfive:{name:'Tes Kepribadian',icon:'🌟',color:'#7C3AED',time:'~10 menit',items:'44 pernyataan',
+    desc:'Nilai setiap pernyataan dalam skala 1–5 sesuai kesesuaian dengan diri Anda. Menjawab langsung lanjut ke soal berikutnya secara otomatis.'},
+  disc:{name:'Tes Gaya Kerja',icon:'⚙️',color:'#0369A1',time:'~15 menit',items:'24 kelompok',
+    desc:'Untuk setiap kelompok 4 pernyataan, pilih satu yang PALING mencerminkan Anda (M) dan satu yang PALING TIDAK mencerminkan Anda (L). Setelah keduanya dipilih, otomatis lanjut.'},
+  holland:{name:'Tes Minat Kerja',icon:'🎯',color:'#059669',time:'~15 menit',items:'108 pernyataan',
+    desc:'Untuk setiap pernyataan minat dan kemampuan, jawab YA atau TIDAK. Menjawab langsung lanjut ke soal berikutnya secara otomatis.'},
+};
+const TK_ORDER_A=['GI','KA'];
+const ALPHA=['A','B','C','D','E'];
+
+// ── APP STATE ──
+let APP={
+  screen:'setup',profile:null,results:{},tabSwitches:0,
+  tk:{phase:'GI',answers:{GI:{},KA:Array(40).fill(null)},curQ:0,timeLeft:720,totalTime:720,running:false,done:{}},
+  bigfive:{answers:Array(44).fill(null),curQ:0},
+  disc:{answers:Array(24).fill(null).map(()=>({m:null,l:null})),curQ:0},
+  holland:{answers:Array(108).fill(null),curQ:0},
+};
+let timerInt=null;
+
+// ── PERSISTENCE ──
+function loadSaved(){try{const d=JSON.parse(localStorage.getItem(SKEY)||'null');if(d&&d.profile){APP.profile=d.profile;APP.results=d.results||{};return true;}return false;}catch{return false;}}
+function save(){try{localStorage.setItem(SKEY,JSON.stringify({profile:APP.profile,results:APP.results}));}catch(e){}}
+function reset(){if(confirm('Reset semua data Battery A?')){localStorage.removeItem(SKEY);location.reload();}}
+
+// ── HELPERS ──
+function rawToPercentile(raw,max){const r=raw/max*100;if(r>=95)return 99;if(r>=85)return 92;if(r>=75)return 84;if(r>=65)return 75;if(r>=55)return 63;if(r>=45)return 50;if(r>=38)return 40;if(r>=30)return 30;if(r>=22)return 20;if(r>=15)return 12;if(r>=8)return 6;return 3;}
+function pctToScore10(pct){return Math.max(1,Math.min(10,Math.round(pct/10)));}
+function getVerdict(s){if(s>=7)return{v:'pass',label:'LOLOS',emoji:'✅',color:'#15803D',bg:'#F0FDF4',br:'#16A34A'};if(s>=5)return{v:'warn',label:'PERTIMBANGKAN',emoji:'⚠️',color:'#92400E',bg:'#FFFBEB',br:'#D97706'};return{v:'fail',label:'TIDAK LOLOS',emoji:'❌',color:'#991B1B',bg:'#FFF1F2',br:'#DC2626'};}
+function getGrade(pct){if(pct>=90)return{g:'A',l:'Sangat Tinggi',c:'#059669',bg:'#ECFDF5'};if(pct>=75)return{g:'B',l:'Tinggi',c:'#0369A1',bg:'#EFF6FF'};if(pct>=26)return{g:'C',l:'Rata-rata',c:'#D97706',bg:'#FFFBEB'};if(pct>=11)return{g:'D',l:'Rendah',c:'#DC2626',bg:'#FEF2F2'};return{g:'E',l:'Sangat Rendah',c:'#991B1B',bg:'#FFF1F2'};}
+function getIQ(raw){return IQ_TABLE[Math.min(Math.max(raw,0),50)]||90;}
+function getIQClass(iq){for(const c of IQ_CLASSES){if(iq>=c.min)return c;}return IQ_CLASSES[IQ_CLASSES.length-1];}
+function fmtTime(s){const m=Math.floor(s/60),ss=s%60;return`${String(m).padStart(2,'0')}:${String(ss).padStart(2,'0')}`;}
+function esc(s){return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');}
+
+// ── NAVIGATION ──
+function goTo(screen){
+  if(timerInt){clearInterval(timerInt);timerInt=null;}
+  document.getElementById('timer-bar').className='timer-bar';
+  APP.screen=screen;renderNav();
+  const app=document.getElementById('app');app.className='wrap anim';app.innerHTML='';
+  try{
+    switch(screen){
+      case'setup':         app.innerHTML=renderSetup();break;
+      case'overview':      app.innerHTML=renderOverview();break;
+      case'tk_intro':      app.innerHTML=renderIntro('tk');break;
+      case'tk':            startTK();break;
+      case'bigfive_intro': app.innerHTML=renderIntro('bigfive');break;
+      case'bigfive':       app.innerHTML=renderBigFive();break;
+      case'disc_intro':    app.innerHTML=renderIntro('disc');break;
+      case'disc':          app.innerHTML=renderDISC();break;
+      case'holland_intro': app.innerHTML=renderIntro('holland');break;
+      case'holland':       app.innerHTML=renderHolland();break;
+      case'complete':      app.innerHTML=renderComplete();break;
+    }
+  }catch(e){app.innerHTML=`<div style="padding:28px;background:#FEF2F2;border-radius:12px;color:#991B1B"><b>Error:</b> ${e.message}<br><small>${e.stack||''}</small><br><button onclick="goTo('overview')" style="margin-top:12px;padding:8px 16px;background:var(--teal);color:#fff;border:none;border-radius:8px;cursor:pointer">← Kembali</button></div>`;}
+  window.scrollTo(0,0);
+}
+function renderNav(){
+  const dots=document.getElementById('nav-dots');if(!dots)return;
+  const done=new Set(Object.keys(APP.results));
+  const activeIdx=TESTS.indexOf(APP.screen.replace(/_intro$/,''));
+  dots.innerHTML=TESTS.map((t,i)=>`<div class="${done.has(t)?'ndot done':i===activeIdx?'ndot active':'ndot'}" title="Tes ${i+1}"></div>`).join('');
+  const repBtn=document.getElementById('nav-report-btn');
+  if(repBtn)repBtn.style.display=TESTS.every(t=>done.has(t))?'inline-flex':'none';
+}
+
+// ── SETUP ──
+function renderSetup(){
+  return`
+  <div class="setup-hero">
+    <h1>Selamat Datang — Asesmen Kandidat<br><span style="font-style:italic;font-size:72%;opacity:.85">Battery A · Operasional & Staf Umum</span></h1>
+    <p style="font-size:13px;opacity:.88;line-height:1.7;max-width:500px;margin-top:8px">Anda akan menjalani rangkaian tes terpadu. Isi data sekali, lalu ikuti setiap tes secara berurutan.</p>
+  </div>
+  <div class="card">
+    <div style="font-size:10px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:var(--slate-lt);margin-bottom:14px">Identitas Kandidat</div>
+    <div class="fg2"><div><label class="flabel">Nama Lengkap *</label><input class="finput" id="s-name" placeholder="Nama lengkap Anda"></div><div><label class="flabel">Jabatan yang Dilamar *</label><input class="finput" id="s-jabatan" placeholder="Contoh: Staff / Operator"></div></div>
+    <div class="fg2"><div><label class="flabel">Jenis Kelamin *</label><select class="fsel" id="s-gender"><option value="">— Pilih —</option><option>Laki-laki</option><option>Perempuan</option></select></div><div><label class="flabel">Pendidikan Terakhir *</label><select class="fsel" id="s-edu"><option value="">—</option><option>SMA/SMK</option><option>D3</option><option>S1</option><option>S2</option></select></div></div>
+    <div class="fg2"><div><label class="flabel">Tanggal Lahir *</label><input class="finput" id="s-tgl-lahir" type="date"></div><div><label class="flabel">Tanggal Tes</label><input class="finput" id="s-tgl-tes" type="date" value="${new Date().toISOString().split('T')[0]}"></div></div>
+  </div>
+  <div class="tip-card">
+    <div class="tip-title">⚠️ Hal Penting Sebelum Memulai</div>
+    <div class="tip-list">
+      • Gunakan <strong>laptop atau komputer</strong> untuk kenyamanan optimal<br>
+      • Tes Kognitif: <strong>2 subtes bertimer</strong> (GI 12 mnt + KA 8 mnt) — tidak bisa dijeda<br>
+      • Big Five, DISC & Holland: <strong>menjawab langsung lanjut ke soal berikutnya</strong><br>
+      • <strong>Berpindah tab</strong> saat tes berlangsung akan dicatat oleh sistem<br>
+      • Total estimasi: <strong>~60 menit</strong>
+    </div>
+  </div>
+  <button class="btn-main" onclick="startSetup()">Mulai → Lihat Panduan Tes</button>`;
+}
+function startSetup(){
+  const name=document.getElementById('s-name')?.value?.trim(),jabatan=document.getElementById('s-jabatan')?.value?.trim();
+  const gender=document.getElementById('s-gender')?.value,education=document.getElementById('s-edu')?.value;
+  const tglLahirRaw=document.getElementById('s-tgl-lahir')?.value,tglTesRaw=document.getElementById('s-tgl-tes')?.value;
+  const m=[];if(!name)m.push('Nama');if(!jabatan)m.push('Jabatan');if(!gender)m.push('Jenis Kelamin');if(!education)m.push('Pendidikan');if(!tglLahirRaw)m.push('Tanggal Lahir');
+  if(m.length){alert('Harap lengkapi:\n\n• '+m.join('\n• '));return;}
+  const fmtTgl=v=>v?new Date(v).toLocaleDateString('id-ID',{day:'2-digit',month:'long',year:'numeric'}):'';
+  APP.profile={name,jabatan,gender,education,tglLahir:fmtTgl(tglLahirRaw),tglLahirRaw,date:fmtTgl(tglTesRaw)||new Date().toLocaleDateString('id-ID',{day:'2-digit',month:'long',year:'numeric'})};
+  save();goTo('overview');
+}
+
+// ── OVERVIEW ──
+function renderOverview(){
+  const p=APP.profile,done=APP.results,doneCount=Object.keys(done).length,pct=Math.round(doneCount/TESTS.length*100);
+  const initials=p.name.split(' ').map(n=>n[0]).join('').slice(0,2).toUpperCase();
+  let items='';
+  TESTS.forEach((t,i)=>{
+    const isDone=!!done[t],prevDone=i===0||TESTS.slice(0,i).every(x=>done[x]);
+    const isActive=!isDone&&prevDone,locked=!isDone&&!prevDone,m=TEST_META[t];
+    items+=`<div class="test-item ${isDone?'done':isActive?'active':locked?'locked':''}" ${isActive?`onclick="goTo('${t}_intro')"`:''}>
+      <div class="ti-num" style="border-color:${isDone?'#059669':isActive?m.color:'var(--border)'}">${isDone?'✓':i+1}</div>
+      <div class="ti-info">
+        <div class="ti-name" style="color:${isDone?'#059669':isActive?m.color:'var(--slate)'}">${m.icon} ${m.name}</div>
+        <div class="ti-desc">${m.desc}</div>
+        <div class="ti-pills"><span class="ti-pill" style="background:${m.color}18;color:${m.color}">⏱ ${m.time}</span><span class="ti-pill" style="background:var(--border);color:var(--slate-md)">${m.items}</span></div>
+      </div>
+      <div class="ti-status">
+        <div class="ti-icon">${isDone?'✅':isActive?'▶️':'🔒'}</div>
+        <div class="ti-lbl" style="color:${isDone?'#059669':isActive?m.color:'var(--slate-lt)'}">${isDone?'Selesai':isActive?'Giliran':'Menunggu'}</div>
+        ${isActive?`<button class="ti-btn" onclick="goTo('${t}_intro')">Mulai →</button>`:''}
+      </div>
+    </div>`;
+  });
+  return`
+  <div style="background:linear-gradient(135deg,#0A2A22,var(--teal-dk),var(--teal));border-radius:var(--r);padding:26px;color:#fff;margin-bottom:16px;box-shadow:var(--sh-md)">
+    <div style="display:flex;align-items:center;gap:14px;margin-bottom:14px">
+      <div style="width:50px;height:50px;border-radius:50%;border:3px solid rgba(255,255,255,.4);display:grid;place-items:center;font-family:'Playfair Display',serif;font-size:18px;font-weight:700;background:rgba(255,255,255,.15)">${initials}</div>
+      <div><div style="font-family:'Playfair Display',serif;font-size:20px;margin-bottom:2px">${p.name}</div><div style="font-size:12px;opacity:.75">${p.jabatan}${p.gender?' · '+p.gender:''}${p.education?' · '+p.education:''}</div></div>
+    </div>
+    <div style="background:rgba(255,255,255,.12);border:1px solid rgba(255,255,255,.18);border-radius:var(--rs);padding:10px 14px;display:flex;align-items:center;justify-content:space-between">
+      <div><div style="font-size:13px;font-weight:700">Battery A — Operasional & Staf Umum</div><div style="font-size:10px;opacity:.65">4 tes · 1 sesi · ~60 menit</div></div>
+      <div style="text-align:right"><div style="font-family:'Playfair Display',serif;font-size:22px;font-weight:700">~60</div><div style="font-size:10px;opacity:.7">menit</div></div>
+    </div>
+    <div class="pbar-wrap"><div class="pbar-fill" style="width:${pct}%"></div></div>
+    <div class="plabel"><span>Progress: ${doneCount} dari ${TESTS.length} tes selesai</span><span>${pct}%</span></div>
+  </div>
+  <div class="card">${items}</div>
+  <div style="display:flex;gap:10px;flex-wrap:wrap">
+    ${doneCount>0?`<button onclick="goTo('complete')" class="btn-sec">📋 Lihat Ringkasan</button>`:''}
+    ${doneCount===TESTS.length?`<a href="Myralix_Battery_A_Laporan_Psikologis_v10.html" target="_blank" style="display:inline-flex;align-items:center;gap:6px;background:var(--teal);color:#fff;padding:10px 18px;border-radius:var(--rs);font-size:13px;font-weight:700;text-decoration:none">📊 Buka Laporan →</a>`:''}
+    <button onclick="reset()" class="btn-sec">🔄 Reset Progres</button>
+  </div>`;
+}
+
+// ── INTRO ──
+function renderIntro(t){
+  const m=TEST_META[t];
+  const instrs={
+    tk:'TK terdiri dari <strong>2 subtes bertimer</strong>: GI Kemampuan Umum (50 soal, 12 menit) dan KA Kecepatan & Akurasi (40 soal, 8 menit). Kerjakan secara berurutan.',
+    bigfive:'Untuk setiap pernyataan, pilih angka <strong>1–5</strong> yang paling mencerminkan diri Anda (1=Sangat Tidak Sesuai, 5=Sangat Sesuai). <strong>Menjawab langsung lanjut otomatis.</strong>',
+    disc:'Untuk setiap kelompok 4 pernyataan, klik <strong>M (Paling Sesuai)</strong> dan <strong>L (Paling Tidak Sesuai)</strong>. Setelah keduanya dipilih dan berbeda, otomatis lanjut ke kelompok berikutnya.',
+    holland:'Untuk setiap pernyataan minat/kemampuan, klik <strong>✓ Ya</strong> atau <strong>✕ Tidak</strong>. <strong>Menjawab langsung lanjut otomatis.</strong>',
+  };
+  const warns={
+    tk:'⏱ Timer subtes dimulai otomatis. Pastikan tidak terganggu selama ~20 menit.',
+    bigfive:'Tidak ada timer. Jawab jujur dan spontan — tidak ada benar/salah.',
+    disc:'Tidak ada timer. Jawab berdasarkan perilaku Anda yang sebenarnya.',
+    holland:'Tidak ada timer. Jawab berdasarkan minat dan kemampuan Anda yang nyata.',
+  };
+  const sampleHTML = {
+    tk:`
+    <div style="background:#EDF7F5;border:1px solid #C7E8E3;border-radius:10px;padding:14px 16px;margin-bottom:18px;text-align:left"><div style="font-size:10px;font-weight:700;letter-spacing:.09em;text-transform:uppercase;color:#0A6E5C;margin-bottom:6px">&#128203; Format Tes</div><div style="font-size:12px;color:#334155;line-height:1.75">Tes Kemampuan Kognitif terdiri dari beberapa subtes. <strong>Setiap subtes akan menampilkan petunjuk dan contoh soal sebelum timer dimulai.</strong> Baca petunjuk dengan cermat — timer baru berjalan setelah Anda klik <em>Mulai Subtes</em>.</div></div>`,
+    bigfive:`
+    <div style="background:#F8FAFC;border:1px solid #E2E8F0;border-radius:10px;padding:16px;margin-bottom:18px;text-align:left">
+      <div style="font-size:10px;font-weight:700;letter-spacing:.09em;text-transform:uppercase;color:#64748B;margin-bottom:12px">&#128221; Contoh Format Soal</div>
+      <div style="border-left:3px solid #7C3AED;padding:8px 12px;background:#F5F3FF;border-radius:0 6px 6px 0;margin-bottom:8px">
+        <div style="font-size:10px;font-weight:700;color:#7C3AED;margin-bottom:4px;text-transform:uppercase;letter-spacing:.06em">Kepribadian — Skala 1 sampai 5</div>
+        <div style="font-size:12px;color:#334155;line-height:1.6">Pernyataan: <em>"Saya lebih suka bekerja dalam tim yang besar daripada sendiri."</em><br>Pilih angka 1 (Sangat Tidak Sesuai) hingga 5 (Sangat Sesuai) yang paling menggambarkan Anda.</div>
+        <div style="font-size:11px;color:#7C3AED;margin-top:4px;font-weight:600">&#10003; Tidak ada benar/salah — pilih angka yang paling jujur mencerminkan diri Anda</div>
+      </div>
+    </div>`,
+    disc:`
+    <div style="background:#F8FAFC;border:1px solid #E2E8F0;border-radius:10px;padding:16px;margin-bottom:18px;text-align:left">
+      <div style="font-size:10px;font-weight:700;letter-spacing:.09em;text-transform:uppercase;color:#64748B;margin-bottom:12px">&#128221; Contoh Format Soal</div>
+      <div style="border-left:3px solid #0369A1;padding:8px 12px;background:#EFF6FF;border-radius:0 6px 6px 0;margin-bottom:8px">
+        <div style="font-size:10px;font-weight:700;color:#0369A1;margin-bottom:4px;text-transform:uppercase;letter-spacing:.06em">Gaya Perilaku — Pilih M (Paling Sesuai) dan L (Paling Tidak Sesuai)</div>
+        <div style="font-size:12px;color:#334155;line-height:1.6">Contoh kelompok pernyataan:<br>A. Saya senang memimpin dan mengambil inisiatif<br>B. Saya teliti dan berhati-hati dalam setiap detail<br>C. Saya mudah bergaul dan senang berkolaborasi<br>D. Saya lebih suka mengikuti prosedur yang sudah ada</div>
+        <div style="font-size:11px;color:#0369A1;margin-top:4px;font-weight:600">&#10003; M = A, L = B (contoh — tidak ada kombinasi benar/salah, setiap orang berbeda)</div>
+      </div>
+    </div>`,
+    holland:`
+    <div style="background:#F8FAFC;border:1px solid #E2E8F0;border-radius:10px;padding:16px;margin-bottom:18px;text-align:left">
+      <div style="font-size:10px;font-weight:700;letter-spacing:.09em;text-transform:uppercase;color:#64748B;margin-bottom:12px">&#128221; Contoh Format Soal</div>
+      <div style="border-left:3px solid #4F46E5;padding:8px 12px;background:#EEF2FF;border-radius:0 6px 6px 0;margin-bottom:8px">
+        <div style="font-size:10px;font-weight:700;color:#4F46E5;margin-bottom:4px;text-transform:uppercase;letter-spacing:.06em">Minat Kerja — Jawab YA atau TIDAK</div>
+        <div style="font-size:12px;color:#334155;line-height:1.6">Untuk setiap pernyataan, klik YA jika mencerminkan minat atau kemampuan Anda, klik TIDAK jika tidak.<br>Contoh: <em>"Saya tertarik untuk merancang atau membuat benda dengan tangan saya sendiri."</em></div>
+        <div style="font-size:11px;color:#4F46E5;margin-top:4px;font-weight:600">&#10003; Tidak ada benar/salah — jawab sesuai minat dan kemampuan nyata Anda saat ini</div>
+      </div>
+    </div>`,
+  };
+  const isTimed=(t==='tk');
+  const idx=TESTS.indexOf(t);
+  return`
+  <div class="intro-card">
+    <div class="intro-icon">${m.icon}</div>
+    <div style="font-size:11px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:var(--slate-lt);margin-bottom:6px">Tes ${idx+1} dari ${TESTS.length}</div>
+    <div class="intro-title">${m.name}</div>
+    <div style="font-size:13px;font-weight:600;color:${m.color};margin-bottom:18px">${m.items} · ${m.time}</div>
+    <div style="display:flex;justify-content:center;gap:14px;flex-wrap:wrap;margin-bottom:20px">
+      <div class="im"><div class="im-v" style="color:${m.color}">${m.items.split(' ')[0]}</div><div class="im-l">Item</div></div>
+      <div class="im"><div class="im-v" style="color:${m.color}">${m.time.replace('~','').trim()}</div><div class="im-l">Waktu</div></div>
+    </div>
+    <div class="instr-panel"><div class="ip-t">📋 Petunjuk</div><div class="ip-d">${instrs[t]}</div></div>
+    <div style="background:${isTimed?'#FEF3C7':'#F0F8F6'};border:1px solid ${isTimed?'#FDE68A':'var(--teal-lt)'};border-radius:var(--rs);padding:12px 15px;font-size:12px;color:${isTimed?'#78350F':'var(--teal-dk)'};margin-bottom:20px;text-align:left">${warns[t]}</div>
+    ${sampleHTML[t]||''}
+    <button class="btn-main" style="max-width:320px;margin:0 auto" onclick="goTo('${t}')">Mulai Tes →</button>
+    <button onclick="goTo('overview')" class="btn-sec" style="margin-top:10px;display:block;max-width:320px;margin-left:auto;margin-right:auto">← Kembali ke Daftar</button>
+  </div>`;
+}
+
+// ══════ TK — GI + KA ══════
+
+// ── PER-SUBTEST INTRO ──
+const SUB_INTROS={
+  GI:{icon:'&#129504;',label:'Kemampuan Umum',
+    instr:'Kerjakan soal beragam (verbal, numerik, logika, spasial) semampu mungkin. Lewati soal yang sulit dan lanjutkan ke soal berikutnya. Timer tidak bisa dijeda.',
+    sq:'Manakah lanjutan yang tepat: Senin, Selasa, Rabu, ___?',
+    so:['A. Minggu','B. Kamis','C. Sabtu','D. Jumat'],sa:'B. Kamis &mdash; urutan hari dalam seminggu.'},
+  PV:{icon:'&#128218;',label:'Penalaran Verbal',
+    instr:'Setiap soal adalah analogi kata yang belum lengkap. Temukan hubungan antara pasangan pertama, lalu terapkan hubungan yang sama pada pasangan kedua. Pilih satu jawaban.',
+    sq:'DOKTER adalah untuk PASIEN, sebagaimana GURU adalah untuk ___',
+    so:['A. Buku','B. Pelajaran','C. Siswa','D. Sekolah','E. Papan Tulis'],sa:'C. Siswa &mdash; dokter melayani pasien; guru mengajar siswa.'},
+  KN:{icon:'&#128290;',label:'Kemampuan Numerik',
+    instr:'Selesaikan masalah numerik dan matematika. Pilih satu jawaban (A&ndash;E). Kalkulator tidak diperbolehkan. Kerjakan secepat dan seakurat mungkin.',
+    sq:'Sebuah toko menjual 3 produk @ Rp&nbsp;15.000 dan 2 produk @ Rp&nbsp;20.000. Berapa total penjualan?',
+    so:['A. Rp 75.000','B. Rp 80.000','C. Rp 85.000','D. Rp 90.000','E. Rp 95.000'],sa:'C. Rp 85.000 &mdash; (3&times;15.000)+(2&times;20.000)=85.000.'},
+  PA:{icon:'&#128311;',label:'Penalaran Abstrak',
+    instr:'Temukan pola atau aturan dari deret angka, huruf, atau simbol, lalu tentukan elemen selanjutnya. Fokus pada hubungan antar elemen.',
+    sq:'Lanjutkan deret: 3, 6, 12, 24, ___',
+    so:['A. 30','B. 36','C. 42','D. 48','E. 60'],sa:'D. 48 &mdash; setiap angka dikali 2: 3&rarr;6&rarr;12&rarr;24&rarr;48.'},
+  KA:{icon:'&#128203;',label:'Kecepatan & Akurasi',
+    instr:'Bandingkan data dengan cepat dan akurat. (1) Pilih yang IDENTIK dengan referensi, atau (2) Pilih yang BERBEDA dari empat lainnya. Kerjakan secepat mungkin.',
+    sq:'Referensi: LX-8812-TQ. Pilih yang IDENTIK:',
+    so:['A. LX-8821-TQ','B. LX-8812-TQ','C. LX-8812-TG','D. LX-8812-QT','E. LX-8812-TQ.'],sa:'B. LX-8812-TQ &mdash; satu-satunya yang persis sama karakter per karakter.'},
+};
+function showSubIntro(code){
+  document.getElementById('timer-bar').className='timer-bar';
+  const s=SUBS[code],si=SUB_INTROS[code]||{};
+  const opts=(si.so||[]).map(o=>`<div style="padding:5px 10px;background:#fff;border:1px solid #E2E8F0;border-radius:6px;font-size:12px;color:#334155">${esc(o)}</div>`).join('');
+  document.getElementById('app').innerHTML=`
+  <div style="max-width:520px;margin:36px auto 0" class="anim">
+    <div style="text-align:center;margin-bottom:20px">
+      <div style="font-size:38px;margin-bottom:8px">${si.icon||'&#128221;'}</div>
+      <h2 style="font-family:'Playfair Display',Georgia,serif;font-size:22px;color:${s.color};margin-bottom:4px">${si.label||s.nameID}</h2>
+      <div style="font-size:13px;color:var(--slate-md)">${s.items} soal &middot; ${s.time/60} menit</div>
+    </div>
+    <div style="background:${s.bg};border-radius:var(--r);padding:16px 18px;margin-bottom:14px">
+      <div style="font-size:10px;font-weight:700;letter-spacing:.09em;text-transform:uppercase;color:${s.color};margin-bottom:7px">&#128203; Petunjuk</div>
+      <div style="font-size:13px;color:#334155;line-height:1.7">${si.instr||s.instruction||''}</div>
+    </div>
+    <div style="background:#fff;border:1px solid #E2E8F0;border-radius:var(--r);padding:16px 18px;margin-bottom:14px">
+      <div style="font-size:10px;font-weight:700;letter-spacing:.09em;text-transform:uppercase;color:#64748B;margin-bottom:10px">&#128221; Contoh Soal</div>
+      <div style="font-size:13px;color:#334155;font-weight:500;line-height:1.6;margin-bottom:10px">${si.sq||'&mdash;'}</div>
+      <div style="display:flex;flex-direction:column;gap:5px;margin-bottom:10px">${opts}</div>
+      <div style="background:${s.bg};border-radius:6px;padding:8px 12px;font-size:12px;color:${s.color};font-weight:600">&#10003; Jawaban: ${si.sa||'&mdash;'}</div>
+    </div>
+    <div style="background:#FEF3C7;border:1px solid #FDE68A;border-radius:var(--rs);padding:10px 14px;font-size:12px;color:#78350F;margin-bottom:18px">
+      &#9203; Timer akan mulai saat Anda klik <strong>Mulai Subtes</strong>. Pastikan tidak terganggu selama ${s.time/60} menit ke depan.
+    </div>
+    <button class="btn-main" onclick="startTKSub('${code}')">Mulai Subtes (${s.time/60} menit) &#8594;</button>
+    <div style="margin-top:10px"><button onclick="goTo('overview')" class="btn-sec">&#8592; Kembali ke Daftar Tes</button></div>
+  </div>`;
+}
+function startTK(){const phase=TK_ORDER_A.find(k=>!APP.tk.done[k])||'GI';APP.tk.phase=phase;APP.tk.curQ=0;showSubIntro(phase);}
+function startTKSub(code){
+  APP.tk.phase=code;APP.tk.curQ=0;APP.tk.timeLeft=SUBS[code].time;APP.tk.totalTime=SUBS[code].time;APP.tk.running=true;
+  document.getElementById('timer-bar').className='timer-bar show';updateTKTimer();
+  document.getElementById('app').innerHTML=renderTKQ();
+  timerInt=setInterval(()=>{APP.tk.timeLeft--;updateTKTimer();if(APP.tk.timeLeft<=0){clearInterval(timerInt);timerInt=null;autoAdvanceTK();}},1000);
+}
+function updateTKTimer(){
+  const s=SUBS[APP.tk.phase],left=APP.tk.timeLeft,total=APP.tk.totalTime,pct=Math.max(0,left/total*100),warn=left<=60;
+  const el=document.getElementById('t-disp'),fill=document.getElementById('t-fill'),badge=document.getElementById('t-badge'),info=document.getElementById('t-info');
+  if(el){el.textContent=fmtTime(left);el.className='t-disp'+(warn?' warn':'');}
+  if(fill){fill.style.width=pct+'%';fill.className='t-fill'+(warn?' warn':'');}
+  if(badge){badge.textContent=s.code;badge.style.background=s.color+'33';badge.style.color=s.color;}
+  if(info)info.textContent=`${s.items} soal`;
+}
+function autoAdvanceTK(){clearInterval(timerInt);timerInt=null;scoreTKSub(APP.tk.phase);advanceTKSub(APP.tk.phase);}
+function advanceTKSub(code){const idx=TK_ORDER_A.indexOf(code);if(idx<TK_ORDER_A.length-1){APP.tk.curQ=0;showSubDone(code);}else submitTK();}
+function renderTKQ(){return APP.tk.phase==='GI'?renderGI():renderKA();}
+function renderGI(){
+  const i=APP.tk.curQ,q=GI_QS[i],answered=Object.values(APP.tk.answers.GI).filter(v=>v!=null&&v!=='').length;
+  const hasAns=APP.tk.answers.GI[q.n]!=null&&APP.tk.answers.GI[q.n]!=='',isLast=i===GI_QS.length-1;
+  let inputHtml='';
+  if(q.type==='mc'){
+    const opts=q.opts.map((opt,oi)=>{
+      let btnVal=String(oi+1);
+      if(opt==='YA'||opt==='TIDAK')btnVal=opt.toLowerCase();
+      if(q.n===22)btnVal=['b','s'][oi];
+      if(q.n===23)btnVal=['1,2','2,5','1,4','3,4','4,5'][oi];
+      if(q.n===41)btnVal=['1,4','2,5','1,3','3,4','2,4'][oi];
+      if(q.n===49)btnVal=['1,2,3,4','1,2,4,5','1,3,4,5','2,3,4,5','1,2,3,5'][oi];
+      const isSel=APP.tk.answers.GI[q.n]===btnVal;
+      return`<div class="q-opt${isSel?' sel':''}" onclick="giSel(${q.n},'${btnVal}')"><div class="q-opt-let">${ALPHA[oi]}</div><div class="q-opt-txt">${esc(opt)}</div></div>`;
+    }).join('');
+    inputHtml=`<div class="q-opts-wrap">${opts}</div>`;
+  }else{
+    inputHtml=`<input class="q-input-wpt${hasAns?' filled':''}" type="text" placeholder="${q.hint||'Tulis jawaban...'}" value="${APP.tk.answers.GI[q.n]||''}" id="gi-inp-${q.n}" oninput="giInput(${q.n},this.value)" onpaste="return false" oncopy="return false">${q.hint?`<div class="q-hint-wpt">${q.hint}</div>`:''}`;
+  }
+  const tabWarn='';
+  const dots=GI_QS.map((_,di)=>{let cls='qd';if(di===i)cls+=' cur';else if(APP.tk.answers.GI[GI_QS[di].n]!=null&&APP.tk.answers.GI[GI_QS[di].n]!=='')cls+=' done';return`<div class="${cls}" onclick="giGoQ(${di})" title="${di+1}"></div>`;}).join('');
+  return`
+  <div class="q-bar with-timer"><div class="q-bar-inner"><span class="q-num-b">${i+1}/50</span><div class="q-track"><div class="q-fill" style="width:${answered/50*100}%"></div></div><span class="q-pct">${answered}/50 dijawab</span></div></div>
+  ${tabWarn}
+  <div class="q-card-single" oncontextmenu="return false">
+    <div style="display:flex;align-items:center;gap:10px;margin-bottom:14px"><div style="display:inline-flex;align-items:center;justify-content:center;width:38px;height:38px;border-radius:50%;background:var(--teal-lt);color:var(--teal);font-family:'Playfair Display',serif;font-size:15px;font-weight:700">${i+1}</div><div style="font-size:12px;color:var(--slate-md)">Soal <strong>${i+1}</strong> dari 50</div></div>
+    ${q.svgHtml?`<div style="margin:6px 0 14px;overflow-x:auto">${q.svgHtml}</div>`:''}
+    <div style="font-size:14px;color:var(--slate);line-height:1.75;margin-bottom:16px;user-select:none;white-space:pre-wrap">${q.text||q.s||''}</div>
+    ${inputHtml}
+    <div class="qnav-wrap"><div class="qnav-dots">${dots}</div></div>
+    <div class="q-foot"><button class="btn-prev" onclick="giPrev()" ${i===0?'disabled':''}>← Sebelumnya</button><div style="flex:1"></div><button class="btn-next" onclick="${isLast?'finishTKSub()':'giNext()'}">${isLast?'Selesai Subtes →':'Selanjutnya →'}</button></div>
+  </div>`;
+}
+function giSel(n,v){APP.tk.answers.GI[n]=v;document.getElementById('app').innerHTML=renderGI();}
+function giInput(n,v){APP.tk.answers.GI[n]=v;const inp=document.getElementById('gi-inp-'+n);if(inp)inp.className='q-input-wpt'+(v?' filled':'');}
+function giPrev(){if(APP.tk.curQ>0){APP.tk.curQ--;document.getElementById('app').innerHTML=renderGI();}}
+function giNext(){if(APP.tk.curQ<GI_QS.length-1){APP.tk.curQ++;document.getElementById('app').innerHTML=renderGI();}}
+function giGoQ(i){APP.tk.curQ=i;document.getElementById('app').innerHTML=renderGI();}
+function renderKA(){
+  const s=SUBS.KA,qs=QS_MAP.KA,i=APP.tk.curQ,q=qs[i],ans=APP.tk.answers.KA[i];
+  const answered=APP.tk.answers.KA.filter(a=>a!==null).length,pct=Math.round(i/s.items*100),isLast=i===s.items-1;
+  const tabWarn='';
+  const choicesHTML=`<div class="cs-choices">${Object.entries(q.o).map(([k,v])=>`<div class="cs-choice${ans===k?' sel':''}" onclick="kaPick(${i},'${k}')"><div class="cs-ch-let" style="${ans===k?'background:'+s.color+';border-color:'+s.color+';color:#fff':''}">${k}</div><div class="cs-ch-txt">${esc(v)}</div></div>`).join('')}</div>`;
+  const dots=qs.map((_,di)=>{let cls='qd';if(di===i)cls+=' cur';else if(APP.tk.answers.KA[di]!==null)cls+=' done';return`<div class="${cls}" onclick="kaGoQ(${di})" title="${di+1}"></div>`;}).join('');
+  return`
+  <div class="q-bar with-timer"><div class="q-bar-inner"><span class="q-num-b" style="background:${s.bg};color:${s.color}">${i+1}/${s.items}</span><div class="q-track"><div class="q-fill" style="width:${pct}%;background:${s.color}"></div></div><span class="q-pct">${answered}✓</span></div></div>
+  ${tabWarn}
+  <div class="q-card">
+    <div style="display:flex;align-items:center;gap:8px;margin-bottom:12px"><div style="width:32px;height:32px;border-radius:8px;display:grid;place-items:center;font-size:14px;font-weight:700;background:${s.bg};color:${s.color}">${i+1}</div></div>
+    <div class="q-stem-box" style="background:${s.bg};border:1px solid ${s.color}20"><div class="q-stem">${q.s}</div></div>
+    ${choicesHTML}
+    <div class="qnav-wrap"><div class="qnav-dots">${dots}</div></div>
+    <div class="q-foot"><button class="btn-prev" onclick="kaPrev()" ${i===0?'disabled':''}>← Sebelumnya</button><div style="flex:1"></div><button class="btn-next" onclick="${isLast?'finishTKSub()':'kaNext()'}" ${ans===null&&!isLast?'disabled':''}>${isLast?'Selesai Subtes →':'Selanjutnya →'}</button></div>
+  </div>`;
+}
+function kaPick(i,k){APP.tk.answers.KA[i]=k;document.getElementById('app').innerHTML=renderKA();}
+function kaPrev(){if(APP.tk.curQ>0){APP.tk.curQ--;document.getElementById('app').innerHTML=renderKA();}}
+function kaNext(){if(APP.tk.curQ<SUBS.KA.items-1){APP.tk.curQ++;document.getElementById('app').innerHTML=renderKA();}}
+function kaGoQ(i){APP.tk.curQ=i;document.getElementById('app').innerHTML=renderKA();}
+function finishTKSub(){
+  const code=APP.tk.phase;
+  const n=code==='GI'?Object.values(APP.tk.answers.GI).filter(v=>v!=null&&v!=='').length:APP.tk.answers.KA.filter(a=>a!==null).length;
+  if(confirm(`Selesaikan subtes ${code}?\n\nTerjawab: ${n}/${SUBS[code].items}\nWaktu tersisa: ${fmtTime(APP.tk.timeLeft)}`)){
+    clearInterval(timerInt);timerInt=null;document.getElementById('timer-bar').className='timer-bar';
+    scoreTKSub(code);showSubDone(code);
+  }
+}
+function scoreTKSub(code){
+  const s=SUBS[code];let ok=0;
+  if(code==='GI'){for(const q of GI_QS){if(checkAnswer(q.n,APP.tk.answers.GI[q.n]||''))ok++;}}
+  else{const qs=QS_MAP[code];APP.tk.answers.KA.forEach((ans,idx)=>{const q=qs[idx];if(q&&ans===q.a)ok++;});}
+  const pct=rawToPercentile(ok,s.items),score10=pctToScore10(pct),grade=getGrade(pct),verdict=getVerdict(score10);
+  const res={ok,items:s.items,pct,score10,g:grade.g,label:grade.l,verdict:verdict.v};
+  if(code==='GI'){res.iq=getIQ(ok);res.iqCls=getIQClass(res.iq);}
+  APP.tk.done[code]=res;
+}
+function showSubDone(code){
+  const idx=TK_ORDER_A.indexOf(code),isLast=idx===TK_ORDER_A.length-1,nextCode=TK_ORDER_A[idx+1];
+  document.getElementById('app').innerHTML=`
+  <div style="max-width:440px;margin:60px auto 0;text-align:center">
+    <div style="width:72px;height:72px;border-radius:50%;background:${SUBS[code].bg};border:3px solid ${SUBS[code].color};display:inline-flex;align-items:center;justify-content:center;font-size:34px;margin-bottom:18px">✅</div>
+    <h2 style="font-size:20px;color:${SUBS[code].color};margin-bottom:8px">Subtes Selesai ✅</h2>
+    <p style="font-size:13px;color:var(--slate-md);line-height:1.7;margin-bottom:24px">${isLast?'Semua subtes TK selesai!':'Lanjutkan ke subtes berikutnya saat siap.'}</p>
+    ${isLast?`<button class="btn-main" style="max-width:280px;margin:0 auto" onclick="submitTK()">Lanjut →</button>`
+    :`<div style="background:${SUBS[nextCode].bg};border-radius:var(--rs);padding:12px 16px;margin-bottom:16px;font-size:12px;color:${SUBS[nextCode].color}">Subtes berikutnya &mdash; ${SUBS[nextCode].items} soal · ${SUBS[nextCode].time/60} menit</div><button class="btn-main" style="max-width:280px;margin:0 auto" onclick="showSubIntro('${nextCode}')">Mulai Subtes Berikutnya →</button>`}
+    <div style="margin-top:10px"><button onclick="goTo('overview')" class="btn-sec">← Kembali ke Daftar</button></div>
+  </div>`;
+}
+function submitTK(){
+  const sub=APP.tk.done;
+  const rawComp=TK_ORDER_A.reduce((s,k)=>s+(sub[k]?.score10||0)*SUBS[k].weight,0);
+  const sumW=TK_ORDER_A.reduce((s,k)=>s+SUBS[k].weight,0);
+  const composite=Math.round(rawComp/sumW*10)/10;
+  const compVerdict=getVerdict(Math.round(composite));
+  APP.results.tk={sub,composite,compVerdict:compVerdict.v,date:new Date().toLocaleDateString('id-ID',{day:'2-digit',month:'long',year:'numeric'}),tabSwitches:APP.tabSwitches};
+  save();renderTestDone(1,'Tes 1 — Kemampuan Kognitif','bigfive_intro');
+}
+
+// ══════ BIG FIVE — AUTO-ADVANCE (Likert 1–5) ══════
+function renderBigFive(){
+  const i=APP.bigfive.curQ,item=BF_ITEMS[i],trait=item[1],rev=item[2];
+  const tc=TRAITS[trait],ans=APP.bigfive.answers[i];
+  const pct=Math.round(i/44*100);
+  const tabWarn='';
+  const dots=BF_ITEMS.map((_,di)=>{let cls='qd';if(di===i)cls+=' cur';else if(APP.bigfive.answers[di]!==null)cls+=' done';return`<div class="${cls}" onclick="bfJump(${di})" title="${di+1}"></div>`;}).join('');
+  const likertBtns=[1,2,3,4,5].map(v=>`<button class="likert-btn${ans===v?' sel':''}" onclick="bfPick(${v})">${v}</button>`).join('');
+  return`
+  <div class="q-bar"><div class="q-bar-inner"><span class="q-num-b" style="background:${tc.bg};color:${tc.color}">${i+1} / 44</span><div class="q-track"><div class="q-fill" style="width:${pct}%;background:${tc.color}"></div></div><span class="q-pct">${pct}%</span></div></div>
+  ${tabWarn}
+  <div class="q-card">
+    <div style="display:inline-flex;align-items:center;justify-content:center;width:34px;height:34px;border-radius:50%;background:${tc.bg};color:${tc.color};font-family:'Playfair Display',serif;font-size:13px;font-weight:700;margin-bottom:12px">${i+1}</div>
+    <div style="font-size:12px;color:var(--slate-md);margin-bottom:12px;padding:8px 12px;background:${tc.bg};border-radius:var(--rs)"><strong>Petunjuk:</strong> Seberapa sesuai pernyataan ini dengan diri Anda? Menjawab otomatis lanjut.</div>
+    <div style="font-size:13px;color:var(--slate-md);margin-bottom:4px">Saya adalah orang yang …</div>
+    <div style="font-size:16px;font-weight:600;color:var(--navy);margin-bottom:18px;line-height:1.5">${esc(BF_QS[i])}</div>
+    <div class="likert-wrap">
+      <div class="likert-labels"><span class="likert-label">Sangat<br>Tidak Sesuai</span><span class="likert-label">Tidak<br>Sesuai</span><span class="likert-label">Netral</span><span class="likert-label">Sesuai</span><span class="likert-label">Sangat<br>Sesuai</span></div>
+      <div class="likert-row">${likertBtns}</div>
+    </div>
+    <div class="qnav-wrap"><div class="qnav-dots">${dots}</div></div>
+    <div style="text-align:center;font-size:11px;color:var(--slate-lt);margin-top:8px">${i+1} dari 44 · Menjawab otomatis lanjut</div>
+    <div class="q-foot"><button class="btn-prev" onclick="bfPrev()" ${i===0?'disabled':''}>← Sebelumnya</button><div style="flex:1"></div>${i===43?`<button class="btn-next" onclick="submitBigFive()">Lihat Hasil →</button>`:ans!==null?`<button class="btn-next" onclick="bfNext()">Selanjutnya →</button>`:`<button class="btn-next" disabled>Selanjutnya →</button>`}</div>
+  </div>`;
+}
+// AUTO-ADVANCE: pick → set → curQ++ → re-render (Battery C pattern)
+function bfPick(v){const i=APP.bigfive.curQ;APP.bigfive.answers[i]=v;if(i<43){APP.bigfive.curQ++;document.getElementById('app').innerHTML=renderBigFive();}else submitBigFive();}
+function bfNext(){if(APP.bigfive.curQ<43){APP.bigfive.curQ++;document.getElementById('app').innerHTML=renderBigFive();}}
+function bfPrev(){if(APP.bigfive.curQ>0){APP.bigfive.curQ--;document.getElementById('app').innerHTML=renderBigFive();}}
+function bfJump(i){APP.bigfive.curQ=i;document.getElementById('app').innerHTML=renderBigFive();}
+function submitBigFive(){
+  const raw={E:0,A:0,C:0,N:0,O:0};
+  APP.bigfive.answers.forEach((ans,i)=>{if(ans===null)return;const[,trait,rev]=BF_ITEMS[i];raw[trait]+=(rev?(6-ans):ans);});
+  const pct={},lvl={};
+  Object.keys(raw).forEach(t=>{
+    // v8 fix: rebase pct from "% of max" to "% of Likert range" so all-neutral answers = 50% (not 60%).
+    // Items per trait: E=8, A=9, C=9, N=8, O=10. Min raw = items×1, max raw = items×5. Normalized: (raw - items) / (items×4) × 100.
+    const items=TRAIT_MAX[t]/5;
+    pct[t]=parseFloat(((raw[t]-items)/(items*4)*100).toFixed(1));
+    // Recalibrated thresholds to match new 0-100% scale — old 75%/45% on flawed scale ≈ new 65%/35% (Likert mean ≥ 3.6 / ≥ 2.4).
+    lvl[t]=pct[t]>=65?'Tinggi':pct[t]>=35?'Sedang':'Rendah';
+  });
+  APP.results.bigfive={raw,pct,lvl,date:new Date().toLocaleDateString('id-ID',{day:'2-digit',month:'long',year:'numeric'}),tabSwitches:APP.tabSwitches};
+  
+  save();renderTestDone(2,'Tes 2 — Kepribadian','disc_intro');
+}
+
+// ══════ DISC — AUTO-ADVANCE WHEN M+L BOTH COMPLETE ══════
+function renderDISC(){
+  const gi=APP.disc.curQ,group=GROUPS[gi],ans=APP.disc.answers[gi];
+  const pct=Math.round(gi/24*100),answered=APP.disc.answers.filter(a=>a.m!==null&&a.l!==null&&a.m!==a.l).length;
+  const complete=(ans.m!==null&&ans.l!==null&&ans.m!==ans.l);
+  const tabWarn='';
+  const dots=Array.from({length:24},(_,di)=>{const a=APP.disc.answers[di];let cls='qd';if(di===gi)cls+=' cur';else if(a.m!==null&&a.l!==null&&a.m!==a.l)cls+=' done';return`<div class="${cls}" onclick="discJump(${di})" title="${di+1}"></div>`;}).join('');
+  const rows=group.options.map((opt,i)=>{
+    const isM=ans.m===i,isL=ans.l===i;
+    let cls='disc-opt-row';
+    if(isM&&isL)cls+=' sel-m sel-l';else if(isM)cls+=' sel-m';else if(isL)cls+=' sel-l';
+    return`<div class="${cls}">
+      <div class="disc-opt-txt"><strong style="color:var(--slate-lt);margin-right:4px">${['A','B','C','D'][i]}.</strong>${esc(opt.t)}</div>
+      <div class="disc-btns">
+        <button class="disc-btn-m${isM?' active':''}" onclick="discPickM(${gi},${i})" title="Paling sesuai">M</button>
+        <button class="disc-btn-l${isL?' active':''}" onclick="discPickL(${gi},${i})" title="Paling tidak sesuai">L</button>
+      </div>
+    </div>`;
+  }).join('');
+  return`
+  <div class="q-bar"><div class="q-bar-inner"><span class="q-num-b" style="background:#EFF6FF;color:#0369A1">${gi+1} / 24</span><div class="q-track"><div class="q-fill" style="width:${pct}%;background:#0369A1"></div></div><span class="q-pct">${answered}/24 selesai</span></div></div>
+  ${tabWarn}
+  <div class="disc-group">
+    <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px">
+      <div style="width:32px;height:32px;border-radius:50%;background:#EFF6FF;color:#0369A1;display:grid;place-items:center;font-family:'Playfair Display',serif;font-size:13px;font-weight:700;flex-shrink:0">${gi+1}</div>
+      <span style="font-size:13px;font-weight:700;color:#0369A1">Kelompok ${gi+1} dari 24</span>
+    </div>
+    <div class="disc-legend"><span class="disc-leg-m">M = Paling Sesuai dengan Anda</span><span class="disc-leg-l">L = Paling Tidak Sesuai</span></div>
+    <div class="disc-opts">${rows}</div>
+    ${ans.m!==null&&ans.l!==null&&ans.m===ans.l?`<div style="color:#DC2626;font-size:12px;margin-bottom:8px">⚠️ Pilihan M dan L tidak boleh sama.</div>`:''}
+    <div class="qnav-wrap"><div class="qnav-dots">${dots}</div></div>
+    <div style="text-align:center;font-size:11px;color:var(--slate-lt);margin-top:8px">Pilih M dan L yang berbeda — otomatis lanjut saat keduanya dipilih</div>
+    <div class="q-foot"><button class="btn-prev" onclick="discPrev()" ${gi===0?'disabled':''}>← Sebelumnya</button><div style="flex:1"></div>${gi===23&&complete?`<button class="btn-next" onclick="submitDISC()">Lihat Hasil →</button>`:complete?`<button class="btn-next" onclick="discNext()">Selanjutnya →</button>`:`<button class="btn-next" disabled>Selanjutnya →</button>`}</div>
+  </div>`;
+}
+// AUTO-ADVANCE: when both M and L selected (and different), advance after 180ms
+function discPickM(gi,i){
+  const ans=APP.disc.answers[gi];
+  if(ans.m===i){ans.m=null;}else{ans.m=i;}
+  document.getElementById('app').innerHTML=renderDISC();
+  checkDiscAutoAdvance(gi);
+}
+function discPickL(gi,i){
+  const ans=APP.disc.answers[gi];
+  if(ans.l===i){ans.l=null;}else{ans.l=i;}
+  document.getElementById('app').innerHTML=renderDISC();
+  checkDiscAutoAdvance(gi);
+}
+function checkDiscAutoAdvance(gi){
+  const ans=APP.disc.answers[gi];
+  if(ans.m!==null&&ans.l!==null&&ans.m!==ans.l&&gi<23){
+    setTimeout(()=>{APP.disc.curQ++;document.getElementById('app').innerHTML=renderDISC();},200);
+  }
+}
+function discNext(){if(APP.disc.curQ<23){APP.disc.curQ++;document.getElementById('app').innerHTML=renderDISC();}}
+function discPrev(){if(APP.disc.curQ>0){APP.disc.curQ--;document.getElementById('app').innerHTML=renderDISC();}}
+function discJump(i){APP.disc.curQ=i;document.getElementById('app').innerHTML=renderDISC();}
+function submitDISC(){
+  const scores=computeScores(APP.disc.answers);
+  const dominant=getDominant(scores.line1);
+  const adaptive=getAdaptive(scores.line1);
+  const natural=getNatural(scores.line2);
+  APP.results.disc={scores,dominant,adaptive,natural,date:new Date().toLocaleDateString('id-ID',{day:'2-digit',month:'long',year:'numeric'}),tabSwitches:APP.tabSwitches};
+  
+  save();renderTestDone(3,'Tes 3 — Gaya Kerja','holland_intro');
+}
+
+// ══════ HOLLAND — AUTO-ADVANCE (Yes/No) ══════
+function renderHolland(){
+  const i=APP.holland.curQ,q=HOL_QS[i],ans=APP.holland.answers[i];
+  const pct=Math.round(i/108*100),tc=HOL_TC[q.t];
+  const tabWarn='';
+  const dots=HOL_QS.map((_,di)=>{let cls='qd';if(di===i)cls+=' cur';else if(APP.holland.answers[di]!==null)cls+=' done';return`<div class="${cls}" onclick="holJump(${di})" title="${di+1}"></div>`;}).join('');
+  return`
+  <div class="q-bar"><div class="q-bar-inner"><span class="q-num-b" style="background:${tc.bg};color:${tc.color}">${i+1} / 108</span><div class="q-track"><div class="q-fill" style="width:${pct}%;background:${tc.color}"></div></div><span class="q-pct">${pct}%</span></div></div>
+  ${tabWarn}
+  <div class="q-card">
+    <div style="display:inline-flex;align-items:center;justify-content:center;width:34px;height:34px;border-radius:50%;background:${tc.bg};color:${tc.color};font-family:'Playfair Display',serif;font-size:13px;font-weight:700;margin-bottom:12px">${i+1}</div>
+    <div style="font-size:16px;font-weight:600;color:var(--navy);margin-bottom:20px;line-height:1.6">${esc(q.q)}</div>
+    <div class="hol-yn-row">
+      <button class="hol-btn yes${ans===true?' sel':''}" onclick="holPick(true)">✓ Ya</button>
+      <button class="hol-btn no${ans===false?' sel':''}" onclick="holPick(false)">✕ Tidak</button>
+    </div>
+    <div class="qnav-wrap"><div class="qnav-dots">${dots}</div></div>
+    <div style="text-align:center;font-size:11px;color:var(--slate-lt);margin-top:8px">${i+1} dari 108 · Menjawab otomatis lanjut</div>
+    <div class="q-foot"><button class="btn-prev" onclick="holPrev()" ${i===0?'disabled':''}>← Sebelumnya</button><div style="flex:1"></div>${i===107?`<button class="btn-next" onclick="submitHolland()">Lihat Hasil →</button>`:ans!==null?`<button class="btn-next" onclick="holNext()">Selanjutnya →</button>`:`<button class="btn-next" disabled>Selanjutnya →</button>`}</div>
+  </div>`;
+}
+// AUTO-ADVANCE (Battery C pattern)
+function holPick(v){const i=APP.holland.curQ;APP.holland.answers[i]=v;if(i<107){APP.holland.curQ++;document.getElementById('app').innerHTML=renderHolland();}else submitHolland();}
+function holNext(){if(APP.holland.curQ<107){APP.holland.curQ++;document.getElementById('app').innerHTML=renderHolland();}}
+function holPrev(){if(APP.holland.curQ>0){APP.holland.curQ--;document.getElementById('app').innerHTML=renderHolland();}}
+function holJump(i){APP.holland.curQ=i;document.getElementById('app').innerHTML=renderHolland();}
+function submitHolland(){
+  const scores={R:0,I:0,A:0,S:0,E:0,C:0};
+  APP.holland.answers.forEach((ans,i)=>{if(ans===true)scores[HOL_QS[i].t]++;});
+  const ranked=Object.entries(scores).sort((a,b)=>b[1]-a[1]);
+  const code3=ranked.slice(0,3).map(x=>x[0]).join('');
+  const top1=ranked[0][0],top2=ranked[1][0];
+  const combo2=top1+top2;
+  const consistency=CONSISTENCY[combo2]||CONSISTENCY[top2+top1]||'Tidak Diketahui';
+  const comboInfo=COMBOS[combo2]||COMBOS[top2+top1]||{title:'Profil Unik',jobs:'Beragam sesuai minat dominan'};
+  APP.results.holland={scores,ranked,code3,consistency,comboInfo,date:new Date().toLocaleDateString('id-ID',{day:'2-digit',month:'long',year:'numeric'}),tabSwitches:APP.tabSwitches};
+  save();renderTestDone(4,'Tes 4 — Minat Kerja','complete');
+}
+
+// ── SHARED TEST DONE ──
+function renderTestDone(num,label,nextScreen){
+  const isLast=num===4;
+  document.getElementById('timer-bar').className='timer-bar';
+  document.getElementById('app').innerHTML=`
+  <div style="max-width:480px;margin:60px auto 0;text-align:center">
+    <div style="width:80px;height:80px;border-radius:50%;background:#ECFDF5;border:3px solid #16A34A;display:inline-flex;align-items:center;justify-content:center;font-size:38px;margin-bottom:20px">✅</div>
+    <h2 style="font-size:22px;color:#15803D;margin-bottom:8px">${label} Selesai</h2>
+    <p style="font-size:13px;color:var(--slate-md);line-height:1.7;margin-bottom:28px">Jawaban Anda telah direkam.<br>${isLast?'Seluruh rangkaian tes Battery A telah selesai.':'Lanjutkan ke tes berikutnya saat siap.'}</p>
+    <button class="btn-main" style="max-width:280px;margin:0 auto" onclick="goTo('${nextScreen}')">${isLast?'Lihat Ringkasan Akhir →':'Lanjut ke Tes Berikutnya →'}</button>
+    <div style="margin-top:12px"><button onclick="goTo('overview')" class="btn-sec">← Kembali ke Daftar</button></div>
+  </div>`;
+  renderNav();
+}
+
+// ── COMPLETE ──
+function renderComplete(){
+  const done=APP.results,allDone=TESTS.every(t=>done[t]),doneCount=Object.keys(done).length;
+  const labels={tk:'Tes 1 — TK Kognitif (GI+KA)',bigfive:'Tes 2 — Kepribadian',disc:'Tes 3 — Gaya Kerja',holland:'Tes 4 — Minat Kerja'};
+  const checkItems=TESTS.map((t,i)=>`<div style="display:flex;align-items:center;gap:14px;padding:14px 16px;border-radius:var(--rs);border:1.5px solid ${done[t]?'#BBF7D0':'var(--border)'};background:${done[t]?'#F0FDF4':'#FAFAFA'};margin-bottom:8px">
+    <div style="width:36px;height:36px;border-radius:50%;display:grid;place-items:center;font-size:${done[t]?'20px':'14px'};font-weight:700;flex-shrink:0;background:${done[t]?'#16A34A':'var(--border)'};color:#fff">${done[t]?'✓':i+1}</div>
+    <div style="flex:1"><div style="font-size:13px;font-weight:700;color:${done[t]?'#15803D':'var(--slate-lt)'}">${labels[t]}</div><div style="font-size:11px;color:${done[t]?'#4ADE80':'var(--slate-lt)'};margin-top:1px">${done[t]?'Selesai':'Belum dikerjakan'}</div></div>
+    <div>${done[t]?'✅':'⭕'}</div>
+  </div>`).join('');
+  return`
+  ${allDone?`<div style="background:linear-gradient(135deg,#ECFDF5,#F0FDF4);border:2px solid #16A34A;border-radius:var(--r);padding:28px;text-align:center;margin-bottom:16px">
+    <div style="font-size:58px;margin-bottom:10px">🎉</div>
+    <div style="font-family:'Playfair Display',serif;font-size:24px;color:#15803D;margin-bottom:6px">Semua Tes Selesai!</div>
+    <div style="font-size:13px;color:var(--slate-md);line-height:1.65;margin-bottom:16px">Selamat ${APP.profile.name}! Seluruh rangkaian tes Battery A telah selesai.</div>
+    <a href="Myralix_Battery_A_Laporan_Psikologis_v10.html" target="_blank" style="display:block;background:linear-gradient(135deg,#064E3B,#0A6E5C);color:#fff;padding:13px 20px;border-radius:var(--rs);font-size:14px;font-weight:700;text-decoration:none;text-align:center;margin-bottom:8px">📊 Buka Laporan Psikologis (Rekruter) →</a>
+    <div style="font-size:11px;color:#6B7280;text-align:center">Laporan hanya untuk rekruter — buka di browser yang sama</div>
+  </div>`:''}
+  <div class="card"><div style="font-size:10px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:var(--slate-lt);margin-bottom:14px">Daftar Tes — ${doneCount} dari ${TESTS.length} Selesai</div>${checkItems}</div>
+  <div style="display:flex;gap:10px;flex-wrap:wrap;margin-top:4px">
+    <button onclick="goTo('overview')" class="btn-sec">← Kembali ke Daftar</button>
+    ${!allDone?`<button onclick="goTo('${TESTS.find(t=>!done[t])}_intro')" class="btn-main" style="width:auto;padding:10px 20px">Lanjutkan Tes →</button>`:''}
+  </div>`;
+}
+
+// ── TAB / ANTI-CHEAT ──
+document.addEventListener('visibilitychange',()=>{if(document.hidden&&['tk','bigfive','disc','holland'].includes(APP.screen))APP.tabSwitches++;});
+document.addEventListener('contextmenu',e=>{if(APP.screen==='tk')e.preventDefault();});
+document.addEventListener('keydown',e=>{if(APP.screen==='tk'&&(e.ctrlKey||e.metaKey)&&['c','v','u','s'].includes(e.key.toLowerCase()))e.preventDefault();});
+
+// ── INIT ──
+loadSaved();
+if(APP.profile){goTo('overview');}else{renderNav();document.getElementById('app').innerHTML=renderSetup();}
+</script>
+</body>
+</html>
