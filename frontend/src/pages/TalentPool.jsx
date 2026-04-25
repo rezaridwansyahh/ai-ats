@@ -1,107 +1,163 @@
 import { useState, useEffect, useMemo, useCallback } from 'react';
 import {
   Users, UserPlus, Search, Briefcase, Calendar, Sparkles, AlertTriangle,
-  Building2, GraduationCap, Plus,
+  Building2, GraduationCap, Plus, MapPin, Code2, X,
 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import {
-  Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
-} from '@/components/ui/select';
-import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from '@/components/ui/table';
 import { StatCard } from '@/components/cards/StatCard';
 import AddToJobDialog from '@/components/talent-pool/AddToJobDialog';
 
+import { searchScreening } from '@/api/screening.api';
 import { getAll } from '@/api/applicant.api';
 
-const PLATFORM_COLORS = {
-  seek:      'bg-blue-50 text-blue-600 border-blue-200',
-  linkedin:  'bg-sky-50 text-sky-600 border-sky-200',
-  internal:  'bg-emerald-50 text-emerald-600 border-emerald-200',
-  glints:    'bg-orange-50 text-orange-600 border-orange-200',
-  instagram: 'bg-pink-50 text-pink-600 border-pink-200',
-  facebook:  'bg-indigo-50 text-indigo-600 border-indigo-200',
-  whatsapp:  'bg-green-50 text-green-600 border-green-200',
-};
-
-const PLATFORM_OPTIONS = ['seek', 'linkedin', 'internal', 'glints'];
 const PAGE_SIZE = 10;
 
+const EMPTY_FILTERS = {
+  position_q: '',
+  skill_q: '',
+  education_q: '',
+  location_q: '',
+};
+
 export default function TalentPoolPage() {
-  const [applicants, setApplicants] = useState([]);
-  const [loading, setLoading] = useState(true);
+  // Stats are computed from a one-time full fetch — they don't change with search.
+  const [allApplicants, setAllApplicants] = useState([]);
+  const [statsLoading, setStatsLoading] = useState(true);
+
+  // Search results are server-side and paginated.
+  const [rows, setRows] = useState([]);
+  const [total, setTotal] = useState(0);
+  const [searchLoading, setSearchLoading] = useState(false);
   const [error, setError] = useState(null);
 
-  const [searchQuery, setSearchQuery] = useState('');
-  const [platformFilter, setPlatformFilter] = useState('all');
+  const [filterDraft, setFilterDraft] = useState(EMPTY_FILTERS);
+  const [activeFilters, setActiveFilters] = useState(EMPTY_FILTERS);
   const [page, setPage] = useState(1);
 
   const [dialogOpen, setDialogOpen] = useState(false);
   const [selectedApplicant, setSelectedApplicant] = useState(null);
 
-  const fetchApplicants = useCallback(async () => {
-    setLoading(true);
-    setError(null);
-    try {
-      const { data } = await getAll();
-      setApplicants(data.applicants || []);
-    } catch (err) {
-      setError(err.response?.data?.message || err.message || 'Failed to load applicants');
-    } finally {
-      setLoading(false);
-    }
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      setStatsLoading(true);
+      try {
+        const { data } = await getAll();
+        if (!cancelled) setAllApplicants(data.applicants || []);
+      } catch {
+        if (!cancelled) setAllApplicants([]);
+      } finally {
+        if (!cancelled) setStatsLoading(false);
+      }
+    })();
+    return () => { cancelled = true; };
   }, []);
 
-  useEffect(() => { fetchApplicants(); }, [fetchApplicants]);
+  const draftHasContent = useMemo(
+    () => Object.values(filterDraft).some(v => v.trim().length > 0),
+    [filterDraft]
+  );
 
-  const filtered = useMemo(() => {
-    return applicants.filter(a => {
-      const matchesSearch = !searchQuery
-        || a.name?.toLowerCase().includes(searchQuery.toLowerCase())
-        || a.last_position?.toLowerCase().includes(searchQuery.toLowerCase());
-      const matchesPlatform = platformFilter === 'all' || a.platform === platformFilter;
-      return matchesSearch && matchesPlatform;
-    });
-  }, [applicants, searchQuery, platformFilter]);
+  const activeHasContent = useMemo(
+    () => Object.values(activeFilters).some(v => v.trim().length > 0),
+    [activeFilters]
+  );
 
-  const totalPages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
-  const paginated = filtered.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
+  const fetchRows = useCallback(async () => {
+    setSearchLoading(true);
+    setError(null);
+    try {
+      const params = {
+        mode: 'pool',
+        page,
+        limit: PAGE_SIZE,
+      };
+      Object.entries(activeFilters).forEach(([k, v]) => {
+        const trimmed = v.trim();
+        if (trimmed) params[k] = trimmed;
+      });
+      const res = await searchScreening(params);
+      setRows(res.data.rows || []);
+      setTotal(res.data.total || 0);
+    } catch (err) {
+      setError(err.response?.data?.message || err.message || 'Failed to load applicants');
+      setRows([]);
+      setTotal(0);
+    } finally {
+      setSearchLoading(false);
+    }
+  }, [activeFilters, page]);
 
-  useEffect(() => { setPage(1); }, [searchQuery, platformFilter]);
+  useEffect(() => { fetchRows(); }, [fetchRows]);
+
+  const handleSearch = (e) => {
+    if (e?.preventDefault) e.preventDefault();
+    if (!draftHasContent) return;
+    setPage(1);
+    setActiveFilters(filterDraft);
+  };
+
+  const handleClear = () => {
+    setFilterDraft(EMPTY_FILTERS);
+    setActiveFilters(EMPTY_FILTERS);
+    setPage(1);
+  };
+
+  const setField = (key) => (e) =>
+    setFilterDraft((f) => ({ ...f, [key]: e.target.value }));
+
+  const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE));
 
   const stats = useMemo(() => {
-    const total = applicants.length;
+    const totalApplicants = allApplicants.length;
     const now = Date.now();
     const weekAgo = now - 7 * 24 * 60 * 60 * 1000;
-    const newThisWeek = applicants.filter(a => a.date && new Date(a.date).getTime() >= weekAgo).length;
-    const platforms = new Set(applicants.map(a => a.platform).filter(Boolean)).size;
+    const newThisWeek = allApplicants.filter(a => a.date && new Date(a.date).getTime() >= weekAgo).length;
+    const positionCategories = new Set(
+      allApplicants
+        .map(a => a.information?.job_position?.category)
+        .filter(Boolean)
+    ).size;
     const avgExperience = (() => {
-      const years = applicants.map(a => a.information?.years_experience).filter(v => typeof v === 'number');
+      const years = allApplicants
+        .map(a => a.information?.experience?.years_total ?? a.information?.years_experience)
+        .filter(v => typeof v === 'number');
       if (years.length === 0) return '—';
       const avg = years.reduce((s, y) => s + y, 0) / years.length;
       return `${avg.toFixed(1)} yrs`;
     })();
-    return { total, newThisWeek, platforms, avgExperience };
-  }, [applicants]);
+    return { total: totalApplicants, newThisWeek, positionCategories, avgExperience };
+  }, [allApplicants]);
 
   const formatDate = (d) => {
     if (!d) return '—';
     try { return new Date(d).toLocaleDateString(); } catch { return '—'; }
   };
 
+  const handleAddClick = (row) => {
+    setSelectedApplicant({
+      id: row.applicant_id,
+      name: row.name,
+      last_position: row.last_position,
+      address: row.address,
+      information: row.information,
+    });
+    setDialogOpen(true);
+  };
+
   return (
     <div className="space-y-5 p-6">
-
-      {/* ── Header ── */}
       <div className="flex items-start justify-between">
         <div>
           <h1 className="text-2xl font-bold tracking-tight">Talent Pool</h1>
           <p className="text-sm text-muted-foreground mt-0.5">
-            Browse and source applicants from all connected platforms. Add top candidates to a job.
+            Browse all applicants. Use the filters below to narrow by position, skill, education, or location.
           </p>
         </div>
         <Button size="sm" className="text-xs">
@@ -109,39 +165,79 @@ export default function TalentPoolPage() {
         </Button>
       </div>
 
-      {/* ── Stat Cards ── */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
-        <StatCard
-          icon={<Users className="h-4 w-4 text-primary" />}
-          iconBg="bg-primary/10"
-          label="Total Applicants"
-          value={stats.total}
-          loading={loading}
-        />
-        <StatCard
-          icon={<UserPlus className="h-4 w-4 text-emerald-600" />}
-          iconBg="bg-emerald-50"
-          label="New This Week"
-          value={stats.newThisWeek}
-          loading={loading}
-        />
-        <StatCard
-          icon={<Briefcase className="h-4 w-4 text-blue-600" />}
-          iconBg="bg-blue-50"
-          label="Active Platforms"
-          value={stats.platforms}
-          loading={loading}
-        />
-        <StatCard
-          icon={<Calendar className="h-4 w-4 text-orange-600" />}
-          iconBg="bg-orange-50"
-          label="Avg Experience"
-          value={stats.avgExperience}
-          loading={loading}
-        />
+        <StatCard icon={<Users className="h-4 w-4 text-primary" />} iconBg="bg-primary/10" label="Total Applicants" value={stats.total} loading={statsLoading} />
+        <StatCard icon={<UserPlus className="h-4 w-4 text-emerald-600" />} iconBg="bg-emerald-50" label="New This Week" value={stats.newThisWeek} loading={statsLoading} />
+        <StatCard icon={<Briefcase className="h-4 w-4 text-blue-600" />} iconBg="bg-blue-50" label="Position Categories" value={stats.positionCategories} loading={statsLoading} />
+        <StatCard icon={<Calendar className="h-4 w-4 text-orange-600" />} iconBg="bg-orange-50" label="Avg Experience" value={stats.avgExperience} loading={statsLoading} />
       </div>
 
-      {/* ── Error ── */}
+      {/* Search form */}
+      <Card>
+        <CardHeader className="pb-3">
+          <CardTitle className="text-sm">Search Filters</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <form onSubmit={handleSearch} className="space-y-3">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+              <FacetInput
+                icon={<Briefcase className="h-3.5 w-3.5" />}
+                label="Position"
+                placeholder="e.g. Frontend, Backend"
+                value={filterDraft.position_q}
+                onChange={setField('position_q')}
+              />
+              <FacetInput
+                icon={<Code2 className="h-3.5 w-3.5" />}
+                label="Skill"
+                placeholder="e.g. React, Node.js"
+                value={filterDraft.skill_q}
+                onChange={setField('skill_q')}
+              />
+              <FacetInput
+                icon={<GraduationCap className="h-3.5 w-3.5" />}
+                label="Education"
+                placeholder="e.g. Harvard, Computer Science"
+                value={filterDraft.education_q}
+                onChange={setField('education_q')}
+              />
+              <FacetInput
+                icon={<MapPin className="h-3.5 w-3.5" />}
+                label="Location"
+                placeholder="e.g. Singapore, Jakarta"
+                value={filterDraft.location_q}
+                onChange={setField('location_q')}
+              />
+            </div>
+            <div className="flex items-center justify-between pt-1">
+              <span className="text-[11px] text-muted-foreground">
+                {draftHasContent ? 'Press Search to apply.' : 'Showing all applicants. Add filters to narrow.'}
+              </span>
+              <div className="flex items-center gap-2">
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  className="text-xs"
+                  onClick={handleClear}
+                  disabled={!draftHasContent && !activeHasContent}
+                >
+                  <X className="h-3 w-3 mr-1" /> Clear
+                </Button>
+                <Button
+                  type="submit"
+                  size="sm"
+                  className="text-xs"
+                  disabled={!draftHasContent || searchLoading}
+                >
+                  <Search className="h-3 w-3 mr-1" /> Search
+                </Button>
+              </div>
+            </div>
+          </form>
+        </CardContent>
+      </Card>
+
       {error && (
         <div className="flex items-center gap-2 px-4 py-3 rounded-lg border border-red-200 bg-red-50 text-sm text-red-600">
           <AlertTriangle className="h-4 w-4 shrink-0" />
@@ -149,109 +245,108 @@ export default function TalentPoolPage() {
         </div>
       )}
 
-      {/* ── Applicant List ── */}
       <Card>
-        <CardHeader className="pb-3 space-y-3">
+        <CardHeader className="pb-3">
           <div className="flex items-center justify-between">
-            <CardTitle className="text-sm">All Applicants</CardTitle>
+            <CardTitle className="text-sm">Results</CardTitle>
             <span className="text-[11px] text-muted-foreground">
-              {filtered.length} {filtered.length === 1 ? 'result' : 'results'}
+              {searchLoading
+                ? 'Searching...'
+                : `${total} ${total === 1 ? 'result' : 'results'}`}
             </span>
-          </div>
-          <div className="flex items-center gap-3">
-            <div className="relative max-w-[300px] flex-1">
-              <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
-              <Input
-                placeholder="Search name or last position..."
-                value={searchQuery}
-                onChange={e => setSearchQuery(e.target.value)}
-                className="pl-8 text-xs h-9"
-              />
-            </div>
-            <Select value={platformFilter} onValueChange={setPlatformFilter}>
-              <SelectTrigger className="w-[160px] text-xs h-9"><SelectValue /></SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">All Platforms</SelectItem>
-                {PLATFORM_OPTIONS.map(p => (
-                  <SelectItem key={p} value={p}>{p.charAt(0).toUpperCase() + p.slice(1)}</SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
           </div>
         </CardHeader>
         <CardContent>
           <Table className="table-fixed w-full">
             <TableHeader className="bg-muted/50">
               <TableRow>
-                <TableHead className="w-[22%] text-[10px] font-bold uppercase">Name</TableHead>
-                <TableHead className="w-[22%] text-[10px] font-bold uppercase">Last Position</TableHead>
-                <TableHead className="w-[18%] text-[10px] font-bold uppercase">Education</TableHead>
-                <TableHead className="w-[12%] text-[10px] font-bold uppercase">Platform</TableHead>
-                <TableHead className="w-[13%] text-[10px] font-bold uppercase">Applied</TableHead>
-                <TableHead className="w-[13%] text-[10px] font-bold uppercase text-right">Action</TableHead>
+                <TableHead className="w-[20%] text-[10px] font-bold uppercase">Name</TableHead>
+                <TableHead className="w-[20%] text-[10px] font-bold uppercase">Last Position</TableHead>
+                <TableHead className="w-[24%] text-[10px] font-bold uppercase">Skills</TableHead>
+                <TableHead className="w-[16%] text-[10px] font-bold uppercase">Education</TableHead>
+                <TableHead className="w-[10%] text-[10px] font-bold uppercase">Applied</TableHead>
+                <TableHead className="w-[10%] text-[10px] font-bold uppercase text-right">Action</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
-              {loading ? (
+              {searchLoading ? (
                 <TableRow>
                   <TableCell colSpan={6} className="text-center py-8 text-xs text-muted-foreground">
                     Loading applicants...
                   </TableCell>
                 </TableRow>
-              ) : paginated.length === 0 ? (
+              ) : rows.length === 0 ? (
                 <TableRow>
                   <TableCell colSpan={6} className="text-center py-8 text-xs text-muted-foreground">
                     No applicants found.
                   </TableCell>
                 </TableRow>
-              ) : paginated.map(a => (
-                <TableRow key={a.id}>
-                  <TableCell className="text-xs font-medium">
-                    <div className="flex flex-col">
-                      <span className="font-semibold">{a.name}</span>
-                      <span className="text-[10px] text-muted-foreground truncate">{a.address}</span>
-                    </div>
-                  </TableCell>
-                  <TableCell className="text-xs">
-                    <div className="flex items-center gap-1.5">
-                      <Building2 className="h-3 w-3 text-muted-foreground shrink-0" />
-                      <span className="truncate">{a.last_position || '—'}</span>
-                    </div>
-                  </TableCell>
-                  <TableCell className="text-xs">
-                    <div className="flex items-center gap-1.5">
-                      <GraduationCap className="h-3 w-3 text-muted-foreground shrink-0" />
-                      <span className="truncate">{a.education || '—'}</span>
-                    </div>
-                  </TableCell>
-                  <TableCell>
-                    {a.platform ? (
-                      <Badge variant="outline" className={`text-[10px] px-2 py-0 ${PLATFORM_COLORS[a.platform] || ''}`}>
-                        {a.platform}
-                      </Badge>
-                    ) : '—'}
-                  </TableCell>
-                  <TableCell className="text-xs text-muted-foreground">{formatDate(a.date)}</TableCell>
-                  <TableCell className="text-right">
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      className="text-[11px] h-7 px-2.5"
-                      onClick={() => { setSelectedApplicant(a); setDialogOpen(true); }}
-                    >
-                      <Plus className="h-3 w-3 mr-1" /> Add
-                    </Button>
-                  </TableCell>
-                </TableRow>
-              ))}
+              ) : rows.map(r => {
+                const info = r.information || {};
+                const skillTags = Array.isArray(info.skills) ? info.skills.slice(0, 4) : [];
+                const moreSkills = (Array.isArray(info.skills) ? info.skills.length : 0) - skillTags.length;
+                const eduTop = Array.isArray(info.education) && info.education[0]
+                  ? `${info.education[0].school || ''}${info.education[0].degree ? ` · ${info.education[0].degree}` : ''}`
+                  : (r.education_text || '—');
+                const positionLabel = info.job_position?.current || r.last_position || '—';
+
+                return (
+                  <TableRow key={r.applicant_id}>
+                    <TableCell className="text-xs font-medium">
+                      <div className="flex flex-col">
+                        <span className="font-semibold">{r.name}</span>
+                        <span className="text-[10px] text-muted-foreground truncate">{r.address || '—'}</span>
+                      </div>
+                    </TableCell>
+                    <TableCell className="text-xs">
+                      <div className="flex items-center gap-1.5">
+                        <Building2 className="h-3 w-3 text-muted-foreground shrink-0" />
+                        <span className="truncate">{positionLabel}</span>
+                      </div>
+                      {info.job_position?.category && (
+                        <div className="text-[10px] text-muted-foreground pl-4.5">{info.job_position.category}</div>
+                      )}
+                    </TableCell>
+                    <TableCell>
+                      <div className="flex flex-wrap gap-1">
+                        {skillTags.length === 0 && (
+                          <span className="text-[10px] text-muted-foreground">No facets yet</span>
+                        )}
+                        {skillTags.map(s => (
+                          <Badge key={s} variant="secondary" className="text-[10px]">{s}</Badge>
+                        ))}
+                        {moreSkills > 0 && (
+                          <span className="text-[10px] text-muted-foreground self-center">+{moreSkills}</span>
+                        )}
+                      </div>
+                    </TableCell>
+                    <TableCell className="text-xs">
+                      <div className="flex items-center gap-1.5">
+                        <GraduationCap className="h-3 w-3 text-muted-foreground shrink-0" />
+                        <span className="truncate">{eduTop}</span>
+                      </div>
+                    </TableCell>
+                    <TableCell className="text-xs text-muted-foreground">{formatDate(r.date)}</TableCell>
+                    <TableCell className="text-right">
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        className="text-[11px] h-7 px-2.5"
+                        onClick={() => handleAddClick(r)}
+                      >
+                        <Plus className="h-3 w-3 mr-1" /> Add
+                      </Button>
+                    </TableCell>
+                  </TableRow>
+                );
+              })}
             </TableBody>
           </Table>
 
-          {/* Pagination */}
-          {filtered.length > 0 && (
+          {total > 0 && (
             <div className="flex items-center justify-between pt-3 mt-3 border-t">
               <span className="text-[10px] text-muted-foreground">
-                Showing {(page - 1) * PAGE_SIZE + 1}–{Math.min(page * PAGE_SIZE, filtered.length)} of {filtered.length}
+                Showing {(page - 1) * PAGE_SIZE + 1}–{Math.min(page * PAGE_SIZE, total)} of {total}
               </span>
               <div className="flex items-center gap-1">
                 <Button variant="outline" size="sm" className="h-7 text-xs" disabled={page <= 1} onClick={() => setPage(p => p - 1)}>
@@ -273,7 +368,24 @@ export default function TalentPoolPage() {
         open={dialogOpen}
         onOpenChange={setDialogOpen}
         applicant={selectedApplicant}
-        onSuccess={() => fetchApplicants()}
+        onSuccess={() => fetchRows()}
+      />
+    </div>
+  );
+}
+
+function FacetInput({ icon, label, placeholder, value, onChange }) {
+  return (
+    <div className="space-y-1">
+      <label className="flex items-center gap-1.5 text-[11px] font-medium text-muted-foreground">
+        {icon}
+        {label}
+      </label>
+      <Input
+        placeholder={placeholder}
+        value={value}
+        onChange={onChange}
+        className="text-xs h-9"
       />
     </div>
   );

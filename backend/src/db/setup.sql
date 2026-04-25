@@ -389,6 +389,34 @@ CREATE TABLE job_automation_settings (
   updated_at TIMESTAMP NOT NULL DEFAULT NOW()
 );
 
+CREATE TABLE applicant_job_score (
+  id                SERIAL PRIMARY KEY,
+  applicant_id      INTEGER NOT NULL REFERENCES master_applicant(id) ON DELETE CASCADE,
+  job_id            INTEGER NOT NULL REFERENCES core_job(id) ON DELETE CASCADE,
+  overall_score     INTEGER NOT NULL CHECK (overall_score    BETWEEN 0 AND 100),
+  position_score    INTEGER          CHECK (position_score   BETWEEN 0 AND 100),
+  skills_score      INTEGER          CHECK (skills_score     BETWEEN 0 AND 100),
+  education_score   INTEGER          CHECK (education_score  BETWEEN 0 AND 100),
+  experience_score  INTEGER          CHECK (experience_score BETWEEN 0 AND 100),
+  matched_skills    JSONB,
+  missing_skills    JSONB,
+  summary           TEXT,
+  scored_at         TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  UNIQUE (applicant_id, job_id)
+);
+CREATE INDEX idx_ajs_job_score ON applicant_job_score (job_id, overall_score DESC);
+CREATE INDEX idx_ajs_applicant ON applicant_job_score (applicant_id);
+
+CREATE INDEX idx_applicant_information_gin
+  ON master_applicant USING GIN (information jsonb_path_ops);
+
+CREATE TABLE master_skill_alias (
+  alias        VARCHAR(100) PRIMARY KEY,
+  canonical    VARCHAR(100) NOT NULL,
+  created_at   TIMESTAMP NOT NULL DEFAULT NOW()
+);
+CREATE INDEX idx_skill_alias_canonical ON master_skill_alias (canonical);
+
 CREATE TABLE candidate_stages(
   id SERIAL PRIMARY KEY,
   candidate_id INTEGER NOT NULL REFERENCES master_candidate(id) ON DELETE CASCADE,
