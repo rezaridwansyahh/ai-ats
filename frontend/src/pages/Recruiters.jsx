@@ -16,9 +16,9 @@ import { DeleteRecruiterDialog } from '@/components/recruiter/DeleteRecruiterDia
 const PAGE_SIZE = 10;
 
 export default function RecruitersPage() {
-  const canCreate = hasPermission('Users', 'Recruiters', 'create');
-  const canEdit   = hasPermission('Users', 'Recruiters', 'update');
-  const canDelete = hasPermission('Users', 'Recruiters', 'delete');
+  const canCreate = hasPermission('Settings', 'Recruiters', 'create');
+  const canEdit   = hasPermission('Settings', 'Recruiters', 'update');
+  const canDelete = hasPermission('Settings', 'Recruiters', 'delete');
 
   // ── Data fetching ──
   const [recruiters, setRecruiters] = useState([]);

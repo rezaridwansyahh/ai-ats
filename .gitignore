@@ -11,3 +11,7 @@ browser-profiles/
 /docs
 
 browser-profiles/
+
+/man_power/*
+backend/.env
+backend/.env

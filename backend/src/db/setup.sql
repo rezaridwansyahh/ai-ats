@@ -190,6 +190,7 @@ CREATE TABLE core_job (
   qualifications TEXT,
   required_skills JSONB,
   preferred_skills JSONB,
+  benefits JSONB,
   -- Status
   status status_type NOT NULL DEFAULT 'Draft',
   sla_start_date DATE NULL DEFAULT NOW(),

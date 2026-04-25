@@ -1,0 +1,1401 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Myralix — Laporan Psikologis Battery B v10</title>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,600;0,700;1,600&family=DM+Sans:wght@300;400;500;600;700&display=swap');
+:root{
+  --teal:#0A6E5C;--teal-dk:#064E3B;--teal-md:#0D9488;--teal-lt:#C7E8E3;--teal-xlt:#EDF7F5;
+  --amber:#D97706;--amber-lt:#FFFBEB;--amber-bd:#FDE68A;
+  --red:#DC2626;--red-lt:#FEF2F2;--red-bd:#FECACA;
+  --green:#059669;--green-lt:#ECFDF5;--green-bd:#A7F3D0;
+  --blue:#1D4ED8;--blue-lt:#EFF6FF;--blue-bd:#BFDBFE;
+  --indigo:#4F46E5;--indigo-lt:#EEF2FF;--indigo-bd:#C7D2FE;
+  --navy:#0F172A;--slate:#334155;--slate-md:#64748B;--slate-lt:#94A3B8;
+  --border:#E2E8F0;--border-dk:#CBD5E1;--white:#fff;--cream:#FAFAF8;
+  --c1:#0A6E5C;--c1-lt:#EDF7F5;
+  --c2:#D97706;--c2-lt:#FFFBEB;
+  --c3:#4F46E5;--c3-lt:#EEF2FF;
+  --c4:#0891B2;--c4-lt:#ECFEFF;
+  --c5:#0F172A;--c5-lt:#F8FAFC;
+  --pass:#059669;--fail:#DC2626;--warn:#D97706;
+  --r:14px;--rs:9px;
+  --sh:0 1px 4px rgba(15,23,42,.07),0 4px 16px rgba(15,23,42,.05);
+  --sh-lg:0 8px 32px rgba(15,23,42,.12),0 2px 8px rgba(15,23,42,.06);
+}
+*{box-sizing:border-box;margin:0;padding:0}
+html{scroll-behavior:smooth}
+body{background:var(--cream);color:var(--navy);font-family:'DM Sans',system-ui,sans-serif;font-size:14px;line-height:1.6;min-height:100vh}
+h1,h2,h3,.serif{font-family:'Playfair Display',Georgia,serif}
+.navbar{background:linear-gradient(135deg,var(--teal-dk) 0%,var(--teal) 100%);padding:0 20px;position:sticky;top:0;z-index:300;box-shadow:0 2px 12px rgba(6,78,59,.25)}
+.nav-inner{max-width:1100px;margin:0 auto;display:flex;align-items:center;justify-content:space-between;height:56px;gap:12px}
+.nav-logo{display:flex;align-items:center;gap:10px;flex-shrink:0}
+.logo-txt{font-family:'Playfair Display',Georgia,serif;font-size:16px;font-weight:700;color:#fff;letter-spacing:.04em}
+.nav-right{display:flex;align-items:center;gap:7px;flex-wrap:wrap}
+.nav-badge{background:rgba(255,255,255,.15);color:#fff;padding:4px 12px;border-radius:20px;font-size:11px;font-weight:600;letter-spacing:.04em;border:1px solid rgba(255,255,255,.2)}
+.nav-btn{background:rgba(255,255,255,.12);color:#fff;border:1px solid rgba(255,255,255,.25);padding:5px 13px;border-radius:8px;font-size:12px;font-weight:600;cursor:pointer;font-family:inherit;transition:.15s;text-decoration:none;display:inline-flex;align-items:center;gap:5px;white-space:nowrap}
+.nav-btn:hover{background:rgba(255,255,255,.22)}
+.nav-btn.print-btn{background:rgba(255,255,255,.9);color:var(--teal-dk)}
+.section-nav{background:#fff;border-bottom:1px solid var(--border);position:sticky;top:54px;z-index:200;transition:.3s;transform:translateY(-100%);opacity:0;pointer-events:none}
+.section-nav.visible{transform:translateY(0);opacity:1;pointer-events:all}
+.snav-inner{max-width:1100px;margin:0 auto;display:flex;align-items:center;gap:4px;padding:8px 20px;overflow-x:auto;scrollbar-width:none}
+.snav-inner::-webkit-scrollbar{display:none}
+.sn-link{padding:5px 14px;border-radius:20px;font-size:12px;font-weight:600;color:var(--slate-md);text-decoration:none;white-space:nowrap;transition:.15s;border:1px solid transparent}
+.sn-link:hover,.sn-link.active{background:var(--teal-xlt);color:var(--teal-dk);border-color:var(--teal-lt)}
+.wrap{max-width:1100px;margin:0 auto;padding:24px 18px 80px}
+@keyframes fadeUp{from{opacity:0;transform:translateY(12px)}to{opacity:1;transform:translateY(0)}}
+.anim{animation:fadeUp .35s ease}
+.flabel{display:block;font-size:11px;font-weight:600;letter-spacing:.07em;text-transform:uppercase;color:var(--slate-md);margin-bottom:5px}
+.finput,.fsel{width:100%;background:#fff;border:1.5px solid var(--border);border-radius:var(--rs);padding:9px 13px;color:var(--navy);font-size:13.5px;font-family:inherit;outline:none;transition:.2s}
+.finput:focus,.fsel:focus{border-color:var(--teal);box-shadow:0 0 0 3px rgba(10,110,92,.08)}
+.fg2{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:12px}
+.fg3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px;margin-bottom:12px}
+.fg1{margin-bottom:12px}
+@media(max-width:600px){.fg2,.fg3{grid-template-columns:1fr}}
+.btn-primary{background:linear-gradient(135deg,var(--teal-dk),var(--teal));color:#fff;padding:12px 24px;border-radius:var(--rs);font-size:14px;font-weight:600;cursor:pointer;border:none;font-family:inherit;width:100%;transition:.2s}
+.btn-primary:hover{opacity:.9;transform:translateY(-1px)}
+.btn-sec{background:#fff;border:1.5px solid var(--border);color:var(--slate);padding:8px 16px;border-radius:var(--rs);font-size:12.5px;font-weight:600;cursor:pointer;font-family:inherit;transition:.15s;text-decoration:none;display:inline-flex;align-items:center;gap:5px}
+.btn-sec:hover{border-color:var(--teal);color:var(--teal);background:var(--teal-xlt)}
+.setup-hero{background:linear-gradient(135deg,var(--teal-dk) 0%,var(--teal) 55%,var(--teal-md) 100%);border-radius:var(--r);padding:32px;color:#fff;margin-bottom:20px;position:relative;overflow:hidden}
+.setup-hero::before{content:'B';position:absolute;right:-10px;bottom:-20px;font-family:'Playfair Display',serif;font-size:120px;font-weight:700;opacity:.06;line-height:1;pointer-events:none}
+.card{background:#fff;border:1px solid var(--border);border-radius:var(--r);padding:24px;box-shadow:var(--sh);margin-bottom:16px}
+.report-hero{background:linear-gradient(135deg,#0A2A22 0%,var(--teal-dk) 45%,var(--teal) 100%);border-radius:var(--r);color:#fff;margin-bottom:16px;overflow:hidden;box-shadow:var(--sh-lg)}
+.rh-top{display:flex;align-items:center;justify-content:space-between;padding:18px 26px 12px;border-bottom:1px solid rgba(255,255,255,.1)}
+.rh-logo-row{display:flex;align-items:center;gap:10px}
+.rh-brand{font-family:'Playfair Display',serif;font-size:16px;font-weight:700;letter-spacing:.08em}
+.rh-doc-type{font-size:11px;font-weight:600;letter-spacing:.12em;text-transform:uppercase;opacity:.65}
+.rh-lock{background:rgba(255,255,255,.15);border:1px solid rgba(255,255,255,.25);padding:4px 12px;border-radius:20px;font-size:11px;font-weight:700;letter-spacing:.06em}
+.rh-body{padding:20px 26px 22px;display:grid;grid-template-columns:1fr auto;gap:20px;align-items:start}
+@media(max-width:680px){.rh-body{grid-template-columns:1fr}}
+.rh-name{font-family:'Playfair Display',serif;font-size:clamp(20px,4vw,30px);font-weight:700;margin-bottom:4px;line-height:1.2}
+.rh-pos{font-size:13px;opacity:.8;margin-bottom:14px}
+.rh-meta-table{display:grid;grid-template-columns:1fr 1fr;gap:6px 14px;max-width:420px}
+.rh-meta-item{background:rgba(255,255,255,.1);border-radius:var(--rs);padding:7px 12px}
+.rh-meta-lbl{font-size:9px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;opacity:.6;margin-bottom:2px}
+.rh-meta-val{font-size:12.5px;font-weight:600}
+.rh-scorecard{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:6px;background:rgba(255,255,255,.1);border:1px solid rgba(255,255,255,.2);border-radius:var(--r);padding:16px 20px;min-width:130px;text-align:center;flex-shrink:0}
+.rh-sc-ring{width:72px;height:72px;border-radius:50%;border:4px solid rgba(255,255,255,.5);display:flex;align-items:center;justify-content:center;flex-direction:column;flex-shrink:0}
+.rh-sc-num{font-family:'Playfair Display',serif;font-size:24px;font-weight:700;line-height:1}
+.rh-sc-sub{font-size:9px;font-weight:700;letter-spacing:.08em;opacity:.7;margin-top:1px}
+.rh-sc-label{font-size:11px;font-weight:700;opacity:.85}
+.rh-battery-badge{background:rgba(255,255,255,.12);border:1px solid rgba(255,255,255,.2);border-radius:20px;padding:4px 14px;font-size:11px;font-weight:700;letter-spacing:.06em;display:inline-block}
+.scorecard-row{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:16px}
+@media(max-width:700px){.scorecard-row{grid-template-columns:1fr 1fr}}
+.sc-chip{border-radius:var(--r);padding:14px 16px;border:1.5px solid;position:relative;overflow:hidden}
+.sc-chip::after{content:'';position:absolute;right:-12px;bottom:-12px;width:60px;height:60px;border-radius:50%;background:currentColor;opacity:.05}
+.sc-chip-label{font-size:10px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;margin-bottom:4px}
+.sc-chip-value{font-family:'Playfair Display',serif;font-size:26px;font-weight:700;line-height:1}
+.sc-chip-sub{font-size:10.5px;margin-top:3px;opacity:.75}
+.sc-chip-verdict{display:inline-flex;align-items:center;gap:4px;padding:2px 8px;border-radius:20px;font-size:10px;font-weight:700;margin-top:5px}
+.section-card{background:#fff;border:1px solid var(--border);border-radius:var(--r);box-shadow:var(--sh);margin-bottom:16px;overflow:hidden}
+.section-header{display:flex;align-items:center;gap:14px;padding:16px 22px;position:relative}
+.sec-num{width:40px;height:40px;border-radius:50%;display:grid;place-items:center;font-family:'Playfair Display',serif;font-size:17px;font-weight:700;flex-shrink:0;border:2px solid}
+.sec-title{font-family:'Playfair Display',serif;font-size:17px;font-weight:600;line-height:1.2}
+.sec-instrument{font-size:11px;font-weight:500;margin-top:2px;opacity:.7}
+.sec-tags{margin-left:auto;display:flex;gap:5px;flex-wrap:wrap;align-items:center}
+.sec-tag{padding:3px 10px;border-radius:20px;font-size:10px;font-weight:700}
+.sec-body{padding:0 22px 20px}
+.score-table{width:100%;border-collapse:collapse;margin-bottom:14px;font-size:13px}
+.score-table th{background:#F8FAFC;padding:9px 12px;text-align:left;font-size:10.5px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--slate-md);border-bottom:2px solid var(--border)}
+.score-table td{padding:10px 12px;border-bottom:1px solid var(--border);vertical-align:middle}
+.score-table tr:last-child td{border-bottom:none}
+.total-row{background:linear-gradient(90deg,var(--teal-xlt),transparent)}
+.total-row td{font-weight:700}
+.score-ring-sm{width:36px;height:36px;border-radius:50%;display:inline-flex;align-items:center;justify-content:center;border:2.5px solid;font-family:'Playfair Display',serif;font-size:15px;font-weight:700;line-height:1}
+.verdict-chip{display:inline-flex;align-items:center;gap:4px;padding:3px 9px;border-radius:20px;font-size:10px;font-weight:700;border:1px solid}
+.bar-wrap{background:#F1F5F9;border-radius:99px;height:7px;overflow:hidden;margin-bottom:4px}
+.bar-fill{height:7px;border-radius:99px;transition:width 1.2s ease}
+.narrative-box{background:linear-gradient(135deg,#FAFFFE,#F0F8F6);border:1px solid var(--teal-lt);border-radius:var(--rs);padding:16px 18px;font-size:13px;line-height:1.82;color:var(--slate);min-height:90px;cursor:text;outline:none;transition:.2s;white-space:pre-wrap}
+.narrative-box:focus{border-color:var(--teal);box-shadow:0 0 0 3px rgba(10,110,92,.07);background:#fff}
+.narrative-box.loading{color:var(--slate-lt);font-style:italic;background:#F8FAFC;border-left:3px solid var(--amber);animation:pulse-load 1.5s infinite}
+@keyframes pulse-load{0%,100%{opacity:.7}50%{opacity:1}}
+.narr-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:6px;flex-wrap:wrap;gap:6px}
+.narr-title{font-size:11px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--teal-dk)}
+.narr-actions{display:flex;align-items:center;gap:8px}
+.narr-edit-hint{font-size:10.5px;color:var(--slate-lt);font-style:italic}
+.regen-btn{background:none;border:1px solid var(--border);color:var(--slate-md);padding:4px 10px;border-radius:var(--rs);font-size:11px;font-weight:600;cursor:pointer;font-family:inherit;transition:.15s}
+.regen-btn:hover{border-color:var(--teal);color:var(--teal);background:var(--teal-xlt)}
+.ai-progress{display:flex;align-items:center;gap:10px;background:linear-gradient(135deg,var(--teal-xlt),#fff);border:1px solid var(--teal-lt);border-radius:var(--rs);padding:10px 16px;margin-bottom:14px;transition:opacity .6s}
+.ai-prog-bar-wrap{flex:1;background:var(--border);border-radius:99px;height:6px;overflow:hidden}
+.ai-prog-bar{height:6px;background:linear-gradient(90deg,var(--teal),var(--teal-md));border-radius:99px;transition:width .5s ease;width:0%}
+.ai-prog-count{font-size:12px;font-weight:700;color:var(--teal-dk);white-space:nowrap}
+.ai-prog-label{font-size:11px;color:var(--teal-md);white-space:nowrap}
+.disclaimer{background:var(--amber-lt);border:1px solid var(--amber-bd);border-radius:var(--rs);padding:11px 16px;font-size:12px;color:#78350F;margin-bottom:16px;line-height:1.6}
+.rcr-section{background:#F8FAFC;border-radius:var(--rs);padding:12px 16px;margin-top:12px;border:1px solid var(--border)}
+.rcr-label{font-size:11px;font-weight:700;letter-spacing:.05em;text-transform:uppercase;color:var(--slate-md);margin-bottom:8px}
+.rcr-buttons{display:flex;gap:8px;flex-wrap:wrap}
+.rcr-btn{padding:7px 14px;border-radius:var(--rs);font-size:12px;font-weight:700;cursor:pointer;border:1.5px solid var(--border);background:#fff;font-family:inherit;transition:.15s}
+.rcr-btn.sesuai:hover,.rcr-btn.sesuai.active{background:var(--green-lt);border-color:var(--green);color:var(--green)}
+.rcr-btn.pertimbangkan:hover,.rcr-btn.pertimbangkan.active{background:var(--amber-lt);border-color:var(--amber);color:var(--amber)}
+.rcr-btn.tidak:hover,.rcr-btn.tidak.active{background:var(--red-lt);border-color:var(--red);color:var(--red)}
+.assessor-notes{margin-top:10px}
+.an-label{font-size:11px;font-weight:700;color:var(--slate-md);margin-bottom:5px}
+.an-textarea{width:100%;border:1.5px solid var(--border);border-radius:var(--rs);padding:9px 12px;font-size:12.5px;font-family:inherit;color:var(--slate);background:#FAFAFA;outline:none;resize:vertical;min-height:70px;transition:.15s}
+.an-textarea:focus{border-color:var(--teal);background:#fff}
+.sec-divider{height:1px;background:var(--border);margin:16px 0}
+.qcr-row{display:flex;align-items:center;justify-content:space-between;padding:10px 14px;border-radius:var(--rs);border:1px solid var(--border);background:#FAFAFA;margin-bottom:8px;gap:12px}
+.qcr-instrument{font-size:13px;font-weight:600;color:var(--slate);margin-bottom:2px}
+.qcr-status{padding:4px 12px;border-radius:20px;font-size:11px;font-weight:700}
+.final-rec-wrap{display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;margin-bottom:16px}
+@media(max-width:600px){.final-rec-wrap{grid-template-columns:1fr}}
+.final-rec-btn{border-radius:var(--r);padding:16px 12px;text-align:center;cursor:pointer;font-family:inherit;border:2px solid var(--border);background:#FAFAFA;transition:.15s;display:flex;flex-direction:column;align-items:center;gap:5px}
+.final-rec-btn.pass{border-color:var(--green);background:var(--green-lt)}
+.final-rec-btn.warn{border-color:var(--amber);background:var(--amber-lt)}
+.final-rec-btn.fail{border-color:var(--red);background:var(--red-lt)}
+.final-rec-btn.active{box-shadow:0 0 0 3px currentColor}
+.rec-emoji{font-size:24px}
+.rec-title{font-size:12px;font-weight:800;letter-spacing:.04em}
+.rec-crit{font-size:10px;color:var(--slate-md);line-height:1.5}
+.papi-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:8px;margin-bottom:14px}
+.papi-cell{border-radius:var(--rs);padding:10px 12px;border:1.5px solid var(--border);background:#FAFAFA}
+.papi-dim-name{font-size:11px;font-weight:700;color:var(--slate);margin-bottom:4px}
+.papi-dim-score{font-family:'Playfair Display',serif;font-size:18px;font-weight:700;margin-bottom:4px}
+.papi-range-chip{display:inline-block;padding:2px 8px;border-radius:20px;font-size:10px;font-weight:700}
+.epps-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:6px;margin-bottom:14px}
+.epps-cell{border-radius:var(--rs);padding:8px 10px;border:1px solid var(--border);background:#FAFAFA}
+.signature-block{display:grid;grid-template-columns:1fr 1fr;gap:30px;margin-top:20px;padding:20px;border:1px solid var(--border);border-radius:var(--r);background:#FAFAFA}
+.sig-title{font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.07em;color:var(--slate-md);margin-bottom:6px}
+.sig-line{height:1px;background:var(--border-dk)}
+.sig-detail{font-size:12px;color:var(--slate-md);margin-top:4px}
+.print-footer{font-size:11px;color:var(--slate-lt);text-align:center;padding:16px 0 0;border-top:1px solid var(--border);margin-top:16px}
+.sum-table{width:100%;border-collapse:collapse;margin-bottom:14px;font-size:13px}
+.sum-table th{background:#F8FAFC;padding:8px 12px;text-align:left;font-size:10.5px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--slate-md);border-bottom:2px solid var(--border)}
+.sum-table td{padding:9px 12px;border-bottom:1px solid var(--border);vertical-align:middle}
+.sum-total{background:linear-gradient(90deg,var(--teal-xlt),transparent)}
+.sum-total td{font-weight:700}
+.score-pill{padding:2px 8px;border-radius:20px;font-size:11px;font-weight:700;display:inline-block}
+.b5-row{display:grid;grid-template-columns:2.5fr .6fr .6fr 1.8fr .9fr;gap:10px;align-items:center;padding:10px 0;border-bottom:1px solid var(--border)}
+.b5-row.header{font-size:10.5px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--slate-md);padding-bottom:8px}
+.b5-badge{width:28px;height:28px;border-radius:7px;display:grid;place-items:center;font-size:13px;font-weight:800;flex-shrink:0}
+@media print{.navbar,.section-nav,.no-print,.regen-btn,.rcr-section,.assessor-notes,.final-rec-wrap>*:not(.active){display:none!important}.wrap{padding:0}body{background:#fff}.section-card{box-shadow:none;border:1px solid #ddd}}
+
+
+/* ═══ v10: Manager View + 3-Pillar Bridge ═══ */
+.mgr-view{display:flex;flex-direction:column;gap:14px;margin:20px 0 18px}
+
+/* 3-pillar bar — matches Myralix platform's assessment results columns */
+.pillar-bar{background:#fff;border:1px solid var(--border);border-radius:var(--r);padding:18px 22px;box-shadow:0 1px 3px rgba(0,0,0,.04)}
+.pillar-bar-label{font-size:10.5px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:var(--slate-md);margin-bottom:10px;display:flex;align-items:center;gap:10px}
+.pillar-bar-label::after{content:'';flex:1;height:1px;background:var(--border)}
+.pillar-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:0;border:1.5px solid var(--border);border-radius:var(--rs);overflow:hidden}
+.pillar-cell{padding:16px 14px;text-align:center;border-right:1px solid var(--border);background:#fff;position:relative}
+.pillar-cell:last-child{border-right:none;background:linear-gradient(180deg,var(--teal-xlt),#fff)}
+.pillar-icon{font-size:18px;margin-bottom:4px;opacity:.8}
+.pillar-name{font-size:11px;font-weight:600;color:var(--slate-md);text-transform:uppercase;letter-spacing:.05em;margin-bottom:8px}
+.pillar-score{font-family:'Playfair Display',serif;font-size:36px;font-weight:700;line-height:1;margin-bottom:4px}
+.pillar-overall .pillar-score{font-size:42px;color:var(--teal-dk)}
+.pillar-max{font-size:13px;color:var(--slate-lt);font-weight:500}
+.pillar-badge{display:inline-block;margin-top:8px;padding:3px 10px;border-radius:99px;font-size:11px;font-weight:700;border:1px solid}
+.pill-pass{background:var(--pass-bg);color:var(--pass);border-color:var(--pass-br)}
+.pill-warn{background:var(--warn-bg);color:var(--warn);border-color:var(--warn-br)}
+.pill-fail{background:var(--fail-bg);color:var(--fail);border-color:var(--fail-br)}
+.pillar-threshold{font-size:9.5px;color:var(--slate-lt);margin-top:4px;font-weight:500}
+
+/* Hero verdict banner */
+.hero-verdict{border-radius:var(--r);padding:26px 30px;position:relative;overflow:hidden;border:2px solid;box-shadow:0 2px 8px rgba(0,0,0,.04)}
+.hero-verdict.pass{background:linear-gradient(135deg,#F0FDF4 0%,#DCFCE7 100%);border-color:var(--pass-br);color:var(--pass)}
+.hero-verdict.warn{background:linear-gradient(135deg,#FFFBEB 0%,#FEF3C7 100%);border-color:var(--warn-br);color:var(--warn)}
+.hero-verdict.fail{background:linear-gradient(135deg,#FFF1F2 0%,#FEE2E2 100%);border-color:var(--fail-br);color:var(--fail)}
+.hero-verdict.empty{background:#F8FAFC;border-color:var(--border);color:var(--slate-md)}
+.hv-label{font-size:11px;font-weight:700;letter-spacing:.18em;text-transform:uppercase;opacity:.85}
+.hv-title{font-family:'Playfair Display',serif;font-size:30px;font-weight:700;margin-top:6px;line-height:1.15}
+.hv-sub{font-size:14px;margin-top:10px;color:var(--slate);font-weight:500;max-width:780px}
+
+/* Manager summary card */
+.mgr-summary{background:#fff;border:1px solid var(--border);border-radius:var(--r);padding:22px 26px;box-shadow:0 1px 3px rgba(0,0,0,.04)}
+.mgr-summary h3{font-family:'Playfair Display',Georgia,serif;margin:0 0 14px;font-size:18px;color:var(--teal-dk);display:flex;align-items:center;gap:10px;font-weight:700}
+.mgr-summary h3::before{content:'';width:4px;height:18px;background:var(--teal);border-radius:2px}
+.mgr-score-row{display:flex;align-items:center;gap:14px;padding:12px 0;border-bottom:1px solid var(--border-lt)}
+.mgr-score-row:last-child{border-bottom:none}
+.msr-icon{font-size:22px;width:38px;text-align:center;opacity:.85}
+.msr-info{flex:1;min-width:0}
+.msr-title{font-size:14px;font-weight:600;color:var(--navy)}
+.msr-desc{font-size:12px;color:var(--slate-md);margin-top:2px}
+.msr-score{font-family:'Playfair Display',serif;font-size:20px;font-weight:700;color:var(--teal-dk);text-align:right;min-width:56px}
+.msr-chip{padding:4px 11px;border-radius:99px;font-size:11px;font-weight:700;border:1px solid;white-space:nowrap;min-width:110px;text-align:center}
+.msr-chip.pass{background:var(--pass-bg);color:var(--pass);border-color:var(--pass-br)}
+.msr-chip.warn{background:var(--warn-bg);color:var(--warn);border-color:var(--warn-br)}
+.msr-chip.fail{background:var(--fail-bg);color:var(--fail);border-color:var(--fail-br)}
+.msr-chip.empty{background:#F8FAFC;color:var(--slate-md);border-color:var(--border)}
+
+.mgr-narrative{background:var(--teal-xlt);border-left:4px solid var(--teal);border-radius:0 var(--rs) var(--rs) 0;padding:14px 18px;font-size:13.5px;color:var(--slate);line-height:1.7;margin-top:16px}
+
+.mgr-actions{margin-top:18px}
+.mgr-actions-label{font-size:11px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--slate-md);margin-bottom:10px}
+.mgr-actions-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:10px}
+.mgr-act-btn{padding:12px 14px;border-radius:var(--rs);border:2px solid;background:#fff;font-family:inherit;font-size:12.5px;font-weight:600;cursor:pointer;transition:.15s;text-align:center;line-height:1.3}
+.mgr-act-btn:hover{transform:translateY(-1px);box-shadow:0 4px 10px rgba(0,0,0,.08)}
+.mgr-act-btn.primary{background:var(--teal-dk);color:#fff;border-color:var(--teal-dk)}
+.mgr-act-btn.primary:hover{background:var(--teal)}
+.mgr-act-btn.warn{color:var(--warn);border-color:var(--warn-br)}
+.mgr-act-btn.warn:hover{background:var(--warn-bg)}
+.mgr-act-btn.fail{color:var(--fail);border-color:var(--fail-br)}
+.mgr-act-btn.fail:hover{background:var(--fail-bg)}
+.mgr-act-btn.active{outline:3px solid currentColor;outline-offset:2px}
+.mgr-act-icon{display:block;font-size:18px;margin-bottom:3px}
+
+/* Collapsible detail wrapper */
+.detail-wrapper{margin:24px 0}
+.detail-summary{cursor:pointer;padding:14px 20px;background:#fff;border:1px solid var(--border);border-radius:var(--r);display:flex;align-items:center;gap:12px;font-family:'DM Sans',sans-serif;font-size:14px;font-weight:600;color:var(--navy);transition:.15s;list-style:none;outline:none;user-select:none}
+.detail-summary::-webkit-details-marker{display:none}
+.detail-summary::before{content:'▶';color:var(--teal);font-size:12px;transition:transform .2s}
+.detail-wrapper[open] .detail-summary::before{transform:rotate(90deg)}
+.detail-summary:hover{background:var(--teal-xlt);border-color:var(--teal-lt)}
+.ds-icon{font-size:18px}
+.ds-title{flex:1}
+.ds-hint{font-size:11.5px;font-weight:500;color:var(--slate-md)}
+.detail-content{padding:20px 0 0}
+
+@media print{
+  .detail-wrapper{break-before:auto}
+  .detail-wrapper>*:not(.detail-summary){display:block!important}
+  .detail-summary{display:none!important}
+  .mgr-actions{display:none!important}
+  .pillar-bar,.hero-verdict,.mgr-summary{break-inside:avoid}
+}
+@media(max-width:720px){
+  .pillar-grid{grid-template-columns:repeat(2,1fr)}
+  .pillar-cell:nth-child(2){border-right:none}
+  .pillar-cell:nth-child(-n+2){border-bottom:1px solid var(--border)}
+  .mgr-actions-grid{grid-template-columns:1fr}
+  .mgr-score-row{flex-wrap:wrap}
+  .hv-title{font-size:24px}
+}
+
+</style>
+</head>
+<body>
+<nav class="navbar">
+  <div class="nav-inner">
+    <div class="nav-logo">
+      <svg width="22" height="22" viewBox="-50 -10 220 220" xmlns="http://www.w3.org/2000/svg">
+        <path d="M30,10 C70,30 90,70 60,100 C30,130 70,170 90,190" stroke="url(#rlg1)" stroke-width="7" fill="none" stroke-linecap="round"/>
+        <path d="M90,10 C50,30 30,70 60,100 C90,130 70,170 30,190" stroke="url(#rlg2)" stroke-width="7" fill="none" stroke-linecap="round"/>
+        <circle cx="60" cy="100" r="9" fill="#fff" opacity=".85"/>
+        <defs><linearGradient id="rlg1" x1="0%" y1="0%" x2="100%" y2="100%"><stop offset="0%" stop-color="#0A6E5C"/><stop offset="100%" stop-color="#14B8A6"/></linearGradient><linearGradient id="rlg2" x1="100%" y1="0%" x2="0%" y2="100%"><stop offset="0%" stop-color="#F59E0B"/><stop offset="50%" stop-color="#14B8A6"/><stop offset="100%" stop-color="#0A6E5C"/></linearGradient></defs>
+      </svg>
+      <span class="logo-txt">MYRALIX</span>
+    </div>
+    <div class="nav-right">
+      <span class="nav-badge">Battery B · Laporan Psikologis · v10</span>
+      <button onclick="window.print()" class="nav-btn print-btn">🖨 Cetak PDF</button>
+      <button onclick="goTo('setup')" class="nav-btn">✏️ Edit Data</button>
+    </div>
+  </div>
+</nav>
+<div class="section-nav" id="section-nav">
+  <div class="snav-inner">
+    <a href="#sec-header" class="sn-link" onclick="scrollToSec('sec-header')">📋 Header</a>
+    <a href="#sec-tk" class="sn-link" onclick="scrollToSec('sec-tk')">I · Kognitif</a>
+    <a href="#sec-epps" class="sn-link" onclick="scrollToSec('sec-epps')">II · EPPS</a>
+    <a href="#sec-hol" class="sn-link" onclick="scrollToSec('sec-hol')">III · Minat</a>
+    <a href="#sec-papi" class="sn-link" onclick="scrollToSec('sec-papi')">IV · PAPI</a>
+    <a href="#sec-sum" class="sn-link" onclick="scrollToSec('sec-sum')">V · Ringkasan</a>
+  </div>
+</div>
+<div id="app" class="wrap anim"></div>
+<script>
+/* v10 relaunch — card hrefs aligned to v10; storage schema unchanged · Apr 2026 */
+
+// ═══════════════════════════════════════════════════════
+//  MYRALIX — LAPORAN PSIKOLOGIS BATTERY B v1
+//  Card: Myralix_Battery_B_Candidate_Card_v10.html
+//  localStorage keys: myx-bat-b-v8 (read) + myx-rpt-b-v8 (state)
+// ═══════════════════════════════════════════════════════
+const SKEY='myx-bat-b-v8';
+const STATE_KEY='myx-rpt-b-v8';
+const AI_TOTAL=9;
+const NARR_IDS=['narr-tk','narr-epps','narr-hol','narr-papi','narr-konsol','narr-strength','narr-dev','narr-fit','narr-rec'];
+
+// ── PAPI CONSTANTS (for display) ──
+const PAPI_ROLE_DIMS=['G','L','I','T','V','S','R','D','C','E'];
+const PAPI_NEED_DIMS=['N','A','P','X','B','O','Z','K','F','W'];
+const PAPI_DIMS={
+  G:{label:'Pekerja Keras',type:'ROLE',color:'#0369A1',aspect:'WD'},
+  L:{label:'Kepemimpinan',type:'ROLE',color:'#7C3AED',aspect:'LD'},
+  I:{label:'Independen',type:'ROLE',color:'#7C3AED',aspect:'LD'},
+  T:{label:'Aktif',type:'ROLE',color:'#D97706',aspect:'AC'},
+  V:{label:'Pencapaian Fisik',type:'ROLE',color:'#D97706',aspect:'AC'},
+  S:{label:'Mudah Bergaul',type:'ROLE',color:'#10B981',aspect:'SN'},
+  R:{label:'Peka Lingkungan',type:'ROLE',color:'#0891B2',aspect:'WS'},
+  D:{label:'Detail',type:'ROLE',color:'#0891B2',aspect:'WS'},
+  C:{label:'Teratur',type:'ROLE',color:'#0891B2',aspect:'WS'},
+  E:{label:'Emosional Terkendali',type:'ROLE',color:'#DC2626',aspect:'TM'},
+  N:{label:'Butuh Pengakuan',type:'NEED',color:'#0369A1',aspect:'WD'},
+  A:{label:'Butuh Kemandirian',type:'NEED',color:'#7C3AED',aspect:'LD'},
+  P:{label:'Butuh Aturan',type:'NEED',color:'#7C3AED',aspect:'LD'},
+  X:{label:'Butuh Variasi',type:'NEED',color:'#10B981',aspect:'SN'},
+  B:{label:'Butuh Keterkaitan',type:'NEED',color:'#10B981',aspect:'SN'},
+  O:{label:'Butuh Perhatian',type:'NEED',color:'#10B981',aspect:'SN'},
+  Z:{label:'Pengendalian Diri',type:'NEED',color:'#DC2626',aspect:'TM'},
+  K:{label:'Kecemasan',type:'NEED',color:'#DC2626',aspect:'TM'},
+  F:{label:'Butuh Dukungan',type:'NEED',color:'#6B7280',aspect:'FS'},
+  W:{label:'Butuh Kestabilan',type:'NEED',color:'#6B7280',aspect:'FS'},
+};
+const EPPS_SCALES_BRIEF={
+  ach:{nameID:'Berprestasi'},def:{nameID:'Kepatuhan'},ord:{nameID:'Keteraturan'},
+  exh:{nameID:'Pamer Diri'},aut:{nameID:'Otonomi'},aff:{nameID:'Afiliasi'},
+  int:{nameID:'Pengaruh'},suc:{nameID:'Suportif'},dom:{nameID:'Dominasi'},
+  aba:{nameID:'Merendah Diri'},nur:{nameID:'Pengasuhan'},chg:{nameID:'Perubahan'},
+  end:{nameID:'Ketahanan'},agg:{nameID:'Agresi'},het:{nameID:'Heteroseksualitas'},
+};
+const SCALE_ORDER_B=['ach','def','ord','exh','aut','aff','int','suc','dom','aba','nur','chg','end','agg','het'];
+const HOL_TYPES={
+  R:{nameID:'Realistik',color:'#DC2626',bg:'#FEF2F2'},
+  I:{nameID:'Investigatif',color:'#7C3AED',bg:'#F5F3FF'},
+  A:{nameID:'Artistik',color:'#DB2777',bg:'#FDF2F8'},
+  S:{nameID:'Sosial',color:'#059669',bg:'#ECFDF5'},
+  E:{nameID:'Wirausaha',color:'#D97706',bg:'#FFFBEB'},
+  C:{nameID:'Konvensional',color:'#1D4ED8',bg:'#EFF6FF'},
+};
+const IQ_CLASSES_B=[
+  {min:130,l:'Sangat Superior',c:'#059669'},{min:120,l:'Superior',c:'#1D4ED8'},
+  {min:110,l:'Di Atas Rata-rata',c:'#7C3AED'},{min:90,l:'Rata-rata',c:'#D97706'},
+  {min:80,l:'Di Bawah Rata-rata',c:'#DC2626'},{min:70,l:'Batas Bawah',c:'#DC2626'},
+  {min:0,l:'Sangat Rendah',c:'#991B1B'},
+];
+function getIQClassB(iq){for(const c of IQ_CLASSES_B){if(iq>=c.min)return c;}return IQ_CLASSES_B[IQ_CLASSES_B.length-1];}
+function getRange(code,score){
+  if(code==='G')return score<=3?'LOW':score<=7?'MIDDLE':'HIGH';
+  if(code==='Z'||code==='K')return score<=2?'LOW':score<=5?'MIDDLE':'HIGH';
+  if(code==='S')return score<6?'LOW':'HIGH';
+  if(code==='V')return score<5?'LOW':'HIGH';
+  if(code==='A')return score<=5?'LOW':'HIGH';
+  if(code==='E')return score<=2?'LOW':score<=6?'MIDDLE':'HIGH';
+  return score<=3?'LOW':score<=6?'MIDDLE':'HIGH';
+}
+
+// ── STATE ──
+let REPORT={profile:null,results:{},screen:'setup'};
+let STATE={};
+let aiDone=0;
+
+// ── HELPERS ──
+function getVerdict(s){if(s>=7)return{v:'pass',label:'LOLOS',short:'Lolos',emoji:'✅',color:'#15803D',bg:'#F0FDF4',br:'#16A34A'};if(s>=5)return{v:'warn',label:'PERTIMBANGKAN',short:'Pertimbangkan',emoji:'⚠️',color:'#92400E',bg:'#FFFBEB',br:'#D97706'};return{v:'fail',label:'TIDAK LOLOS',short:'Tidak Lolos',emoji:'❌',color:'#991B1B',bg:'#FFF1F2',br:'#DC2626'};}
+function getGrade(pct){if(pct>=90)return{g:'A',l:'Sangat Tinggi',c:'#059669',bg:'#ECFDF5'};if(pct>=75)return{g:'B',l:'Tinggi',c:'#1D4ED8',bg:'#EFF6FF'};if(pct>=26)return{g:'C',l:'Rata-rata',c:'#D97706',bg:'#FFFBEB'};if(pct>=11)return{g:'D',l:'Rendah',c:'#DC2626',bg:'#FEF2F2'};return{g:'E',l:'Sangat Rendah',c:'#991B1B',bg:'#FFF1F2'};}
+function levelColor(l){return{Tinggi:'#059669',Sedang:'#D97706',Rendah:'#DC2626'}[l]||'#64748B';}
+function levelBg(l){return{Tinggi:'#ECFDF5',Sedang:'#FFFBEB',Rendah:'#FEF2F2'}[l]||'#F9FAFB';}
+function pctToS10(p){return Math.max(1,Math.min(10,Math.round(p/10)));}
+function s10ToLabel(s){if(s>=9)return'Sangat Tinggi';if(s>=7)return'Tinggi';if(s>=5)return'Rata-rata';if(s>=3)return'Rendah';return'Sangat Rendah';}
+function fmtDate(){return new Date().toLocaleDateString('id-ID',{day:'2-digit',month:'long',year:'numeric'});}
+function rangeLbl(r){return{HIGH:'Tinggi',MIDDLE:'Sedang',LOW:'Rendah'}[r]||r;}
+function rangeColor(r){return{HIGH:'#059669',MIDDLE:'#D97706',LOW:'#DC2626'}[r]||'#64748B';}
+function rangeBg(r){return{HIGH:'#ECFDF5',MIDDLE:'#FFFBEB',LOW:'#FEF2F2'}[r]||'#F9FAFB';}
+
+// ── STATE PERSISTENCE ──
+function loadState(){try{STATE=JSON.parse(localStorage.getItem(STATE_KEY)||'{}');}catch{STATE={};}}
+function saveState(){
+  NARR_IDS.forEach(id=>{const el=document.getElementById(id);if(el&&!el.classList.contains('loading'))STATE['edit_'+id]=el.textContent;});
+  ['notes-tk','notes-epps','notes-hol','notes-papi','notes-final'].forEach(id=>{const el=document.getElementById(id);if(el)STATE['notes_'+id]=el.value;});
+  try{localStorage.setItem(STATE_KEY,JSON.stringify(STATE));}catch(e){}
+}
+function restoreState(){
+  NARR_IDS.forEach(id=>{const el=document.getElementById(id);if(el&&STATE['edit_'+id]){el.textContent=STATE['edit_'+id];el.classList.remove('loading');}});
+  ['notes-tk','notes-epps','notes-hol','notes-papi','notes-final'].forEach(id=>{const el=document.getElementById(id);if(el&&STATE['notes_'+id])el.value=STATE['notes_'+id];});
+  ['tk','epps','papi'].forEach(sec=>{if(STATE['rcr_'+sec])setRcr(sec,STATE['rcr_'+sec],true);});
+  if(STATE.finalRec)setFinalRec(STATE.finalRec,true);
+}
+
+// ── RECRUITER INTERACTIONS ──
+function setRcr(section,value,silent=false){
+  if(!silent)STATE['rcr_'+section]=value;
+  const colors={sesuai:{bg:levelBg('Tinggi'),color:levelColor('Tinggi'),label:'✅ Sesuai'},pertimbangkan:{bg:levelBg('Sedang'),color:levelColor('Sedang'),label:'⚠️ Perlu Dipertimbangkan'},tidak:{bg:levelBg('Rendah'),color:levelColor('Rendah'),label:'❌ Tidak Sesuai'}};
+  const el=document.getElementById('qcr-status-'+section);
+  if(el){const c=colors[value];el.style.background=c.bg;el.style.color=c.color;el.textContent=c.label;}
+  document.querySelectorAll(`[data-sec="${section}"]`).forEach(btn=>{btn.classList.toggle('active',btn.dataset.val===value);});
+  if(!silent)saveState();
+}
+function setFinalRec(val,silent=false){
+  if(!silent)STATE.finalRec=val;
+  document.querySelectorAll('.final-rec-btn').forEach(btn=>{btn.classList.toggle('active',btn.dataset.val===val);});
+  if(!silent)saveState();
+}
+
+// ── NAVIGATION ──
+function goTo(screen){
+  REPORT.screen=screen;
+  const app=document.getElementById('app');
+  app.innerHTML='';
+  if(screen==='setup')app.innerHTML=renderSetup();
+  else if(screen==='report')renderReport();
+  window.scrollTo(0,0);
+}
+
+// ── SETUP SCREEN ──
+function renderSetup(){
+  let has=null;
+  try{const d=JSON.parse(localStorage.getItem(SKEY)||'null');if(d&&d.profile){REPORT.results=d.results||{};has=d.profile;}}catch{}
+  return`
+  <div class="setup-hero">
+    <h2 style="font-family:'Playfair Display',serif;font-size:clamp(18px,3vw,24px);margin-bottom:6px;position:relative;z-index:1">Laporan Psikologis — Battery B</h2>
+    <p style="font-size:13px;opacity:.88;line-height:1.7;max-width:500px;position:relative;z-index:1">Profesional & Individual Contributor · TK Kognitif · Kepribadian · Minat Kerja · Preferensi Kerja</p>
+    <div style="position:relative;z-index:1;margin-top:8px;font-size:11px;opacity:.6">v10 · 🔒 Rahasia — hanya untuk rekruter</div>
+  </div>
+  ${has?`<div style="background:var(--green-lt);border:1.5px solid var(--green-bd);border-radius:var(--r);padding:14px 18px;margin-bottom:16px;display:flex;align-items:center;justify-content:space-between;gap:14px;flex-wrap:wrap">
+    <div>
+      <div style="font-size:10px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--teal-dk);margin-bottom:3px">✅ Data Kandidat Ditemukan</div>
+      <div style="font-size:16px;font-weight:700;color:var(--navy)">${has.name} · ${has.jabatan}</div>
+      <div style="font-size:12px;color:#065F46">${Object.keys(REPORT.results).length} dari 4 tes selesai · Tes: ${has.date||''}${has.tglLahir?' · Lahir: '+has.tglLahir:''}</div>
+    </div>
+    <button onclick="goTo('report')" style="background:var(--teal);color:#fff;border:none;padding:10px 22px;border-radius:var(--rs);font-size:13px;font-weight:700;cursor:pointer;font-family:inherit">Buat Laporan →</button>
+  </div>`:`<div style="background:#FFFBEB;border:1.5px solid var(--amber-bd);border-radius:var(--r);padding:12px 16px;margin-bottom:16px;font-size:12px;color:#78350F">
+    ⚠️ Tidak ada data tes di browser ini. Buka file ini di browser yang sama dengan Card Tes, atau input skor manual.
+    <a href="Myralix_Battery_B_Candidate_Card_v10.html" style="display:inline-block;margin-top:6px;color:var(--teal);font-weight:700;text-decoration:none">→ Buka Card Tes Battery B</a>
+  </div>`}
+  <div class="card">
+    <div class="card-title">📋 Lengkapi Data Laporan</div>
+    <div class="fg2">
+      <div class="fg1"><label class="flabel">Nama Kandidat *</label><input class="finput" id="r-name" placeholder="Nama lengkap" value="${has?.name||''}"></div>
+      <div class="fg1"><label class="flabel">Posisi yang Dilamar *</label><input class="finput" id="r-jabatan" placeholder="Contoh: Supervisor HRD" value="${has?.jabatan||''}"></div>
+    </div>
+    <div class="fg3">
+      <div class="fg1"><label class="flabel">Jenis Kelamin</label><select class="fsel" id="r-gender"><option value="">—</option><option ${has?.gender==='Laki-laki'?'selected':''}>Laki-laki</option><option ${has?.gender==='Perempuan'?'selected':''}>Perempuan</option></select></div>
+      <div class="fg1"><label class="flabel">Pendidikan</label><select class="fsel" id="r-edu"><option value="">—</option><option ${has?.education==='SMA/SMK'?'selected':''}>SMA/SMK</option><option ${has?.education==='D3'?'selected':''}>D3</option><option ${has?.education==='S1'?'selected':''}>S1</option><option ${has?.education==='S2'?'selected':''}>S2</option></select></div>
+      <div class="fg1"><label class="flabel">No. Kandidat</label><input class="finput" id="r-nomer" placeholder="KND-B-001" value="${STATE.nomerKandidat||''}"></div>
+    </div>
+    <div class="fg3">
+      <div class="fg1"><label class="flabel">Tanggal Lahir</label><input class="finput" id="r-tgl-lahir" type="date" value="${has?.tglLahirRaw||''}"></div>
+      <div class="fg1"><label class="flabel">Tanggal Tes</label><input class="finput" id="r-date-tes" type="date" value="${has?.tglTesRaw||new Date().toISOString().split('T')[0]}"></div>
+      <div class="fg1"><label class="flabel">Departemen</label><input class="finput" id="r-dept" placeholder="Contoh: Human Resources" value="${STATE.departemen||''}"></div>
+    </div>
+    <div class="fg2">
+      <div class="fg1"><label class="flabel">Nama Asesor</label><input class="finput" id="r-asesor" placeholder="Nama asesor/rekruter" value="${STATE.asesor||''}"></div>
+      <div class="fg1"><label class="flabel">Mengetahui</label><input class="finput" id="r-mengetahui" placeholder="Nama dan jabatan" value="${STATE.mengetahui||''}"></div>
+    </div>
+  </div>
+  <div class="card">
+    <div style="font-size:10.5px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--slate-md);margin-bottom:14px">⚙️ Input Skor Manual (jika data tidak tersimpan)</div>
+    <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.07em;color:var(--c1);margin-bottom:8px">TK — Kemampuan Kognitif (5 Subtests)</div>
+    <div class="fg3">
+      <div><label class="flabel">GI Benar (0–50)</label><input class="finput" id="gi-ok" type="number" min="0" max="50" placeholder="0–50" value="${REPORT.results.tk?.sub?.GI?.ok||''}"></div>
+      <div><label class="flabel">GI Skor /10</label><input class="finput" id="gi-s10" type="number" min="1" max="10" placeholder="1–10" value="${REPORT.results.tk?.sub?.GI?.score10||''}"></div>
+      <div><label class="flabel">TK Komposit /10</label><input class="finput" id="tk-comp" type="number" min="1" max="10" step=".1" placeholder="1–10" value="${REPORT.results.tk?.composite||''}"></div>
+    </div>
+    <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.07em;color:var(--c2);margin:10px 0 8px">EPPS — Top 3 Skala (nama singkat)</div>
+    <div><label class="flabel">Top 3 Skala (koma-pisah, contoh: ach,ord,dom)</label><input class="finput" id="epps-top3" placeholder="ach,ord,dom" value="${REPORT.results.epps?SCALE_ORDER_B.filter(s=>REPORT.results.epps.scores[s]>0).sort((a,b)=>REPORT.results.epps.scores[b]-REPORT.results.epps.scores[a]).slice(0,3).join(','):''}"></div>
+    <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.07em;color:var(--c3);margin:10px 0 8px">Holland (Kode RIASEC)</div>
+    <div><label class="flabel">Kode 3 Huruf</label><input class="finput" id="hol-code" maxlength="3" style="text-transform:uppercase;max-width:150px" placeholder="mis: RIC" value="${REPORT.results.holland?.code3||''}"></div>
+  </div>
+  <button class="btn-primary" onclick="buildReport()">✨ Buat Laporan Psikologis →</button>`;
+}
+
+// ── BUILD REPORT ──
+function buildReport(){
+  const name=document.getElementById('r-name')?.value?.trim();
+  const jabatan=document.getElementById('r-jabatan')?.value?.trim();
+  if(!name||!jabatan){alert('Nama dan posisi wajib diisi.');return;}
+  STATE.nomerKandidat=document.getElementById('r-nomer')?.value?.trim()||'';
+  STATE.departemen=document.getElementById('r-dept')?.value?.trim()||'';
+  STATE.asesor=document.getElementById('r-asesor')?.value?.trim()||'';
+  STATE.mengetahui=document.getElementById('r-mengetahui')?.value?.trim()||'';
+  saveState();
+  const fmtTgl=v=>v?new Date(v).toLocaleDateString('id-ID',{day:'2-digit',month:'long',year:'numeric'}):'';
+  let d;try{d=JSON.parse(localStorage.getItem(SKEY)||'null');}catch{}
+  REPORT.profile={name,jabatan,
+    gender:document.getElementById('r-gender')?.value||'',
+    education:document.getElementById('r-edu')?.value||'',
+    date:fmtTgl(document.getElementById('r-date-tes')?.value)||fmtDate(),
+    tglLahir:fmtTgl(document.getElementById('r-tgl-lahir')?.value)||d?.profile?.tglLahir||'',
+    tglLahirRaw:document.getElementById('r-tgl-lahir')?.value||d?.profile?.tglLahirRaw||'',
+  };
+  // Manual score fallback for TK
+  if(!REPORT.results.tk?.composite){
+    const giOk=parseInt(document.getElementById('gi-ok')?.value)||0;
+    const giS10=parseInt(document.getElementById('gi-s10')?.value)||null;
+    const tkComp=parseFloat(document.getElementById('tk-comp')?.value)||null;
+    if(tkComp){
+      const IQ_TABLE=[59,59,61,64,67,69,71,73,75,78,80,81,83,86,88,90,93,95,97,98,100,102,104,106,108,111,113,114,116,118,120,121,123,125,126,128,130,132,134,136,138,140,142,143,146,146,146,146,146,146,146];
+      const iq=IQ_TABLE[Math.min(giOk,50)]||90;
+      REPORT.results.tk={composite:tkComp,compVerdict:tkComp>=7?'pass':tkComp>=5?'warn':'fail',sub:{GI:{ok:giOk,score10:giS10||pctToS10(giOk/50*100),iq,iqCls:getIQClassB(iq),items:50},PV:{score10:pctToS10(60)},KN:{score10:pctToS10(60)},PA:{score10:pctToS10(60)},KA:{score10:pctToS10(60)}},date:fmtDate()};
+    }
+  }
+  // Manual Holland fallback
+  const holCode=(document.getElementById('hol-code')?.value||'').toUpperCase().slice(0,3);
+  if(holCode.length>=2&&!REPORT.results.holland?.code3){
+    REPORT.results.holland={code3:holCode,top1:holCode[0],top2:holCode[1]||holCode[0],consistency:'Sedang',scores:{R:0,I:0,A:0,S:0,E:0,C:0},date:fmtDate()};
+  }
+  goTo('report');
+}
+
+// ── RENDER REPORT ──
+async function renderReport(){
+  const app=document.getElementById('app');
+  const p=REPORT.profile;const r=REPORT.results;
+  if(!p){goTo('setup');return;}
+  const tk=r.tk;const epps=r.epps;const hol=r.holland;const papi=r.papi;
+  const tkComp=tk?.composite||null;
+  const tkVd=tkComp?getVerdict(Math.round(tkComp)):null;
+  app.innerHTML=buildStaticReport(p,r,tk,epps,hol,papi,tkComp,tkVd);
+  setTimeout(()=>{document.querySelectorAll('[data-w]').forEach(el=>{el.style.width=el.dataset.w+'%';});},200);
+  restoreState();
+  // Scroll spy
+  window.addEventListener('scroll',handleScroll);
+  const hasEdits=NARR_IDS.some(id=>STATE['edit_'+id]);
+  if(!hasEdits){aiDone=0;updateAIProgress();await generateAllNarratives(p,r,tk,epps,hol,papi,tkComp,tkVd);}
+  else document.getElementById('ai-progress')?.remove();
+}
+
+function handleScroll(){
+  const sn=document.getElementById('section-nav');
+  if(sn)sn.classList.toggle('visible',window.scrollY>200);
+}
+
+function buildStaticReport(p,r,tk,epps,hol,papi,tkComp,tkVd){
+  const gi=tk?.sub?.GI;
+  const giVd=gi?getVerdict(gi.score10):null;
+  const holMax=hol?Math.max(...Object.values(hol.scores),1):1;
+  const eppsTop=epps?SCALE_ORDER_B.filter(s=>epps.scores[s]>0).sort((a,b)=>epps.scores[b]-epps.scores[a]).slice(0,5):[];
+  const eppsMax=epps?Math.max(...Object.values(epps.scores),1):1;
+  const papiRoleScore=papi?PAPI_ROLE_DIMS.reduce((s,d)=>s+(papi.scores[d]||0),0):0;
+  const papiNeedScore=papi?PAPI_NEED_DIMS.reduce((s,d)=>s+(papi.scores[d]||0),0):0;
+  const papiComp=papi?Math.round((pctToS10(papiRoleScore/90*100)+pctToS10(papiNeedScore/90*100))/2*10)/10:null;
+
+  return`
+<div id="sec-header"></div>
+<div class="report-hero">
+  <div class="rh-top">
+    <div class="rh-logo-row">
+      <svg width="22" height="22" viewBox="-50 -10 220 220" xmlns="http://www.w3.org/2000/svg">
+        <path d="M30,10 C70,30 90,70 60,100 C30,130 70,170 90,190" stroke="url(#rlg1b)" stroke-width="7" fill="none" stroke-linecap="round"/>
+        <path d="M90,10 C50,30 30,70 60,100 C90,130 70,170 30,190" stroke="url(#rlg2b)" stroke-width="7" fill="none" stroke-linecap="round"/>
+        <circle cx="60" cy="100" r="9" fill="#fff" opacity=".85"/>
+        <defs><linearGradient id="rlg1b" x1="0%" y1="0%" x2="100%" y2="100%"><stop offset="0%" stop-color="#0A6E5C"/><stop offset="100%" stop-color="#14B8A6"/></linearGradient><linearGradient id="rlg2b" x1="100%" y1="0%" x2="0%" y2="100%"><stop offset="0%" stop-color="#F59E0B"/><stop offset="50%" stop-color="#14B8A6"/><stop offset="100%" stop-color="#0A6E5C"/></linearGradient></defs>
+      </svg>
+      <span class="rh-brand">MYRALIX</span>
+      <span style="width:1px;height:16px;background:rgba(255,255,255,.25);margin:0 6px"></span>
+      <span class="rh-doc-type">Laporan Psikologis Asesmen</span>
+    </div>
+    <div style="display:flex;align-items:center;gap:7px">
+      <span class="rh-battery-badge">Battery B · Profesional & Individual Contributor</span>
+      <span class="rh-lock">🔒 RAHASIA</span>
+    </div>
+  </div>
+  <div class="rh-body">
+    <div>
+      <div class="rh-name">${p.name}</div>
+      <div class="rh-pos">${p.jabatan}${p.gender?' · '+p.gender:''}${p.education?' · '+p.education:''}</div>
+      <div class="rh-meta-table" style="margin-top:10px">
+        <div class="rh-meta-item"><div class="rh-meta-lbl">Tanggal Lahir</div><div class="rh-meta-val">${p.tglLahir||'—'}</div></div>
+        <div class="rh-meta-item"><div class="rh-meta-lbl">Tanggal Tes</div><div class="rh-meta-val">${p.date||fmtDate()}</div></div>
+        <div class="rh-meta-item"><div class="rh-meta-lbl">No. Kandidat</div><div class="rh-meta-val">${STATE.nomerKandidat||'—'}</div></div>
+        <div class="rh-meta-item"><div class="rh-meta-lbl">Departemen</div><div class="rh-meta-val">${STATE.departemen||'—'}</div></div>
+        <div class="rh-meta-item"><div class="rh-meta-lbl">Asesor</div><div class="rh-meta-val">${STATE.asesor||'—'}</div></div>
+      </div>
+    </div>
+    ${tkComp?`<div class="rh-scorecard">
+      <div class="rh-sc-ring" style="border-color:${tkVd.br}">
+        <div class="rh-sc-num" style="color:${tkVd.br}">${tkComp}</div>
+        <div class="rh-sc-sub" style="color:${tkVd.br}">/10</div>
+      </div>
+      <div class="rh-sc-label" style="color:${tkVd.br}">${tkVd.emoji} ${tkVd.short}</div>
+      <div style="font-size:10px;opacity:.65">Komposit TK</div>
+    </div>`:''}
+  </div>
+</div>
+
+<div class="ai-progress no-print" id="ai-progress">
+  <div style="font-size:12px;font-weight:700;color:var(--teal-dk);flex-shrink:0">✨ AI</div>
+  <div class="ai-prog-bar-wrap"><div class="ai-prog-bar" id="ai-prog-bar"></div></div>
+  <div class="ai-prog-count" id="ai-prog-count">0/${AI_TOTAL}</div>
+  <div class="ai-prog-label" id="ai-prog-label">Menghasilkan narasi psikologis...</div>
+</div>
+
+<div class="disclaimer">
+  <strong>⚠️ Catatan:</strong> Laporan ini merupakan alat bantu profesional yang dihasilkan secara otomatis. Interpretasi akhir tetap memerlukan penilaian psikolog atau rekruter berpengalaman. Narasi AI dapat diedit langsung dengan mengklik teks — semua perubahan tersimpan otomatis. Dokumen bersifat <strong>rahasia</strong> dan hanya untuk keperluan seleksi internal.
+</div>
+
+<div class="scorecard-row">
+  ${tkComp?`<div class="sc-chip" style="background:${tkVd.bg};border-color:${tkVd.br};color:${tkVd.color}">
+    <div class="sc-chip-label">Komposit TK Kognitif</div>
+    <div class="sc-chip-value">${tkComp}<span style="font-size:14px;font-weight:500"> /10</span></div>
+    <div class="sc-chip-sub">GI×30% + PV×17.5% + KN×17.5% + PA×17.5% + KA×17.5%</div>
+    <div class="sc-chip-verdict" style="background:${tkVd.color}20;color:${tkVd.color}">${tkVd.emoji} ${tkVd.label}</div>
+  </div>`:`<div class="sc-chip" style="background:#F8FAFC;border-color:var(--border);color:var(--slate-md)"><div class="sc-chip-label">Komposit TK</div><div class="sc-chip-value" style="font-size:18px">—</div><div class="sc-chip-sub">Data tidak lengkap</div></div>`}
+  ${gi?`<div class="sc-chip" style="background:${giVd.bg};border-color:${giVd.br};color:${giVd.color}">
+    <div class="sc-chip-label">GI — Kemampuan Umum</div>
+    <div class="sc-chip-value">${gi.score10}<span style="font-size:14px;font-weight:500"> /10</span></div>
+    <div class="sc-chip-sub">IQ ≈ ${gi.iq||'—'} · ${gi.iqCls?.l||getIQClassB(gi.iq||90).l}</div>
+    <div class="sc-chip-verdict" style="background:${giVd.color}20;color:${giVd.color}">${getGrade(gi.pct||50).g}</div>
+  </div>`:`<div class="sc-chip" style="background:#F8FAFC;border-color:var(--border);color:var(--slate-md)"><div class="sc-chip-label">GI Umum</div><div class="sc-chip-value" style="font-size:18px">—</div></div>`}
+  ${hol?`<div class="sc-chip" style="background:var(--indigo-lt);border-color:var(--indigo-bd);color:var(--indigo)">
+    <div class="sc-chip-label">Holland RIASEC</div>
+    <div class="sc-chip-value" style="letter-spacing:.15em">${hol.code3||'—'}</div>
+    <div class="sc-chip-sub">Konsistensi: ${hol.consistency||'—'}</div>
+    <div class="sc-chip-verdict" style="background:var(--indigo)20;color:var(--indigo)">ℹ️ Informatif</div>
+  </div>`:`<div class="sc-chip" style="background:#F8FAFC;border-color:var(--border);color:var(--slate-md)"><div class="sc-chip-label">Holland</div><div class="sc-chip-value" style="font-size:18px">—</div></div>`}
+</div>
+
+<!-- ═══ SECTION I — TK KOGNITIF ═══ -->
+<div class="section-card" id="sec-tk">
+  <div class="section-header" style="background:linear-gradient(90deg,var(--c1-lt),transparent)">
+    <div class="sec-num" style="border-color:var(--c1);color:var(--c1)">I</div>
+    <div style="flex:1">
+      <div class="sec-title">Kemampuan Kognitif — TK Battery B</div>
+      <div class="sec-instrument">5 Subtes: GI (WPT-50) · PV (25) · KN (40) · PA (40) · KA (40)</div>
+    </div>
+    <div class="sec-tags"><span class="sec-tag" style="background:var(--green-lt);color:var(--green);border:1px solid var(--green-bd)">✅ Komposit Bertimbang</span></div>
+  </div>
+  <div class="sec-body">
+    ${tk?`<table class="score-table"><thead><tr><th>Subtes</th><th>Benar</th><th>Skor /10</th><th>Kategori</th><th>Verdict</th></tr></thead><tbody>
+      ${['GI','PV','KN','PA','KA'].map(code=>{
+        const s=tk.sub[code];if(!s)return`<tr><td>${code}</td><td colspan="4" style="color:var(--slate-lt)">Tidak tersedia</td></tr>`;
+        const vd=getVerdict(s.score10);const gr=getGrade(s.pct||s.score10*10);
+        const weights={GI:'30%',PV:'17.5%',KN:'17.5%',PA:'17.5%',KA:'17.5%'};
+        return`<tr>
+          <td><strong>${code}</strong> <span style="font-size:10px;color:var(--slate-lt)">(${weights[code]})</span><br>
+            <span style="font-size:11px;color:var(--slate-md)">${{GI:'Kemampuan Umum',PV:'Penalaran Verbal',KN:'Kemampuan Numerik',PA:'Penalaran Abstrak',KA:'Kecepatan & Akurasi'}[code]}</span>
+            ${code==='GI'&&s.iq?`<br><span style="font-size:11px;color:${getIQClassB(s.iq).c}">IQ ≈ ${s.iq} (${getIQClassB(s.iq).l})</span>`:''}
+          </td>
+          <td>${s.ok!=null?s.ok+'/'+s.items:'—'}</td>
+          <td style="text-align:center"><div class="score-ring-sm" style="border-color:${vd.br};color:${vd.color}">${s.score10}</div></td>
+          <td><div class="bar-wrap" style="min-width:80px"><div class="bar-fill" data-w="${s.score10/10*100}" style="width:0%;background:var(--c1)"></div></div><span style="font-size:11px">${gr.l}</span></td>
+          <td><span class="verdict-chip" style="background:${vd.bg};border-color:${vd.br};color:${vd.color}">${vd.emoji} ${vd.label}</span></td>
+        </tr>`;
+      }).join('')}
+      ${tkComp?`<tr class="total-row"><td colspan="2"><strong>KOMPOSIT TK</strong> <span style="font-size:11px;font-weight:400">(GI 30% + PV+KN+PA+KA 17.5% each)</span></td>
+        <td style="text-align:center"><div class="score-ring-sm" style="border-color:${tkVd.br};color:${tkVd.color};width:44px;height:44px;font-size:18px">${tkComp}</div></td>
+        <td>${s10ToLabel(Math.round(tkComp))}</td>
+        <td><span class="verdict-chip" style="background:${tkVd.bg};border-color:${tkVd.br};color:${tkVd.color}">${tkVd.emoji} ${tkVd.label}</span></td>
+      </tr>`:''}
+    </tbody></table>`:'<div style="padding:16px;text-align:center;color:var(--slate-lt)">Data TK tidak tersedia</div>'}
+    <div class="narr-header">
+      <span class="narr-title">📝 Interpretasi Psikologis — Kemampuan Kognitif</span>
+      <div class="narr-actions"><span class="narr-edit-hint no-print">✏️ klik untuk mengedit</span><button class="regen-btn no-print" onclick="regenSection('narr-tk','tk')">🔄 Regenerasi</button></div>
+    </div>
+    <div class="narrative-box loading" id="narr-tk" contenteditable="true" onblur="saveState()">Menghasilkan interpretasi kemampuan kognitif...</div>
+    <div class="rcr-section">
+      <div class="rcr-label">⚖️ Penilaian Rekruter — Kemampuan Kognitif:</div>
+      <div class="rcr-buttons">
+        <button class="rcr-btn sesuai" data-sec="tk" data-val="sesuai" onclick="setRcr('tk','sesuai')">✅ Memadai</button>
+        <button class="rcr-btn pertimbangkan" data-sec="tk" data-val="pertimbangkan" onclick="setRcr('tk','pertimbangkan')">⚠️ Perlu Dipertimbangkan</button>
+        <button class="rcr-btn tidak" data-sec="tk" data-val="tidak" onclick="setRcr('tk','tidak')">❌ Kurang Memadai</button>
+      </div>
+    </div>
+    <div class="assessor-notes"><div class="an-label">📌 Catatan Asesor:</div>
+      <textarea class="an-textarea" id="notes-tk" placeholder="Observasi tambahan terkait kemampuan kognitif..." oninput="saveState()"></textarea>
+    </div>
+  </div>
+</div>
+
+<!-- ═══ SECTION II — EPPS KEPRIBADIAN ═══ -->
+<div class="section-card" id="sec-epps">
+  <div class="section-header" style="background:linear-gradient(90deg,var(--c2-lt),transparent)">
+    <div class="sec-num" style="border-color:var(--c2);color:var(--c2)">II</div>
+    <div style="flex:1">
+      <div class="sec-title">Profil Kepribadian — EPPS</div>
+      <div class="sec-instrument">Edwards Personal Preference Schedule · 15 Skala · 225 Pasang Pernyataan</div>
+    </div>
+    <div class="sec-tags"><span class="sec-tag" style="background:#FEF3C7;color:#92400E;border:1px solid var(--amber-bd)">Penilaian Kualitatif</span></div>
+  </div>
+  <div class="sec-body">
+    ${epps?`
+    <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.07em;color:var(--slate-md);margin-bottom:10px">Distribusi Skor 15 Skala EPPS</div>
+    <div class="epps-grid">
+      ${SCALE_ORDER_B.map(s=>{
+        const score=epps.scores[s]||0;const max=15;const pct=Math.round(score/max*100);const level=pct>=70?'Tinggi':pct>=40?'Sedang':'Rendah';
+        return`<div class="epps-cell">
+          <div class="epps-dim-name">${EPPS_SCALES_BRIEF[s]?.nameID||s}</div>
+          <div style="font-size:16px;font-weight:700;color:${levelColor(level)};margin:3px 0">${score}<span style="font-size:10px;font-weight:400">/${max}</span></div>
+          <div class="bar-wrap"><div class="bar-fill" data-w="${pct}" style="width:0%;background:${levelColor(level)}"></div></div>
+          <span class="score-pill" style="background:${levelBg(level)};color:${levelColor(level)};font-size:10px;margin-top:3px">${level}</span>
+        </div>`;
+      }).join('')}
+    </div>
+    <div style="background:var(--amber-lt);border-left:4px solid var(--amber);border-radius:0 var(--rs) var(--rs) 0;padding:10px 14px;font-size:12.5px;color:var(--slate);margin-bottom:6px">
+      <strong>Skala Tertinggi:</strong> ${eppsTop.slice(0,3).map(s=>`${EPPS_SCALES_BRIEF[s]?.nameID||s} (${epps.scores[s]})`).join(' · ')} &nbsp;|&nbsp;
+      <strong>Skor Konsistensi:</strong> ${epps.conScore!=null?epps.conScore+'/15':'—'}
+    </div>`:'<div style="padding:16px;text-align:center;color:var(--slate-lt)">Data EPPS tidak tersedia</div>'}
+    <div class="narr-header" style="margin-top:14px">
+      <span class="narr-title">📝 Interpretasi Psikologis — Profil Kepribadian EPPS</span>
+      <div class="narr-actions"><span class="narr-edit-hint no-print">✏️ klik untuk mengedit</span><button class="regen-btn no-print" onclick="regenSection('narr-epps','epps')">🔄 Regenerasi</button></div>
+    </div>
+    <div class="narrative-box loading" id="narr-epps" contenteditable="true" onblur="saveState()">Menghasilkan interpretasi kepribadian EPPS...</div>
+    <div class="rcr-section">
+      <div class="rcr-label">⚖️ Penilaian Rekruter — Profil Kepribadian:</div>
+      <div class="rcr-buttons">
+        <button class="rcr-btn sesuai" data-sec="epps" data-val="sesuai" onclick="setRcr('epps','sesuai')">✅ Sesuai</button>
+        <button class="rcr-btn pertimbangkan" data-sec="epps" data-val="pertimbangkan" onclick="setRcr('epps','pertimbangkan')">⚠️ Perlu Dipertimbangkan</button>
+        <button class="rcr-btn tidak" data-sec="epps" data-val="tidak" onclick="setRcr('epps','tidak')">❌ Tidak Sesuai</button>
+      </div>
+    </div>
+    <div class="assessor-notes"><div class="an-label">📌 Catatan Asesor:</div>
+      <textarea class="an-textarea" id="notes-epps" placeholder="Observasi tentang profil kepribadian, dorongan, dan kebutuhan kandidat..." oninput="saveState()"></textarea>
+    </div>
+  </div>
+</div>
+
+<!-- ═══ SECTION III — HOLLAND MINAT ═══ -->
+<div class="section-card" id="sec-hol">
+  <div class="section-header" style="background:linear-gradient(90deg,var(--c3-lt),transparent)">
+    <div class="sec-num" style="border-color:var(--c3);color:var(--c3)">III</div>
+    <div style="flex:1">
+      <div class="sec-title">Minat Vokasional — Holland RIASEC</div>
+      <div class="sec-instrument">Holland Vocational Interest · 108 Item · Informatif</div>
+    </div>
+    <div class="sec-tags"><span class="sec-tag" style="background:var(--indigo-lt);color:var(--indigo);border:1px solid var(--indigo-bd)">ℹ️ Informatif</span></div>
+  </div>
+  <div class="sec-body">
+    ${hol?`
+    <div style="display:flex;align-items:center;gap:20px;margin-bottom:14px;flex-wrap:wrap">
+      <div>
+        <div style="font-size:10px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:var(--indigo);margin-bottom:4px">Kode RIASEC Dominan</div>
+        <div style="font-family:'Playfair Display',serif;font-size:40px;font-weight:700;letter-spacing:.18em;color:var(--indigo);line-height:1">${hol.code3}</div>
+        <div style="display:flex;gap:6px;margin-top:7px;flex-wrap:wrap">
+          ${(hol.code3||'').split('').map(c=>`<span style="background:${HOL_TYPES[c]?.bg||'#F9FAFB'};color:${HOL_TYPES[c]?.color||'#64748B'};padding:3px 10px;border-radius:20px;font-size:11px;font-weight:700">${HOL_TYPES[c]?.nameID||c}</span>`).join('')}
+          <span style="background:var(--indigo-lt);color:#4338CA;padding:3px 10px;border-radius:20px;font-size:11px;font-weight:700">Konsistensi: ${hol.consistency||'—'}</span>
+        </div>
+      </div>
+      <div style="flex:1;min-width:200px">
+        <div style="font-size:10px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--slate-md);margin-bottom:8px">Skor per Tipe</div>
+        ${Object.entries(hol.scores).sort((a,b)=>b[1]-a[1]).map(([c,v])=>{
+          const tc=HOL_TYPES[c]||{color:'#64748B',nameID:c};
+          return`<div style="display:flex;align-items:center;gap:8px;margin-bottom:5px">
+            <span style="width:20px;font-weight:800;font-size:12px;color:${tc.color}">${c}</span>
+            <div class="bar-wrap" style="flex:1"><div class="bar-fill" data-w="${Math.round(v/holMax*100)}" style="width:0%;background:${tc.color}"></div></div>
+            <span style="font-size:12px;font-weight:600;color:${tc.color};min-width:20px;text-align:right">${v}</span>
+            <span style="font-size:10px;color:var(--slate-lt);min-width:64px">${tc.nameID}</span>
+          </div>`;
+        }).join('')}
+      </div>
+    </div>`:'<div style="padding:16px;text-align:center;color:var(--slate-lt)">Data Holland tidak tersedia</div>'}
+    <div class="narr-header">
+      <span class="narr-title">📝 Interpretasi — Minat & Kesesuaian Peran</span>
+      <div class="narr-actions"><span class="narr-edit-hint no-print">✏️ klik untuk mengedit</span><button class="regen-btn no-print" onclick="regenSection('narr-hol','hol')">🔄 Regenerasi</button></div>
+    </div>
+    <div class="narrative-box loading" id="narr-hol" contenteditable="true" onblur="saveState()">Menghasilkan interpretasi minat...</div>
+    <div class="assessor-notes"><div class="an-label">📌 Catatan Asesor:</div>
+      <textarea class="an-textarea" id="notes-hol" placeholder="Catatan kesesuaian minat vokasional dengan tuntutan posisi..." oninput="saveState()"></textarea>
+    </div>
+  </div>
+</div>
+
+<!-- ═══ SECTION IV — PAPI PREFERENSI ═══ -->
+<div class="section-card" id="sec-papi">
+  <div class="section-header" style="background:linear-gradient(90deg,var(--c4-lt),transparent)">
+    <div class="sec-num" style="border-color:var(--c4);color:var(--c4)">IV</div>
+    <div style="flex:1">
+      <div class="sec-title">Preferensi Kerja — PAPI Standard</div>
+      <div class="sec-instrument">Personality & Preference Inventory · 10 Peran + 10 Kebutuhan · 90 Pasang</div>
+    </div>
+    <div class="sec-tags"><span class="sec-tag" style="background:#ECFEFF;color:#0891B2;border:1px solid #A5F3FC">Perilaku Kerja</span></div>
+  </div>
+  <div class="sec-body">
+    ${papi?`
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:14px">
+      <div>
+        <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.07em;color:#0369A1;margin-bottom:8px">10 Skala Peran (Role)</div>
+        <div class="papi-grid" style="grid-template-columns:1fr;gap:5px">
+          ${PAPI_ROLE_DIMS.map(d=>{
+            const score=papi.scores[d]||0;const range=getRange(d,score);
+            return`<div class="papi-cell" style="background:${rangeBg(range)};border-color:${rangeColor(range)}30">
+              <div style="display:flex;align-items:center;justify-content:space-between">
+                <div>
+                  <span style="font-size:11px;font-weight:700;color:#0369A1">${d}</span>
+                  <span style="font-size:11px;color:var(--slate-md);margin-left:6px">${PAPI_DIMS[d]?.label||d}</span>
+                </div>
+                <div style="display:flex;align-items:center;gap:6px">
+                  <span style="font-family:'Playfair Display',serif;font-size:16px;font-weight:700;color:${rangeColor(range)}">${score}</span>
+                  <span class="papi-range-chip" style="background:${rangeBg(range)};color:${rangeColor(range)};border:1px solid ${rangeColor(range)}50">${rangeLbl(range)}</span>
+                </div>
+              </div>
+              <div class="bar-wrap" style="margin-top:4px"><div class="bar-fill" data-w="${Math.round(score/9*100)}" style="width:0%;background:${rangeColor(range)}"></div></div>
+            </div>`;
+          }).join('')}
+        </div>
+      </div>
+      <div>
+        <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.07em;color:#7C3AED;margin-bottom:8px">10 Skala Kebutuhan (Need)</div>
+        <div class="papi-grid" style="grid-template-columns:1fr;gap:5px">
+          ${PAPI_NEED_DIMS.map(d=>{
+            const score=papi.scores[d]||0;const range=getRange(d,score);
+            return`<div class="papi-cell" style="background:${rangeBg(range)};border-color:${rangeColor(range)}30">
+              <div style="display:flex;align-items:center;justify-content:space-between">
+                <div>
+                  <span style="font-size:11px;font-weight:700;color:#7C3AED">${d}</span>
+                  <span style="font-size:11px;color:var(--slate-md);margin-left:6px">${PAPI_DIMS[d]?.label||d}</span>
+                </div>
+                <div style="display:flex;align-items:center;gap:6px">
+                  <span style="font-family:'Playfair Display',serif;font-size:16px;font-weight:700;color:${rangeColor(range)}">${score}</span>
+                  <span class="papi-range-chip" style="background:${rangeBg(range)};color:${rangeColor(range)};border:1px solid ${rangeColor(range)}50">${rangeLbl(range)}</span>
+                </div>
+              </div>
+              <div class="bar-wrap" style="margin-top:4px"><div class="bar-fill" data-w="${Math.round(score/9*100)}" style="width:0%;background:${rangeColor(range)}"></div></div>
+            </div>`;
+          }).join('')}
+        </div>
+      </div>
+    </div>
+    <div style="background:var(--c4-lt);border-left:4px solid var(--c4);border-radius:0 var(--rs) var(--rs) 0;padding:10px 14px;font-size:12.5px;color:var(--slate);margin-bottom:6px">
+      <strong>Role Total:</strong> ${papiRoleScore}/90 &nbsp;|&nbsp; <strong>Need Total:</strong> ${papiNeedScore}/90 &nbsp;|&nbsp; <strong>Komposit PAPI:</strong> ${papiComp}/10
+    </div>`:'<div style="padding:16px;text-align:center;color:var(--slate-lt)">Data PAPI tidak tersedia</div>'}
+    <div class="narr-header" style="margin-top:14px">
+      <span class="narr-title">📝 Interpretasi Psikologis — Preferensi & Perilaku Kerja (PAPI)</span>
+      <div class="narr-actions"><span class="narr-edit-hint no-print">✏️ klik untuk mengedit</span><button class="regen-btn no-print" onclick="regenSection('narr-papi','papi')">🔄 Regenerasi</button></div>
+    </div>
+    <div class="narrative-box loading" id="narr-papi" contenteditable="true" onblur="saveState()">Menghasilkan interpretasi preferensi kerja PAPI...</div>
+    <div class="rcr-section">
+      <div class="rcr-label">⚖️ Penilaian Rekruter — Gaya & Preferensi Kerja:</div>
+      <div class="rcr-buttons">
+        <button class="rcr-btn sesuai" data-sec="papi" data-val="sesuai" onclick="setRcr('papi','sesuai')">✅ Sesuai</button>
+        <button class="rcr-btn pertimbangkan" data-sec="papi" data-val="pertimbangkan" onclick="setRcr('papi','pertimbangkan')">⚠️ Perlu Dipertimbangkan</button>
+        <button class="rcr-btn tidak" data-sec="papi" data-val="tidak" onclick="setRcr('papi','tidak')">❌ Tidak Sesuai</button>
+      </div>
+    </div>
+    <div class="assessor-notes"><div class="an-label">📌 Catatan Asesor:</div>
+      <textarea class="an-textarea" id="notes-papi" placeholder="Catatan tentang gaya kerja, peran yang sesuai, dan kebutuhan lingkungan..." oninput="saveState()"></textarea>
+    </div>
+  </div>
+</div>
+
+<!-- ═══ SECTION V — RINGKASAN & REKOMENDASI ═══ -->
+<div class="section-card" id="sec-sum" style="border:2px solid var(--teal-lt)">
+  <div class="section-header" style="background:linear-gradient(90deg,var(--teal-xlt),transparent)">
+    <div class="sec-num" style="border-color:var(--teal-dk);background:var(--teal-dk);color:#fff">V</div>
+    <div style="flex:1">
+      <div class="sec-title" style="color:var(--teal-dk)">Ringkasan & Rekomendasi Akhir</div>
+      <div class="sec-instrument">Konsolidasi seluruh asesmen Battery B</div>
+    </div>
+  </div>
+  <div class="sec-body">
+    <div style="font-size:11px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--slate-md);margin-bottom:10px">A. Skor Komposit Objektif</div>
+    <table class="sum-table"><thead><tr><th>Komponen</th><th style="text-align:center">Skor /10</th><th>Kategori</th><th>Verdict</th></tr></thead><tbody>
+      ${tk?['GI','PV','KN','PA','KA'].map(code=>{
+        const s=tk.sub[code];if(!s)return'';
+        const vd=getVerdict(s.score10);
+        return`<tr><td>${code} — ${{GI:'Kemampuan Umum',PV:'Penalaran Verbal',KN:'Kemampuan Numerik',PA:'Penalaran Abstrak',KA:'Kecepatan & Akurasi'}[code]}</td>
+          <td style="text-align:center;font-family:'Playfair Display',serif;font-weight:700">${s.score10}</td>
+          <td>${s10ToLabel(s.score10)}</td>
+          <td><span class="verdict-chip" style="background:${vd.bg};border-color:${vd.br};color:${vd.color};font-size:11px">${vd.emoji} ${vd.label}</span></td></tr>`;
+      }).join(''):''}
+      ${tkComp?`<tr class="sum-total"><td><strong>KOMPOSIT TK BATTERY B</strong></td><td style="text-align:center;font-family:'Playfair Display',serif;font-size:20px;font-weight:700;color:${tkVd.color}">${tkComp}</td><td style="font-weight:600">${s10ToLabel(Math.round(tkComp))}</td><td><span class="verdict-chip" style="background:${tkVd.bg};border-color:${tkVd.br};color:${tkVd.color}">${tkVd.emoji} ${tkVd.label}</span></td></tr>`:''}
+    </tbody></table>
+
+    <div style="font-size:11px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--slate-md);margin:18px 0 10px">B. Penilaian Kualitatif Rekruter</div>
+    <div class="qcr-row"><div><div class="qcr-instrument">🧠 TK Kognitif</div><div style="font-size:11px;color:var(--slate-md)">5 Subtes bertimer</div></div><span class="qcr-status" id="qcr-status-tk" style="background:#F1F5F9;color:var(--slate-md)">—</span></div>
+    <div class="qcr-row"><div><div class="qcr-instrument">🌟 EPPS Kepribadian</div><div style="font-size:11px;color:var(--slate-md)">15 Skala Kebutuhan</div></div><span class="qcr-status" id="qcr-status-epps" style="background:#F1F5F9;color:var(--slate-md)">—</span></div>
+    <div class="qcr-row"><div><div class="qcr-instrument">⚙️ PAPI Preferensi</div><div style="font-size:11px;color:var(--slate-md)">20 Dimensi Peran & Kebutuhan</div></div><span class="qcr-status" id="qcr-status-papi" style="background:#F1F5F9;color:var(--slate-md)">—</span></div>
+    <div class="sec-divider"></div>
+
+    <div style="font-size:11px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--slate-md);margin-bottom:12px">C. Rekomendasi Akhir</div>
+    <div class="final-rec-wrap">
+      <button class="final-rec-btn pass" data-val="direkomendasikan" onclick="setFinalRec('direkomendasikan')">
+        <span class="rec-emoji">✅</span><span class="rec-title">DIREKOMENDASIKAN</span><span class="rec-crit">Komposit ≥ 7.0<br>dan profil kualitatif sesuai</span>
+      </button>
+      <button class="final-rec-btn warn" data-val="evaluasi" onclick="setFinalRec('evaluasi')">
+        <span class="rec-emoji">⚠️</span><span class="rec-title">PERLU EVALUASI LEBIH LANJUT</span><span class="rec-crit">Komposit 6.0–6.9<br>atau profil kualitatif campuran</span>
+      </button>
+      <button class="final-rec-btn fail" data-val="tidak" onclick="setFinalRec('tidak')">
+        <span class="rec-emoji">❌</span><span class="rec-title">TIDAK DIREKOMENDASIKAN</span><span class="rec-crit">Komposit &lt; 6.0<br>atau profil kualitatif tidak sesuai</span>
+      </button>
+    </div>
+
+    <div style="font-size:11px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--slate-md);margin-bottom:12px">D. Narasi Psikologis Terintegrasi (AI)</div>
+    <div class="narr-header"><span class="narr-title">📊 Ringkasan Profil Terintegrasi</span><div class="narr-actions"><span class="narr-edit-hint no-print">✏️ klik untuk mengedit</span><button class="regen-btn no-print" onclick="regenSection('narr-konsol','konsol')">🔄 Regenerasi</button></div></div>
+    <div class="narrative-box loading" id="narr-konsol" contenteditable="true" onblur="saveState()">Menghasilkan ringkasan profil...</div>
+    <div class="narr-header" style="margin-top:10px"><span class="narr-title">⚡ Kekuatan Utama Kandidat</span><button class="regen-btn no-print" onclick="regenSection('narr-strength','strength')">🔄 Regenerasi</button></div>
+    <div class="narrative-box loading" id="narr-strength" contenteditable="true" onblur="saveState()">Mengidentifikasi kekuatan...</div>
+    <div class="narr-header" style="margin-top:10px"><span class="narr-title">⚠️ Area Pengembangan & Risiko</span><button class="regen-btn no-print" onclick="regenSection('narr-dev','dev')">🔄 Regenerasi</button></div>
+    <div class="narrative-box loading" id="narr-dev" contenteditable="true" onblur="saveState()">Menganalisis area pengembangan...</div>
+    <div class="narr-header" style="margin-top:10px"><span class="narr-title">🎯 Analisis Kesesuaian Peran</span><button class="regen-btn no-print" onclick="regenSection('narr-fit','fit')">🔄 Regenerasi</button></div>
+    <div class="narrative-box loading" id="narr-fit" contenteditable="true" onblur="saveState()">Menganalisis kesesuaian peran...</div>
+    <div class="narr-header" style="margin-top:10px"><span class="narr-title">📋 Rekomendasi Rekruter</span><button class="regen-btn no-print" onclick="regenSection('narr-rec','rec')">🔄 Regenerasi</button></div>
+    <div class="narrative-box loading" id="narr-rec" contenteditable="true" onblur="saveState()">Menghasilkan rekomendasi...</div>
+
+    <div style="font-size:11px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--slate-md);margin:18px 0 10px">E. Kesimpulan & Catatan Asesor</div>
+    <div class="assessor-notes"><textarea class="an-textarea" id="notes-final" style="min-height:100px" placeholder="Tuliskan kesimpulan akhir, catatan pengembangan, saran onboarding..." oninput="saveState()"></textarea></div>
+  </div>
+</div>
+
+<div class="signature-block">
+  <div class="sig-col">
+    <div class="sig-title">Asesor / Rekruter</div>
+    <div class="sig-line" style="margin:36px 0 8px"></div>
+    <div class="sig-detail">Nama: ${STATE.asesor||'_______________________'}</div>
+    <div class="sig-detail">Tanggal: _______________</div>
+  </div>
+  <div class="sig-col">
+    <div class="sig-title">Mengetahui</div>
+    <div class="sig-line" style="margin:36px 0 8px"></div>
+    <div class="sig-detail">Nama: ${STATE.mengetahui||'_______________________'}</div>
+    <div class="sig-detail">Jabatan: _______________</div>
+  </div>
+</div>
+<div class="print-footer">Myralix Assessment Platform · Laporan Psikologis Battery B v10 · © 2026 · RAHASIA — Hanya untuk penggunaan internal</div>
+<div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:8px" class="no-print">
+  <button onclick="window.print()" class="btn-sec">🖨 Cetak / Simpan PDF</button>
+  <button onclick="goTo('setup')" class="btn-sec">✏️ Edit Data</button>
+  <button onclick="regenerateAll()" class="btn-sec">🔄 Generate Ulang Semua Narasi</button>
+  <button onclick="if(confirm('Hapus semua catatan rekruter dan narasi?')){localStorage.removeItem(STATE_KEY);STATE={};location.reload()}" class="btn-sec" style="color:var(--red)">🗑 Reset Anotasi</button>
+  <a href="Myralix_Battery_B_Candidate_Card_v10.html" class="btn-sec">← Kembali ke Tes Card</a>
+</div>`;
+}
+
+// ── AI GENERATION ──
+function updateAIProgress(){
+  const bar=document.getElementById('ai-prog-bar');
+  const count=document.getElementById('ai-prog-count');
+  const label=document.getElementById('ai-prog-label');
+  if(bar)bar.style.width=(aiDone/AI_TOTAL*100)+'%';
+  if(count)count.textContent=`${aiDone}/${AI_TOTAL}`;
+  if(label)label.textContent=aiDone>=AI_TOTAL?'✅ Semua narasi siap — klik teks untuk mengedit':'Menghasilkan narasi psikologis...';
+  if(aiDone>=AI_TOTAL){setTimeout(()=>{const el=document.getElementById('ai-progress');if(el){el.style.opacity='0';setTimeout(()=>el?.remove(),600);}},2000);}
+}
+
+async function callClaude(prompt){
+  const resp=await fetch('https://api.anthropic.com/v1/messages',{
+    method:'POST',
+    headers:{'Content-Type':'application/json'},
+    body:JSON.stringify({
+      model:'claude-sonnet-4-20250514',max_tokens:1000,
+      system:`Anda adalah psikolog industri dan organisasi senior berpengalaman dalam asesmen psikologis untuk rekrutmen di Indonesia. Tugas Anda adalah menulis interpretasi psikologis yang profesional, akurat, dan berbasis bukti dalam Bahasa Indonesia formal. Gunakan terminologi psikologi yang tepat namun mudah dipahami rekruter non-psikolog. Tulis dalam paragraf mengalir dan padat. Maksimal 200 kata per bagian.`,
+      messages:[{role:'user',content:prompt}]
+    })
+  });
+  const data=await resp.json();
+  return(data.content||[]).filter(b=>b.type==='text').map(b=>b.text).join('');
+}
+
+async function generateAllNarratives(p,r,tk,epps,hol,papi,tkComp,tkVd){
+  const name=p.name,jabatan=p.jabatan;
+  const tkD=tk?`TK Komposit: ${tkComp||'—'}/10${tkVd?' ('+tkVd.label+')':''} — GI: ${tk.sub?.GI?.score10||'—'}/10 (IQ≈${tk.sub?.GI?.iq||'—'}), PV: ${tk.sub?.PV?.score10||'—'}/10, KN: ${tk.sub?.KN?.score10||'—'}/10, PA: ${tk.sub?.PA?.score10||'—'}/10, KA: ${tk.sub?.KA?.score10||'—'}/10`:'TK: tidak tersedia';
+  const eppsD=epps?`EPPS Top Skala: ${SCALE_ORDER_B.filter(s=>epps.scores[s]>0).sort((a,b)=>epps.scores[b]-epps.scores[a]).slice(0,5).map(s=>`${EPPS_SCALES_BRIEF[s]?.nameID}(${epps.scores[s]})`).join(', ')} — Konsistensi: ${epps.conScore}/15`:'EPPS: tidak tersedia';
+  const holD=hol?`Holland RIASEC: ${hol.code3}, Konsistensi ${hol.consistency}`:'Holland: tidak tersedia';
+  const papiD=papi?`PAPI — Role (${PAPI_ROLE_DIMS.map(d=>`${d}:${papi.scores[d]||0}`).join(',')}) Need (${PAPI_NEED_DIMS.map(d=>`${d}:${papi.scores[d]||0}`).join(',')})`:'PAPI: tidak tersedia';
+  const ctx=`Kandidat: ${name}, posisi: ${jabatan} (Battery B — Profesional & Individual Contributor).\n`;
+  const tasks=[
+    {id:'narr-tk',prompt:`${ctx}\n${tkD}\n\nTulis interpretasi psikologis kemampuan kognitif kandidat untuk posisi profesional/supervisori. Jelaskan makna komposit TK, setiap subtes (GI=berpikir umum, PV=verbal, KN=numerik, PA=abstrak, KA=kecepatan), IQ estimasi, dan implikasinya untuk peran yang memerlukan analisis, pengambilan keputusan, dan kepemimpinan operasional.`},
+    {id:'narr-epps',prompt:`${ctx}\n${eppsD}\n\nTulis interpretasi kepribadian berdasarkan EPPS. Fokus pada 3-5 skala tertinggi dan maknanya untuk peran profesional/supervisori: apakah menunjukkan orientasi prestasi, kepemimpinan, keteraturan, kebutuhan sosial, dan ketahanan. Sertakan implikasi konkret untuk lingkungan kerja dan gaya manajemen.`},
+    {id:'narr-hol',prompt:`${ctx}\n${holD}\n\nTulis interpretasi minat vokasional Holland RIASEC. Jelaskan tipe dominan, konsistensi profil, dan relevansinya dengan peran profesional/supervisori. Ingat ini bersifat informatif dan melengkapi, bukan penentu utama keputusan rekrutmen.`},
+    {id:'narr-papi',prompt:`${ctx}\n${papiD}\n\nTulis interpretasi mendalam PAPI Standard. Jelaskan profil Peran (10 dimensi role) dan Kebutuhan (10 dimensi need), pola yang menonjol, implikasinya untuk gaya kerja, kepemimpinan, dan kebutuhan lingkungan kerja yang optimal. Identifikasi kekuatan dan potensi risiko dalam konteks profesional/supervisori.`},
+    {id:'narr-konsol',prompt:`${ctx}\n${tkD}\n${eppsD}\n${holD}\n${papiD}\n\nTulis ringkasan profil psikologis terintegrasi dalam 3 paragraf: (1) Kapasitas kognitif dan analitis, (2) Kepribadian, kebutuhan, dan gaya kerja, (3) Sintesis kesesuaian dengan peran profesional/supervisori. Komprehensif tapi ringkas — maksimal 280 kata.`},
+    {id:'narr-strength',prompt:`${ctx}\n${tkD}\n${eppsD}\n${papiD}\n\nIdentifikasi dan jelaskan 3 kekuatan utama kandidat yang paling relevan untuk peran profesional/supervisori. Setiap kekuatan didukung data spesifik dari hasil tes.`},
+    {id:'narr-dev',prompt:`${ctx}\n${tkD}\n${eppsD}\n${papiD}\n\nIdentifikasi area pengembangan dan risiko potensial untuk peran ini. Konstruktif: jelaskan area perhatian, strategi mitigasinya, dan pertanyaan konfirmasi untuk wawancara.`},
+    {id:'narr-fit',prompt:`${ctx}\n${tkD}\n${eppsD}\n${holD}\n${papiD}\n\nAnalisis kesesuaian kandidat dengan peran Profesional & Individual Contributor (analis, spesialis, koordinator, individual contributor senior). Nilai setiap dimensi vs tuntutan peran kontributor individual (kedalaman keahlian, inisiatif, kolaborasi lintas tim, problem solving). Berikan kesimpulan kesesuaian yang jelas.`},
+    {id:'narr-rec',prompt:`${ctx}\n${tkD}\n${eppsD}\n${papiD}\n\nBerikan rekomendasi rekruter berbasis data — direkomendasikan, perlu evaluasi, atau tidak direkomendasikan. Sertakan alasan spesifik, catatan area konfirmasi wawancara, dan saran onboarding/development. Maksimal 180 kata.`},
+  ];
+  await Promise.all(tasks.map(async({id,prompt})=>{
+    const el=document.getElementById(id);if(!el)return;
+    if(STATE['edit_'+id]){el.textContent=STATE['edit_'+id];el.classList.remove('loading');aiDone++;updateAIProgress();return;}
+    try{const text=await callClaude(prompt);el.textContent=text;el.classList.remove('loading');}
+    catch(e){el.textContent=`[Gagal: ${e.message}. Klik Regenerasi untuk mencoba kembali.]`;el.classList.remove('loading');el.style.borderLeftColor='#DC2626';}
+    aiDone++;updateAIProgress();saveState();
+  }));
+}
+
+async function regenSection(id,type){
+  const p=REPORT.profile,r=REPORT.results;
+  const tk=r.tk,epps=r.epps,hol=r.holland,papi=r.papi;
+  const tkComp=tk?.composite||null;const tkVd=tkComp?getVerdict(Math.round(tkComp)):null;
+  const tkD=tk?`TK: ${tkComp||'—'}/10 (GI:${tk.sub?.GI?.score10||'—'}, PV:${tk.sub?.PV?.score10||'—'}, KN:${tk.sub?.KN?.score10||'—'}, PA:${tk.sub?.PA?.score10||'—'}, KA:${tk.sub?.KA?.score10||'—'})`:'TK: tidak tersedia';
+  const eppsD=epps?`EPPS Top: ${SCALE_ORDER_B.filter(s=>epps.scores[s]>0).sort((a,b)=>epps.scores[b]-epps.scores[a]).slice(0,5).map(s=>`${EPPS_SCALES_BRIEF[s]?.nameID}(${epps.scores[s]})`).join(', ')}`:'EPPS: tidak tersedia';
+  const holD=hol?`Holland: ${hol.code3}`:'Holland: tidak tersedia';
+  const papiD=papi?`PAPI Role(${PAPI_ROLE_DIMS.map(d=>`${d}:${papi.scores[d]||0}`).join(',')}) Need(${PAPI_NEED_DIMS.map(d=>`${d}:${papi.scores[d]||0}`).join(',')})`:'PAPI: tidak tersedia';
+  const ctx=`Kandidat: ${p.name}, posisi: ${p.jabatan}.\n`;
+  const prompts={tk:`${ctx}${tkD}\nTulis interpretasi kemampuan kognitif.`,epps:`${ctx}${eppsD}\nTulis interpretasi kepribadian EPPS.`,hol:`${ctx}${holD}\nTulis interpretasi minat Holland RIASEC.`,papi:`${ctx}${papiD}\nTulis interpretasi preferensi kerja PAPI.`,konsol:`${ctx}${tkD}\n${eppsD}\n${papiD}\nTulis ringkasan profil terintegrasi.`,strength:`${ctx}${tkD}\n${eppsD}\n${papiD}\nIdentifikasi 3 kekuatan utama.`,dev:`${ctx}${tkD}\n${eppsD}\n${papiD}\nIdentifikasi area pengembangan.`,fit:`${ctx}${tkD}\n${eppsD}\n${papiD}\nAnalisis kesesuaian peran.`,rec:`${ctx}${tkD}\n${eppsD}\n${papiD}\nBerikan rekomendasi rekruter.`};
+  const el=document.getElementById(id);if(!el)return;
+  el.textContent='Menghasilkan ulang...';el.classList.add('loading');
+  try{const text=await callClaude(prompts[type]||prompts.tk);el.textContent=text;el.classList.remove('loading');saveState();}
+  catch(e){el.textContent=`[Gagal: ${e.message}]`;el.classList.remove('loading');}
+}
+
+async function regenerateAll(){
+  if(!confirm('Generate ulang semua narasi AI? Narasi yang sudah diedit akan diganti.'))return;
+  NARR_IDS.forEach(id=>{delete STATE['edit_'+id];const el=document.getElementById(id);if(el){el.classList.add('loading');el.textContent='Menghasilkan ulang...';}});
+  aiDone=0;
+  const existing=document.getElementById('ai-progress');if(!existing){const d=document.createElement('div');d.id='ai-progress';d.className='ai-progress no-print';d.innerHTML=`<div style="font-size:12px;font-weight:700;color:var(--teal-dk);flex-shrink:0">✨ AI</div><div class="ai-prog-bar-wrap"><div class="ai-prog-bar" id="ai-prog-bar"></div></div><div class="ai-prog-count" id="ai-prog-count">0/${AI_TOTAL}</div><div class="ai-prog-label" id="ai-prog-label"></div>`;document.getElementById('app')?.insertBefore(d,document.getElementById('app')?.firstChild);}
+  updateAIProgress();
+  const p=REPORT.profile,r=REPORT.results,tk=r.tk,epps=r.epps,hol=r.holland,papi=r.papi;
+  const tkComp=tk?.composite||null;const tkVd=tkComp?getVerdict(Math.round(tkComp)):null;
+  await generateAllNarratives(p,r,tk,epps,hol,papi,tkComp,tkVd);
+}
+
+function scrollToSec(id){
+  const el=document.getElementById(id);
+  if(el)el.scrollIntoView({behavior:'smooth',block:'start'});
+}
+
+// ── INIT ──
+function init(){
+  loadState();
+  let has=null;
+  try{const d=JSON.parse(localStorage.getItem(SKEY)||'null');if(d&&d.profile){REPORT.results=d.results||{};REPORT.profile=d.profile;has=true;}}catch{}
+  goTo('setup');
+}
+init();
+</script>
+
+<script>
+
+// ═══ v10: Manager View + 3-Pillar Bridge (Battery B) ═══
+const BATTERY_CODE = 'B';
+const BATTERY_ROLE = 'Specialist / Analyst Mid-Level';
+
+// 3-pillar bridge: map battery-specific scores → Cognitive/Personality/WorkAttitude/Overall (0-100)
+// Matches Myralix platform's Assessment Results Table columns
+function calc3Pillar(r) {
+  const pillar = {cognitive: null, personality: null, workAttitude: null, overall: null};
+  if (!r) return pillar;
+
+  // Cognitive: TK composite scaled to 0-100 (same for all batteries)
+  if (r.tk?.composite != null) pillar.cognitive = Math.round(r.tk.composite * 10);
+
+  // Personality & Work Attitude — per-battery mapping
+  if (BATTERY_CODE === 'A') {
+    // Personality: Big Five weighted — high C, low N, high A = good for operational
+    if (r.bigfive?.pct) {
+      const C = r.bigfive.pct.C || 50;
+      const N = r.bigfive.pct.N || 50;
+      const A = r.bigfive.pct.A || 50;
+      pillar.personality = Math.round(C * 0.4 + (100 - N) * 0.3 + A * 0.3);
+    }
+    // Work Attitude: DISC-appropriateness × 0.5 + Holland-congruence × 0.5
+    if (r.disc || r.holland) {
+      let discFit = 60, holFit = 60;
+      if (r.disc?.dominant === 'S') discFit = 100;
+      else if (r.disc?.dominant === 'C') discFit = 85;
+      else if (r.disc?.dominant === 'D' || r.disc?.dominant === 'I') discFit = 55;
+      if (r.holland?.code3) {
+        const code = r.holland.code3;
+        if (code.includes('C') || code.includes('S')) holFit = 95;
+        else if (code.includes('R')) holFit = 80;
+        else holFit = 55;
+      }
+      pillar.workAttitude = Math.round(discFit * 0.5 + holFit * 0.5);
+    }
+  } else if (BATTERY_CODE === 'B') {
+    // Personality: EPPS coherence + consistency
+    if (r.epps) {
+      const conS = (r.epps.conScore || 7) / 15 * 100;  // 0-100 based on consistency
+      const base = 70;  // baseline for completed EPPS
+      pillar.personality = Math.round(Math.min(100, base + (conS - 50) * 0.4));
+    }
+    // Work Attitude: PAPI preference fit × 0.5 + Holland I-congruence × 0.5
+    if (r.papi || r.holland) {
+      let papiFit = 60, holFit = 60;
+      if (r.papi?.scores) {
+        const s = r.papi.scores;
+        if ((s.C || 0) >= 6 && (s.T || 0) >= 6) papiFit = 90;
+        else if ((s.W || 0) >= 8) papiFit = 55;
+        else papiFit = 70;
+      }
+      if (r.holland?.code3) {
+        const code = r.holland.code3;
+        if (code.includes('I')) holFit = 95;
+        else if (code.includes('C')) holFit = 80;
+        else holFit = 55;
+      }
+      pillar.workAttitude = Math.round(papiFit * 0.5 + holFit * 0.5);
+    }
+  } else if (BATTERY_CODE === 'C') {
+    // Personality: EPPS + SJT blend (SJT has leadership insights)
+    const eppsP = r.epps ? 70 + ((r.epps.conScore || 7) / 15 - 0.5) * 40 : null;
+    const sjtP = r.sjt?.overallPct != null ? r.sjt.overallPct : null;
+    if (eppsP != null && sjtP != null) pillar.personality = Math.round((eppsP + sjtP) / 2);
+    else if (eppsP != null) pillar.personality = Math.round(eppsP);
+    else if (sjtP != null) pillar.personality = Math.round(sjtP);
+    // Work Attitude: PAPI leadership fit
+    if (r.papi?.scores) {
+      const s = r.papi.scores;
+      const L = s.L || 0, I = s.I || 0, K = s.K || 0, F = s.F || 0;
+      if (L >= 5 && I >= 5) pillar.workAttitude = 90;
+      else if (K >= 7 && F >= 7) pillar.workAttitude = 50;
+      else pillar.workAttitude = 70;
+    }
+  } else if (BATTERY_CODE === 'D') {
+    // Personality: 16PF executive factors
+    if (r.pf?.std) {
+      const std = r.pf.std;
+      const execScore = (
+        (std.C || 5) * 10 +          // emotional stability
+        (std.Q3 || 5) * 10 +         // self-discipline
+        ((11 - (std.Q4 || 5))) * 10 +  // low tension (inverted)
+        (std.E || 5) * 6 +            // dominance
+        (std.H || 5) * 6 +            // social boldness
+        ((11 - (std.O || 5))) * 6     // low apprehension (inverted)
+      ) / 4.8;
+      pillar.personality = Math.round(Math.min(100, Math.max(0, execScore)));
+    }
+    // Work Attitude: MSDT effectiveness × 0.5 + PAPI-L leadership × 0.5
+    if (r.msdt || r.papil) {
+      let msdtFit = 60, papilFit = 60;
+      if (r.msdt?.effectPct != null) msdtFit = Math.min(100, r.msdt.effectPct);
+      if (r.papil?.scores) {
+        const s = r.papil.scores;
+        const L = s.L || 0, I = s.I || 0, K = s.K || 0, F = s.F || 0;
+        if (L >= 5 && I >= 5) papilFit = 90;
+        else if (K >= 6 && F >= 6) papilFit = 50;
+        else papilFit = 70;
+      }
+      pillar.workAttitude = Math.round(msdtFit * 0.5 + papilFit * 0.5);
+    }
+  }
+
+  // Overall: weighted mean with cognitive as anchor (mandatory gate)
+  const vals = [pillar.cognitive, pillar.personality, pillar.workAttitude].filter(v => v != null);
+  if (vals.length > 0) pillar.overall = Math.round(vals.reduce((a, b) => a + b, 0) / vals.length);
+
+  return pillar;
+}
+
+// Thresholds (aligned with Myralix mockup defaults)
+const PILLAR_THRESHOLDS = {cognitive: 70, personality: 65, workAttitude: 70, overall: 70};
+
+function pillarVerdict(score, threshold) {
+  if (score == null) return 'empty';
+  if (score >= threshold) return 'pass';
+  if (score >= threshold - 15) return 'warn';
+  return 'fail';
+}
+
+// Overall candidate verdict
+function deriveOverallVerdict(r, rpt) {
+  const pillar = calc3Pillar(r);
+  if (pillar.overall == null) return {kind: 'empty', label: 'Belum Tersedia', sub: 'Kandidat belum menyelesaikan asesmen'};
+
+  // Priority: recruiter's explicit final rec
+  const finalRec = rpt?.finalRec;
+  if (finalRec === 'direkomendasikan' || finalRec === 'kuat') return {kind:'pass', label:'Direkomendasikan Kuat', sub:'Rekruter menilai kandidat sesuai untuk peran ' + BATTERY_ROLE};
+  if (finalRec === 'evaluasi' || finalRec === 'pertimbangkan') return {kind:'warn', label:'Perlu Pertimbangan', sub:'Rekruter menilai kandidat perlu evaluasi lebih lanjut'};
+  if (finalRec === 'tidak') return {kind:'fail', label:'Tidak Direkomendasikan', sub:'Rekruter menilai kandidat belum sesuai untuk peran ini'};
+
+  // Auto-derive from pillars
+  const cogV = pillarVerdict(pillar.cognitive, PILLAR_THRESHOLDS.cognitive);
+  const perV = pillarVerdict(pillar.personality, PILLAR_THRESHOLDS.personality);
+  const waV = pillarVerdict(pillar.workAttitude, PILLAR_THRESHOLDS.workAttitude);
+  const overV = pillarVerdict(pillar.overall, PILLAR_THRESHOLDS.overall);
+
+  if (cogV === 'fail') return {kind:'fail', label:'Tidak Direkomendasikan', sub:'Kapasitas kognitif belum mencukupi persyaratan minimum peran'};
+  const fails = [cogV, perV, waV].filter(v => v === 'fail').length;
+  const warns = [cogV, perV, waV].filter(v => v === 'warn').length;
+  if (fails >= 2) return {kind:'fail', label:'Tidak Direkomendasikan', sub:'Beberapa dimensi inti tidak memenuhi tuntutan peran'};
+  if (fails >= 1) return {kind:'warn', label:'Perlu Pertimbangan', sub:'Ada dimensi penting yang belum memadai — perlu evaluasi lanjutan'};
+  if (warns >= 2) return {kind:'warn', label:'Perlu Pertimbangan', sub:'Skor berada di zona menengah pada beberapa dimensi'};
+  if (overV === 'pass' && cogV === 'pass') return {kind:'pass', label:'Direkomendasikan Kuat', sub:'Kapasitas kognitif dan profil kandidat mendukung peran ' + BATTERY_ROLE};
+  return {kind:'warn', label:'Perlu Pertimbangan', sub:'Evaluasi lanjutan disarankan sebelum keputusan final'};
+}
+
+// Plain-language narrative for manager (no jargon)
+function genManagerSummary(r, verdict, profile) {
+  if (!r?.tk) return 'Data asesmen belum tersedia atau belum lengkap.';
+  const name = profile?.name || 'Kandidat';
+  const pillar = calc3Pillar(r);
+  const parts = [];
+
+  // Cognitive sentence
+  if (pillar.cognitive != null) {
+    if (pillar.cognitive >= 80) parts.push(`<strong>${name}</strong> menunjukkan kemampuan kognitif yang kuat (skor ${pillar.cognitive}/100) — siap menguasai materi peran dengan cepat.`);
+    else if (pillar.cognitive >= 70) parts.push(`<strong>${name}</strong> memiliki kemampuan kognitif yang memadai (skor ${pillar.cognitive}/100) untuk tuntutan peran.`);
+    else if (pillar.cognitive >= 55) parts.push(`<strong>${name}</strong> memiliki kemampuan kognitif di zona menengah (skor ${pillar.cognitive}/100) — perlu pendampingan ekstra saat onboarding.`);
+    else parts.push(`<strong>${name}</strong> menunjukkan kemampuan kognitif yang belum memadai (skor ${pillar.cognitive}/100) untuk tuntutan peran.`);
+  }
+
+  // Personality sentence
+  if (pillar.personality != null) {
+    if (pillar.personality >= 75) parts.push(`Profil kepribadiannya <strong>mendukung kuat</strong> karakter peran yang diharapkan.`);
+    else if (pillar.personality >= 65) parts.push(`Profil kepribadiannya <strong>cukup sesuai</strong> dengan karakter peran.`);
+    else if (pillar.personality >= 50) parts.push(`Profil kepribadiannya menunjukkan <strong>kombinasi campuran</strong> — ada area yang sesuai dan ada yang perlu dievaluasi.`);
+    else parts.push(`Profil kepribadiannya menunjukkan <strong>risiko ketidakcocokan</strong> dengan karakter peran.`);
+  }
+
+  // Work attitude sentence
+  if (pillar.workAttitude != null) {
+    if (pillar.workAttitude >= 75) parts.push(`Sikap kerjanya <strong>selaras</strong> dengan budaya dan tuntutan posisi.`);
+    else if (pillar.workAttitude < 55) parts.push(`Sikap kerjanya menunjukkan <strong>orientasi yang kurang selaras</strong> dengan tuntutan posisi.`);
+  }
+
+  // Closing
+  if (verdict.kind === 'pass') parts.push(`Berdasarkan data ini, kandidat <strong>layak dilanjutkan</strong> ke tahap berikutnya.`);
+  else if (verdict.kind === 'warn') parts.push(`Berdasarkan data ini, kandidat dapat dipertimbangkan dengan <strong>evaluasi tambahan</strong>.`);
+  else if (verdict.kind === 'fail') parts.push(`Berdasarkan data ini, kandidat <strong>kurang sesuai</strong> untuk peran ini.`);
+
+  return parts.join(' ');
+}
+
+// Build the manager view HTML
+function buildManagerView() {
+  const p = REPORT.profile || {};
+  const r = REPORT.results || {};
+  const rpt = STATE || {};
+  const pillar = calc3Pillar(r);
+  const verdict = deriveOverallVerdict(r, rpt);
+  const summary = genManagerSummary(r, verdict, p);
+  const activeRec = rpt.finalRec;
+
+  const pv = {
+    cognitive: pillarVerdict(pillar.cognitive, PILLAR_THRESHOLDS.cognitive),
+    personality: pillarVerdict(pillar.personality, PILLAR_THRESHOLDS.personality),
+    workAttitude: pillarVerdict(pillar.workAttitude, PILLAR_THRESHOLDS.workAttitude),
+    overall: pillarVerdict(pillar.overall, PILLAR_THRESHOLDS.overall),
+  };
+  const pillCls = {pass:'pill-pass',warn:'pill-warn',fail:'pill-fail',empty:'pill-warn'};
+  const pillLbl = {pass:'✓ Passed',warn:'⚠ Warn',fail:'✗ Failed',empty:'— Pending'};
+
+  // 3-pillar bar
+  const pillarBar = `
+    <div class="pillar-bar">
+      <div class="pillar-bar-label">📊 Skor 3-Pilar · Format Platform Myralix</div>
+      <div class="pillar-grid">
+        <div class="pillar-cell">
+          <div class="pillar-icon">🧠</div>
+          <div class="pillar-name">Cognitive</div>
+          <div class="pillar-score">${pillar.cognitive ?? '—'}<span class="pillar-max">/100</span></div>
+          <div class="pillar-badge ${pillCls[pv.cognitive]}">${pillLbl[pv.cognitive]}</div>
+          <div class="pillar-threshold">Min ${PILLAR_THRESHOLDS.cognitive}</div>
+        </div>
+        <div class="pillar-cell">
+          <div class="pillar-icon">🎭</div>
+          <div class="pillar-name">Personality</div>
+          <div class="pillar-score">${pillar.personality ?? '—'}<span class="pillar-max">/100</span></div>
+          <div class="pillar-badge ${pillCls[pv.personality]}">${pillLbl[pv.personality]}</div>
+          <div class="pillar-threshold">Min ${PILLAR_THRESHOLDS.personality}</div>
+        </div>
+        <div class="pillar-cell">
+          <div class="pillar-icon">💼</div>
+          <div class="pillar-name">Work Attitude</div>
+          <div class="pillar-score">${pillar.workAttitude ?? '—'}<span class="pillar-max">/100</span></div>
+          <div class="pillar-badge ${pillCls[pv.workAttitude]}">${pillLbl[pv.workAttitude]}</div>
+          <div class="pillar-threshold">Min ${PILLAR_THRESHOLDS.workAttitude}</div>
+        </div>
+        <div class="pillar-cell pillar-overall">
+          <div class="pillar-icon">🏆</div>
+          <div class="pillar-name">Overall</div>
+          <div class="pillar-score">${pillar.overall ?? '—'}<span class="pillar-max">/100</span></div>
+          <div class="pillar-badge ${pillCls[pv.overall]}">${pillLbl[pv.overall]}</div>
+          <div class="pillar-threshold">Min ${PILLAR_THRESHOLDS.overall}</div>
+        </div>
+      </div>
+    </div>
+  `;
+
+  // Hero verdict
+  const heroVerdict = `
+    <div class="hero-verdict ${verdict.kind}">
+      <div class="hv-label">Rekomendasi Akhir</div>
+      <div class="hv-title">${verdict.label}</div>
+      <div class="hv-sub">${verdict.sub}</div>
+    </div>
+  `;
+
+  // Manager summary
+  const mgrChip = (v, l) => `<div class="msr-chip ${v}">${l}</div>`;
+  const mgrSum = `
+    <div class="mgr-summary">
+      <h3>📘 Ringkasan untuk Manajer</h3>
+      <div class="mgr-score-row">
+        <div class="msr-icon">🧠</div>
+        <div class="msr-info">
+          <div class="msr-title">Kemampuan Berpikir & Analisis</div>
+          <div class="msr-desc">Kapasitas belajar, pemecahan masalah, akurasi</div>
+        </div>
+        <div class="msr-score">${pillar.cognitive ?? '—'}<span style="font-size:12px;color:var(--slate-lt);font-weight:400">/100</span></div>
+        ${mgrChip(pv.cognitive, pv.cognitive==='pass'?'✅ Memadai':pv.cognitive==='warn'?'⚠️ Pertimbangkan':pv.cognitive==='fail'?'❌ Belum Memadai':'— Pending')}
+      </div>
+      <div class="mgr-score-row">
+        <div class="msr-icon">🌟</div>
+        <div class="msr-info">
+          <div class="msr-title">Kesesuaian Kepribadian</div>
+          <div class="msr-desc">Karakter bawaan kandidat vs tuntutan peran</div>
+        </div>
+        <div class="msr-score">${pillar.personality ?? '—'}<span style="font-size:12px;color:var(--slate-lt);font-weight:400">/100</span></div>
+        ${mgrChip(pv.personality, pv.personality==='pass'?'✅ Sesuai':pv.personality==='warn'?'⚠️ Pertimbangkan':pv.personality==='fail'?'❌ Tidak Sesuai':'— Pending')}
+      </div>
+      <div class="mgr-score-row">
+        <div class="msr-icon">💼</div>
+        <div class="msr-info">
+          <div class="msr-title">Kesesuaian Sikap & Gaya Kerja</div>
+          <div class="msr-desc">Orientasi kerja, minat, dan preferensi posisi</div>
+        </div>
+        <div class="msr-score">${pillar.workAttitude ?? '—'}<span style="font-size:12px;color:var(--slate-lt);font-weight:400">/100</span></div>
+        ${mgrChip(pv.workAttitude, pv.workAttitude==='pass'?'✅ Selaras':pv.workAttitude==='warn'?'⚠️ Pertimbangkan':pv.workAttitude==='fail'?'❌ Tidak Selaras':'— Pending')}
+      </div>
+      <div class="mgr-narrative">${summary}</div>
+      <div class="mgr-actions no-print">
+        <div class="mgr-actions-label">Tindak Lanjut Manajer</div>
+        <div class="mgr-actions-grid">
+          <button class="mgr-act-btn primary ${activeRec==='direkomendasikan'?'active':''}" onclick="setMgrAction('direkomendasikan')">
+            <span class="mgr-act-icon">✅</span>Lanjutkan ke Wawancara
+          </button>
+          <button class="mgr-act-btn warn ${activeRec==='evaluasi'?'active':''}" onclick="setMgrAction('evaluasi')">
+            <span class="mgr-act-icon">⚠️</span>Butuh Evaluasi Lanjutan
+          </button>
+          <button class="mgr-act-btn fail ${activeRec==='tidak'?'active':''}" onclick="setMgrAction('tidak')">
+            <span class="mgr-act-icon">❌</span>Tidak Dilanjutkan
+          </button>
+        </div>
+      </div>
+    </div>
+  `;
+
+  return `<section class="mgr-view">${pillarBar}${heroVerdict}${mgrSum}</section>`;
+}
+
+function setMgrAction(val) {
+  STATE.finalRec = val;
+  setFinalRec(val);
+  saveState();
+  // Re-render manager view
+  injectManagerView();
+}
+
+function injectManagerView() {
+  // Remove existing if present
+  document.querySelectorAll('.mgr-view').forEach(el => el.remove());
+  document.querySelectorAll('.detail-wrapper').forEach(el => {
+    // Unwrap detail-wrapper contents back to top-level
+    const parent = el.parentNode;
+    while (el.firstChild && el.firstChild !== el.querySelector('.detail-summary')) {
+      parent.insertBefore(el.firstChild, el);
+    }
+    // Then move children out in correct order
+  });
+
+  const app = document.getElementById('app');
+  if (!app || !REPORT.profile) return;
+
+  // Find injection point: after .disclaimer or .scorecard-row
+  const anchor = app.querySelector('.scorecard-row') || app.querySelector('.disclaimer');
+  if (!anchor) return;
+
+  // Insert manager view
+  anchor.insertAdjacentHTML('afterend', buildManagerView());
+
+  // Wrap existing detail sections in a <details>
+  const mgrView = app.querySelector('.mgr-view');
+  if (!mgrView) return;
+  const wrapper = document.createElement('details');
+  wrapper.className = 'detail-wrapper';
+  wrapper.id = 'detail-wrapper';
+  wrapper.open = false;
+  wrapper.innerHTML = `
+    <summary class="detail-summary">
+      <span class="ds-icon">📋</span>
+      <span class="ds-title">Detail Psikologis untuk HR / Psikolog</span>
+      <span class="ds-hint">— Klik untuk membuka / menutup</span>
+    </summary>
+    <div class="detail-content"></div>
+  `;
+  mgrView.insertAdjacentElement('afterend', wrapper);
+
+  // Move all subsequent elements into detail-content
+  const target = wrapper.querySelector('.detail-content');
+  let next = wrapper.nextSibling;
+  while (next) {
+    const toMove = next;
+    next = next.nextSibling;
+    target.appendChild(toMove);
+  }
+}
+
+// Auto-inject after renderReport completes
+const _origRenderReport = renderReport;
+renderReport = async function() {
+  await _origRenderReport.apply(this, arguments);
+  setTimeout(injectManagerView, 50);
+};
+
+</script>
+</body>
+</html>

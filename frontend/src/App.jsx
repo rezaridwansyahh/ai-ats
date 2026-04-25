@@ -18,6 +18,7 @@ import RecruitersPage from "./pages/Recruiters"
 import ComingSoonPage from "./pages/ComingSoon"
 import AssessmentPage from "./pages/Assessment"
 import ReportPage from "./pages/Report"
+import AssessmentAPage from "./pages/AssessmentA"
 
 function App() {
   return (
@@ -30,13 +31,12 @@ function App() {
       <Route element={<DashboardLayout />}>
         <Route path="/dashboard" element={<DashboardPage />} />
 
-        <Route path="/users/management" element={<UserManagementPage />} />
-        <Route path="/users/role-management" element={<RoleManagementPage />} />
-        <Route path="/users/recruiters" element={<RecruitersPage />} />
-
+        <Route path="/settings/user-management" element={<UserManagementPage />} />
+        <Route path="/settings/role-management" element={<RoleManagementPage />} />
+        <Route path="/settings/recruiters" element={<RecruitersPage />} />
+        <Route path="/settings/account" element={<AccountPage />} />
         <Route path="/settings/integrations" element={<IntegrationsPage />} />
 
-        <Route path="/job-postings/account" element={<AccountPage />} />
         <Route path="/job-postings/seek" element={<SeekPage />} />
 
         <Route path="/job-management/seek-sourcing" element={<SeekSourcingPage />} />
@@ -49,6 +49,9 @@ function App() {
         <Route path="/candidates/search" element={<CandidateSearchPage />} />
         <Route path="/selection/assessment" element={<AssessmentPage />} />
         <Route path="/selection/report" element={<ReportPage />} />
+
+        <Route path="/asesmen/asesmen-a" element={<AssessmentAPage />} />
+
         {/* Catch-all: any unregistered path shows Coming Soon */}
         <Route path="*" element={<ComingSoonPage />} />
       </Route>

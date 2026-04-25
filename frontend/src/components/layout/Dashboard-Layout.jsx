@@ -7,12 +7,13 @@ import { Toaster } from "@/components/ui/sonner"
 
 const BREADCRUMB_MAP = {
   '/dashboard': ['Dashboard'],
-  '/users/management': ['Users', 'User Management'],
-  '/users/role-management': ['Users', 'Role Management'],
+  '/settings/user-management': ['Settings', 'User Management'],
+  '/settings/role-management': ['Settings', 'Role Management'],
+  '/settings/recruiters': ['Settings', 'Recruiters'],
+  '/settings/account': ['Settings', 'Account'],
   '/settings/integrations': ['Settings', 'Integrations'],
   '/job-postings/seek': ['Job Postings', 'Seek'],
   '/job-postings/linkedin': ['Job Postings', 'LinkedIn'],
-  '/job-postings/account': ['Job Postings', 'Account'],
   '/job-management/seek-sourcing': ['Job Management', 'Seek Sourcing'],
   '/job-management/linkedin-sourcing': ['Job Management', 'LinkedIn Sourcing'],
   '/candidates/search': ['Candidates', 'Search'],

@@ -165,7 +165,7 @@ export default function CandidateSearchPage() {
               {accounts.length === 0 ? (
                 <p className="text-sm text-muted-foreground">
                   No LinkedIn accounts found. Add one in{' '}
-                  <a href="/job-postings/account" className="text-primary underline">Integrations</a>.
+                  <a href="/settings/account" className="text-primary underline">Account</a>.
                 </p>
               ) : (
                 <Select value={accountId} onValueChange={setAccountId}>

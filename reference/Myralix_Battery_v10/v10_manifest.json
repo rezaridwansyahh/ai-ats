@@ -1,0 +1,55 @@
+{
+  "release": "v10",
+  "release_date": "2026-04-22",
+  "type": "relaunch",
+  "incorporates": [
+    "v9 (obfuscation, dead-code, tab-warn fixes)",
+    "v9.1 (Battery A DISC tetrad rebalance)"
+  ],
+  "storage_keys": {
+    "candidate_scores": "myx-bat-{a,b,c,d}-v8 (preserved for drop-in compat)",
+    "recruiter_state": "myx-rpt-{a,b,c,d}-v8 (preserved for drop-in compat)"
+  },
+  "files": [
+    {
+      "name": "Myralix_Battery_A_Candidate_Card_v10.html",
+      "size_bytes": 148929,
+      "sha256": "46728f3046204839"
+    },
+    {
+      "name": "Myralix_Battery_A_Laporan_Psikologis_v10.html",
+      "size_bytes": 88488,
+      "sha256": "faff722ef15037a6"
+    },
+    {
+      "name": "Myralix_Battery_B_Candidate_Card_v10.html",
+      "size_bytes": 202253,
+      "sha256": "10ba687bbc41dd63"
+    },
+    {
+      "name": "Myralix_Battery_B_Laporan_Psikologis_v10.html",
+      "size_bytes": 103237,
+      "sha256": "78962bfb0eb9d8aa"
+    },
+    {
+      "name": "Myralix_Battery_C_Candidate_Card_v10.html",
+      "size_bytes": 223100,
+      "sha256": "a58677af22b9af92"
+    },
+    {
+      "name": "Myralix_Battery_C_Laporan_Psikologis_v10.html",
+      "size_bytes": 99349,
+      "sha256": "2140a2688d66b4d9"
+    },
+    {
+      "name": "Myralix_Battery_D_Candidate_Card_v10.html",
+      "size_bytes": 228840,
+      "sha256": "2f628053d158bf4e"
+    },
+    {
+      "name": "Myralix_Battery_D_Laporan_Psikologis_v10.html",
+      "size_bytes": 104230,
+      "sha256": "6fd2c8969ae181df"
+    }
+  ]
+}

@@ -1,0 +1,882 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Myralix v10 · Simulation Loader</title>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,wght@0,600;0,700&family=DM+Sans:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+:root {
+  --teal:#0A6E5C; --teal-dk:#064E3B; --teal-xlt:#EDF7F5;
+  --cream:#FAF7F2; --navy:#0F172A; --slate:#334155; --slate-lt:#94A3B8;
+  --border:#E2E8F0; --border-lt:#F1F5F9;
+  --hd:'Fraunces',Georgia,serif; --bd:'DM Sans',system-ui,sans-serif;
+  --mono:'JetBrains Mono',Menlo,monospace;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:var(--bd);font-size:14px;line-height:1.6;color:var(--navy);background:var(--cream);padding:40px 24px}
+.wrap{max-width:880px;margin:0 auto}
+h1{font-family:var(--hd);font-weight:700;font-size:32px;color:var(--navy);letter-spacing:-.02em;margin-bottom:10px;line-height:1.15}
+h1 em{color:var(--teal);font-style:italic;font-weight:600}
+.sub{font-size:15px;color:var(--slate);margin-bottom:28px}
+.warn{background:#FEF3C7;border:1px solid #FDE68A;border-left:4px solid #D97706;border-radius:8px;padding:14px 18px;margin-bottom:28px;font-size:13px;color:#78350F;line-height:1.7}
+.warn strong{color:#78350F}
+.warn code{background:rgba(120,53,15,.1);padding:1px 6px;border-radius:4px;font-family:var(--mono);font-size:12px}
+
+h2{font-family:var(--hd);font-weight:600;font-size:20px;color:var(--navy);margin:28px 0 12px}
+
+.steps{list-style:none;padding:0;counter-reset:s}
+.steps li{padding:10px 0 10px 36px;position:relative;counter-increment:s;color:var(--slate)}
+.steps li::before{content:counter(s);position:absolute;left:0;top:10px;width:24px;height:24px;background:var(--teal);color:#fff;border-radius:50%;font-family:var(--hd);font-weight:700;font-size:12px;display:flex;align-items:center;justify-content:center}
+
+.cands{display:grid;grid-template-columns:repeat(2,1fr);gap:12px;margin:16px 0 28px}
+.cand{background:#fff;border:1px solid var(--border);border-radius:10px;padding:14px 16px;display:flex;align-items:center;gap:14px}
+.cand.pass{border-left:3px solid #16A34A}
+.cand.fail{border-left:3px solid #DC2626}
+.cand-id{font-family:var(--hd);font-weight:700;font-size:18px;width:36px;height:36px;border-radius:50%;background:var(--border-lt);display:flex;align-items:center;justify-content:center;color:var(--navy)}
+.cand-info{flex:1;min-width:0}
+.cand-name{font-family:var(--hd);font-weight:600;font-size:14px;color:var(--navy);line-height:1.2}
+.cand-meta{font-size:11px;color:var(--slate-lt);font-family:var(--mono)}
+.cand-btn{background:var(--teal);color:#fff;border:none;padding:6px 12px;border-radius:6px;font-size:11px;font-weight:600;cursor:pointer;font-family:inherit;white-space:nowrap;transition:background .15s}
+.cand-btn:hover{background:var(--teal-dk)}
+.cand-btn.active{background:#16A34A}
+
+.status{background:#fff;border:1px solid var(--border);border-radius:8px;padding:16px;margin:20px 0;font-family:var(--mono);font-size:12px;min-height:40px;color:var(--slate)}
+.status.ok{background:#F0FDF4;border-color:#86EFAC;color:#14532D}
+.status.err{background:#FEF2F2;border-color:#FCA5A5;color:#991B1B}
+
+.row-btns{display:flex;gap:10px;margin-top:16px;flex-wrap:wrap}
+.btn{background:#fff;border:1px solid var(--border);color:var(--slate);padding:8px 16px;border-radius:8px;font-size:13px;font-weight:600;cursor:pointer;font-family:inherit}
+.btn:hover{background:var(--border-lt)}
+.btn.primary{background:var(--teal);color:#fff;border-color:var(--teal)}
+.btn.primary:hover{background:var(--teal-dk)}
+.btn.danger{color:#991B1B;border-color:#FCA5A5}
+.btn.danger:hover{background:#FEE2E2}
+
+.open-link{display:inline-block;margin-top:10px;color:var(--teal);font-size:12px;text-decoration:none;font-weight:600}
+.open-link:hover{text-decoration:underline}
+
+code.mono{font-family:var(--mono);background:var(--border-lt);padding:2px 6px;border-radius:4px;font-size:12px;color:var(--navy)}
+
+.footer{text-align:center;padding-top:36px;color:var(--slate-lt);font-size:11px;font-family:var(--hd);font-style:italic}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<h1>Myralix v10 · <em>Simulation Loader</em></h1>
+<p class="sub">Inject sample candidate data into your browser's localStorage, then open the v10 Laporan to see it render with real scoring (and AI narratives if you're on claude.ai).</p>
+
+<div class="warn">
+  <strong>⚠️ Important:</strong> For localStorage to be shared between this loader and the Laporan, both files must be opened from the <strong>same origin</strong> (same domain + protocol). If you're opening them as local files, they need to be in the <strong>same folder</strong>. If hosted, both should be on the same subdomain (e.g., <code>assess.myralix.id</code>).
+</div>
+
+<h2>How to use</h2>
+<ol class="steps">
+  <li>Place this loader file and the 4 v10 Laporan HTML files in the <strong>same folder</strong>.</li>
+  <li>Click "Load" on a candidate below — writes their data to <code class="mono">myx-bat-{a,b,c,d}-v8</code>.</li>
+  <li>Click the "Open Laporan" link for that battery — opens the corresponding v10 Laporan with pre-loaded data.</li>
+  <li>In the Laporan, go to the "Manager View" / "3-Pillar Bridge" section to see computed scores.</li>
+  <li>If running inside claude.ai, AI narratives will also populate automatically.</li>
+</ol>
+
+<h2>Candidates</h2>
+<div class="cands">
+  <div class="cand pass">
+    <div class="cand-id">S</div>
+    <div class="cand-info">
+      <div class="cand-name">Sari Handayani</div>
+      <div class="cand-meta">Battery A · Exp: Lolos</div>
+    </div>
+    <button class="cand-btn" onclick="loadCandidate('S', this)">Load</button>
+  </div>
+  <div class="cand fail">
+    <div class="cand-id">T</div>
+    <div class="cand-info">
+      <div class="cand-name">Tono Wibawa</div>
+      <div class="cand-meta">Battery A · Exp: Tidak Lolos</div>
+    </div>
+    <button class="cand-btn" onclick="loadCandidate('T', this)">Load</button>
+  </div>
+  <div class="cand pass">
+    <div class="cand-id">U</div>
+    <div class="cand-info">
+      <div class="cand-name">Umar Prasetyo</div>
+      <div class="cand-meta">Battery B · Exp: Lolos</div>
+    </div>
+    <button class="cand-btn" onclick="loadCandidate('U', this)">Load</button>
+  </div>
+  <div class="cand fail">
+    <div class="cand-id">W</div>
+    <div class="cand-info">
+      <div class="cand-name">Wahyu Setiawan</div>
+      <div class="cand-meta">Battery B · Exp: Tidak Lolos</div>
+    </div>
+    <button class="cand-btn" onclick="loadCandidate('W', this)">Load</button>
+  </div>
+  <div class="cand pass">
+    <div class="cand-id">V</div>
+    <div class="cand-info">
+      <div class="cand-name">Vina Kusuma</div>
+      <div class="cand-meta">Battery C · Exp: Lolos</div>
+    </div>
+    <button class="cand-btn" onclick="loadCandidate('V', this)">Load</button>
+  </div>
+  <div class="cand fail">
+    <div class="cand-id">X</div>
+    <div class="cand-info">
+      <div class="cand-name">Xaverius Hartono</div>
+      <div class="cand-meta">Battery C · Exp: Tidak Lolos</div>
+    </div>
+    <button class="cand-btn" onclick="loadCandidate('X', this)">Load</button>
+  </div>
+  <div class="cand pass">
+    <div class="cand-id">Y</div>
+    <div class="cand-info">
+      <div class="cand-name">Yuliana Dewi</div>
+      <div class="cand-meta">Battery D · Exp: Lolos</div>
+    </div>
+    <button class="cand-btn" onclick="loadCandidate('Y', this)">Load</button>
+  </div>
+  <div class="cand fail">
+    <div class="cand-id">Z</div>
+    <div class="cand-info">
+      <div class="cand-name">Zainal Abidin</div>
+      <div class="cand-meta">Battery D · Exp: Tidak Lolos</div>
+    </div>
+    <button class="cand-btn" onclick="loadCandidate('Z', this)">Load</button>
+  </div>
+</div>
+
+<div class="row-btns">
+  <button class="btn danger" onclick="clearAll()">⊘ Clear all candidate data</button>
+  <button class="btn" onclick="showStoredKeys()">📋 Show stored keys</button>
+</div>
+
+<div class="status" id="status">Ready. Click "Load" on any candidate above to inject their data.</div>
+
+<h2>Open Laporan (after loading)</h2>
+<div>
+  <a class="open-link" href="Myralix_Battery_A_Laporan_Psikologis_v10.html" target="_blank">→ Open Battery A Laporan (v10)</a><br>
+  <a class="open-link" href="Myralix_Battery_B_Laporan_Psikologis_v10.html" target="_blank">→ Open Battery B Laporan (v10)</a><br>
+  <a class="open-link" href="Myralix_Battery_C_Laporan_Psikologis_v10.html" target="_blank">→ Open Battery C Laporan (v10)</a><br>
+  <a class="open-link" href="Myralix_Battery_D_Laporan_Psikologis_v10.html" target="_blank">→ Open Battery D Laporan (v10)</a>
+</div>
+
+<div class="footer">Myralix v10 · Simulation Loader · Internal QA tool</div>
+
+</div>
+
+<script>
+const PAYLOADS = {
+  "S": {
+    "storage_key": "myx-bat-a-v8",
+    "data": {
+      "tk": {
+        "wpt": {
+          "raw": 34,
+          "pct": 72
+        },
+        "dat": {
+          "cs": {
+            "raw": 28,
+            "pct": 70
+          }
+        },
+        "composite": 7.2,
+        "subs": {
+          "GI": 72,
+          "KA": 70
+        }
+      },
+      "bigfive": {
+        "pct": {
+          "O": 58,
+          "C": 78,
+          "E": 62,
+          "A": 72,
+          "N": 22
+        }
+      },
+      "disc": {
+        "scores": {
+          "D": 4,
+          "I": 5,
+          "S": 9,
+          "C": 6
+        },
+        "dominant": "S",
+        "pattern": "Steadiness-dominant"
+      },
+      "holland": {
+        "scores": {
+          "R": 8,
+          "I": 4,
+          "A": 3,
+          "S": 9,
+          "E": 5,
+          "C": 11
+        },
+        "code3": "CSR",
+        "type_label": "Conventional-Social-Realistic"
+      }
+    },
+    "name": "Sari Handayani",
+    "battery": "A",
+    "verdict": "Lolos"
+  },
+  "T": {
+    "storage_key": "myx-bat-a-v8",
+    "data": {
+      "tk": {
+        "wpt": {
+          "raw": 18,
+          "pct": 36
+        },
+        "dat": {
+          "cs": {
+            "raw": 16,
+            "pct": 40
+          }
+        },
+        "composite": 3.8,
+        "subs": {
+          "GI": 36,
+          "KA": 40
+        }
+      },
+      "bigfive": {
+        "pct": {
+          "O": 45,
+          "C": 32,
+          "E": 52,
+          "A": 38,
+          "N": 68
+        }
+      },
+      "disc": {
+        "scores": {
+          "D": 6,
+          "I": 11,
+          "S": 3,
+          "C": 4
+        },
+        "dominant": "I",
+        "pattern": "Influence-dominant"
+      },
+      "holland": {
+        "scores": {
+          "R": 7,
+          "I": 3,
+          "A": 9,
+          "S": 5,
+          "E": 10,
+          "C": 2
+        },
+        "code3": "EAR",
+        "type_label": "Enterprising-Artistic-Realistic"
+      }
+    },
+    "name": "Tono Wibawa",
+    "battery": "A",
+    "verdict": "Tidak Lolos"
+  },
+  "U": {
+    "storage_key": "myx-bat-b-v8",
+    "data": {
+      "tk": {
+        "wpt": {
+          "raw": 39,
+          "pct": 82
+        },
+        "dat": {
+          "vr": {
+            "pct": 76
+          },
+          "nr": {
+            "pct": 80
+          },
+          "ar": {
+            "pct": 72
+          },
+          "sr": {
+            "pct": 68
+          }
+        },
+        "composite": 7.8,
+        "subs": {
+          "GI": 82,
+          "VR": 76,
+          "NR": 80,
+          "AR": 72,
+          "SR": 68
+        }
+      },
+      "epps": {
+        "conScore": 12,
+        "topNeeds": [
+          "Achievement",
+          "Intraception",
+          "Autonomy"
+        ],
+        "bottomNeeds": [
+          "Deference",
+          "Abasement"
+        ],
+        "percentiles": {
+          "ach": 85,
+          "def": 22,
+          "ord": 70,
+          "exh": 55,
+          "aut": 78,
+          "aff": 60,
+          "int": 82,
+          "suc": 45,
+          "dom": 68,
+          "aba": 20,
+          "nur": 55,
+          "chg": 62,
+          "end": 74,
+          "het": 50,
+          "agg": 40
+        }
+      },
+      "papi": {
+        "scores": {
+          "C": 8,
+          "T": 7,
+          "W": 5,
+          "N": 6,
+          "S": 5,
+          "O": 7,
+          "X": 4,
+          "L": 5,
+          "I": 6,
+          "K": 3,
+          "F": 3,
+          "V": 6
+        }
+      },
+      "holland": {
+        "scores": {
+          "R": 6,
+          "I": 12,
+          "A": 4,
+          "S": 3,
+          "E": 7,
+          "C": 5
+        },
+        "code3": "IEC",
+        "type_label": "Investigative-Enterprising-Conventional"
+      }
+    },
+    "name": "Umar Prasetyo",
+    "battery": "B",
+    "verdict": "Lolos"
+  },
+  "W": {
+    "storage_key": "myx-bat-b-v8",
+    "data": {
+      "tk": {
+        "wpt": {
+          "raw": 20,
+          "pct": 42
+        },
+        "dat": {
+          "vr": {
+            "pct": 38
+          },
+          "nr": {
+            "pct": 32
+          },
+          "ar": {
+            "pct": 45
+          },
+          "sr": {
+            "pct": 50
+          }
+        },
+        "composite": 4.2,
+        "subs": {
+          "GI": 42,
+          "VR": 38,
+          "NR": 32,
+          "AR": 45,
+          "SR": 50
+        }
+      },
+      "epps": {
+        "conScore": 6,
+        "topNeeds": [
+          "Succorance",
+          "Abasement",
+          "Heterosexuality"
+        ],
+        "bottomNeeds": [
+          "Achievement",
+          "Endurance",
+          "Order"
+        ],
+        "percentiles": {
+          "ach": 18,
+          "def": 65,
+          "ord": 25,
+          "exh": 40,
+          "aut": 32,
+          "aff": 58,
+          "int": 30,
+          "suc": 82,
+          "dom": 28,
+          "aba": 78,
+          "nur": 50,
+          "chg": 70,
+          "end": 22,
+          "het": 75,
+          "agg": 55
+        }
+      },
+      "papi": {
+        "scores": {
+          "C": 3,
+          "T": 2,
+          "W": 9,
+          "N": 4,
+          "S": 7,
+          "O": 3,
+          "X": 6,
+          "L": 3,
+          "I": 3,
+          "K": 7,
+          "F": 6,
+          "V": 3
+        }
+      },
+      "holland": {
+        "scores": {
+          "R": 4,
+          "I": 5,
+          "A": 8,
+          "S": 7,
+          "E": 4,
+          "C": 9
+        },
+        "code3": "CAS",
+        "type_label": "Conventional-Artistic-Social"
+      }
+    },
+    "name": "Wahyu Setiawan",
+    "battery": "B",
+    "verdict": "Tidak Lolos"
+  },
+  "V": {
+    "storage_key": "myx-bat-c-v8",
+    "data": {
+      "tk": {
+        "wpt": {
+          "raw": 36,
+          "pct": 76
+        },
+        "dat": {
+          "vr": {
+            "pct": 72
+          },
+          "nr": {
+            "pct": 78
+          },
+          "ar": {
+            "pct": 70
+          },
+          "sr": {
+            "pct": 65
+          }
+        },
+        "composite": 7.5,
+        "subs": {
+          "GI": 76,
+          "VR": 72,
+          "NR": 78,
+          "AR": 70,
+          "SR": 65
+        }
+      },
+      "epps": {
+        "conScore": 11,
+        "topNeeds": [
+          "Dominance",
+          "Achievement",
+          "Intraception"
+        ],
+        "bottomNeeds": [
+          "Abasement",
+          "Succorance"
+        ],
+        "percentiles": {
+          "ach": 78,
+          "def": 35,
+          "ord": 72,
+          "exh": 62,
+          "aut": 60,
+          "aff": 65,
+          "int": 80,
+          "suc": 25,
+          "dom": 85,
+          "aba": 22,
+          "nur": 68,
+          "chg": 55,
+          "end": 72,
+          "het": 50,
+          "agg": 60
+        }
+      },
+      "papi": {
+        "scores": {
+          "C": 7,
+          "T": 6,
+          "W": 5,
+          "N": 7,
+          "S": 6,
+          "O": 5,
+          "X": 5,
+          "L": 7,
+          "I": 6,
+          "K": 3,
+          "F": 3,
+          "V": 7
+        }
+      },
+      "sjt": {
+        "overallPct": 82,
+        "byCategory": {
+          "Leadership": 85,
+          "Conflict": 78,
+          "Decision": 84,
+          "Delegation": 80
+        }
+      }
+    },
+    "name": "Vina Kusuma",
+    "battery": "C",
+    "verdict": "Lolos"
+  },
+  "X": {
+    "storage_key": "myx-bat-c-v8",
+    "data": {
+      "tk": {
+        "wpt": {
+          "raw": 22,
+          "pct": 46
+        },
+        "dat": {
+          "vr": {
+            "pct": 50
+          },
+          "nr": {
+            "pct": 42
+          },
+          "ar": {
+            "pct": 55
+          },
+          "sr": {
+            "pct": 48
+          }
+        },
+        "composite": 4.8,
+        "subs": {
+          "GI": 46,
+          "VR": 50,
+          "NR": 42,
+          "AR": 55,
+          "SR": 48
+        }
+      },
+      "epps": {
+        "conScore": 5,
+        "topNeeds": [
+          "Deference",
+          "Abasement",
+          "Succorance"
+        ],
+        "bottomNeeds": [
+          "Dominance",
+          "Achievement"
+        ],
+        "percentiles": {
+          "ach": 28,
+          "def": 78,
+          "ord": 45,
+          "exh": 35,
+          "aut": 25,
+          "aff": 60,
+          "int": 38,
+          "suc": 72,
+          "dom": 18,
+          "aba": 68,
+          "nur": 55,
+          "chg": 40,
+          "end": 42,
+          "het": 50,
+          "agg": 32
+        }
+      },
+      "papi": {
+        "scores": {
+          "C": 4,
+          "T": 3,
+          "W": 7,
+          "N": 3,
+          "S": 8,
+          "O": 3,
+          "X": 3,
+          "L": 2,
+          "I": 2,
+          "K": 8,
+          "F": 7,
+          "V": 3
+        }
+      },
+      "sjt": {
+        "overallPct": 45,
+        "byCategory": {
+          "Leadership": 38,
+          "Conflict": 48,
+          "Decision": 42,
+          "Delegation": 50
+        }
+      }
+    },
+    "name": "Xaverius Hartono",
+    "battery": "C",
+    "verdict": "Tidak Lolos"
+  },
+  "Y": {
+    "storage_key": "myx-bat-d-v8",
+    "data": {
+      "tk": {
+        "wpt": {
+          "raw": 40,
+          "pct": 85
+        },
+        "dat": {
+          "vr": {
+            "pct": 80
+          },
+          "nr": {
+            "pct": 82
+          },
+          "ar": {
+            "pct": 78
+          }
+        },
+        "composite": 8.0,
+        "subs": {
+          "GI": 85,
+          "VR": 80,
+          "NR": 82,
+          "AR": 78
+        }
+      },
+      "sjt": {
+        "overallPct": 86,
+        "byCategory": {
+          "Strategic": 88,
+          "Crisis": 82,
+          "Stakeholder": 85,
+          "Delegation": 88
+        }
+      },
+      "pf": {
+        "std": {
+          "A": 6,
+          "B": 8,
+          "C": 8,
+          "E": 7,
+          "F": 6,
+          "G": 7,
+          "H": 7,
+          "I": 5,
+          "L": 4,
+          "M": 6,
+          "N": 6,
+          "O": 3,
+          "Q1": 7,
+          "Q2": 6,
+          "Q3": 8,
+          "Q4": 3
+        }
+      },
+      "msdt": {
+        "dominantStyle": "Executive",
+        "effectPct": 85,
+        "styleDistribution": {
+          "Deserter": 5,
+          "Autocrat": 10,
+          "Missionary": 8,
+          "Compromiser": 12,
+          "Bureaucrat": 15,
+          "Benevolent Autocrat": 18,
+          "Developer": 20,
+          "Executive": 12
+        }
+      },
+      "papil": {
+        "scores": {
+          "C": 7,
+          "T": 6,
+          "W": 4,
+          "N": 6,
+          "S": 5,
+          "O": 6,
+          "X": 5,
+          "L": 6,
+          "I": 6,
+          "K": 3,
+          "F": 3,
+          "V": 7
+        }
+      }
+    },
+    "name": "Yuliana Dewi",
+    "battery": "D",
+    "verdict": "Lolos"
+  },
+  "Z": {
+    "storage_key": "myx-bat-d-v8",
+    "data": {
+      "tk": {
+        "wpt": {
+          "raw": 22,
+          "pct": 45
+        },
+        "dat": {
+          "vr": {
+            "pct": 42
+          },
+          "nr": {
+            "pct": 48
+          },
+          "ar": {
+            "pct": 50
+          }
+        },
+        "composite": 4.5,
+        "subs": {
+          "GI": 45,
+          "VR": 42,
+          "NR": 48,
+          "AR": 50
+        }
+      },
+      "sjt": {
+        "overallPct": 42,
+        "byCategory": {
+          "Strategic": 38,
+          "Crisis": 45,
+          "Stakeholder": 40,
+          "Delegation": 45
+        }
+      },
+      "pf": {
+        "std": {
+          "A": 5,
+          "B": 4,
+          "C": 4,
+          "E": 4,
+          "F": 5,
+          "G": 5,
+          "H": 3,
+          "I": 5,
+          "L": 7,
+          "M": 5,
+          "N": 5,
+          "O": 8,
+          "Q1": 4,
+          "Q2": 5,
+          "Q3": 4,
+          "Q4": 7
+        }
+      },
+      "msdt": {
+        "dominantStyle": "Missionary",
+        "effectPct": 42,
+        "styleDistribution": {
+          "Deserter": 18,
+          "Autocrat": 5,
+          "Missionary": 22,
+          "Compromiser": 20,
+          "Bureaucrat": 15,
+          "Benevolent Autocrat": 5,
+          "Developer": 10,
+          "Executive": 5
+        }
+      },
+      "papil": {
+        "scores": {
+          "C": 3,
+          "T": 3,
+          "W": 8,
+          "N": 3,
+          "S": 7,
+          "O": 3,
+          "X": 3,
+          "L": 2,
+          "I": 2,
+          "K": 7,
+          "F": 7,
+          "V": 3
+        }
+      }
+    },
+    "name": "Zainal Abidin",
+    "battery": "D",
+    "verdict": "Tidak Lolos"
+  }
+};
+
+function setStatus(msg, cls='') {
+  const s = document.getElementById('status');
+  s.textContent = msg;
+  s.className = 'status ' + cls;
+}
+
+function loadCandidate(id, btnEl) {
+  const p = PAYLOADS[id];
+  if (!p) { setStatus('Unknown candidate: ' + id, 'err'); return; }
+  try {
+    localStorage.setItem(p.storage_key, JSON.stringify(p.data));
+    setStatus(
+      '✓ Loaded ' + p.name + ' → key ' + p.storage_key + ' (Battery ' + p.battery + '). ' +
+      'Now open the Battery ' + p.battery + ' Laporan below.',
+      'ok'
+    );
+    // Mark button active briefly
+    document.querySelectorAll('.cand-btn').forEach(b => b.classList.remove('active'));
+    if (btnEl) btnEl.classList.add('active');
+  } catch (e) {
+    setStatus('✗ Error: ' + e.message, 'err');
+  }
+}
+
+function clearAll() {
+  if (!confirm('Clear all myx-bat-* and myx-rpt-* keys from localStorage?')) return;
+  const keys = Object.keys(localStorage).filter(k => k.startsWith('myx-bat-') || k.startsWith('myx-rpt-'));
+  keys.forEach(k => localStorage.removeItem(k));
+  setStatus('✓ Cleared ' + keys.length + ' keys: ' + keys.join(', '), 'ok');
+  document.querySelectorAll('.cand-btn').forEach(b => b.classList.remove('active'));
+}
+
+function showStoredKeys() {
+  const keys = Object.keys(localStorage).filter(k => k.startsWith('myx-'));
+  if (keys.length === 0) {
+    setStatus('No myx-* keys currently in localStorage.');
+    return;
+  }
+  const lines = keys.map(k => {
+    const v = localStorage.getItem(k);
+    return k + ' → ' + (v.length > 80 ? v.substring(0, 80) + '...' : v);
+  });
+  setStatus(lines.join(' | '));
+}
+</script>
+
+</body>
+</html>
