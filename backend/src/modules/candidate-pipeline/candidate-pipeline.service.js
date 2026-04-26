@@ -1,4 +1,5 @@
 import CandidatePipeline from './candidate-pipeline.model.js';
+import { sendScreeningEmail } from '../../shared/services/candidate-mailer.js';
 
 class CandidatePipelineService {
   async getAll() {
@@ -69,6 +70,42 @@ class CandidatePipelineService {
     return await CandidatePipeline.getStages(pipeline_id);
   }
 
+  async ScreeningEmail(candidate_id, decision) {
+    if (decision?.result !== "match") return
+
+    const ctx = await CandidatePipeline.getNotificationContext(candidate_id)
+    if (!ctx || !ctx.email_notify) return
+
+    await sendScreeningEmail({
+      candidateName: ctx.candidate_name,
+      candidateEmail: ctx.candidate_email,
+      jobTitle: ctx.job_title,
+      stageName: "Screening",
+    })
+  }
+
+  async email(candidate_id, { stageName } = {}) {
+    const ctx = await CandidatePipeline.getNotificationContext(candidate_id);
+    if (!ctx) throw { status: 404, message: 'Candidate not found' };
+    if (!ctx.candidate_email) {
+      throw { status: 400, message: `Candidate "${ctx.candidate_name}" has no email on the linked applicant` };
+    }
+
+    await sendScreeningEmail({
+      candidateName: ctx.candidate_name,
+      candidateEmail: ctx.candidate_email,
+      jobTitle: ctx.job_title,
+      stageName: stageName || 'Screening',
+    });
+
+    return {
+      sent_to: ctx.candidate_email,
+      candidate_name: ctx.candidate_name,
+      job_title: ctx.job_title,
+      stage_name: stageName || 'Screening',
+    };
+  }
+
   async addStage(pipeline_id, { job_stage_id, decision }) {
     const pipeline = await CandidatePipeline.getById(pipeline_id);
     if (!pipeline) throw { status: 404, message: 'Candidate pipeline not found' };
@@ -81,7 +118,13 @@ class CandidatePipelineService {
       throw { status: 400, message: 'decision must be a non-empty object' };
     }
 
-    return await CandidatePipeline.addStage({ pipeline_id, job_stage_id, decision });
+    const result = await CandidatePipeline.addStage({ candidate_id: pipeline_id, job_stage_id, decision });
+
+    this.ScreeningEmail(pipeline_id, decision).catch((err) =>
+      console.error("Failed to send candidate email:", err.message)
+    );
+
+    return result;
   }
 }
 

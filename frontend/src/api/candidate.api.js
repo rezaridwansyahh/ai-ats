@@ -17,3 +17,6 @@ export const addApplicantToJob = (applicant_id, job_id) =>
 
 export const getCandidatesByApplicantId = (applicant_id) =>
   api.get(`/candidate-pipeline/applicant/${applicant_id}`);
+
+export const sendCandidateEmail = (candidate_id, body = {}) =>
+  api.post(`/candidate-pipeline/${candidate_id}/email`, body);

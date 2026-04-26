@@ -186,11 +186,11 @@ const seed = async () => {
     for (const a of applicantsData) {
       await getDb().query(
         `INSERT INTO master_applicant (
-           id, job_sourcing_id, name, last_position, address, education, information, date, attachment
+           id, job_sourcing_id, name, email, last_position, address, education, information, date, attachment
          )
-         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)`,
+         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)`,
         [
-          a.id, a.job_sourcing_id, a.name, a.last_position, a.address,
+          a.id, a.job_sourcing_id, a.name, a.email || null, a.last_position, a.address,
           a.education, a.information ? JSON.stringify(a.information) : null,
           a.date, a.attachment
         ]

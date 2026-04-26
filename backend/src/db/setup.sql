@@ -55,6 +55,8 @@ DROP TYPE IF EXISTS booking_status_type CASCADE;
 DROP TYPE IF EXISTS session_slot_type CASCADE;
 DROP TYPE IF EXISTS job_post_type CASCADE;
 DROP TYPE IF EXISTS sourcing_status_type CASCADE;
+DROP TYPE IF EXISTS battery_type CASCADE;
+DROP TYPE IF EXISTS status_session_type CASCADE;
 
 -- Create ENUM type
 CREATE TYPE status_type AS ENUM ('Draft', 'Active', 'Running', 'Expired', 'Failed', 'Blocked');
@@ -290,8 +292,9 @@ CREATE TABLE master_applicant (
   id SERIAL PRIMARY KEY,
   job_sourcing_id INTEGER NOT NULL REFERENCES core_job_sourcing(id) ON DELETE CASCADE,
   name VARCHAR(255) NOT NULL,
+  email VARCHAR(255),
   last_position VARCHAR(255) NOT NULL,
-  address VARCHAR(255) NOT NULL,  
+  address VARCHAR(255) NOT NULL,
   education VARCHAR(255),
   information JSONB,
   date TIMESTAMPTZ,
@@ -434,8 +437,8 @@ CREATE TABLE assessment_sessions(
   id SERIAL PRIMARY KEY,
   token UUID NOT NULL UNIQUE DEFAULT gen_random_uuid(),
   battery battery_type NOT NULL,
-  participant_id INTEGER REFERENCES participants(id) ON SET NULL,
-  job_id INTEGER REFERENCES core_job(id) ON SET NULL,
+  participant_id INTEGER REFERENCES participants(id) ON DELETE SET NULL,
+  job_id INTEGER REFERENCES core_job(id) ON DELETE SET NULL,
   created_by INTEGER REFERENCES master_users(id) ON DELETE SET NULL,
   status status_session_type NOT NULL DEFAULT 'invited',
   expired_at TIMESTAMP NOT NULL,

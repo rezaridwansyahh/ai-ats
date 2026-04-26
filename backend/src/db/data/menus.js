@@ -13,9 +13,6 @@ export default [
   { id: 21, name: 'Recruiters' },
   { id: 22, name: 'Assessment' },
   { id: 23, name: 'Report' },
-  { id: 21, name: 'Recruiters'},
-  { id: 22, name: 'Assessment'},
-  { id: 23, name: 'Report'},
-  { id: 24, name: 'Talent Pool'},
-  { id: 25, name: 'Source Candidate'},
+  { id: 24, name: 'Talent Pool' },
+  { id: 25, name: 'Source Candidate' },
 ];

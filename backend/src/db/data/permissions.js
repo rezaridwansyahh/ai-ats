@@ -82,6 +82,13 @@ export default [
 
   /* ===================================================================
      Settings -> Recruiters (module_menu_id: 21)
+  =================================================================== */
+  { id: 64, module_menu_id: 21, functionality: 'read' },
+  { id: 65, module_menu_id: 21, functionality: 'create' },
+  { id: 66, module_menu_id: 21, functionality: 'update' },
+  { id: 67, module_menu_id: 21, functionality: 'delete' },
+
+  /* ===================================================================
      Sourcing -> Talent Pool (module_menu_id: 24)
   =================================================================== */
   { id: 72, module_menu_id: 24, functionality: 'read' },
@@ -92,10 +99,6 @@ export default [
   /* ===================================================================
      Sourcing -> Source Candidate (module_menu_id: 25)
   =================================================================== */
-  { id: 72, module_menu_id: 21, functionality: 'read' },
-  { id: 73, module_menu_id: 21, functionality: 'create' },
-  { id: 74, module_menu_id: 21, functionality: 'update' },
-  { id: 75, module_menu_id: 21, functionality: 'delete' },
   { id: 84, module_menu_id: 25, functionality: 'read' },
   { id: 85, module_menu_id: 25, functionality: 'create' },
   { id: 86, module_menu_id: 25, functionality: 'update' },
@@ -120,9 +123,9 @@ export default [
   /* ===================================================================
      Sourcing -> Source Management (module_menu_id: 20)
   =================================================================== */
-  { id: 84, module_menu_id: 20, functionality: 'read' },
-  { id: 85, module_menu_id: 20, functionality: 'create' },
-  { id: 86, module_menu_id: 20, functionality: 'update' },
-  { id: 87, module_menu_id: 20, functionality: 'delete' },
+  { id: 88, module_menu_id: 20, functionality: 'read' },
+  { id: 89, module_menu_id: 20, functionality: 'create' },
+  { id: 90, module_menu_id: 20, functionality: 'update' },
+  { id: 91, module_menu_id: 20, functionality: 'delete' },
 
 ];

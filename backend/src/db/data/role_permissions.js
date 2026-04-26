@@ -63,7 +63,12 @@ export default [
   role_id: 1,
   permission_id: 68 + i
 })),
-// Settings -> Recruiters (72–75)
+// Settings -> Recruiters (64–67)
+...Array.from({ length: 4 }, (_, i) => ({
+  id: 74 + i,
+  role_id: 1,
+  permission_id: 64 + i
+})),
 // Sourcing -> Talent Pool (72–75)
 ...Array.from({ length: 4 }, (_, i) => ({
   id: 54 + i,
@@ -82,15 +87,15 @@ export default [
   role_id: 1,
   permission_id: 80 + i
 })),
-// Sourcing -> Source Management (84–87)
+// Sourcing -> Source Management (88–91)
 ...Array.from({ length: 4 }, (_, i) => ({
   id: 66 + i,
   role_id: 1,
-  permission_id: 84 + i
+  permission_id: 88 + i
 })),
 // Sourcing -> Source Candidate (84–87)
 ...Array.from({ length: 4 }, (_, i) => ({
-  id: 66 + i,
+  id: 70 + i,
   role_id: 1,
   permission_id: 84 + i
 })),
@@ -150,7 +155,11 @@ export default [
   { id: 152, role_id: 2, permission_id: 69 },
   { id: 153, role_id: 2, permission_id: 70 },
 
-  // Settings -> Recruiters (72–74: read/create/update)
+  // Settings -> Recruiters (64–66: read/create/update)
+  { id: 154, role_id: 2, permission_id: 64 },
+  { id: 155, role_id: 2, permission_id: 65 },
+  { id: 156, role_id: 2, permission_id: 66 },
+
   // Sourcing -> Talent Pool (72–74: read/create/update)
   { id: 160, role_id: 2, permission_id: 72 },
   { id: 161, role_id: 2, permission_id: 73 },
@@ -215,6 +224,9 @@ export default [
   { id: 231, role_id: 3, permission_id: 69 },
 
   // Settings -> Recruiters (read + create)
+  { id: 240, role_id: 3, permission_id: 64 },
+  { id: 241, role_id: 3, permission_id: 65 },
+
   // Sourcing -> Talent Pool (read + create)
   { id: 232, role_id: 3, permission_id: 72 },
   { id: 233, role_id: 3, permission_id: 73 },
@@ -245,6 +257,7 @@ export default [
   { id: 314, role_id: 4, permission_id: 60 },  // LinkedIn Sourcing (read)
   { id: 316, role_id: 4, permission_id: 68 },  // Sourcing -> Job Management (read)
   { id: 317, role_id: 4, permission_id: 72 },  // Sourcing -> Talent Pool (read)
+  { id: 321, role_id: 4, permission_id: 64 },  // Settings -> Recruiters (read)
   { id: 318, role_id: 4, permission_id: 76 },  // Selection -> Assessment (read)
   { id: 319, role_id: 4, permission_id: 80 },  // Selection -> Report (read)
   { id: 320, role_id: 4, permission_id: 84 },  // Sourcing -> Source Candidate (read)
