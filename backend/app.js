@@ -37,6 +37,7 @@ import pipeline from "./src/modules/pipeline/pipeline.route.js"
 import stageCategory from "./src/modules/stage-category/stage-category.route.js"
 import templateStage from "./src/modules/template-stage/template-stage.route.js"
 import automationSetting from "./src/modules/automation-setting/automation.route.js"
+import screening from "./src/modules/screening/screening.route.js"
 
 app.use(express.json());
 app.use(cors({
@@ -65,6 +66,7 @@ portal.use("/api/pipeline", pipeline);
 portal.use("/api/stage-category", stageCategory);
 portal.use("/api/template-stage", templateStage);
 portal.use("/api/automation-setting", automationSetting);
+portal.use("/api/screening", screening);
 portal.use("/api/participant", participant);
 portal.use("/api/assessment-result", assessmentResult);
 portal.use("/api/question", question);
@@ -97,6 +99,7 @@ app.use("/api/pipeline", pipeline);
 app.use("/api/stage-category", stageCategory);
 app.use("/api/template-stage", templateStage);
 app.use("/api/automation-setting", automationSetting);
+app.use("/api/screening", screening);
 
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => {

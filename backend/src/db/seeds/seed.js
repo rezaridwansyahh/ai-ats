@@ -13,11 +13,13 @@ import { templateStages, templateStageRows } from '../data/template_stages.js';
 import questionsData from '../data/questions.js';
 import { jobAccounts, coreJobs, jobSourcing } from '../data/job_sourcing.js';
 import applicantsData from '../data/applicants.js';
+import skillAliasesData from '../data/skill_aliases.js';
 
 const seed = async () => {
   await getDb().query('BEGIN');
 
   try {
+    await getDb().query('DELETE FROM master_skill_alias');
     await getDb().query('DELETE FROM master_applicant');
     await getDb().query('DELETE FROM core_job_sourcing');
     await getDb().query('DELETE FROM core_job');
@@ -182,7 +184,17 @@ const seed = async () => {
       );
     }
 
-    // 16. master_applicant
+    // 16. master_skill_alias
+    for (const sa of skillAliasesData) {
+      await getDb().query(
+        `INSERT INTO master_skill_alias (alias, canonical)
+         VALUES ($1, $2)
+         ON CONFLICT (alias) DO UPDATE SET canonical = EXCLUDED.canonical`,
+        [sa.alias.toLowerCase(), sa.canonical]
+      );
+    }
+
+    // 17. master_applicant
     for (const a of applicantsData) {
       await getDb().query(
         `INSERT INTO master_applicant (
