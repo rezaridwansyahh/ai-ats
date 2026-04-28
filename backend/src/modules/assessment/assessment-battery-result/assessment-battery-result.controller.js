@@ -4,7 +4,7 @@ class AssessmentBatteryResultController {
   async getAll(req, res) {
     try {
       const results = await assessmentBatteryResultService.getAll();
-      res.status(200).json({ message: 'List all assessment battery results', results });
+      res.status(200).json({ message: 'List all assessment results', results });
     } catch (err) {
       res.status(err.status || 500).json({ message: err.message });
     }
@@ -13,77 +13,37 @@ class AssessmentBatteryResultController {
   async getById(req, res) {
     try {
       const result = await assessmentBatteryResultService.getById(req.params.id);
-      res.status(200).json({ message: 'Assessment battery result found', result });
+      res.status(200).json({ message: 'Assessment result found', result });
     } catch (err) {
       res.status(err.status || 500).json({ message: err.message });
     }
   }
 
-  async getByToken(req, res) {
+  async getByParticipantId(req, res) {
     try {
-      const result = await assessmentBatteryResultService.getByToken(req.params.token);
-      res.status(200).json({ message: 'Assessment battery result found', result });
+      const results = await assessmentBatteryResultService.getByParticipantId(req.params.participant_id);
+      res.status(200).json({ message: 'Assessment results for participant', results });
     } catch (err) {
       res.status(err.status || 500).json({ message: err.message });
     }
   }
 
-  async getBySessionId(req, res) {
+  async submit(req, res) {
     try {
-      const result = await assessmentBatteryResultService.getBySessionId(req.params.session_id);
-      res.status(200).json({ message: 'Assessment battery result found', result });
-    } catch (err) {
-      res.status(err.status || 500).json({ message: err.message });
-    }
-  }
-
-  async submitByToken(req, res) {
-    try {
-      const { profile, result } = req.body;
-      const data = await assessmentBatteryResultService.submitByToken(req.params.token, profile, result);
-      res.status(201).json({ message: 'Assessment submitted', ...data });
-    } catch (err) {
-      res.status(err.status || 500).json({ message: err.message });
-    }
-  }
-
-  async saveReport(req, res) {
-    try {
-      const { report } = req.body;
-      const result = await assessmentBatteryResultService.saveReport(req.params.session_id, report);
-      res.status(200).json({ message: 'Report saved', result });
-    } catch (err) {
-      res.status(err.status || 500).json({ message: err.message });
-    }
-  }
-
-  async generateReport(req, res) {
-    try {
-      const result = await assessmentBatteryResultService.generateReport(req.params.session_id);
-      res.status(200).json({ message: 'Report generated', result });
-    } catch (err) {
-      res.status(err.status || 500).json({ message: err.message });
-    }
-  }
-
-  async updateRecruiterReview(req, res) {
-    try {
-      const { recruiter_recommendation, recruiter_note, report } = req.body;
-      const result = await assessmentBatteryResultService.updateRecruiterReview(req.params.session_id, {
-        recruiter_recommendation,
-        recruiter_note,
-        report,
+      const { participant_id, assessment_id, answers, started_at } = req.body;
+      const result = await assessmentBatteryResultService.submit({
+        participant_id, assessment_id, answers, started_at,
       });
-      res.status(200).json({ message: 'Recruiter review updated', result });
+      res.status(201).json({ message: 'Assessment submitted', result });
     } catch (err) {
       res.status(err.status || 500).json({ message: err.message });
     }
   }
 
-  async update(req, res) {
+  async updateReport(req, res) {
     try {
-      const result = await assessmentBatteryResultService.update(req.params.id, req.body);
-      res.status(200).json({ message: 'Assessment battery result updated', result });
+      const result = await assessmentBatteryResultService.updateReport(req.params.id, req.body);
+      res.status(200).json({ message: 'Report updated', result });
     } catch (err) {
       res.status(err.status || 500).json({ message: err.message });
     }
@@ -92,7 +52,7 @@ class AssessmentBatteryResultController {
   async delete(req, res) {
     try {
       const result = await assessmentBatteryResultService.delete(req.params.id);
-      res.status(200).json({ message: 'Assessment battery result deleted', result });
+      res.status(200).json({ message: 'Assessment result deleted', result });
     } catch (err) {
       res.status(err.status || 500).json({ message: err.message });
     }

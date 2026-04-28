@@ -27,7 +27,6 @@ import job from "./src/modules/job/job.route.js"
 import applicant from "./src/modules/applicant/applicant.route.js"
 import candidatePipeline from "./src/modules/candidate-pipeline/candidate-pipeline.route.js"
 import participant from "./src/modules/assessment/participant/participant.route.js"
-import assessmentResult from "./src/modules/assessment/assessment-result/assessment-result.route.js"
 import question from "./src/modules/assessment/question/question.route.js"
 import session from "./src/modules/assessment/session/session.route.js"
 import assessmentBatteryResult from "./src/modules/assessment/assessment-battery-result/assessment-battery-result.route.js"
@@ -68,7 +67,6 @@ portal.use("/api/template-stage", templateStage);
 portal.use("/api/automation-setting", automationSetting);
 portal.use("/api/screening", screening);
 portal.use("/api/participant", participant);
-portal.use("/api/assessment-result", assessmentResult);
 portal.use("/api/question", question);
 portal.use("/api/session", session);
 portal.use("/api/assessment-battery-result", assessmentBatteryResult);
@@ -89,7 +87,6 @@ app.use("/api/job", job);
 app.use("/api/applicant", applicant);
 app.use("/api/candidate-pipeline", candidatePipeline);
 app.use("/api/participant", participant);
-app.use("/api/assessment-result", assessmentResult);
 app.use("/api/question", question);
 app.use("/api/session", session);
 app.use("/api/assessment-battery-result", assessmentBatteryResult);

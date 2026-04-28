@@ -1,10 +1,11 @@
 import getDb from "../../../config/postgres.js"
 
 class Question {
-  static async getAll() {
+  static async getAllAssessments() {
     const result = await getDb().query(`
-      SELECT *
-      FROM assessment_questions
+      SELECT id, assessment_code, name, description, duration_minutes, is_active
+      FROM master_assessment
+      WHERE is_active = true
       ORDER BY id ASC
     `);
     return result.rows;
@@ -13,43 +14,38 @@ class Question {
   static async getById(id) {
     const result = await getDb().query(`
       SELECT *
-      FROM assessment_questions
+      FROM master_assessment
       WHERE id = $1
     `, [id]);
     return result.rows[0];
   }
 
-  static async create({ text, options, correct, points }) {
+  static async getByAssessmentCode(code) {
     const result = await getDb().query(`
-      INSERT INTO assessment_questions (text, options, correct, points)
-      VALUES ($1, $2, $3, $4)
-      RETURNING *
-    `, [text, JSON.stringify(options), correct, points]);
+      SELECT id, assessment_code, name, description, duration_minutes, options
+      FROM master_assessment
+      WHERE assessment_code = $1
+    `, [code]);
     return result.rows[0];
   }
 
-  static async update(id, fields) {
-    const keys = Object.keys(fields);
-    const values = Object.values(fields);
-
-    const setClause = keys.map((k, i) => `${k} = $${i + 1}`).join(', ');
-
+  static async getQuestionsByCode(code) {
     const result = await getDb().query(`
-      UPDATE assessment_questions
-      SET ${setClause}, updated_at = NOW()
-      WHERE id = $${keys.length + 1}
-      RETURNING *
-    `, [...values, id]);
-    return result.rows[0];
+      SELECT options->'questions' AS questions
+      FROM master_assessment
+      WHERE assessment_code = $1
+    `, [code]);
+    return result.rows[0]?.questions ?? null;
   }
 
-  static async delete(id) {
+  static async getSubtestByCode(code, subtest) {
     const result = await getDb().query(`
-      DELETE FROM assessment_questions
-      WHERE id = $1
-      RETURNING *
-    `, [id]);
-    return result.rows[0];
+      SELECT options->'questions'->$2 AS items,
+             options->'subtests'      AS subtests
+      FROM master_assessment
+      WHERE assessment_code = $1
+    `, [code, subtest]);
+    return result.rows[0] ?? null;
   }
 }
 

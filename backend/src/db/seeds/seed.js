@@ -10,21 +10,22 @@ import rolePermissionsData from '../data/role_permissions.js';
 import userRolesData from '../data/user_role.js';
 import stageCategoriesData from '../data/stage_categories.js';
 import { templateStages, templateStageRows } from '../data/template_stages.js';
-import questionsData from '../data/questions.js';
 import { jobAccounts, coreJobs, jobSourcing } from '../data/job_sourcing.js';
 import applicantsData from '../data/applicants.js';
 import skillAliasesData from '../data/skill_aliases.js';
+import assessmentsData from '../data/assessments.js';
 
 const seed = async () => {
   await getDb().query('BEGIN');
 
   try {
     await getDb().query('DELETE FROM master_skill_alias');
+    await getDb().query('DELETE FROM core_applicant_assessment');
+    await getDb().query('DELETE FROM master_assessment');
     await getDb().query('DELETE FROM master_applicant');
     await getDb().query('DELETE FROM core_job_sourcing');
     await getDb().query('DELETE FROM core_job');
     await getDb().query('DELETE FROM master_job_account');
-    await getDb().query('DELETE FROM assessment_questions');
     await getDb().query('DELETE FROM job_stage');
     await getDb().query('DELETE FROM master_template_stage');
     await getDb().query('DELETE FROM recruitment_stage_category');
@@ -140,16 +141,7 @@ const seed = async () => {
       );
     }
 
-    // 12. assessment questions
-    for (const q of questionsData) {
-      await getDb().query(
-        `INSERT INTO assessment_questions (id, text, options, correct, points)
-         VALUES ($1, $2, $3, $4, $5)`,
-        [q.id, q.text, JSON.stringify(q.options), q.correct, q.points]
-      );
-    }
-
-    // 13. master_job_account
+    // 12. master_job_account
     for (const acc of jobAccounts) {
       await getDb().query(
         `INSERT INTO master_job_account (id, portal_name, email, password, user_id, status_connection, status_sync)
@@ -194,7 +186,16 @@ const seed = async () => {
       );
     }
 
-    // 17. master_applicant
+    // 17. master_assessment
+    for (const a of assessmentsData) {
+      await getDb().query(
+        `INSERT INTO master_assessment (id, assessment_code, name, description, duration_minutes, options, is_active)
+         VALUES ($1, $2, $3, $4, $5, $6, $7)`,
+        [a.id, a.assessment_code, a.name, a.description, a.duration_minutes, JSON.stringify(a.options || {}), a.is_active]
+      );
+    }
+
+    // 18. master_applicant
     for (const a of applicantsData) {
       await getDb().query(
         `INSERT INTO master_applicant (

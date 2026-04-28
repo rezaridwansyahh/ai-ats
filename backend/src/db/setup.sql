@@ -32,10 +32,11 @@ DROP TABLE IF EXISTS master_template_stage CASCADE;
 DROP TABLE IF EXISTS job_stage_category CASCADE;
 DROP TABLE IF EXISTS recruitment_stage_category CASCADE;
 DROP TABLE IF EXISTS job_automation_settings CASCADE;
+DROP TABLE IF EXISTS applicant_job_score CASCADE;
 DROP TABLE IF EXISTS assessment_battery_results CASCADE;
 DROP TABLE IF EXISTS assessment_sessions CASCADE;
-DROP TABLE IF EXISTS assessment_results CASCADE;
-DROP TABLE IF EXISTS assessment_questions CASCADE;
+DROP TABLE IF EXISTS core_applicant_assessment CASCADE;
+DROP TABLE IF EXISTS master_assessment CASCADE;
 DROP TABLE IF EXISTS participants CASCADE;
 
 -- Drop enums after all tables are gone
@@ -442,24 +443,39 @@ CREATE TABLE participants(
   updated_at TIMESTAMP NOT NULL DEFAULT NOW()
 );
 
-CREATE TABLE assessment_questions(
+CREATE TABLE master_assessment(
   id SERIAL PRIMARY KEY,
-  text VARCHAR(500) NOT NULL,
+  assessment_code VARCHAR(50) UNIQUE NOT NULL, -- 'myralix_battery_a', 'disc', 'bigfive'
+  name VARCHAR(255) NOT NULL,
+  description TEXT,
+  duration_minutes INT,  
   options JSONB NOT NULL,
-  correct INTEGER NOT NULL,
-  points INTEGER NOT NULL,
+  is_active BOOLEAN DEFAULT true,  
   created_at TIMESTAMP NOT NULL DEFAULT NOW(),
   updated_at TIMESTAMP NOT NULL DEFAULT NOW()
 );
 
-CREATE TABLE assessment_results(
+CREATE TABLE core_applicant_assessment(
   id SERIAL PRIMARY KEY,
-  participant_id INTEGER NOT NULL UNIQUE REFERENCES participants(id) ON DELETE CASCADE,
-  score INTEGER NOT NULL,
-  answers JSONB NOT NULL,
+  participant_id INTEGER NOT NULL REFERENCES participants(id) ON DELETE CASCADE,
+  assessment_id INT REFERENCES master_assessment(id),
+  status VARCHAR(50) NOT NULL DEFAULT 'completed',
+  results JSONB NOT NULL, -- HASIL LENGKAP (raw data + detail scoring)
+  summary JSONB, -- HASIL SINGKAT (untuk quick view)
+  narrative_report TEXT, -- laporan naratif lengkap (beberapa paragraf)
+  strengths TEXT, -- kekuatan kandidat (bullet points)
+  development_areas TEXT, -- area pengembangan (bullet points)
+  recommended_roles TEXT, -- rekomendasi posisi yang sesuai (bullet points)
+  started_at TIMESTAMP,
+  completed_at TIMESTAMP,
+  assessment_date DATE NOT NULL DEFAULT CURRENT_DATE,
   created_at TIMESTAMP NOT NULL DEFAULT NOW(),
-  updated_at TIMESTAMP NOT NULL DEFAULT NOW()
+  updated_at TIMESTAMP NOT NULL DEFAULT NOW(),
+  UNIQUE (participant_id, assessment_id, assessment_date)
 );
+CREATE INDEX idx_applicant_assessment ON core_applicant_assessment(participant_id);
+CREATE INDEX idx_assessment_date      ON core_applicant_assessment(assessment_date);
+CREATE INDEX idx_assessment_type      ON core_applicant_assessment(assessment_id);
 
 CREATE TABLE assessment_sessions(
   id SERIAL PRIMARY KEY,
