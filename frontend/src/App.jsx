@@ -18,7 +18,6 @@ import RecruitersPage from "./pages/Recruiters"
 import ComingSoonPage from "./pages/ComingSoon"
 import AssessmentPage from "./pages/Assessment"
 import ReportPage from "./pages/Report"
-import AssessmentAPage from "./pages/AssessmentA"
 
 function App() {
   return (
@@ -49,8 +48,6 @@ function App() {
         <Route path="/candidates/search" element={<CandidateSearchPage />} />
         <Route path="/selection/assessment" element={<AssessmentPage />} />
         <Route path="/selection/report" element={<ReportPage />} />
-
-        <Route path="/asesmen/asesmen-a" element={<AssessmentAPage />} />
 
         {/* Catch-all: any unregistered path shows Coming Soon */}
         <Route path="*" element={<ComingSoonPage />} />

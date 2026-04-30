@@ -73,7 +73,6 @@ const routeMap = {
   'Source Candidate':  '/sourcing/source-candidate',
   'Assessment':        '/selection/assessment',
   'Report':            '/selection/report',
-  'asesmen a':         '/asesmen/asesmen-a'
 };
 
 const useSidebarStructure = (permissions) => {
