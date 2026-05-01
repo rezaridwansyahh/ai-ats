@@ -5,45 +5,71 @@ class ScreeningModel {
     applicant_id,
     job_id,
     overall_score,
-    position_score,
     skills_score,
-    education_score,
     experience_score,
+    career_trajectory_score,
+    education_score,
     matched_skills,
     missing_skills,
+    custom_criteria_results,
+    rubric_snapshot,
+    role_profile,
     summary,
   }) {
     const result = await getDb().query(
       `INSERT INTO applicant_job_score (
          applicant_id, job_id,
-         overall_score, position_score, skills_score, education_score, experience_score,
-         matched_skills, missing_skills, summary, scored_at
-       ) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10, NOW())
+         overall_score, skills_score, experience_score, career_trajectory_score, education_score,
+         matched_skills, missing_skills, custom_criteria_results,
+         rubric_snapshot, role_profile, summary, scored_at
+       ) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13, NOW())
        ON CONFLICT (applicant_id, job_id) DO UPDATE SET
-         overall_score    = EXCLUDED.overall_score,
-         position_score   = EXCLUDED.position_score,
-         skills_score     = EXCLUDED.skills_score,
-         education_score  = EXCLUDED.education_score,
-         experience_score = EXCLUDED.experience_score,
-         matched_skills   = EXCLUDED.matched_skills,
-         missing_skills   = EXCLUDED.missing_skills,
-         summary          = EXCLUDED.summary,
-         scored_at        = NOW()
+         overall_score            = EXCLUDED.overall_score,
+         skills_score             = EXCLUDED.skills_score,
+         experience_score         = EXCLUDED.experience_score,
+         career_trajectory_score  = EXCLUDED.career_trajectory_score,
+         education_score          = EXCLUDED.education_score,
+         matched_skills           = EXCLUDED.matched_skills,
+         missing_skills           = EXCLUDED.missing_skills,
+         custom_criteria_results  = EXCLUDED.custom_criteria_results,
+         rubric_snapshot          = EXCLUDED.rubric_snapshot,
+         role_profile             = EXCLUDED.role_profile,
+         summary                  = EXCLUDED.summary,
+         scored_at                = NOW()
        RETURNING *`,
       [
         applicant_id,
         job_id,
         overall_score,
-        position_score,
         skills_score,
-        education_score,
         experience_score,
+        career_trajectory_score,
+        education_score,
         matched_skills ? JSON.stringify(matched_skills) : null,
         missing_skills ? JSON.stringify(missing_skills) : null,
+        custom_criteria_results ? JSON.stringify(custom_criteria_results) : null,
+        rubric_snapshot ? JSON.stringify(rubric_snapshot) : null,
+        role_profile || null,
         summary || null,
       ]
     );
     return result.rows[0];
+  }
+
+  async getRubric(job_id) {
+    const result = await getDb().query(
+      `SELECT rubric FROM core_job WHERE id = $1`,
+      [job_id]
+    );
+    return result.rows[0]?.rubric || null;
+  }
+
+  async saveRubric(job_id, rubric) {
+    const result = await getDb().query(
+      `UPDATE core_job SET rubric = $2, updated_at = NOW() WHERE id = $1 RETURNING rubric`,
+      [job_id, rubric ? JSON.stringify(rubric) : null]
+    );
+    return result.rows[0]?.rubric || null;
   }
 
   async getByApplicantAndJob(applicant_id, job_id) {
@@ -79,6 +105,23 @@ class ScreeningModel {
       `SELECT mc.id AS candidate_id, mc.applicant_id, mc.job_id
        FROM master_candidate mc
        WHERE mc.job_id = $1 AND mc.applicant_id IS NOT NULL`,
+      [job_id]
+    );
+    return result.rows;
+  }
+
+  async getResultsByJob(job_id) {
+    const result = await getDb().query(
+      `SELECT s.id, s.applicant_id, s.job_id,
+              s.overall_score, s.skills_score, s.experience_score,
+              s.career_trajectory_score, s.education_score,
+              s.matched_skills, s.missing_skills, s.custom_criteria_results,
+              s.rubric_snapshot, s.role_profile, s.summary, s.scored_at,
+              a.name AS applicant_name
+       FROM applicant_job_score s
+       LEFT JOIN master_applicant a ON a.id = s.applicant_id
+       WHERE s.job_id = $1
+       ORDER BY s.overall_score DESC, s.applicant_id ASC`,
       [job_id]
     );
     return result.rows;
@@ -124,24 +167,37 @@ class ScreeningModel {
       );
     }
 
+    // Helper: push two params (ILIKE wildcard form and raw form for trigram <%)
+    // and return placeholders for both. The trigram operator `<%` ("strict word
+    // similarity") returns true when there is a substring of the right operand
+    // similar enough to the left operand — perfect for short queries against
+    // longer text. Default threshold is 0.6 (set via pg_trgm.word_similarity_threshold).
+    const pushFuzzy = (raw) => {
+      params.push(`%${raw}%`);
+      params.push(raw);
+      return { ilike: `$${params.length - 1}`, trgm: `$${params.length}` };
+    };
+
     const qTrimmed = typeof q === 'string' ? q.trim() : '';
     if (qTrimmed) {
-      params.push(`%${qTrimmed}%`);
-      const p = `$${params.length}`;
+      const { ilike, trgm } = pushFuzzy(qTrimmed);
       where.push(`(
-        a.name ILIKE ${p}
-        OR a.last_position ILIKE ${p}
-        OR a.education ILIKE ${p}
-        OR a.address ILIKE ${p}
-        OR (a.information->'job_position'->>'current')  ILIKE ${p}
-        OR (a.information->'job_position'->>'category') ILIKE ${p}
+        a.name ILIKE ${ilike} OR ${trgm}::text <% a.name
+        OR a.last_position ILIKE ${ilike} OR ${trgm}::text <% a.last_position
+        OR a.education ILIKE ${ilike} OR ${trgm}::text <% a.education
+        OR a.address ILIKE ${ilike} OR ${trgm}::text <% a.address
+        OR (a.information->'job_position'->>'current')  ILIKE ${ilike}
+        OR ${trgm}::text <% (a.information->'job_position'->>'current')
+        OR (a.information->'job_position'->>'category') ILIKE ${ilike}
+        OR ${trgm}::text <% (a.information->'job_position'->>'category')
         OR EXISTS (
           SELECT 1 FROM jsonb_array_elements_text(COALESCE(a.information->'skills','[]'::jsonb)) sk
-          WHERE sk ILIKE ${p}
+          WHERE sk ILIKE ${ilike} OR ${trgm}::text <% sk
         )
         OR EXISTS (
           SELECT 1 FROM jsonb_array_elements(COALESCE(a.information->'education','[]'::jsonb)) ed
-          WHERE (ed->>'school') ILIKE ${p} OR (ed->>'degree') ILIKE ${p}
+          WHERE (ed->>'school') ILIKE ${ilike} OR ${trgm}::text <% (ed->>'school')
+             OR (ed->>'degree') ILIKE ${ilike} OR ${trgm}::text <% (ed->>'degree')
         )
       )`);
     }
@@ -152,40 +208,39 @@ class ScreeningModel {
     const locationQ  = typeof location_q  === 'string' ? location_q.trim()  : '';
 
     if (positionQ) {
-      params.push(`%${positionQ}%`);
-      const p = `$${params.length}`;
+      const { ilike, trgm } = pushFuzzy(positionQ);
       where.push(`(
-        a.last_position ILIKE ${p}
-        OR (a.information->'job_position'->>'current')  ILIKE ${p}
-        OR (a.information->'job_position'->>'category') ILIKE ${p}
+        a.last_position ILIKE ${ilike} OR ${trgm}::text <% a.last_position
+        OR (a.information->'job_position'->>'current')  ILIKE ${ilike}
+        OR ${trgm}::text <% (a.information->'job_position'->>'current')
+        OR (a.information->'job_position'->>'category') ILIKE ${ilike}
+        OR ${trgm}::text <% (a.information->'job_position'->>'category')
       )`);
     }
 
     if (skillQ) {
-      params.push(`%${skillQ}%`);
-      const p = `$${params.length}`;
+      const { ilike, trgm } = pushFuzzy(skillQ);
       where.push(`EXISTS (
         SELECT 1 FROM jsonb_array_elements_text(COALESCE(a.information->'skills','[]'::jsonb)) sk
-        WHERE sk ILIKE ${p}
+        WHERE sk ILIKE ${ilike} OR ${trgm}::text <% sk
       )`);
     }
 
     if (educationQ) {
-      params.push(`%${educationQ}%`);
-      const p = `$${params.length}`;
+      const { ilike, trgm } = pushFuzzy(educationQ);
       where.push(`(
-        a.education ILIKE ${p}
+        a.education ILIKE ${ilike} OR ${trgm}::text <% a.education
         OR EXISTS (
           SELECT 1 FROM jsonb_array_elements(COALESCE(a.information->'education','[]'::jsonb)) ed
-          WHERE (ed->>'school') ILIKE ${p} OR (ed->>'degree') ILIKE ${p}
+          WHERE (ed->>'school') ILIKE ${ilike} OR ${trgm}::text <% (ed->>'school')
+             OR (ed->>'degree') ILIKE ${ilike} OR ${trgm}::text <% (ed->>'degree')
         )
       )`);
     }
 
     if (locationQ) {
-      params.push(`%${locationQ}%`);
-      const p = `$${params.length}`;
-      where.push(`a.address ILIKE ${p}`);
+      const { ilike, trgm } = pushFuzzy(locationQ);
+      where.push(`(a.address ILIKE ${ilike} OR ${trgm}::text <% a.address)`);
     }
 
     if (position) {
@@ -241,12 +296,13 @@ class ScreeningModel {
         a.date,
         a.information,
         s.overall_score,
-        s.position_score,
         s.skills_score,
-        s.education_score,
         s.experience_score,
+        s.career_trajectory_score,
+        s.education_score,
         s.matched_skills,
         s.missing_skills,
+        s.custom_criteria_results,
         s.summary,
         s.scored_at,
         COUNT(*) OVER () AS total_count

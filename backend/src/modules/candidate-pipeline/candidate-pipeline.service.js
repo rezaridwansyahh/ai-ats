@@ -1,5 +1,4 @@
 import CandidatePipeline from './candidate-pipeline.model.js';
-import screeningService from '../screening/screening.service.js';
 
 class CandidatePipelineService {
   async getAll() {
@@ -31,11 +30,6 @@ class CandidatePipelineService {
       if (!candidate) {
         throw { status: 404, message: 'Applicant not found' };
       }
-
-      this._triggerScoring(applicant_id, job_id).catch((err) => {
-        console.error(`[screening] Layer 2 scoring failed for applicant=${applicant_id} job=${job_id}:`, err.message || err);
-      });
-
       return candidate;
     } catch (err) {
       if (err.code === '23505') {
@@ -46,18 +40,6 @@ class CandidatePipelineService {
       }
       throw err;
     }
-  }
-
-  async _triggerScoring(applicant_id, job_id) {
-    const score = await screeningService.scoreApplicantForJob(applicant_id, job_id);
-    const decision = await screeningService.resolveAutomationDecision(job_id, score);
-    if (decision.action !== 'review') {
-      console.log(
-        `[screening] auto-${decision.action} applicant=${applicant_id} job=${job_id} ` +
-        `score=${score.overall_score} threshold=${decision.threshold}`
-      );
-    }
-    return { score, decision };
   }
 
   async update(id, fields) {

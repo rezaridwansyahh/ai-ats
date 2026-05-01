@@ -1,4 +1,6 @@
 -- Drop tables in reverse dependency order (most dependent first)
+DROP TABLE IF EXISTS applicant_job_score CASCADE;
+DROP TABLE IF EXISTS master_skill_alias CASCADE;
 DROP TABLE IF EXISTS mapping_applicant_linkedin CASCADE;
 DROP TABLE IF EXISTS mapping_applicant_seek CASCADE;
 DROP TABLE IF EXISTS mapping_job_sourcing_linkedin CASCADE;
@@ -76,6 +78,7 @@ CREATE TYPE stage_category_type AS ENUM ('Job Management', 'Screening & Matching
 CREATE TYPE battery_type AS ENUM ('A', 'B', 'C', 'D');
 CREATE TYPE status_session_type AS ENUM ('invited', 'in_progress', 'completed', 'expired');
 CREATE EXTENSION IF NOT EXISTS pgcrypto;
+CREATE EXTENSION IF NOT EXISTS pg_trgm;
 
 CREATE TABLE master_users (
   id SERIAL PRIMARY KEY,
@@ -191,6 +194,7 @@ CREATE TABLE core_job (
   required_skills JSONB,
   preferred_skills JSONB,
   benefits JSONB,
+  rubric JSONB,
   -- Status
   status status_type NOT NULL DEFAULT 'Draft',
   sla_start_date DATE NULL DEFAULT NOW(),
@@ -391,25 +395,35 @@ CREATE TABLE job_automation_settings (
 );
 
 CREATE TABLE applicant_job_score (
-  id                SERIAL PRIMARY KEY,
-  applicant_id      INTEGER NOT NULL REFERENCES master_applicant(id) ON DELETE CASCADE,
-  job_id            INTEGER NOT NULL REFERENCES core_job(id) ON DELETE CASCADE,
-  overall_score     INTEGER NOT NULL CHECK (overall_score    BETWEEN 0 AND 100),
-  position_score    INTEGER          CHECK (position_score   BETWEEN 0 AND 100),
-  skills_score      INTEGER          CHECK (skills_score     BETWEEN 0 AND 100),
-  education_score   INTEGER          CHECK (education_score  BETWEEN 0 AND 100),
-  experience_score  INTEGER          CHECK (experience_score BETWEEN 0 AND 100),
-  matched_skills    JSONB,
-  missing_skills    JSONB,
-  summary           TEXT,
-  scored_at         TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  id                       SERIAL PRIMARY KEY,
+  applicant_id             INTEGER NOT NULL REFERENCES master_applicant(id) ON DELETE CASCADE,
+  job_id                   INTEGER NOT NULL REFERENCES core_job(id) ON DELETE CASCADE,
+  overall_score            INTEGER NOT NULL CHECK (overall_score           BETWEEN 0 AND 100),
+  skills_score             INTEGER          CHECK (skills_score            BETWEEN 0 AND 100),
+  experience_score         INTEGER          CHECK (experience_score        BETWEEN 0 AND 100),
+  career_trajectory_score  INTEGER          CHECK (career_trajectory_score BETWEEN 0 AND 100),
+  education_score          INTEGER          CHECK (education_score         BETWEEN 0 AND 100),
+  matched_skills           JSONB,
+  missing_skills           JSONB,
+  custom_criteria_results  JSONB,
+  rubric_snapshot          JSONB,
+  role_profile             VARCHAR(50),
+  summary                  TEXT,
+  scored_at                TIMESTAMPTZ NOT NULL DEFAULT NOW(),
   UNIQUE (applicant_id, job_id)
 );
+
 CREATE INDEX idx_ajs_job_score ON applicant_job_score (job_id, overall_score DESC);
 CREATE INDEX idx_ajs_applicant ON applicant_job_score (applicant_id);
 
 CREATE INDEX idx_applicant_information_gin
   ON master_applicant USING GIN (information jsonb_path_ops);
+
+-- pg_trgm indexes for fuzzy / typo-tolerant search on master_applicant text columns.
+CREATE INDEX idx_applicant_name_trgm          ON master_applicant USING GIN (name          gin_trgm_ops);
+CREATE INDEX idx_applicant_last_position_trgm ON master_applicant USING GIN (last_position gin_trgm_ops);
+CREATE INDEX idx_applicant_education_trgm     ON master_applicant USING GIN (education     gin_trgm_ops);
+CREATE INDEX idx_applicant_address_trgm       ON master_applicant USING GIN (address       gin_trgm_ops);
 
 CREATE TABLE master_skill_alias (
   alias        VARCHAR(100) PRIMARY KEY,

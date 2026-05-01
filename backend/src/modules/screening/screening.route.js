@@ -14,4 +14,10 @@ router.post('/extract-facets/:applicant_id', upload.single('cv'), screeningContr
 router.post('/score', screeningController.score);
 router.post('/score-bulk/:job_id', screeningController.scoreBulk);
 
+// AI Matching (rubric flow)
+router.get('/rubric/:job_id',  screeningController.getRubric);
+router.put('/rubric/:job_id',  screeningController.saveRubric);
+router.post('/match/:job_id',  screeningController.runMatching);
+router.get('/match/:job_id/results', screeningController.getMatchingResults);
+
 export default router;

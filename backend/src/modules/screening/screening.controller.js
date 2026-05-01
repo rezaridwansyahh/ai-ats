@@ -55,6 +55,48 @@ class ScreeningController {
     }
   }
 
+  async getRubric(req, res) {
+    try {
+      const job_id = Number(req.params.job_id);
+      const rubric = await screeningService.getRubric(job_id);
+      res.status(200).json({ message: 'Rubric fetched', rubric });
+    } catch (err) {
+      res.status(err.status || 500).json({ message: err.message });
+    }
+  }
+
+  async saveRubric(req, res) {
+    try {
+      const job_id = Number(req.params.job_id);
+      const rubric = req.body?.rubric;
+      const saved = await screeningService.saveRubric(job_id, rubric);
+      res.status(200).json({ message: 'Rubric saved', rubric: saved });
+    } catch (err) {
+      res.status(err.status || 500).json({ message: err.message });
+    }
+  }
+
+  async runMatching(req, res) {
+    try {
+      const job_id = Number(req.params.job_id);
+      const { rubric, role_profile } = req.body || {};
+      const result = await screeningService.runMatching(job_id, { rubric, role_profile });
+      res.status(200).json({ message: 'AI matching complete', ...result });
+    } catch (err) {
+      res.status(err.status || 500).json({ message: err.message });
+    }
+  }
+
+  async getMatchingResults(req, res) {
+    try {
+      const job_id = Number(req.params.job_id);
+      const results = await screeningService.getMatchingResults(job_id);
+      res.status(200).json({ message: 'Match results fetched', results });
+    } catch (err) {
+      res.status(err.status || 500).json({ message: err.message });
+    }
+  }
+
   async search(req, res) {
     try {
       const {

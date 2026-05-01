@@ -29,6 +29,7 @@ export default [
      Sourcing (module_id: 8)
   ========================= */
   { id: 19, module_id: 8, menu_id: 19 }, // Sourcing -> Job Management
+  { id: 20, module_id: 8, menu_id: 20 }, // Sourcing -> Source Management
   { id: 24, module_id: 8, menu_id: 24 }, // Sourcing -> Talent Pool
   { id: 25, module_id: 8, menu_id: 25 }, // Sourcing -> Source Candidate
 
@@ -37,4 +38,5 @@ export default [
   ========================= */
   { id: 22, module_id: 9, menu_id: 22 }, // Selection -> Assessment
   { id: 23, module_id: 9, menu_id: 23 }, // Selection -> Report
+  { id: 26, module_id: 9, menu_id: 26 }, // Selection -> AI Matching
 ];

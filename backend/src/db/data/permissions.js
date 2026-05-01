@@ -81,25 +81,12 @@ export default [
   { id: 71, module_menu_id: 19, functionality: 'delete' },
 
   /* ===================================================================
-     Settings -> Recruiters (module_menu_id: 21)
      Sourcing -> Talent Pool (module_menu_id: 24)
   =================================================================== */
   { id: 72, module_menu_id: 24, functionality: 'read' },
   { id: 73, module_menu_id: 24, functionality: 'create' },
   { id: 74, module_menu_id: 24, functionality: 'update' },
   { id: 75, module_menu_id: 24, functionality: 'delete' },
-
-  /* ===================================================================
-     Sourcing -> Source Candidate (module_menu_id: 25)
-  =================================================================== */
-  { id: 72, module_menu_id: 21, functionality: 'read' },
-  { id: 73, module_menu_id: 21, functionality: 'create' },
-  { id: 74, module_menu_id: 21, functionality: 'update' },
-  { id: 75, module_menu_id: 21, functionality: 'delete' },
-  { id: 84, module_menu_id: 25, functionality: 'read' },
-  { id: 85, module_menu_id: 25, functionality: 'create' },
-  { id: 86, module_menu_id: 25, functionality: 'update' },
-  { id: 87, module_menu_id: 25, functionality: 'delete' },
 
   /* ===================================================================
      Selection -> Assessment (module_menu_id: 22)
@@ -118,11 +105,35 @@ export default [
   { id: 83, module_menu_id: 23, functionality: 'delete' },
 
   /* ===================================================================
+     Sourcing -> Source Candidate (module_menu_id: 25)
+  =================================================================== */
+  { id: 84, module_menu_id: 25, functionality: 'read' },
+  { id: 85, module_menu_id: 25, functionality: 'create' },
+  { id: 86, module_menu_id: 25, functionality: 'update' },
+  { id: 87, module_menu_id: 25, functionality: 'delete' },
+
+  /* ===================================================================
+     Settings -> Recruiters (module_menu_id: 21)
+  =================================================================== */
+  { id: 88, module_menu_id: 21, functionality: 'read' },
+  { id: 89, module_menu_id: 21, functionality: 'create' },
+  { id: 90, module_menu_id: 21, functionality: 'update' },
+  { id: 91, module_menu_id: 21, functionality: 'delete' },
+
+  /* ===================================================================
      Sourcing -> Source Management (module_menu_id: 20)
   =================================================================== */
-  { id: 84, module_menu_id: 20, functionality: 'read' },
-  { id: 85, module_menu_id: 20, functionality: 'create' },
-  { id: 86, module_menu_id: 20, functionality: 'update' },
-  { id: 87, module_menu_id: 20, functionality: 'delete' },
+  { id: 92, module_menu_id: 20, functionality: 'read' },
+  { id: 93, module_menu_id: 20, functionality: 'create' },
+  { id: 94, module_menu_id: 20, functionality: 'update' },
+  { id: 95, module_menu_id: 20, functionality: 'delete' },
+
+  /* ===================================================================
+     Selection -> AI Matching (module_menu_id: 26)
+  =================================================================== */
+  { id: 96, module_menu_id: 26, functionality: 'read' },
+  { id: 97, module_menu_id: 26, functionality: 'create' },
+  { id: 98, module_menu_id: 26, functionality: 'update' },
+  { id: 99, module_menu_id: 26, functionality: 'delete' },
 
 ];

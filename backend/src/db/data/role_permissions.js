@@ -63,7 +63,6 @@ export default [
   role_id: 1,
   permission_id: 68 + i
 })),
-// Settings -> Recruiters (72–75)
 // Sourcing -> Talent Pool (72–75)
 ...Array.from({ length: 4 }, (_, i) => ({
   id: 54 + i,
@@ -82,17 +81,29 @@ export default [
   role_id: 1,
   permission_id: 80 + i
 })),
-// Sourcing -> Source Management (84–87)
-...Array.from({ length: 4 }, (_, i) => ({
-  id: 66 + i,
-  role_id: 1,
-  permission_id: 84 + i
-})),
 // Sourcing -> Source Candidate (84–87)
 ...Array.from({ length: 4 }, (_, i) => ({
   id: 66 + i,
   role_id: 1,
   permission_id: 84 + i
+})),
+// Settings -> Recruiters (88–91)
+...Array.from({ length: 4 }, (_, i) => ({
+  id: 70 + i,
+  role_id: 1,
+  permission_id: 88 + i
+})),
+// Sourcing -> Source Management (92–95)
+...Array.from({ length: 4 }, (_, i) => ({
+  id: 74 + i,
+  role_id: 1,
+  permission_id: 92 + i
+})),
+// Selection -> AI Matching (96–99)
+...Array.from({ length: 4 }, (_, i) => ({
+  id: 78 + i,
+  role_id: 1,
+  permission_id: 96 + i
 })),
 
 /* ============================================================================
@@ -150,7 +161,6 @@ export default [
   { id: 152, role_id: 2, permission_id: 69 },
   { id: 153, role_id: 2, permission_id: 70 },
 
-  // Settings -> Recruiters (72–74: read/create/update)
   // Sourcing -> Talent Pool (72–74: read/create/update)
   { id: 160, role_id: 2, permission_id: 72 },
   { id: 161, role_id: 2, permission_id: 73 },
@@ -170,6 +180,21 @@ export default [
   { id: 169, role_id: 2, permission_id: 84 },
   { id: 170, role_id: 2, permission_id: 85 },
   { id: 171, role_id: 2, permission_id: 86 },
+
+  // Settings -> Recruiters (88–90: read/create/update)
+  { id: 172, role_id: 2, permission_id: 88 },
+  { id: 173, role_id: 2, permission_id: 89 },
+  { id: 174, role_id: 2, permission_id: 90 },
+
+  // Sourcing -> Source Management (92–94: read/create/update)
+  { id: 175, role_id: 2, permission_id: 92 },
+  { id: 176, role_id: 2, permission_id: 93 },
+  { id: 177, role_id: 2, permission_id: 94 },
+
+  // Selection -> AI Matching (96–98: read/create/update)
+  { id: 178, role_id: 2, permission_id: 96 },
+  { id: 179, role_id: 2, permission_id: 97 },
+  { id: 180, role_id: 2, permission_id: 98 },
 
 /* ============================================================================
    STAFF (role_id: 3)
@@ -214,7 +239,6 @@ export default [
   { id: 230, role_id: 3, permission_id: 68 },
   { id: 231, role_id: 3, permission_id: 69 },
 
-  // Settings -> Recruiters (read + create)
   // Sourcing -> Talent Pool (read + create)
   { id: 232, role_id: 3, permission_id: 72 },
   { id: 233, role_id: 3, permission_id: 73 },
@@ -230,6 +254,18 @@ export default [
   // Sourcing -> Source Candidate (read + create)
   { id: 238, role_id: 3, permission_id: 84 },
   { id: 239, role_id: 3, permission_id: 85 },
+
+  // Settings -> Recruiters (read + create)
+  { id: 240, role_id: 3, permission_id: 88 },
+  { id: 241, role_id: 3, permission_id: 89 },
+
+  // Sourcing -> Source Management (read + create)
+  { id: 242, role_id: 3, permission_id: 92 },
+  { id: 243, role_id: 3, permission_id: 93 },
+
+  // Selection -> AI Matching (read + create)
+  { id: 244, role_id: 3, permission_id: 96 },
+  { id: 245, role_id: 3, permission_id: 97 },
 
 /* ============================================================================
    INTERN (role_id: 4)
@@ -248,5 +284,8 @@ export default [
   { id: 318, role_id: 4, permission_id: 76 },  // Selection -> Assessment (read)
   { id: 319, role_id: 4, permission_id: 80 },  // Selection -> Report (read)
   { id: 320, role_id: 4, permission_id: 84 },  // Sourcing -> Source Candidate (read)
+  { id: 321, role_id: 4, permission_id: 88 },  // Settings -> Recruiters (read)
+  { id: 322, role_id: 4, permission_id: 92 },  // Sourcing -> Source Management (read)
+  { id: 323, role_id: 4, permission_id: 96 },  // Selection -> AI Matching (read)
 
 ];

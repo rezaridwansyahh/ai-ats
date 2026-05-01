@@ -32,3 +32,16 @@ export const extractFacetsFromFile = (applicant_id, file) => {
 
 export const extractFacetsFromText = (applicant_id, cv_text) =>
   api.post(`/screening/extract-facets/${applicant_id}`, { cv_text });
+
+// AI Matching (rubric flow)
+export const getRubric = (job_id) =>
+  api.get(`/screening/rubric/${job_id}`);
+
+export const saveRubric = (job_id, rubric) =>
+  api.put(`/screening/rubric/${job_id}`, { rubric });
+
+export const runMatching = (job_id, { rubric, role_profile } = {}) =>
+  api.post(`/screening/match/${job_id}`, { rubric, role_profile });
+
+export const getMatchingResults = (job_id) =>
+  api.get(`/screening/match/${job_id}/results`);
