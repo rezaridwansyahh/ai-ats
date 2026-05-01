@@ -7,10 +7,8 @@ import {
 } from '@/components/ui/table';
 import { TablePagination } from '@/components/shared/TablePagination';
 import { useSort } from '@/hooks/useSort';
-import { getAssessmentResults } from '@/api/assessment-result.api';
+import { getAssessmentResults } from '@/api/assessment-battery-result.api';
 import { RefreshCw, Search, Users, Trophy, TrendingUp } from 'lucide-react';
-
-const MAX_SCORE = 100;
 
 export default function ReportPage() {
   const [results, setResults]   = useState([]);
@@ -37,27 +35,40 @@ export default function ReportPage() {
 
   useEffect(() => { fetchData(); }, []);
 
+  // Decorate rows with derived fields so search/sort/display all use the same projection.
+  const decorated = useMemo(
+    () => results.map((r) => ({
+      ...r,
+      overall_percent: r.summary?.overall_percent ?? null,
+      disc_dominant:   r.summary?.disc_dominant ?? null,
+      holland_code3:   r.summary?.holland_code3 ?? null,
+    })),
+    [results]
+  );
+
   const filtered = useMemo(() => {
-    if (!search.trim()) return results;
+    if (!search.trim()) return decorated;
     const q = search.toLowerCase();
-    return results.filter(
+    return decorated.filter(
       (r) =>
         r.participant_name?.toLowerCase().includes(q) ||
-        r.participant_email?.toLowerCase().includes(q)
+        r.participant_email?.toLowerCase().includes(q) ||
+        r.assessment_name?.toLowerCase().includes(q)
     );
-  }, [results, search]);
+  }, [decorated, search]);
 
   const sorted     = apply(filtered);
   const totalPages = Math.max(1, Math.ceil(sorted.length / pageSize));
   const paginated  = sorted.slice((page - 1) * pageSize, page * pageSize);
 
   const stats = useMemo(() => {
-    if (results.length === 0) return { total: 0, avg: 0, highest: 0 };
-    const scores  = results.map((r) => r.score);
+    const scored = decorated.filter((r) => typeof r.overall_percent === 'number');
+    if (scored.length === 0) return { total: decorated.length, avg: 0, highest: 0 };
+    const scores  = scored.map((r) => r.overall_percent);
     const avg     = Math.round(scores.reduce((a, b) => a + b, 0) / scores.length);
     const highest = Math.max(...scores);
-    return { total: results.length, avg, highest };
-  }, [results]);
+    return { total: decorated.length, avg, highest };
+  }, [decorated]);
 
   const formatDate = (iso) => {
     if (!iso) return '-';
@@ -66,8 +77,8 @@ export default function ReportPage() {
     });
   };
 
-  const scoreBadge = (score) => {
-    const pct = (score / MAX_SCORE) * 100;
+  const scoreBadge = (pct) => {
+    if (pct == null) return 'bg-slate-100 text-slate-500 border-slate-200';
     if (pct >= 80) return 'bg-green-100 text-green-700 border-green-200';
     if (pct >= 50) return 'bg-yellow-100 text-yellow-700 border-yellow-200';
     return 'bg-red-100 text-red-700 border-red-200';
@@ -88,9 +99,9 @@ export default function ReportPage() {
 
       <div className="grid grid-cols-3 gap-4">
         {[
-          { label: 'Total Peserta', value: stats.total, icon: Users, color: '#0A6E5C' },
-          { label: 'Rata-rata Skor', value: stats.avg, icon: TrendingUp, color: '#D97706' },
-          { label: 'Skor Tertinggi', value: stats.highest, icon: Trophy, color: '#2563EB' },
+          { label: 'Total Peserta',     value: stats.total,             icon: Users,       color: '#0A6E5C' },
+          { label: 'Rata-rata Kognitif', value: `${stats.avg}%`,        icon: TrendingUp,  color: '#D97706' },
+          { label: 'Skor Tertinggi',    value: `${stats.highest}%`,     icon: Trophy,      color: '#2563EB' },
         ].map(({ label, value, icon: Icon, color }) => (
           <Card key={label}>
             <CardContent className="p-4 flex items-center gap-3">
@@ -111,12 +122,12 @@ export default function ReportPage() {
           <div className="flex items-center justify-between">
             <div>
               <CardTitle className="text-sm">Hasil Asesmen</CardTitle>
-              <CardDescription className="text-xs">Daftar peserta dan skor mereka.</CardDescription>
+              <CardDescription className="text-xs">Daftar peserta, profil, dan ringkasan skor.</CardDescription>
             </div>
             <div className="relative w-56">
               <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
               <Input
-                placeholder="Cari nama atau email..."
+                placeholder="Cari nama, email, atau asesmen..."
                 className="pl-8 h-8 text-xs"
                 value={search}
                 onChange={(e) => { setSearch(e.target.value); setPage(1); }}
@@ -143,11 +154,16 @@ export default function ReportPage() {
                     <TableHead className="cursor-pointer" onClick={() => toggle('participant_email')}>
                       <span className="flex items-center gap-1">Email <SortIcon field="participant_email" /></span>
                     </TableHead>
-                    <TableHead className="cursor-pointer" onClick={() => toggle('score')}>
-                      <span className="flex items-center gap-1">Skor <SortIcon field="score" /></span>
+                    <TableHead className="cursor-pointer" onClick={() => toggle('assessment_name')}>
+                      <span className="flex items-center gap-1">Asesmen <SortIcon field="assessment_name" /></span>
                     </TableHead>
-                    <TableHead className="cursor-pointer" onClick={() => toggle('created_at')}>
-                      <span className="flex items-center gap-1">Tanggal <SortIcon field="created_at" /></span>
+                    <TableHead className="cursor-pointer" onClick={() => toggle('overall_percent')}>
+                      <span className="flex items-center gap-1">Kognitif <SortIcon field="overall_percent" /></span>
+                    </TableHead>
+                    <TableHead>DISC</TableHead>
+                    <TableHead>Holland</TableHead>
+                    <TableHead className="cursor-pointer" onClick={() => toggle('assessment_date')}>
+                      <span className="flex items-center gap-1">Tanggal <SortIcon field="assessment_date" /></span>
                     </TableHead>
                   </TableRow>
                 </TableHeader>
@@ -159,12 +175,15 @@ export default function ReportPage() {
                       </TableCell>
                       <TableCell className="font-medium">{r.participant_name}</TableCell>
                       <TableCell className="text-muted-foreground">{r.participant_email}</TableCell>
+                      <TableCell className="text-muted-foreground text-xs">{r.assessment_name ?? '-'}</TableCell>
                       <TableCell>
-                        <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-bold border ${scoreBadge(r.score)}`}>
-                          {r.score} / {MAX_SCORE}
+                        <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-bold border ${scoreBadge(r.overall_percent)}`}>
+                          {r.overall_percent != null ? `${r.overall_percent}%` : '-'}
                         </span>
                       </TableCell>
-                      <TableCell className="text-muted-foreground text-xs">{formatDate(r.created_at)}</TableCell>
+                      <TableCell className="font-mono text-xs">{r.disc_dominant ?? '-'}</TableCell>
+                      <TableCell className="font-mono text-xs">{r.holland_code3 ?? '-'}</TableCell>
+                      <TableCell className="text-muted-foreground text-xs">{formatDate(r.assessment_date)}</TableCell>
                     </TableRow>
                   ))}
                 </TableBody>

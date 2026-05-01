@@ -34,10 +34,11 @@ DROP TABLE IF EXISTS master_template_stage CASCADE;
 DROP TABLE IF EXISTS job_stage_category CASCADE;
 DROP TABLE IF EXISTS recruitment_stage_category CASCADE;
 DROP TABLE IF EXISTS job_automation_settings CASCADE;
+DROP TABLE IF EXISTS applicant_job_score CASCADE;
 DROP TABLE IF EXISTS assessment_battery_results CASCADE;
 DROP TABLE IF EXISTS assessment_sessions CASCADE;
-DROP TABLE IF EXISTS assessment_results CASCADE;
-DROP TABLE IF EXISTS assessment_questions CASCADE;
+DROP TABLE IF EXISTS core_applicant_assessment CASCADE;
+DROP TABLE IF EXISTS master_assessment CASCADE;
 DROP TABLE IF EXISTS participants CASCADE;
 
 -- Drop enums after all tables are gone
@@ -57,6 +58,8 @@ DROP TYPE IF EXISTS booking_status_type CASCADE;
 DROP TYPE IF EXISTS session_slot_type CASCADE;
 DROP TYPE IF EXISTS job_post_type CASCADE;
 DROP TYPE IF EXISTS sourcing_status_type CASCADE;
+DROP TYPE IF EXISTS battery_type CASCADE;
+DROP TYPE IF EXISTS status_session_type CASCADE;
 
 -- Create ENUM type
 CREATE TYPE status_type AS ENUM ('Draft', 'Active', 'Running', 'Expired', 'Failed', 'Blocked');
@@ -294,8 +297,9 @@ CREATE TABLE master_applicant (
   id SERIAL PRIMARY KEY,
   job_sourcing_id INTEGER NOT NULL REFERENCES core_job_sourcing(id) ON DELETE CASCADE,
   name VARCHAR(255) NOT NULL,
+  email VARCHAR(255),
   last_position VARCHAR(255) NOT NULL,
-  address VARCHAR(255) NOT NULL,  
+  address VARCHAR(255) NOT NULL,
   education VARCHAR(255),
   information JSONB,
   date TIMESTAMPTZ,
@@ -453,31 +457,46 @@ CREATE TABLE participants(
   updated_at TIMESTAMP NOT NULL DEFAULT NOW()
 );
 
-CREATE TABLE assessment_questions(
+CREATE TABLE master_assessment(
   id SERIAL PRIMARY KEY,
-  text VARCHAR(500) NOT NULL,
+  assessment_code VARCHAR(50) UNIQUE NOT NULL, -- 'myralix_battery_a', 'disc', 'bigfive'
+  name VARCHAR(255) NOT NULL,
+  description TEXT,
+  duration_minutes INT,  
   options JSONB NOT NULL,
-  correct INTEGER NOT NULL,
-  points INTEGER NOT NULL,
+  is_active BOOLEAN DEFAULT true,  
   created_at TIMESTAMP NOT NULL DEFAULT NOW(),
   updated_at TIMESTAMP NOT NULL DEFAULT NOW()
 );
 
-CREATE TABLE assessment_results(
+CREATE TABLE core_applicant_assessment(
   id SERIAL PRIMARY KEY,
-  participant_id INTEGER NOT NULL UNIQUE REFERENCES participants(id) ON DELETE CASCADE,
-  score INTEGER NOT NULL,
-  answers JSONB NOT NULL,
+  participant_id INTEGER NOT NULL REFERENCES participants(id) ON DELETE CASCADE,
+  assessment_id INT REFERENCES master_assessment(id),
+  status VARCHAR(50) NOT NULL DEFAULT 'completed',
+  results JSONB NOT NULL, -- HASIL LENGKAP (raw data + detail scoring)
+  summary JSONB, -- HASIL SINGKAT (untuk quick view)
+  narrative_report TEXT, -- laporan naratif lengkap (beberapa paragraf)
+  strengths TEXT, -- kekuatan kandidat (bullet points)
+  development_areas TEXT, -- area pengembangan (bullet points)
+  recommended_roles TEXT, -- rekomendasi posisi yang sesuai (bullet points)
+  started_at TIMESTAMP,
+  completed_at TIMESTAMP,
+  assessment_date DATE NOT NULL DEFAULT CURRENT_DATE,
   created_at TIMESTAMP NOT NULL DEFAULT NOW(),
-  updated_at TIMESTAMP NOT NULL DEFAULT NOW()
+  updated_at TIMESTAMP NOT NULL DEFAULT NOW(),
+  UNIQUE (participant_id, assessment_id, assessment_date)
 );
+CREATE INDEX idx_applicant_assessment ON core_applicant_assessment(participant_id);
+CREATE INDEX idx_assessment_date      ON core_applicant_assessment(assessment_date);
+CREATE INDEX idx_assessment_type      ON core_applicant_assessment(assessment_id);
 
 CREATE TABLE assessment_sessions(
   id SERIAL PRIMARY KEY,
   token UUID NOT NULL UNIQUE DEFAULT gen_random_uuid(),
   battery battery_type NOT NULL,
-  participant_id INTEGER REFERENCES participants(id) ON SET NULL,
-  job_id INTEGER REFERENCES core_job(id) ON SET NULL,
+  participant_id INTEGER REFERENCES participants(id) ON DELETE SET NULL,
+  job_id INTEGER REFERENCES core_job(id) ON DELETE SET NULL,
   created_by INTEGER REFERENCES master_users(id) ON DELETE SET NULL,
   status status_session_type NOT NULL DEFAULT 'invited',
   expired_at TIMESTAMP NOT NULL,

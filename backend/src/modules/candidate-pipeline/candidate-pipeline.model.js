@@ -71,6 +71,22 @@ class CandidatePipeline {
     return result.rows[0];
   }
 
+  static async getNotificationContext(candidate_id) {
+    const result = await getDb().query(`
+      SELECT c.name AS candidate_name,
+            a.email AS candidate_email,
+            j.job_title,
+            COALESCE(auto.email_notify, false) AS email_notify
+      FROM master_candidate c
+      LEFT JOIN master_applicant a       ON a.id = c.applicant_id
+      LEFT JOIN core_job j               ON j.id = c.job_id
+      LEFT JOIN job_automation_settings auto ON auto.job_id = c.job_id
+      WHERE c.id = $1
+    `, [candidate_id])
+    return result.rows[0]
+  }
+
+
   static async update(id, fields) {
     const keys = Object.keys(fields);
     const values = Object.values(fields);

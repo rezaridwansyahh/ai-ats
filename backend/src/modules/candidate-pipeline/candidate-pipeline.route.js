@@ -14,6 +14,7 @@ router.get('/:id', candidatePipelineController.getById);
 
 router.post('/', candidatePipelineController.create);
 router.post('/:id/stages', candidatePipelineController.addStage);
+router.post('/:id/email', candidatePipelineController.email);
 
 router.put('/:id', candidatePipelineController.update);
 

@@ -52,8 +52,6 @@ function App() {
         <Route path="/selection/report" element={<ReportPage />} />
         <Route path="/selection/ai-matching" element={<AIMatchingPage />} />
 
-        <Route path="/asesmen/asesmen-a" element={<AssessmentAPage />} />
-
         {/* Catch-all: any unregistered path shows Coming Soon */}
         <Route path="*" element={<ComingSoonPage />} />
       </Route>

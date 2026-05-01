@@ -1,10 +1,28 @@
 import questionService from './question.service.js';
 
 class QuestionController {
-  async getAll(req, res) {
+  async getAllAssessments(req, res) {
     try {
-      const questions = await questionService.getAll();
-      res.status(200).json({ message: 'List all questions', questions });
+      const assessments = await questionService.getAllAssessments();
+      res.status(200).json({ message: 'List all assessments', assessments });
+    } catch (err) {
+      res.status(err.status || 500).json({ message: err.message });
+    }
+  }
+
+  async getByAssessmentCode(req, res) {
+    try {
+      const questions = await questionService.getQuestionsByCode(req.params.code);
+      res.status(200).json({ message: 'Questions for assessment', questions });
+    } catch (err) {
+      res.status(err.status || 500).json({ message: err.message });
+    }
+  }
+
+  async getBySubtest(req, res) {
+    try {
+      const items = await questionService.getSubtestByCode(req.params.code, req.params.subtest);
+      res.status(200).json({ message: 'Questions for subtest', subtest: req.params.subtest, items });
     } catch (err) {
       res.status(err.status || 500).json({ message: err.message });
     }
@@ -12,36 +30,8 @@ class QuestionController {
 
   async getById(req, res) {
     try {
-      const question = await questionService.getById(req.params.id);
-      res.status(200).json({ message: 'Question found', question });
-    } catch (err) {
-      res.status(err.status || 500).json({ message: err.message });
-    }
-  }
-
-  async create(req, res) {
-    try {
-      const { text, options, correct, points } = req.body;
-      const question = await questionService.create(text, options, correct, points);
-      res.status(201).json({ message: 'Question created', question });
-    } catch (err) {
-      res.status(err.status || 500).json({ message: err.message });
-    }
-  }
-
-  async update(req, res) {
-    try {
-      const question = await questionService.update(req.params.id, req.body);
-      res.status(200).json({ message: 'Question updated', question });
-    } catch (err) {
-      res.status(err.status || 500).json({ message: err.message });
-    }
-  }
-
-  async delete(req, res) {
-    try {
-      const question = await questionService.delete(req.params.id);
-      res.status(200).json({ message: 'Question deleted', question });
+      const assessment = await questionService.getById(req.params.id);
+      res.status(200).json({ message: 'Assessment found', assessment });
     } catch (err) {
       res.status(err.status || 500).json({ message: err.message });
     }

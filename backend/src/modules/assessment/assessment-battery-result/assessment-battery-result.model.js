@@ -1,105 +1,122 @@
 import getDb from "../../../config/postgres.js"
 
+const RESULT_SELECT = `
+  SELECT caa.id,
+         caa.participant_id,
+         caa.assessment_id,
+         caa.status,
+         caa.results,
+         caa.summary,
+         caa.narrative_report,
+         caa.strengths,
+         caa.development_areas,
+         caa.recommended_roles,
+         caa.started_at,
+         caa.completed_at,
+         caa.assessment_date,
+         caa.created_at,
+         caa.updated_at,
+         p.name  AS participant_name,
+         p.email AS participant_email,
+         ma.assessment_code,
+         ma.name AS assessment_name
+  FROM core_applicant_assessment caa
+  JOIN participants p          ON p.id  = caa.participant_id
+  LEFT JOIN master_assessment ma ON ma.id = caa.assessment_id
+`;
+
 class AssessmentBatteryResult {
   static async getAll() {
     const result = await getDb().query(`
-      SELECT br.*,
-            s.token, s.battery, s.status AS session_status,
-            s.participant_id, s.job_id,
-            p.name AS participant_name, p.email AS participant_email
-      FROM assessment_battery_results br
-      JOIN assessment_sessions s ON s.id = br.session_id
-      LEFT JOIN participants p ON p.id = s.participant_id
-      ORDER BY br.created_at DESC
+      ${RESULT_SELECT}
+      ORDER BY caa.created_at DESC
     `);
     return result.rows;
   }
 
- static async getById(id) {
+  static async getById(id) {
     const result = await getDb().query(`
-      SELECT *
-      FROM assessment_battery_results
-      WHERE id = $1
+      ${RESULT_SELECT}
+      WHERE caa.id = $1
     `, [id]);
     return result.rows[0];
   }
 
-  static async getByToken(token) {
+  static async getByParticipantId(participant_id) {
     const result = await getDb().query(`
-      SELECT br.*
-      FROM assessment_battery_results br
-      JOIN assessment_sessions s ON s.id = br.session_id
-      WHERE s.token = $1
-    `, [token]);
+      ${RESULT_SELECT}
+      WHERE caa.participant_id = $1
+      ORDER BY caa.assessment_date DESC, caa.created_at DESC
+    `, [participant_id]);
+    return result.rows;
+  }
+
+  static async getByParticipantAndAssessment(participant_id, assessment_id) {
+    const result = await getDb().query(`
+      ${RESULT_SELECT}
+      WHERE caa.participant_id = $1
+        AND caa.assessment_id  = $2
+      ORDER BY caa.assessment_date DESC
+      LIMIT 1
+    `, [participant_id, assessment_id]);
     return result.rows[0];
   }
 
-  static async getBySessionId(session_id) {
-    const result = await getDb().query(`
-      SELECT *
-      FROM assessment_battery_results
-      WHERE session_id = $1
-    `, [session_id]);
-    return result.rows[0];
-  }
-
-  static async saveReport(session_id, report) {
-    const result = await getDb().query(`
-      UPDATE assessment_battery_results
-      SET report = $1, updated_at = NOW()
-      WHERE session_id = $2
-      RETURNING *
-    `, [JSON.stringify(report), session_id]);
-    return result.rows[0];
-  }
-
-  static async updateRecruiterReview(session_id, { recruiter_recommendation, recruiter_note, report }) {
-    const result = await getDb().query(`
-      UPDATE assessment_battery_results
-      SET recruiter_recommendation = $1,
-          recruiter_note = $2,
-          report = COALESCE($3::jsonb, report),
-          updated_at = NOW()
-      WHERE session_id = $4
-      RETURNING *
-    `, [recruiter_recommendation || null, recruiter_note || null, report ? JSON.stringify(report) : null, session_id, ]);
-    return result.rows[0];
-  }
-
-  static async create({ session_id, profile, result, scores }) {
+  static async upsertByDay({ participant_id, assessment_id, status, results, summary, started_at, completed_at }) {
     const res = await getDb().query(`
-      INSERT INTO assessment_battery_results
-        (session_id, profile, result, scores)
-      VALUES ($1, $2, $3, $4)
+      INSERT INTO core_applicant_assessment
+        (participant_id, assessment_id, status, results, summary, started_at, completed_at)
+      VALUES ($1, $2, $3, $4::jsonb, $5::jsonb, $6, $7)
+      ON CONFLICT (participant_id, assessment_id, assessment_date) DO UPDATE
+      SET status        = EXCLUDED.status,
+          results       = EXCLUDED.results,
+          summary       = EXCLUDED.summary,
+          started_at    = EXCLUDED.started_at,
+          completed_at  = EXCLUDED.completed_at,
+          updated_at    = NOW()
       RETURNING *
-    `, [session_id,JSON.stringify(profile),JSON.stringify(result),scores ? JSON.stringify(scores) : null,]);
+    `, [
+      participant_id,
+      assessment_id,
+      status || 'completed',
+      JSON.stringify(results),
+      summary ? JSON.stringify(summary) : null,
+      started_at || null,
+      completed_at || null,
+    ]);
     return res.rows[0];
   }
 
-  static async update(id, fields) {
-    const keys = Object.keys(fields);
-    const values = Object.values(fields);
-
-    const setClause = keys.map((k, i) => `${k} = $${i + 1}`).join(', ');
-
+  static async updateReport(id, { summary, narrative_report, strengths, development_areas, recommended_roles }) {
     const result = await getDb().query(`
-      UPDATE assessment_battery_results
-      SET ${setClause}, updated_at = NOW()
-      WHERE id = $${keys.length + 1}
+      UPDATE core_applicant_assessment
+      SET summary            = COALESCE($1::jsonb, summary),
+          narrative_report   = COALESCE($2, narrative_report),
+          strengths          = COALESCE($3, strengths),
+          development_areas  = COALESCE($4, development_areas),
+          recommended_roles  = COALESCE($5, recommended_roles),
+          updated_at         = NOW()
+      WHERE id = $6
       RETURNING *
-    `, [...values, id]);
+    `, [
+      summary ? JSON.stringify(summary) : null,
+      narrative_report ?? null,
+      strengths ?? null,
+      development_areas ?? null,
+      recommended_roles ?? null,
+      id,
+    ]);
     return result.rows[0];
   }
 
   static async delete(id) {
     const result = await getDb().query(`
-      DELETE FROM assessment_battery_results
+      DELETE FROM core_applicant_assessment
       WHERE id = $1
       RETURNING *
     `, [id]);
     return result.rows[0];
-  }  
-
+  }
 }
 
 export default AssessmentBatteryResult;

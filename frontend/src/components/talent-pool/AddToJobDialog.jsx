@@ -6,9 +6,10 @@ import {
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
+import { Checkbox } from '@/components/ui/checkbox';
 
 import { getJobs } from '@/api/job.api';
-import { addApplicantToJob, getCandidatesByApplicantId } from '@/api/candidate.api';
+import { addApplicantToJob, getCandidatesByApplicantId, sendCandidateEmail } from '@/api/candidate.api';
 
 const STATUS_COLORS = {
   Draft: 'bg-orange-50 text-orange-600 border-orange-200',
@@ -27,12 +28,14 @@ export default function AddToJobDialog({ open, onOpenChange, applicant, onSucces
   const [loadingJobs, setLoadingJobs] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState(null);
+  const [sendInvite, setSendInvite] = useState(false);
 
   useEffect(() => {
     if (!open || !applicant?.id) return;
     setSelectedJobId(null);
     setSearch('');
     setError(null);
+    setSendInvite(false);
 
     (async () => {
       setLoadingJobs(true);
@@ -67,7 +70,15 @@ export default function AddToJobDialog({ open, onOpenChange, applicant, onSucces
     setSubmitting(true);
     setError(null);
     try {
-      await addApplicantToJob(applicant.id, selectedJobId);
+      const res = await addApplicantToJob(applicant.id, selectedJobId);
+      const candidateId = res.data.pipeline?.id;
+      if (sendInvite && candidateId) {
+        try {
+          await sendCandidateEmail(candidateId);
+        } catch (mailErr) {
+          console.warn('Candidate added but invitation email failed:', mailErr);
+        }
+      }
       onSuccess?.(selectedJobId);
       onOpenChange(false);
     } catch (err) {
@@ -163,6 +174,26 @@ export default function AddToJobDialog({ open, onOpenChange, applicant, onSucces
             );
           })}
         </div>
+
+        {/* Invitation email opt-in */}
+        <label className="flex items-center gap-2 px-1 cursor-pointer text-xs">
+          <Checkbox
+            id="send-invite"
+            checked={sendInvite}
+            disabled={!applicant?.email}
+            onCheckedChange={(v) => setSendInvite(!!v)}
+          />
+          {applicant?.email ? (
+            <span>
+              Send invitation email to{' '}
+              <span className="font-medium">{applicant.email}</span>
+            </span>
+          ) : (
+            <span className="text-muted-foreground italic">
+              No email on file — invitation cannot be sent
+            </span>
+          )}
+        </label>
 
         {/* Error */}
         {error && (
