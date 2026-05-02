@@ -18,7 +18,6 @@ import RecruitersPage from "./pages/Recruiters"
 import ComingSoonPage from "./pages/ComingSoon"
 import AssessmentPage from "./pages/Assessment"
 import ReportPage from "./pages/Report"
-import AssessmentAPage from "./pages/AssessmentA"
 import AIMatchingPage from "./pages/AIMatching"
 
 function App() {
