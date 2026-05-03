@@ -38,6 +38,15 @@ class ParticipantController {
     }
   }
 
+  async createByEmail(req, res) {
+    try {
+      const participant = await participantService.createByEmail(req.body);
+      res.status(200).json({ message: 'Participant resolved', participant });
+    } catch (err) {
+      res.status(err.status || 500).json({ message: err.message });
+    }
+  }
+
   async update(req, res) {
     try {
       const participant = await participantService.update(req.params.id, req.body);

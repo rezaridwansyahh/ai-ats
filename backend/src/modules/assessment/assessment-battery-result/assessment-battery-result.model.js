@@ -16,8 +16,12 @@ const RESULT_SELECT = `
          caa.assessment_date,
          caa.created_at,
          caa.updated_at,
-         p.name  AS participant_name,
-         p.email AS participant_email,
+         p.name        AS participant_name,
+         p.email       AS participant_email,
+         p.position    AS participant_position,
+         p.department  AS participant_department,
+         p.education   AS participant_education,
+         p.date_birth  AS participant_date_birth,
          ma.assessment_code,
          ma.name AS assessment_name
   FROM core_applicant_assessment caa
@@ -62,12 +66,22 @@ class AssessmentBatteryResult {
     return result.rows[0];
   }
 
-  static async upsertByDay({ participant_id, assessment_id, status, results, summary, started_at, completed_at }) {
+  static async getActiveByParticipantAssessment(participant_id, assessment_id) {
+    const result = await getDb().query(`
+      ${RESULT_SELECT}
+      WHERE caa.participant_id = $1
+        AND caa.assessment_id  = $2
+      LIMIT 1
+    `, [participant_id, assessment_id]);
+    return result.rows[0];
+  }
+
+  static async upsert({ participant_id, assessment_id, status, results, summary, started_at, completed_at }) {
     const res = await getDb().query(`
       INSERT INTO core_applicant_assessment
         (participant_id, assessment_id, status, results, summary, started_at, completed_at)
       VALUES ($1, $2, $3, $4::jsonb, $5::jsonb, $6, $7)
-      ON CONFLICT (participant_id, assessment_id, assessment_date) DO UPDATE
+      ON CONFLICT (participant_id, assessment_id) DO UPDATE
       SET status        = EXCLUDED.status,
           results       = EXCLUDED.results,
           summary       = EXCLUDED.summary,

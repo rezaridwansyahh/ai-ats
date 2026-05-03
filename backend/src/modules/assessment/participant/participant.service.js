@@ -31,6 +31,17 @@ class ParticipantService {
     return await Participant.create({ name, email, position, department, education, date_birth });
   }
 
+  async createByEmail({ name, email, position, department, education, date_birth }) {
+    if (!name || !email || !position || !department || !education || !date_birth) {
+      throw { status: 400, message: 'name, email, position, department, education, and date_birth are required' };
+    }
+
+    const existing = await Participant.getByEmail(email);
+    if (existing) return existing;
+
+    return await Participant.create({ name, email, position, department, education, date_birth });
+  }
+
   async update(id, fields) {
     const participant = await Participant.getById(id);
     if (!participant) throw { status: 404, message: 'Participant not found' };

@@ -28,6 +28,18 @@ class AssessmentBatteryResultController {
     }
   }
 
+  async getActiveProgress(req, res) {
+    try {
+      const progress = await assessmentBatteryResultService.getActiveProgress(
+        req.params.participant_id,
+        req.query.assessment_id,
+      );
+      res.status(200).json({ message: 'Active progress', progress });
+    } catch (err) {
+      res.status(err.status || 500).json({ message: err.message });
+    }
+  }
+
   async submit(req, res) {
     try {
       const { participant_id, assessment_id, answers, started_at } = req.body;

@@ -1,12 +1,13 @@
 import { useState, useEffect, useRef } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { getQuestionsByAssessmentCode } from '@/api/question.api';
-import { createParticipant } from '@/api/participant.api';
-import { submitAssessment } from '@/api/assessment-battery-result.api';
+import { createParticipantByEmail } from '@/api/participant.api';
+import { submitAssessment, getActiveProgress } from '@/api/assessment-battery-result.api';
 import BatteryA from '@/components/assessment/BatteryA';
 
 const ASSESSMENT_CODE = 'myralix_battery_a';
 const ASSESSMENT_ID = 1;
+const EMAIL_LS_KEY = 'assessment:lastEmail';
 
 export default function AssessmentPage() {
   const [phase, setPhase] = useState('start'); // start, quiz, done
@@ -20,9 +21,9 @@ export default function AssessmentPage() {
     department: '', education: '', date_birth: '',
   });
   const [participantId, setParticipantId] = useState(null);
+  const [completedSubtests, setCompletedSubtests] = useState([]);
   const [submitting, setSubmitting] = useState(false);
   const startedAtRef = useRef(null);
-  const [result, setResult] = useState(null);
 
   useEffect(() => {
     (async () => {
@@ -35,16 +36,30 @@ export default function AssessmentPage() {
         setLoadingQuestions(false);
       }
     })();
+
+    const savedEmail = localStorage.getItem(EMAIL_LS_KEY);
+    if (savedEmail) setForm((f) => ({ ...f, email: savedEmail }));
   }, []);
 
   const handleStartTest = async () => {
     setError(null);
     setSubmitting(true);
     try {
-      const { data } = await createParticipant(form);
-      setParticipantId(data.participant.id);
+      const { data } = await createParticipantByEmail(form);
+      const participant = data.participant;
+      setParticipantId(participant.id);
+      localStorage.setItem(EMAIL_LS_KEY, participant.email);
       startedAtRef.current = new Date().toISOString();
-      setPhase('quiz');
+
+      const { data: progressData } = await getActiveProgress(participant.id, ASSESSMENT_ID);
+      const progress = progressData.progress || {};
+      setCompletedSubtests(progress.completed_subtests || []);
+
+      if (progress.status === 'completed') {
+        setPhase('done');
+      } else {
+        setPhase('quiz');
+      }
     } catch (err) {
       setError(err.response?.data?.message || 'Gagal mendaftarkan peserta');
     } finally {
@@ -52,20 +67,27 @@ export default function AssessmentPage() {
     }
   };
 
-  const handleAssessmentComplete = async (answers) => {
+  const handleSubtestComplete = async (_subtestKey, subtestAnswers) => {
     setSubmitting(true);
     setError(null);
     try {
       const { data } = await submitAssessment({
         participant_id: participantId,
         assessment_id: ASSESSMENT_ID,
-        answers,
+        answers: subtestAnswers,
         started_at: startedAtRef.current,
       });
-      setResult(data.result);
-      setPhase('done');
+      const row = data.result;
+      const newCompleted = Object.keys(row?.results?.by_subtest ?? {});
+      setCompletedSubtests(newCompleted);
+
+      if (row?.status === 'completed') {
+        setPhase('done');
+      }
+      return row;
     } catch (err) {
       setError(err.response?.data?.message || 'Gagal mengirim hasil');
+      throw err;
     } finally {
       setSubmitting(false);
     }
@@ -161,11 +183,16 @@ export default function AssessmentPage() {
       {phase === 'quiz' && questions && (
         <>
           {error && <p className="text-sm text-red-500">{error}</p>}
-          <BatteryA questions={questions} onComplete={handleAssessmentComplete} submitting={submitting} />
+          <BatteryA
+            questions={questions}
+            completedSubtests={completedSubtests}
+            onSubtestComplete={handleSubtestComplete}
+            submitting={submitting}
+          />
         </>
       )}
 
-      {phase === 'done' && result && <DoneScreen result={result} />}
+      {phase === 'done' && <DoneScreen />}
     </div>
   );
 }
@@ -184,11 +211,9 @@ function Field({ label, type = 'text', value, onChange }) {
   );
 }
 
-function DoneScreen({ result }) {
-  const summary = result.summary ?? {};
-  const bySubtest = result.results?.by_subtest ?? {};
+function DoneScreen() {
   return (
-    <div className="flex flex-col items-center pt-8 space-y-5">
+    <div className="flex flex-col items-center pt-8">
       <div
         className="rounded-2xl p-10 text-white text-center relative overflow-hidden w-full"
         style={{
@@ -204,56 +229,17 @@ function DoneScreen({ result }) {
             <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
           </svg>
         </div>
-        <h2 className="text-2xl font-bold mb-2" style={{ fontFamily: 'Georgia, serif' }}>
+        <h2 className="text-2xl font-bold mb-3" style={{ fontFamily: 'Georgia, serif' }}>
           Asesmen Selesai!
         </h2>
-        <p className="text-sm opacity-80 leading-relaxed max-w-sm mx-auto mb-6">
-          Terima kasih telah menyelesaikan asesmen. Berikut ringkasan hasil Anda.
+        <p className="text-sm opacity-90 leading-relaxed max-w-md mx-auto">
+          Terima kasih telah menyelesaikan seluruh rangkaian asesmen.
+          Hasil Anda telah tersimpan dan akan ditinjau oleh tim rekrutmen.
         </p>
-
-        <div className="grid grid-cols-2 gap-3 max-w-sm mx-auto">
-          <Stat label="Skor Kognitif" value={summary.overall_percent != null ? `${summary.overall_percent}%` : '-'} />
-          <Stat
-            label="Poin Kognitif"
-            value={`${summary.cognitive_points ?? 0} / ${summary.cognitive_max ?? 0}`}
-          />
-          <Stat label="Profil DISC" value={summary.disc_dominant ?? '-'} />
-          <Stat label="Holland Code" value={summary.holland_code3 ?? '-'} />
-        </div>
+        <p className="text-xs opacity-70 leading-relaxed max-w-md mx-auto mt-3">
+          Tim akan menghubungi Anda untuk tahap selanjutnya. Anda dapat menutup halaman ini.
+        </p>
       </div>
-
-      <Card className="w-full">
-        <CardHeader>
-          <CardTitle className="text-sm">Rincian per Sub-Tes</CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-2">
-          {Object.entries(bySubtest).map(([k, v]) => (
-            <div key={k} className="flex justify-between items-center text-sm py-1.5 border-b last:border-0">
-              <span className="font-semibold">{k}</span>
-              <span className="text-muted-foreground">{summarizeSubtest(k, v)}</span>
-            </div>
-          ))}
-        </CardContent>
-      </Card>
     </div>
   );
-}
-
-function Stat({ label, value }) {
-  return (
-    <div className="rounded-lg py-3 px-4" style={{ background: 'rgba(255,255,255,.1)', border: '1px solid rgba(255,255,255,.15)' }}>
-      <p className="text-[10px] uppercase tracking-wider opacity-60 mb-0.5">{label}</p>
-      <p className="text-xl font-bold">{value}</p>
-    </div>
-  );
-}
-
-function summarizeSubtest(name, v) {
-  if (!v) return '-';
-  if (name === 'GI' || name === 'KA') return `${v.points}/${v.max} (${v.percent}%)`;
-  if (name === 'BigFive')
-    return Object.entries(v.avg ?? {}).map(([t, n]) => `${t}:${n}`).join(' · ');
-  if (name === 'DISC') return `Dominant: ${v.dominant ?? '-'}`;
-  if (name === 'Holland') return `Code: ${v.code3 ?? '-'}`;
-  return JSON.stringify(v);
 }

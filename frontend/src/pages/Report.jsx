@@ -9,6 +9,7 @@ import { TablePagination } from '@/components/shared/TablePagination';
 import { useSort } from '@/hooks/useSort';
 import { getAssessmentResults } from '@/api/assessment-battery-result.api';
 import { RefreshCw, Search, Users, Trophy, TrendingUp } from 'lucide-react';
+import { AssessmentDetailDialog } from '@/components/assessment/AssessmentDetailDialog';
 
 export default function ReportPage() {
   const [results, setResults]   = useState([]);
@@ -17,6 +18,7 @@ export default function ReportPage() {
   const [search, setSearch]     = useState('');
   const [page, setPage]         = useState(1);
   const [pageSize, setPageSize] = useState(10);
+  const [selected, setSelected] = useState(null);
 
   const { toggle, apply, SortIcon } = useSort();
 
@@ -39,7 +41,8 @@ export default function ReportPage() {
   const decorated = useMemo(
     () => results.map((r) => ({
       ...r,
-      overall_percent: r.summary?.overall_percent ?? null,
+      overall_score: r.summary?.pillars?.overall ?? null,
+      overall_threshold: r.summary?.pillar_thresholds?.overall ?? 70,
       disc_dominant:   r.summary?.disc_dominant ?? null,
       holland_code3:   r.summary?.holland_code3 ?? null,
     })),
@@ -62,9 +65,9 @@ export default function ReportPage() {
   const paginated  = sorted.slice((page - 1) * pageSize, page * pageSize);
 
   const stats = useMemo(() => {
-    const scored = decorated.filter((r) => typeof r.overall_percent === 'number');
+    const scored = decorated.filter((r) => typeof r.overall_score === 'number');
     if (scored.length === 0) return { total: decorated.length, avg: 0, highest: 0 };
-    const scores  = scored.map((r) => r.overall_percent);
+    const scores  = scored.map((r) => r.overall_score);
     const avg     = Math.round(scores.reduce((a, b) => a + b, 0) / scores.length);
     const highest = Math.max(...scores);
     return { total: decorated.length, avg, highest };
@@ -77,10 +80,10 @@ export default function ReportPage() {
     });
   };
 
-  const scoreBadge = (pct) => {
-    if (pct == null) return 'bg-slate-100 text-slate-500 border-slate-200';
-    if (pct >= 80) return 'bg-green-100 text-green-700 border-green-200';
-    if (pct >= 50) return 'bg-yellow-100 text-yellow-700 border-yellow-200';
+  const scoreBadge = (score, threshold = 70) => {
+    if (score == null) return 'bg-slate-100 text-slate-500 border-slate-200';
+    if (score >= threshold)      return 'bg-green-100 text-green-700 border-green-200';
+    if (score >= threshold - 15) return 'bg-yellow-100 text-yellow-700 border-yellow-200';
     return 'bg-red-100 text-red-700 border-red-200';
   };
 
@@ -99,9 +102,9 @@ export default function ReportPage() {
 
       <div className="grid grid-cols-3 gap-4">
         {[
-          { label: 'Total Peserta',     value: stats.total,             icon: Users,       color: '#0A6E5C' },
-          { label: 'Rata-rata Kognitif', value: `${stats.avg}%`,        icon: TrendingUp,  color: '#D97706' },
-          { label: 'Skor Tertinggi',    value: `${stats.highest}%`,     icon: Trophy,      color: '#2563EB' },
+          { label: 'Total Peserta',       value: stats.total,                icon: Users,       color: '#0A6E5C' },
+          { label: 'Rata-rata Overall',   value: `${stats.avg}/100`,         icon: TrendingUp,  color: '#D97706' },
+          { label: 'Overall Tertinggi',   value: `${stats.highest}/100`,     icon: Trophy,      color: '#2563EB' },
         ].map(({ label, value, icon: Icon, color }) => (
           <Card key={label}>
             <CardContent className="p-4 flex items-center gap-3">
@@ -157,11 +160,12 @@ export default function ReportPage() {
                     <TableHead className="cursor-pointer" onClick={() => toggle('assessment_name')}>
                       <span className="flex items-center gap-1">Asesmen <SortIcon field="assessment_name" /></span>
                     </TableHead>
-                    <TableHead className="cursor-pointer" onClick={() => toggle('overall_percent')}>
-                      <span className="flex items-center gap-1">Kognitif <SortIcon field="overall_percent" /></span>
+                    <TableHead className="cursor-pointer" onClick={() => toggle('overall_score')}>
+                      <span className="flex items-center gap-1">Overall <SortIcon field="overall_score" /></span>
                     </TableHead>
-                    <TableHead>DISC</TableHead>
-                    <TableHead>Holland</TableHead>
+                    <TableHead className="cursor-pointer" onClick={() => toggle('status')}>
+                      <span className="flex items-center gap-1">Status <SortIcon field="status" /></span>
+                    </TableHead>
                     <TableHead className="cursor-pointer" onClick={() => toggle('assessment_date')}>
                       <span className="flex items-center gap-1">Tanggal <SortIcon field="assessment_date" /></span>
                     </TableHead>
@@ -169,7 +173,11 @@ export default function ReportPage() {
                 </TableHeader>
                 <TableBody>
                   {paginated.map((r, i) => (
-                    <TableRow key={r.id}>
+                    <TableRow
+                      key={r.id}
+                      onClick={() => setSelected(r)}
+                      className="cursor-pointer hover:bg-muted/40"
+                    >
                       <TableCell className="text-muted-foreground text-xs">
                         {(page - 1) * pageSize + i + 1}
                       </TableCell>
@@ -177,12 +185,19 @@ export default function ReportPage() {
                       <TableCell className="text-muted-foreground">{r.participant_email}</TableCell>
                       <TableCell className="text-muted-foreground text-xs">{r.assessment_name ?? '-'}</TableCell>
                       <TableCell>
-                        <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-bold border ${scoreBadge(r.overall_percent)}`}>
-                          {r.overall_percent != null ? `${r.overall_percent}%` : '-'}
+                        <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-bold border ${scoreBadge(r.overall_score, r.overall_threshold)}`}>
+                          {r.overall_score != null ? `${r.overall_score}/100` : '-'}
                         </span>
                       </TableCell>
-                      <TableCell className="font-mono text-xs">{r.disc_dominant ?? '-'}</TableCell>
-                      <TableCell className="font-mono text-xs">{r.holland_code3 ?? '-'}</TableCell>
+                      <TableCell>
+                        <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold border ${
+                          r.status === 'completed'
+                            ? 'bg-green-100 text-green-700 border-green-200'
+                            : 'bg-amber-100 text-amber-700 border-amber-200'
+                        }`}>
+                          {r.status === 'completed' ? 'Selesai' : 'Berlangsung'}
+                        </span>
+                      </TableCell>
                       <TableCell className="text-muted-foreground text-xs">{formatDate(r.assessment_date)}</TableCell>
                     </TableRow>
                   ))}
@@ -201,6 +216,12 @@ export default function ReportPage() {
           )}
         </CardContent>
       </Card>
+
+      <AssessmentDetailDialog
+        open={!!selected}
+        onOpenChange={(open) => { if (!open) setSelected(null); }}
+        result={selected}
+      />
     </div>
   );
 }

@@ -97,17 +97,120 @@ function buildResults(questions, answersBySubtest) {
   return { answers: answersBySubtest, by_subtest, total_points, total_max };
 }
 
+const TK_WEIGHTS = { GI: 0.30, KA: 0.175 };
+
+const PILLAR_THRESHOLDS = {
+  cognitive:     70,
+  personality:   65,
+  work_attitude: 70,
+  overall:       70,
+};
+
+function pctToScore10(pct) {
+  return Math.max(1, Math.min(10, Math.round(pct / 10)));
+}
+
+function computeTkComposite(by_subtest) {
+  const subs = ['GI', 'KA'].filter((k) => by_subtest[k]);
+  if (subs.length === 0) return null;
+
+  let weighted = 0;
+  let weightSum = 0;
+  for (const k of subs) {
+    const score10 = pctToScore10(by_subtest[k].percent ?? 0);
+    weighted  += score10 * TK_WEIGHTS[k];
+    weightSum += TK_WEIGHTS[k];
+  }
+  return weightSum ? Math.round((weighted / weightSum) * 10) / 10 : null;
+}
+
+function bigfiveAvgToPct(avg) {
+  // avg on 1-5 Likert → 0-100. (avg-1)/4 × 100.
+  const out = {};
+  for (const [k, v] of Object.entries(avg || {})) {
+    out[k] = v ? Math.round(((v - 1) / 4) * 100) : null;
+  }
+  return out;
+}
+
+function computePersonalityPillar(bigfive_pct) {
+  if (!bigfive_pct) return null;
+  const C = bigfive_pct.C;
+  const N = bigfive_pct.N;
+  const A = bigfive_pct.A;
+  if (C == null || N == null || A == null) return null;
+  // Battery A formula: high C, low N, high A = good for operational.
+  return Math.round(C * 0.4 + (100 - N) * 0.3 + A * 0.3);
+}
+
+function computeWorkAttitudePillar(by_subtest) {
+  const disc    = by_subtest.DISC;
+  const holland = by_subtest.Holland;
+  if (!disc && !holland) return null;
+
+  let discFit = 60;
+  if (disc?.dominant === 'S')      discFit = 100;
+  else if (disc?.dominant === 'C') discFit = 85;
+  else if (disc?.dominant === 'D' || disc?.dominant === 'I') discFit = 55;
+
+  let holFit = 60;
+  if (holland?.code3) {
+    const code = holland.code3;
+    if (code.includes('C') || code.includes('S')) holFit = 95;
+    else if (code.includes('R')) holFit = 80;
+    else holFit = 55;
+  }
+  return Math.round(discFit * 0.5 + holFit * 0.5);
+}
+
 function buildSummary(results) {
-  const cog = (results.by_subtest.GI?.points ?? 0) + (results.by_subtest.KA?.points ?? 0);
-  const cogMax = (results.by_subtest.GI?.max ?? 0) + (results.by_subtest.KA?.max ?? 0);
+  const by_subtest = results.by_subtest ?? {};
+  const cog    = (by_subtest.GI?.points ?? 0) + (by_subtest.KA?.points ?? 0);
+  const cogMax = (by_subtest.GI?.max    ?? 0) + (by_subtest.KA?.max    ?? 0);
+
+  const tk_composite = computeTkComposite(by_subtest);
+  const bigfive_pct  = by_subtest.BigFive?.avg ? bigfiveAvgToPct(by_subtest.BigFive.avg) : null;
+
+  const cognitive     = tk_composite != null ? Math.round(tk_composite * 10) : null;
+  const personality   = computePersonalityPillar(bigfive_pct);
+  const work_attitude = computeWorkAttitudePillar(by_subtest);
+
+  const presentPillars = [cognitive, personality, work_attitude].filter((v) => v != null);
+  const overall = presentPillars.length
+    ? Math.round(presentPillars.reduce((a, b) => a + b, 0) / presentPillars.length)
+    : null;
+
   return {
     overall_percent: cogMax ? Math.round((cog / cogMax) * 100) : null,
     cognitive_points: cog,
     cognitive_max: cogMax,
-    bigfive_avg: results.by_subtest.BigFive?.avg ?? null,
-    disc_dominant: results.by_subtest.DISC?.dominant ?? null,
-    holland_code3: results.by_subtest.Holland?.code3 ?? null,
+    bigfive_avg: by_subtest.BigFive?.avg ?? null,
+    bigfive_pct,
+    disc_dominant: by_subtest.DISC?.dominant ?? null,
+    holland_code3: by_subtest.Holland?.code3 ?? null,
+    tk_composite,
+    pillars: { cognitive, personality, work_attitude, overall },
+    pillar_thresholds: PILLAR_THRESHOLDS,
   };
+}
+
+function mergeBySubtest(existing, fresh) {
+  const merged = { ...(existing || {}) };
+  for (const [k, v] of Object.entries(fresh || {})) {
+    if (merged[k]) continue;
+    merged[k] = v;
+  }
+  return merged;
+}
+
+function sumPoints(by_subtest) {
+  let total_points = 0;
+  let total_max    = 0;
+  for (const v of Object.values(by_subtest)) {
+    if (v?.points != null) total_points += v.points;
+    if (v?.max    != null) total_max    += v.max;
+  }
+  return { total_points, total_max };
 }
 
 function groupAnswersBySubtest(answers) {
@@ -144,26 +247,75 @@ class AssessmentBatteryResultService {
       throw { status: 400, message: 'answers must be a non-empty array' };
     }
 
+    const pid = Number(participant_id);
+    const aid = Number(assessment_id);
+
     const assessmentRow = await getDb().query(
       `SELECT options FROM master_assessment WHERE id = $1`,
-      [Number(assessment_id)]
+      [aid]
     );
     if (!assessmentRow.rows[0]) throw { status: 404, message: 'Assessment not found' };
-    const questions = assessmentRow.rows[0].options?.questions ?? {};
+    const options          = assessmentRow.rows[0].options ?? {};
+    const questions        = options.questions ?? {};
+    const expectedSubtests = Array.isArray(options.subtests) ? options.subtests : Object.keys(questions);
 
-    const grouped = groupAnswersBySubtest(answers);
-    const results = buildResults(questions, grouped);
-    const summary = buildSummary(results);
+    const existing = await AssessmentBatteryResult.getActiveByParticipantAssessment(pid, aid);
+    if (existing?.status === 'completed') {
+      throw { status: 409, message: 'Assessment already completed for this participant' };
+    }
 
-    return await AssessmentBatteryResult.upsertByDay({
-      participant_id: Number(participant_id),
-      assessment_id: Number(assessment_id),
-      status: 'completed',
-      results,
+    const grouped      = groupAnswersBySubtest(answers);
+    const freshResults = buildResults(questions, grouped);
+
+    const existingSubtest = existing?.results?.by_subtest ?? {};
+    const existingAnswers = existing?.results?.answers    ?? {};
+
+    const mergedBySubtest = mergeBySubtest(existingSubtest, freshResults.by_subtest);
+    const mergedAnswers   = { ...existingAnswers };
+    for (const [k, v] of Object.entries(freshResults.answers || {})) {
+      if (!mergedAnswers[k]) mergedAnswers[k] = v;
+    }
+
+    const { total_points, total_max } = sumPoints(mergedBySubtest);
+    const mergedResults = {
+      answers:    mergedAnswers,
+      by_subtest: mergedBySubtest,
+      total_points,
+      total_max,
+    };
+    const summary = buildSummary(mergedResults);
+
+    const allDone = expectedSubtests.length > 0
+      && expectedSubtests.every((k) => mergedBySubtest[k]);
+    const status = allDone ? 'completed' : 'in_progress';
+
+    return await AssessmentBatteryResult.upsert({
+      participant_id: pid,
+      assessment_id:  aid,
+      status,
+      results: mergedResults,
       summary,
-      started_at: started_at || null,
-      completed_at: new Date().toISOString(),
+      started_at:   existing?.started_at  || started_at || null,
+      completed_at: allDone ? new Date().toISOString() : null,
     });
+  }
+
+  async getActiveProgress(participant_id, assessment_id) {
+    if (!participant_id) throw { status: 400, message: 'participant_id is required' };
+    if (!assessment_id)  throw { status: 400, message: 'assessment_id is required' };
+    const row = await AssessmentBatteryResult.getActiveByParticipantAssessment(
+      Number(participant_id),
+      Number(assessment_id),
+    );
+    if (!row) {
+      return { id: null, status: null, completed_subtests: [], summary: null };
+    }
+    return {
+      id: row.id,
+      status: row.status,
+      completed_subtests: Object.keys(row.results?.by_subtest ?? {}),
+      summary: row.summary ?? null,
+    };
   }
 
   async updateReport(id, fields) {

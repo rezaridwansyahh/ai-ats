@@ -11,7 +11,7 @@ const SUBTEST_META = {
 
 const SUBTEST_ORDER = ['GI', 'KA', 'BigFive', 'DISC', 'Holland'];
 
-export default function BatteryA({ questions, onComplete, submitting }) {
+export default function BatteryA({ questions, completedSubtests = [], onSubtestComplete, submitting }) {
   const subtests = useMemo(
     () => SUBTEST_ORDER.filter((k) => Array.isArray(questions?.[k]) && questions[k].length > 0),
     [questions]
@@ -22,18 +22,17 @@ export default function BatteryA({ questions, onComplete, submitting }) {
   const [questionIdx, setQuestionIdx] = useState(0);
   const [answers, setAnswers] = useState({});
 
-  const completedSubtests = Object.keys(answers).filter(
-    (k) => answers[k]?.length === questions[k]?.length
-  );
+  const doneSet = useMemo(() => new Set(completedSubtests), [completedSubtests]);
 
   const startSubtest = (subtest) => {
+    if (doneSet.has(subtest)) return;
     setActiveSubtest(subtest);
     setQuestionIdx(0);
     setAnswers((prev) => ({ ...prev, [subtest]: prev[subtest] ?? [] }));
     setScreen('test');
   };
 
-  const recordAnswer = (selected) => {
+  const recordAnswer = async (selected) => {
     const items = questions[activeSubtest];
     const current = answers[activeSubtest] ?? [];
     const next = [...current];
@@ -43,21 +42,16 @@ export default function BatteryA({ questions, onComplete, submitting }) {
 
     if (questionIdx + 1 < items.length) {
       setQuestionIdx(questionIdx + 1);
-    } else {
-      const finishedAll =
-        SUBTEST_ORDER
-          .filter((k) => questions[k]?.length)
-          .every((k) => updated[k]?.length === questions[k].length);
-      if (finishedAll) {
-        const flat = [];
-        for (const k of SUBTEST_ORDER) {
-          for (const a of updated[k] ?? []) flat.push({ subtest: k, ...a });
-        }
-        onComplete(flat);
-      } else {
-        setActiveSubtest(null);
-        setScreen('overview');
-      }
+      return;
+    }
+
+    const flat = (updated[activeSubtest] ?? []).map((a) => ({ subtest: activeSubtest, ...a }));
+    try {
+      await onSubtestComplete?.(activeSubtest, flat);
+      setActiveSubtest(null);
+      setScreen('overview');
+    } catch {
+      // parent surfaces the error message; stay on the last question so the user can retry submit
     }
   };
 
@@ -71,9 +65,9 @@ export default function BatteryA({ questions, onComplete, submitting }) {
           <CardContent className="space-y-2.5">
             {subtests.map((k, i) => {
               const meta = SUBTEST_META[k];
-              const done = completedSubtests.includes(k);
+              const done = doneSet.has(k);
               const items = questions[k] ?? [];
-              const locked = !done && i > 0 && !completedSubtests.includes(subtests[i - 1]);
+              const locked = !done && i > 0 && !doneSet.has(subtests[i - 1]);
               return (
                 <button
                   key={k}

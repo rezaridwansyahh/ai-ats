@@ -11,6 +11,7 @@ router.get('/email/:email', participantController.getByEmail);
 router.get('/:id', participantController.getById);
 
 router.post('/', participantController.create);
+router.post('/create-by-email', participantController.createByEmail);
 
 router.put('/:id', participantController.update);
 

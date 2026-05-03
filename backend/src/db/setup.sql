@@ -485,7 +485,7 @@ CREATE TABLE core_applicant_assessment(
   assessment_date DATE NOT NULL DEFAULT CURRENT_DATE,
   created_at TIMESTAMP NOT NULL DEFAULT NOW(),
   updated_at TIMESTAMP NOT NULL DEFAULT NOW(),
-  UNIQUE (participant_id, assessment_id, assessment_date)
+  UNIQUE (participant_id, assessment_id)
 );
 CREATE INDEX idx_applicant_assessment ON core_applicant_assessment(participant_id);
 CREATE INDEX idx_assessment_date      ON core_applicant_assessment(assessment_date);
