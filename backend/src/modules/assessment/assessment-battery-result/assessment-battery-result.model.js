@@ -76,28 +76,53 @@ class AssessmentBatteryResult {
     return result.rows[0];
   }
 
-  static async upsert({ participant_id, assessment_id, status, results, summary, started_at, completed_at }) {
-    const res = await getDb().query(`
+  static async getForUpdate(client, participant_id, assessment_id) {
+    const res = await client.query(`
+      SELECT * FROM core_applicant_assessment
+      WHERE participant_id = $1 AND assessment_id = $2
+      FOR UPDATE
+    `, [participant_id, assessment_id]);
+    return res.rows[0];
+  }
+
+  static async create(client, { participant_id, assessment_id, status, results, summary, started_at, completed_at }) {
+    const res = await client.query(`
       INSERT INTO core_applicant_assessment
         (participant_id, assessment_id, status, results, summary, started_at, completed_at)
       VALUES ($1, $2, $3, $4::jsonb, $5::jsonb, $6, $7)
-      ON CONFLICT (participant_id, assessment_id) DO UPDATE
-      SET status        = EXCLUDED.status,
-          results       = EXCLUDED.results,
-          summary       = EXCLUDED.summary,
-          started_at    = EXCLUDED.started_at,
-          completed_at  = EXCLUDED.completed_at,
-          updated_at    = NOW()
       RETURNING *
     `, [
       participant_id,
       assessment_id,
-      status || 'completed',
+      status,
       JSON.stringify(results),
       summary ? JSON.stringify(summary) : null,
       started_at || null,
       completed_at || null,
     ]);
+    return res.rows[0];
+  }
+
+  static async update(client, id, fields) {
+    const JSONB_FIELDS = new Set(['results', 'summary']);
+    const keys = Object.keys(fields);
+    if (keys.length === 0) return null;
+
+    const setClause = keys
+      .map((k, i) => JSONB_FIELDS.has(k) ? `${k} = $${i + 1}::jsonb` : `${k} = $${i + 1}`)
+      .join(', ');
+    const values = keys.map((k) => {
+      const v = fields[k];
+      if (JSONB_FIELDS.has(k)) return v == null ? null : JSON.stringify(v);
+      return v ?? null;
+    });
+
+    const res = await client.query(`
+      UPDATE core_applicant_assessment
+      SET ${setClause}, updated_at = NOW()
+      WHERE id = $${keys.length + 1}
+      RETURNING *
+    `, [...values, id]);
     return res.rows[0];
   }
 

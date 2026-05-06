@@ -259,45 +259,67 @@ class AssessmentBatteryResultService {
     const questions        = options.questions ?? {};
     const expectedSubtests = Array.isArray(options.subtests) ? options.subtests : Object.keys(questions);
 
-    const existing = await AssessmentBatteryResult.getActiveByParticipantAssessment(pid, aid);
-    if (existing?.status === 'completed') {
-      throw { status: 409, message: 'Assessment already completed for this participant' };
+    const client = await getDb().connect();
+    try {
+      await client.query('BEGIN');
+
+      const existing = await AssessmentBatteryResult.getForUpdate(client, pid, aid);
+      if (existing?.status === 'completed') {
+        throw { status: 409, message: 'Assessment already completed for this participant' };
+      }
+
+      const grouped      = groupAnswersBySubtest(answers);
+      const freshResults = buildResults(questions, grouped);
+
+      const existingSubtest = existing?.results?.by_subtest ?? {};
+      const existingAnswers = existing?.results?.answers    ?? {};
+
+      const mergedBySubtest = mergeBySubtest(existingSubtest, freshResults.by_subtest);
+      const mergedAnswers   = { ...existingAnswers };
+      for (const [k, v] of Object.entries(freshResults.answers || {})) {
+        if (!mergedAnswers[k]) mergedAnswers[k] = v;
+      }
+
+      const { total_points, total_max } = sumPoints(mergedBySubtest);
+      const mergedResults = {
+        answers:    mergedAnswers,
+        by_subtest: mergedBySubtest,
+        total_points,
+        total_max,
+      };
+      const summary = buildSummary(mergedResults);
+
+      const allDone = expectedSubtests.length > 0
+        && expectedSubtests.every((k) => mergedBySubtest[k]);
+      const status       = allDone ? 'completed' : 'in_progress';
+      const completed_at = allDone ? new Date().toISOString() : null;
+
+      const row = existing
+        ? await AssessmentBatteryResult.update(client, existing.id, {
+            status,
+            results: mergedResults,
+            summary,
+            started_at: existing.started_at || started_at || null,
+            completed_at,
+          })
+        : await AssessmentBatteryResult.create(client, {
+            participant_id: pid,
+            assessment_id:  aid,
+            status,
+            results: mergedResults,
+            summary,
+            started_at: started_at || null,
+            completed_at,
+          });
+
+      await client.query('COMMIT');
+      return row;
+    } catch (err) {
+      await client.query('ROLLBACK');
+      throw err;
+    } finally {
+      client.release();
     }
-
-    const grouped      = groupAnswersBySubtest(answers);
-    const freshResults = buildResults(questions, grouped);
-
-    const existingSubtest = existing?.results?.by_subtest ?? {};
-    const existingAnswers = existing?.results?.answers    ?? {};
-
-    const mergedBySubtest = mergeBySubtest(existingSubtest, freshResults.by_subtest);
-    const mergedAnswers   = { ...existingAnswers };
-    for (const [k, v] of Object.entries(freshResults.answers || {})) {
-      if (!mergedAnswers[k]) mergedAnswers[k] = v;
-    }
-
-    const { total_points, total_max } = sumPoints(mergedBySubtest);
-    const mergedResults = {
-      answers:    mergedAnswers,
-      by_subtest: mergedBySubtest,
-      total_points,
-      total_max,
-    };
-    const summary = buildSummary(mergedResults);
-
-    const allDone = expectedSubtests.length > 0
-      && expectedSubtests.every((k) => mergedBySubtest[k]);
-    const status = allDone ? 'completed' : 'in_progress';
-
-    return await AssessmentBatteryResult.upsert({
-      participant_id: pid,
-      assessment_id:  aid,
-      status,
-      results: mergedResults,
-      summary,
-      started_at:   existing?.started_at  || started_at || null,
-      completed_at: allDone ? new Date().toISOString() : null,
-    });
   }
 
   async getActiveProgress(participant_id, assessment_id) {

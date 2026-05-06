@@ -60,6 +60,7 @@ DROP TYPE IF EXISTS job_post_type CASCADE;
 DROP TYPE IF EXISTS sourcing_status_type CASCADE;
 DROP TYPE IF EXISTS battery_type CASCADE;
 DROP TYPE IF EXISTS status_session_type CASCADE;
+DROP TYPE IF EXISTS assessment_status_type CASCADE;
 
 -- Create ENUM type
 CREATE TYPE status_type AS ENUM ('Draft', 'Active', 'Running', 'Expired', 'Failed', 'Blocked');
@@ -80,6 +81,7 @@ CREATE TYPE sourcing_status_type AS ENUM ('Pending', 'Processing', 'Done', 'Fail
 CREATE TYPE stage_category_type AS ENUM ('Job Management', 'Screening & Matching', 'Interview', 'Assessment', 'Background Check', 'Offering & Contract', 'Other');
 CREATE TYPE battery_type AS ENUM ('A', 'B', 'C', 'D');
 CREATE TYPE status_session_type AS ENUM ('invited', 'in_progress', 'completed', 'expired');
+CREATE TYPE assessment_status_type AS ENUM ('in_progress', 'completed', 'expired');
 CREATE EXTENSION IF NOT EXISTS pgcrypto;
 CREATE EXTENSION IF NOT EXISTS pg_trgm;
 
@@ -473,7 +475,7 @@ CREATE TABLE core_applicant_assessment(
   id SERIAL PRIMARY KEY,
   participant_id INTEGER NOT NULL REFERENCES participants(id) ON DELETE CASCADE,
   assessment_id INT REFERENCES master_assessment(id),
-  status VARCHAR(50) NOT NULL DEFAULT 'completed',
+  status assessment_status_type NOT NULL DEFAULT 'in_progress',
   results JSONB NOT NULL, -- HASIL LENGKAP (raw data + detail scoring)
   summary JSONB, -- HASIL SINGKAT (untuk quick view)
   narrative_report TEXT, -- laporan naratif lengkap (beberapa paragraf)
@@ -481,7 +483,7 @@ CREATE TABLE core_applicant_assessment(
   development_areas TEXT, -- area pengembangan (bullet points)
   recommended_roles TEXT, -- rekomendasi posisi yang sesuai (bullet points)
   started_at TIMESTAMP,
-  completed_at TIMESTAMP,
+  completed_at TIMESTAMPTZ,
   assessment_date DATE NOT NULL DEFAULT CURRENT_DATE,
   created_at TIMESTAMP NOT NULL DEFAULT NOW(),
   updated_at TIMESTAMP NOT NULL DEFAULT NOW(),
