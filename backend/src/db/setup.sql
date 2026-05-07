@@ -1,6 +1,8 @@
 -- Drop tables in reverse dependency order (most dependent first)
+DROP TABLE IF EXISTS company_usage CASCADE;
 DROP TABLE IF EXISTS applicant_job_score CASCADE;
 DROP TABLE IF EXISTS master_skill_alias CASCADE;
+DROP TABLE IF EXISTS core_company CASCADE;
 DROP TABLE IF EXISTS mapping_applicant_linkedin CASCADE;
 DROP TABLE IF EXISTS mapping_applicant_seek CASCADE;
 DROP TABLE IF EXISTS mapping_job_sourcing_linkedin CASCADE;
@@ -85,12 +87,42 @@ CREATE TYPE assessment_status_type AS ENUM ('in_progress', 'completed', 'expired
 CREATE EXTENSION IF NOT EXISTS pgcrypto;
 CREATE EXTENSION IF NOT EXISTS pg_trgm;
 
+CREATE TABLE core_company (
+  id SERIAL PRIMARY KEY,
+  name VARCHAR(255) NOT NULL UNIQUE,
+  description TEXT,
+  email VARCHAR(255),
+  website VARCHAR(255),
+  logo_url VARCHAR(500),
+  created_at TIMESTAMP NOT NULL DEFAULT NOW(),
+  updated_at TIMESTAMP NOT NULL DEFAULT NOW()
+);
+
 CREATE TABLE master_users (
   id SERIAL PRIMARY KEY,
   password TEXT NOT NULL,
   email VARCHAR(100) NOT NULL,
-  username VARCHAR(100) NOT NULL
+  username VARCHAR(100) NOT NULL,
+  company_id INTEGER REFERENCES core_company(id) ON DELETE SET NULL
 );
+
+CREATE TABLE company_usage (
+  id SERIAL PRIMARY KEY,
+  company_id INTEGER REFERENCES core_company(id) ON DELETE CASCADE,
+  user_id INTEGER REFERENCES master_users(id) ON DELETE SET NULL,
+  service VARCHAR(50) NOT NULL DEFAULT 'openai',
+  model VARCHAR(100) NOT NULL,
+  operation VARCHAR(100) NOT NULL,
+  prompt_tokens INTEGER NOT NULL DEFAULT 0,
+  completion_tokens INTEGER NOT NULL DEFAULT 0,
+  total_tokens INTEGER NOT NULL DEFAULT 0,
+  estimated_cost_usd NUMERIC(10, 6),
+  request_id VARCHAR(255),
+  metadata JSONB,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+CREATE INDEX idx_company_usage_company_created ON company_usage (company_id, created_at DESC);
+CREATE INDEX idx_company_usage_operation ON company_usage (operation);
 
 CREATE TABLE master_roles (
   id SERIAL PRIMARY KEY,

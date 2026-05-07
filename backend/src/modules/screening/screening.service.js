@@ -6,7 +6,7 @@ import { parseFileToText } from '../../shared/utils/file-parser.js';
 
 class ScreeningService {
   // Layer 1 — extract facets from a CV file (multer file object).
-  async extractFacetsFromFile(applicant_id, file) {
+  async extractFacetsFromFile(applicant_id, file, context = {}) {
     if (!applicant_id) throw { status: 400, message: 'applicant_id is required' };
     if (!file) throw { status: 400, message: 'cv file is required' };
 
@@ -23,11 +23,11 @@ class ScreeningService {
       throw { status: 400, message: 'CV is empty after parsing' };
     }
 
-    return this._extractAndStore(applicant_id, cvText);
+    return this._extractAndStore(applicant_id, cvText, context);
   }
 
   // Layer 1 — extract facets from raw text (useful when CV text is already available).
-  async extractFacetsFromText(applicant_id, cvText) {
+  async extractFacetsFromText(applicant_id, cvText, context = {}) {
     if (!applicant_id) throw { status: 400, message: 'applicant_id is required' };
     if (!cvText || typeof cvText !== 'string' || !cvText.trim()) {
       throw { status: 400, message: 'cv_text is required' };
@@ -35,17 +35,21 @@ class ScreeningService {
     const applicant = await screeningModel.getApplicant(applicant_id);
     if (!applicant) throw { status: 404, message: 'Applicant not found' };
 
-    return this._extractAndStore(applicant_id, cvText);
+    return this._extractAndStore(applicant_id, cvText, context);
   }
 
-  async _extractAndStore(applicant_id, cvText) {
-    const facets = await aiService.extractFacets(cvText);
+  async _extractAndStore(applicant_id, cvText, context = {}) {
+    const aiContext = {
+      ...context,
+      metadata: { applicant_id, ...(context.metadata || {}) },
+    };
+    const facets = await aiService.extractFacets(cvText, aiContext);
     const updated = await screeningModel.setApplicantInformation(applicant_id, facets);
     return { applicant: updated, facets };
   }
 
   // Layer 2 — score one applicant against one job.
-  async scoreApplicantForJob(applicant_id, job_id) {
+  async scoreApplicantForJob(applicant_id, job_id, context = {}) {
     if (!applicant_id) throw { status: 400, message: 'applicant_id is required' };
     if (!job_id) throw { status: 400, message: 'job_id is required' };
 
@@ -61,7 +65,11 @@ class ScreeningService {
     const job = await jobModel.getById(job_id);
     if (!job) throw { status: 404, message: 'Job not found' };
 
-    const score = await aiService.scoreApplicantAgainstJob(job, applicant.information);
+    const aiContext = {
+      ...context,
+      metadata: { applicant_id, job_id, ...(context.metadata || {}) },
+    };
+    const score = await aiService.scoreApplicantAgainstJob(job, applicant.information, aiContext);
     const stored = await screeningModel.upsertScore({
       applicant_id,
       job_id,
@@ -71,7 +79,7 @@ class ScreeningService {
   }
 
   // Bulk re-score every candidate already in the pipeline for this job.
-  async scoreBulkForJob(job_id) {
+  async scoreBulkForJob(job_id, context = {}) {
     if (!job_id) throw { status: 400, message: 'job_id is required' };
 
     const job = await jobModel.getById(job_id);
@@ -83,7 +91,7 @@ class ScreeningService {
 
     for (const c of candidates) {
       try {
-        const stored = await this.scoreApplicantForJob(c.applicant_id, job_id);
+        const stored = await this.scoreApplicantForJob(c.applicant_id, job_id, context);
         results.push(stored);
       } catch (err) {
         errors.push({ applicant_id: c.applicant_id, message: err.message || String(err) });
@@ -176,7 +184,7 @@ class ScreeningService {
     return await screeningModel.saveRubric(job_id, rubric);
   }
 
-  async runMatching(job_id, { rubric: providedRubric, role_profile } = {}) {
+  async runMatching(job_id, { rubric: providedRubric, role_profile, context = {} } = {}) {
     if (!job_id) throw { status: 400, message: 'job_id is required' };
 
     const job = await jobModel.getById(job_id);
@@ -207,7 +215,11 @@ class ScreeningService {
           continue;
         }
 
-        const llm = await aiService.scoreWithRubric(job, applicant.information, rubric, roleProfile);
+        const aiContext = {
+          ...context,
+          metadata: { applicant_id: c.applicant_id, job_id, ...(context.metadata || {}) },
+        };
+        const llm = await aiService.scoreWithRubric(job, applicant.information, rubric, roleProfile, aiContext);
         const overall_score = this.computeOverall(rubric, llm);
 
         const stored = await screeningModel.upsertScore({

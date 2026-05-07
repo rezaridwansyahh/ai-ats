@@ -13,12 +13,14 @@ import { templateStages, templateStageRows } from '../data/template_stages.js';
 import { jobAccounts, coreJobs, jobSourcing } from '../data/job_sourcing.js';
 import applicantsData from '../data/applicants.js';
 import skillAliasesData from '../data/skill_aliases.js';
+import companiesData from '../data/companies.js';
 import assessmentsData from '../data/assessments.js';
 
 const seed = async () => {
   await getDb().query('BEGIN');
 
   try {
+    await getDb().query('DELETE FROM company_usage');
     await getDb().query('DELETE FROM master_skill_alias');
     await getDb().query('DELETE FROM core_applicant_assessment');
     await getDb().query('DELETE FROM master_assessment');
@@ -37,13 +39,23 @@ const seed = async () => {
     await getDb().query('DELETE FROM mapping_users_roles');
     await getDb().query('DELETE FROM master_roles');
     await getDb().query('DELETE FROM master_users');
+    await getDb().query('DELETE FROM core_company');
+
+    // 0. companies (must be inserted before users — users reference company_id)
+    for (const c of companiesData) {
+      await getDb().query(
+        `INSERT INTO core_company (id, name, description, email, website, logo_url)
+         VALUES ($1, $2, $3, $4, $5, $6)`,
+        [c.id, c.name, c.description, c.email, c.website, c.logo_url]
+      );
+    }
 
     // 1. users
     for (const user of usersData) {
       await getDb().query(
-        `INSERT INTO master_users (id, password, email, username)
-         VALUES ($1, $2, $3, $4)`,
-        [user.id, user.password, user.email, user.username]
+        `INSERT INTO master_users (id, password, email, username, company_id)
+         VALUES ($1, $2, $3, $4, $5)`,
+        [user.id, user.password, user.email, user.username, user.company_id ?? null]
       );
     }
 

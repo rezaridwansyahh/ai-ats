@@ -25,10 +25,11 @@ class AuthService {
     const roleIds = role.map(r => r.id);
     const {permissions} = await PermissionModel.checkPermissionsRoleId(roleIds);
 
-    // JWT payload 
+    // JWT payload
     const payload = {
       user_id: user.id,
       email: user.email,
+      company_id: user.company_id ?? null,
       role
     };
 
@@ -43,14 +44,16 @@ class AuthService {
       token,
       user: {
         id: user.id,
-        email: user.email
+        email: user.email,
+        username: user.username,
+        company_id: user.company_id ?? null
       },
       role,
       permissions
     };
   }
 
-  async register(email, password, username) {
+  async register(email, password, username, company_id = null) {
     if (!email || !password ) throw { status: 400, message: 'Email and Password are required' };
 
     const existingUser = await UserModel.getByEmail(email);
@@ -58,7 +61,7 @@ class AuthService {
 
     const hashedPassword = await bcrypt.hash(password, 12);
 
-    const newUser = await UserModel.create(email, hashedPassword, username);
+    const newUser = await UserModel.create(email, hashedPassword, username, company_id);
 
     logger.info(`User registered: ${email}`);
 
@@ -66,7 +69,8 @@ class AuthService {
       message: 'User registered successfully',
       user: {
         id: newUser.id,
-        email: newUser.email 
+        email: newUser.email,
+        company_id: newUser.company_id ?? null
       }
     };
   }

@@ -25,7 +25,7 @@ class UserService {
     return { ...user, roles };
   }
 
-  async create(email, password, username, role_ids) {
+  async create(email, password, username, role_ids, company_id) {
     if (!email || !password) {
       throw { status: 400, message: 'Email and password are required' };
     }
@@ -34,7 +34,7 @@ class UserService {
     if (existingUser) throw { status: 400, message: 'Email already exists' };
 
     const hashedPassword = await bcrypt.hash(password, 12);
-    const newUser = await User.create(email, hashedPassword, username);
+    const newUser = await User.create(email, hashedPassword, username, company_id ?? null);
 
     if (Array.isArray(role_ids) && role_ids.length > 0) {
       await Role.replaceUserRoles(newUser.id, role_ids);
@@ -44,7 +44,7 @@ class UserService {
     return { ...newUser, roles };
   }
 
-  async update(id, { email, password, username, role_ids }) {
+  async update(id, { email, password, username, role_ids, company_id }) {
     const user = await User.getById(id);
     if (!user) throw { status: 404, message: 'User not found' };
 
@@ -52,6 +52,7 @@ class UserService {
     if (email) fields.email = email;
     if (password) fields.password = await bcrypt.hash(password, 12);
     if (username) fields.username = username;
+    if (company_id !== undefined) fields.company_id = company_id;
 
     let updatedUser = user;
     if (Object.keys(fields).length > 0) {

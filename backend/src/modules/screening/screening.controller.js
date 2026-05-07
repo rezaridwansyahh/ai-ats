@@ -1,14 +1,22 @@
 import screeningService from './screening.service.js';
 
+function ctxFromReq(req) {
+  return {
+    company_id: req.user?.company_id ?? null,
+    user_id:    req.user?.user_id    ?? null,
+  };
+}
+
 class ScreeningController {
   async extractFacets(req, res) {
     try {
       const applicant_id = Number(req.params.applicant_id);
+      const context = ctxFromReq(req);
       let result;
       if (req.file) {
-        result = await screeningService.extractFacetsFromFile(applicant_id, req.file);
+        result = await screeningService.extractFacetsFromFile(applicant_id, req.file, context);
       } else if (req.body && typeof req.body.cv_text === 'string') {
-        result = await screeningService.extractFacetsFromText(applicant_id, req.body.cv_text);
+        result = await screeningService.extractFacetsFromText(applicant_id, req.body.cv_text, context);
       } else {
         throw { status: 400, message: 'Provide a `cv` file upload or a `cv_text` body field' };
       }
@@ -23,7 +31,8 @@ class ScreeningController {
       const { applicant_id, job_id } = req.body || {};
       const result = await screeningService.scoreApplicantForJob(
         Number(applicant_id),
-        Number(job_id)
+        Number(job_id),
+        ctxFromReq(req)
       );
       res.status(200).json({ message: 'Candidate scored', score: result });
     } catch (err) {
@@ -34,7 +43,7 @@ class ScreeningController {
   async scoreBulk(req, res) {
     try {
       const job_id = Number(req.params.job_id);
-      const result = await screeningService.scoreBulkForJob(job_id);
+      const result = await screeningService.scoreBulkForJob(job_id, ctxFromReq(req));
       res.status(200).json({ message: 'Bulk scoring complete', ...result });
     } catch (err) {
       res.status(err.status || 500).json({ message: err.message });
@@ -80,7 +89,11 @@ class ScreeningController {
     try {
       const job_id = Number(req.params.job_id);
       const { rubric, role_profile } = req.body || {};
-      const result = await screeningService.runMatching(job_id, { rubric, role_profile });
+      const result = await screeningService.runMatching(job_id, {
+        rubric,
+        role_profile,
+        context: ctxFromReq(req),
+      });
       res.status(200).json({ message: 'AI matching complete', ...result });
     } catch (err) {
       res.status(err.status || 500).json({ message: err.message });

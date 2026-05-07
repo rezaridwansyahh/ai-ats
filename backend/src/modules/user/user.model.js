@@ -66,12 +66,12 @@ class UserModel {
     `, [role_id]);
   }
 
-  async create(email, password, username) {
+  async create(email, password, username, company_id = null) {
     const result = await getDb().query(`
-      INSERT INTO master_users ( email, password, username)
-      VALUES ($1, $2, $3)
+      INSERT INTO master_users ( email, password, username, company_id)
+      VALUES ($1, $2, $3, $4)
       RETURNING *
-    `, [ email, password, username]);
+    `, [ email, password, username, company_id]);
 
     return result.rows[0];
   }

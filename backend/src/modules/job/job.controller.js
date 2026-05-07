@@ -112,7 +112,11 @@ class JobController {
         fileText = await parseFileToText(req.file);
       }
 
-      for await (const chunk of aiService.generateStream(form, fileText)) {
+      const aiContext = {
+        company_id: req.user?.company_id ?? null,
+        user_id:    req.user?.user_id    ?? null,
+      };
+      for await (const chunk of aiService.generateStream(form, fileText, aiContext)) {
         res.write(`data: ${JSON.stringify({ text: chunk })}\n\n`);
       }
 

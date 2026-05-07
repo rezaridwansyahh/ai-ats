@@ -1,9 +1,11 @@
 import OpenAI from 'openai';
 import { normalizeSkills } from '../../modules/screening/skill-normalizer.js';
+import companyUsageService from '../../modules/company-usage/company-usage.service.js';
 
 const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
 
 const SCORING_MODEL = 'gpt-4o-mini';
+const STREAM_MODEL  = 'gpt-4o-mini';
 const CV_TEXT_LIMIT = 8000;
 
 function safeNumber(value, min = 0, max = 100) {
@@ -18,6 +20,19 @@ function safeStringArray(value) {
 }
 
 class AIService {
+  // Centralised usage logger — fire-and-forget, never throws.
+  async _logUsage({ context, model, operation, usage, request_id, metadata }) {
+    if (!usage) return;
+    return companyUsageService.log({
+      context: context || {},
+      model,
+      operation,
+      usage,
+      request_id: request_id || null,
+      metadata: metadata || null,
+    });
+  }
+
   buildPrompt(formFields, fileText) {
     let prompt = `You are an expert HR recruiter. Generate a professional job description and qualifications based on the following information.\n\n`;
 
@@ -44,23 +59,37 @@ class AIService {
     return prompt;
   }
 
-  async *generateStream(formFields, fileText) {
+  async *generateStream(formFields, fileText, context = {}) {
     const prompt = this.buildPrompt(formFields, fileText);
 
     const stream = await openai.chat.completions.create({
-      model: 'gpt-4o-mini',
+      model: STREAM_MODEL,
       messages: [{ role: 'user', content: prompt }],
       stream: true,
+      stream_options: { include_usage: true },
     });
 
+    let usage = null;
+    let request_id = null;
     for await (const chunk of stream) {
-      const text = chunk.choices[0]?.delta?.content;
+      if (chunk.id && !request_id) request_id = chunk.id;
+      if (chunk.usage) usage = chunk.usage;
+      const text = chunk.choices?.[0]?.delta?.content;
       if (text) yield text;
     }
+
+    await this._logUsage({
+      context,
+      model: STREAM_MODEL,
+      operation: 'generate_job_desc',
+      usage,
+      request_id,
+      metadata: { job_title: formFields?.job_title || null },
+    });
   }
 
   // Layer 1 — extract structured facets from raw CV text.
-  async extractFacets(cvText) {
+  async extractFacets(cvText, context = {}) {
     if (!cvText || typeof cvText !== 'string') {
       throw new Error('extractFacets: cvText is required');
     }
@@ -97,6 +126,15 @@ ${trimmed}
       messages: [{ role: 'user', content: prompt }],
       response_format: { type: 'json_object' },
       temperature: 0.2,
+    });
+
+    await this._logUsage({
+      context,
+      model: SCORING_MODEL,
+      operation: 'extract_facets',
+      usage: response.usage,
+      request_id: response.id,
+      metadata: context.metadata || null,
     });
 
     const raw = response.choices[0]?.message?.content || '{}';
@@ -143,7 +181,7 @@ ${trimmed}
   }
 
   // Layer 2 — score an applicant's facets against a specific job.
-  async scoreApplicantAgainstJob(job, facets) {
+  async scoreApplicantAgainstJob(job, facets, context = {}) {
     if (!job || typeof job !== 'object') throw new Error('scoreApplicantAgainstJob: job is required');
     if (!facets || typeof facets !== 'object') throw new Error('scoreApplicantAgainstJob: facets are required');
 
@@ -192,6 +230,15 @@ ${JSON.stringify(facets, null, 2)}`;
       temperature: 0.2,
     });
 
+    await this._logUsage({
+      context,
+      model: SCORING_MODEL,
+      operation: 'score_applicant',
+      usage: response.usage,
+      request_id: response.id,
+      metadata: { job_title: job.job_title || null, ...(context.metadata || {}) },
+    });
+
     const raw = response.choices[0]?.message?.content || '{}';
     let parsed;
     try {
@@ -215,7 +262,7 @@ ${JSON.stringify(facets, null, 2)}`;
   // Layer 2 (rubric flow) — score one candidate against a job using a recruiter-defined rubric.
   // The LLM scores each criterion 0-100 independently. The backend computes overall_score
   // deterministically from the rubric weights, so the LLM doesn't have to do math.
-  async scoreWithRubric(job, facets, rubric, role_profile) {
+  async scoreWithRubric(job, facets, rubric, role_profile, context = {}) {
     if (!job || typeof job !== 'object') throw new Error('scoreWithRubric: job is required');
     if (!facets || typeof facets !== 'object') throw new Error('scoreWithRubric: facets are required');
     if (!rubric || typeof rubric !== 'object') throw new Error('scoreWithRubric: rubric is required');
@@ -285,6 +332,19 @@ Return STRICT JSON:
       messages: [{ role: 'user', content: prompt }],
       response_format: { type: 'json_object' },
       temperature: 0.2,
+    });
+
+    await this._logUsage({
+      context,
+      model: SCORING_MODEL,
+      operation: 'score_with_rubric',
+      usage: response.usage,
+      request_id: response.id,
+      metadata: {
+        job_title: job.job_title || null,
+        role_profile,
+        ...(context.metadata || {}),
+      },
     });
 
     const raw = response.choices[0]?.message?.content || '{}';
