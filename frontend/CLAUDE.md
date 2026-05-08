@@ -27,7 +27,20 @@ src/
 │   ├── job-accounts.api.js # CRUD job platform accounts
 │   ├── job-postings.api.js # CRUD core job postings
 │   ├── job-posting-seek.api.js  # Seek-specific posting operations
+│   ├── job-sourcing.api.js # Job sourcing operations
 │   ├── job.api.js          # Job CRUD + AI generation (uses fetch for SSE streaming)
+│   ├── applicant.api.js    # Applicant CRUD
+│   ├── candidate.api.js    # Candidate operations
+│   ├── sourcing.api.js     # Sourcing operations
+│   ├── pipeline.api.js     # Pipeline CRUD
+│   ├── stage-category.api.js  # Stage category CRUD
+│   ├── template-stage.api.js  # Template stage CRUD
+│   ├── automation-setting.api.js # Automation settings
+│   ├── screening.api.js    # Screening operations
+│   ├── participant.api.js  # Assessment participants
+│   ├── question.api.js     # Assessment questions
+│   ├── assessment-battery-result.api.js  # Assessment results
+│   ├── linkedin.api.js     # LinkedIn-specific operations
 │   └── recruiter.api.js    # Recruiter CRUD
 │
 ├── services/
@@ -61,8 +74,14 @@ src/
 │   ├── CandidateSearch.jsx # Candidate search
 │   ├── DemoBooking.jsx     # Demo booking page
 │   ├── JobManagement.jsx   # Multi-step job creation with AI generation
+│   ├── SourceManagement.jsx # Source management
+│   ├── TalentPool.jsx      # Talent pool management
+│   ├── SourceCandidate.jsx # Source candidate page
+│   ├── AIMatching.jsx      # AI-based candidate matching
+│   ├── Assessment.jsx      # Assessment management
+│   ├── Report.jsx          # Reports
 │   ├── Recruiters.jsx      # Recruiter CRUD with status tracking
-│   ├── Landing.jsx         # Public landing page
+│   ├── ComingSoon.jsx      # Catch-all placeholder for unbuilt routes
 │   └── Integrations.jsx    # Platform connection settings (placeholder)
 │
 ├── hooks/                  # Custom React hooks
@@ -98,6 +117,13 @@ All routes are defined in `App.jsx`. Authenticated pages are nested inside `<Das
 /job-management/seek-sourcing  → DashboardLayout > SeekSourcingPage
 /sourcing/job-management       → DashboardLayout > JobManagementPage
 /candidates/search             → DashboardLayout > CandidateSearchPage
+/sourcing/source-management    → DashboardLayout > SourceManagementPage
+/sourcing/talent-pool          → DashboardLayout > TalentPoolPage
+/sourcing/source-candidate     → DashboardLayout > SourceCandidatePage
+/selection/assessment          → DashboardLayout > AssessmentPage
+/selection/report              → DashboardLayout > ReportPage
+/selection/ai-matching         → DashboardLayout > AIMatchingPage
+* (catch-all)                  → DashboardLayout > ComingSoonPage
 ```
 
 ### Page → Feature Component Flow

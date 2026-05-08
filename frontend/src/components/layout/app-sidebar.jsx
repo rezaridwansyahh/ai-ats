@@ -54,7 +54,8 @@ const iconMap = {
   'Sourcing':       Briefcase,
   'Selection':      ClipboardList,
   'asesmen':        FileText,
-  'asesmenB':       FileText
+  'asesmenB':       FileText,
+  'asesmen a':      FileText
 };
 
 const routeMap = {

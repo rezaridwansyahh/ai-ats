@@ -138,6 +138,7 @@ export default [
 
   /* ===================================================================
      Selection -> AssessmentB (module_menu_id: 27)
+     asesmen a -> asesmen a (module_menu_id: 27)
   =================================================================== */
   { id: 100, module_menu_id: 27, functionality: 'read' },
   { id: 101, module_menu_id: 27, functionality: 'create' },
