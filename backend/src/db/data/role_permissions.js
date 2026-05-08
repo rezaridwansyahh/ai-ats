@@ -105,6 +105,12 @@ export default [
   role_id: 1,
   permission_id: 96 + i
 })),
+// asesmen a -> asesmen a (100–103)
+...Array.from({ length: 4 }, (_, i) => ({
+  id: 82 + i,
+  role_id: 1,
+  permission_id: 100 + i
+})),
 
 /* ============================================================================
    MANAGER (role_id: 2)
