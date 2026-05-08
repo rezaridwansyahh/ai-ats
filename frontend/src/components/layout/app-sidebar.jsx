@@ -53,7 +53,8 @@ const iconMap = {
   'Job Management': Briefcase,
   'Sourcing':       Briefcase,
   'Selection':      ClipboardList,
-  'asesmen':        FileText
+  'asesmen':        FileText,
+  'asesmenB':       FileText
 };
 
 const routeMap = {
@@ -74,7 +75,8 @@ const routeMap = {
   'Assessment':        '/selection/assessment',
   'Report':            '/selection/report',
   'AI Matching':       '/selection/ai-matching',
-  'asesmen a':         '/asesmen/asesmen-a'
+  'asesmen a':         '/asesmen/asesmen-a',
+  'AssessmentB': '/selection/assessment-b', 
 };
 
 const useSidebarStructure = (permissions) => {

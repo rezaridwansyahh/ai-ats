@@ -136,4 +136,12 @@ export default [
   { id: 98, module_menu_id: 26, functionality: 'update' },
   { id: 99, module_menu_id: 26, functionality: 'delete' },
 
+  /* ===================================================================
+     Selection -> AssessmentB (module_menu_id: 27)
+  =================================================================== */
+  { id: 100, module_menu_id: 27, functionality: 'read' },
+  { id: 101, module_menu_id: 27, functionality: 'create' },
+  { id: 102, module_menu_id: 27, functionality: 'update' },
+  { id: 103, module_menu_id: 27, functionality: 'delete' },
+
 ];

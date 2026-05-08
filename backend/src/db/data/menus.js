@@ -16,4 +16,5 @@ export default [
   { id: 24, name: 'Talent Pool'},
   { id: 25, name: 'Source Candidate'},
   { id: 26, name: 'AI Matching'},
+  { id: 27, name: 'AssessmentB'},
 ];

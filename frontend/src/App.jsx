@@ -19,6 +19,7 @@ import ComingSoonPage from "./pages/ComingSoon"
 import AssessmentPage from "./pages/Assessment"
 import ReportPage from "./pages/Report"
 import AIMatchingPage from "./pages/AIMatching"
+import AssessmentBPage from "./pages/AssessmentB"
 
 function App() {
   return (
@@ -48,6 +49,7 @@ function App() {
 
         <Route path="/candidates/search" element={<CandidateSearchPage />} />
         <Route path="/selection/assessment" element={<AssessmentPage />} />
+        <Route path="/selection/assessment-b" element={<AssessmentBPage />} />
         <Route path="/selection/report" element={<ReportPage />} />
         <Route path="/selection/ai-matching" element={<AIMatchingPage />} />
 

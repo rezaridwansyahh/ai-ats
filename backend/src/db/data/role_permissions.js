@@ -106,6 +106,12 @@ export default [
   permission_id: 96 + i
 })),
 
+// Selection -> AssessmentB (100 - 103)
+...Array.from({ length: 4 }, (_, i) => ({
+  id: 82 + i,
+  role_id: 1,
+  permission_id: 100 + i
+})),
 /* ============================================================================
    MANAGER (role_id: 2)
    read / create / update (no delete)
@@ -196,6 +202,10 @@ export default [
   { id: 179, role_id: 2, permission_id: 97 },
   { id: 180, role_id: 2, permission_id: 98 },
 
+  { id: 181, role_id: 2, permission_id: 100 }, // AssessmentB read
+  { id: 182, role_id: 2, permission_id: 101 }, // AssessmentB create
+  { id: 183, role_id: 2, permission_id: 102 }, // AssessmentB update  
+
 /* ============================================================================
    STAFF (role_id: 3)
    read + create only
@@ -267,6 +277,10 @@ export default [
   { id: 244, role_id: 3, permission_id: 96 },
   { id: 245, role_id: 3, permission_id: 97 },
 
+  { id: 246, role_id: 3, permission_id: 100 }, // AssessmentB read
+  { id: 247, role_id: 3, permission_id: 101 }, // AssessmentB create
+
+
 /* ============================================================================
    INTERN (role_id: 4)
    READ ONLY
@@ -287,5 +301,6 @@ export default [
   { id: 321, role_id: 4, permission_id: 88 },  // Settings -> Recruiters (read)
   { id: 322, role_id: 4, permission_id: 92 },  // Sourcing -> Source Management (read)
   { id: 323, role_id: 4, permission_id: 96 },  // Selection -> AI Matching (read)
+  { id: 324, role_id: 4, permission_id: 100 }, // AssessmentB read
 
 ];

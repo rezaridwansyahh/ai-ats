@@ -39,4 +39,5 @@ export default [
   { id: 22, module_id: 9, menu_id: 22 }, // Selection -> Assessment
   { id: 23, module_id: 9, menu_id: 23 }, // Selection -> Report
   { id: 26, module_id: 9, menu_id: 26 }, // Selection -> AI Matching
+  { id: 27, module_id: 9, menu_id: 27 } // Selection -> AssessmentB
 ];
