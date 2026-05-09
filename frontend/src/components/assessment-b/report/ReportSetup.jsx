@@ -8,14 +8,14 @@ import { fmtDateID, getIQClass, pctToScore10, IQ_TABLE } from '../utils/scoring'
 
 export default function ReportSetup({ hasCardData, profile, results, state, updateState, onBuild }) {
   const [name, setName] = useState(profile?.name || '');
-  const [jabatan, setJabatan] = useState(profile?.jabatan || '');
-  const [gender, setGender] = useState(profile?.gender || '');
+  const [email, setEmail] = useState(profile?.email || '');
+  const [position, setPosition] = useState(profile?.position || '');
+  const [department, setDepartment] = useState(profile?.department || '');
   const [education, setEducation] = useState(profile?.education || '');
-  const [tglLahir, setTglLahir] = useState(profile?.tglLahirRaw || '');
+  const [dateBirth, setDateBirth] = useState(profile?.date_birth || '');
   const [tglTes, setTglTes] = useState(profile?.tglTesRaw || new Date().toISOString().split('T')[0]);
 
   const [nomerKandidat, setNomerKandidat] = useState(state.nomerKandidat || '');
-  const [departemen, setDepartemen] = useState(state.departemen || '');
   const [asesor, setAsesor] = useState(state.asesor || '');
   const [mengetahui, setMengetahui] = useState(state.mengetahui || '');
 
@@ -28,25 +28,25 @@ export default function ReportSetup({ hasCardData, profile, results, state, upda
   const fmtTgl = (raw) => (raw ? new Date(raw).toLocaleDateString('id-ID', { day: '2-digit', month: 'long', year: 'numeric' }) : '');
 
   const handleBuild = () => {
-    if (!name.trim() || !jabatan.trim()) {
+    if (!name.trim() || !position.trim()) {
       alert('Nama dan posisi wajib diisi.');
       return;
     }
     updateState({
       nomerKandidat: nomerKandidat.trim(),
-      departemen: departemen.trim(),
       asesor: asesor.trim(),
       mengetahui: mengetahui.trim(),
     });
 
     const newProfile = {
       name: name.trim(),
-      jabatan: jabatan.trim(),
-      gender,
+      email: email.trim(),
+      position: position.trim(),
+      department: department.trim(),
       education,
+      date_birth: dateBirth,
       date: fmtTgl(tglTes) || fmtDateID(),
-      tglLahir: fmtTgl(tglLahir),
-      tglLahirRaw: tglLahir,
+      tglTesRaw: tglTes,
     };
 
     // Manual fallback for TK if missing composite
@@ -97,19 +97,19 @@ export default function ReportSetup({ hasCardData, profile, results, state, upda
         <p className="text-sm opacity-85 leading-relaxed max-w-[500px]">
           Profesional & Individual Contributor · TK Kognitif · Kepribadian · Minat Kerja · Preferensi Kerja
         </p>
-        <div className="text-xs mt-2 opacity-60">v10 · 🔒 Rahasia — hanya untuk rekruter</div>
+        <div className="text-xs mt-2 opacity-60">v10 · Rahasia — hanya untuk rekruter</div>
       </div>
 
       {hasCardData && profile ? (
         <div className="bg-green-50 border-[1.5px] border-green-200 rounded-xl px-4 py-3.5 mb-4 flex items-center justify-between gap-3 flex-wrap">
           <div>
-            <div className="text-[10px] font-bold tracking-wider uppercase text-teal-800 mb-0.5">✅ Data Kandidat Ditemukan</div>
+            <div className="text-[10px] font-bold tracking-wider uppercase text-teal-800 mb-0.5">Data Kandidat Ditemukan</div>
             <div className="text-base font-bold text-slate-800">
-              {profile.name} · {profile.jabatan}
+              {profile.name} · {profile.position}
             </div>
             <div className="text-xs text-emerald-800">
               {completedTests} dari 4 tes selesai · Tes: {profile.date || ''}
-              {profile.tglLahir ? ' · Lahir: ' + profile.tglLahir : ''}
+              {profile.date_birth ? ' · Lahir: ' + fmtTgl(profile.date_birth) : ''}
             </div>
           </div>
           <Button onClick={handleBuild} className="bg-teal-600 hover:bg-teal-700 h-10">
@@ -118,13 +118,13 @@ export default function ReportSetup({ hasCardData, profile, results, state, upda
         </div>
       ) : (
         <div className="bg-amber-50 border-[1.5px] border-amber-200 rounded-xl px-4 py-3 mb-4 text-xs text-amber-900">
-          ⚠️ Tidak ada data tes di browser ini. Buka tab <strong>Tes Kandidat</strong> dulu, atau input skor manual di bawah.
+          Tidak ada data tes di browser ini. Buka tab <strong>Tes Kandidat</strong> dulu, atau input skor manual di bawah.
         </div>
       )}
 
       <Card className="mb-4">
         <CardContent className="pt-6 space-y-4">
-          <div className="text-[10px] font-bold tracking-wider uppercase text-slate-500">📋 Lengkapi Data Laporan</div>
+          <div className="text-[10px] font-bold tracking-wider uppercase text-slate-500">Lengkapi Data Laporan</div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
             <div>
@@ -132,37 +132,41 @@ export default function ReportSetup({ hasCardData, profile, results, state, upda
               <Input value={name} onChange={(e) => setName(e.target.value)} placeholder="Nama lengkap" />
             </div>
             <div>
-              <Label className="mb-1.5 block">Posisi yang Dilamar *</Label>
-              <Input value={jabatan} onChange={(e) => setJabatan(e.target.value)} placeholder="Contoh: Supervisor HRD" />
+              <Label className="mb-1.5 block">Email *</Label>
+              <Input type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="email@contoh.com" />
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+            <div>
+              <Label className="mb-1.5 block">Posisi *</Label>
+              <Input value={position} onChange={(e) => setPosition(e.target.value)} placeholder="Contoh: Supervisor HRD" />
+            </div>
+            <div>
+              <Label className="mb-1.5 block">Departemen *</Label>
+              <Input value={department} onChange={(e) => setDepartment(e.target.value)} placeholder="Human Resources" />
             </div>
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
             <div>
-              <Label className="mb-1.5 block">Jenis Kelamin</Label>
-              <Select value={gender} onValueChange={setGender}>
-                <SelectTrigger>
-                  <SelectValue placeholder="Pilih" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="Laki-laki">Laki-laki</SelectItem>
-                  <SelectItem value="Perempuan">Perempuan</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-            <div>
               <Label className="mb-1.5 block">Pendidikan</Label>
               <Select value={education} onValueChange={setEducation}>
                 <SelectTrigger>
-                  <SelectValue placeholder="Pilih" />
+                  <SelectValue placeholder="Pilih jenjang" />
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="SMA/SMK">SMA/SMK</SelectItem>
                   <SelectItem value="D3">D3</SelectItem>
                   <SelectItem value="S1">S1</SelectItem>
                   <SelectItem value="S2">S2</SelectItem>
+                  <SelectItem value="S3">S3</SelectItem>
                 </SelectContent>
               </Select>
+            </div>
+            <div>
+              <Label className="mb-1.5 block">Tanggal Lahir</Label>
+              <Input type="date" value={dateBirth} onChange={(e) => setDateBirth(e.target.value)} />
             </div>
             <div>
               <Label className="mb-1.5 block">No. Kandidat</Label>
@@ -172,20 +176,9 @@ export default function ReportSetup({ hasCardData, profile, results, state, upda
 
           <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
             <div>
-              <Label className="mb-1.5 block">Tanggal Lahir</Label>
-              <Input type="date" value={tglLahir} onChange={(e) => setTglLahir(e.target.value)} />
-            </div>
-            <div>
               <Label className="mb-1.5 block">Tanggal Tes</Label>
               <Input type="date" value={tglTes} onChange={(e) => setTglTes(e.target.value)} />
             </div>
-            <div>
-              <Label className="mb-1.5 block">Departemen</Label>
-              <Input value={departemen} onChange={(e) => setDepartemen(e.target.value)} placeholder="Human Resources" />
-            </div>
-          </div>
-
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
             <div>
               <Label className="mb-1.5 block">Nama Asesor</Label>
               <Input value={asesor} onChange={(e) => setAsesor(e.target.value)} placeholder="Nama asesor/rekruter" />
@@ -200,7 +193,7 @@ export default function ReportSetup({ hasCardData, profile, results, state, upda
 
       <Card className="mb-4">
         <CardContent className="pt-6 space-y-3">
-          <div className="text-[10px] font-bold tracking-wider uppercase text-slate-500">⚙️ Input Skor Manual (jika data tidak tersimpan)</div>
+          <div className="text-[10px] font-bold tracking-wider uppercase text-slate-500">Input Skor Manual (jika data tidak tersimpan)</div>
           <div className="text-xs font-bold uppercase tracking-wider text-teal-700">TK — Kemampuan Kognitif</div>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
             <div>
@@ -231,7 +224,7 @@ export default function ReportSetup({ hasCardData, profile, results, state, upda
       </Card>
 
       <Button onClick={handleBuild} className="w-full h-11 bg-gradient-to-br from-teal-800 to-teal-600 hover:opacity-90">
-        ✨ Buat Laporan Psikologis →
+        Buat Laporan Psikologis →
       </Button>
     </div>
   );

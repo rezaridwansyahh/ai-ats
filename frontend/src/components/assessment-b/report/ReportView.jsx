@@ -90,16 +90,16 @@ export default function ReportView({ profile, results, state, updateState, onBac
           <div>
             <div className="font-serif text-2xl md:text-3xl font-bold mb-1 leading-tight">{profile?.name}</div>
             <div className="text-sm opacity-80 mb-3.5">
-              {profile?.jabatan}
-              {profile?.gender ? ' · ' + profile.gender : ''}
+              {profile?.position}
+              {profile?.department ? ' · ' + profile.department : ''}
               {profile?.education ? ' · ' + profile.education : ''}
             </div>
             <div className="grid grid-cols-2 gap-x-3.5 gap-y-1.5 max-w-[420px]">
               {[
-                ['Tanggal Lahir', profile?.tglLahir || '—'],
+                ['Tanggal Lahir', profile?.date_birth ? new Date(profile.date_birth).toLocaleDateString('id-ID', { day: '2-digit', month: 'long', year: 'numeric' }) : '—'],
                 ['Tanggal Tes', profile?.date || fmtDateID()],
+                ['Email', profile?.email || '—'],
                 ['No. Kandidat', state.nomerKandidat || '—'],
-                ['Departemen', state.departemen || '—'],
                 ['Asesor', state.asesor || '—'],
               ].map(([lbl, val]) => (
                 <div key={lbl} className="bg-white/10 rounded-lg px-3 py-1.5">

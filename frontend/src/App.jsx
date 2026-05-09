@@ -13,7 +13,6 @@ import TalentPoolPage from "./pages/TalentPool"
 import SourceCandidatePage from "./pages/SourceCandidate"
 import RecruitersPage from "./pages/Recruiters"
 import ComingSoonPage from "./pages/ComingSoon"
-import AssessmentPage from "./pages/Assessment"
 import AssessmentAPage from "./pages/AssessmentA"
 import ReportPage from "./pages/Report"
 import AIMatchingPage from "./pages/AIMatching"
@@ -36,10 +35,8 @@ function App() {
         <Route path="/sourcing/source-candidate" element={<SourceCandidatePage />} />
 
         <Route path="/selection/ai-matching" element={<AIMatchingPage />} />
-        <Route path="/selection/assessment" element={<AssessmentPage />} />
+        <Route path="/selection/assessment-a" element={<AssessmentAPage />} />
         <Route path="/selection/assessment-b" element={<AssessmentBPage />} />
-        <Route path="/asesmen-a" element={<AssessmentAPage />} />
-        <Route path="/assessment-a" element={<AssessmentAPage />} />
         <Route path="/selection/report" element={<ReportPage />} />
 
         <Route path="/settings/user-management" element={<UserManagementPage />} />
