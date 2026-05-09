@@ -10,7 +10,7 @@ Fullstack ATS (Applicant Tracking System) with separate `backend/` and `frontend
 
 ### Backend
 ```bash
-cd backend && NODE_ENV=development node listen.js   # Start dev server (port 5000)
+cd backend && NODE_ENV=development node app.js      # Start dev server (port from .env, default 3000)
 cd backend && node src/db/run-script.js             # Reset/seed database (setup.sql → seed.js → sync-seq.sql)
 ```
 
@@ -28,8 +28,7 @@ No test framework is currently configured.
 
 ### Backend (Express 5 + PostgreSQL)
 - **ES modules** throughout (`"type": "module"`)
-- **Entry**: `listen.js` → loads `.env.dev`, starts server on port from env
-- **App**: `app.js` → must import `src/config/env.js` first, then middleware setup, route mounting under `/api`
+- **Entry**: `app.js` → must import `src/config/env.js` first, then middleware setup, route mounting, and `app.listen()` at the bottom
 - **Pattern**: Routes → Controllers → Services → Models → PostgreSQL (raw SQL via `pg` Pool)
 - **Auth**: JWT tokens (1hr expiry, signed with `JWT_SECRET`), bcrypt password hashing (12 rounds)
 - **Encryption**: AES-256-CBC for sensitive data (job account passwords, cookies) via `src/shared/utils/encryption.js`
@@ -46,6 +45,8 @@ No test framework is currently configured.
 
 **AI & File Processing** — `src/shared/services/ai.service.js` uses OpenAI (GPT-4o-mini) with SSE streaming for job description generation. File uploads handled by Multer middleware (`src/shared/middleware/upload.middleware.js`, 10MB limit, PDF/DOCX/TXT). Text extraction via `src/shared/utils/file-parser.js` (pdf-parse, mammoth).
 
+Routes are mounted twice — directly under `/api/` and under `/portal/api/` — for different client origins.
+
 API route prefixes:
 | Prefix | Module |
 |--------|--------|
@@ -57,12 +58,21 @@ API route prefixes:
 | `/api/menu` | menu |
 | `/api/job-account` | job-account |
 | `/api/job-posting` | job-post |
+| `/api/job-sourcing` | job-source |
 | `/api/job` | job (core jobs with AI generation) |
-| `/api/candidate` | candidate |
+| `/api/applicant` | applicant |
+| `/api/candidate-pipeline` | candidate-pipeline |
 | `/api/sourcing` | sourcing |
 | `/api/recruiter` | recruiter |
-| `/api/email-notify` | email-notify |
-| `/api/landing` | landing |
+| `/api/pipeline` | pipeline |
+| `/api/stage-category` | stage-category |
+| `/api/template-stage` | template-stage |
+| `/api/automation-setting` | automation-setting |
+| `/api/screening` | screening |
+| `/api/participant` | assessment/participant |
+| `/api/question` | assessment/question |
+| `/api/session` | assessment/session |
+| `/api/assessment-battery-result` | assessment/assessment-battery-result |
 | `/api/seek` | platform/seek |
 | `/api/linkedin` | platform/linkedin |
 | `/api/cookies` | cookie |
