@@ -7,16 +7,18 @@ import { Toaster } from "@/components/ui/sonner"
 
 const BREADCRUMB_MAP = {
   '/dashboard': ['Dashboard'],
-  '/settings/user-management': ['Settings', 'User Management'],
-  '/settings/role-management': ['Settings', 'Role Management'],
-  '/settings/recruiters': ['Settings', 'Recruiters'],
-  '/settings/account': ['Settings', 'Account'],
-  '/settings/integrations': ['Settings', 'Integrations'],
-  '/job-postings/seek': ['Job Postings', 'Seek'],
-  '/job-postings/linkedin': ['Job Postings', 'LinkedIn'],
-  '/job-management/seek-sourcing': ['Job Management', 'Seek Sourcing'],
-  '/job-management/linkedin-sourcing': ['Job Management', 'LinkedIn Sourcing'],
-  '/candidates/search': ['Candidates', 'Search'],
+  '/sourcing/job-management':    ['Sourcing', 'Job Management'],
+  '/sourcing/source-management': ['Sourcing', 'Source Management'],
+  '/sourcing/talent-pool':       ['Sourcing', 'Talent Pool'],
+  '/sourcing/source-candidate':  ['Sourcing', 'Source Candidate'],
+  '/selection/ai-matching':      ['Selection', 'AI Matching'],
+  '/selection/assessment':       ['Selection', 'Assessment'],
+  '/selection/report':           ['Selection', 'Report'],
+  '/settings/user-management':   ['Settings', 'User Management'],
+  '/settings/role-management':   ['Settings', 'Role Management'],
+  '/settings/integrations':      ['Settings', 'Integrations'],
+  '/settings/account':           ['Settings', 'Account'],
+  '/settings/recruiters':        ['Settings', 'Recruiters'],
 }
 
 export default function DashboardLayout() {

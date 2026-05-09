@@ -1,8 +1,7 @@
+// Module ids are also their display order in the sidebar.
 export default [
-  { id: 1, name: 'Candidates' },
+  { id: 1, name: 'Dashboard' },
+  { id: 2, name: 'Sourcing' },
+  { id: 3, name: 'Selection' },
   { id: 4, name: 'Settings' },
-  { id: 6, name: 'Job Postings' },
-  { id: 7, name: 'Job Management' },
-  { id: 8, name: 'Sourcing' },
-  { id: 9, name: 'Selection' },
 ];

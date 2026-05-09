@@ -1,19 +1,24 @@
+// Menu ids are sequential and grouped by module so that ORDER BY id matches
+// the desired sidebar order.
 export default [
-  { id: 1,  name: 'Search' },
-  { id: 10, name: 'User Management' },
+  // Dashboard module
+  { id: 1,  name: 'Dashboard' },
+
+  // Sourcing module
+  { id: 2,  name: 'Job Management' },
+  { id: 3,  name: 'Source Management' },
+  { id: 4,  name: 'Talent Pool' },
+  { id: 5,  name: 'Source Candidate' },
+
+  // Selection module
+  { id: 6,  name: 'AI Matching' },
+  { id: 7,  name: 'Assessment' },
+  { id: 8,  name: 'Report' },
+
+  // Settings module
+  { id: 9,  name: 'User Management' },
+  { id: 10, name: 'Role Management' },
   { id: 11, name: 'Integrations' },
-  { id: 12, name: 'Role Management' },
-  { id: 13, name: 'Seek' },
-  { id: 14, name: 'LinkedIn' },
-  { id: 15, name: 'Account' },
-  { id: 16, name: 'Seek Sourcing' },
-  { id: 17, name: 'LinkedIn Sourcing' },
-  { id: 19, name: 'Job Management' },
-  { id: 20, name: 'Source Management' },
-  { id: 21, name: 'Recruiters'},
-  { id: 22, name: 'Assessment'},
-  { id: 23, name: 'Report'},
-  { id: 24, name: 'Talent Pool'},
-  { id: 25, name: 'Source Candidate'},
-  { id: 26, name: 'AI Matching'},
+  { id: 12, name: 'Account' },
+  { id: 13, name: 'Recruiters' },
 ];

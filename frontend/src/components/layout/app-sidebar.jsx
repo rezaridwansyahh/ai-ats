@@ -40,41 +40,32 @@ import {
   LogOut,
   ChevronsUpDown,
   Briefcase,
-  Search,
   ClipboardList,
-  FileText
 } from 'lucide-react';
 
+import { hasPermission } from '@/utils/permissions';
+
 const iconMap = {
-  'Dashboard':      Home,
-  'Candidates':     Search,
-  'Settings':       Settings,
-  'Job Postings':   Package,
-  'Job Management': Briefcase,
-  'Sourcing':       Briefcase,
-  'Selection':      ClipboardList,
-  'asesmen':        FileText
+  'Dashboard': Home,
+  'Sourcing':  Briefcase,
+  'Selection': ClipboardList,
+  'Settings':  Settings,
 };
 
 const routeMap = {
-  'dashboard':         '/dashboard',
-  'Search':            '/candidates/search',
+  'Dashboard':         '/dashboard',
   'User Management':   '/settings/user-management',
   'Role Management':   '/settings/role-management',
   'Recruiters':        '/settings/recruiters',
   'Account':           '/settings/account',
   'Integrations':      '/settings/integrations',
-  'Seek':              '/job-postings/seek',
-  'LinkedIn':          '/job-postings/linkedin',
-  'Seek Sourcing':     '/job-management/seek-sourcing',
-  'LinkedIn Sourcing': '/job-management/linkedin-sourcing',
   'Job Management':    '/sourcing/job-management',
+  'Source Management': '/sourcing/source-management',
   'Talent Pool':       '/sourcing/talent-pool',
   'Source Candidate':  '/sourcing/source-candidate',
   'Assessment':        '/selection/assessment',
   'Report':            '/selection/report',
   'AI Matching':       '/selection/ai-matching',
-  'asesmen a':         '/asesmen/asesmen-a'
 };
 
 const useSidebarStructure = (permissions) => {
@@ -189,6 +180,7 @@ export function AppSidebar() {
     : 'U';
 
   const isDashboardActive = location.pathname === '/dashboard';
+  const canSeeDashboard = hasPermission('Dashboard', 'Dashboard', 'read');
 
   return (
     <Sidebar>
@@ -202,36 +194,38 @@ export function AppSidebar() {
       {/* ── Content ── */}
       <SidebarContent className="px-2 py-3 gap-0">
 
-        {/* Dashboard — Main group */}
-        <SidebarGroup className="p-0 mb-1">
-          <SidebarGroupLabel className="text-[9px] uppercase tracking-[0.12em] text-muted-foreground/50 font-bold px-2 mb-1 h-5">
-            Main
-          </SidebarGroupLabel>
-          <SidebarGroupContent>
-            <SidebarMenu>
-              <SidebarMenuItem>
-                <SidebarMenuButton
-                  className={`cursor-pointer transition-all duration-200 rounded-lg h-8 ${
-                    isDashboardActive
-                      ? 'bg-primary text-primary-foreground font-semibold shadow-sm'
-                      : 'text-muted-foreground hover:bg-accent/80 hover:text-foreground'
-                  }`}
-                  onClick={() => navigate('/dashboard')}
-                >
-                  <div className={`h-5 w-5 rounded-md flex items-center justify-center flex-shrink-0 transition-all duration-200 ${
-                    isDashboardActive ? 'bg-white/20' : 'bg-primary/10'
-                  }`}>
-                    <Home className={`h-3 w-3 ${isDashboardActive ? 'text-white' : 'text-primary'}`} />
-                  </div>
-                  <span className="text-sm">Dashboard</span>
-                </SidebarMenuButton>
-              </SidebarMenuItem>
-            </SidebarMenu>
-          </SidebarGroupContent>
-        </SidebarGroup>
+        {/* Dashboard — Main group (gated on Dashboard module read permission) */}
+        {canSeeDashboard && (
+          <SidebarGroup className="p-0 mb-1">
+            <SidebarGroupLabel className="text-[9px] uppercase tracking-[0.12em] text-muted-foreground/50 font-bold px-2 mb-1 h-5">
+              Main
+            </SidebarGroupLabel>
+            <SidebarGroupContent>
+              <SidebarMenu>
+                <SidebarMenuItem>
+                  <SidebarMenuButton
+                    className={`cursor-pointer transition-all duration-200 rounded-lg h-8 ${
+                      isDashboardActive
+                        ? 'bg-primary text-primary-foreground font-semibold shadow-sm'
+                        : 'text-muted-foreground hover:bg-accent/80 hover:text-foreground'
+                    }`}
+                    onClick={() => navigate('/dashboard')}
+                  >
+                    <div className={`h-5 w-5 rounded-md flex items-center justify-center flex-shrink-0 transition-all duration-200 ${
+                      isDashboardActive ? 'bg-white/20' : 'bg-primary/10'
+                    }`}>
+                      <Home className={`h-3 w-3 ${isDashboardActive ? 'text-white' : 'text-primary'}`} />
+                    </div>
+                    <span className="text-sm">Dashboard</span>
+                  </SidebarMenuButton>
+                </SidebarMenuItem>
+              </SidebarMenu>
+            </SidebarGroupContent>
+          </SidebarGroup>
+        )}
 
-        {/* Permission-driven module groups */}
-        {sidebarItems.map(({ moduleName, menus }) => {
+        {/* Permission-driven module groups (Dashboard rendered above as a Main row) */}
+        {sidebarItems.filter(s => s.moduleName !== 'Dashboard').map(({ moduleName, menus }) => {
           const ModuleIcon = iconMap[moduleName] ?? Package;
           const isOpen     = openModules.has(moduleName);
           const hasActiveChild = menus.some(m => isRouteActive(m));
