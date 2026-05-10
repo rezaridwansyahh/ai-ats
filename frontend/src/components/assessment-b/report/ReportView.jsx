@@ -37,7 +37,7 @@ const NARR_LABELS = {
 const SUB_NAMES = { GI: 'Kemampuan Umum', PV: 'Penalaran Verbal', KN: 'Kemampuan Numerik', PA: 'Penalaran Abstrak', KA: 'Kecepatan & Akurasi' };
 const SUB_WEIGHTS = { GI: '30%', PV: '17.5%', KN: '17.5%', PA: '17.5%', KA: '17.5%' };
 
-export default function ReportView({ profile, results, state, updateState, onBackToSetup, onResetAnnotations }) {
+export default function ReportView({ profile, results, state, updateState, onClose }) {
   const [showDetail, setShowDetail] = useState(false);
 
   const tk = results.tk;
@@ -466,10 +466,11 @@ export default function ReportView({ profile, results, state, updateState, onBac
 
       <div className="flex flex-wrap gap-2 mt-3">
         <Button variant="outline" size="sm" onClick={() => window.print()}>🖨 Cetak / Simpan PDF</Button>
-        <Button variant="outline" size="sm" onClick={onBackToSetup}>✏️ Edit Data</Button>
-        <Button variant="outline" size="sm" onClick={onResetAnnotations} className="text-red-600 hover:text-red-700 ml-auto">
-          🗑 Reset Anotasi
-        </Button>
+        {onClose && (
+          <Button variant="outline" size="sm" onClick={onClose} className="ml-auto">
+            Tutup
+          </Button>
+        )}
       </div>
     </div>
   );

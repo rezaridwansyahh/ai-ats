@@ -7,7 +7,10 @@ const TEST_LABELS = {
   papi: 'Tes 4 — Preferensi Kerja',
 };
 
-export default function Complete({ profile, results, tests, onBack, onContinue }) {
+export default function Complete({
+  profile, results, tests, onBack, onContinue,
+  submitStatus = 'idle', submitError = null, onRetrySubmit,
+}) {
   const allDone = tests.every((t) => results[t]);
   const doneCount = Object.keys(results || {}).length;
   const firstUndone = tests.find((t) => !results[t]);
@@ -27,6 +30,31 @@ export default function Complete({ profile, results, tests, onBack, onContinue }
             <strong>Langkah selanjutnya:</strong> Hubungi rekruter Anda dan informasikan bahwa semua tes telah selesai. Hasil
             akan diproses oleh tim asesor.
           </div>
+
+          {submitStatus === 'submitting' && (
+            <div className="mt-3 bg-white border border-slate-200 rounded-lg px-3 py-2 text-xs text-slate-600">
+              Menyimpan hasil ke server…
+            </div>
+          )}
+          {submitStatus === 'success' && (
+            <div className="mt-3 bg-emerald-100 border border-emerald-300 rounded-lg px-3 py-2 text-xs text-emerald-800">
+              ✓ Hasil tersimpan di server
+            </div>
+          )}
+          {submitStatus === 'error' && (
+            <div className="mt-3 bg-red-50 border border-red-300 rounded-lg px-3 py-2.5 text-xs text-red-700 text-left">
+              <p className="font-semibold mb-1.5">Gagal mengirim hasil ke server</p>
+              <p className="opacity-90 mb-2">{submitError}</p>
+              {onRetrySubmit && (
+                <button
+                  onClick={onRetrySubmit}
+                  className="bg-red-600 hover:bg-red-700 text-white px-3 py-1 rounded text-[11px] font-bold uppercase tracking-wider"
+                >
+                  Coba Lagi
+                </button>
+              )}
+            </div>
+          )}
         </div>
       )}
 

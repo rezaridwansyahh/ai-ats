@@ -13,22 +13,32 @@ export default function Setup({ initial, onSubmit }) {
   const [department, setDepartment] = useState(initial?.department || '');
   const [education, setEducation] = useState(initial?.education || '');
   const [dateBirth, setDateBirth] = useState(initial?.date_birth || '');
+  const [submitting, setSubmitting] = useState(false);
+  const [error, setError] = useState(null);
 
-  const handleSubmit = () => {
+  const handleSubmit = async () => {
     if (!name.trim() || !email.trim() || !position.trim() || !department.trim() || !education || !dateBirth) {
-      alert('Mohon lengkapi semua data peserta.');
+      setError('Mohon lengkapi semua data peserta.');
       return;
     }
-    onSubmit({
-      name: name.trim(),
-      email: email.trim(),
-      position: position.trim(),
-      department: department.trim(),
-      education,
-      date_birth: dateBirth,
-      tglTesRaw: new Date().toISOString().split('T')[0],
-      date: fmtDateID(),
-    });
+    setSubmitting(true);
+    setError(null);
+    try {
+      await onSubmit({
+        name: name.trim(),
+        email: email.trim(),
+        position: position.trim(),
+        department: department.trim(),
+        education,
+        date_birth: dateBirth,
+        tglTesRaw: new Date().toISOString().split('T')[0],
+        date: fmtDateID(),
+      });
+    } catch (e) {
+      setError(e?.response?.data?.message || e?.message || 'Gagal menyimpan data peserta. Silakan coba lagi.');
+    } finally {
+      setSubmitting(false);
+    }
   };
 
   return (
@@ -106,11 +116,18 @@ export default function Setup({ initial, onSubmit }) {
             </div>
           </div>
 
+          {error && (
+            <div className="rounded-lg border border-red-200 bg-red-50 px-3.5 py-2.5 text-xs text-red-700">
+              {error}
+            </div>
+          )}
+
           <Button
             onClick={handleSubmit}
-            className="w-full mt-4 bg-gradient-to-br from-teal-800 to-teal-600 hover:opacity-90 h-11"
+            disabled={submitting}
+            className="w-full mt-4 bg-gradient-to-br from-teal-800 to-teal-600 hover:opacity-90 h-11 disabled:opacity-60"
           >
-            Mulai Asesmen →
+            {submitting ? 'Menyimpan…' : 'Mulai Asesmen →'}
           </Button>
         </CardContent>
       </Card>
