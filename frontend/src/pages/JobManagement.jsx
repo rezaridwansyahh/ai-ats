@@ -48,6 +48,7 @@ export default function JobManagementPage() {
   const [validationErrors, setValidationErrors] = useState([]);
   const [postingSummary, setPostingSummary] = useState(null);
   const [showPostingConfirm, setShowPostingConfirm] = useState(false);
+  const [pipelineHasStages, setPipelineHasStages] = useState(false);
 
   const fetchJobs = useCallback(async () => {
     setLoading(true);
@@ -76,6 +77,12 @@ export default function JobManagementPage() {
     fetchJobs();
     fetchRecruiters();
   }, [fetchJobs, fetchRecruiters]);
+
+  // Reset the pipeline flag when the recruiter switches jobs — JobStages will
+  // re-emit the truth via onPipelineChange once it loads.
+  useEffect(() => {
+    setPipelineHasStages(false);
+  }, [selectedJob?.id]);
 
   const handleCreateJob = async (data) => {
     const res = await createJob(data);
@@ -139,6 +146,14 @@ export default function JobManagementPage() {
 
       if(selectedJob.status === 'Active') {
         setActiveStep(1);
+      }
+    }
+    if (activeStep === 1) {
+      if (!pipelineHasStages) {
+        setValidationErrors([
+          'Pipeline stages must be configured and saved before continuing. Pick a template or define custom stages, then click Save Pipeline.',
+        ]);
+        return;
       }
     }
     if (activeStep === 2) {
@@ -256,7 +271,10 @@ export default function JobManagementPage() {
         />
       )}
       {activeStep === 1 && (
-        <JobStages selectedJob={selectedJob} />
+        <JobStages
+          selectedJob={selectedJob}
+          onPipelineChange={({ hasStages }) => setPipelineHasStages(!!hasStages)}
+        />
       )}
       {activeStep === 2 && (
         <JobPosting

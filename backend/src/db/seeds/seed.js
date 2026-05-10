@@ -15,6 +15,8 @@ import applicantsData from '../data/applicants.js';
 import skillAliasesData from '../data/skill_aliases.js';
 import companiesData from '../data/companies.js';
 import assessmentsData from '../data/assessments.js';
+import jobTemplatesData from '../data/job_templates.js';
+import recruitersData from '../data/recruiters.js';
 
 const seed = async () => {
   await getDb().query('BEGIN');
@@ -25,7 +27,9 @@ const seed = async () => {
     await getDb().query('DELETE FROM core_applicant_assessment');
     await getDb().query('DELETE FROM master_assessment');
     await getDb().query('DELETE FROM master_applicant');
+    await getDb().query('DELETE FROM master_recruiters');
     await getDb().query('DELETE FROM core_job_sourcing');
+    await getDb().query('DELETE FROM core_job_template');
     await getDb().query('DELETE FROM core_job');
     await getDb().query('DELETE FROM master_job_account');
     await getDb().query('DELETE FROM job_stage');
@@ -156,9 +160,18 @@ const seed = async () => {
     // 12. master_job_account
     for (const acc of jobAccounts) {
       await getDb().query(
-        `INSERT INTO master_job_account (id, portal_name, email, password, user_id, status_connection, status_sync)
-         VALUES ($1, $2, $3, $4, $5, $6, $7)`,
-        [acc.id, acc.portal_name, acc.email, acc.password, acc.user_id, acc.status_connection, acc.status_sync]
+        `INSERT INTO master_job_account (id, portal_name, email, password, user_id, company_id, status_connection, status_sync)
+         VALUES ($1, $2, $3, $4, $5, $6, $7, $8)`,
+        [acc.id, acc.portal_name, acc.email, acc.password, acc.user_id, acc.company_id ?? null, acc.status_connection, acc.status_sync]
+      );
+    }
+
+    // 13. master_recruiters (per-tenant rosters)
+    for (const r of recruitersData) {
+      await getDb().query(
+        `INSERT INTO master_recruiters (id, company_id, name, email, jobs_assigned, status)
+         VALUES ($1, $2, $3, $4, $5, $6)`,
+        [r.id, r.company_id ?? null, r.name, r.email, r.jobs_assigned ?? 0, r.status ?? 'Active']
       );
     }
 
@@ -166,17 +179,27 @@ const seed = async () => {
     for (const job of coreJobs) {
       await getDb().query(
         `INSERT INTO core_job (
-           id, job_title, job_desc, job_location, work_option, work_type,
+           id, company_id, job_title, job_desc, job_location, work_option, work_type,
            pay_type, currency, pay_min, pay_max, pay_display, status,
            required_skills, preferred_skills
          )
-         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14)`,
+         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15)`,
         [
-          job.id, job.job_title, job.job_desc, job.job_location, job.work_option, job.work_type,
+          job.id, job.company_id ?? null,
+          job.job_title, job.job_desc, job.job_location, job.work_option, job.work_type,
           job.pay_type, job.currency, job.pay_min, job.pay_max, job.pay_display, job.status,
           job.required_skills ? JSON.stringify(job.required_skills) : null,
           job.preferred_skills ? JSON.stringify(job.preferred_skills) : null,
         ]
+      );
+    }
+
+    // 14b. core_job_template — link active jobs to a template so they have a pipeline
+    for (const t of jobTemplatesData) {
+      await getDb().query(
+        `INSERT INTO core_job_template (id, job_id, template_stage_id)
+         VALUES ($1, $2, $3)`,
+        [t.id, t.job_id, t.template_stage_id]
       );
     }
 
@@ -210,15 +233,28 @@ const seed = async () => {
       );
     }
 
-    // 18. master_applicant
+    // 18. master_applicant — derive company_id via sourcing → account → company,
+    //     falling back to matching the sourcing's job_title to core_job for internal sourcings.
+    const accountToCompany = new Map(jobAccounts.map(a => [a.id, a.company_id ?? null]));
+    const titleToCompany   = new Map(coreJobs.map(j => [j.job_title, j.company_id ?? null]));
+    const sourcingToCompany = new Map(
+      jobSourcing.map(s => [
+        s.id,
+        s.account_id != null
+          ? (accountToCompany.get(s.account_id) ?? null)
+          : (titleToCompany.get(s.job_title) ?? null),
+      ])
+    );
+
     for (const a of applicantsData) {
+      const company_id = sourcingToCompany.get(a.job_sourcing_id) ?? null;
       await getDb().query(
         `INSERT INTO master_applicant (
-           id, job_sourcing_id, name, email, last_position, address, education, information, date, attachment
+           id, job_sourcing_id, company_id, name, email, last_position, address, education, information, date, attachment
          )
-         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)`,
+         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)`,
         [
-          a.id, a.job_sourcing_id, a.name, a.email || null, a.last_position, a.address,
+          a.id, a.job_sourcing_id, company_id, a.name, a.email || null, a.last_position, a.address,
           a.education, a.information ? JSON.stringify(a.information) : null,
           a.date, a.attachment
         ]

@@ -9,7 +9,7 @@ import {
   Send,
   Rocket,
   LayoutGrid,
-  Kanban,
+  Workflow,
   Zap,
 } from 'lucide-react';
 
@@ -22,13 +22,13 @@ import HiringFunnel from '@/components/dashboard/HiringFunnel';
 import UpcomingInterviews from '@/components/dashboard/UpcomingInterviews';
 import SourceChannelTable from '@/components/dashboard/SourceChannelTable';
 import DepartmentProgress from '@/components/dashboard/DepartmentProgress';
-import KanbanBoard from '@/components/dashboard/KanbanBoard';
+import CandidatePipeline from '@/components/dashboard/CandidatePipeline';
 import AutomationLog from '@/components/dashboard/AutomationLog';
 
 const TABS = [
-  { id: 'overview', label: 'Overview',          icon: LayoutGrid },
-  { id: 'kanban',   label: 'Kanban Pipeline',   icon: Kanban },
-  { id: 'auto',     label: 'Automation Log',    icon: Zap },
+  { id: 'overview', label: 'Overview',           icon: LayoutGrid },
+  { id: 'pipeline', label: 'Candidate Pipeline', icon: Workflow },
+  { id: 'auto',     label: 'Automation Log',     icon: Zap },
 ];
 
 export default function Dashboard() {
@@ -64,7 +64,7 @@ export default function Dashboard() {
       {/* Tab content */}
       <div key={activeTab} className="animate-fade-in-up">
         {activeTab === 'overview' && <OverviewTab />}
-        {activeTab === 'kanban' && <KanbanBoard />}
+        {activeTab === 'pipeline' && <CandidatePipeline />}
         {activeTab === 'auto' && <AutomationLog />}
       </div>
     </div>

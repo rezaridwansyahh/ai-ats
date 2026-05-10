@@ -43,7 +43,7 @@ const STATUS_COLORS = {
 };
 
 // ── Component ────────────────────────────────────────────────────────
-export default function JobStagesStep({ selectedJob }) {
+export default function JobStagesStep({ selectedJob, onPipelineChange }) {
   const nextIdRef = useRef(1);
   const [stages, setStages] = useState([]);
   const [loadingStages, setLoadingStages] = useState(false);
@@ -126,6 +126,11 @@ export default function JobStagesStep({ selectedJob }) {
           setStages([]);
           nextIdRef.current = 1;
         }
+
+        // Notify parent: server-confirmed stage presence, NOT local edits.
+        onPipelineChange?.({
+          hasStages: Array.isArray(data.stages) && data.stages.length > 0,
+        });
 
         const autoData = autoRes.data.data;
         if (autoData) {
@@ -214,6 +219,11 @@ export default function JobStagesStep({ selectedJob }) {
         ...s,
         id: savedStages[idx]?.id ?? s.id,
       })));
+
+      // Notify parent: stages are now committed to the backend.
+      onPipelineChange?.({
+        hasStages: Array.isArray(savedStages) && savedStages.length > 0,
+      });
 
       setSaveMessage({ type: 'success', text: 'Pipeline saved successfully' });
     } catch (err) {
