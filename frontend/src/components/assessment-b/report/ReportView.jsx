@@ -37,7 +37,7 @@ const NARR_LABELS = {
 const SUB_NAMES = { GI: 'Kemampuan Umum', PV: 'Penalaran Verbal', KN: 'Kemampuan Numerik', PA: 'Penalaran Abstrak', KA: 'Kecepatan & Akurasi' };
 const SUB_WEIGHTS = { GI: '30%', PV: '17.5%', KN: '17.5%', PA: '17.5%', KA: '17.5%' };
 
-export default function ReportView({ profile, results, state, updateState, onBackToSetup, onResetAnnotations }) {
+export default function ReportView({ profile, results, state, updateState, onClose }) {
   const [showDetail, setShowDetail] = useState(false);
 
   const tk = results.tk;
@@ -90,16 +90,16 @@ export default function ReportView({ profile, results, state, updateState, onBac
           <div>
             <div className="font-serif text-2xl md:text-3xl font-bold mb-1 leading-tight">{profile?.name}</div>
             <div className="text-sm opacity-80 mb-3.5">
-              {profile?.jabatan}
-              {profile?.gender ? ' · ' + profile.gender : ''}
+              {profile?.position}
+              {profile?.department ? ' · ' + profile.department : ''}
               {profile?.education ? ' · ' + profile.education : ''}
             </div>
             <div className="grid grid-cols-2 gap-x-3.5 gap-y-1.5 max-w-[420px]">
               {[
-                ['Tanggal Lahir', profile?.tglLahir || '—'],
+                ['Tanggal Lahir', profile?.date_birth ? new Date(profile.date_birth).toLocaleDateString('id-ID', { day: '2-digit', month: 'long', year: 'numeric' }) : '—'],
                 ['Tanggal Tes', profile?.date || fmtDateID()],
+                ['Email', profile?.email || '—'],
                 ['No. Kandidat', state.nomerKandidat || '—'],
-                ['Departemen', state.departemen || '—'],
                 ['Asesor', state.asesor || '—'],
               ].map(([lbl, val]) => (
                 <div key={lbl} className="bg-white/10 rounded-lg px-3 py-1.5">
@@ -466,10 +466,11 @@ export default function ReportView({ profile, results, state, updateState, onBac
 
       <div className="flex flex-wrap gap-2 mt-3">
         <Button variant="outline" size="sm" onClick={() => window.print()}>🖨 Cetak / Simpan PDF</Button>
-        <Button variant="outline" size="sm" onClick={onBackToSetup}>✏️ Edit Data</Button>
-        <Button variant="outline" size="sm" onClick={onResetAnnotations} className="text-red-600 hover:text-red-700 ml-auto">
-          🗑 Reset Anotasi
-        </Button>
+        {onClose && (
+          <Button variant="outline" size="sm" onClick={onClose} className="ml-auto">
+            Tutup
+          </Button>
+        )}
       </div>
     </div>
   );

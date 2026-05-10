@@ -1,23 +1,32 @@
 import { useState, useEffect, useRef } from 'react';
-import { SUBS, ORDER_A, IQ_TABLE, GI_KEYS, GI_QUESTIONS, KA_QUESTIONS } from '@/constants/assessmentData';
+import { SUBS, ORDER_A, GI_QUESTIONS, KA_QUESTIONS } from '@/constants/assessmentData';
+import { createParticipantByEmail } from '@/api/participant.api';
+import { submitAssessment } from '@/api/assessment-battery-result.api';
 
 const STORAGE_KEY = 'myx-bat-a-v8';
+const ASSESSMENT_ID_BATTERY_A = 1;
 
 export default function AssessmentAPage() {
-  const [screen, setScreen] = useState('setup'); // setup, overview, test, done
+  const [screen, setScreen] = useState('setup'); // setup | overview | test | done
   const [profile, setProfile] = useState({
     name: '',
     email: '',
     position: '',
     department: '',
     education: '',
-    date_birth: ''
+    date_birth: '',
+    participant_id: null,
   });
   const [activeSubtest, setActiveSubtest] = useState(null);
   const [answers, setAnswers] = useState({});
   const [completedTests, setCompletedTests] = useState([]);
   const [questionIdx, setQuestionIdx] = useState(0);
   const [timeLeft, setTimeLeft] = useState(null);
+  const [setupSubmitting, setSetupSubmitting] = useState(false);
+  const [setupError, setSetupError] = useState(null);
+  const [submitStatus, setSubmitStatus] = useState('idle'); // idle | submitting | success | error
+  const [submitError, setSubmitError] = useState(null);
+  const startedAtRef = useRef(null);
   const timerRef = useRef(null);
 
   // Load from localStorage
@@ -26,9 +35,10 @@ export default function AssessmentAPage() {
       const saved = localStorage.getItem(STORAGE_KEY);
       if (saved) {
         const data = JSON.parse(saved);
-        if (data.profile) setProfile(data.profile);
+        if (data.profile) setProfile((p) => ({ ...p, ...data.profile }));
         if (data.answers) setAnswers(data.answers);
         if (data.completedTests) setCompletedTests(data.completedTests);
+        if (data.startedAt) startedAtRef.current = data.startedAt;
       }
     } catch (e) {
       console.error('Load error:', e);
@@ -36,28 +46,25 @@ export default function AssessmentAPage() {
   }, []);
 
   // Save to localStorage
-  const saveToStorage = () => {
+  useEffect(() => {
     try {
       localStorage.setItem(STORAGE_KEY, JSON.stringify({
         profile,
         answers,
         completedTests,
-        timestamp: new Date().toISOString()
+        startedAt: startedAtRef.current,
+        timestamp: new Date().toISOString(),
       }));
     } catch (e) {
       console.error('Save error:', e);
     }
-  };
-
-  useEffect(() => {
-    saveToStorage();
   }, [profile, answers, completedTests]);
 
   // Timer for GI/KA
   useEffect(() => {
     if (screen === 'test' && timeLeft !== null && timeLeft > 0) {
       timerRef.current = setInterval(() => {
-        setTimeLeft(t => {
+        setTimeLeft((t) => {
           if (t <= 1) {
             handleFinishSubtest();
             return 0;
@@ -67,6 +74,7 @@ export default function AssessmentAPage() {
       }, 1000);
       return () => clearInterval(timerRef.current);
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [screen, timeLeft]);
 
   const formatTime = (seconds) => {
@@ -75,30 +83,43 @@ export default function AssessmentAPage() {
     return `${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`;
   };
 
-  const handleStartAssessment = () => {
+  const handleStartAssessment = async () => {
     if (!profile.name || !profile.email || !profile.position || !profile.department || !profile.education || !profile.date_birth) {
-      alert('Mohon lengkapi semua data peserta');
+      setSetupError('Mohon lengkapi semua data peserta.');
       return;
     }
-    setScreen('overview');
+    setSetupSubmitting(true);
+    setSetupError(null);
+    try {
+      const { data } = await createParticipantByEmail({
+        name: profile.name,
+        email: profile.email,
+        position: profile.position,
+        department: profile.department,
+        education: profile.education,
+        date_birth: profile.date_birth,
+      });
+      setProfile((p) => ({ ...p, participant_id: data?.participant?.id ?? null }));
+      if (!startedAtRef.current) startedAtRef.current = new Date().toISOString();
+      setScreen('overview');
+    } catch (e) {
+      setSetupError(e?.response?.data?.message || e?.message || 'Gagal menyimpan data peserta.');
+    } finally {
+      setSetupSubmitting(false);
+    }
   };
 
   const handleStartSubtest = (code) => {
     setActiveSubtest(code);
     setQuestionIdx(0);
-    if (SUBS[code].time) {
-      setTimeLeft(SUBS[code].time);
-    }
+    if (SUBS[code].time) setTimeLeft(SUBS[code].time);
     setScreen('test');
   };
 
   const handleAnswerChange = (value) => {
-    setAnswers(prev => ({
+    setAnswers((prev) => ({
       ...prev,
-      [activeSubtest]: {
-        ...prev[activeSubtest],
-        [questionIdx]: value
-      }
+      [activeSubtest]: { ...prev[activeSubtest], [questionIdx]: value },
     }));
   };
 
@@ -112,56 +133,77 @@ export default function AssessmentAPage() {
   };
 
   const handlePrev = () => {
-    if (questionIdx > 0) {
-      setQuestionIdx(questionIdx - 1);
-    }
+    if (questionIdx > 0) setQuestionIdx(questionIdx - 1);
   };
 
   const handleFinishSubtest = () => {
     if (timerRef.current) clearInterval(timerRef.current);
-    if (!completedTests.includes(activeSubtest)) {
-      setCompletedTests([...completedTests, activeSubtest]);
-    }
+    const finishedSubtest = activeSubtest;
+    const newCompleted = completedTests.includes(finishedSubtest)
+      ? completedTests
+      : [...completedTests, finishedSubtest];
+    setCompletedTests(newCompleted);
     setActiveSubtest(null);
     setTimeLeft(null);
 
-    if (completedTests.length + 1 >= ORDER_A.length) {
+    if (newCompleted.length >= ORDER_A.length) {
       setScreen('done');
     } else {
       setScreen('overview');
     }
   };
 
+  // Flatten the per-subtest answers state into the backend submission shape.
+  const buildAnswerArray = () => {
+    const flat = [];
+    for (const subtest of Object.keys(answers)) {
+      const perTest = answers[subtest] || {};
+      for (const idxStr of Object.keys(perTest)) {
+        flat.push({
+          index: Number(idxStr),
+          selected: perTest[idxStr],
+          subtest,
+        });
+      }
+    }
+    return flat;
+  };
+
+  const submitToBackend = async () => {
+    if (!profile.participant_id) {
+      setSubmitStatus('error');
+      setSubmitError('Participant ID belum tersedia. Silakan ulangi pengisian data peserta.');
+      return;
+    }
+    setSubmitStatus('submitting');
+    setSubmitError(null);
+    try {
+      await submitAssessment({
+        participant_id: profile.participant_id,
+        assessment_id: ASSESSMENT_ID_BATTERY_A,
+        answers: buildAnswerArray(),
+        started_at: startedAtRef.current,
+      });
+      setSubmitStatus('success');
+    } catch (e) {
+      setSubmitStatus('error');
+      setSubmitError(e?.response?.data?.message || e?.message || 'Gagal mengirim hasil ke server.');
+    }
+  };
+
+  // Auto-submit once when the candidate reaches the done screen.
+  useEffect(() => {
+    if (screen === 'done' && submitStatus === 'idle') {
+      submitToBackend();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [screen]);
+
   // === RENDER SCREENS ===
 
   if (screen === 'setup') {
     return (
       <div className="min-h-screen bg-[#FAFAF8]">
-        <nav className="bg-gradient-to-r from-[#064E3B] to-[#0A6E5C] px-6 py-4 shadow-lg sticky top-0 z-50">
-          <div className="max-w-4xl mx-auto flex items-center justify-between">
-            <div className="flex items-center gap-3">
-              <svg width="26" height="26" viewBox="-50 -10 220 220" xmlns="http://www.w3.org/2000/svg">
-                <path d="M30,10 C70,30 90,70 60,100 C30,130 70,170 90,190" stroke="url(#lga1)" strokeWidth="6" fill="none" strokeLinecap="round"/>
-                <path d="M90,10 C50,30 30,70 60,100 C90,130 70,170 30,190" stroke="url(#lga2)" strokeWidth="6" fill="none" strokeLinecap="round"/>
-                <circle cx="60" cy="100" r="8" fill="#fff" opacity=".9"/>
-                <defs>
-                  <linearGradient id="lga1" x1="0%" y1="0%" x2="100%" y2="100%">
-                    <stop offset="0%" stopColor="#0A6E5C"/>
-                    <stop offset="100%" stopColor="#14B8A6"/>
-                  </linearGradient>
-                  <linearGradient id="lga2" x1="100%" y1="0%" x2="0%" y2="100%">
-                    <stop offset="0%" stopColor="#F59E0B"/>
-                    <stop offset="50%" stopColor="#14B8A6"/>
-                    <stop offset="100%" stopColor="#0A6E5C"/>
-                  </linearGradient>
-                </defs>
-              </svg>
-              <span className="text-white font-bold text-lg tracking-wider" style={{ fontFamily: "'Playfair Display', Georgia, serif" }}>MYRALIX</span>
-            </div>
-            <span className="bg-white/20 text-white px-3 py-1 rounded-full text-xs font-bold border border-white/30">Battery A · v10</span>
-          </div>
-        </nav>
-
         <div className="max-w-4xl mx-auto px-6 py-8">
           <div className="bg-gradient-to-br from-[#0A2A22] via-[#064E3B] to-[#0A6E5C] rounded-2xl p-10 text-white mb-6 shadow-2xl relative overflow-hidden">
             <div className="absolute right-[-20px] top-[-40px] text-[180px] font-bold opacity-[0.06] pointer-events-none" style={{ fontFamily: "'Playfair Display', serif" }}>A</div>
@@ -248,11 +290,19 @@ export default function AssessmentAPage() {
                 />
               </div>
             </div>
+
+            {setupError && (
+              <div className="rounded-lg border border-red-200 bg-red-50 px-3.5 py-2.5 text-xs text-red-700 mb-4">
+                {setupError}
+              </div>
+            )}
+
             <button
               onClick={handleStartAssessment}
-              className="w-full bg-gradient-to-r from-[#064E3B] to-[#0A6E5C] text-white py-4 rounded-lg font-bold text-sm uppercase tracking-wider hover:shadow-lg transition-all hover:-translate-y-0.5"
+              disabled={setupSubmitting}
+              className="w-full bg-gradient-to-r from-[#064E3B] to-[#0A6E5C] text-white py-4 rounded-lg font-bold text-sm uppercase tracking-wider hover:shadow-lg transition-all hover:-translate-y-0.5 disabled:opacity-60 disabled:cursor-not-allowed disabled:translate-y-0"
             >
-              Mulai Asesmen
+              {setupSubmitting ? 'Menyimpan…' : 'Mulai Asesmen'}
             </button>
           </div>
         </div>
@@ -263,20 +313,6 @@ export default function AssessmentAPage() {
   if (screen === 'overview') {
     return (
       <div className="min-h-screen bg-[#FAFAF8]">
-        <nav className="bg-gradient-to-r from-[#064E3B] to-[#0A6E5C] px-6 py-4 shadow-lg">
-          <div className="max-w-4xl mx-auto flex items-center justify-between">
-            <span className="text-white font-bold text-lg">Battery A · {profile.name}</span>
-            <div className="flex gap-2">
-              {ORDER_A.map((code) => (
-                <div
-                  key={code}
-                  className={`w-2 h-2 rounded-full ${completedTests.includes(code) ? 'bg-white' : 'bg-white/30'}`}
-                />
-              ))}
-            </div>
-          </div>
-        </nav>
-
         <div className="max-w-4xl mx-auto px-6 py-8">
           <h2 className="text-2xl font-bold mb-6" style={{ fontFamily: "'Playfair Display', serif" }}>Pilih Sub-Tes</h2>
           {ORDER_A.map((code) => {
@@ -340,7 +376,7 @@ export default function AssessmentAPage() {
       <div className="min-h-screen bg-[#FAFAF8]">
         {/* Timer Bar */}
         {timeLeft !== null && (
-          <div className="bg-[#064E3B] px-6 py-3 sticky top-0 z-50">
+          <div className="bg-[#064E3B] px-6 py-3 sticky top-13 z-10">
             <div className="max-w-4xl mx-auto flex items-center gap-4">
               <span className="text-white font-bold text-2xl font-serif min-w-[70px]">{formatTime(timeLeft)}</span>
               <div className="flex-1 bg-white/20 rounded-full h-2 overflow-hidden">
@@ -355,7 +391,7 @@ export default function AssessmentAPage() {
         )}
 
         {/* Progress Bar */}
-        <div className="bg-white border-b px-6 py-3 sticky top-[56px] z-40 shadow-sm">
+        <div className="bg-white border-b px-6 py-3 sticky top-[104px] z-10 shadow-sm">
           <div className="max-w-4xl mx-auto flex items-center gap-4">
             <span className="text-xs font-bold text-teal-600 bg-teal-100 px-3 py-1 rounded-full">
               {questionIdx + 1} / {currentTest.length}
@@ -449,7 +485,31 @@ export default function AssessmentAPage() {
               Terima kasih telah menyelesaikan seluruh rangkaian asesmen Battery A.
               Hasil Anda telah tersimpan dan akan ditinjau oleh tim rekrutmen.
             </p>
-            <p className="text-sm opacity-70 leading-relaxed">
+
+            {submitStatus === 'submitting' && (
+              <div className="mt-6 bg-white/10 border border-white/20 rounded-lg px-4 py-2.5 text-xs">
+                Menyimpan hasil ke server…
+              </div>
+            )}
+            {submitStatus === 'success' && (
+              <div className="mt-6 bg-emerald-500/20 border border-emerald-400/40 rounded-lg px-4 py-2.5 text-xs text-emerald-50">
+                ✓ Hasil tersimpan
+              </div>
+            )}
+            {submitStatus === 'error' && (
+              <div className="mt-6 bg-red-500/20 border border-red-400/40 rounded-lg px-4 py-3 text-xs text-red-50">
+                <p className="font-semibold mb-2">Gagal mengirim hasil:</p>
+                <p className="opacity-90 mb-3">{submitError}</p>
+                <button
+                  onClick={submitToBackend}
+                  className="bg-white/20 hover:bg-white/30 px-4 py-1.5 rounded text-[11px] font-bold uppercase tracking-wider"
+                >
+                  Coba Lagi
+                </button>
+              </div>
+            )}
+
+            <p className="text-sm opacity-70 leading-relaxed mt-4">
               Tim akan menghubungi Anda untuk tahap selanjutnya. Anda dapat menutup halaman ini.
             </p>
           </div>

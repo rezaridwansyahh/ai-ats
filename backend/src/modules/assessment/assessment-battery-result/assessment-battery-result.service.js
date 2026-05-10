@@ -238,13 +238,19 @@ class AssessmentBatteryResultService {
     return await AssessmentBatteryResult.getByParticipantId(participant_id);
   }
 
-  async submit({ participant_id, assessment_id, answers, started_at }) {
+  async submit({ participant_id, assessment_id, answers, started_at, results: bodyResults, summary: bodySummary }) {
     if (!participant_id) throw { status: 400, message: 'participant_id is required' };
     if (!assessment_id || !Number.isInteger(Number(assessment_id))) {
       throw { status: 400, message: 'integer assessment_id is required' };
     }
-    if (!Array.isArray(answers) || answers.length === 0) {
-      throw { status: 400, message: 'answers must be a non-empty array' };
+
+    // Two submission modes:
+    //   - server-scored: client sends `answers`, server runs buildResults + buildSummary (Battery A path).
+    //   - client-scored: client sends pre-computed `results.by_subtest` + `summary` JSONB (Battery B path,
+    //     because the server doesn't know B's scoring math). `answers` is optional in this mode.
+    const hasPrecomputed = !!(bodyResults?.by_subtest && bodySummary);
+    if (!hasPrecomputed && (!Array.isArray(answers) || answers.length === 0)) {
+      throw { status: 400, message: 'answers must be a non-empty array (or pre-computed results+summary)' };
     }
 
     const pid = Number(participant_id);
@@ -268,29 +274,43 @@ class AssessmentBatteryResultService {
         throw { status: 409, message: 'Assessment already completed for this participant' };
       }
 
-      const grouped      = groupAnswersBySubtest(answers);
-      const freshResults = buildResults(questions, grouped);
+      let mergedResults;
+      let summary;
 
-      const existingSubtest = existing?.results?.by_subtest ?? {};
-      const existingAnswers = existing?.results?.answers    ?? {};
+      if (hasPrecomputed) {
+        // Trust client-supplied JSONB. Merge with any existing partial results (skip already-present subtests).
+        const existingSubtest = existing?.results?.by_subtest ?? {};
+        const existingAnswers = existing?.results?.answers    ?? {};
+        const mergedBySubtest = mergeBySubtest(existingSubtest, bodyResults.by_subtest);
+        const mergedAnswers   = { ...existingAnswers, ...(bodyResults.answers || {}) };
+        mergedResults = { answers: mergedAnswers, by_subtest: mergedBySubtest };
+        summary       = bodySummary;
+      } else {
+        // Server-side scoring path (Battery A).
+        const grouped      = groupAnswersBySubtest(answers);
+        const freshResults = buildResults(questions, grouped);
 
-      const mergedBySubtest = mergeBySubtest(existingSubtest, freshResults.by_subtest);
-      const mergedAnswers   = { ...existingAnswers };
-      for (const [k, v] of Object.entries(freshResults.answers || {})) {
-        if (!mergedAnswers[k]) mergedAnswers[k] = v;
+        const existingSubtest = existing?.results?.by_subtest ?? {};
+        const existingAnswers = existing?.results?.answers    ?? {};
+
+        const mergedBySubtest = mergeBySubtest(existingSubtest, freshResults.by_subtest);
+        const mergedAnswers   = { ...existingAnswers };
+        for (const [k, v] of Object.entries(freshResults.answers || {})) {
+          if (!mergedAnswers[k]) mergedAnswers[k] = v;
+        }
+
+        const { total_points, total_max } = sumPoints(mergedBySubtest);
+        mergedResults = {
+          answers:    mergedAnswers,
+          by_subtest: mergedBySubtest,
+          total_points,
+          total_max,
+        };
+        summary = buildSummary(mergedResults);
       }
 
-      const { total_points, total_max } = sumPoints(mergedBySubtest);
-      const mergedResults = {
-        answers:    mergedAnswers,
-        by_subtest: mergedBySubtest,
-        total_points,
-        total_max,
-      };
-      const summary = buildSummary(mergedResults);
-
       const allDone = expectedSubtests.length > 0
-        && expectedSubtests.every((k) => mergedBySubtest[k]);
+        && expectedSubtests.every((k) => mergedResults.by_subtest[k]);
       const status       = allDone ? 'completed' : 'in_progress';
       const completed_at = allDone ? new Date().toISOString() : null;
 

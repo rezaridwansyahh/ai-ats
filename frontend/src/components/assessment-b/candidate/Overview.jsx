@@ -50,7 +50,7 @@ export default function Overview({ profile, results, tests, onPick, onReset, onS
           </div>
           <div className="flex-1 min-w-0">
             <div className="font-serif text-xl">{profile?.name}</div>
-            <div className="text-xs opacity-75">{profile?.jabatan}</div>
+            <div className="text-xs opacity-75">{profile?.position}</div>
           </div>
         </div>
         <div className="bg-white/15 border border-white/20 rounded-lg px-3 py-2.5 flex items-center justify-between">

@@ -42,9 +42,9 @@ class AssessmentBatteryResultController {
 
   async submit(req, res) {
     try {
-      const { participant_id, assessment_id, answers, started_at } = req.body;
+      const { participant_id, assessment_id, answers, started_at, results, summary } = req.body;
       const result = await assessmentBatteryResultService.submit({
-        participant_id, assessment_id, answers, started_at,
+        participant_id, assessment_id, answers, started_at, results, summary,
       });
       res.status(201).json({ message: 'Assessment submitted', result });
     } catch (err) {
