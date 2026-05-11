@@ -36,4 +36,23 @@ export default [
     },
     is_active: true,
   },
+  {
+    id: 3,
+    assessment_code: 'myralix_battery_c',
+    name: 'Myralix Battery C - Supervisori & Manajerial',
+    description: '4 sub-tes: TK Kognitif, EPPS, PAPI, SJT — frontend pre-scores dan mengirim results+summary.',
+    duration_minutes: 125,
+    options: {
+      // Top-level test keys match the frontend's submitted results.by_subtest.
+      subtests: ['tk', 'epps', 'papi', 'sjt'],
+      scoring: {
+        tk:   { weight: 0.40, sub: ['GI', 'PV', 'KN', 'PA', 'KA'] },
+        epps: { weight: 0.20, scales: 15, items: 225 },
+        papi: { weight: 0.20, dims: 20, items: 90 },
+        sjt:  { weight: 0.20, scenarios: 22, comps: ['KK', 'KOM', 'MK', 'OH', 'AD', 'IE'] },
+      },
+      // No questions bank — frontend owns Battery C questions and scoring (same pattern as A/B).
+    },
+    is_active: true,
+  },
 ];

@@ -14,12 +14,13 @@ export default [
   { id: 6,  name: 'AI Matching' },
   { id: 7,  name: 'Assessment A' },
   { id: 8,  name: 'Assessment B' },
-  { id: 9,  name: 'Report' },
+  { id: 9,  name: 'Assessment C' },
+  { id: 10, name: 'Report' },
 
   // Settings module
-  { id: 10, name: 'User Management' },
-  { id: 11, name: 'Role Management' },
-  { id: 12, name: 'Integrations' },
-  { id: 13, name: 'Account' },
-  { id: 14, name: 'Recruiters' },
+  { id: 11, name: 'User Management' },
+  { id: 12, name: 'Role Management' },
+  { id: 13, name: 'Integrations' },
+  { id: 14, name: 'Account' },
+  { id: 15, name: 'Recruiters' },
 ];

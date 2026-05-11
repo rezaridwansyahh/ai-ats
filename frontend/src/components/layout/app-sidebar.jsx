@@ -65,6 +65,7 @@ const routeMap = {
   'Source Candidate':  '/sourcing/source-candidate',
   'Assessment A':      '/selection/assessment-a',
   'Assessment B':      '/selection/assessment-b',
+  'Assessment C':      '/selection/assessment-c',
   'Report':            '/selection/report',
   'AI Matching':       '/selection/ai-matching',
 };

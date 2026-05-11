@@ -6,6 +6,7 @@ import {
 import { updateAssessmentReport } from '@/api/assessment-battery-result.api';
 import ReportViewA from '@/components/assessment-a/report/ReportView';
 import ReportViewB from '@/components/assessment-b/report/ReportView';
+import ReportViewC from '@/components/assessment-c/report/ReportView';
 import { unpackAssessorState, packAssessorState } from './assessor-state';
 
 const SAVE_DEBOUNCE_MS = 600;
@@ -18,9 +19,11 @@ function formatDate(iso) {
 export function AssessmentDetailDialog({ open, onOpenChange, result }) {
   if (!result) return null;
 
-  const isBatteryB = result.assessment_code === 'myralix_battery_b';
-  const ReportView = isBatteryB ? ReportViewB : ReportViewA;
-  const fallbackTitle = isBatteryB ? 'Battery B' : 'Battery A';
+  const code = result.assessment_code;
+  const isBatteryB = code === 'myralix_battery_b';
+  const isBatteryC = code === 'myralix_battery_c';
+  const ReportView = isBatteryC ? ReportViewC : isBatteryB ? ReportViewB : ReportViewA;
+  const fallbackTitle = isBatteryC ? 'Battery C' : isBatteryB ? 'Battery B' : 'Battery A';
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>

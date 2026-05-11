@@ -17,6 +17,7 @@ import AssessmentAPage from "./pages/AssessmentA"
 import ReportPage from "./pages/Report"
 import AIMatchingPage from "./pages/AIMatching"
 import AssessmentBPage from "./pages/AssessmentB"
+import AssessmentCPage from "./pages/AssessmentC"
 
 function App() {
   return (
@@ -37,6 +38,7 @@ function App() {
         <Route path="/selection/ai-matching" element={<AIMatchingPage />} />
         <Route path="/selection/assessment-a" element={<AssessmentAPage />} />
         <Route path="/selection/assessment-b" element={<AssessmentBPage />} />
+        <Route path="/selection/assessment-c" element={<AssessmentCPage />} />
         <Route path="/selection/report" element={<ReportPage />} />
 
         <Route path="/settings/user-management" element={<UserManagementPage />} />

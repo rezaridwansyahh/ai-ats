@@ -18,9 +18,9 @@
 // `tk` and `fit` are shared. The packer/unpacker walks the union of keys so the same code path
 // round-trips either battery without dropping fields.
 
-const NARR_KEYS   = ['tk', 'epps', 'hol', 'papi', 'fit', 'bigfive', 'disc', 'holland'];
-const RATING_KEYS = ['tk', 'epps', 'papi', 'bigfive', 'disc'];
-const NOTE_KEYS   = ['tk', 'epps', 'hol', 'papi', 'final', 'bigfive', 'disc', 'holland'];
+const NARR_KEYS   = ['tk', 'epps', 'hol', 'papi', 'fit', 'bigfive', 'disc', 'holland', 'sjt'];
+const RATING_KEYS = ['tk', 'epps', 'papi', 'bigfive', 'disc', 'sjt'];
+const NOTE_KEYS   = ['tk', 'epps', 'hol', 'papi', 'final', 'bigfive', 'disc', 'holland', 'sjt'];
 
 export function unpackAssessorState(row) {
   if (!row) return {};
