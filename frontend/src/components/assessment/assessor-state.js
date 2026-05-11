@@ -8,11 +8,19 @@
 //       development_areas    ← edit_narr-dev
 //       recommended_roles    ← edit_narr-rec
 //   - Everything else lives under summary.assessor JSONB:
-//       narratives.{tk, epps, hol, papi, fit}
-//       ratings.{tk, epps, papi}
+//       narratives.{tk, epps, hol, papi, fit, bigfive, disc, holland}
+//       ratings.{tk, epps, papi, bigfive, disc}
 //       finalRec
-//       notes.{tk, epps, hol, papi, final}
+//       notes.{tk, epps, hol, papi, final, bigfive, disc, holland}
 //       meta.{nomerKandidat, asesor, mengetahui}
+//
+// Battery A uses `bigfive`, `disc`, `holland`; Battery B uses `epps`, `hol`, `papi`.
+// `tk` and `fit` are shared. The packer/unpacker walks the union of keys so the same code path
+// round-trips either battery without dropping fields.
+
+const NARR_KEYS   = ['tk', 'epps', 'hol', 'papi', 'fit', 'bigfive', 'disc', 'holland'];
+const RATING_KEYS = ['tk', 'epps', 'papi', 'bigfive', 'disc'];
+const NOTE_KEYS   = ['tk', 'epps', 'hol', 'papi', 'final', 'bigfive', 'disc', 'holland'];
 
 export function unpackAssessorState(row) {
   if (!row) return {};
@@ -31,12 +39,12 @@ export function unpackAssessorState(row) {
   if (row.recommended_roles != null) state['edit_narr-rec']      = row.recommended_roles;
 
   // Per-section narratives → flat edit_narr-* keys (from JSONB)
-  for (const k of ['tk', 'epps', 'hol', 'papi', 'fit']) {
+  for (const k of NARR_KEYS) {
     if (narratives[k] != null) state[`edit_narr-${k}`] = narratives[k];
   }
 
   // Recruiter ratings
-  for (const k of ['tk', 'epps', 'papi']) {
+  for (const k of RATING_KEYS) {
     if (ratings[k] != null) state[`rcr_${k}`] = ratings[k];
   }
 
@@ -44,7 +52,7 @@ export function unpackAssessorState(row) {
   if (a.finalRec != null) state.finalRec = a.finalRec;
 
   // Assessor notes
-  for (const k of ['tk', 'epps', 'hol', 'papi', 'final']) {
+  for (const k of NOTE_KEYS) {
     if (notes[k] != null) state[`notes_${k}`] = notes[k];
   }
 
@@ -61,17 +69,17 @@ export function unpackAssessorState(row) {
 // existing one passed in) so partial saves don't blow away other summary fields.
 export function packAssessorState(state, existingSummary) {
   const narratives = {};
-  for (const k of ['tk', 'epps', 'hol', 'papi', 'fit']) {
+  for (const k of NARR_KEYS) {
     if (state[`edit_narr-${k}`] !== undefined) narratives[k] = state[`edit_narr-${k}`];
   }
 
   const ratings = {};
-  for (const k of ['tk', 'epps', 'papi']) {
+  for (const k of RATING_KEYS) {
     if (state[`rcr_${k}`] !== undefined) ratings[k] = state[`rcr_${k}`];
   }
 
   const notes = {};
-  for (const k of ['tk', 'epps', 'hol', 'papi', 'final']) {
+  for (const k of NOTE_KEYS) {
     if (state[`notes_${k}`] !== undefined) notes[k] = state[`notes_${k}`];
   }
 
