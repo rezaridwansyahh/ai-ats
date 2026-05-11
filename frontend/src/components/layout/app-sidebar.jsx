@@ -41,9 +41,11 @@ import {
   ChevronsUpDown,
   Briefcase,
   ClipboardList,
+  Building2,
 } from 'lucide-react';
 
 import { hasPermission } from '@/utils/permissions';
+import { getCompanyById } from '@/api/company.api';
 
 const iconMap = {
   'Dashboard': Home,
@@ -113,6 +115,7 @@ export function AppSidebar() {
   const [user, setUser]               = useState(null);
   const [permissions, setPermissions] = useState([]);
   const [openModules, setOpenModules] = useState(new Set());
+  const [company, setCompany]         = useState(null);
 
   // Load from localStorage on mount
   useEffect(() => {
@@ -130,6 +133,17 @@ export function AppSidebar() {
       console.error('Failed to load auth data from localStorage:', err);
     }
   }, []);
+
+  // Resolve the user's tenant once (after we know company_id).
+  useEffect(() => {
+    const cid = user?.company_id;
+    if (!cid) { setCompany(null); return; }
+    let cancelled = false;
+    getCompanyById(cid)
+      .then(res => { if (!cancelled) setCompany(res.data?.company || null); })
+      .catch(() => { if (!cancelled) setCompany(null); });
+    return () => { cancelled = true; };
+  }, [user?.company_id]);
 
   const sidebarItems = useSidebarStructure(permissions);
 
@@ -191,6 +205,30 @@ export function AppSidebar() {
         <div className="px-4 py-4 border-b border-sidebar-border/70">
           <img src={`${import.meta.env.BASE_URL}Myralix_Logo_Dark.png`} className="h-8 w-auto object-contain" alt="Myralix" />
         </div>
+
+        {/* Tenant card */}
+        {company && (
+          <div className="px-3 pt-3 pb-2 border-b border-sidebar-border/70">
+            <div className="flex items-start gap-2.5 rounded-lg border border-border/60 bg-card/50 px-3 py-2.5 shadow-sm">
+              <div className="h-8 w-8 rounded-md bg-primary/10 flex items-center justify-center flex-shrink-0">
+                <Building2 className="h-4 w-4 text-primary" />
+              </div>
+              <div className="min-w-0 flex-1">
+                <p className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground/70 leading-none mb-0.5">
+                  Tenant
+                </p>
+                <p className="text-xs font-bold truncate" title={company.name}>
+                  {company.name}
+                </p>
+                {company.email && (
+                  <p className="text-[10px] text-muted-foreground truncate" title={company.email}>
+                    {company.email}
+                  </p>
+                )}
+              </div>
+            </div>
+          </div>
+        )}
       </SidebarHeader>
 
       {/* ── Content ── */}

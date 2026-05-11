@@ -2,16 +2,24 @@
 // job_post is NOT seeded — those are created through the SaaS publish flow
 // Focus: platforms seek, linkedin, internal
 
+// Multi-tenancy split:
+//   user 1 + user 2 → company 1 (Myralix)
+//   user 4          → company 2 (Acme Recruiting)
 export const jobAccounts = [
-  { id: 1, portal_name: 'seek',     email: 'recruiter.seek@example.com',     password: 'dummy_encrypted_seek_pw',     user_id: 1, status_connection: 'Connected',     status_sync: 'Sync' },
-  { id: 2, portal_name: 'linkedin', email: 'recruiter.linkedin@example.com', password: 'dummy_encrypted_linkedin_pw', user_id: 1, status_connection: 'Connected',     status_sync: 'Sync' },
-  { id: 3, portal_name: 'seek',     email: 'recruiter2.seek@example.com',    password: 'dummy_encrypted_seek2_pw',    user_id: 2, status_connection: 'Not Connected', status_sync: 'Not Sync' },
+  { id: 1, portal_name: 'seek',     email: 'recruiter.seek@example.com',     password: 'dummy_encrypted_seek_pw',     user_id: 1, company_id: 1, status_connection: 'Connected',     status_sync: 'Sync' },
+  { id: 2, portal_name: 'linkedin', email: 'recruiter.linkedin@example.com', password: 'dummy_encrypted_linkedin_pw', user_id: 1, company_id: 1, status_connection: 'Connected',     status_sync: 'Sync' },
+  { id: 3, portal_name: 'seek',     email: 'recruiter2.seek@example.com',    password: 'dummy_encrypted_seek2_pw',    user_id: 2, company_id: 1, status_connection: 'Not Connected', status_sync: 'Not Sync' },
+  { id: 4, portal_name: 'linkedin', email: 'acme.linkedin@example.com',      password: 'dummy_encrypted_acme_pw',     user_id: 4, company_id: 2, status_connection: 'Connected',     status_sync: 'Sync' },
 ];
 
+// Multi-tenancy split for testing:
+//   company 1 (Myralix)         → ids 1, 2, 3, 6, 8     (3 active engineering + 2 drafts)
+//   company 2 (Acme Recruiting) → ids 4, 5, 7, 9, 10    (2 active + 3 drafts)
+// Both tenants get a mix of statuses so each can drive AI Matching + Pipeline.
 export const coreJobs = [
   // --- Active jobs ---
   {
-    id: 1, job_title: 'Senior Frontend Engineer',
+    id: 1, company_id: 1, job_title: 'Senior Frontend Engineer',
     job_desc: 'Build React applications for a modern ATS platform.',
     job_location: 'Jakarta, Indonesia', work_option: 'Hybrid', work_type: 'Full-time',
     pay_type: 'Annually', currency: 'IDR', pay_min: 180000000, pay_max: 240000000, pay_display: 'Show', status: 'Active',
@@ -19,7 +27,7 @@ export const coreJobs = [
     preferred_skills: ['Next.js', 'Tailwind CSS', 'Redux', 'Vite', 'Jest'],
   },
   {
-    id: 2, job_title: 'Backend Engineer (Node.js)',
+    id: 2, company_id: 1, job_title: 'Backend Engineer (Node.js)',
     job_desc: 'Design and maintain Node.js services, PostgreSQL, and RPA flows.',
     job_location: 'Bali, Indonesia', work_option: 'Remote', work_type: 'Full-time',
     pay_type: 'Annually', currency: 'IDR', pay_min: 160000000, pay_max: 220000000, pay_display: 'Show', status: 'Active',
@@ -27,7 +35,7 @@ export const coreJobs = [
     preferred_skills: ['Express', 'Docker', 'Redis', 'GraphQL', 'AWS'],
   },
   {
-    id: 3, job_title: 'Product Designer',
+    id: 3, company_id: 1, job_title: 'Product Designer',
     job_desc: 'Own the product design system and user flows for the ATS.',
     job_location: 'Singapore', work_option: 'On-site', work_type: 'Full-time',
     pay_type: 'Annually', currency: 'SGD', pay_min: 70000, pay_max: 95000, pay_display: 'Hide', status: 'Active',
@@ -35,7 +43,7 @@ export const coreJobs = [
     preferred_skills: ['Adobe XD', 'Sketch', 'User Research', 'Accessibility'],
   },
   {
-    id: 4, job_title: 'DevOps Engineer',
+    id: 4, company_id: 2, job_title: 'DevOps Engineer',
     job_desc: 'Own CI/CD, observability, and infra for the ATS platform.',
     job_location: 'Jakarta, Indonesia', work_option: 'Remote', work_type: 'Full-time',
     pay_type: 'Annually', currency: 'IDR', pay_min: 200000000, pay_max: 270000000, pay_display: 'Show', status: 'Active',
@@ -43,7 +51,7 @@ export const coreJobs = [
     preferred_skills: ['GitHub Actions', 'Prometheus', 'Grafana', 'Ansible'],
   },
   {
-    id: 5, job_title: 'QA Automation Engineer',
+    id: 5, company_id: 2, job_title: 'QA Automation Engineer',
     job_desc: 'Build and maintain automated test suites across frontend and backend.',
     job_location: 'Surabaya, Indonesia', work_option: 'Hybrid', work_type: 'Full-time',
     pay_type: 'Monthly', currency: 'IDR', pay_min: 15000000, pay_max: 22000000, pay_display: 'Show', status: 'Active',
@@ -53,7 +61,7 @@ export const coreJobs = [
 
   // --- Draft jobs ---
   {
-    id: 6, job_title: 'Talent Acquisition Specialist',
+    id: 6, company_id: 1, job_title: 'Talent Acquisition Specialist',
     job_desc: 'Source and screen candidates across multiple platforms.',
     job_location: 'Sydney, Australia', work_option: 'Hybrid', work_type: 'Full-time',
     pay_type: 'Annually', currency: 'AUD', pay_min: 80000, pay_max: 110000, pay_display: 'Show', status: 'Draft',
@@ -61,7 +69,7 @@ export const coreJobs = [
     preferred_skills: ['ATS Tools', 'Boolean Search', 'Employer Branding'],
   },
   {
-    id: 7, job_title: 'HR Business Partner',
+    id: 7, company_id: 2, job_title: 'HR Business Partner',
     job_desc: 'Partner with leaders on people strategy and org health.',
     job_location: 'Kuala Lumpur, Malaysia', work_option: 'On-site', work_type: 'Full-time',
     pay_type: 'Annually', currency: 'MYR', pay_min: 120000, pay_max: 160000, pay_display: 'Hide', status: 'Draft',
@@ -69,7 +77,7 @@ export const coreJobs = [
     preferred_skills: ['Compensation', 'Workday', 'Change Management'],
   },
   {
-    id: 8, job_title: 'Marketing Content Writer',
+    id: 8, company_id: 1, job_title: 'Marketing Content Writer',
     job_desc: 'Produce blog posts, case studies, and social copy.',
     job_location: 'Bangkok, Thailand', work_option: 'Remote', work_type: 'Contract',
     pay_type: 'Monthly', currency: 'THB', pay_min: 60000, pay_max: 85000, pay_display: 'Show', status: 'Draft',
@@ -77,7 +85,7 @@ export const coreJobs = [
     preferred_skills: ['WordPress', 'Google Analytics', 'HubSpot', 'B2B SaaS'],
   },
   {
-    id: 9, job_title: 'Junior Data Analyst',
+    id: 9, company_id: 2, job_title: 'Junior Data Analyst',
     job_desc: 'Support reporting and analytics across recruiting funnels.',
     job_location: 'Manila, Philippines', work_option: 'Hybrid', work_type: 'Part-time',
     pay_type: 'Hourly', currency: 'PHP', pay_min: 450, pay_max: 650, pay_display: 'Show', status: 'Draft',
@@ -85,7 +93,7 @@ export const coreJobs = [
     preferred_skills: ['Python', 'Tableau', 'Power BI', 'Looker'],
   },
   {
-    id: 10, job_title: 'Mobile Engineer (React Native)',
+    id: 10, company_id: 2, job_title: 'Mobile Engineer (React Native)',
     job_desc: 'Build the mobile companion app for recruiters on the go.',
     job_location: 'Ho Chi Minh, Vietnam', work_option: 'Remote', work_type: 'Full-time',
     pay_type: 'Annually', currency: 'USD', pay_min: 45000, pay_max: 65000, pay_display: 'Hide', status: 'Draft',

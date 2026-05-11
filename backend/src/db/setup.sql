@@ -174,6 +174,7 @@ CREATE TABLE master_job_account (
   email VARCHAR(255) NOT NULL,
   password TEXT NOT NULL,
   user_id INTEGER NOT NULL REFERENCES master_users(id) ON DELETE CASCADE,
+  company_id INTEGER REFERENCES core_company(id) ON DELETE CASCADE,
   status_connection status_connection_type NOT NULL DEFAULT 'Not Connected',
   status_sync status_sync_type NOT NULL DEFAULT 'Not Sync',
   last_connect TIMESTAMP,
@@ -183,6 +184,7 @@ CREATE TABLE master_job_account (
 
   UNIQUE(user_id, portal_name)
 );
+CREATE INDEX idx_master_job_account_company ON master_job_account (company_id);
 
 CREATE TABLE cookies (
   id SERIAL PRIMARY KEY,
@@ -210,6 +212,7 @@ CREATE TABLE master_template_stage (
 
 CREATE TABLE core_job (
   id SERIAL PRIMARY KEY,
+  company_id INTEGER REFERENCES core_company(id) ON DELETE CASCADE,
   -- Common
   job_title VARCHAR(255) NOT NULL,
   job_desc TEXT,
@@ -240,6 +243,7 @@ CREATE TABLE core_job (
   created_at TIMESTAMP NOT NULL DEFAULT NOW(),
   updated_at TIMESTAMP NOT NULL DEFAULT NOW()
 );
+CREATE INDEX idx_core_job_company ON core_job (company_id);
 
 CREATE TABLE core_job_template (
   id SERIAL PRIMARY KEY,
@@ -330,6 +334,7 @@ CREATE TABLE mapping_job_sourcing_linkedin (
 CREATE TABLE master_applicant (
   id SERIAL PRIMARY KEY,
   job_sourcing_id INTEGER NOT NULL REFERENCES core_job_sourcing(id) ON DELETE CASCADE,
+  company_id INTEGER REFERENCES core_company(id) ON DELETE CASCADE,
   name VARCHAR(255) NOT NULL,
   email VARCHAR(255),
   last_position VARCHAR(255) NOT NULL,
@@ -340,6 +345,7 @@ CREATE TABLE master_applicant (
   attachment VARCHAR(255),
   UNIQUE (name, job_sourcing_id)
 );
+CREATE INDEX idx_master_applicant_company ON master_applicant (company_id);
 
 CREATE TABLE master_candidate (
   id SERIAL PRIMARY KEY,
@@ -409,6 +415,7 @@ CREATE TABLE master_sourcing_recruite (
 
 CREATE TABLE master_recruiters (
   id SERIAL PRIMARY KEY,
+  company_id INTEGER REFERENCES core_company(id) ON DELETE CASCADE,
   name VARCHAR(100) NOT NULL,
   email VARCHAR(100) NOT NULL,
   jobs_assigned INTEGER NOT NULL DEFAULT 0,
@@ -416,6 +423,7 @@ CREATE TABLE master_recruiters (
   created_at TIMESTAMP NOT NULL DEFAULT NOW(),
   updated_at TIMESTAMP NOT NULL DEFAULT NOW()
 );
+CREATE INDEX idx_master_recruiters_company ON master_recruiters (company_id);
 
 CREATE TABLE job_automation_settings (
   id SERIAL PRIMARY KEY,
