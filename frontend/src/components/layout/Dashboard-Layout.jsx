@@ -15,6 +15,8 @@ const BREADCRUMB_MAP = {
   '/selection/ai-matching':      ['Selection', 'AI Matching'],
   '/selection/assessment-a':     ['Selection', 'Assessment A'],
   '/selection/assessment-b':     ['Selection', 'Assessment B'],
+  '/selection/assessment-c':     ['Selection', 'Assessment C'],
+  '/selection/assessment-d':     ['Selection', 'Assessment D'],
   '/selection/report':           ['Selection', 'Report'],
   '/settings/user-management':   ['Settings', 'User Management'],
   '/settings/role-management':   ['Settings', 'Role Management'],
