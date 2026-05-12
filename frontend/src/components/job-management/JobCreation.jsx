@@ -16,9 +16,13 @@ import { Badge } from '@/components/ui/badge';
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from '@/components/ui/select';
+import {
+  Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
+} from '@/components/ui/table';
 import { generateJobAI } from '@/api/job.api';
 import { Popover, PopoverTrigger, PopoverContent } from '@/components/ui/popover';
 import { Calendar } from '@/components/ui/calendar';
+import { getRoleClass, formatSalaryBand, formatSinceDate, getStatusPill } from '@/lib/job-display';
 
 const WORK_OPTIONS = ['On-site', 'Hybrid', 'Remote'];
 const WORK_TYPES = ['Full-time', 'Part-time', 'Contract', 'Casual'];
@@ -385,14 +389,6 @@ export default function JobCreationStep({ jobs, loading, recruiters, onCreateJob
           </DialogFooter>
         </DialogContent>
       </Dialog>
-      {/* Step Header */}
-      <div className="flex items-center justify-between">
-        <h3 className="text-base font-bold">Job Creation</h3>
-        <Button size="sm" onClick={() => setShowForm(true)}>
-          <Plus className="h-4 w-4 mr-1.5" /> New Job
-        </Button>
-      </div>
-      
 
       {/* Job Form Dialog */}
       <Dialog open={showForm} onOpenChange={(open) => { if (!open) handleCancel(); }}>
@@ -819,10 +815,10 @@ export default function JobCreationStep({ jobs, loading, recruiters, onCreateJob
         </DialogContent>
       </Dialog>
 
-      {/* Job List */}
-      <Card>
-        <CardHeader className="pb-3 space-y-3">
-          <CardTitle className="text-sm">All Jobs</CardTitle>
+      {/* Job List — outside any Card, rounded table block */}
+      <div className="space-y-3">
+        {/* Toolbar: search + status filter on the left, New Job on the right */}
+        <div className="flex items-center justify-between gap-3 flex-wrap">
           <div className="flex items-center gap-3">
             <Input
               placeholder="Search jobs..."
@@ -838,108 +834,178 @@ export default function JobCreationStep({ jobs, loading, recruiters, onCreateJob
               </SelectContent>
             </Select>
           </div>
-        </CardHeader>
-        <CardContent>
-          {loading ? (
-            <div className="flex items-center justify-center py-10">
-              <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
-            </div>
-          ) : filteredJobs.length === 0 ? (
-            <p className="text-xs text-muted-foreground text-center py-10">
-              {jobs.length === 0 ? 'No jobs created yet. Click "New Job" to get started.' : 'No jobs match your search.'}
-            </p>
-          ) : (
-            <div className="space-y-2">
-              {paginatedJobs.map(job => (
-                <div
-                  key={job.id}
-                  onClick={() => (job.status === 'Draft' || job.status === 'Reconfigure' || job.status === 'Active') && onSelectJob(selectedJob === job ? null : job)}
-                  className={`flex items-center justify-between p-3 border rounded-lg transition-colors ${
-                    selectedJob === job
-                      ? 'ring-2 ring-primary bg-primary/5'
-                      : (job.status === 'Draft' || job.status === 'Reconfigure' || job.status === 'Active')
-                        ? 'hover:bg-muted/30 cursor-pointer'
-                        : 'opacity-60'
-                  }`}
-                >
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-2">
-                      <span className="text-sm font-semibold truncate">{job.job_title}</span>
-                      <Badge variant="secondary" className={`text-[9px] ${
-                        job.status === 'Active' ? 'bg-emerald-50 text-emerald-600' :
-                        job.status === 'Draft' ? 'bg-orange-50 text-orange-600' :
-                        job.status === 'Running' ? 'bg-blue-50 text-blue-600' :
-                        'bg-muted text-muted-foreground'
-                      }`}>
-                        {job.status}
-                      </Badge>
-                    </div>
-                    <div className="flex items-center gap-3 mt-1">
-                      {job.job_location && (
-                        <span className="text-[10px] text-muted-foreground">{job.job_location}</span>
-                      )}
-                      {job.work_type && (
-                        <span className="text-[10px] text-muted-foreground">{job.work_type}</span>
-                      )}
-                      {job.work_option && (
-                        <span className="text-[10px] text-muted-foreground">{job.work_option}</span>
-                      )}
-                    </div>
-                  </div>
-                  <div className="flex items-center gap-1">
-                    <Button disabled={job.status === 'Active'} variant="ghost" size="icon" className="h-7 w-7" onClick={() => handleEdit(job)}>
-                      <Pencil className="h-3.5 w-3.5" />
-                    </Button>
-                    <Button disabled={job.status === 'Active'} variant="ghost" size="icon" className="h-7 w-7 text-red-500 hover:text-red-600" onClick={() => onDeleteJob(job.id)}>
-                      <Trash2 className="h-3.5 w-3.5" />
-                    </Button>
-                  </div>
-                </div>
-              ))}
-            </div>
-          )}
-          <div className="flex flex-col items-center gap-2 pt-3 border-t mt-3">
-            <div className="flex items-center gap-1">
-              <Button variant="outline" size="sm" className="h-7 text-xs" disabled={page <= 1} onClick={() => setPage(p => p - 1)}>
-                Previous
-              </Button>
-              {(() => {
-                const pages = [];
-                pages.push(1);
-                if (page > 3) pages.push('...');
-                for (let i = Math.max(2, page - 1); i <= Math.min(totalPages - 1, page + 1); i++) {
-                  pages.push(i);
-                }
-                if (page < totalPages - 2) pages.push('...');
-                if (totalPages > 1) pages.push(totalPages);
-                return pages.map((p, idx) =>
-                  p === '...' ? (
-                    <span key={`dots-${idx}`} className="text-xs text-muted-foreground px-1">...</span>
-                  ) : (
-                    <Button
-                      key={p}
-                      variant={page === p ? 'default' : 'outline'}
-                      size="sm"
-                      className="h-7 w-7 text-xs p-0"
-                      onClick={() => setPage(p)}
+          <Button size="sm" onClick={() => setShowForm(true)}>
+            <Plus className="h-4 w-4 mr-1.5" /> New Job
+          </Button>
+        </div>
+
+        {/* Rounded table block — overflow-x-auto lets narrow viewports scroll
+            instead of cramping the columns when one cell's content is long. */}
+        <div className="rounded-xl border overflow-hidden bg-card">
+          <div className="overflow-x-auto">
+            {loading ? (
+              <div className="flex items-center justify-center py-10">
+                <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
+              </div>
+            ) : filteredJobs.length === 0 ? (
+              <p className="text-xs text-muted-foreground text-center py-10">
+                {jobs.length === 0 ? 'No jobs created yet. Click "New Job" to get started.' : 'No jobs match your search.'}
+              </p>
+            ) : (
+              <Table className="min-w-[1180px] table-fixed">
+                <TableHeader className="bg-muted/40">
+                  <TableRow>
+                    <TableHead className="text-[10px] font-bold uppercase w-[280px] pl-6">Job</TableHead>
+                    <TableHead className="text-[10px] font-bold uppercase w-[130px]">Level</TableHead>
+                    <TableHead className="text-[10px] font-bold uppercase w-[160px]">Location</TableHead>
+                    <TableHead className="text-[10px] font-bold uppercase w-[200px]">Salary</TableHead>
+                    <TableHead className="text-[10px] font-bold uppercase w-[110px]">Status</TableHead>
+                    <TableHead className="text-[10px] font-bold uppercase w-[200px]">Activity</TableHead>
+                    <TableHead className="text-[10px] font-bold uppercase text-right w-[100px]"></TableHead>
+                  </TableRow>
+                </TableHeader>
+              <TableBody>
+                {paginatedJobs.map(job => {
+                  const role = getRoleClass(job);
+                  const selectable = job.status === 'Draft' || job.status === 'Reconfigure' || job.status === 'Active';
+                  const isSelected = selectedJob === job;
+                  const since = formatSinceDate(job.sla_start_date || job.created_at);
+                  const activeCount = job.candidate_count ?? 0;
+
+                  const statusPill = getStatusPill(job.status);
+
+                  const handleRowClick = () => {
+                    if (!selectable) return;
+                    onSelectJob(isSelected ? null : job);
+                  };
+
+                  // Prevent row-level select from firing when clicking action icons.
+                  const stop = (e) => e.stopPropagation();
+
+                  return (
+                    <TableRow
+                      key={job.id}
+                      onClick={handleRowClick}
+                      className={`transition-colors ${
+                        isSelected
+                          ? 'bg-primary/5 ring-1 ring-inset ring-primary/40'
+                          : selectable
+                            ? 'cursor-pointer hover:bg-muted/30'
+                            : 'opacity-60 cursor-not-allowed'
+                      }`}
                     >
-                      {p}
-                    </Button>
-                  )
-                );
-              })()}
-              <Button variant="outline" size="sm" className="h-7 text-xs" disabled={page >= totalPages} onClick={() => setPage(p => p + 1)}>
-                Next
-              </Button>
-            </div>
-            <span className="text-[10px] text-muted-foreground">
-              {filteredJobs.length > 0
-                ? `Showing ${(page - 1) * PAGE_SIZE + 1}\u2013${Math.min(page * PAGE_SIZE, filteredJobs.length)} of ${filteredJobs.length}`
-                : 'No results'}
-            </span>
+                      <TableCell className="text-xs pl-6">
+                        <div className="font-medium truncate">{job.job_title}</div>
+                        <div className="text-[11px] text-muted-foreground truncate">
+                          {(job.company || '—')}
+                          {job.work_type ? ` · ${job.work_type}` : ''}
+                          {job.work_option ? ` · ${job.work_option}` : ''}
+                        </div>
+                      </TableCell>
+                      <TableCell>
+                        <span
+                          className={`inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full border text-[10px] font-semibold ${role.pill}`}
+                        >
+                          <span className={`h-1.5 w-1.5 rounded-full ${role.dot}`} />
+                          {role.label}
+                        </span>
+                      </TableCell>
+                      <TableCell className="text-xs text-muted-foreground truncate" title={job.job_location || ''}>
+                        {job.job_location || '—'}
+                      </TableCell>
+                      <TableCell className="text-xs font-mono truncate" title={formatSalaryBand(job)}>
+                        {formatSalaryBand(job)}
+                      </TableCell>
+                      <TableCell>
+                        <span className={`inline-flex items-center px-2 py-0.5 rounded-full border text-[10px] font-semibold ${statusPill}`}>
+                          {job.status}
+                        </span>
+                      </TableCell>
+                      <TableCell>
+                        <div className="flex items-center gap-2">
+                          <span className="inline-flex items-center px-2 py-0.5 rounded-full border bg-card text-[10px] font-mono font-semibold">
+                            {activeCount} active
+                          </span>
+                          {since && (
+                            <span className="text-[11px] text-muted-foreground">since {since}</span>
+                          )}
+                        </div>
+                      </TableCell>
+                      <TableCell className="text-right" onClick={stop}>
+                        <div className="inline-flex items-center gap-1">
+                          <Button
+                            disabled={job.status === 'Active'}
+                            variant="ghost"
+                            size="icon"
+                            className="h-7 w-7"
+                            onClick={(e) => { stop(e); handleEdit(job); }}
+                            title="Edit"
+                          >
+                            <Pencil className="h-3.5 w-3.5" />
+                          </Button>
+                          <Button
+                            disabled={job.status === 'Active'}
+                            variant="ghost"
+                            size="icon"
+                            className="h-7 w-7 text-red-500 hover:text-red-600"
+                            onClick={(e) => { stop(e); onDeleteJob(job.id); }}
+                            title="Delete"
+                          >
+                            <Trash2 className="h-3.5 w-3.5" />
+                          </Button>
+                        </div>
+                      </TableCell>
+                    </TableRow>
+                  );
+                })}
+                </TableBody>
+              </Table>
+            )}
           </div>
-        </CardContent>
-      </Card>
+        </div>
+
+        {/* Pagination \u2014 sibling of the table block, outside the rounded border */}
+        <div className="flex flex-col items-center gap-2 pt-1">
+          <div className="flex items-center gap-1">
+            <Button variant="outline" size="sm" className="h-7 text-xs" disabled={page <= 1} onClick={() => setPage(p => p - 1)}>
+              Previous
+            </Button>
+            {(() => {
+              const pages = [];
+              pages.push(1);
+              if (page > 3) pages.push('...');
+              for (let i = Math.max(2, page - 1); i <= Math.min(totalPages - 1, page + 1); i++) {
+                pages.push(i);
+              }
+              if (page < totalPages - 2) pages.push('...');
+              if (totalPages > 1) pages.push(totalPages);
+              return pages.map((p, idx) =>
+                p === '...' ? (
+                  <span key={`dots-${idx}`} className="text-xs text-muted-foreground px-1">...</span>
+                ) : (
+                  <Button
+                    key={p}
+                    variant={page === p ? 'default' : 'outline'}
+                    size="sm"
+                    className="h-7 w-7 text-xs p-0"
+                    onClick={() => setPage(p)}
+                  >
+                    {p}
+                  </Button>
+                )
+              );
+            })()}
+            <Button variant="outline" size="sm" className="h-7 text-xs" disabled={page >= totalPages} onClick={() => setPage(p => p + 1)}>
+              Next
+            </Button>
+          </div>
+          <span className="text-[10px] text-muted-foreground">
+            {filteredJobs.length > 0
+              ? `Showing ${(page - 1) * PAGE_SIZE + 1}\u2013${Math.min(page * PAGE_SIZE, filteredJobs.length)} of ${filteredJobs.length}`
+              : 'No results'}
+          </span>
+        </div>
+      </div>
     </div>
   );
 }

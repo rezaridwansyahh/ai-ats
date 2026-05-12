@@ -17,6 +17,7 @@ import AssessmentAPage from "./pages/AssessmentA"
 import ReportPage from "./pages/Report"
 import AIMatchingPage from "./pages/AIMatching"
 import AssessmentBPage from "./pages/AssessmentB"
+import CandidatePipelinePage from "./pages/CandidatePipeline"
 
 function App() {
   return (
@@ -28,6 +29,7 @@ function App() {
       {/* All authenticated routes share DashboardLayout */}
       <Route element={<DashboardLayout />}>
         <Route path="/dashboard" element={<DashboardPage />} />
+        <Route path="/candidate-pipeline" element={<CandidatePipelinePage />} />
 
         <Route path="/sourcing/job-management" element={<JobManagementPage />} />
         <Route path="/sourcing/source-management" element={<SourceManagementPage />} />

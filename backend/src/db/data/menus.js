@@ -1,8 +1,9 @@
 // Menu ids are sequential and grouped by module so that ORDER BY id matches
 // the desired sidebar order.
 export default [
-  // Dashboard module
+  // Main / Dashboard module
   { id: 1,  name: 'Dashboard' },
+  { id: 15, name: 'Candidate Pipeline' },
 
   // Sourcing module
   { id: 2,  name: 'Job Management' },

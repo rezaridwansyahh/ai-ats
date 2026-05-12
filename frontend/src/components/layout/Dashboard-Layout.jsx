@@ -6,7 +6,8 @@ import { ChevronRight, Home } from 'lucide-react'
 import { Toaster } from "@/components/ui/sonner"
 
 const BREADCRUMB_MAP = {
-  '/dashboard': ['Dashboard'],
+  '/dashboard':          ['Dashboard'],
+  '/candidate-pipeline': ['Candidate Pipeline'],
   '/sourcing/job-management':    ['Sourcing', 'Job Management'],
   '/sourcing/source-management': ['Sourcing', 'Source Management'],
   '/sourcing/talent-pool':       ['Sourcing', 'Talent Pool'],

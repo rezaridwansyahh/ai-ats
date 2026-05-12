@@ -42,6 +42,7 @@ import {
   Briefcase,
   ClipboardList,
   Building2,
+  Workflow,
 } from 'lucide-react';
 
 import { hasPermission } from '@/utils/permissions';
@@ -55,7 +56,8 @@ const iconMap = {
 };
 
 const routeMap = {
-  'Dashboard':         '/dashboard',
+  'Dashboard':          '/dashboard',
+  'Candidate Pipeline': '/candidate-pipeline',
   'User Management':   '/settings/user-management',
   'Role Management':   '/settings/role-management',
   'Recruiters':        '/settings/recruiters',
@@ -194,8 +196,11 @@ export function AppSidebar() {
     ? user.email.split('@')[0].slice(0, 2).toUpperCase()
     : 'U';
 
-  const isDashboardActive = location.pathname === '/dashboard';
-  const canSeeDashboard = hasPermission('Dashboard', 'Dashboard', 'read');
+  const isDashboardActive       = location.pathname === '/dashboard';
+  const isCandidatePipelineActive = location.pathname === '/candidate-pipeline';
+  const canSeeDashboard         = hasPermission('Dashboard', 'Dashboard', 'read');
+  const canSeeCandidatePipeline = hasPermission('Dashboard', 'Candidate Pipeline', 'read');
+  const canSeeMain              = canSeeDashboard || canSeeCandidatePipeline;
 
   return (
     <Sidebar>
@@ -233,31 +238,52 @@ export function AppSidebar() {
       {/* ── Content ── */}
       <SidebarContent className="px-2 py-3 gap-0">
 
-        {/* Dashboard — Main group (gated on Dashboard module read permission) */}
-        {canSeeDashboard && (
+        {/* Main group — Dashboard + Candidate Pipeline as flat top-level rows */}
+        {canSeeMain && (
           <SidebarGroup className="p-0 mb-1">
             <SidebarGroupLabel className="text-[9px] uppercase tracking-[0.12em] text-muted-foreground/50 font-bold px-2 mb-1 h-5">
               Main
             </SidebarGroupLabel>
             <SidebarGroupContent>
               <SidebarMenu>
-                <SidebarMenuItem>
-                  <SidebarMenuButton
-                    className={`cursor-pointer transition-all duration-200 rounded-lg h-8 ${
-                      isDashboardActive
-                        ? 'bg-primary text-primary-foreground font-semibold shadow-sm'
-                        : 'text-muted-foreground hover:bg-accent/80 hover:text-foreground'
-                    }`}
-                    onClick={() => navigate('/dashboard')}
-                  >
-                    <div className={`h-5 w-5 rounded-md flex items-center justify-center flex-shrink-0 transition-all duration-200 ${
-                      isDashboardActive ? 'bg-white/20' : 'bg-primary/10'
-                    }`}>
-                      <Home className={`h-3 w-3 ${isDashboardActive ? 'text-white' : 'text-primary'}`} />
-                    </div>
-                    <span className="text-sm">Dashboard</span>
-                  </SidebarMenuButton>
-                </SidebarMenuItem>
+                {canSeeDashboard && (
+                  <SidebarMenuItem>
+                    <SidebarMenuButton
+                      className={`cursor-pointer transition-all duration-200 rounded-lg h-8 ${
+                        isDashboardActive
+                          ? 'bg-primary text-primary-foreground font-semibold shadow-sm'
+                          : 'text-muted-foreground hover:bg-accent/80 hover:text-foreground'
+                      }`}
+                      onClick={() => navigate('/dashboard')}
+                    >
+                      <div className={`h-5 w-5 rounded-md flex items-center justify-center flex-shrink-0 transition-all duration-200 ${
+                        isDashboardActive ? 'bg-white/20' : 'bg-primary/10'
+                      }`}>
+                        <Home className={`h-3 w-3 ${isDashboardActive ? 'text-white' : 'text-primary'}`} />
+                      </div>
+                      <span className="text-sm">Dashboard</span>
+                    </SidebarMenuButton>
+                  </SidebarMenuItem>
+                )}
+                {canSeeCandidatePipeline && (
+                  <SidebarMenuItem>
+                    <SidebarMenuButton
+                      className={`cursor-pointer transition-all duration-200 rounded-lg h-8 ${
+                        isCandidatePipelineActive
+                          ? 'bg-primary text-primary-foreground font-semibold shadow-sm'
+                          : 'text-muted-foreground hover:bg-accent/80 hover:text-foreground'
+                      }`}
+                      onClick={() => navigate('/candidate-pipeline')}
+                    >
+                      <div className={`h-5 w-5 rounded-md flex items-center justify-center flex-shrink-0 transition-all duration-200 ${
+                        isCandidatePipelineActive ? 'bg-white/20' : 'bg-primary/10'
+                      }`}>
+                        <Workflow className={`h-3 w-3 ${isCandidatePipelineActive ? 'text-white' : 'text-primary'}`} />
+                      </div>
+                      <span className="text-sm">Candidate Pipeline</span>
+                    </SidebarMenuButton>
+                  </SidebarMenuItem>
+                )}
               </SidebarMenu>
             </SidebarGroupContent>
           </SidebarGroup>

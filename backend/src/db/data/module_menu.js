@@ -1,7 +1,8 @@
 // One row per (module, menu). id == menu_id keeps the join table 1:1 with menus.
 export default [
-  // Dashboard (module 1)
+  // Main / Dashboard (module 1)
   { id: 1,  module_id: 1, menu_id: 1  }, // Dashboard
+  { id: 15, module_id: 1, menu_id: 15 }, // Candidate Pipeline
 
   // Sourcing (module 2)
   { id: 2,  module_id: 2, menu_id: 2  }, // Job Management
