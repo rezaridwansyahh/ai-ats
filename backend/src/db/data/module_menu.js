@@ -14,12 +14,13 @@ export default [
   { id: 7,  module_id: 3, menu_id: 7  }, // Assessment A
   { id: 8,  module_id: 3, menu_id: 8  }, // Assessment B
   { id: 9,  module_id: 3, menu_id: 9  }, // Assessment C
-  { id: 10, module_id: 3, menu_id: 10 }, // Report
+  { id: 10, module_id: 3, menu_id: 10 }, // Assessment D
+  { id: 11, module_id: 3, menu_id: 11 }, // Report
 
   // Settings (module 4)
-  { id: 11, module_id: 4, menu_id: 11 }, // User Management
-  { id: 12, module_id: 4, menu_id: 12 }, // Role Management
-  { id: 13, module_id: 4, menu_id: 13 }, // Integrations
-  { id: 14, module_id: 4, menu_id: 14 }, // Account
-  { id: 15, module_id: 4, menu_id: 15 }, // Recruiters
+  { id: 12, module_id: 4, menu_id: 12 }, // User Management
+  { id: 13, module_id: 4, menu_id: 13 }, // Role Management
+  { id: 14, module_id: 4, menu_id: 14 }, // Integrations
+  { id: 15, module_id: 4, menu_id: 15 }, // Account
+  { id: 16, module_id: 4, menu_id: 16 }, // Recruiters
 ];

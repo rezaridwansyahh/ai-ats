@@ -68,6 +68,7 @@ const routeMap = {
   'Assessment A':      '/selection/assessment-a',
   'Assessment B':      '/selection/assessment-b',
   'Assessment C':      '/selection/assessment-c',
+  'Assessment D':      '/selection/assessment-d',
   'Report':            '/selection/report',
   'AI Matching':       '/selection/ai-matching',
 };

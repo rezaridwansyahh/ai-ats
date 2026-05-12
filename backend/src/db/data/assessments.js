@@ -55,4 +55,23 @@ export default [
     },
     is_active: true,
   },
+  {
+    id: 4,
+    assessment_code: 'myralix_battery_d',
+    name: 'Myralix Battery D - Senior Manajerial & Eksekutif',
+    description: '5 sub-tes: TK Kognitif (4 subtes), SJT, 16PF, MSDT Gaya Kepemimpinan, PAPI-L Preferensi Kepemimpinan — frontend pre-scores dan mengirim results+summary.',
+    duration_minutes: 165,
+    options: {
+      subtests: ['tk', 'sjt', 'pf', 'msdt', 'papil'],
+      scoring: {
+        tk:    { weight: 0.30, sub: ['GI', 'PV', 'KN', 'PA'] },
+        sjt:   { weight: 0.20, scenarios: 22, comps: ['KK', 'KOM', 'MK', 'OH', 'AD', 'IE'] },
+        pf:    { weight: 0.20, factors: 16, items: 105 },
+        msdt:  { weight: 0.15, styles: 8, items: 64 },
+        papil: { weight: 0.15, dims: 20, items: 90 },
+      },
+      // No questions bank — frontend owns Battery D questions and scoring (same pattern as A/B/C).
+    },
+    is_active: true,
+  },
 ];

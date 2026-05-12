@@ -15,12 +15,13 @@ export default [
   { id: 7,  name: 'Assessment A' },
   { id: 8,  name: 'Assessment B' },
   { id: 9,  name: 'Assessment C' },
-  { id: 10, name: 'Report' },
+  { id: 10, name: 'Assessment D' },
+  { id: 11, name: 'Report' },
 
   // Settings module
-  { id: 11, name: 'User Management' },
-  { id: 12, name: 'Role Management' },
-  { id: 13, name: 'Integrations' },
-  { id: 14, name: 'Account' },
-  { id: 15, name: 'Recruiters' },
+  { id: 12, name: 'User Management' },
+  { id: 13, name: 'Role Management' },
+  { id: 14, name: 'Integrations' },
+  { id: 15, name: 'Account' },
+  { id: 16, name: 'Recruiters' },
 ];

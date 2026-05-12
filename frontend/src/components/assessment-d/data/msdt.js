@@ -1,0 +1,168 @@
+// MSDT (Management Style Diagnosis Test) — Battery D only.
+// 64 paired-statement items (A vs B). Each pick increments the count for one of 8 leadership styles.
+// Family-normalized: TO (task), RO (relationship), E (effectiveness).
+// Extracted verbatim from Myralix_Battery_D_Candidate_Card_v10.html (lines 1111–1262).
+
+export const STYLES = {
+  Ds: { name: 'Deserter', id: 'Ds', color: '#6B7280', colorLt: '#F9FAFB',
+    tagline: 'Menghindari Tanggung Jawab',
+    desc: 'Gaya Deserter (Penghindari) ditandai oleh rendahnya orientasi pada tugas dan rendahnya orientasi pada hubungan. Seorang manajer dengan gaya ini cenderung tidak terlibat aktif dalam pekerjaan timnya, menghindari pengambilan keputusan, dan melepaskan tanggung jawab. Gaya ini dianggap paling tidak efektif karena tidak memberikan kontribusi nyata baik pada produktivitas maupun kesejahteraan tim.',
+    TO: 'Rendah', RO: 'Rendah', E: 'Rendah',
+    strengths: ['Tidak membebani tim dengan pengawasan berlebihan', 'Memberikan kebebasan yang tidak terstruktur'],
+    weaknesses: ['Menghindari konflik dan keputusan sulit', 'Tidak memberikan arahan yang jelas', 'Tidak responsif terhadap kebutuhan tim', 'Rendah kontribusi pada hasil kerja'],
+    tendencies: ['Mengabaikan masalah dengan harapan akan selesai sendiri', 'Mendelegasikan tanpa follow-up', 'Menghindari pemberian umpan balik', 'Bergantung pada orang lain untuk memutuskan'],
+    improvements: ['Belajar mengambil keputusan secara tepat waktu', 'Aktif berkomunikasi dengan tim tentang target', 'Membangun akuntabilitas diri yang lebih kuat', 'Terlibat dalam proses penyelesaian masalah'],
+    positions: 'Posisi yang membutuhkan kemandirian tinggi dan struktur mandiri. Paling baik dalam peran yang tidak memerlukan banyak supervisi tim.' },
+  Mi: { name: 'Missionary', id: 'Mi', color: '#EC4899', colorLt: '#FDF2F8',
+    tagline: 'Fokus pada Hubungan, Kurang pada Tugas',
+    desc: 'Gaya Missionary (Penyebar) ditandai orientasi tinggi pada hubungan namun rendah pada tugas. Manajer tipe ini sangat peduli terhadap perasaan dan kesejahteraan orang-orang di sekitarnya, namun kurang efektif dalam mendorong produktivitas. Ia menghindari konflik, berusaha mempertahankan suasana menyenangkan, dan sering gagal mengambil keputusan tegas demi menjaga harmoni.',
+    TO: 'Rendah', RO: 'Tinggi', E: 'Rendah',
+    strengths: ['Menciptakan suasana kerja yang ramah dan nyaman', 'Peka terhadap kebutuhan emosional bawahan', 'Mudah disukai oleh tim'],
+    weaknesses: ['Menghindari konflik yang diperlukan', 'Sulit mengatakan tidak atau memberi kritik', 'Kurang mendorong pencapaian target', 'Keputusan sering tidak konsisten'],
+    tendencies: ['Selalu mencari persetujuan dari semua pihak', 'Menghindari teguran langsung', 'Memprioritaskan perasaan di atas produktivitas', 'Sulit menegakkan disiplin'],
+    improvements: ['Belajar memberi umpan balik konstruktif yang jelas', 'Menetapkan dan menerapkan standar kinerja', 'Berani mengambil keputusan meski tidak populer', 'Menyeimbangkan empati dengan akuntabilitas'],
+    positions: 'Layanan pelanggan, konseling, pelatihan, HR, atau peran yang membutuhkan empati tinggi dan banyak interaksi antarmanusia.' },
+  Au: { name: 'Autocrat', id: 'Au', color: '#EF4444', colorLt: '#FEF2F2',
+    tagline: 'Fokus pada Tugas, Kurang pada Hubungan',
+    desc: 'Gaya Autocrat (Otokrat) ditandai orientasi tinggi pada tugas namun sangat rendah pada hubungan. Manajer tipe ini berfokus pada hasil, memberikan instruksi langsung, mengawasi ketat, dan tidak banyak mempertimbangkan perasaan atau pendapat bawahan. Gaya ini efektif dalam situasi krisis jangka pendek namun dapat merusak moral tim dalam jangka panjang.',
+    TO: 'Tinggi', RO: 'Rendah', E: 'Rendah',
+    strengths: ['Berfokus pada hasil dan produktivitas', 'Tegas dalam pengambilan keputusan', 'Efisien dalam eksekusi', 'Tidak ragu menegakkan disiplin'],
+    weaknesses: ['Mengabaikan kebutuhan emosional tim', 'Menimbulkan ketegangan dan ketidakpuasan', 'Kurang mendelegasikan kepercayaan', 'Resistensi dari bawahan'],
+    tendencies: ['Memberikan perintah tanpa penjelasan', 'Mengawasi ketat setiap detail pekerjaan', 'Tidak mentolerir kesalahan', 'Membuat keputusan sendiri'],
+    improvements: ['Membangun kemampuan mendengarkan aktif', 'Melibatkan tim dalam perencanaan', 'Menjelaskan alasan di balik keputusan', 'Mengakui kontribusi bawahan'],
+    positions: 'Operasional, manufaktur, situasi krisis, atau bidang yang memerlukan eksekusi cepat dan presisi tinggi.' },
+  Co: { name: 'Compromiser', id: 'Co', color: '#F59E0B', colorLt: '#FFFBEB',
+    tagline: 'Berusaha Menyeimbangkan, Namun Tidak Konsisten',
+    desc: 'Gaya Compromiser (Kompromis) memiliki orientasi sedang pada tugas dan hubungan, namun tidak efektif karena tidak berkomitmen penuh pada salah satunya. Manajer tipe ini sering ragu-ragu, berusaha menyenangkan semua pihak, dan mengorbankan kualitas keputusan demi menghindari konflik. Gaya ini dianggap kurang efektif karena menghasilkan keputusan setengah hati.',
+    TO: 'Sedang', RO: 'Sedang', E: 'Rendah',
+    strengths: ['Mampu bernegosiasi dan mencari titik tengah', 'Menghindari konflik yang tidak perlu', 'Fleksibel dalam berbagai situasi'],
+    weaknesses: ['Tidak berpendirian tetap', 'Keputusan sering tidak optimal', 'Membingungkan tim karena arah tidak jelas', 'Mudah dipengaruhi tekanan'],
+    tendencies: ['Selalu mencari kompromi meski tidak perlu', 'Mengubah keputusan berdasarkan tekanan', 'Tidak tegas dalam situasi konflik', 'Memberikan pesan yang tidak konsisten'],
+    improvements: ['Mengembangkan kemampuan pengambilan keputusan tegas', 'Belajar berkomitmen pada keputusan yang sudah dibuat', 'Menetapkan prioritas yang jelas', 'Berani menghadapi konflik secara konstruktif'],
+    positions: 'Mediasi, negosiasi, atau peran yang memerlukan kemampuan diplomasi. Paling efektif dalam tim kolaboratif yang sudah matang.' },
+  Bu: { name: 'Bureaucrat', id: 'Bu', color: '#3B82F6', colorLt: '#EFF6FF',
+    tagline: 'Prosedural, Tertib, Berbasis Aturan',
+    desc: 'Gaya Bureaucrat (Birokrat) ditandai rendahnya orientasi pada tugas dan hubungan, namun efektif dalam sistem dan prosedur. Manajer tipe ini sangat menghormati hierarki, aturan, dan standar operasional. Ia bekerja dengan sistematis dan dapat diandalkan dalam lingkungan yang terstruktur, namun kurang fleksibel dan adaptif terhadap perubahan.',
+    TO: 'Rendah', RO: 'Rendah', E: 'Sedang',
+    strengths: ['Sangat prosedural dan sistematis', 'Dapat diandalkan dalam menegakkan aturan', 'Konsisten dan dapat diprediksi', 'Efektif dalam lingkungan terstruktur'],
+    weaknesses: ['Kurang fleksibel terhadap perubahan', 'Terlalu fokus pada prosedur daripada hasil', 'Lambat beradaptasi dengan situasi baru', 'Kurang memotivasi dan menginspirasi'],
+    tendencies: ['Mengikuti prosedur secara ketat', 'Mendokumentasikan segalanya', 'Menghindari ambiguitas', 'Berkomunikasi secara formal'],
+    improvements: ['Mengembangkan kemampuan berpikir fleksibel', 'Belajar mempertimbangkan konteks situasional', 'Lebih terbuka terhadap inovasi', 'Mengembangkan kemampuan membimbing tim'],
+    positions: 'Compliance, audit, keuangan, administrasi, atau peran yang memerlukan ketelitian prosedural tinggi dalam lingkungan yang diatur.' },
+  Dv: { name: 'Developer', id: 'Dv', color: '#8B5CF6', colorLt: '#F5F3FF',
+    tagline: 'Mengembangkan Potensi Tim Secara Efektif',
+    desc: 'Gaya Developer (Pengembang) ditandai orientasi rendah pada tugas namun tinggi pada hubungan, dengan efektivitas yang baik. Manajer tipe ini sangat percaya pada potensi bawahan, memberikan otonomi dan kepercayaan, serta berinvestasi dalam pengembangan sumber daya manusia. Gaya ini efektif dalam menciptakan tim yang mandiri dan termotivasi.',
+    TO: 'Rendah', RO: 'Tinggi', E: 'Tinggi',
+    strengths: ['Sangat percaya pada kemampuan bawahan', 'Mendorong kreativitas dan inovasi', 'Membangun hubungan kerja yang kuat', 'Menciptakan lingkungan belajar'],
+    weaknesses: ['Terlalu permisif dalam hal kesalahan', 'Kurang tegas dalam penetapan target', 'Kadang mengabaikan kebutuhan produktivitas jangka pendek'],
+    tendencies: ['Mendelegasikan secara penuh dengan kepercayaan', 'Memberikan umpan balik konstruktif', 'Berinvestasi dalam pelatihan dan pengembangan', 'Mendengarkan secara aktif'],
+    improvements: ['Menyeimbangkan pengembangan dengan pencapaian target', 'Bersikap lebih tegas dalam situasi yang memerlukan', 'Menetapkan ekspektasi kinerja yang jelas'],
+    positions: 'Manajemen talenta, pelatihan, pendidikan, R&D, konsultansi, atau peran yang memerlukan pengembangan tim dan inovasi.' },
+  Ba: { name: 'Benevolent Autocrat', id: 'Ba', color: '#10B981', colorLt: '#ECFDF5',
+    tagline: 'Tegas Namun Peduli — Guru yang Efektif',
+    desc: 'Gaya Benevolent Autocrat (Otokrat Baik Hati) menggabungkan orientasi tinggi pada tugas dengan efektivitas yang baik. Manajer tipe ini tegas, memberikan instruksi yang jelas, namun juga memperhatikan perkembangan bawahan. Seperti seorang guru yang berstandar tinggi, ia tidak segan memberikan koreksi namun tetap dalam bingkai yang mendukung dan adil.',
+    TO: 'Tinggi', RO: 'Rendah', E: 'Tinggi',
+    strengths: ['Memberikan arahan yang jelas dan terstruktur', 'Mendorong standar kerja tinggi', 'Adil dan konsisten dalam evaluasi', 'Mengembangkan kompetensi teknis bawahan'],
+    weaknesses: ['Kurang memperhatikan kebutuhan emosional', 'Terkadang terlalu direktif', 'Hubungan interpersonal yang kurang hangat'],
+    tendencies: ['Memberikan instruksi yang detail dan terukur', 'Menetapkan target yang ambisius', 'Memberikan umpan balik langsung dan jujur', 'Memastikan kualitas kerja sesuai standar'],
+    improvements: ['Mengembangkan kecerdasan emosional', 'Lebih terbuka pada partisipasi tim', 'Membangun hubungan yang lebih personal', 'Mengenali dan merayakan pencapaian tim'],
+    positions: 'Manajemen teknis, engineering, operasional, keuangan, atau posisi yang memerlukan kombinasi keahlian teknis dan kemampuan memimpin.' },
+  E: { name: 'Executive', id: 'E', color: '#0A6E5C', colorLt: '#E0F0ED',
+    tagline: 'Pemimpin Visioner yang Mengintegrasikan Tugas dan Hubungan',
+    desc: 'Gaya Executive (Eksekutif) dianggap paling efektif karena menggabungkan orientasi tinggi pada tugas dan tinggi pada hubungan dengan efektivitas optimal. Manajer tipe ini mampu memotivasi tim, menetapkan standar tinggi, melibatkan semua pihak dalam pengambilan keputusan, dan menciptakan sinergi antara produktivitas dan kepuasan kerja. Ia dikenal sebagai pemimpin transformasional.',
+    TO: 'Tinggi', RO: 'Tinggi', E: 'Tinggi',
+    strengths: ['Mampu memotivasi dan menginspirasi tim', 'Menggabungkan target tinggi dengan iklim kerja positif', 'Pengambilan keputusan partisipatif namun tegas', 'Fleksibel dan adaptif terhadap situasi'],
+    weaknesses: ['Terkadang terlalu banyak pertimbangan', 'Membutuhkan tim yang matang untuk efektif', 'Dapat menjadi terlalu kompleks dalam eksekusi'],
+    tendencies: ['Melibatkan tim dalam perencanaan strategis', 'Memberikan otonomi dengan akuntabilitas', 'Berkomunikasi secara transparan', 'Mengelola konflik secara konstruktif'],
+    improvements: ['Mempertahankan konsistensi dalam tekanan tinggi', 'Mendelegasikan lebih efektif', 'Menjaga keseimbangan antara visi strategis dan eksekusi operasional'],
+    positions: 'Direktur, GM, VP, Head of Department, atau pemimpin senior di berbagai industri. Cocok untuk peran yang memerlukan visi strategis sekaligus kemampuan eksekusi tim.' },
+};
+
+export const STYLE_ORDER = ['Ds', 'Mi', 'Au', 'Co', 'Bu', 'Dv', 'Ba', 'E'];
+
+// Three style "families" used by the scoring function. Family-max divisors are derived from
+// the actual coverage in MSDT_QS (audit per mockup line 2082): TO sums to 65, RO sums to 55, E sums to 73.
+export const TO_STYLES = ['Au', 'Ba', 'Co', 'E'];
+export const RO_STYLES = ['Mi', 'Dv', 'Co', 'E'];
+export const E_STYLES  = ['Bu', 'Ba', 'Dv', 'E'];
+export const TO_MAX = 65;
+export const RO_MAX = 55;
+export const E_MAX  = 73;
+
+export const TOTAL_Q = 64;
+
+// 64 paired-statement items. Each item has a (statement A) + b (statement B) + sa/sb (style codes).
+export const MSDT_QS = [
+  // Q1-8
+  { a: 'Saya mengabaikan pelanggar-pelanggar peraturan bila saya merasa pasti bahwa tidak ada satu orang pun yang mengetahui tentang pelanggar-pelanggar tersebut.', b: 'Bila saya mengumumkan suatu keputusan yang kurang menyenangkan, saya akan menjelaskan kepada bawahan saya bahwa keputusan ini dibuat oleh Direktur.', sa: 'Ds', sb: 'Mi' },
+  { a: 'Bila ada seorang karyawan yang hasil kerjanya selalu tidak memuaskan saya, saya akan menunggu suatu kesempatan untuk memindahkannya dan bukan untuk memecatnya.', b: 'Bila ada bawahan saya yang dikucilkan dari kelompok kerjanya, saya akan mencarikan cara-cara agar supaya orang lain dapat berteman dengannya.', sa: 'Ds', sb: 'Dv' },
+  { a: 'Bila Direktur memberikan perintah yang kurang menyenangkan, saya pikir adalah cukup bijaksana bila saya menyebutkan namanya dan bukan nama saya.', b: 'Saya biasanya membuat keputusan-keputusan saya sendiri dan menyampaikannya kepada bawahan saya.', sa: 'Mi', sb: 'Au' },
+  { a: 'Bila saya ditegur oleh atasan saya, saya akan memanggil semua bawahan saya dan mengatakan semua teguran tersebut kepada mereka.', b: 'Saya selalu memberikan tugas-tugas yang sangat sulit kepada karyawan-karyawan yang paling berpengalaman.', sa: 'Au', sb: 'Ba' },
+  { a: 'Saya selalu melakukan diskusi-diskusi untuk mencapai kata sepakat.', b: 'Saya selalu menganjurkan kepada bawahan saya untuk memberikan usul-usul, tetapi kadang-kadang juga saya langsung membuat suatu tindakan tertentu.', sa: 'E', sb: 'Ba' },
+  { a: 'Kadang-kadang saya berpikir bahwa perasaan-perasaan saya dan sikap-sikap saya adalah mementingkan tugas saya.', b: 'Saya mengijinkan bawahan-bawahan saya untuk ikut serta mengambil keputusan yang dibuat berdasarkan atas suara terbanyak.', sa: 'Au', sb: 'E' },
+  { a: 'Bila jumlah dan mutu hasil kerja bagian saya tidak memuaskan, saya menjelaskan kepada bawahan-bawahan saya bahwa Direktur merasa kecewa dan oleh karena itu mereka harus memperbaiki kerja mereka.', b: 'Saya membuat keputusan-keputusan sendiri dan kemudian saya mencoba untuk menjual keputusan-keputusan itu kepada bawahan saya.', sa: 'Mi', sb: 'Ba' },
+  { a: 'Bila saya mengumumkan suatu keputusan yang kurang menyenangkan, saya akan menjelaskan kepada bawahan saya bahwa keputusan ini dibuat oleh Direktur.', b: 'Saya mengijinkan bawahan-bawahan saya untuk ikut serta di dalam pengambilan keputusan, tetapi sayapun menyediakan sesuatu keputusan terakhir.', sa: 'Mi', sb: 'Co' },
+  // Q9-16
+  { a: 'Saya akan memberikan tugas-tugas yang sulit kepada bawahan saya yang belum berpengalaman, tetapi bila mereka memperoleh kesukaran, saya akan mengambil alih tanggung jawab mereka.', b: 'Bila jumlah dan mutu hasil kerja bagian saya tidak memuaskan, saya menjelaskan kepada bawahan-bawahan saya bahwa Direktur merasa kecewa dan oleh karena itu mereka harus memperbaiki mutu kerja mereka itu.', sa: 'Ba', sb: 'Mi' },
+  { a: 'Saya merasa bahwa adalah penting agar bawahan-bawahan menyukai saya apabila saya bekerja keras untuk mereka.', b: 'Saya membiarkan orang-orang lain menangani tugas-tugas mereka masing-masing, walaupun mereka membuat banyak kesalahan.', sa: 'Mi', sb: 'Dv' },
+  { a: 'Saya menunjukkan minat saya terhadap kehidupan pribadi bawahan-bawahan saya, sebab saya merasa bahwa saya mengerti mengapa mereka mengerjakan sesuatu hal sejauh mereka mengerjakan hal tersebut.', b: 'Saya merasa bahwa adalah tidak terlalu perlu untuk bawahan-bawahan saya mengerti mengapa mereka mengerjakan sesuatu hal sejauh mereka mengerjakan hal tersebut.', sa: 'Dv', sb: 'Au' },
+  { a: 'Saya percaya bahwa bawahan-bawahan yang disiplin tidak akan memperbaiki jumlah atau mutu kerja mereka di dalam jangka waktu yang panjang.', b: 'Bila menghadapi masalah yang sulit, saya berusaha untuk mencapai pemecahan yang paling sedikit bisa diterima oleh sebagian besar orang-orang yang bersangkutan.', sa: 'Dv', sb: 'Co' },
+  { a: 'Saya berpikir bahwa bila beberapa bawahan saya merasa tidak berbahagia, saya akan mencoba melakukan sesuatu mengenai hal tersebut.', b: 'Saya mengurusi pekerjaan saya sendiri dan saya merasa bahwa pekerjaan saya itu bisa mencapai "Dewan Direksi" untuk mengembangkan ide-ide baru.', sa: 'Mi', sb: 'Bu' },
+  { a: 'Saya menyetujui kenaikan tunjangan-tunjangan untuk staf dan karyawan.', b: 'Saya menunjukkan persetujuan untuk meningkatkan pengetahuan tentang pekerjaan dan perusahaan dari bawahan-bawahan saya, walaupun hal itu sebenarnya belum diperlukan untuk kedudukan mereka sekarang.', sa: 'Mi', sb: 'Dv' },
+  { a: 'Saya membiarkan orang-orang lain menangani tugas-tugas mereka masing-masing, walaupun mereka membuat banyak kesalahan.', b: 'Saya membuat keputusan-keputusan sendiri tetapi saya akan mempertimbangkan usul-usul yang masuk di akal dari bawahan-bawahan saya yang untuk memperbaiki keputusan tersebut apabila saya bertanya kepada mereka.', sa: 'Dv', sb: 'Ba' },
+  { a: 'Bila ada bawahan saya yang dikucilkan dari kelompok kerjanya, saya akan mencarikan cara-cara agar supaya orang lain dapat berteman dengannya.', b: 'Bila seorang karyawan tidak sanggup menyelesaikan tugasnya, saya akan membantu dia untuk menyelesaikan tugas tersebut.', sa: 'Dv', sb: 'Ba' },
+  // Q17-24
+  { a: 'Saya percaya bahwa suatu penerapan disiplin adalah merupakan seperangkat contoh untuk karyawan-karyawan lainnya.', b: 'Kadang-kadang saya berpikir bahwa perasaan-perasaan saya dan sikap-sikap saya adalah mementingkan tugas saya.', sa: 'Ba', sb: 'Au' },
+  { a: 'Saya mencela pembicaraan-pembicaraan yang tidak perlu di antara bawahan-bawahan saya selama mereka bekerja.', b: 'Saya menyetujui tunjangan-tunjangan untuk staf dan karyawan-karyawan.', sa: 'Au', sb: 'Mi' },
+  { a: 'Saya selalu memperhatikan mengenai keterlambatan dan kemangkiran.', b: 'Saya percaya bahwa Serikat-Serikat Buruh akan mencoba untuk meruntuhkan kewibawaan pimpinan perusahaan.', sa: 'Bu', sb: 'Au' },
+  { a: 'Kadang-kadang saya menentang keluhan-keluhan serikat buruh sebagai suatu perkara yang prinsipil.', b: 'Saya merasa bahwa keluhan-keluhan tidak dapat dicegah dan saya mencoba sebaik mungkin untuk dapat dilenyapkan.', sa: 'Au', sb: 'Co' },
+  { a: 'Adalah penting bagi saya untuk memperoleh nilai kredit bagi ide-ide saya yang baik.', b: 'Saya menyuarakan pendapat-pendapat saya di muka umum hanya bila saya merasa bahwa orang lain akan setuju dengan saya.', sa: 'Mi', sb: 'Ds' },
+  { a: 'Saya percaya bahwa Serikat-Serikat Buruh akan mencoba meruntuhkan kewibawaan pimpinan perusahaan.', b: 'Saya percaya bahwa pertemuan-pertemuan yang sering dengan karyawan secara pribadi adalah membantu pengembangan diri mereka.', sa: 'Au', sb: 'Dv' },
+  { a: 'Saya merasa bahwa tidak terlalu perlu untuk bawahan-bawahan saya mengerti mengapa mereka mengerjakan sesuatu hal sejauh mereka mengerjakan hal tersebut.', b: 'Saya merasa bahwa jam pencatat waktu datang dan pulangnya para pegawai, mengurangi keterlambatan.', sa: 'Au', sb: 'Bu' },
+  { a: 'Saya biasanya membuat keputusan-keputusan saya sendiri dan menyampaikannya kepada bawahan saya.', b: 'Saya merasa bahwa Serikat-Serikat Buruh dan pimpinan perusahaan adalah bekerja untuk mencapai tujuan-tujuan yang sama.', sa: 'Ba', sb: 'E' },
+  // Q25-32
+  { a: 'Saya menyukai penggunaan dari skala penggajian karyawan.', b: 'Saya selalu melakukan diskusi-diskusi untuk mencapai kata sepakat.', sa: 'Bu', sb: 'E' },
+  { a: 'Saya merasa bangga di dalam kenyataannya bahwa saya biasanya tidak akan menanyakan kepada seseorang untuk mengerjakan suatu tugas yang kalau saya sendiri tidak akan saya kerjakan.', b: 'Saya berpikir bahwa bila beberapa bawahan saya merasa tidak berbahagia, saya akan mencoba melakukan sesuatu mengenai hal tersebut.', sa: 'Ba', sb: 'Mi' },
+  { a: 'Bila ada suatu tugas yang mendesak, walaupun semua peralatannya sudah disediakan saya akan membiarkannya saja, dan mengatakan kepada salah seorang bawahan saya untuk mengerjakan sesuatu tugas tersebut.', b: 'Adalah penting bagi saya untuk memperoleh nilai kredit bagi ide-ide saya yang baik.', sa: 'Ds', sb: 'Mi' },
+  { a: 'Tujuan saya adalah mencapai bagaimana tugas-tugas dapat dikerjakan, tanpa saya merasa lebih benci daripada siapapun yang mengerjakan.', b: 'Saya mungkin menentukan tugas-tugas tanpa banyak mempertimbangkan pengalaman atau kemampuan, tetapi saya lebih menuntut pada pencapaian hasil-hasilnya saja.', sa: 'Bu', sb: 'Au' },
+  { a: 'Saya mungkin menentukan tugas-tugas tanpa banyak mempertimbangkan pengalaman atau kemampuan, tetapi saya lebih menuntut pada pencapaian hasil-hasilnya saja.', b: 'Saya dengan sabar mendengarkan keluhan-keluhan dan ketidakpuasan-ketidakpuasan dari bawahan saya tetapi seringkali saya meralat apa yang mereka katakan.', sa: 'Au', sb: 'Ba' },
+  { a: 'Saya merasa bahwa keluhan-keluhan tidak dapat dicegah dan saya mencoba sebaik mungkin untuk dapat dilenyapkan.', b: 'Saya percaya bahwa bawahan-bawahan saya akan merasakan kepuasan kerja mereka tanpa merasakan tekanan apapun dari saya.', sa: 'Co', sb: 'Dv' },
+  { a: 'Bila menghadapi masalah yang sulit, saya berusaha untuk mencapai pemecahan yang paling sedikit bisa diterima oleh sebagian besar orang-orang yang bersangkutan.', b: 'Saya percaya bahwa latihan melalui pengalaman bekerja, adalah lebih bermanfaat daripada pendidikan teoritis.', sa: 'E', sb: 'Ba' },
+  { a: 'Saya selalu memberikan tugas-tugas yang sangat sulit kepada karyawan-karyawan yang paling berpengalaman.', b: 'Saya percaya bahwa kenaikan jabatan adalah semata-mata berdasarkan kemampuan yang ada.', sa: 'Ba', sb: 'E' },
+  // Q33-40
+  { a: 'Saya merasa bahwa masalah-masalah yang timbul di antara para karyawan biasanya akan dapat diselesaikan di antara mereka sendiri, tanpa campur tangan dari saya.', b: 'Bila saya ditegur oleh atasan saya, saya akan memanggil semua bawahan saya dan mengatakan semua teguran tersebut kepada mereka.', sa: 'Ds', sb: 'Au' },
+  { a: 'Saya tidak peduli dengan apa yang dikerjakan oleh karyawan saya di luar jam kerja kantornya.', b: 'Saya percaya bahwa bawahan-bawahan yang disiplin tidak akan memperbaiki jumlah atau mutu kerja mereka di dalam jangka waktu panjang.', sa: 'Ds', sb: 'Dv' },
+  { a: 'Saya memberikan informasi kepada "Dewan Direksi" tidak lebih daripada apa yang mereka tanyakan.', b: 'Kadang-kadang saya menentang keluhan-keluhan Serikat Buruh sebagai sesuatu perkara yang prinsipil.', sa: 'Bu', sb: 'Au' },
+  { a: 'Saya kadang-kadang merasa ragu-ragu untuk membuat suatu keputusan yang akan tidak disukai oleh bawahan-bawahan saya.', b: 'Tujuan saya adalah mencapai bagaimana tugas-tugas dapat dikerjakan, tanpa saya merasa lebih benci daripada siapapun yang mengerjakannya.', sa: 'Co', sb: 'Bu' },
+  { a: 'Saya dengan sabar mendengarkan keluhan-keluhan dan ketidakpuasan-ketidakpuasan dari bawahan saya, tetapi seringkali saya meralat apa yang mereka katakan.', b: 'Saya kadang-kadang merasa ragu-ragu untuk membuat keputusan-keputusan yang akan tidak disukai oleh bawahan-bawahan saya.', sa: 'Ba', sb: 'Co' },
+  { a: 'Saya menyuarakan pendapat-pendapat saya di muka umum hanya bila saya merasa bahwa orang lain akan setuju dengan saya.', b: 'Sebagian besar dari bawahan-bawahan saya dapat menyelesaikan tugas-tugas mereka, bila perlu, tanpa kehadiran saya.', sa: 'Ds', sb: 'Dv' },
+  { a: 'Saya mengurusi pekerjaan saya sendiri, dan saya merasa bahwa pekerjaan saya itu bisa mencapai "Dewan Direksi" untuk mengembangkan ide-ide baru.', b: 'Bila saya memberikan perintah kepada bawahan-bawahan saya, saya menentukan batas waktu untuk mereka menyelesaikannya.', sa: 'Bu', sb: 'Ba' },
+  { a: 'Saya selalu menganjurkan kepada bawahan saya untuk memberikan usul-usul, tetapi kadang-kadang juga saya langsung membuat suatu tindakan tertentu.', b: 'Saya mencoba untuk membuat bawahan-bawahan saya merasa senang hatinya apabila mereka berbicara dengan saya.', sa: 'Ba', sb: 'Dv' },
+  // Q41-48
+  { a: 'Di dalam diskusi, saya memberikan fakta-fakta seperti apa yang mereka pahami, dan membiarkan mereka melukiskan kesimpulan-kesimpulan mereka sendiri.', b: 'Bila Direktur memberikan perintah yang kurang menyenangkan, saya pikir adalah cukup bijaksana bila saya menyebutkan namanya dan bukan nama saya.', sa: 'E', sb: 'Mi' },
+  { a: 'Bila ada tugas-tugas yang tidak dikehendaki yang harus dikerjakan, sebelumnya saya akan menanyakan kepada beberapa sukarelawan yang mau mengerjakan tugas tersebut.', b: 'Saya menunjukkan minat saya terhadap kehidupan pribadi bawahan-bawahan saya, sebab saya merasa bahwa sayapun mengharapkan mereka berbuat seperti itu kepada saya.', sa: 'E', sb: 'Dv' },
+  { a: 'Saya adalah seorang yang sangat memperhatikan kebahagiaan karyawan-karyawan saya di dalam mereka mengerjakan tugas-tugas mereka.', b: 'Saya selalu memperhatikan mengenai keterlambatan dan kemangkiran.', sa: 'Mi', sb: 'Bu' },
+  { a: 'Sebagian besar dari bawahan-bawahan saya dapat menyelesaikan tugas-tugas mereka, bila perlu tanpa kehadiran saya.', b: 'Bila ada sesuatu tugas yang mendesak, walaupun semua peralatannya sesudah disediakan, saya akan membiarkannya saja dan mengatakan kepada salah seorang bawahan saya untuk mengerjakan tugas tersebut.', sa: 'E', sb: 'Ds' },
+  { a: 'Saya percaya bahwa bawahan-bawahan saya akan merasakan kepuasan kerja mereka tanpa merasakan tekanan apapun dari saya.', b: 'Saya memberikan informasi kepada "Dewan Direksi" tidak lebih daripada apa yang mereka tanyakan.', sa: 'Dv', sb: 'Bu' },
+  { a: 'Saya percaya bahwa pertemuan-pertemuan yang sering dengan karyawan secara pribadi adalah membantu pengembangan diri mereka.', b: 'Saya adalah seorang yang sangat memperhatikan karyawan-karyawan saya di dalam mereka mengerjakan tugas-tugas mereka.', sa: 'Dv', sb: 'Ba' },
+  { a: 'Saya menunjukkan persetujuan untuk meningkatkan pengetahuan tentang pekerjaan dan perusahaan dari bawahan-bawahan saya, walaupun hal itu sebenarnya belum diperlukan untuk kedudukan mereka sekarang.', b: 'Saya mengawasi benar bawahan-bawahan saya yang kurang mahir di dalam bekerjanya atau bawahan-bawahan saya yang hasil kerjanya kurang memuaskan.', sa: 'Dv', sb: 'Bu' },
+  { a: 'Saya mengijinkan bawahan-bawahan saya untuk ikut serta mengambil keputusan dan saya selalu mematuhi keputusan yang dibuat berdasarkan atas suara terbanyak.', b: 'Saya membuat bawahan-bawahan saya bekerja keras, dan saya berusaha meyakinkan mereka bahwa biasanya mereka mendapat perlakuan yang adil dari "Dewan Direksi".', sa: 'E', sb: 'Au' },
+  // Q49-56
+  { a: 'Saya merasa bahwa semua karyawan pada jabatan yang sama seharusnya memperoleh gaji yang sama.', b: 'Bila ada seorang karyawan yang hasil kerjanya selalu tidak memuaskan saya, saya akan menunggu suatu kesempatan untuk memindahkannya dan bukan untuk memecatnya.', sa: 'Bu', sb: 'Ds' },
+  { a: 'Saya merasa bahwa tujuan-tujuan Serikat Buruh dan tujuan-tujuan perusahaan adalah saling berbeda dan saya mencoba untuk tidak membuat pandangan saya secara jelas.', b: 'Saya merasa bahwa adalah penting agar bawahan saya menyukai saya apabila saya bekerja keras untuk mereka.', sa: 'Au', sb: 'Mi' },
+  { a: 'Saya mengawasi benar bawahan-bawahan saya yang kurang mahir di dalam bekerjanya atau bawahan-bawahan saya yang hasil kerjanya kurang memuaskan.', b: 'Saya mencela pembicaraan-pembicaraan yang tidak perlu di antara bawahan-bawahan saya selama mereka bekerja.', sa: 'Bu', sb: 'Au' },
+  { a: 'Bila saya memberikan perintah kepada bawahan-bawahan saya, saya menentukan batas waktu untuk mereka menyelesaikannya.', b: 'Saya merasa bangga di dalam kenyataannya bahwa saya biasanya tidak akan menanyakan kepada seseorang untuk mengerjakan suatu tugas yang kalau saya sendiri tidak akan saya kerjakan.', sa: 'Au', sb: 'Ba' },
+  { a: 'Saya percaya bahwa latihan melalui pengalaman bekerja, adalah lebih bermanfaat daripada pendidikan teoritis.', b: 'Saya tidak peduli dengan apa yang dikerjakan oleh para pegawai saya di luar jam kantornya.', sa: 'Ba', sb: 'Ds' },
+  { a: 'Saya merasa bahwa jam pencatat waktu datang dan pulangnya para pegawai, mengurangi keterlambatan.', b: 'Saya mengijinkan bawahan-bawahan saya untuk ikut serta mengambil keputusan dan saya selalu mematuhi keputusan yang dibuat berdasarkan atas suara terbanyak.', sa: 'Bu', sb: 'E' },
+  { a: 'Saya mengambil keputusan-keputusan saya sendiri, tetapi saya dapat mempertimbangkan saran-saran yang wajar dari bawahan-bawahan saya untuk saya manfaatkan, bilamana saya bertanya kepada mereka.', b: 'Saya merasa bahwa tujuan-tujuan Serikat Buruh dan tujuan-tujuan perusahaan adalah saling berbeda, dan saya mencoba untuk tidak membuat pandangan saya secara jelas.', sa: 'Ba', sb: 'Au' },
+  { a: 'Saya membuat keputusan-keputusan sendiri dan kemudian saya mencoba untuk "menjual" keputusan-keputusan itu kepada bawahan saya.', b: 'Apabila mungkin saya membentuk kelompok-kelompok kerja yang terdiri dari orang-orang yang sudah menjadi teman-teman baik saya.', sa: 'Ba', sb: 'Ds' },
+  // Q57-64
+  { a: 'Saya tidak akan ragu-ragu untuk mempekerjakan pegawai-pegawai yang cacat jasmaninya, bilamana saya merasa pasti bahwa dia dapat mempelajari pekerjaannya.', b: 'Saya mengabaikan pelanggar-pelanggar peraturan bila saya merasa pasti bahwa tidak ada satu orang pun yang mengetahui tentang pelanggaran-pelanggaran tersebut.', sa: 'E', sb: 'Ds' },
+  { a: 'Apabila mungkin saya membentuk kelompok-kelompok kerja yang terdiri dari orang-orang yang sudah menjadi teman-teman baik saya.', b: 'Saya akan memberikan tugas-tugas yang sulit kepada bawahan-bawahan saya yang berpengalaman, tetapi bila mereka memperoleh kesukaran, saya akan mengambil alih tanggung jawab mereka.', sa: 'Mi', sb: 'Ba' },
+  { a: 'Saya membuat bawahan-bawahan saya bekerja keras, dan saya berusaha meyakinkan mereka bahwa biasanya mereka mendapat perlakuan yang adil dari "Dewan Direksi".', b: 'Saya percaya bahwa suatu penerapan disiplin adalah merupakan seperangkat contoh untuk karyawan-karyawan lainnya.', sa: 'Au', sb: 'Ba' },
+  { a: 'Saya mencoba untuk membuat bawahan-bawahan saya merasa senang hatinya apabila mereka berbicara dengan saya.', b: 'Saya menyukai penggunaan dari skala penggajian karyawan.', sa: 'Dv', sb: 'Bu' },
+  { a: 'Saya percaya bahwa kenaikan jabatan adalah semata-mata berdasarkan kemampuan yang ada.', b: 'Saya merasa bahwa masalah-masalah yang timbul di antara mereka sendiri, tanpa campur tangan dari saya.', sa: 'E', sb: 'Ds' },
+  { a: 'Saya merasa bahwa Serikat-Serikat Buruh dan pimpinan perusahaan adalah bekerja untuk mencapai tujuan-tujuan yang sama.', b: 'Di dalam diskusi, saya memberikan fakta-fakta seperti apa yang mereka pahami, dan membiarkan mereka melukiskan kesimpulan-kesimpulan mereka sendiri.', sa: 'E', sb: 'Dv' },
+  { a: 'Bila seorang karyawan tidak sanggup menyelesaikan tugasnya, saya akan membantu dia untuk menyelesaikan tugas tersebut.', b: 'Saya merasa bahwa semua karyawan pada jabatan yang sama seharusnya memperoleh gaji yang sama.', sa: 'Ba', sb: 'Bu' },
+  { a: 'Saya mengijinkan bawahan-bawahan saya untuk ikut serta di dalam pengambilan keputusan, tetapi sayapun menyediakan sesuatu yang jitu untuk membuat keputusan terakhir.', b: 'Saya tidak akan ragu-ragu untuk mempekerjakan pegawai-pegawai yang cacat jasmaninya, bilamana saya merasa bahwa dia dapat mempelajari pekerjaannya.', sa: 'Ba', sb: 'E' },
+];
