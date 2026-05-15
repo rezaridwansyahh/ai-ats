@@ -1,5 +1,12 @@
 // src/utils/permissions.js
 
+const readPermissions = () => {
+  const raw = localStorage.getItem('permissions');
+  if (!raw || raw === 'undefined' || raw === 'null') return null;
+  const parsed = JSON.parse(raw);
+  return Array.isArray(parsed) ? parsed : null;
+};
+
 /**
  * Check if user has a specific permission
  * @param {string} moduleName - e.g., "Users"
@@ -9,11 +16,8 @@
  */
 export const hasPermission = (moduleName, menuName, functionality) => {
   try {
-    const permissionsStr = localStorage.getItem('permissions');
-    if (!permissionsStr) return false;
-
-    // Permissions are stored as nested: [{ module, menus: [{ menu, functionalities: [] }] }]
-    const permissions = JSON.parse(permissionsStr);
+    const permissions = readPermissions();
+    if (!permissions) return false;
     const modulePerms = permissions.find(p => p.module === moduleName);
     if (!modulePerms) return false;
     const menuPerms = modulePerms.menus?.find(m => m.menu === menuName);
@@ -54,10 +58,9 @@ export const hasAllPermissions = (permissionChecks) => {
  */
 export const getModulePermissions = (moduleName) => {
   try {
-    const permissionsStr = localStorage.getItem('permissions');
-    if (!permissionsStr) return [];
-    
-    const permissions = JSON.parse(permissionsStr);
+    const permissions = readPermissions();
+    if (!permissions) return [];
+
     return permissions.filter(perm => perm.module === moduleName);
   } catch (error) {
     console.error('Error getting module permissions:', error);
@@ -71,10 +74,9 @@ export const getModulePermissions = (moduleName) => {
  */
 export const getUserModules = () => {
   try {
-    const permissionsStr = localStorage.getItem('permissions');
-    if (!permissionsStr) return [];
-    
-    const permissions = JSON.parse(permissionsStr);
+    const permissions = readPermissions();
+    if (!permissions) return [];
+
     const modules = [...new Set(permissions.map(perm => perm.module))];
     return modules;
   } catch (error) {
@@ -90,10 +92,9 @@ export const getUserModules = () => {
  */
 export const getModuleMenus = (moduleName) => {
   try {
-    const permissionsStr = localStorage.getItem('permissions');
-    if (!permissionsStr) return [];
-    
-    const permissions = JSON.parse(permissionsStr);
+    const permissions = readPermissions();
+    if (!permissions) return [];
+
     const menus = [...new Set(
       permissions
         .filter(perm => perm.module === moduleName)
@@ -112,11 +113,9 @@ export const getModuleMenus = (moduleName) => {
  */
 export const getStructuredPermissions = () => {
   try {
-    const permissionsStr = localStorage.getItem('permissions');
-    if (!permissionsStr) return [];
-    
-    const permissions = JSON.parse(permissionsStr);
-    
+    const permissions = readPermissions();
+    if (!permissions) return [];
+
     // Group by module
     const grouped = {};
     permissions.forEach(perm => {
