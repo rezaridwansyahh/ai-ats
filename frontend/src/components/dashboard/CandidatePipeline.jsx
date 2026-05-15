@@ -503,7 +503,7 @@ function AIMatchingStagePanel({ jobId, stage }) {
           </div>
         ) : results.length === 0 ? (
           <p className="py-8 text-center text-xs text-muted-foreground">
-            No AI-matching results yet. Run AI Matching for this job from <span className="font-semibold">Selection → AI Matching</span>.
+            No AI-matching results yet. Run AI Matching for this job from <span className="font-semibold">Selection → AI Screening</span>.
           </p>
         ) : (
           <Table className="table-fixed w-full">

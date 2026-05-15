@@ -15,7 +15,10 @@ import RecruitersPage from "./pages/Recruiters"
 import ComingSoonPage from "./pages/ComingSoon"
 import AssessmentAPage from "./pages/AssessmentA"
 import ReportPage from "./pages/Report"
-import AIMatchingPage from "./pages/AIMatching"
+import AIScreeningPage from "./pages/AIScreening"
+import AIScreeningWorkboard from "./pages/AIScreeningWorkboard"
+import AIScreeningCandidatePage from "./pages/AIScreeningCandidate"
+import AIScreeningCalibrationPage from "./pages/AIScreeningCalibration"
 import AssessmentBPage from "./pages/AssessmentB"
 import CandidatePipelinePage from "./pages/CandidatePipeline"
 import AssessmentCPage from "./pages/AssessmentC"
@@ -38,7 +41,10 @@ function App() {
         <Route path="/sourcing/talent-pool" element={<TalentPoolPage />} />
         <Route path="/sourcing/source-candidate" element={<SourceCandidatePage />} />
 
-        <Route path="/selection/ai-matching" element={<AIMatchingPage />} />
+        <Route path="/selection/ai-screening" element={<AIScreeningWorkboard />} />
+        <Route path="/selection/ai-screening/job/:jobId" element={<AIScreeningPage />} />
+        <Route path="/selection/ai-screening/candidate/:screeningId" element={<AIScreeningCandidatePage />} />
+        <Route path="/selection/ai-screening/job/:jobId/calibrate" element={<AIScreeningCalibrationPage />} />
         <Route path="/selection/report" element={<ReportPage />} />
 
         <Route path="/asesmen/assessment-a" element={<AssessmentAPage />} />

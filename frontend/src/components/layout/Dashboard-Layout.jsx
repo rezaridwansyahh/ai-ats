@@ -12,7 +12,7 @@ const BREADCRUMB_MAP = {
   '/sourcing/source-management': ['Sourcing', 'Source Management'],
   '/sourcing/talent-pool':       ['Sourcing', 'Talent Pool'],
   '/sourcing/source-candidate':  ['Sourcing', 'Source Candidate'],
-  '/selection/ai-matching':      ['Selection', 'AI Matching'],
+  '/selection/ai-screening':     ['Selection', 'AI Screening'],
   '/selection/assessment-a':     ['Selection', 'Assessment A'],
   '/selection/assessment-b':     ['Selection', 'Assessment B'],
   '/selection/assessment-c':     ['Selection', 'Assessment C'],
@@ -25,9 +25,24 @@ const BREADCRUMB_MAP = {
   '/settings/recruiters':        ['Settings', 'Recruiters'],
 }
 
+function resolveBreadcrumbs(pathname) {
+  if (BREADCRUMB_MAP[pathname]) return BREADCRUMB_MAP[pathname]
+  // Nested AI Screening routes
+  if (pathname.startsWith('/selection/ai-screening/job/')) {
+    return ['Selection', 'AI Screening', 'Position']
+  }
+  if (pathname.startsWith('/selection/ai-screening/candidate/')) {
+    return ['Selection', 'AI Screening', 'Candidate']
+  }
+  if (/^\/selection\/ai-screening\/job\/\d+\/calibrate$/.test(pathname)) {
+    return ['Selection', 'AI Screening', 'Calibrate']
+  }
+  return ['Dashboard']
+}
+
 export default function DashboardLayout() {
   const location = useLocation()
-  const breadcrumbs = BREADCRUMB_MAP[location.pathname] || ['Dashboard']
+  const breadcrumbs = resolveBreadcrumbs(location.pathname)
 
   return (
     

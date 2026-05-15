@@ -6,7 +6,7 @@ export default function CandidatePipelinePage() {
       <div>
         <h1 className="text-2xl font-bold tracking-tight">Candidate Pipeline</h1>
         <p className="text-sm text-muted-foreground mt-0.5">
-          Pick a job and drill into its stages.
+          Read-only view of pipeline state across jobs. To take action on a candidate, open them in <span className="font-semibold">Selection → AI Screening</span>.
         </p>
       </div>
       <CandidatePipeline />

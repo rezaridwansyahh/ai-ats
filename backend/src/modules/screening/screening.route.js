@@ -20,4 +20,19 @@ router.put('/rubric/:job_id',  screeningController.saveRubric);
 router.post('/match/:job_id',  screeningController.runMatching);
 router.get('/match/:job_id/results', screeningController.getMatchingResults);
 
+// L1 Workboard + bulk lane actions (Phase 2)
+router.get('/workboard',                 screeningController.getWorkboard);
+router.get('/job/:job_id/lane',          screeningController.getLaneCandidates);
+router.post('/parse-bulk',               screeningController.parseBulk);
+router.post('/job/:job_id/match-bulk',   screeningController.matchBulk);
+
+// L3 Candidate detail (Phase 3)
+router.get('/screening/:screening_id',                screeningController.getScreening);
+router.get('/by-candidate/:candidate_id',             screeningController.getScreeningByCandidateId);
+router.patch('/screening/:screening_id/decision',     screeningController.setDecision);
+
+// L4 Calibration (Phase 4)
+router.get('/job/:job_id/calibration',                screeningController.getCalibration);
+router.post('/job/:job_id/advance-bulk',              screeningController.advanceBulk);
+
 export default router;

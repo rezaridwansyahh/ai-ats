@@ -3,20 +3,15 @@ export default [
   // Main / Dashboard (module 1)
   { id: 1,  module_id: 1, menu_id: 1  }, // Dashboard
   { id: 2,  module_id: 1, menu_id: 2  }, // Candidate Pipeline
-  { id: 2,  module_id: 1, menu_id: 2  }, // Candidate Pipeline
 
   // Sourcing (module 2)
   { id: 3,  module_id: 2, menu_id: 3  }, // Job Management
   { id: 4,  module_id: 2, menu_id: 4  }, // Source Management
   { id: 5,  module_id: 2, menu_id: 5  }, // Talent Pool
   { id: 6,  module_id: 2, menu_id: 6  }, // Source Candidate
-  { id: 3,  module_id: 2, menu_id: 3  }, // Job Management
-  { id: 4,  module_id: 2, menu_id: 4  }, // Source Management
-  { id: 5,  module_id: 2, menu_id: 5  }, // Talent Pool
-  { id: 6,  module_id: 2, menu_id: 6  }, // Source Candidate
 
   // Selection (module 3)
-  { id: 7,  module_id: 3, menu_id: 7  }, // AI Matching
+  { id: 7,  module_id: 3, menu_id: 7  }, // AI Screening
   { id: 8,  module_id: 3, menu_id: 8  }, // Assessment A
   { id: 9,  module_id: 3, menu_id: 9  }, // Assessment B
   { id: 10, module_id: 3, menu_id: 10 }, // Assessment C
