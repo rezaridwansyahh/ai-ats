@@ -128,11 +128,13 @@ export function AppSidebar() {
       const userStr        = localStorage.getItem('user');
       const permissionsStr = localStorage.getItem('permissions');
 
-      if (userStr) setUser(JSON.parse(userStr));
+      if (userStr && userStr !== 'undefined' && userStr !== 'null') {
+        setUser(JSON.parse(userStr));
+      }
 
-      if (permissionsStr) {
+      if (permissionsStr && permissionsStr !== 'undefined' && permissionsStr !== 'null') {
         const parsed = JSON.parse(permissionsStr);
-        setPermissions(parsed);
+        if (Array.isArray(parsed)) setPermissions(parsed);
       }
     } catch (err) {
       console.error('Failed to load auth data from localStorage:', err);

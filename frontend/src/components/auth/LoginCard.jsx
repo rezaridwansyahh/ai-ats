@@ -26,10 +26,10 @@ export function LoginCard() {
       });
 
       localStorage.setItem('token', res.token)
-      localStorage.setItem('user', JSON.stringify(res.user))
-      localStorage.setItem('role', JSON.stringify(res.role))
-      localStorage.setItem('permissions', JSON.stringify(res.permissions))
-      localStorage.setItem('userData', JSON.stringify(res))
+      localStorage.setItem('user', JSON.stringify(res.user ?? null))
+      localStorage.setItem('role', JSON.stringify(res.role ?? []))
+      localStorage.setItem('permissions', JSON.stringify(res.permissions ?? []))
+      localStorage.setItem('userData', JSON.stringify(res ?? null))
 
       navigate("/dashboard");
     } catch (err) {
