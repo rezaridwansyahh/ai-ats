@@ -1,7 +1,7 @@
 // 4 functionalities (read/create/update/delete) per module_menu, sequential ids.
 // Layout: permission_id = (module_menu_id - 1) * 4 + offset, where offset is 1..4.
 const FUNCS = ['read', 'create', 'update', 'delete'];
-const MENU_COUNT = 15;
+const MENU_COUNT = 17; // Total menus: 2 (Main) + 4 (Sourcing) + 6 (Selection) + 5 (Settings)
 
 export default Array.from({ length: MENU_COUNT * FUNCS.length }, (_, i) => {
   const module_menu_id = Math.floor(i / FUNCS.length) + 1;
