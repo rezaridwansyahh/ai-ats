@@ -13,6 +13,10 @@ class CandidatePipelineService {
     return pipeline;
   }
 
+  async getSummary() {
+    return await CandidatePipeline.getSummary();
+  }
+
   async getByJobId(job_id) {
     if (!job_id) throw { status: 400, message: 'job_id is required' };
     return await CandidatePipeline.getByJobId(job_id);

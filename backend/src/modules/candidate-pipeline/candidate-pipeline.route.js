@@ -7,6 +7,7 @@ import authToken from '../../shared/middleware/auth.middleware.js';
 router.use(authToken);
 
 router.get('/', candidatePipelineController.getAll);
+router.get('/summary', candidatePipelineController.getSummary);
 router.get('/job/:job_id', candidatePipelineController.getByJobId);
 router.get('/applicant/:applicant_id', candidatePipelineController.getByApplicantId);
 router.get('/:id/stages', candidatePipelineController.getStages);

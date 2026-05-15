@@ -19,6 +19,15 @@ class CandidatePipelineController {
     }
   }
 
+  async getSummary(req, res) {
+    try {
+      const summary = await candidatePipelineService.getSummary();
+      res.status(200).json({ message: 'Candidate pipeline summary', summary });
+    } catch (err) {
+      res.status(err.status || 500).json({ message: err.message });
+    }
+  }
+
   async getByJobId(req, res) {
     try {
       const pipelines = await candidatePipelineService.getByJobId(req.params.job_id);

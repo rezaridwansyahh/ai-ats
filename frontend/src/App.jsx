@@ -15,6 +15,7 @@ import RecruitersPage from "./pages/Recruiters"
 import ComingSoonPage from "./pages/ComingSoon"
 import AssessmentAPage from "./pages/AssessmentA"
 import ReportPage from "./pages/Report"
+import CandidateDetailPage from "./pages/CandidateDetail"
 import AIMatchingPage from "./pages/AIMatching"
 import AssessmentBPage from "./pages/AssessmentB"
 import AssessmentCPage from "./pages/AssessmentC"
@@ -42,6 +43,7 @@ function App() {
         <Route path="/selection/assessment-c" element={<AssessmentCPage />} />
         <Route path="/selection/assessment-d" element={<AssessmentDPage />} />
         <Route path="/selection/report" element={<ReportPage />} />
+        <Route path="/selection/report/:jobId/:participantId" element={<CandidateDetailPage />} />
 
         <Route path="/settings/user-management" element={<UserManagementPage />} />
         <Route path="/settings/role-management" element={<RoleManagementPage />} />

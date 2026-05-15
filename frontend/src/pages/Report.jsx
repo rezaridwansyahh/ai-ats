@@ -1,227 +1,111 @@
-import { useState, useEffect, useMemo } from 'react';
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import {
-  Table, TableHeader, TableBody, TableRow, TableHead, TableCell,
-} from '@/components/ui/table';
-import { TablePagination } from '@/components/shared/TablePagination';
-import { useSort } from '@/hooks/useSort';
-import { getAssessmentResults } from '@/api/assessment-battery-result.api';
-import { RefreshCw, Search, Users, Trophy, TrendingUp } from 'lucide-react';
-import { AssessmentDetailDialog } from '@/components/assessment/AssessmentDetailDialog';
+import { useEffect, useMemo, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
+import JobsSidebar from '@/components/report/JobsSidebar';
+import CandidatesPanel from '@/components/report/CandidatesPanel';
+import { getCandidatePipelineSummary, getCandidatesByJobId } from '@/api/candidate.api';
 
+// Real-data Report page.
+// - Left rail: GET /candidate-pipeline/summary → [{ job_id, job_title, total }]
+// - Right panel: GET /candidate-pipeline/job/:job_id → candidate rows for the selected job
 export default function ReportPage() {
-  const [results, setResults]   = useState([]);
-  const [loading, setLoading]   = useState(true);
-  const [error, setError]       = useState(null);
-  const [search, setSearch]     = useState('');
-  const [page, setPage]         = useState(1);
-  const [pageSize, setPageSize] = useState(10);
-  const [selected, setSelected] = useState(null);
+  const navigate = useNavigate();
+  const [jobs, setJobs] = useState([]);
+  const [jobsLoading, setJobsLoading] = useState(true);
+  const [jobsError, setJobsError]     = useState(null);
 
-  const { toggle, apply, SortIcon } = useSort();
+  const [selectedJobId, setSelectedJobId] = useState(null);
 
-  const fetchData = async () => {
-    setLoading(true);
-    setError(null);
-    try {
-      const { data } = await getAssessmentResults();
-      setResults(data.results || []);
-    } catch {
-      setError('Gagal memuat data hasil asesmen.');
-    } finally {
-      setLoading(false);
+  const [candidates, setCandidates]       = useState([]);
+  const [candidatesLoading, setCandidatesLoading] = useState(false);
+  const [candidatesError, setCandidatesError]     = useState(null);
+
+  // Initial summary fetch — also seeds the selected job.
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      setJobsLoading(true);
+      setJobsError(null);
+      try {
+        const res  = await getCandidatePipelineSummary();
+        const list = res.data?.summary || [];
+        if (cancelled) return;
+        setJobs(list);
+        if (list.length > 0) setSelectedJobId(list[0].job_id);
+      } catch (err) {
+        if (!cancelled) {
+          setJobsError(err.response?.data?.message || err.message || 'Failed to load jobs');
+        }
+      } finally {
+        if (!cancelled) setJobsLoading(false);
+      }
+    })();
+    return () => { cancelled = true; };
+  }, []);
+
+  // Candidate list fetch — runs whenever the selected job changes.
+  useEffect(() => {
+    if (selectedJobId == null || selectedJobId === 'all') {
+      setCandidates([]);
+      return undefined;
     }
-  };
+    let cancelled = false;
+    (async () => {
+      setCandidatesLoading(true);
+      setCandidatesError(null);
+      try {
+        const res = await getCandidatesByJobId(selectedJobId);
+        if (!cancelled) setCandidates(res.data?.pipelines || []);
+      } catch (err) {
+        if (!cancelled) {
+          setCandidatesError(err.response?.data?.message || err.message || 'Failed to load candidates');
+          setCandidates([]);
+        }
+      } finally {
+        if (!cancelled) setCandidatesLoading(false);
+      }
+    })();
+    return () => { cancelled = true; };
+  }, [selectedJobId]);
 
-  useEffect(() => { fetchData(); }, []);
-
-  // Decorate rows with derived fields so search/sort/display all use the same projection.
-  const decorated = useMemo(
-    () => results.map((r) => ({
-      ...r,
-      overall_score: r.summary?.pillars?.overall ?? null,
-      overall_threshold: r.summary?.pillar_thresholds?.overall ?? 70,
-      disc_dominant:   r.summary?.disc_dominant ?? null,
-      holland_code3:   r.summary?.holland_code3 ?? null,
-    })),
-    [results]
+  const selectedJob = useMemo(
+    () => jobs.find((j) => j.job_id === selectedJobId) || null,
+    [jobs, selectedJobId]
   );
 
-  const filtered = useMemo(() => {
-    if (!search.trim()) return decorated;
-    const q = search.toLowerCase();
-    return decorated.filter(
-      (r) =>
-        r.participant_name?.toLowerCase().includes(q) ||
-        r.participant_email?.toLowerCase().includes(q) ||
-        r.assessment_name?.toLowerCase().includes(q)
-    );
-  }, [decorated, search]);
-
-  const sorted     = apply(filtered);
-  const totalPages = Math.max(1, Math.ceil(sorted.length / pageSize));
-  const paginated  = sorted.slice((page - 1) * pageSize, page * pageSize);
-
-  const stats = useMemo(() => {
-    const scored = decorated.filter((r) => typeof r.overall_score === 'number');
-    if (scored.length === 0) return { total: decorated.length, avg: 0, highest: 0 };
-    const scores  = scored.map((r) => r.overall_score);
-    const avg     = Math.round(scores.reduce((a, b) => a + b, 0) / scores.length);
-    const highest = Math.max(...scores);
-    return { total: decorated.length, avg, highest };
-  }, [decorated]);
-
-  const formatDate = (iso) => {
-    if (!iso) return '-';
-    return new Date(iso).toLocaleDateString('id-ID', {
-      day: '2-digit', month: 'short', year: 'numeric',
-    });
-  };
-
-  const scoreBadge = (score, threshold = 70) => {
-    if (score == null) return 'bg-slate-100 text-slate-500 border-slate-200';
-    if (score >= threshold)      return 'bg-green-100 text-green-700 border-green-200';
-    if (score >= threshold - 15) return 'bg-yellow-100 text-yellow-700 border-yellow-200';
-    return 'bg-red-100 text-red-700 border-red-200';
+  const handleSelectCandidate = (candidate) => {
+    navigate(`/selection/report/${candidate.job_id}/${candidate.id}`);
   };
 
   return (
-    <div className="p-6 space-y-5">
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-semibold">Report</h1>
-          <p className="text-sm text-muted-foreground">Hasil asesmen seluruh peserta.</p>
+    <div className="space-y-4">
+      <div>
+        <h1 className="text-lg font-bold tracking-tight">Report</h1>
+        <p className="text-xs text-muted-foreground mt-0.5">
+          Pick a position to review its candidates and assessment status.
+        </p>
+      </div>
+
+      {jobsError ? (
+        <div className="rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-xs text-red-600">
+          {jobsError}
         </div>
-        <Button variant="outline" size="sm" onClick={fetchData} disabled={loading}>
-          <RefreshCw className={`h-3.5 w-3.5 mr-1.5 ${loading ? 'animate-spin' : ''}`} />
-          Refresh
-        </Button>
+      ) : null}
+
+      <div className="grid grid-cols-1 md:grid-cols-[220px_1fr] gap-4">
+        <JobsSidebar
+          jobs={jobs}
+          loading={jobsLoading}
+          selectedJobId={selectedJobId}
+          onSelectJob={setSelectedJobId}
+        />
+        <CandidatesPanel
+          jobTitle={selectedJob?.job_title ?? '—'}
+          candidates={candidates}
+          loading={candidatesLoading}
+          error={candidatesError}
+          onSelectCandidate={handleSelectCandidate}
+        />
       </div>
-
-      <div className="grid grid-cols-3 gap-4">
-        {[
-          { label: 'Total Peserta',       value: stats.total,                icon: Users,       color: '#0A6E5C' },
-          { label: 'Rata-rata Overall',   value: `${stats.avg}/100`,         icon: TrendingUp,  color: '#D97706' },
-          { label: 'Overall Tertinggi',   value: `${stats.highest}/100`,     icon: Trophy,      color: '#2563EB' },
-        ].map(({ label, value, icon: Icon, color }) => (
-          <Card key={label}>
-            <CardContent className="p-4 flex items-center gap-3">
-              <div className="h-9 w-9 rounded-lg flex items-center justify-center" style={{ background: `${color}15` }}>
-                <Icon className="h-4 w-4" style={{ color }} />
-              </div>
-              <div>
-                <p className="text-xs text-muted-foreground">{label}</p>
-                <p className="text-xl font-bold">{value}</p>
-              </div>
-            </CardContent>
-          </Card>
-        ))}
-      </div>
-
-      <Card>
-        <CardHeader className="pb-3">
-          <div className="flex items-center justify-between">
-            <div>
-              <CardTitle className="text-sm">Hasil Asesmen</CardTitle>
-              <CardDescription className="text-xs">Daftar peserta, profil, dan ringkasan skor.</CardDescription>
-            </div>
-            <div className="relative w-56">
-              <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
-              <Input
-                placeholder="Cari nama, email, atau asesmen..."
-                className="pl-8 h-8 text-xs"
-                value={search}
-                onChange={(e) => { setSearch(e.target.value); setPage(1); }}
-              />
-            </div>
-          </div>
-        </CardHeader>
-        <CardContent>
-          {error ? (
-            <div className="text-center py-10 text-sm text-red-500">{error}</div>
-          ) : loading ? (
-            <div className="text-center py-10 text-sm text-muted-foreground">Memuat data...</div>
-          ) : paginated.length === 0 ? (
-            <div className="text-center py-10 text-sm text-muted-foreground">Belum ada data hasil asesmen.</div>
-          ) : (
-            <>
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead className="w-10">#</TableHead>
-                    <TableHead className="cursor-pointer" onClick={() => toggle('participant_name')}>
-                      <span className="flex items-center gap-1">Nama <SortIcon field="participant_name" /></span>
-                    </TableHead>
-                    <TableHead className="cursor-pointer" onClick={() => toggle('participant_email')}>
-                      <span className="flex items-center gap-1">Email <SortIcon field="participant_email" /></span>
-                    </TableHead>
-                    <TableHead className="cursor-pointer" onClick={() => toggle('assessment_name')}>
-                      <span className="flex items-center gap-1">Asesmen <SortIcon field="assessment_name" /></span>
-                    </TableHead>
-                    <TableHead className="cursor-pointer" onClick={() => toggle('overall_score')}>
-                      <span className="flex items-center gap-1">Overall <SortIcon field="overall_score" /></span>
-                    </TableHead>
-                    <TableHead className="cursor-pointer" onClick={() => toggle('status')}>
-                      <span className="flex items-center gap-1">Status <SortIcon field="status" /></span>
-                    </TableHead>
-                    <TableHead className="cursor-pointer" onClick={() => toggle('assessment_date')}>
-                      <span className="flex items-center gap-1">Tanggal <SortIcon field="assessment_date" /></span>
-                    </TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {paginated.map((r, i) => (
-                    <TableRow
-                      key={r.id}
-                      onClick={() => setSelected(r)}
-                      className="cursor-pointer hover:bg-muted/40"
-                    >
-                      <TableCell className="text-muted-foreground text-xs">
-                        {(page - 1) * pageSize + i + 1}
-                      </TableCell>
-                      <TableCell className="font-medium">{r.participant_name}</TableCell>
-                      <TableCell className="text-muted-foreground">{r.participant_email}</TableCell>
-                      <TableCell className="text-muted-foreground text-xs">{r.assessment_name ?? '-'}</TableCell>
-                      <TableCell>
-                        <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-bold border ${scoreBadge(r.overall_score, r.overall_threshold)}`}>
-                          {r.overall_score != null ? `${r.overall_score}/100` : '-'}
-                        </span>
-                      </TableCell>
-                      <TableCell>
-                        <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold border ${
-                          r.status === 'completed'
-                            ? 'bg-green-100 text-green-700 border-green-200'
-                            : 'bg-amber-100 text-amber-700 border-amber-200'
-                        }`}>
-                          {r.status === 'completed' ? 'Selesai' : 'Berlangsung'}
-                        </span>
-                      </TableCell>
-                      <TableCell className="text-muted-foreground text-xs">{formatDate(r.assessment_date)}</TableCell>
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
-
-              <TablePagination
-                page={page}
-                totalPages={totalPages}
-                totalItems={sorted.length}
-                pageSize={pageSize}
-                setPage={setPage}
-                setPageSize={setPageSize}
-              />
-            </>
-          )}
-        </CardContent>
-      </Card>
-
-      <AssessmentDetailDialog
-        open={!!selected}
-        onOpenChange={(open) => { if (!open) setSelected(null); }}
-        result={selected}
-      />
     </div>
   );
 }

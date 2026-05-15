@@ -35,6 +35,19 @@ class CandidatePipeline {
     return result.rows[0];
   }
 
+  static async getSummary() {
+    const result = await getDb().query(`
+      SELECT j.id          AS job_id,
+             j.job_title,
+             COUNT(c.id)::int AS total
+      FROM core_job j
+      LEFT JOIN master_candidate c ON c.job_id = j.id
+      GROUP BY j.id, j.job_title
+      ORDER BY j.id ASC
+    `);
+    return result.rows;
+  }
+
   static async getByJobId(job_id) {
     const result = await getDb().query(`
       ${CANDIDATE_PIPELINE_SELECT}

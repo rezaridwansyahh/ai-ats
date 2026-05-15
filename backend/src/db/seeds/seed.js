@@ -12,6 +12,7 @@ import stageCategoriesData from '../data/stage_categories.js';
 import { templateStages, templateStageRows } from '../data/template_stages.js';
 import { jobAccounts, coreJobs, jobSourcing } from '../data/job_sourcing.js';
 import applicantsData from '../data/applicants.js';
+import candidatesData from '../data/candidate.js';
 import skillAliasesData from '../data/skill_aliases.js';
 import companiesData from '../data/companies.js';
 import assessmentsData from '../data/assessments.js';
@@ -26,6 +27,7 @@ const seed = async () => {
     await getDb().query('DELETE FROM master_skill_alias');
     await getDb().query('DELETE FROM core_applicant_assessment');
     await getDb().query('DELETE FROM master_assessment');
+    await getDb().query('DELETE FROM master_candidate');
     await getDb().query('DELETE FROM master_applicant');
     await getDb().query('DELETE FROM master_recruiters');
     await getDb().query('DELETE FROM core_job_sourcing');
@@ -257,6 +259,25 @@ const seed = async () => {
           a.id, a.job_sourcing_id, company_id, a.name, a.email || null, a.last_position, a.address,
           a.education, a.information ? JSON.stringify(a.information) : null,
           a.date, a.attachment
+        ]
+      );
+    }
+
+    // 19. master_candidate — candidates live per job (job_id), may reference an
+    //     originating applicant. latest_stage points at job_stage (template
+    //     stages for active jobs, null for draft jobs without a pipeline).
+    for (const c of candidatesData) {
+      await getDb().query(
+        `INSERT INTO master_candidate (
+           id, job_id, applicant_id, name, last_position, address, education,
+           information, date, attachment, latest_stage
+         )
+         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)`,
+        [
+          c.id, c.job_id, c.applicant_id ?? null, c.name, c.last_position ?? null,
+          c.address ?? null, c.education ?? null,
+          c.information ? JSON.stringify(c.information) : null,
+          c.date ?? null, c.attachment ?? null, c.latest_stage ?? null,
         ]
       );
     }
