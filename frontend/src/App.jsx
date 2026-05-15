@@ -39,11 +39,12 @@ function App() {
         <Route path="/sourcing/source-candidate" element={<SourceCandidatePage />} />
 
         <Route path="/selection/ai-matching" element={<AIMatchingPage />} />
-        <Route path="/selection/assessment-a" element={<AssessmentAPage />} />
-        <Route path="/selection/assessment-b" element={<AssessmentBPage />} />
-        <Route path="/selection/assessment-c" element={<AssessmentCPage />} />
-        <Route path="/selection/assessment-d" element={<AssessmentDPage />} />
         <Route path="/selection/report" element={<ReportPage />} />
+
+        <Route path="/asesmen/assessment-a" element={<AssessmentAPage />} />
+        <Route path="/asesmen/assessment-b" element={<AssessmentBPage />} />
+        <Route path="/asesmen/assessment-c" element={<AssessmentCPage />} />
+        <Route path="/asesmen/assessment-d" element={<AssessmentDPage />} />
 
         <Route path="/settings/user-management" element={<UserManagementPage />} />
         <Route path="/settings/role-management" element={<RoleManagementPage />} />

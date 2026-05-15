@@ -5,8 +5,13 @@ export default [
   // Main / Dashboard module
   { id: 1,  name: 'Dashboard' },
   { id: 2,  name: 'Candidate Pipeline' },
+  { id: 2,  name: 'Candidate Pipeline' },
 
   // Sourcing module
+  { id: 3,  name: 'Job Management' },
+  { id: 4,  name: 'Source Management' },
+  { id: 5,  name: 'Talent Pool' },
+  { id: 6,  name: 'Source Candidate' },
   { id: 3,  name: 'Job Management' },
   { id: 4,  name: 'Source Management' },
   { id: 5,  name: 'Talent Pool' },

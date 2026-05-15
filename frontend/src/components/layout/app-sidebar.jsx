@@ -43,6 +43,7 @@ import {
   ClipboardList,
   Building2,
   Workflow,
+  FileText,
 } from 'lucide-react';
 
 import { hasPermission } from '@/utils/permissions';
@@ -52,6 +53,7 @@ const iconMap = {
   'Dashboard': Home,
   'Sourcing':  Briefcase,
   'Selection': ClipboardList,
+  'Asesmen':   FileText,
   'Settings':  Settings,
 };
 
@@ -67,12 +69,12 @@ const routeMap = {
   'Source Management': '/sourcing/source-management',
   'Talent Pool':       '/sourcing/talent-pool',
   'Source Candidate':  '/sourcing/source-candidate',
-  'Assessment A':      '/selection/assessment-a',
-  'Assessment B':      '/selection/assessment-b',
-  'Assessment C':      '/selection/assessment-c',
-  'Assessment D':      '/selection/assessment-d',
-  'Report':            '/selection/report',
   'AI Matching':       '/selection/ai-matching',
+  'Report':            '/selection/report',
+  'Assessment A':      '/asesmen/assessment-a',
+  'Assessment B':      '/asesmen/assessment-b',
+  'Assessment C':      '/asesmen/assessment-c',
+  'Assessment D':      '/asesmen/assessment-d',
 };
 
 const useSidebarStructure = (permissions) => {
@@ -200,8 +202,8 @@ export function AppSidebar() {
 
   const isDashboardActive       = location.pathname === '/dashboard';
   const isCandidatePipelineActive = location.pathname === '/candidate-pipeline';
-  const canSeeDashboard         = hasPermission('Dashboard', 'Dashboard', 'read');
-  const canSeeCandidatePipeline = hasPermission('Dashboard', 'Candidate Pipeline', 'read');
+  const canSeeDashboard         = hasPermission('Main', 'Dashboard', 'read');
+  const canSeeCandidatePipeline = hasPermission('Main', 'Candidate Pipeline', 'read');
   const canSeeMain              = canSeeDashboard || canSeeCandidatePipeline;
 
   return (
@@ -291,8 +293,8 @@ export function AppSidebar() {
           </SidebarGroup>
         )}
 
-        {/* Permission-driven module groups (Dashboard rendered above as a Main row) */}
-        {sidebarItems.filter(s => s.moduleName !== 'Dashboard').map(({ moduleName, menus }) => {
+        {/* Permission-driven module groups (Main rendered above as flat rows) */}
+        {sidebarItems.filter(s => s.moduleName !== 'Main').map(({ moduleName, menus }) => {
           const ModuleIcon = iconMap[moduleName] ?? Package;
           const isOpen     = openModules.has(moduleName);
           const hasActiveChild = menus.some(m => isRouteActive(m));
