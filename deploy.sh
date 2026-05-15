@@ -49,6 +49,13 @@ restart_node_process() {
 # ══════════════════════════════════════
 
 echo ""
+info "========== PULLING LATEST CODE =========="
+cd "$ROOT_DIR"
+log "Running git pull origin master..."
+git pull origin master
+log "Code updated."
+
+echo ""
 info "========== PORTAL BACKEND =========="
 log "Installing dependencies..."
 cd "$ROOT_DIR/backend" && npm install --production

@@ -1,6 +1,8 @@
 export {}
 
-const API_BASE = "http://localhost:3000/api/cookies"
+const API_BASE = process.env.PLASMO_PUBLIC_API_URL
+  ? `${process.env.PLASMO_PUBLIC_API_URL}/portal/api/cookies`
+  : "http://localhost:3000/api/cookies"
 
 async function checkCookies(accountId: number) {
   const res = await fetch(`${API_BASE}/check-cookies`, {

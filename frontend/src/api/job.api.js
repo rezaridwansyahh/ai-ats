@@ -15,7 +15,8 @@ export const generateJobAI = async (id, file) => {
   if (file) formData.append('file', file);
 
   const token = localStorage.getItem('token');
-  const res = await fetch('http://localhost:3000/portal/api/job/generate', {
+  const baseURL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:3000';
+  const res = await fetch(`${baseURL}/portal/api/job/generate`, {
     method: 'POST',
     headers: {
       ...(token ? { Authorization: `Bearer ${token}` } : {}),
