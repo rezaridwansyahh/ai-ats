@@ -118,6 +118,19 @@ export function LoginCard() {
             'Sign In'
           )}
         </Button>
+
+        <Button
+          type="button"
+          variant="outline"
+          className="w-full h-10 font-semibold cursor-pointer transition-all duration-200"
+          disabled={loading}
+          onClick={() => {
+            setEmail("user1@example.com")
+            setPassword("pass1")
+          }}
+        >
+          Fill Demo Credentials
+        </Button>
       </form>
 
       {/* Divider */}
