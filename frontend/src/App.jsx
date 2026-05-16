@@ -16,6 +16,7 @@ import ComingSoonPage from "./pages/ComingSoon"
 import AssessmentAPage from "./pages/AssessmentA"
 import ReportPage from "./pages/Report"
 import CandidateDetailPage from "./pages/CandidateDetail"
+import AssessmentPlacementPage from "./pages/portal/AssessmentPlacement"
 import AIMatchingPage from "./pages/AIMatching"
 import AssessmentBPage from "./pages/AssessmentB"
 import AssessmentCPage from "./pages/AssessmentC"
@@ -27,6 +28,9 @@ function App() {
       <Route path="/" element={<LoginPage />} />
       <Route path="/login" element={<LoginPage />} />
       <Route path="/register" element={<RegisterPage />} />
+
+      {/* Public candidate-facing portal */}
+      <Route path="/assessment-placement/:hash" element={<AssessmentPlacementPage />} />
 
       {/* All authenticated routes share DashboardLayout */}
       <Route element={<DashboardLayout />}>

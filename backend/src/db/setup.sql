@@ -37,7 +37,6 @@ DROP TABLE IF EXISTS job_stage_category CASCADE;
 DROP TABLE IF EXISTS recruitment_stage_category CASCADE;
 DROP TABLE IF EXISTS job_automation_settings CASCADE;
 DROP TABLE IF EXISTS applicant_job_score CASCADE;
-DROP TABLE IF EXISTS assessment_battery_results CASCADE;
 DROP TABLE IF EXISTS assessment_sessions CASCADE;
 DROP TABLE IF EXISTS core_applicant_assessment CASCADE;
 DROP TABLE IF EXISTS master_assessment CASCADE;
@@ -544,19 +543,6 @@ CREATE TABLE assessment_sessions(
   expired_at TIMESTAMP NOT NULL,
   submitted_at TIMESTAMP,
   notes TEXT,
-  created_at TIMESTAMP NOT NULL DEFAULT NOW(),
-  updated_at TIMESTAMP NOT NULL DEFAULT NOW()
-);
-
-CREATE TABLE assessment_battery_results(
-  id SERIAL PRIMARY KEY,
-  session_id INTEGER NOT NULL UNIQUE REFERENCES assessment_sessions(id) ON DELETE CASCADE,
-  profile JSONB NOT NULL,
-  result JSONB NOT NULL,
-  scores JSONB,
-  report JSONB,
-  recruiter_recommendation VARCHAR(255),
-  recruiter_note TEXT,
   created_at TIMESTAMP NOT NULL DEFAULT NOW(),
   updated_at TIMESTAMP NOT NULL DEFAULT NOW()
 );

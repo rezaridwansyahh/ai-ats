@@ -99,6 +99,7 @@ export default function ReportPage() {
           onSelectJob={setSelectedJobId}
         />
         <CandidatesPanel
+          key={selectedJobId ?? 'none'}
           jobTitle={selectedJob?.job_title ?? '—'}
           candidates={candidates}
           loading={candidatesLoading}

@@ -13,9 +13,11 @@ const CANDIDATE_PIPELINE_SELECT = `
          c.latest_stage,
          c.created_at,
          c.updated_at,
+         a.email AS candidate_email,
          COALESCE(js.name, 'Not Started') AS latest_stage_name
   FROM master_candidate c
-  LEFT JOIN job_stage js ON js.id = c.latest_stage
+  LEFT JOIN job_stage js       ON js.id = c.latest_stage
+  LEFT JOIN master_applicant a ON a.id  = c.applicant_id
 `;
 
 class CandidatePipeline {

@@ -1,5 +1,8 @@
 import AssessmentBatteryResult from './assessment-battery-result.model.js';
 import getDb from '../../../config/postgres.js';
+import { resolveParticipantByCandidate } from '../../../shared/services/candidate-resolver.js';
+
+const ASSESSMENT_ID_BY_BATTERY = { A: 1, B: 2, C: 3, D: 4 };
 
 function scoreCognitive(items, answers) {
   const graded = answers.map((a) => {
@@ -238,16 +241,29 @@ class AssessmentBatteryResultService {
     return await AssessmentBatteryResult.getByParticipantId(participant_id);
   }
 
+  // Latest result for (candidate, battery). Returns null when the chain can't be resolved
+  async getByCandidateBattery({ candidate_id, battery }) {
+    if (!candidate_id) throw { status: 400, message: 'candidate_id is required' };
+    if (!battery)      throw { status: 400, message: 'battery is required' };
+
+    const assessmentId = ASSESSMENT_ID_BY_BATTERY[battery];
+    if (!assessmentId) {
+      throw { status: 400, message: `Unknown battery: ${battery}` };
+    }
+
+    const { participant } = await resolveParticipantByCandidate(candidate_id, { createIfMissing: false });
+    if (!participant) return null;
+
+    const row = await AssessmentBatteryResult.getLatestByParticipantAssessment(participant.id, assessmentId);
+    return row || null;
+  }
+
   async submit({ participant_id, assessment_id, answers, started_at, results: bodyResults, summary: bodySummary }) {
     if (!participant_id) throw { status: 400, message: 'participant_id is required' };
     if (!assessment_id || !Number.isInteger(Number(assessment_id))) {
       throw { status: 400, message: 'integer assessment_id is required' };
     }
 
-    // Two submission modes:
-    //   - server-scored: client sends `answers`, server runs buildResults + buildSummary (Battery A path).
-    //   - client-scored: client sends pre-computed `results.by_subtest` + `summary` JSONB (Battery B path,
-    //     because the server doesn't know B's scoring math). `answers` is optional in this mode.
     const hasPrecomputed = !!(bodyResults?.by_subtest && bodySummary);
     if (!hasPrecomputed && (!Array.isArray(answers) || answers.length === 0)) {
       throw { status: 400, message: 'answers must be a non-empty array (or pre-computed results+summary)' };

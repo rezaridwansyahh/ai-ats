@@ -4,9 +4,9 @@
 // fields are ignored on load and harmlessly overwritten by saveCardData with the new shape.
 export const SKEY = 'myx-bat-a-v8';
 
-export function loadCardData() {
+export function loadCardData(key = SKEY) {
   try {
-    const d = JSON.parse(localStorage.getItem(SKEY) || 'null');
+    const d = JSON.parse(localStorage.getItem(key) || 'null');
     if (d && d.profile) return { profile: d.profile, results: d.results || {} };
     return null;
   } catch {
@@ -14,14 +14,14 @@ export function loadCardData() {
   }
 }
 
-export function saveCardData(profile, results) {
+export function saveCardData(profile, results, key = SKEY) {
   try {
-    localStorage.setItem(SKEY, JSON.stringify({ profile, results }));
+    localStorage.setItem(key, JSON.stringify({ profile, results }));
   } catch {
     // ignore quota/serialize errors
   }
 }
 
-export function clearCardData() {
-  localStorage.removeItem(SKEY);
+export function clearCardData(key = SKEY) {
+  localStorage.removeItem(key);
 }

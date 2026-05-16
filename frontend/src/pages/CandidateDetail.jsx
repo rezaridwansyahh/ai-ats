@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -8,8 +8,10 @@ import SetupTab from '@/components/candidate-detail/SetupTab';
 import TakeTab from '@/components/candidate-detail/TakeTab';
 import ScoreDecideTab from '@/components/candidate-detail/ScoreDecideTab';
 import { STEPS } from '@/components/candidate-detail/steps';
-import { getInitials } from '@/lib/batteries';
+import { BATTERIES, getInitials } from '@/lib/batteries';
 import { getCandidateById } from '@/api/candidate.api';
+import { getSessionsFromCandidate } from '@/api/session.api';
+import { getResultFromCandidate } from '@/api/assessment-battery-result.api';
 
 export default function CandidateDetailPage() {
   const navigate = useNavigate();
@@ -22,6 +24,18 @@ export default function CandidateDetailPage() {
 
   const [activeKey, setActiveKey] = useState('setup');
   const [battery, setBattery]     = useState(null);
+
+  // Existing live sessions for (candidate, job). Powers TakeTab's URL panel and lets the
+  // page restore battery + active tab across refresh.
+  const [existingSessions, setExistingSessions] = useState([]);
+  // Restore battery/tab from server state at most ONCE per (candidate, job) pair, so
+  // later re-fetches (e.g. after Generate URL) don't yank the user away from their
+  // current tab navigation.
+  const restoredOnceRef = useRef(false);
+
+  // Latest core_applicant_assessment row for (candidate, battery). Drives both the
+  // Take tab's per-subtest "Scored" pills and the Score & Decide tab's ReportView.
+  const [latestResult, setLatestResult] = useState(null);
 
   useEffect(() => {
     let cancelled = false;
@@ -43,10 +57,69 @@ export default function CandidateDetailPage() {
     return () => { cancelled = true; };
   }, [candidateId]);
 
+  // Restore session state from the DB. Runs after the candidate fetch — empty
+  // result is fine (recruiter starts on Setup as today).
+  useEffect(() => {
+    if (!candidateId) return undefined;
+    restoredOnceRef.current = false;
+    let cancelled = false;
+    (async () => {
+      try {
+        const res = await getSessionsFromCandidate({
+          candidate_id: candidateId,
+          job_id:       jobId ? Number(jobId) : undefined,
+        });
+        if (cancelled) return;
+        const sessions = res.data?.sessions ?? [];
+        setExistingSessions(sessions);
+        if (sessions.length > 0 && !restoredOnceRef.current) {
+          // Most recent (DESC) wins per the locked design decision.
+          setBattery(sessions[0].battery);
+          setActiveKey('take');
+          restoredOnceRef.current = true;
+        }
+      } catch {
+        // Silent — Setup tab still works without a prior session.
+      }
+    })();
+    return () => { cancelled = true; };
+  }, [candidateId, jobId]);
+
+  // Fetch the latest result whenever the active battery changes. Silent on failure —
+  // Take falls back to all-Invited and Score & Decide falls back to empty state.
+  useEffect(() => {
+    if (!candidateId || !battery) {
+      setLatestResult(null);
+      return undefined;
+    }
+    let cancelled = false;
+    (async () => {
+      try {
+        const res = await getResultFromCandidate({ candidate_id: candidateId, battery });
+        if (!cancelled) setLatestResult(res.data?.result ?? null);
+      } catch {
+        if (!cancelled) setLatestResult(null);
+      }
+    })();
+    return () => { cancelled = true; };
+  }, [candidateId, battery]);
+
+  // Per-subtest status for the Take tab. A key is "scored" iff it shows up in
+  // results.by_subtest with non-null data; otherwise "invited".
+  const subtestStatus = useMemo(() => {
+    const by = latestResult?.results?.by_subtest;
+    if (!by || !battery) return {};
+    const out = {};
+    (BATTERIES[battery]?.tests || []).forEach((t) => {
+      out[t.key] = by[t.key] != null ? 'scored' : 'invited';
+    });
+    return out;
+  }, [latestResult, battery]);
+
   const completed = useMemo(() => ({
     setup: !!battery,
-    take:  false, // wired to session/result state in the backend slice
-  }), [battery]);
+    take:  latestResult?.status === 'completed',
+  }), [battery, latestResult]);
 
   if (loading) {
     return (
@@ -100,13 +173,21 @@ export default function CandidateDetailPage() {
         />
       )}
       {activeKey === 'take' && (
-        <TakeTab battery={battery} subtestStatus={{}} />
+        <TakeTab
+          battery={battery}
+          subtestStatus={subtestStatus}
+          candidateId={candidateId}
+          jobId={jobId}
+          existingSessions={existingSessions}
+          onSessionsChange={setExistingSessions}
+        />
       )}
       {activeKey === 'decide' && (
         <ScoreDecideTab
+          key={latestResult?.id ?? `no-result-${battery ?? 'none'}`}
           candidate={candidateView}
           battery={battery}
-          hasResults={false}
+          result={latestResult}
           onJumpToTab={setActiveKey}
         />
       )}

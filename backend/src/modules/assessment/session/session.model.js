@@ -9,9 +9,8 @@ class Session {
     const where = conds.length ? `WHERE ${conds.join(' AND ')}` : '';
 
     const result = await getDb().query(`
-      SELECT s.*, (br.id IS NOT NULL) AS has_result
+      SELECT *
       FROM assessment_sessions s
-      LEFT JOIN assessment_battery_results br ON br.session_id = s.id
       ${where}
       ORDER BY s.created_at DESC
     `, params);
@@ -44,6 +43,34 @@ class Session {
     `, [job_id]);
     return result.rows;
   }  
+
+  // All non-expired sessions for (participant, job). Includes 'completed' so the
+  // recruiter UI can surface past submissions, not just live invitations.
+  static async getActiveByParticipantJob(participant_id, job_id) {
+    const result = await getDb().query(`
+      SELECT *
+      FROM assessment_sessions
+      WHERE participant_id = $1
+        AND job_id IS NOT DISTINCT FROM $2
+        AND status <> 'expired'
+      ORDER BY created_at DESC
+    `, [participant_id, job_id]);
+    return result.rows;
+  }
+
+  static async getByParticipantJobBattery(participant_id, job_id, battery) {
+    const result = await getDb().query(`
+      SELECT *
+      FROM assessment_sessions
+      WHERE participant_id = $1
+        AND job_id IS NOT DISTINCT FROM $2
+        AND battery = $3
+        AND status IN ('invited', 'in_progress')
+      ORDER BY created_at DESC
+      LIMIT 1
+    `, [participant_id, job_id, battery]);
+    return result.rows[0];
+  }
 
   static async getByToken(token) {
     const result = await getDb().query(`
