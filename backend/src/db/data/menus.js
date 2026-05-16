@@ -12,12 +12,14 @@ export default [
   { id: 5,  name: 'Talent Pool' },
   { id: 6,  name: 'Source Candidate' },
 
+  // Asesmen module
+  { id: 7,  name: 'Assessment A' },
+  { id: 8,  name: 'Assessment B' },
+  { id: 9,  name: 'Assessment C' },
+  { id: 10, name: 'Assessment D' },
+
   // Selection module
-  { id: 7,  name: 'AI Screening' },
-  { id: 8,  name: 'Assessment A' },
-  { id: 9,  name: 'Assessment B' },
-  { id: 10, name: 'Assessment C' },
-  { id: 11, name: 'Assessment D' },
+  { id: 11, name: 'AI Screening' },
   { id: 12, name: 'Report' },
 
   // Settings module

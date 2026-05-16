@@ -2,7 +2,7 @@
 export default [
   { id: 1, name: 'Main' },
   { id: 2, name: 'Sourcing' },
-  { id: 3, name: 'Selection' },
-  { id: 4, name: 'Asesmen' },
+  { id: 3, name: 'Asesmen' },
+  { id: 4, name: 'Selection' },
   { id: 5, name: 'Settings' },
 ];
