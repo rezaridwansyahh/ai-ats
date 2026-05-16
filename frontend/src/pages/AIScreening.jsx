@@ -1,4 +1,5 @@
 import { useState, useEffect, useMemo, useCallback } from 'react';
+import { useNavigate, useParams } from 'react-router-dom';
 import {
   Sparkles, Briefcase, Loader2, Plus, X, AlertTriangle, Wand2,
   GraduationCap, Target, TrendingUp, Code2, Info,
@@ -50,10 +51,14 @@ function scoreColor(score) {
   return 'bg-rose-100 text-rose-700';
 }
 
-export default function AIMatchingPage() {
+export default function AIScreeningPage() {
+  const navigate = useNavigate();
+  const { jobId: jobIdParam } = useParams(); // L2: /selection/ai-screening/job/:jobId
   const [jobs, setJobs] = useState([]);
   const [jobsLoading, setJobsLoading] = useState(true);
-  const [selectedJobId, setSelectedJobId] = useState(null);
+  const [selectedJobId, setSelectedJobId] = useState(
+    jobIdParam ? Number(jobIdParam) : null
+  );
   const selectedJob = useMemo(
     () => jobs.find((j) => j.id === selectedJobId) || null,
     [jobs, selectedJobId]
@@ -188,7 +193,7 @@ export default function AIMatchingPage() {
     <div className="space-y-5 p-6">
       <div>
         <h1 className="text-2xl font-bold tracking-tight flex items-center gap-2">
-          <Sparkles className="h-5 w-5 text-primary" /> AI Matching
+          <Sparkles className="h-5 w-5 text-primary" /> AI Screening
         </h1>
         <p className="text-sm text-muted-foreground mt-0.5">
           Pick a job, set the rubric, and score every candidate in its pipeline at once.
@@ -399,6 +404,15 @@ export default function AIMatchingPage() {
             <Button onClick={handleRun} disabled={!totalIs100 || running} className="text-xs">
               {running ? <Loader2 className="h-3.5 w-3.5 mr-1.5 animate-spin" /> : <Wand2 className="h-3.5 w-3.5 mr-1.5" />}
               Run AI Matching
+            </Button>
+            <Button
+              variant="outline"
+              className="text-xs"
+              disabled={!selectedJobId || (results.length === 0)}
+              onClick={() => navigate(`/selection/ai-screening/job/${selectedJobId}/calibrate`)}
+              title={results.length === 0 ? 'Run AI Matching first — Calibration needs at least one scored candidate' : 'Open the cohort calibration view'}
+            >
+              Calibrate cohort
             </Button>
           </div>
 

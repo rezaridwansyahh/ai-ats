@@ -100,6 +100,233 @@ class ScreeningModel {
     return result.rows[0];
   }
 
+  /* ─── candidate_screening (L3 parent row) ─── */
+
+  // Lazy-creates a candidate_screening row if missing. Idempotent.
+  // Returns the parent row id.
+  async ensureScreeningForCandidate(candidate_id) {
+    const db = getDb();
+    const existing = await db.query(
+      `SELECT id FROM candidate_screening WHERE candidate_id = $1`,
+      [candidate_id]
+    );
+    if (existing.rows[0]) return existing.rows[0].id;
+
+    // derive job_id + company_id from the candidate
+    const meta = await db.query(
+      `SELECT mc.job_id, cj.company_id
+         FROM master_candidate mc
+         LEFT JOIN core_job cj ON cj.id = mc.job_id
+         WHERE mc.id = $1`,
+      [candidate_id]
+    );
+    if (!meta.rows[0]) {
+      throw { status: 404, message: `master_candidate ${candidate_id} not found` };
+    }
+
+    const inserted = await db.query(
+      `INSERT INTO candidate_screening (candidate_id, job_id, company_id)
+       VALUES ($1, $2, $3)
+       RETURNING id`,
+      [candidate_id, meta.rows[0].job_id, meta.rows[0].company_id || null]
+    );
+    return inserted.rows[0].id;
+  }
+
+  // Fully hydrated L3 payload for one screening row.
+  async getScreeningById(screening_id) {
+    const result = await getDb().query(
+      `
+      SELECT
+        cs.id                  AS screening_id,
+        cs.candidate_id,
+        cs.job_id,
+        cs.company_id,
+        cs.decision,
+        cs.decision_reason,
+        cs.decided_at,
+        cs.decided_by,
+        cs.created_at          AS screening_created_at,
+
+        mc.applicant_id,
+        mc.name                AS candidate_name,
+        mc.last_position,
+        mc.address,
+        mc.education           AS education_text,
+        mc.date                AS applied_at,
+        mc.attachment,
+        mc.latest_stage,
+
+        cj.job_title,
+        cj.job_location,
+        cj.work_type,
+        cj.work_option,
+        cj.seniority_level,
+        cj.required_skills,
+        cj.preferred_skills,
+        cj.rubric,
+        cj.status              AS job_status,
+
+        ma.information         AS facets,
+
+        s.id                       AS score_id,
+        s.overall_score,
+        s.skills_score,
+        s.experience_score,
+        s.career_trajectory_score,
+        s.education_score,
+        s.matched_skills,
+        s.missing_skills,
+        s.custom_criteria_results,
+        s.rubric_snapshot,
+        s.role_profile,
+        s.summary              AS score_summary,
+        s.scored_at,
+
+        CASE
+          WHEN ma.information IS NULL THEN 'parse'
+          WHEN s.id IS NULL          THEN 'match'
+          ELSE                            'done'
+        END AS engine,
+
+        (cj.rubric IS NOT NULL AND s.rubric_snapshot IS NOT NULL AND s.rubric_snapshot IS DISTINCT FROM cj.rubric) AS rubric_is_stale
+
+      FROM candidate_screening cs
+      JOIN master_candidate mc ON mc.id = cs.candidate_id
+      JOIN core_job cj          ON cj.id = cs.job_id
+      LEFT JOIN master_applicant ma ON ma.id = mc.applicant_id
+      LEFT JOIN applicant_job_score s
+        ON s.applicant_id = mc.applicant_id AND s.job_id = cs.job_id
+      WHERE cs.id = $1
+      `,
+      [screening_id]
+    );
+    return result.rows[0] || null;
+  }
+
+  // Calibration cohort for one job: candidates that have a score AND no
+  // decision yet (i.e. ready to be advanced/rejected/held in a batch).
+  // Sorted by overall_score DESC so the recruiter sees the best first.
+  async getCalibrationCohort(job_id) {
+    const result = await getDb().query(
+      `
+      SELECT
+        cs.id                AS screening_id,
+        cs.candidate_id,
+        cs.company_id,
+        cs.decision,
+        mc.applicant_id,
+        a.name               AS applicant_name,
+        a.last_position,
+        a.address,
+        s.overall_score,
+        s.skills_score,
+        s.experience_score,
+        s.career_trajectory_score,
+        s.education_score,
+        s.matched_skills,
+        s.missing_skills,
+        s.summary            AS score_summary,
+        s.scored_at,
+        s.rubric_snapshot IS DISTINCT FROM cj.rubric AS rubric_is_stale
+      FROM candidate_screening cs
+      JOIN master_candidate mc       ON mc.id = cs.candidate_id
+      JOIN core_job cj                ON cj.id = cs.job_id
+      LEFT JOIN master_applicant a    ON a.id  = mc.applicant_id
+      JOIN applicant_job_score s
+        ON s.applicant_id = mc.applicant_id AND s.job_id = cs.job_id
+      WHERE cs.job_id = $1 AND cs.decision IS NULL
+      ORDER BY s.overall_score DESC NULLS LAST, cs.id ASC
+      `,
+      [job_id]
+    );
+    return result.rows;
+  }
+
+  // Transactional bulk advance: mark screenings as advance + insert interview rows.
+  // Returns { advanced, skipped, errors, interview_ids }.
+  async bulkAdvanceToInterview({ screening_ids, decision_reason, decided_by, company_id }) {
+    const client = await getDb().connect();
+    const advanced = [];
+    const skipped = [];
+    const errors = [];
+    const interviewIds = [];
+    try {
+      await client.query('BEGIN');
+      for (const sid of screening_ids) {
+        try {
+          // Lock + read the screening + candidate + job ids in one shot
+          const cur = await client.query(
+            `SELECT id, candidate_id, job_id, company_id, decision
+               FROM candidate_screening
+              WHERE id = $1
+              FOR UPDATE`,
+            [sid]
+          );
+          const row = cur.rows[0];
+          if (!row) { errors.push({ screening_id: sid, message: 'not found' }); continue; }
+          if (company_id && row.company_id && row.company_id !== company_id) {
+            errors.push({ screening_id: sid, message: 'cross-tenant denied' });
+            continue;
+          }
+          if (row.decision) {
+            skipped.push({ screening_id: sid, reason: `already ${row.decision}` });
+            continue;
+          }
+
+          // Set the decision
+          await client.query(
+            `UPDATE candidate_screening
+                SET decision = 'advance',
+                    decision_reason = $2,
+                    decided_at = NOW(),
+                    decided_by = $3,
+                    updated_at = NOW()
+              WHERE id = $1`,
+            [sid, decision_reason || null, decided_by || null]
+          );
+
+          // Create the interview row (ON CONFLICT no-op so retries are safe)
+          const ins = await client.query(
+            `INSERT INTO candidate_interview (candidate_id, job_id, screening_id, company_id)
+             VALUES ($1, $2, $3, $4)
+             ON CONFLICT (candidate_id, job_id) DO UPDATE
+               SET screening_id = EXCLUDED.screening_id,
+                   updated_at = NOW()
+             RETURNING id`,
+            [row.candidate_id, row.job_id, sid, row.company_id || null]
+          );
+          interviewIds.push(ins.rows[0].id);
+          advanced.push(sid);
+        } catch (err) {
+          errors.push({ screening_id: sid, message: err.message || String(err) });
+        }
+      }
+      await client.query('COMMIT');
+    } catch (err) {
+      await client.query('ROLLBACK');
+      throw err;
+    } finally {
+      client.release();
+    }
+    return { advanced, skipped, errors, interview_ids: interviewIds };
+  }
+
+  async setScreeningDecision({ screening_id, decision, decision_reason, decided_by }) {
+    const result = await getDb().query(
+      `UPDATE candidate_screening
+          SET decision = $2,
+              decision_reason = $3,
+              decided_at = NOW(),
+              decided_by = $4,
+              updated_at = NOW()
+        WHERE id = $1
+        RETURNING *`,
+      [screening_id, decision, decision_reason || null, decided_by || null]
+    );
+    return result.rows[0] || null;
+  }
+
   async getCandidatesByJob(job_id) {
     const result = await getDb().query(
       `SELECT mc.id AS candidate_id, mc.applicant_id, mc.job_id
@@ -108,6 +335,145 @@ class ScreeningModel {
       [job_id]
     );
     return result.rows;
+  }
+
+  // Workboard data scoped to a company.
+  // Engine status is derived from existing tables (no candidate_screening parent yet):
+  //   parse  = master_applicant.information IS NULL
+  //   match  = parsed but no applicant_job_score row for this (applicant, job)
+  //   ready  = applicant_job_score row exists
+  //   qa     = 0 for v1 (engine not implemented)
+  // Returns { counts, positions, attention } shaped for the L1 Workboard UI.
+  async getWorkboardData(company_id) {
+    const db = getDb();
+
+    // Per-job engine breakdown — single query, one row per (job, engine).
+    const positionRows = await db.query(
+      `
+      WITH candidate_engine AS (
+        SELECT
+          mc.job_id,
+          mc.applicant_id,
+          CASE
+            WHEN ma.information IS NULL THEN 'parse'
+            WHEN s.id IS NULL          THEN 'match'
+            ELSE 'ready'
+          END AS engine
+        FROM master_candidate mc
+        JOIN core_job cj            ON cj.id = mc.job_id
+        LEFT JOIN master_applicant ma ON ma.id = mc.applicant_id
+        LEFT JOIN applicant_job_score s
+          ON s.applicant_id = mc.applicant_id AND s.job_id = mc.job_id
+        WHERE cj.company_id = $1 AND mc.applicant_id IS NOT NULL
+      )
+      SELECT
+        cj.id                                   AS job_id,
+        cj.job_title,
+        cj.status,
+        COUNT(ce.applicant_id)                  AS total,
+        COUNT(*) FILTER (WHERE ce.engine='parse') AS parse,
+        COUNT(*) FILTER (WHERE ce.engine='match') AS match,
+        0::int                                  AS qa,
+        COUNT(*) FILTER (WHERE ce.engine='ready') AS ready
+      FROM core_job cj
+      LEFT JOIN candidate_engine ce ON ce.job_id = cj.id
+      WHERE cj.company_id = $1
+      GROUP BY cj.id, cj.job_title, cj.status
+      ORDER BY cj.status = 'Active' DESC, cj.id ASC
+      `,
+      [company_id]
+    );
+
+    const positions = positionRows.rows.map((r) => ({
+      job_id: r.job_id,
+      job_title: r.job_title,
+      status: r.status,
+      total: Number(r.total),
+      parse: Number(r.parse),
+      match: Number(r.match),
+      qa: Number(r.qa),
+      ready: Number(r.ready),
+    }));
+
+    const counts = positions.reduce(
+      (acc, p) => {
+        acc.parse += p.parse;
+        acc.match += p.match;
+        acc.qa    += p.qa;
+        acc.ready += p.ready;
+        return acc;
+      },
+      { parse: 0, match: 0, qa: 0, ready: 0 }
+    );
+
+    // Needs-attention feed (v1 subset)
+    //
+    // 1) Stale rubric — candidates already scored, but the job's rubric has changed since.
+    const staleRows = await db.query(
+      `
+      SELECT s.applicant_id, s.job_id, a.name AS applicant_name,
+             cj.job_title, s.overall_score, s.scored_at
+      FROM applicant_job_score s
+      JOIN core_job cj          ON cj.id = s.job_id
+      LEFT JOIN master_applicant a ON a.id = s.applicant_id
+      WHERE cj.company_id = $1
+        AND cj.rubric IS NOT NULL
+        AND s.rubric_snapshot IS DISTINCT FROM cj.rubric
+      ORDER BY s.scored_at DESC
+      LIMIT 10
+      `,
+      [company_id]
+    );
+
+    const attention = {
+      ready_per_job:          positions.filter((p) => p.ready > 0).map((p) => ({ job_id: p.job_id, job_title: p.job_title, count: p.ready })),
+      needs_parsing_per_job:  positions.filter((p) => p.parse > 0).map((p) => ({ job_id: p.job_id, job_title: p.job_title, count: p.parse })),
+      needs_matching_per_job: positions.filter((p) => p.match > 0).map((p) => ({ job_id: p.job_id, job_title: p.job_title, count: p.match })),
+      stale_rubric:           staleRows.rows,
+    };
+
+    return { counts, positions, attention };
+  }
+
+  // Returns candidates in a job filtered by engine status. Used by L1/L2 lane lists.
+  // Engine derivation matches getWorkboardData.
+  // Joins candidate_screening when available (lazy-created on first L3 visit)
+  // so the frontend can deep-link rows straight into L3.
+  async getCandidatesByJobAndEngine(job_id, engine) {
+    const db = getDb();
+    const result = await db.query(
+      `
+      SELECT
+        mc.id          AS candidate_id,
+        mc.applicant_id,
+        mc.job_id,
+        a.name        AS applicant_name,
+        a.last_position,
+        a.address,
+        a.date        AS applied_at,
+        a.information IS NOT NULL AS is_parsed,
+        s.id          AS score_id,
+        s.overall_score,
+        s.scored_at,
+        cs.id         AS screening_id,
+        cs.decision,
+        CASE
+          WHEN a.information IS NULL THEN 'parse'
+          WHEN s.id IS NULL          THEN 'match'
+          ELSE                            'ready'
+        END AS engine
+      FROM master_candidate mc
+      LEFT JOIN master_applicant a   ON a.id = mc.applicant_id
+      LEFT JOIN applicant_job_score s
+        ON s.applicant_id = mc.applicant_id AND s.job_id = mc.job_id
+      LEFT JOIN candidate_screening cs ON cs.candidate_id = mc.id
+      WHERE mc.job_id = $1 AND mc.applicant_id IS NOT NULL
+      ORDER BY mc.created_at DESC
+      `,
+      [job_id]
+    );
+    const rows = result.rows;
+    return engine ? rows.filter((r) => r.engine === engine) : rows;
   }
 
   async getResultsByJob(job_id) {

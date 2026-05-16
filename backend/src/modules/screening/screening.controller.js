@@ -110,6 +110,128 @@ class ScreeningController {
     }
   }
 
+  // L3 — fetch a single candidate's screening detail
+  async getScreening(req, res) {
+    try {
+      const screening_id = Number(req.params.screening_id);
+      const result = await screeningService.getScreening(screening_id, {
+        company_id: req.user?.company_id || null,
+      });
+      res.status(200).json({ message: 'Screening detail', screening: result });
+    } catch (err) {
+      res.status(err.status || 500).json({ message: err.message });
+    }
+  }
+
+  // L3 — lazy-create + fetch by master_candidate.id
+  async getScreeningByCandidateId(req, res) {
+    try {
+      const candidate_id = Number(req.params.candidate_id);
+      const result = await screeningService.getScreeningByCandidateId(candidate_id, {
+        company_id: req.user?.company_id || null,
+      });
+      res.status(200).json({ message: 'Screening detail', screening: result });
+    } catch (err) {
+      res.status(err.status || 500).json({ message: err.message });
+    }
+  }
+
+  // L4 — calibration cohort
+  async getCalibration(req, res) {
+    try {
+      const job_id = Number(req.params.job_id);
+      const rows = await screeningService.getCalibration(job_id, {
+        company_id: req.user?.company_id || null,
+      });
+      res.status(200).json({ message: 'Calibration cohort', rows });
+    } catch (err) {
+      res.status(err.status || 500).json({ message: err.message });
+    }
+  }
+
+  // L4 — bulk advance to Interview
+  async advanceBulk(req, res) {
+    try {
+      const job_id = Number(req.params.job_id);
+      const { screening_ids, decision_reason } = req.body || {};
+      const result = await screeningService.advanceBulk(job_id, {
+        screening_ids,
+        decision_reason,
+        decided_by: req.user?.user_id || null,
+        company_id: req.user?.company_id || null,
+      });
+      res.status(200).json({ message: 'Advance-bulk complete', ...result });
+    } catch (err) {
+      res.status(err.status || 500).json({ message: err.message });
+    }
+  }
+
+  // L3 / L4 — recruiter decision
+  async setDecision(req, res) {
+    try {
+      const screening_id = Number(req.params.screening_id);
+      const { decision, decision_reason } = req.body || {};
+      const result = await screeningService.setDecision({
+        screening_id,
+        decision,
+        decision_reason,
+        decided_by: req.user?.user_id || null,
+        company_id: req.user?.company_id || null,
+      });
+      res.status(200).json({ message: 'Decision saved', screening: result });
+    } catch (err) {
+      res.status(err.status || 500).json({ message: err.message });
+    }
+  }
+
+  async getWorkboard(req, res) {
+    try {
+      const company_id = req.user?.company_id;
+      if (!company_id) {
+        return res.status(400).json({ message: 'No company_id on token' });
+      }
+      const data = await screeningService.getWorkboard(company_id);
+      res.status(200).json({ message: 'Workboard fetched', ...data });
+    } catch (err) {
+      res.status(err.status || 500).json({ message: err.message });
+    }
+  }
+
+  async getLaneCandidates(req, res) {
+    try {
+      const job_id = Number(req.params.job_id);
+      const engine = req.query.engine || null;
+      const candidates = await screeningService.getLaneCandidates(job_id, engine);
+      res.status(200).json({ message: 'Lane candidates', candidates });
+    } catch (err) {
+      res.status(err.status || 500).json({ message: err.message });
+    }
+  }
+
+  async parseBulk(req, res) {
+    try {
+      const { applicant_ids } = req.body || {};
+      const result = await screeningService.parseBulk(applicant_ids, ctxFromReq(req));
+      res.status(200).json({ message: 'Parse-bulk complete', ...result });
+    } catch (err) {
+      res.status(err.status || 500).json({ message: err.message });
+    }
+  }
+
+  async matchBulk(req, res) {
+    try {
+      const job_id = Number(req.params.job_id);
+      const { applicant_ids, force } = req.body || {};
+      const result = await screeningService.matchBulk(job_id, applicant_ids, {
+        force: !!force,
+        context: ctxFromReq(req),
+      });
+      res.status(200).json({ message: 'Match-bulk complete', ...result });
+    } catch (err) {
+      res.status(err.status || 500).json({ message: err.message });
+    }
+  }
+
   async search(req, res) {
     try {
       const {

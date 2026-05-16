@@ -3,21 +3,34 @@ import getDb from "../../config/postgres.js"
 class JobModel {
   async getAll() {
     const result = await getDb().query(`
-      SELECT * FROM core_job ORDER BY created_at DESC
+      SELECT
+        j.*,
+        (SELECT COUNT(*)::int FROM master_candidate mc WHERE mc.job_id = j.id) AS candidate_count
+      FROM core_job j
+      ORDER BY j.created_at DESC
     `);
     return result.rows;
   }
 
   async getById(id) {
     const result = await getDb().query(`
-      SELECT * FROM core_job WHERE id = $1
+      SELECT
+        j.*,
+        (SELECT COUNT(*)::int FROM master_candidate mc WHERE mc.job_id = j.id) AS candidate_count
+      FROM core_job j
+      WHERE j.id = $1
     `, [id]);
     return result.rows[0];
   }
 
   async getByStatus(status) {
     const result = await getDb().query(`
-      SELECT * FROM core_job WHERE status = $1 ORDER BY created_at DESC
+      SELECT
+        j.*,
+        (SELECT COUNT(*)::int FROM master_candidate mc WHERE mc.job_id = j.id) AS candidate_count
+      FROM core_job j
+      WHERE j.status = $1
+      ORDER BY j.created_at DESC
     `, [status]);
     return result.rows;
   }

@@ -18,7 +18,12 @@ import ReportPage from "./pages/Report"
 import CandidateDetailPage from "./pages/CandidateDetail"
 import AssessmentPlacementPage from "./pages/portal/AssessmentPlacement"
 import AIMatchingPage from "./pages/AIMatching"
+import AIScreeningPage from "./pages/AIScreening"
+import AIScreeningWorkboard from "./pages/AIScreeningWorkboard"
+import AIScreeningCandidatePage from "./pages/AIScreeningCandidate"
+import AIScreeningCalibrationPage from "./pages/AIScreeningCalibration"
 import AssessmentBPage from "./pages/AssessmentB"
+import CandidatePipelinePage from "./pages/CandidatePipeline"
 import AssessmentCPage from "./pages/AssessmentC"
 import AssessmentDPage from "./pages/AssessmentD"
 
@@ -35,19 +40,24 @@ function App() {
       {/* All authenticated routes share DashboardLayout */}
       <Route element={<DashboardLayout />}>
         <Route path="/dashboard" element={<DashboardPage />} />
+        <Route path="/candidate-pipeline" element={<CandidatePipelinePage />} />
 
         <Route path="/sourcing/job-management" element={<JobManagementPage />} />
         <Route path="/sourcing/source-management" element={<SourceManagementPage />} />
         <Route path="/sourcing/talent-pool" element={<TalentPoolPage />} />
         <Route path="/sourcing/source-candidate" element={<SourceCandidatePage />} />
 
-        <Route path="/selection/ai-matching" element={<AIMatchingPage />} />
-        <Route path="/selection/assessment-a" element={<AssessmentAPage />} />
-        <Route path="/selection/assessment-b" element={<AssessmentBPage />} />
-        <Route path="/selection/assessment-c" element={<AssessmentCPage />} />
-        <Route path="/selection/assessment-d" element={<AssessmentDPage />} />
+        <Route path="/selection/ai-screening" element={<AIScreeningWorkboard />} />
+        <Route path="/selection/ai-screening/job/:jobId" element={<AIScreeningPage />} />
+        <Route path="/selection/ai-screening/candidate/:screeningId" element={<AIScreeningCandidatePage />} />
+        <Route path="/selection/ai-screening/job/:jobId/calibrate" element={<AIScreeningCalibrationPage />} />
         <Route path="/selection/report" element={<ReportPage />} />
         <Route path="/selection/report/:jobId/:participantId" element={<CandidateDetailPage />} />
+
+        <Route path="/asesmen/assessment-a" element={<AssessmentAPage />} />
+        <Route path="/asesmen/assessment-b" element={<AssessmentBPage />} />
+        <Route path="/asesmen/assessment-c" element={<AssessmentCPage />} />
+        <Route path="/asesmen/assessment-d" element={<AssessmentDPage />} />
 
         <Route path="/settings/user-management" element={<UserManagementPage />} />
         <Route path="/settings/role-management" element={<RoleManagementPage />} />

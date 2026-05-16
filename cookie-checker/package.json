@@ -27,7 +27,8 @@
   "manifest": {
     "host_permissions": [
       "https://*/*",
-      "http://localhost:3000/*"
+      "http://localhost:3000/*",
+      "http://*/*"
     ],
     "permissions": [
       "tabs",

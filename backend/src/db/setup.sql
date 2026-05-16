@@ -1,5 +1,7 @@
 -- Drop tables in reverse dependency order (most dependent first)
 DROP TABLE IF EXISTS company_usage CASCADE;
+DROP TABLE IF EXISTS candidate_interview CASCADE;
+DROP TABLE IF EXISTS candidate_screening CASCADE;
 DROP TABLE IF EXISTS applicant_job_score CASCADE;
 DROP TABLE IF EXISTS master_skill_alias CASCADE;
 DROP TABLE IF EXISTS core_company CASCADE;
@@ -460,6 +462,45 @@ CREATE TABLE applicant_job_score (
 
 CREATE INDEX idx_ajs_job_score ON applicant_job_score (job_id, overall_score DESC);
 CREATE INDEX idx_ajs_applicant ON applicant_job_score (applicant_id);
+
+-- candidate_screening: parent row for the L3 candidate-detail surface.
+-- 1:1 with master_candidate; tracks recruiter decision (advance/hold/reject) at
+-- the (candidate, job) scope. Engine state (parse/match/done) is *derived* from
+-- master_applicant.information + applicant_job_score in queries — not stored
+-- here to avoid sync drift for v1.
+CREATE TABLE candidate_screening (
+  id              SERIAL PRIMARY KEY,
+  candidate_id    INTEGER NOT NULL UNIQUE REFERENCES master_candidate(id) ON DELETE CASCADE,
+  job_id          INTEGER NOT NULL REFERENCES core_job(id) ON DELETE CASCADE,
+  company_id      INTEGER REFERENCES core_company(id) ON DELETE CASCADE,
+  decision        VARCHAR(20),                              -- advance | hold | reject | NULL
+  decision_reason TEXT,
+  decided_at      TIMESTAMPTZ,
+  decided_by      INTEGER REFERENCES master_users(id) ON DELETE SET NULL,
+  created_at      TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  updated_at      TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+CREATE INDEX idx_cs_job        ON candidate_screening (job_id);
+CREATE INDEX idx_cs_company    ON candidate_screening (company_id);
+CREATE INDEX idx_cs_decision   ON candidate_screening (decision);
+
+-- candidate_interview: stub for the Interview module's R1 prep queue.
+-- Phase 4 only writes here (via advance-bulk on Calibration). The Interview
+-- module replaces this with its own schema when it ships.
+CREATE TABLE candidate_interview (
+  id              SERIAL PRIMARY KEY,
+  candidate_id    INTEGER NOT NULL REFERENCES master_candidate(id) ON DELETE CASCADE,
+  job_id          INTEGER NOT NULL REFERENCES core_job(id) ON DELETE CASCADE,
+  screening_id    INTEGER REFERENCES candidate_screening(id) ON DELETE SET NULL,
+  company_id      INTEGER REFERENCES core_company(id) ON DELETE CASCADE,
+  status          VARCHAR(20) NOT NULL DEFAULT 'r1_prep',  -- r1_prep | scheduled | done | cancelled
+  scheduled_at    TIMESTAMPTZ,
+  created_at      TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  updated_at      TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  UNIQUE (candidate_id, job_id)
+);
+CREATE INDEX idx_ci_job     ON candidate_interview (job_id);
+CREATE INDEX idx_ci_company ON candidate_interview (company_id);
 
 CREATE INDEX idx_applicant_information_gin
   ON master_applicant USING GIN (information jsonb_path_ops);

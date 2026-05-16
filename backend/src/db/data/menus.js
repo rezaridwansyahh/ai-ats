@@ -1,27 +1,29 @@
-// Menu ids are sequential and grouped by module so that ORDER BY id matches
-// the desired sidebar order.
+// Menu ids are sequential (1-17) and grouped by module so that ORDER BY id
+// matches the desired sidebar order. Ids must be unique — they back the
+// primary key on master_menus and are referenced by mapping_modules_menus.
 export default [
-  // Dashboard module
+  // Main / Dashboard module
   { id: 1,  name: 'Dashboard' },
+  { id: 2,  name: 'Candidate Pipeline' },
 
   // Sourcing module
-  { id: 2,  name: 'Job Management' },
-  { id: 3,  name: 'Source Management' },
-  { id: 4,  name: 'Talent Pool' },
-  { id: 5,  name: 'Source Candidate' },
+  { id: 3,  name: 'Job Management' },
+  { id: 4,  name: 'Source Management' },
+  { id: 5,  name: 'Talent Pool' },
+  { id: 6,  name: 'Source Candidate' },
 
   // Selection module
-  { id: 6,  name: 'AI Matching' },
-  { id: 7,  name: 'Assessment A' },
-  { id: 8,  name: 'Assessment B' },
-  { id: 9,  name: 'Assessment C' },
-  { id: 10, name: 'Assessment D' },
-  { id: 11, name: 'Report' },
+  { id: 7,  name: 'AI Screening' },
+  { id: 8,  name: 'Assessment A' },
+  { id: 9,  name: 'Assessment B' },
+  { id: 10, name: 'Assessment C' },
+  { id: 11, name: 'Assessment D' },
+  { id: 12, name: 'Report' },
 
   // Settings module
-  { id: 12, name: 'User Management' },
-  { id: 13, name: 'Role Management' },
-  { id: 14, name: 'Integrations' },
-  { id: 15, name: 'Account' },
-  { id: 16, name: 'Recruiters' },
+  { id: 13, name: 'User Management' },
+  { id: 14, name: 'Role Management' },
+  { id: 15, name: 'Integrations' },
+  { id: 16, name: 'Account' },
+  { id: 17, name: 'Recruiters' },
 ];

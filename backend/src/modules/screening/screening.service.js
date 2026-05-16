@@ -253,6 +253,173 @@ class ScreeningService {
     return await screeningModel.getResultsByJob(job_id);
   }
 
+  // L3 Candidate detail — get the parent row hydrated with everything the page needs.
+  // Lazy-creates the candidate_screening row if missing (e.g. for master_candidate
+  // rows created before this table existed). Optionally scoped to caller's company.
+  async getScreening(screening_id, { company_id = null } = {}) {
+    if (!screening_id) throw { status: 400, message: 'screening_id is required' };
+    const row = await screeningModel.getScreeningById(screening_id);
+    if (!row) throw { status: 404, message: 'Screening not found' };
+    if (company_id && row.company_id && row.company_id !== company_id) {
+      throw { status: 403, message: 'Cross-tenant access denied' };
+    }
+    return row;
+  }
+
+  // L3 Candidate detail — by master_candidate.id (lazy-creates the screening row).
+  async getScreeningByCandidateId(candidate_id, { company_id = null } = {}) {
+    if (!candidate_id) throw { status: 400, message: 'candidate_id is required' };
+    const screening_id = await screeningModel.ensureScreeningForCandidate(candidate_id);
+    return this.getScreening(screening_id, { company_id });
+  }
+
+  // L4 Calibration — ready cohort for one job (scored, no decision yet).
+  async getCalibration(job_id, { company_id = null } = {}) {
+    if (!job_id) throw { status: 400, message: 'job_id is required' };
+    const job = await jobModel.getById(job_id);
+    if (!job) throw { status: 404, message: 'Job not found' };
+    if (company_id && job.company_id && job.company_id !== company_id) {
+      throw { status: 403, message: 'Cross-tenant access denied' };
+    }
+    return await screeningModel.getCalibrationCohort(job_id);
+  }
+
+  // L4 Calibration — bulk advance selected screenings to Interview.
+  async advanceBulk(job_id, { screening_ids, decision_reason, decided_by, company_id = null }) {
+    if (!job_id) throw { status: 400, message: 'job_id is required' };
+    if (!Array.isArray(screening_ids) || screening_ids.length === 0) {
+      throw { status: 400, message: 'screening_ids must be a non-empty array' };
+    }
+    const job = await jobModel.getById(job_id);
+    if (!job) throw { status: 404, message: 'Job not found' };
+    if (company_id && job.company_id && job.company_id !== company_id) {
+      throw { status: 403, message: 'Cross-tenant access denied' };
+    }
+    return await screeningModel.bulkAdvanceToInterview({
+      screening_ids,
+      decision_reason,
+      decided_by,
+      company_id,
+    });
+  }
+
+  // L3/L4 — recruiter decision (advance / hold / reject).
+  async setDecision({ screening_id, decision, decision_reason, decided_by, company_id = null }) {
+    if (!screening_id) throw { status: 400, message: 'screening_id is required' };
+    const valid = ['advance', 'hold', 'reject'];
+    if (!valid.includes(decision)) {
+      throw { status: 400, message: `decision must be one of: ${valid.join(', ')}` };
+    }
+    const existing = await screeningModel.getScreeningById(screening_id);
+    if (!existing) throw { status: 404, message: 'Screening not found' };
+    if (company_id && existing.company_id && existing.company_id !== company_id) {
+      throw { status: 403, message: 'Cross-tenant access denied' };
+    }
+    return await screeningModel.setScreeningDecision({
+      screening_id, decision, decision_reason, decided_by,
+    });
+  }
+
+  // L1 Workboard — cross-position triage for the caller's company.
+  async getWorkboard(company_id) {
+    if (!company_id) throw { status: 400, message: 'company_id is required' };
+    return await screeningModel.getWorkboardData(company_id);
+  }
+
+  // List candidates in a job's lane (parse | match | ready).
+  async getLaneCandidates(job_id, engine) {
+    if (!job_id) throw { status: 400, message: 'job_id is required' };
+    const validEngines = ['parse', 'match', 'ready'];
+    if (engine && !validEngines.includes(engine)) {
+      throw { status: 400, message: `engine must be one of: ${validEngines.join(', ')}` };
+    }
+    return await screeningModel.getCandidatesByJobAndEngine(job_id, engine || null);
+  }
+
+  // Parse a list of applicants (one extractFacets call each). Used by L1 multi-select.
+  async parseBulk(applicant_ids, context = {}) {
+    if (!Array.isArray(applicant_ids) || applicant_ids.length === 0) {
+      throw { status: 400, message: 'applicant_ids must be a non-empty array' };
+    }
+    const results = [];
+    const errors = [];
+    for (const id of applicant_ids) {
+      try {
+        const applicant = await screeningModel.getApplicant(id);
+        if (!applicant) { errors.push({ applicant_id: id, message: 'Applicant not found' }); continue; }
+        if (applicant.information) { results.push({ applicant_id: id, skipped: true, reason: 'already parsed' }); continue; }
+        if (!applicant.attachment) { errors.push({ applicant_id: id, message: 'No CV attachment to parse' }); continue; }
+        // For v1 we expect a cv_text to be supplied at parse time; without an
+        // attachment-fetch pipeline, mark as skipped and surface the gap.
+        errors.push({ applicant_id: id, message: 'CV file fetch not implemented — use extract-facets manually' });
+      } catch (err) {
+        errors.push({ applicant_id: id, message: err.message || String(err) });
+      }
+    }
+    return { parsed: results.length, total: applicant_ids.length, results, errors };
+  }
+
+  // Match a list of applicants against one job. Skips already-scored unless force=true.
+  async matchBulk(job_id, applicant_ids, { force = false, context = {} } = {}) {
+    if (!job_id) throw { status: 400, message: 'job_id is required' };
+    if (!Array.isArray(applicant_ids) || applicant_ids.length === 0) {
+      throw { status: 400, message: 'applicant_ids must be a non-empty array' };
+    }
+    const job = await jobModel.getById(job_id);
+    if (!job) throw { status: 404, message: 'Job not found' };
+
+    const rubric = await screeningModel.getRubric(job_id);
+    if (!rubric) throw { status: 400, message: 'Job has no rubric — save one from AI Screening first' };
+    this.validateRubric(rubric);
+
+    const roleProfile = 'experienced';
+    const results = [];
+    const errors = [];
+
+    for (const applicant_id of applicant_ids) {
+      try {
+        if (!force) {
+          const existing = await screeningModel.getByApplicantAndJob(applicant_id, job_id);
+          if (existing) { results.push({ applicant_id, skipped: true, reason: 'already scored' }); continue; }
+        }
+
+        const applicant = await screeningModel.getApplicant(applicant_id);
+        if (!applicant?.information) {
+          errors.push({ applicant_id, message: 'No facets — run parse first' });
+          continue;
+        }
+
+        const aiContext = {
+          ...context,
+          metadata: { applicant_id, job_id, ...(context.metadata || {}) },
+        };
+        const llm = await aiService.scoreWithRubric(job, applicant.information, rubric, roleProfile, aiContext);
+        const overall_score = this.computeOverall(rubric, llm);
+
+        const stored = await screeningModel.upsertScore({
+          applicant_id,
+          job_id,
+          overall_score,
+          skills_score: llm.skills_score,
+          experience_score: llm.experience_score,
+          career_trajectory_score: llm.career_trajectory_score,
+          education_score: llm.education_score,
+          matched_skills: llm.matched_skills,
+          missing_skills: llm.missing_skills,
+          custom_criteria_results: llm.custom_criteria_results,
+          rubric_snapshot: rubric,
+          role_profile: roleProfile,
+          summary: llm.summary,
+        });
+        results.push(stored);
+      } catch (err) {
+        errors.push({ applicant_id, message: err.message || String(err) });
+      }
+    }
+
+    return { scored: results.length, total: applicant_ids.length, errors, results };
+  }
+
   // -------- end rubric flow --------
 
   async getResult(applicant_id, job_id) {
