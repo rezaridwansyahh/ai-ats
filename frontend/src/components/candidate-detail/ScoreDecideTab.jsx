@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Card, CardContent } from '@/components/ui/card';
 import ReportViewA from '@/components/assessment-a/report/ReportView';
 import ReportViewB from '@/components/assessment-b/report/ReportView';
@@ -26,27 +26,50 @@ export default function ScoreDecideTab({ candidate, battery, result, onJumpToTab
   const [saveStatus, setSaveStatus] = useState('idle'); // idle | saving | saved | error
   const [saveError, setSaveError]   = useState(null);
 
+  // Refs so the manual save uses the latest state (not the closure at timer-set time).
+  const latestStateRef = useRef(state);
+  latestStateRef.current = state;
+  const pendingRef = useRef(null);
+
+  const doSave = async () => {
+    if (!result?.id) return { ok: false };
+    setSaveStatus('saving');
+    setSaveError(null);
+    try {
+      await updateAssessmentReport(result.id, packAssessorState(latestStateRef.current, result.summary));
+      setSaveStatus('saved');
+      setIsDirty(false);
+      return { ok: true };
+    } catch (e) {
+      const msg = e?.response?.data?.message || e?.message || 'Gagal menyimpan anotasi.';
+      setSaveStatus('error');
+      setSaveError(msg);
+      throw new Error(msg);
+    }
+  };
+
   // Debounced auto-save. Skips when there's nothing to save (idle / clean state).
   useEffect(() => {
     if (!result?.id || !isDirty) return undefined;
-    const timer = setTimeout(async () => {
-      setSaveStatus('saving');
-      setSaveError(null);
-      try {
-        await updateAssessmentReport(result.id, packAssessorState(state, result.summary));
-        setSaveStatus('saved');
-        setIsDirty(false);
-      } catch (e) {
-        setSaveStatus('error');
-        setSaveError(e?.response?.data?.message || e?.message || 'Gagal menyimpan anotasi.');
-      }
-    }, SAVE_DEBOUNCE_MS);
-    return () => clearTimeout(timer);
+    if (pendingRef.current) clearTimeout(pendingRef.current);
+    pendingRef.current = setTimeout(() => { doSave().catch(() => {}); }, SAVE_DEBOUNCE_MS);
+    return () => { if (pendingRef.current) clearTimeout(pendingRef.current); };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [state, isDirty, result?.id, result?.summary]);
 
   const updateState = (patch) => {
     setState((prev) => ({ ...prev, ...patch }));
     setIsDirty(true);
+  };
+
+  // Manual flush — cancels the pending debounce and PUTs immediately. Returns a Promise
+  // so the AI hook's auto-flush and the Save button's spinner can await completion.
+  const saveNow = async () => {
+    if (pendingRef.current) {
+      clearTimeout(pendingRef.current);
+      pendingRef.current = null;
+    }
+    return doSave();
   };
 
   if (!hasResults) {
@@ -97,7 +120,7 @@ export default function ScoreDecideTab({ candidate, battery, result, onJumpToTab
     date:       result.assessment_date ?? null,
   };
   const subtestResults = result.results.by_subtest;
-  const reportProps = { profile, results: subtestResults, state, updateState };
+  const reportProps = { profile, results: subtestResults, state, updateState, saveNow };
 
   return (
     <div>

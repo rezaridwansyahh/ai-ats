@@ -79,9 +79,12 @@ function BatteryReportContainer({ result, ReportView, fallbackTitle, onClose }) 
       const body = packAssessorState(latestStateRef.current, result.summary);
       await updateAssessmentReport(result.id, body);
       setSaveStatus('saved');
+      return { ok: true };
     } catch (e) {
+      const msg = e?.response?.data?.message || e?.message || 'Gagal menyimpan anotasi.';
       setSaveStatus('error');
-      setSaveError(e?.response?.data?.message || e?.message || 'Gagal menyimpan anotasi.');
+      setSaveError(msg);
+      throw new Error(msg);
     }
   };
 
@@ -89,6 +92,16 @@ function BatteryReportContainer({ result, ReportView, fallbackTitle, onClose }) 
     setState((prev) => ({ ...prev, ...patch }));
     if (pendingRef.current) clearTimeout(pendingRef.current);
     pendingRef.current = setTimeout(flushSave, SAVE_DEBOUNCE_MS);
+  };
+
+  // Manual save trigger — cancels the pending debounce and flushes immediately.
+  // Returns a Promise so callers (Save button, AI hook) can await completion.
+  const saveNow = async () => {
+    if (pendingRef.current) {
+      clearTimeout(pendingRef.current);
+      pendingRef.current = null;
+    }
+    return flushSave();
   };
 
   // Flush pending save on unmount/dialog close.
@@ -121,6 +134,8 @@ function BatteryReportContainer({ result, ReportView, fallbackTitle, onClose }) 
           results={results}
           state={state}
           updateState={updateState}
+          saveNow={saveNow}
+          saveStatus={saveStatus}
           onClose={onClose}
         />
       </div>

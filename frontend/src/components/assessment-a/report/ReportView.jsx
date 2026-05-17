@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { Sparkles, Loader2, Check, Save, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import {
@@ -13,9 +14,17 @@ import {
 import { TRAITS } from '../data/bigfive';
 import { DISC_DIMS, DISC_PROFILES } from '../data/disc';
 import { HOL_TYPES } from '../data/holland';
+import { useNarrativeAI } from '@/components/assessment/hooks/useNarrativeAI';
 import ManagerView from './ManagerView';
 
-const NARR_IDS = ['narr-tk', 'narr-bigfive', 'narr-disc', 'narr-holland', 'narr-konsol', 'narr-strength', 'narr-dev', 'narr-fit', 'narr-rec'];
+const BATTERY = 'A';
+const SECTION_BY_NARR = {
+  'narr-tk': 'tk',
+  'narr-bigfive': 'bigfive',
+  'narr-disc': 'disc',
+  'narr-holland': 'holland',
+};
+const SYNTHESIS_IDS = ['narr-konsol', 'narr-strength', 'narr-dev', 'narr-fit'];
 
 const NARR_LABELS = {
   'narr-tk': '📝 Interpretasi — Kemampuan Kognitif',
@@ -26,7 +35,6 @@ const NARR_LABELS = {
   'narr-strength': '⚡ Kekuatan Utama Kandidat',
   'narr-dev': '⚠️ Area Pengembangan & Risiko',
   'narr-fit': '🎯 Analisis Kesesuaian Peran',
-  'narr-rec': '📋 Rekomendasi Rekruter',
 };
 
 const SUB_NAMES = { GI: 'Kemampuan Umum', KA: 'Kecepatan & Akurasi' };
@@ -34,8 +42,9 @@ const SUB_WEIGHTS = { GI: '30%', KA: '17.5%' };
 const TRAIT_ORDER = ['E', 'A', 'C', 'N', 'O'];
 const DISC_ORDER = ['D', 'I', 'S', 'C'];
 
-export default function ReportView({ profile, results, state, updateState, onClose }) {
+export default function ReportView({ profile, results, state, updateState, saveNow, onClose }) {
   const [showDetail, setShowDetail] = useState(false);
+  const [saveBtnState, setSaveBtnState] = useState('idle'); // idle | saving | saved | error
 
   const tk = results.tk;
   const bigfive = results.bigfive;
@@ -50,6 +59,48 @@ export default function ReportView({ profile, results, state, updateState, onClo
   const setNotes = (id, value) => updateState({ ['notes_' + id]: value });
   const setRcr = (sec, value) => updateState({ ['rcr_' + sec]: value });
   const setFinalRec = (value) => updateState({ finalRec: value });
+
+  const ai = useNarrativeAI({ updateState, saveNow });
+
+  const scoresByNarr = {
+    'narr-tk': tk,
+    'narr-bigfive': bigfive,
+    'narr-disc': disc,
+    'narr-holland': hol,
+  };
+
+  const onGenerateSection = (narrId) => () => ai.generateSection({
+    battery: BATTERY,
+    section: SECTION_BY_NARR[narrId],
+    narrId,
+    scores: scoresByNarr[narrId],
+    profile,
+    currentValue: state['edit_' + narrId],
+  });
+
+  const onGenerateSynthesis = () => ai.generateSynthesis({
+    battery: BATTERY,
+    allScores: { tk, bigfive, disc, holland: hol },
+    sectionInterpretations: Object.fromEntries(
+      Object.keys(SECTION_BY_NARR).map((id) => [id, state['edit_' + id] || '']),
+    ),
+    profile,
+    currentValues: Object.fromEntries(
+      SYNTHESIS_IDS.map((id) => [id, state['edit_' + id] || '']),
+    ),
+  });
+
+  const handleSave = async () => {
+    if (!saveNow) return;
+    setSaveBtnState('saving');
+    try {
+      await saveNow();
+      setSaveBtnState('saved');
+      setTimeout(() => setSaveBtnState('idle'), 2000);
+    } catch {
+      setSaveBtnState('error');
+    }
+  };
 
   return (
     <div className="max-w-[1100px] mx-auto px-4 py-5 pb-20">
@@ -253,9 +304,11 @@ export default function ReportView({ profile, results, state, updateState, onClo
               <div className="py-4 text-center text-slate-400">Data TK tidak tersedia</div>
             )}
 
-            <NarrativeBlock id="narr-tk" state={state} setNarr={setNarr} />
+            <NarrativeBlock id="narr-tk" state={state} setNarr={setNarr}
+              onGenerate={onGenerateSection('narr-tk')}
+              generating={ai.isGenerating('narr-tk')}
+              onCancel={ai.cancel} />
             <RecruiterRating section="tk" current={state.rcr_tk} onSet={setRcr} />
-            <AssessorNotes id="notes-tk" state={state} setNotes={setNotes} placeholder="Observasi tambahan terkait kemampuan kognitif..." />
           </SectionCard>
 
           {/* SECTION II — Big Five */}
@@ -307,9 +360,11 @@ export default function ReportView({ profile, results, state, updateState, onClo
               <div className="py-4 text-center text-slate-400">Data Big Five tidak tersedia</div>
             )}
 
-            <NarrativeBlock id="narr-bigfive" state={state} setNarr={setNarr} />
+            <NarrativeBlock id="narr-bigfive" state={state} setNarr={setNarr}
+              onGenerate={onGenerateSection('narr-bigfive')}
+              generating={ai.isGenerating('narr-bigfive')}
+              onCancel={ai.cancel} />
             <RecruiterRating section="bigfive" current={state.rcr_bigfive} onSet={setRcr} />
-            <AssessorNotes id="notes-bigfive" state={state} setNotes={setNotes} placeholder="Observasi tentang profil kepribadian..." />
           </SectionCard>
 
           {/* SECTION III — DISC */}
@@ -380,9 +435,11 @@ export default function ReportView({ profile, results, state, updateState, onClo
               <div className="py-4 text-center text-slate-400">Data DISC tidak tersedia</div>
             )}
 
-            <NarrativeBlock id="narr-disc" state={state} setNarr={setNarr} />
+            <NarrativeBlock id="narr-disc" state={state} setNarr={setNarr}
+              onGenerate={onGenerateSection('narr-disc')}
+              generating={ai.isGenerating('narr-disc')}
+              onCancel={ai.cancel} />
             <RecruiterRating section="disc" current={state.rcr_disc} onSet={setRcr} />
-            <AssessorNotes id="notes-disc" state={state} setNotes={setNotes} placeholder="Catatan tentang gaya kerja..." />
           </SectionCard>
 
           {/* SECTION IV — Holland */}
@@ -439,20 +496,39 @@ export default function ReportView({ profile, results, state, updateState, onClo
               <div className="py-4 text-center text-slate-400">Data Holland tidak tersedia</div>
             )}
 
-            <NarrativeBlock id="narr-holland" state={state} setNarr={setNarr} />
-            <AssessorNotes id="notes-holland" state={state} setNotes={setNotes} placeholder="Catatan kesesuaian minat vokasional..." />
+            <NarrativeBlock id="narr-holland" state={state} setNarr={setNarr}
+              onGenerate={onGenerateSection('narr-holland')}
+              generating={ai.isGenerating('narr-holland')}
+              onCancel={ai.cancel} />
           </SectionCard>
 
           {/* SECTION V — Summary */}
           <SectionCard num="V" title="Ringkasan & Rekomendasi Akhir" subtitle="Konsolidasi seluruh asesmen Battery A" color="#064E3B" bg="#EDF7F5" emphasized>
-            <div className="text-[11px] font-bold uppercase tracking-wider text-slate-500 mb-3">D. Narasi Psikologis Terintegrasi</div>
-            {NARR_IDS.slice(4).map((id) => (
+            <div className="flex items-center justify-between mb-3">
+              <div className="text-[11px] font-bold uppercase tracking-wider text-slate-500">D. Narasi Psikologis Terintegrasi</div>
+              {ai.isSynthGenerating() ? (
+                <Button size="sm" variant="ghost" onClick={ai.cancel} className="h-7 px-2.5 text-[11px] text-red-700 hover:text-red-900">
+                  <X className="h-3.5 w-3.5 mr-1" /> Hentikan
+                </Button>
+              ) : (
+                <Button size="sm" variant="ghost" onClick={onGenerateSynthesis}
+                        className="h-7 px-2.5 text-[11px] text-teal-700 hover:text-teal-900 hover:bg-teal-50">
+                  <Sparkles className="h-3.5 w-3.5 mr-1" /> Generate Sintesis AI
+                </Button>
+              )}
+            </div>
+            {SYNTHESIS_IDS.map((id) => (
               <div key={id} className="mb-3">
-                <div className="text-[11px] font-bold uppercase tracking-wider text-teal-800 mb-1.5">{NARR_LABELS[id]}</div>
+                <div className="text-[11px] font-bold uppercase tracking-wider text-teal-800 mb-1.5">
+                  {NARR_LABELS[id]}
+                  {ai.isSynthGenerating() && (state['edit_' + id] || '').length > 0 && (
+                    <Loader2 className="inline-block h-3 w-3 animate-spin ml-1.5 text-teal-500" />
+                  )}
+                </div>
                 <Textarea
                   value={state['edit_' + id] || ''}
                   onChange={(e) => setNarr(id, e.target.value)}
-                  placeholder="Tuliskan interpretasi di sini..."
+                  placeholder="Tuliskan interpretasi di sini, atau klik ✨ Generate Sintesis AI di atas..."
                   className="min-h-[90px] bg-gradient-to-br from-emerald-50/50 to-teal-50/30 border-teal-200 focus-visible:ring-teal-500"
                 />
               </div>
@@ -489,8 +565,20 @@ export default function ReportView({ profile, results, state, updateState, onClo
         Myralix Assessment Platform · Laporan Psikologis Battery A v10 · RAHASIA — Hanya untuk penggunaan internal
       </div>
 
-      <div className="flex flex-wrap gap-2 mt-3">
+      <div className="flex flex-wrap items-center gap-2 mt-3">
         <Button variant="outline" size="sm" onClick={() => window.print()}>🖨 Cetak / Simpan PDF</Button>
+        <Button size="sm" onClick={handleSave} disabled={saveBtnState === 'saving' || !saveNow}
+                className="bg-teal-700 hover:bg-teal-800 text-white">
+          {saveBtnState === 'saving' ? (
+            <><Loader2 className="h-3.5 w-3.5 animate-spin mr-1.5" /> Menyimpan…</>
+          ) : saveBtnState === 'saved' ? (
+            <><Check className="h-3.5 w-3.5 mr-1.5" /> Tersimpan</>
+          ) : saveBtnState === 'error' ? (
+            <>❌ Gagal — coba lagi</>
+          ) : (
+            <><Save className="h-3.5 w-3.5 mr-1.5" /> Simpan Sekarang</>
+          )}
+        </Button>
         {onClose && (
           <Button variant="outline" size="sm" onClick={onClose} className="ml-auto">
             Tutup
@@ -569,10 +657,24 @@ function SectionCard({ num, title, subtitle, color, bg, emphasized, children }) 
   );
 }
 
-function NarrativeBlock({ id, state, setNarr }) {
+function NarrativeBlock({ id, state, setNarr, onGenerate, generating, onCancel }) {
   return (
     <div className="mt-3.5">
-      <div className="text-[11px] font-bold uppercase tracking-wider text-teal-800 mb-1.5">{NARR_LABELS[id]}</div>
+      <div className="flex items-center justify-between mb-1.5">
+        <span className="text-[11px] font-bold uppercase tracking-wider text-teal-800">{NARR_LABELS[id]}</span>
+        {onGenerate && (
+          generating ? (
+            <Button size="sm" variant="ghost" onClick={onCancel} className="h-6 px-2 text-[10.5px] text-red-700 hover:text-red-900">
+              <X className="h-3 w-3 mr-1" /> Hentikan
+            </Button>
+          ) : (
+            <Button size="sm" variant="ghost" onClick={onGenerate}
+                    className="h-6 px-2 text-[10.5px] text-teal-700 hover:text-teal-900 hover:bg-teal-50">
+              <Sparkles className="h-3 w-3 mr-1" /> Generate AI
+            </Button>
+          )
+        )}
+      </div>
       <Textarea
         value={state['edit_' + id] || ''}
         onChange={(e) => setNarr(id, e.target.value)}
@@ -613,17 +715,3 @@ function RecruiterRating({ section, current, onSet }) {
   );
 }
 
-function AssessorNotes({ id, state, setNotes, placeholder }) {
-  const key = id.replace(/^notes-/, '');
-  return (
-    <div className="mt-2.5">
-      <div className="text-[11px] font-bold text-slate-500 mb-1.5">📌 Catatan Asesor:</div>
-      <Textarea
-        value={state['notes_' + key] || ''}
-        onChange={(e) => setNotes(key, e.target.value)}
-        placeholder={placeholder}
-        className="min-h-[70px] bg-slate-50/50 text-sm"
-      />
-    </div>
-  );
-}
