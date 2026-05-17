@@ -1,10 +1,11 @@
 // Myralix Battery A - Assessment Data Constants
+import { Brain, ClipboardList } from 'lucide-react';
 
 export const SUBS = {
   GI: {
     code: 'GI',
     name: 'Kemampuan Umum',
-    icon: '🧠',
+    Icon: Brain,
     color: '#0A6E5C',
     bg: '#F0F8F6',
     time: 12 * 60, // 12 minutes in seconds
@@ -15,7 +16,7 @@ export const SUBS = {
   KA: {
     code: 'KA',
     name: 'Kecepatan & Akurasi',
-    icon: '📋',
+    Icon: ClipboardList,
     color: '#DB2777',
     bg: '#FDF2F8',
     time: 8 * 60, // 8 minutes

@@ -1,8 +1,9 @@
 import { Button } from '@/components/ui/button';
+import { Brain, Lightbulb, Star, Compass, Target } from 'lucide-react';
 
 const INTRO = {
   tk: {
-    icon: '🧠',
+    Icon: Brain,
     title: 'Tes Kemampuan Kognitif',
     fn: 'Mengukur kapasitas berpikir, analisis, dan pemecahan masalah',
     items: '155 soal',
@@ -11,7 +12,7 @@ const INTRO = {
       'Empat subtes berurutan dengan timer aktif: GI (50 soal/12 menit), PV (25/15), KN (40/25), PA (40/20). Selama tes, hindari pindah tab — setiap pindah dicatat sebagai indikator integritas.',
   },
   sjt: {
-    icon: '💡',
+    Icon: Lightbulb,
     title: 'Tes Penilaian Situasional (SJT)',
     fn: 'Mengukur penilaian situasional di 6 kompetensi senior leadership',
     items: '22 skenario',
@@ -20,7 +21,7 @@ const INTRO = {
       'Bacalah setiap situasi kepemimpinan dengan cermat, lalu pilih satu dari empat tindakan yang paling efektif menurut Anda. Tidak ada pilihan yang sepenuhnya salah. Timer aktif 30 menit — hindari pindah tab. Memilih jawaban langsung lanjut ke skenario berikutnya.',
   },
   pf: {
-    icon: '🌟',
+    Icon: Star,
     title: 'Tes Kepribadian 16PF',
     fn: 'Mengukur 16 faktor kepribadian (Cattell 16PF)',
     items: '105 pernyataan',
@@ -29,7 +30,7 @@ const INTRO = {
       'Setiap pernyataan memiliki tiga pilihan (a/b/c). Pilih satu yang paling mencerminkan diri Anda. Tidak ada jawaban benar atau salah. Jawablah secara spontan — memilih jawaban langsung lanjut ke pernyataan berikutnya.',
   },
   msdt: {
-    icon: '🧭',
+    Icon: Compass,
     title: 'Tes Gaya Kepemimpinan MSDT',
     fn: 'Mengukur 8 gaya kepemimpinan & efektivitas manajerial',
     items: '64 pasang',
@@ -38,7 +39,7 @@ const INTRO = {
       'Setiap soal berisi dua pernyataan (A) dan (B). Pilih satu yang paling mencerminkan perilaku kepemimpinan Anda. Pilih berdasarkan perilaku nyata, bukan yang ideal — memilih jawaban langsung lanjut.',
   },
   papil: {
-    icon: '🎯',
+    Icon: Target,
     title: 'Tes Preferensi Kepemimpinan PAPI-L',
     fn: 'Mengukur 10 dimensi Peran + 10 dimensi Kebutuhan dalam konteks kepemimpinan',
     items: '90 pasang',
@@ -55,7 +56,9 @@ export default function Intro({ test, onStart, onBack }) {
   return (
     <div className="max-w-[640px] mx-auto px-4 py-10">
       <div className="bg-white border border-slate-200 rounded-xl p-8 text-center shadow-lg">
-        <div className="text-5xl mb-3">{meta.icon}</div>
+        <div className="mb-3 flex justify-center">
+          <meta.Icon className="w-12 h-12 text-teal-700" />
+        </div>
         <h2 className="font-serif text-2xl mb-1">{meta.title}</h2>
         <div className="text-sm font-semibold text-slate-500 mb-5">{meta.fn}</div>
 

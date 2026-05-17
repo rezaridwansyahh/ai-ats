@@ -1,9 +1,10 @@
 import { Button } from '@/components/ui/button';
+import { Brain, Lightbulb, Star, Compass, Target, Timer, ClipboardList, Trash2, Check, CheckCircle2, Play, Lock } from 'lucide-react';
 
 const TEST_META = {
   tk: {
     name: 'Tes Kemampuan Kognitif',
-    icon: '🧠',
+    Icon: Brain,
     color: '#0A6E5C',
     time: '~72 menit',
     items: '155 soal (4 subtes)',
@@ -11,7 +12,7 @@ const TEST_META = {
   },
   sjt: {
     name: 'Tes Penilaian Situasional (SJT)',
-    icon: '💡',
+    Icon: Lightbulb,
     color: '#6366F1',
     time: '30 menit',
     items: '22 skenario',
@@ -19,7 +20,7 @@ const TEST_META = {
   },
   pf: {
     name: 'Tes Kepribadian 16PF',
-    icon: '🌟',
+    Icon: Star,
     color: '#7C3AED',
     time: '~30 menit',
     items: '105 pernyataan',
@@ -27,7 +28,7 @@ const TEST_META = {
   },
   msdt: {
     name: 'Tes Gaya Kepemimpinan MSDT',
-    icon: '🧭',
+    Icon: Compass,
     color: '#DB2777',
     time: '~20 menit',
     items: '64 pasang',
@@ -35,7 +36,7 @@ const TEST_META = {
   },
   papil: {
     name: 'Tes Preferensi Kepemimpinan PAPI-L',
-    icon: '🎯',
+    Icon: Target,
     color: '#0891B2',
     time: '~15 menit',
     items: '90 pasang',
@@ -107,11 +108,11 @@ export default function Overview({ profile, results, tests, onPick, onReset, onS
                   color: isDone || isActive ? '#fff' : '#94A3B8',
                 }}
               >
-                {isDone ? '✓' : i + 1}
+{isDone ? <Check className="w-5 h-5" /> : i + 1}
               </div>
               <div className="flex-1 min-w-0">
                 <div className="text-sm font-bold flex items-center gap-2">
-                  <span>{meta.icon}</span>
+                  <meta.Icon className="w-4 h-4" />
                   {meta.name}
                 </div>
                 <div className="text-xs text-slate-500 leading-relaxed mt-0.5">{meta.desc}</div>
@@ -119,11 +120,19 @@ export default function Overview({ profile, results, tests, onPick, onReset, onS
                   <span className="text-[10px] font-bold px-2 py-0.5 rounded" style={{ background: meta.color + '20', color: meta.color }}>
                     {meta.items}
                   </span>
-                  <span className="text-[10px] font-bold px-2 py-0.5 rounded bg-slate-100 text-slate-600">⏱ {meta.time}</span>
+                  <span className="text-[10px] font-bold px-2 py-0.5 rounded bg-slate-100 text-slate-600 flex items-center gap-1">
+                    <Timer className="w-3 h-3" /> {meta.time}
+                  </span>
                 </div>
               </div>
               <div className="text-right flex-shrink-0">
-                {isDone ? <div className="text-2xl">✅</div> : isActive ? <div className="text-2xl">▶️</div> : <div className="text-2xl opacity-40">🔒</div>}
+                {isDone ? (
+                  <CheckCircle2 className="w-7 h-7 text-green-600" />
+                ) : isActive ? (
+                  <Play className="w-7 h-7 text-teal-600" />
+                ) : (
+                  <Lock className="w-7 h-7 text-slate-300" />
+                )}
               </div>
             </div>
           );
@@ -132,12 +141,12 @@ export default function Overview({ profile, results, tests, onPick, onReset, onS
 
       <div className="flex flex-wrap gap-2 mt-4">
         {doneCount > 0 && (
-          <Button variant="outline" onClick={onSeeComplete}>
-            📋 Lihat Ringkasan
+          <Button variant="outline" onClick={onSeeComplete} className="gap-2">
+            <ClipboardList className="w-4 h-4" /> Lihat Ringkasan
           </Button>
         )}
-        <Button variant="outline" onClick={onReset} className="text-red-600 hover:text-red-700 ml-auto">
-          🗑 Reset
+        <Button variant="outline" onClick={onReset} className="text-red-600 hover:text-red-700 ml-auto gap-2">
+          <Trash2 className="w-4 h-4" /> Reset
         </Button>
       </div>
     </div>

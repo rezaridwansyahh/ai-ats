@@ -1,8 +1,9 @@
 import { Button } from '@/components/ui/button';
+import { Brain, Star, Settings, Lightbulb } from 'lucide-react';
 
 const INTRO = {
   tk: {
-    icon: '🧠',
+    Icon: Brain,
     title: 'Tes Kemampuan Kognitif',
     fn: 'Mengukur kapasitas berpikir, analisis, dan pemecahan masalah',
     items: '155 soal',
@@ -11,7 +12,7 @@ const INTRO = {
       'Lima subtes berurutan dengan timer aktif: GI (50 soal/12 menit), PV (25/15), KN (40/25), PA (40/20), KA (40/8). Selama tes, hindari pindah tab — setiap pindah dicatat sebagai indikator integritas.',
   },
   epps: {
-    icon: '🌟',
+    Icon: Star,
     title: 'Tes Kepribadian',
     fn: 'Mengukur kebutuhan, motivasi, dan dorongan psikologis',
     items: '225 pasang',
@@ -20,7 +21,7 @@ const INTRO = {
       'Setiap soal berisi 2 pernyataan (a) dan (b). Pilih satu yang paling mencerminkan diri Anda. Tidak ada jawaban benar atau salah. Jawablah secara spontan, jangan terlalu lama berpikir.',
   },
   papi: {
-    icon: '⚙️',
+    Icon: Settings,
     title: 'Tes Preferensi Kerja',
     fn: 'Mengukur 20 dimensi preferensi & gaya kerja (PAPI Standard)',
     items: '90 pasang',
@@ -29,7 +30,7 @@ const INTRO = {
       'Pilih pernyataan yang paling mencerminkan cara Anda bekerja saat ini, bukan harapan ideal Anda. Jawablah dengan spontan dan jujur.',
   },
   sjt: {
-    icon: '💡',
+    Icon: Lightbulb,
     title: 'Tes Penilaian Situasional (SJT)',
     fn: 'Mengukur penilaian situasional di 6 kompetensi kepemimpinan',
     items: '22 skenario',
@@ -46,7 +47,9 @@ export default function Intro({ test, onStart, onBack }) {
   return (
     <div className="max-w-[640px] mx-auto px-4 py-10">
       <div className="bg-white border border-slate-200 rounded-xl p-8 text-center shadow-lg">
-        <div className="text-5xl mb-3">{meta.icon}</div>
+        <div className="mb-3 flex justify-center">
+          <meta.Icon className="w-12 h-12 text-teal-700" />
+        </div>
         <h2 className="font-serif text-2xl mb-1">{meta.title}</h2>
         <div className="text-sm font-semibold text-slate-500 mb-5">{meta.fn}</div>
 

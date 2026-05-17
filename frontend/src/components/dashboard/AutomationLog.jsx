@@ -28,6 +28,7 @@ import {
   ChevronLeft,
   ChevronRight,
   TrendingUp,
+  AlertTriangle,
 } from 'lucide-react';
 
 /* ─── Stats ─── */
@@ -230,9 +231,9 @@ export default function AutomationLog() {
                     {log.action}
                   </TableCell>
                   <TableCell className="text-center">
-                    <Badge variant={log.statusColor} className="text-[9px]">
-                      {log.status === 'Success' && '✓ '}
-                      {log.status === 'Parse Error' && '⚠ '}
+                    <Badge variant={log.statusColor} className="text-[9px] inline-flex items-center gap-1">
+                      {log.status === 'Success' && <CheckCircle className="w-3 h-3" />}
+                      {log.status === 'Parse Error' && <AlertTriangle className="w-3 h-3" />}
                       {log.status}
                     </Badge>
                   </TableCell>
