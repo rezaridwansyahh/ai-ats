@@ -13,8 +13,9 @@ import DISCTest from './candidate/DISCTest';
 import HollandTest from './candidate/HollandTest';
 import TestDone from './candidate/TestDone';
 import Complete from './candidate/Complete';
+import CandidateReportView from './report/CandidateReportView';
 
-// Screens: setup | overview | tk_intro | tk | bigfive_intro | bigfive | disc_intro | disc | holland_intro | holland | done_<n> | complete
+// Screens: setup | overview | tk_intro | tk | bigfive_intro | bigfive | disc_intro | disc | holland_intro | holland | done_<n> | complete | report
 const TESTS = ['tk', 'bigfive', 'disc', 'holland'];
 const ASSESSMENT_ID_BATTERY_A = 1;
 
@@ -23,6 +24,7 @@ export default function CandidateCard({
   prefilledProfile = null,
   onPortalSubmit = null,
   portalHash = null,
+  allowViewReport = true, // Toggle to show/hide "View Report" button (can be disabled in future)
 } = {}) {
   const isPortal = mode === 'portal';
   // Scope localStorage per portal session so multiple invitations in the same browser don't collide.
@@ -190,6 +192,7 @@ export default function CandidateCard({
   if (screen === 'setup') return <Setup initial={profile} onSubmit={handleSetupSubmit} />;
 
   if (screen === 'overview') {
+    const allDone = TESTS.every((t) => results[t]);
     return (
       <Overview
         profile={profile}
@@ -198,6 +201,7 @@ export default function CandidateCard({
         onPick={(t) => goTo(t + '_intro')}
         onReset={handleReset}
         onSeeComplete={() => goTo('complete')}
+        onViewReport={allDone && allowViewReport ? () => goTo('report') : null}
       />
     );
   }
@@ -261,9 +265,25 @@ export default function CandidateCard({
         tests={TESTS}
         onBack={() => goTo('overview')}
         onContinue={(t) => goTo(t + '_intro')}
+        onViewReport={allowViewReport ? () => goTo('report') : null}
         submitStatus={submitStatus}
         submitError={submitError}
         onRetrySubmit={submitResults}
+      />
+    );
+  }
+
+  if (screen === 'report') {
+    const allDone = TESTS.every((t) => results[t]);
+    if (!allDone) {
+      goTo('complete');
+      return null;
+    }
+    return (
+      <CandidateReportView
+        profile={profile}
+        results={results}
+        onClose={() => goTo('complete')}
       />
     );
   }
