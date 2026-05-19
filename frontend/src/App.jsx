@@ -20,7 +20,6 @@ import AssessmentPlacementPage from "./pages/portal/AssessmentPlacement"
 import AIScreeningPage from "./pages/AIScreening"
 import AIScreeningWorkboard from "./pages/AIScreeningWorkboard"
 import AIScreeningCandidatePage from "./pages/AIScreeningCandidate"
-import AIScreeningCalibrationPage from "./pages/AIScreeningCalibration"
 import AssessmentBPage from "./pages/AssessmentB"
 import CandidatePipelinePage from "./pages/CandidatePipeline"
 import AssessmentCPage from "./pages/AssessmentC"
@@ -49,7 +48,6 @@ function App() {
         <Route path="/selection/ai-screening" element={<AIScreeningWorkboard />} />
         <Route path="/selection/ai-screening/job/:jobId" element={<AIScreeningPage />} />
         <Route path="/selection/ai-screening/candidate/:screeningId" element={<AIScreeningCandidatePage />} />
-        <Route path="/selection/ai-screening/job/:jobId/calibrate" element={<AIScreeningCalibrationPage />} />
         <Route path="/selection/report" element={<ReportPage />} />
         <Route path="/selection/report/:jobId/:participantId" element={<CandidateDetailPage />} />
 
