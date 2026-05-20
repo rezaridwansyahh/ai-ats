@@ -13,8 +13,9 @@ import HollandTest from './candidate/HollandTest';
 import PAPITest from './candidate/PAPITest';
 import TestDone from './candidate/TestDone';
 import Complete from './candidate/Complete';
+import CandidateReportView from './report/CandidateReportView';
 
-// Screens: setup | overview | tk_intro | tk | epps_intro | epps | holland_intro | holland | papi_intro | papi | done_<n> | complete
+// Screens: setup | overview | tk_intro | tk | epps_intro | epps | holland_intro | holland | papi_intro | papi | done_<n> | complete | report
 const TESTS = ['tk', 'epps', 'holland', 'papi'];
 const ASSESSMENT_ID_BATTERY_B = 2;
 
@@ -23,6 +24,7 @@ export default function CandidateCard({
   prefilledProfile = null,
   onPortalSubmit = null,
   portalHash = null,
+  allowViewReport = true, // Toggle to show/hide "View Report" button after completion
 } = {}) {
   const isPortal = mode === 'portal';
   // Scope localStorage per portal session so multiple invitations in the same browser don't collide.
@@ -190,6 +192,7 @@ export default function CandidateCard({
   if (screen === 'setup') return <Setup initial={profile} onSubmit={handleSetupSubmit} />;
 
   if (screen === 'overview') {
+    const allDone = TESTS.every((t) => results[t]);
     return (
       <Overview
         profile={profile}
@@ -198,6 +201,7 @@ export default function CandidateCard({
         onPick={(t) => goTo(t + '_intro')}
         onReset={handleReset}
         onSeeComplete={() => goTo('complete')}
+        onViewReport={allDone && allowViewReport ? () => goTo('report') : null}
       />
     );
   }
@@ -264,6 +268,22 @@ export default function CandidateCard({
         submitStatus={submitStatus}
         submitError={submitError}
         onRetrySubmit={submitResults}
+        onViewReport={allowViewReport ? () => goTo('report') : null}
+      />
+    );
+  }
+
+  if (screen === 'report') {
+    const allDone = TESTS.every((t) => results[t]);
+    if (!allDone) {
+      goTo('complete');
+      return null;
+    }
+    return (
+      <CandidateReportView
+        profile={profile}
+        results={results}
+        onClose={() => goTo('complete')}
       />
     );
   }
