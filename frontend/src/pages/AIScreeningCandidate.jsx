@@ -1,19 +1,22 @@
 import { useEffect, useState } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import {
-  Loader2, AlertTriangle, ArrowLeft, ArrowRight, Check, Sparkles,
+  Loader2, AlertTriangle, ArrowLeft, ArrowRight, Check,
   Briefcase, MapPin, GraduationCap, FileText, Wand2, ShieldCheck,
   ThumbsUp, ThumbsDown, Pause, MessageSquare,
+  Plus, X, Target, TrendingUp, Code2, Info,
 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Slider } from '@/components/ui/slider';
 import { Textarea } from '@/components/ui/textarea';
 import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from '@/components/ui/table';
 
-import { getScreening, setScreeningDecision } from '@/api/screening.api';
+import { getScreening, setScreeningDecision, getRubric, runMatching } from '@/api/screening.api';
 
 /* ─── Engine config (mirrors the spec) ─── */
 const ENGINES = [
@@ -22,11 +25,30 @@ const ENGINES = [
   { key: 'qa',    label: 'Q&A',    sub: 'follow-up',   icon: MessageSquare, comingSoon: true },
 ];
 
-function scoreColor(score) {
-  if (score == null) return 'bg-gray-100 text-gray-500 border-gray-200';
-  if (score >= 80) return 'bg-emerald-100 text-emerald-700 border-emerald-200';
-  if (score >= 60) return 'bg-amber-100 text-amber-700 border-amber-200';
-  return 'bg-rose-100 text-rose-700 border-rose-200';
+/* ─── AI Matching rubric config ─── */
+const FIXED_KEYS = ['skills', 'experience', 'career_trajectory', 'education'];
+
+const FIXED_META = {
+  skills:            { label: 'Skills',            icon: Code2,        description: 'Match against the required + preferred skills' },
+  experience:        { label: 'Experience',        icon: Briefcase,    description: 'Years, role relevance, progression vs seniority' },
+  career_trajectory: { label: 'Career Trajectory', icon: TrendingUp,   description: 'Tenure pattern, stability, growth (validate via Q&A)' },
+  education:         { label: 'Education',         icon: GraduationCap,description: 'Degree relevance + school tier vs qualifications' },
+};
+
+const DEFAULT_RUBRIC = {
+  fixed_criteria: {
+    skills:            { weight: 45 },
+    experience:        { weight: 35 },
+    career_trajectory: { weight: 15 },
+    education:         { weight: 5  },
+  },
+  custom_criteria: [],
+};
+
+function totalWeight(rubric) {
+  const fixedSum = FIXED_KEYS.reduce((s, k) => s + (Number(rubric.fixed_criteria[k]?.weight) || 0), 0);
+  const customSum = (rubric.custom_criteria || []).reduce((s, c) => s + (Number(c.weight) || 0), 0);
+  return fixedSum + customSum;
 }
 
 function fmt(d) {
@@ -106,7 +128,7 @@ export default function AIScreeningCandidatePage() {
   const { candidate_name, applicant_id, applied_at,
           job_id, job_title, job_location, work_type, seniority_level,
           engine, decision, decision_reason: existingReason, decided_at, rubric_is_stale,
-          overall_score, facets } = data;
+          facets } = data;
 
   const currentEngineIdx = ENGINES.findIndex((e) => e.key === (engine === 'done' ? 'match' : engine));
   const initials = (candidate_name || '?').split(/\s+/).map((s) => s[0]).join('').slice(0, 2).toUpperCase();
@@ -146,12 +168,6 @@ export default function AIScreeningCandidatePage() {
               {seniority_level && <span>· {seniority_level}</span>}
               {applied_at && <span>· applied {fmt(applied_at)}</span>}
             </div>
-          </div>
-          <div className="flex items-center gap-2 flex-shrink-0">
-            <Badge className={`text-base font-bold ${scoreColor(overall_score)}`}>
-              <Sparkles className="h-3.5 w-3.5 mr-1" />
-              {overall_score ?? '—'}
-            </Badge>
           </div>
         </CardContent>
       </Card>
@@ -212,7 +228,7 @@ export default function AIScreeningCandidatePage() {
 
       {/* Engine panel */}
       {activeEngine === 'parse' && <ParsePanel facets={facets} />}
-      {activeEngine === 'match' && <MatchPanel data={data} />}
+      {activeEngine === 'match' && <MatchPanel data={data} onScored={load} />}
       {activeEngine === 'qa'    && <QAPanel />}
 
       {/* Decision bar */}
@@ -362,29 +378,77 @@ function FacetRow({ label, children }) {
   );
 }
 
-/* ─────────── Match panel ─────────── */
-function MatchPanel({ data }) {
+/* ─────────── Match panel (rubric config + fit breakdown) ─────────── */
+function MatchPanel({ data, onScored }) {
   const { score_id, overall_score, skills_score, experience_score, career_trajectory_score, education_score,
           matched_skills, missing_skills, score_summary, role_profile, scored_at,
-          required_skills, preferred_skills } = data;
+          job_id, required_skills, preferred_skills } = data;
 
-  if (!score_id) {
-    return (
-      <Card>
-        <CardHeader className="pb-3">
-          <CardTitle className="text-sm flex items-center gap-2">
-            <Wand2 className="h-4 w-4 text-primary" /> Match
-          </CardTitle>
-        </CardHeader>
-        <CardContent className="py-8 text-center text-xs text-muted-foreground italic">
-          Not scored yet. Run AI Matching from the position page (Match lane).
-        </CardContent>
-      </Card>
-    );
-  }
+  const [roleProfileSel, setRoleProfileSel] = useState(role_profile || 'experienced');
+  const [rubric, setRubric] = useState(DEFAULT_RUBRIC);
+  const [customDraftDesc, setCustomDraftDesc] = useState('');
+  const [customDraftWeight, setCustomDraftWeight] = useState(5);
+  const [running, setRunning] = useState(false);
+  const [runError, setRunError] = useState(null);
 
-  const matched = Array.isArray(matched_skills) ? matched_skills : [];
-  const missing = Array.isArray(missing_skills) ? missing_skills : [];
+  // Load this job's saved rubric.
+  useEffect(() => {
+    if (!job_id) return;
+    let cancelled = false;
+    (async () => {
+      try {
+        const r = await getRubric(job_id);
+        if (cancelled) return;
+        if (r.data?.rubric?.fixed_criteria) {
+          setRubric({
+            fixed_criteria: { ...DEFAULT_RUBRIC.fixed_criteria, ...r.data.rubric.fixed_criteria },
+            custom_criteria: Array.isArray(r.data.rubric.custom_criteria) ? r.data.rubric.custom_criteria : [],
+          });
+        }
+      } catch { /* keep default rubric */ }
+    })();
+    return () => { cancelled = true; };
+  }, [job_id]);
+
+  const total = totalWeight(rubric);
+  const totalIs100 = Math.round(total) === 100;
+
+  const setFixedWeight = (key, weight) =>
+    setRubric((rb) => ({ ...rb, fixed_criteria: { ...rb.fixed_criteria, [key]: { ...rb.fixed_criteria[key], weight } } }));
+
+  const addCustom = () => {
+    const desc = customDraftDesc.trim();
+    if (!desc) return;
+    const weight = Math.max(0, Math.min(100, Number(customDraftWeight) || 0));
+    setRubric((rb) => ({ ...rb, custom_criteria: [...(rb.custom_criteria || []), { description: desc, weight }] }));
+    setCustomDraftDesc('');
+    setCustomDraftWeight(5);
+  };
+
+  const removeCustom = (idx) =>
+    setRubric((rb) => ({ ...rb, custom_criteria: (rb.custom_criteria || []).filter((_, i) => i !== idx) }));
+
+  const setCustomWeight = (idx, weight) =>
+    setRubric((rb) => ({ ...rb, custom_criteria: (rb.custom_criteria || []).map((c, i) => (i === idx ? { ...c, weight } : c)) }));
+
+  const handleRun = async () => {
+    if (!job_id || !totalIs100 || running) return;
+    setRunning(true);
+    setRunError(null);
+    try {
+      await runMatching(job_id, { rubric, role_profile: roleProfileSel });
+      await onScored?.();
+    } catch (err) {
+      setRunError(err.response?.data?.message || err.message || 'AI matching failed');
+    } finally {
+      setRunning(false);
+    }
+  };
+
+  const matched   = Array.isArray(matched_skills) ? matched_skills : [];
+  const missing   = Array.isArray(missing_skills) ? missing_skills : [];
+  const reqSkills  = Array.isArray(required_skills) ? required_skills : [];
+  const prefSkills = Array.isArray(preferred_skills) ? preferred_skills : [];
 
   return (
     <Card>
@@ -392,65 +456,219 @@ function MatchPanel({ data }) {
         <CardTitle className="text-sm flex items-center gap-2">
           <Wand2 className="h-4 w-4 text-primary" /> Match — fit breakdown
         </CardTitle>
-        <span className="text-[10px] text-muted-foreground">
-          scored {fmt(scored_at)}{role_profile ? ` · ${role_profile}` : ''}
-        </span>
+        {score_id && (
+          <span className="text-[10px] text-muted-foreground">
+            scored {fmt(scored_at)}{role_profile ? ` · ${role_profile}` : ''}
+          </span>
+        )}
       </CardHeader>
       <CardContent className="space-y-4">
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
-          <ScoreTile label="Overall"     score={overall_score} bold />
-          <ScoreTile label="Skills"      score={skills_score} />
-          <ScoreTile label="Experience"  score={experience_score} />
-          <ScoreTile label="Trajectory"  score={career_trajectory_score} />
-          <ScoreTile label="Education"   score={education_score} />
-        </div>
-
-        {score_summary && (
-          <div className="text-[11px] text-muted-foreground italic px-3 py-2 rounded-md bg-muted/30 border">
-            {score_summary}
+        {/* Rubric */}
+        <div className="space-y-4">
+          {/* Role profile */}
+          <div>
+            <div className="text-[11px] font-medium text-muted-foreground uppercase mb-2">Role profile</div>
+            <div className="flex gap-3">
+              {[
+                { value: 'experienced', label: 'Experienced', desc: 'Years, role progression, prior responsibilities matter.' },
+                { value: 'fresh_graduate', label: 'Fresh Graduate', desc: 'Lack of senior titles will not penalize. Education weighed higher.' },
+              ].map((opt) => (
+                <button
+                  key={opt.value}
+                  type="button"
+                  onClick={() => setRoleProfileSel(opt.value)}
+                  className={`flex-1 text-left px-4 py-3 rounded-lg border transition-colors ${
+                    roleProfileSel === opt.value ? 'border-primary bg-primary/5' : 'border-border hover:bg-muted/30'
+                  }`}
+                >
+                  <div className="text-xs font-semibold">{opt.label}</div>
+                  <div className="text-[10px] text-muted-foreground mt-0.5">{opt.desc}</div>
+                </button>
+              ))}
+            </div>
           </div>
-        )}
 
-        {(matched.length > 0 || missing.length > 0) && (
-          <Table className="w-full">
-            <TableHeader className="bg-muted/40">
-              <TableRow>
-                <TableHead className="text-[10px] font-bold uppercase">Matched skills</TableHead>
-                <TableHead className="text-[10px] font-bold uppercase">Missing skills</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              <TableRow>
-                <TableCell className="align-top">
-                  <div className="flex flex-wrap gap-1">
-                    {matched.length === 0 ? <span className="text-[11px] text-muted-foreground italic">—</span> :
-                      matched.map((s) => <Badge key={s} variant="secondary" className="text-[10px] bg-emerald-50 text-emerald-700">{s}</Badge>)}
-                  </div>
-                </TableCell>
-                <TableCell className="align-top">
-                  <div className="flex flex-wrap gap-1">
-                    {missing.length === 0 ? <span className="text-[11px] text-muted-foreground italic">—</span> :
-                      missing.map((s) => <Badge key={s} variant="secondary" className="text-[10px] bg-rose-50 text-rose-700">{s}</Badge>)}
-                  </div>
-                </TableCell>
-              </TableRow>
-            </TableBody>
-          </Table>
-        )}
+          {/* Skills from job */}
+          <div className="pt-3 border-t space-y-2">
+            <div className="text-[11px] font-medium text-muted-foreground uppercase">Skills (from job)</div>
+            <div className="flex flex-wrap gap-1">
+              {reqSkills.length === 0 && prefSkills.length === 0 && (
+                <span className="text-[10px] text-muted-foreground">None set on this job.</span>
+              )}
+              {reqSkills.map((s) => (
+                <Badge key={`req-${s}`} className="text-[10px] bg-primary/10 text-primary border-primary/20">{s}</Badge>
+              ))}
+              {prefSkills.map((s) => (
+                <Badge key={`pref-${s}`} variant="secondary" className="text-[10px]">{s}</Badge>
+              ))}
+            </div>
+            <div className="flex items-start gap-1.5 text-[10px] text-muted-foreground">
+              <Info className="h-3 w-3 mt-0.5 shrink-0" />
+              <span>The Skills criterion scores against these lists. Running re-scores all candidates of this job.</span>
+            </div>
+          </div>
 
-        {(Array.isArray(required_skills) && required_skills.length > 0) && (
-          <div className="text-[10px] text-muted-foreground">
-            <span className="font-semibold uppercase tracking-wide">JD required: </span>
-            {required_skills.join(', ')}
-            {Array.isArray(preferred_skills) && preferred_skills.length > 0 && (
-              <>
-                <br />
-                <span className="font-semibold uppercase tracking-wide">JD preferred: </span>
-                {preferred_skills.join(', ')}
-              </>
+          {/* Criteria & weights */}
+          <div className="pt-3 border-t space-y-4">
+            <div className="flex items-center justify-between">
+              <div className="text-[11px] font-medium text-muted-foreground uppercase">Criteria & weights</div>
+              <div className="flex items-center gap-2">
+                <Badge className={`text-[10px] ${totalIs100 ? 'bg-emerald-100 text-emerald-700' : 'bg-rose-100 text-rose-700'}`}>
+                  Total {Math.round(total)}%
+                </Badge>
+                <span className="text-[10px] text-muted-foreground">must equal 100%</span>
+              </div>
+            </div>
+
+            {FIXED_KEYS.map((key) => {
+              const meta = FIXED_META[key];
+              const Icon = meta.icon;
+              const weight = Number(rubric.fixed_criteria[key]?.weight) || 0;
+              return (
+                <div key={key} className="space-y-1.5">
+                  <div className="flex items-center justify-between gap-3">
+                    <div className="flex items-center gap-2">
+                      <Icon className="h-3.5 w-3.5 text-primary" />
+                      <span className="text-xs font-semibold">{meta.label}</span>
+                      <span className="text-[10px] text-muted-foreground">{meta.description}</span>
+                    </div>
+                    <span className="text-xs font-mono font-semibold w-10 text-right">{weight}%</span>
+                  </div>
+                  <Slider value={[weight]} onValueChange={(v) => setFixedWeight(key, v[0])} min={0} max={100} step={5} />
+                </div>
+              );
+            })}
+
+            {/* Custom criteria */}
+            <div className="pt-3 border-t space-y-3">
+              <div className="text-[11px] font-medium text-muted-foreground uppercase">Custom criteria</div>
+              {(rubric.custom_criteria || []).length === 0 && (
+                <div className="text-[10px] text-muted-foreground italic">No custom criteria. Add one below.</div>
+              )}
+              {(rubric.custom_criteria || []).map((c, i) => (
+                <div key={i} className="space-y-1.5 p-3 rounded-lg border bg-muted/20">
+                  <div className="flex items-center justify-between gap-3">
+                    <div className="flex items-center gap-2 flex-1 min-w-0">
+                      <Target className="h-3.5 w-3.5 text-primary shrink-0" />
+                      <span className="text-xs truncate">{c.description}</span>
+                    </div>
+                    <span className="text-xs font-mono font-semibold w-10 text-right">{c.weight}%</span>
+                    <button onClick={() => removeCustom(i)} className="p-1 hover:bg-rose-50 rounded text-rose-600" type="button">
+                      <X className="h-3 w-3" />
+                    </button>
+                  </div>
+                  <Slider value={[c.weight]} onValueChange={(v) => setCustomWeight(i, v[0])} min={0} max={50} step={5} />
+                </div>
+              ))}
+
+              <div className="flex items-end gap-2">
+                <div className="flex-1">
+                  <label className="text-[10px] text-muted-foreground">Description</label>
+                  <Input
+                    value={customDraftDesc}
+                    onChange={(e) => setCustomDraftDesc(e.target.value)}
+                    placeholder="e.g. Fluent in Bahasa Indonesia"
+                    className="text-xs h-9"
+                    onKeyDown={(e) => { if (e.key === 'Enter' && customDraftDesc.trim()) { e.preventDefault(); addCustom(); } }}
+                  />
+                </div>
+                <div>
+                  <label className="text-[10px] text-muted-foreground">Weight</label>
+                  <Input
+                    type="number" min={0} max={100} value={customDraftWeight}
+                    onChange={(e) => setCustomDraftWeight(Number(e.target.value) || 0)}
+                    className="text-xs h-9 w-20"
+                  />
+                </div>
+                <Button size="sm" variant="outline" className="text-xs" onClick={addCustom} disabled={!customDraftDesc.trim()}>
+                  <Plus className="h-3 w-3 mr-1" /> Add
+                </Button>
+              </div>
+            </div>
+
+            {/* Run */}
+            <div className="flex items-center justify-end gap-2 pt-1">
+              {!totalIs100 && (
+                <span className="text-[11px] text-rose-600 flex items-center gap-1">
+                  <AlertTriangle className="h-3 w-3" /> Weights must total 100% (currently {Math.round(total)}%).
+                </span>
+              )}
+              <Button onClick={handleRun} disabled={!totalIs100 || running} className="text-xs">
+                {running ? <Loader2 className="h-3.5 w-3.5 mr-1.5 animate-spin" /> : <Wand2 className="h-3.5 w-3.5 mr-1.5" />}
+                Run AI Matching
+              </Button>
+            </div>
+            {runError && (
+              <div className="flex items-center gap-2 px-3 py-2 rounded-md border border-red-200 bg-red-50 text-xs text-red-600">
+                <AlertTriangle className="h-3.5 w-3.5 shrink-0" /> {runError}
+              </div>
             )}
           </div>
-        )}
+
+          {/* Fit breakdown OR not-scored hint */}
+          {!score_id ? (
+            <p className="border-t pt-4 text-center text-xs text-muted-foreground italic">
+              Not scored yet. Configure the rubric above and Run AI Matching.
+            </p>
+          ) : (
+            <div className="space-y-4 border-t pt-4">
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
+                <ScoreTile label="Overall"     score={overall_score} bold />
+                <ScoreTile label="Skills"      score={skills_score} />
+                <ScoreTile label="Experience"  score={experience_score} />
+                <ScoreTile label="Trajectory"  score={career_trajectory_score} />
+                <ScoreTile label="Education"   score={education_score} />
+              </div>
+
+              {score_summary && (
+                <div className="text-[11px] text-muted-foreground italic px-3 py-2 rounded-md bg-muted/30 border">
+                  {score_summary}
+                </div>
+              )}
+
+              {(matched.length > 0 || missing.length > 0) && (
+                <Table className="w-full">
+                  <TableHeader className="bg-muted/40">
+                    <TableRow>
+                      <TableHead className="text-[10px] font-bold uppercase">Matched skills</TableHead>
+                      <TableHead className="text-[10px] font-bold uppercase">Missing skills</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    <TableRow>
+                      <TableCell className="align-top">
+                        <div className="flex flex-wrap gap-1">
+                          {matched.length === 0 ? <span className="text-[11px] text-muted-foreground italic">—</span> :
+                            matched.map((s) => <Badge key={s} variant="secondary" className="text-[10px] bg-emerald-50 text-emerald-700">{s}</Badge>)}
+                        </div>
+                      </TableCell>
+                      <TableCell className="align-top">
+                        <div className="flex flex-wrap gap-1">
+                          {missing.length === 0 ? <span className="text-[11px] text-muted-foreground italic">—</span> :
+                            missing.map((s) => <Badge key={s} variant="secondary" className="text-[10px] bg-rose-50 text-rose-700">{s}</Badge>)}
+                        </div>
+                      </TableCell>
+                    </TableRow>
+                  </TableBody>
+                </Table>
+              )}
+
+              {reqSkills.length > 0 && (
+                <div className="text-[10px] text-muted-foreground">
+                  <span className="font-semibold uppercase tracking-wide">JD required: </span>
+                  {reqSkills.join(', ')}
+                  {prefSkills.length > 0 && (
+                    <>
+                      <br />
+                      <span className="font-semibold uppercase tracking-wide">JD preferred: </span>
+                      {prefSkills.join(', ')}
+                    </>
+                  )}
+                </div>
+              )}
+            </div>
+          )}
+        </div>
       </CardContent>
     </Card>
   );
