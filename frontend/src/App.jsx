@@ -1,4 +1,4 @@
-import { Routes, Route } from "react-router-dom"
+import { Routes, Route, Navigate } from "react-router-dom"
 import LoginPage from "./pages/Login"
 import RegisterPage from "./pages/Register"
 import DashboardPage from "./pages/Dashboard"
@@ -8,6 +8,8 @@ import IntegrationsPage    from "./pages/Integrations"
 import RoleManagementPage from "./pages/RoleManagement"
 import AccountPage from "./pages/Account"
 import JobManagementPage from "./pages/JobManagement"
+import JobEditPage from "./pages/JobEdit"
+import JobDetailPage from "./pages/JobDetail"
 import SourceManagementPage from "./pages/SourceManagement"
 import TalentPoolPage from "./pages/TalentPool"
 import SourceCandidatePage from "./pages/SourceCandidate"
@@ -37,9 +39,16 @@ function App() {
         <Route path="/candidate-pipeline" element={<CandidatePipelinePage />} />
 
         <Route path="/sourcing/job-management" element={<JobManagementPage />} />
+        <Route path="/sourcing/job-management/new" element={<JobEditPage />} />
+        <Route path="/sourcing/job-management/:id/edit" element={<JobEditPage />} />
+        <Route path="/sourcing/job-management/:id" element={<JobDetailPage />} />
         <Route path="/sourcing/source-management" element={<SourceManagementPage />} />
         <Route path="/sourcing/talent-pool" element={<TalentPoolPage />} />
         <Route path="/sourcing/source-candidate" element={<SourceCandidatePage />} />
+
+        {/* Backward-compat: old `AI Matching` menu name still navigates here */}
+        <Route path="/selection/ai-matching" element={<Navigate to="/selection/ai-screening" replace />} />
+        <Route path="/ai-matching" element={<Navigate to="/selection/ai-screening" replace />} />
 
         <Route path="/selection/ai-screening" element={<AIScreeningWorkboard />} />
         <Route path="/selection/ai-screening/job/:jobId" element={<AIScreeningPage />} />

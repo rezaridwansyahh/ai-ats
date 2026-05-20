@@ -37,6 +37,16 @@ function resolveBreadcrumbs(pathname) {
   if (/^\/selection\/ai-screening\/job\/\d+\/calibrate$/.test(pathname)) {
     return ['Selection', 'AI Screening', 'Calibrate']
   }
+  // Nested Job Management routes
+  if (pathname === '/sourcing/job-management/new') {
+    return ['Sourcing', 'Job Management', 'New Job']
+  }
+  if (/^\/sourcing\/job-management\/\d+\/edit$/.test(pathname)) {
+    return ['Sourcing', 'Job Management', 'Edit Job']
+  }
+  if (/^\/sourcing\/job-management\/\d+$/.test(pathname)) {
+    return ['Sourcing', 'Job Management', 'Detail']
+  }
   return ['Dashboard']
 }
 

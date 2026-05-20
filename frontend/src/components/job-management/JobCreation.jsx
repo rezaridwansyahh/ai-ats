@@ -148,7 +148,7 @@ function SkillsList({ skills, setSkills, accent, placeholder }) {
 }
 
 // ── Job Creation Step ───────────────────────────────────────────────
-export default function JobCreationStep({ jobs, loading, recruiters, onCreateJob, onEditJob, onDeleteJob, selectedJob, onSelectJob }) {
+export default function JobCreationStep({ jobs, loading, recruiters, onCreateJob, onEditJob, onDeleteJob, selectedJob, onSelectJob, onNewJob }) {
   const [form, setForm] = useState(INITIAL_FORM);
   const [editingId, setEditingId] = useState(null);
   const [submitting, setSubmitting] = useState(false);
@@ -834,7 +834,7 @@ export default function JobCreationStep({ jobs, loading, recruiters, onCreateJob
               </SelectContent>
             </Select>
           </div>
-          <Button size="sm" onClick={() => setShowForm(true)}>
+          <Button size="sm" onClick={() => (onNewJob ? onNewJob() : setShowForm(true))}>
             <Plus className="h-4 w-4 mr-1.5" /> New Job
           </Button>
         </div>
@@ -867,16 +867,19 @@ export default function JobCreationStep({ jobs, loading, recruiters, onCreateJob
               <TableBody>
                 {paginatedJobs.map(job => {
                   const role = getRoleClass(job);
-                  const selectable = job.status === 'Draft' || job.status === 'Reconfigure' || job.status === 'Active';
-                  const isSelected = selectedJob === job;
+                  // Every job is now click-through (Draft → edit, others → detail).
+                  // Selection-mode (when selectedJob prop is set) still works for the legacy
+                  // wizard flow that called this component as a step in the old page.
+                  const usingSelectionMode = onSelectJob && selectedJob !== undefined && selectedJob !== null;
+                  const isSelected = usingSelectionMode && selectedJob === job;
                   const since = formatSinceDate(job.sla_start_date || job.created_at);
                   const activeCount = job.candidate_count ?? 0;
 
                   const statusPill = getStatusPill(job.status);
 
                   const handleRowClick = () => {
-                    if (!selectable) return;
-                    onSelectJob(isSelected ? null : job);
+                    // Parent owns navigation now — passes the whole job.
+                    onSelectJob?.(job);
                   };
 
                   // Prevent row-level select from firing when clicking action icons.
@@ -889,9 +892,7 @@ export default function JobCreationStep({ jobs, loading, recruiters, onCreateJob
                       className={`transition-colors ${
                         isSelected
                           ? 'bg-primary/5 ring-1 ring-inset ring-primary/40'
-                          : selectable
-                            ? 'cursor-pointer hover:bg-muted/30'
-                            : 'opacity-60 cursor-not-allowed'
+                          : 'cursor-pointer hover:bg-muted/30'
                       }`}
                     >
                       <TableCell className="text-xs pl-6">
