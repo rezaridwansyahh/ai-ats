@@ -24,6 +24,8 @@ import AssessmentBPage from "./pages/AssessmentB"
 import CandidatePipelinePage from "./pages/CandidatePipeline"
 import AssessmentCPage from "./pages/AssessmentC"
 import AssessmentDPage from "./pages/AssessmentD"
+import InsightsDiscoveryAssessmentPage from "./pages/InsightsDiscoveryAssessment"
+import ThomasKilmannAssessmentPage from "./pages/ThomasKilmannAssessment"
 
 function App() {
   return (
@@ -55,6 +57,8 @@ function App() {
         <Route path="/asesmen/assessment-b" element={<AssessmentBPage />} />
         <Route path="/asesmen/assessment-c" element={<AssessmentCPage />} />
         <Route path="/asesmen/assessment-d" element={<AssessmentDPage />} />
+        <Route path="/asesmen/insights-discovery-assessment" element={<InsightsDiscoveryAssessmentPage />} />
+        <Route path="/asesmen/thomas-kilmann-assessment" element={<ThomasKilmannAssessmentPage />} />
 
         <Route path="/settings/user-management" element={<UserManagementPage />} />
         <Route path="/settings/role-management" element={<RoleManagementPage />} />

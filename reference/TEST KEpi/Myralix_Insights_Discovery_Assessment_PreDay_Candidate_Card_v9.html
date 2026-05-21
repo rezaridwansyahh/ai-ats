@@ -1,0 +1,604 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Myralix — Insights-Discovery Assessment · Kandidat Card v9</title>
+<style>
+:root{
+  --teal:#0A6E5C;--teal-dk:#064E3B;--teal-lt:#E0F0ED;--teal-xlt:#F0F8F6;
+  --amber:#F59E0B;--amber-lt:#FEF3C7;--amber-dk:#92400E;--cream:#FFF8F0;--white:#fff;
+  --border:#E5E7EB;--slate:#1E293B;--slate-md:#475569;--slate-lt:#94A3B8;
+  --sh-sm:0 1px 3px rgba(30,41,59,.08);--sh-md:0 4px 16px rgba(30,41,59,.1);
+  --r:12px;--rs:8px;
+  --pass:#059669;--pass-bg:#ECFDF5;--pass-br:#BBF7D0;
+  --warn:#D97706;--warn-bg:#FFFBEB;--warn-br:#FDE68A;
+  --fail:#DC2626;--fail-bg:#FEF2F2;--fail-br:#FCA5A5;
+  --RED:#DC2626;--RED-lt:#FEF2F2;--RED-dk:#991B1B;
+  --YEL:#F59E0B;--YEL-lt:#FEF3C7;--YEL-dk:#92400E;
+  --GRN:#059669;--GRN-lt:#ECFDF5;--GRN-dk:#065F46;
+  --BLU:#1D4ED8;--BLU-lt:#EFF6FF;--BLU-dk:#1E3A8A;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+html{scroll-behavior:smooth}
+body{background:var(--cream);color:var(--slate);font-family:'Trebuchet MS',Tahoma,Geneva,sans-serif;min-height:100vh;font-size:14px}
+h1,h2,h3{font-family:Georgia,serif}
+.navbar{background:var(--teal);padding:0 22px;position:sticky;top:0;z-index:200;box-shadow:0 2px 8px rgba(6,78,59,.3)}
+.nav-inner{max-width:860px;margin:0 auto;display:flex;align-items:center;justify-content:space-between;height:56px}
+.nav-logo{display:flex;align-items:center;gap:10px;cursor:pointer}
+.logo-txt{font-family:Georgia,serif;font-size:16px;font-weight:700;color:#fff;letter-spacing:.04em}
+.nav-badge{background:rgba(255,255,255,.18);color:#fff;padding:4px 12px;border-radius:20px;font-size:11px;font-weight:700}
+.nav-hist{background:none;border:1.5px solid rgba(255,255,255,.4);color:#fff;padding:5px 13px;border-radius:var(--rs);font-size:12px;font-weight:600;cursor:pointer;font-family:inherit}
+.wrap{max-width:860px;margin:0 auto;padding:24px 18px 80px}
+@keyframes fu{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}
+.anim{animation:fu .3s ease}
+.hero{background:linear-gradient(135deg,#1E1B4B,#4338CA 55%,#7C3AED);border-radius:var(--r);padding:32px;color:#fff;margin-bottom:16px;position:relative;overflow:hidden}
+.hero::before{content:'⬟';position:absolute;right:-10px;top:-20px;font-size:130px;opacity:.06;line-height:1}
+.hero h1{font-size:clamp(18px,3.5vw,26px);margin-bottom:8px;position:relative;z-index:1}
+.hero p{font-size:13px;opacity:.88;line-height:1.7;max-width:520px;margin-bottom:14px;position:relative;z-index:1}
+.hero-pills{display:flex;flex-wrap:wrap;gap:7px;position:relative;z-index:1}
+.hp{padding:5px 13px;border-radius:20px;font-size:11px;font-weight:700;background:rgba(255,255,255,.15);color:#fff;border:1px solid rgba(255,255,255,.22)}
+.info-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:16px}
+@media(max-width:500px){.info-grid{grid-template-columns:1fr}}
+.ic{background:var(--white);border:1px solid var(--border);border-radius:var(--rs);padding:14px 16px;box-shadow:var(--sh-sm)}
+.ic-i{font-size:18px;margin-bottom:5px}.ic-t{font-size:12px;font-weight:700;margin-bottom:2px}.ic-d{font-size:12px;color:var(--slate-md);line-height:1.55}
+.form-card{background:var(--white);border:1px solid var(--border);border-radius:var(--r);padding:24px;box-shadow:var(--sh-sm);margin-bottom:14px}
+.form-title{font-size:18px;margin-bottom:4px}
+.form-sub{font-size:13px;color:var(--slate-md);margin-bottom:18px}
+.back-btn{display:inline-flex;align-items:center;gap:6px;background:none;border:none;color:var(--slate-md);font-size:12px;font-weight:600;cursor:pointer;padding:0;margin-bottom:16px;font-family:inherit}
+.back-btn:hover{color:var(--teal)}
+.completion-hero{background:linear-gradient(135deg,#0F766E,var(--teal-dk));border-radius:var(--r);padding:48px 32px;color:#fff;margin-bottom:16px;text-align:center;box-shadow:var(--sh-md)}
+.completion-icon{width:72px;height:72px;border-radius:50%;background:rgba(255,255,255,.15);border:2px solid rgba(255,255,255,.3);display:flex;align-items:center;justify-content:center;margin:0 auto 18px;color:#A7F3D0}
+.completion-title{font-family:Georgia,serif;font-size:28px;font-weight:700;margin-bottom:8px}
+.completion-sub{font-size:14px;opacity:.85;line-height:1.6;max-width:380px;margin:0 auto}
+.completion-card{text-align:left}
+.completion-msg{padding:6px 4px 14px;border-bottom:1px solid var(--border);margin-bottom:16px}
+.hr-nav-card{background:linear-gradient(135deg,#FFFBEB,#FEF3C7);border:1.5px solid var(--amber);border-radius:var(--r);padding:20px 22px;margin-top:18px;box-shadow:var(--sh-sm)}
+.hr-nav-header{display:flex;align-items:center;gap:10px;margin-bottom:10px;flex-wrap:wrap}
+.hr-nav-badge{background:var(--amber);color:#fff;font-size:10px;font-weight:700;padding:3px 10px;border-radius:20px;letter-spacing:.06em;text-transform:uppercase}
+.hr-nav-title{font-family:Georgia,serif;font-size:16px;font-weight:700;color:var(--amber-dk)}
+.hr-nav-desc{font-size:13px;color:#78350F;line-height:1.65;margin-bottom:12px}
+.hr-nav-note{font-size:11px;color:#92400E;line-height:1.55;margin-top:10px;font-style:italic;opacity:.85}
+.btn-laporan{display:block;background:linear-gradient(135deg,#4338CA,#7C3AED);color:#fff;padding:13px 22px;border-radius:var(--rs);font-size:14px;font-weight:700;text-decoration:none;text-align:center;transition:.2s;box-shadow:0 4px 12px rgba(67,56,202,.25)}
+.btn-laporan:hover{transform:translateY(-1px);box-shadow:0 6px 16px rgba(67,56,202,.3)}
+.fg2{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:12px}
+@media(max-width:480px){.fg2{grid-template-columns:1fr}}
+.fg1{margin-bottom:12px}
+.flabel{display:block;font-size:11px;font-weight:700;letter-spacing:.07em;text-transform:uppercase;color:var(--slate-md);margin-bottom:4px}
+.finput,.fsel{width:100%;background:#FAFAFA;border:1.5px solid var(--border);border-radius:var(--rs);padding:10px 13px;color:var(--slate);font-size:14px;font-family:inherit;outline:none;transition:.2s;appearance:none}
+.finput:focus,.fsel:focus{border-color:var(--teal);background:#fff}
+.btn-main{background:var(--teal);color:#fff;padding:13px;border-radius:var(--rs);font-size:14px;font-weight:700;cursor:pointer;border:none;font-family:inherit;width:100%;margin-top:12px;transition:.2s}
+.btn-main:hover{background:var(--teal-dk)}
+.btn-sec{background:none;border:1.5px solid var(--border);color:var(--slate-md);padding:11px 18px;border-radius:var(--rs);font-size:13px;font-weight:600;cursor:pointer;font-family:inherit;transition:.2s;width:100%}
+.btn-amber{background:var(--amber);color:var(--slate);padding:13px;border-radius:var(--rs);font-size:14px;font-weight:700;cursor:pointer;border:none;font-family:inherit;width:100%;transition:.2s}
+.instr-box{background:var(--amber-lt);border:1px solid #FDE68A;border-radius:var(--rs);padding:13px 16px;margin-bottom:14px}
+.ib-t{font-size:13px;font-weight:700;color:var(--amber-dk);margin-bottom:5px}
+.ib-d{font-size:12px;color:#78350F;line-height:1.68}
+/* QUESTION */
+.q-topbar{background:var(--white);border-bottom:1px solid var(--border);padding:0 22px;position:sticky;top:56px;z-index:90;box-shadow:0 1px 3px rgba(0,0,0,.04)}
+.q-topbar-inner{max-width:860px;margin:0 auto;padding:9px 0;display:flex;align-items:center;gap:10px}
+.q-prog-track{flex:1;background:var(--border);border-radius:99px;height:5px;overflow:hidden}
+.q-prog-fill{height:5px;border-radius:99px;background:linear-gradient(90deg,#4338CA,#7C3AED);transition:width .3s}
+.q-ans-count{font-size:11px;font-weight:700;color:#4338CA}
+.q-card{background:var(--white);border:1px solid var(--border);border-radius:var(--r);padding:22px;box-shadow:var(--sh-sm);margin-bottom:14px;user-select:none;-webkit-user-select:none}
+.q-num{font-size:11px;font-weight:700;color:var(--slate-lt);margin-bottom:12px;letter-spacing:.06em;text-transform:uppercase}
+.q-choices{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+@media(max-width:520px){.q-choices{grid-template-columns:1fr}}
+.q-choice{padding:14px 16px;border-radius:var(--rs);border:1.5px solid var(--border);background:#FAFAFA;cursor:pointer;transition:.14s;font-size:13px;line-height:1.65;text-align:left}
+.q-choice:hover{border-color:#4338CA;background:#EEF2FF}
+.q-choice.sel{border-color:#4338CA;background:#EEF2FF;font-weight:600;box-shadow:0 0 0 2px rgba(67,56,202,.15)}
+.q-choice-let{font-size:10px;font-weight:800;text-transform:uppercase;color:#4338CA;letter-spacing:.06em;margin-bottom:5px}
+.q-footer{display:flex;align-items:center;gap:10px;margin-top:14px;padding-top:14px;border-top:1px solid var(--border)}
+.btn-prev{background:none;border:1.5px solid var(--border);color:var(--slate-md);padding:9px 16px;border-radius:var(--rs);font-size:12px;font-weight:600;cursor:pointer;font-family:inherit;transition:.2s}
+.btn-prev:hover:not(:disabled){border-color:var(--teal);color:var(--teal)}
+.btn-prev:disabled{opacity:.35;cursor:not-allowed}
+.btn-next{background:#4338CA;color:#fff;padding:9px 18px;border-radius:var(--rs);font-size:12px;font-weight:700;cursor:pointer;border:none;font-family:inherit;transition:.2s}
+.btn-next:hover:not(:disabled){background:#3730A3}
+.btn-next:disabled{opacity:.35;cursor:not-allowed}
+.tab-warn-bar{background:#FEF2F2;border:1px solid #FCA5A5;border-radius:var(--rs);padding:9px 14px;font-size:12px;color:#DC2626;margin-bottom:12px;display:none}
+.tab-warn-bar.show{display:block}
+/* HISTORY */
+.hist-empty{text-align:center;padding:50px 20px;color:var(--slate-lt);background:var(--white);border:1px solid var(--border);border-radius:var(--r)}
+.hi{background:var(--white);border:1px solid var(--border);border-radius:var(--rs);margin-bottom:8px;box-shadow:var(--sh-sm)}
+.hi-hd{display:flex;align-items:center;gap:11px;padding:12px 15px;cursor:pointer}
+.hi-icon{width:44px;height:44px;border-radius:9px;display:grid;place-items:center;font-size:18px;flex-shrink:0}
+.hi-info{flex:1}.hi-name{font-size:13px;font-weight:700}.hi-sub{font-size:11px;color:var(--slate-lt)}
+.hi-right{text-align:right;flex-shrink:0}
+.hi-score{font-family:Georgia,serif;font-size:18px;font-weight:700}
+.hi-date{font-size:11px;color:var(--slate-lt)}
+.hi-body{display:none;padding:0 15px 12px;border-top:1px solid var(--border)}.hi-body.open{display:block;padding-top:9px}
+.no-print{display:block;margin:14px 0}
+@media print{.navbar,.no-print{display:none!important}.wrap{padding:0}body{background:#fff}}
+
+</style>
+</head>
+<body>
+<nav class="navbar">
+  <div class="nav-inner">
+    <div class="nav-logo" onclick="go('welcome')">
+      <svg width="26" height="26" viewBox="-50 -10 220 220" xmlns="http://www.w3.org/2000/svg">
+        <defs>
+          <linearGradient id="lg1" x1="0%" y1="0%" x2="100%" y2="100%"><stop offset="0%" stop-color="#0A6E5C"/><stop offset="100%" stop-color="#14B8A6"/></linearGradient>
+          <linearGradient id="lg2" x1="100%" y1="0%" x2="0%" y2="100%"><stop offset="0%" stop-color="#F59E0B"/><stop offset="50%" stop-color="#14B8A6"/><stop offset="100%" stop-color="#0A6E5C"/></linearGradient>
+        </defs>
+        <path d="M30,10 C70,30 90,70 60,100 C30,130 70,170 90,190" stroke="url(#lg1)" stroke-width="6" fill="none" stroke-linecap="round"/>
+        <path d="M90,10 C50,30 30,70 60,100 C90,130 70,170 30,190" stroke="url(#lg2)" stroke-width="6" fill="none" stroke-linecap="round"/>
+        <circle cx="60" cy="100" r="8" fill="#fff" opacity=".9"/>
+      </svg>
+      <span class="logo-txt">MYRALIX</span>
+    </div>
+    <div class="nav-badge">Insights-Discovery Assessment · Pre-Day 1</div>
+    <button class="nav-hist" onclick="go('history')">📋 Riwayat</button>
+  </div>
+</nav>
+<div id="app" class="wrap anim"></div>
+<script>
+// ════════════════════════════════════════════════════════════════
+//  MYRALIX — TES PROFIL KEPRIBADIAN KERJA v1
+//  Berdasarkan teori tipe psikologis dengan 8 profil kepribadian kerja
+//  72 pasang pernyataan · ~25 menit · Skala E/I · T/F · S/N
+// ════════════════════════════════════════════════════════════════
+
+// ── 8 WORK PROFILES ──
+// Internal keys map to quadrant+variant. Candidate never sees these.
+const PROFILES = {
+  // MERAH variants (E+T dominant)
+  RED_S:{
+    id:'RED_S', icon:'🎯',
+    color:'#DC2626', colorLt:'#FEF2F2', colorDk:'#991B1B',
+    name:'Pengarah', tagline:'Berorientasi Hasil — Tegas — Terstruktur',
+    desc:'Anda adalah pemimpin yang mengambil keputusan dengan cepat dan percaya diri berdasarkan fakta. Anda menetapkan target yang jelas, mengeksekusi dengan disiplin, dan tidak mentolerir inefisiensi. Orang-orang di sekitar Anda tahu persis apa yang Anda harapkan.',
+    strengths:['Tegas dan berani dalam pengambilan keputusan','Sangat fokus pada target dan eksekusi','Efisien — tidak membuang waktu untuk hal yang tidak perlu','Mampu mengelola prioritas dalam kondisi tekanan tinggi','Konsisten dalam menegakkan standar dan ekspektasi'],
+    areas:['Terkadang dipersepsi kurang empati dalam situasi emosional','Kecenderungan untuk mengambil alih ketika tim bekerja terlalu lambat','Kurang nyaman dengan ambiguitas dan ketidakpastian'],
+    tendencies:['Memimpin dari depan dengan contoh nyata','Mengutamakan kecepatan dan hasil atas proses yang panjang','Memberikan instruksi yang spesifik dan terukur','Menghargai orang yang langsung to-the-point'],
+    positions:'Operations Manager, Project Manager, Sales Manager, Head of Production, atau posisi eksekutif yang menekankan eksekusi dan pencapaian target.'
+  },
+  RED_N:{
+    id:'RED_N', icon:'🚀',
+    color:'#DC2626', colorLt:'#FEF2F2', colorDk:'#991B1B',
+    name:'Penggerak', tagline:'Visioner — Kompetitif — Transformatif',
+    desc:'Anda adalah katalis perubahan. Anda melihat peluang sebelum orang lain, bergerak cepat, dan memotivasi orang dengan energi dan visi yang kuat. Anda tidak nyaman dengan status quo dan selalu mendorong batas.',
+    strengths:['Kemampuan luar biasa dalam membaca peluang strategis','Energi dan antusiasme yang menular kepada tim','Berani mengambil risiko yang terkalkulasi','Mampu menginspirasi orang untuk bergerak melampaui zona nyaman','Cepat beradaptasi dan pivot ketika situasi berubah'],
+    areas:['Terkadang memulai banyak inisiatif tanpa menyelesaikan semuanya','Kurang sabar dengan detail operasional','Bisa terlalu dominan dalam diskusi strategis'],
+    tendencies:['Menantang cara lama dan mencari terobosan','Berbicara dengan gambaran besar dan metafora yang menggugah','Mengambil kepemilikan atas proyek secara penuh','Mendorong tim untuk berpikir ambisius'],
+    positions:'Entrepreneur, Business Development Director, Chief Strategy Officer, Innovation Lead, atau posisi yang membutuhkan visi transformasional dan kepemimpinan perubahan.'
+  },
+  // KUNING variants (E+F dominant)
+  YEL_N:{
+    id:'YEL_N', icon:'✨',
+    color:'#D97706', colorLt:'#FEF3C7', colorDk:'#92400E',
+    name:'Pemotivasi', tagline:'Inspiratif — Kreatif — Antusias',
+    desc:'Anda adalah sumber energi positif bagi tim. Anda menginspirasi, memotivasi, dan menciptakan antusiasme di mana pun Anda berada. Ide-ide segar mengalir dengan mudah, dan Anda pandai menyampaikannya dengan cara yang membuat orang ingin terlibat.',
+    strengths:['Kemampuan komunikasi yang luar biasa dan persuasif','Sangat kreatif dalam menghasilkan ide-ide baru','Membangun semangat tim dan rasa kebersamaan','Pandai menjembatani berbagai pihak dengan berbeda kepentingan','Fleksibel dan adaptif terhadap perubahan'],
+    areas:['Terkadang terlalu optimis tanpa cukup analisis risiko','Kurang konsisten dalam follow-through detail','Bisa kehilangan fokus saat terlalu banyak proyek berjalan bersamaan'],
+    tendencies:['Mengawali percakapan dengan semangat dan cerita yang menarik','Merayakan kemajuan dan pencapaian tim secara terbuka','Mendorong brainstorming dan kreativitas kolektif','Mencari pendekatan baru yang lebih inovatif'],
+    positions:'Marketing Manager, Brand Strategist, Training & Development, Creative Director, PR & Communications, atau posisi yang menggabungkan kreativitas, komunikasi, dan kepemimpinan.'
+  },
+  YEL_S:{
+    id:'YEL_S', icon:'🌟',
+    color:'#D97706', colorLt:'#FEF3C7', colorDk:'#92400E',
+    name:'Penghubung', tagline:'Sosial — Persuasif — Berorientasi Manusia',
+    desc:'Anda adalah jembatan antar-manusia. Jaringan sosial Anda luas, kepercayaan mudah Anda bangun, dan Anda secara alami menghubungkan orang yang tepat dengan peluang yang tepat. Anda menjaga energi tim tetap positif dan kolaboratif.',
+    strengths:['Kemampuan networking yang luar biasa dan tulus','Pandai membaca kebutuhan orang dan merespons dengan tepat','Menciptakan lingkungan kerja yang inklusif dan menyenangkan','Persuasif tanpa manipulatif — orang ingin membantu Anda','Sangat efektif dalam peran yang butuh kolaborasi lintas fungsi'],
+    areas:['Terkadang memprioritaskan harmoni di atas keputusan yang sulit','Bisa terlalu bergantung pada hubungan personal dalam pekerjaan','Kurang nyaman dalam konfrontasi langsung'],
+    tendencies:['Selalu memperhatikan suasana dan dinamika interpersonal','Merayakan keberhasilan individu dan kolektif','Menengahi konflik dengan pendekatan yang hangat','Membangun loyalitas jangka panjang melalui kepercayaan'],
+    positions:'Account Manager, HR Business Partner, Customer Success, Sales Manager, atau posisi yang mengandalkan hubungan jangka panjang dan kepercayaan.'
+  },
+  // HIJAU variants (I+F dominant)
+  GRN_S:{
+    id:'GRN_S', icon:'🌿',
+    color:'#059669', colorLt:'#ECFDF5', colorDk:'#065F46',
+    name:'Pendukung', tagline:'Stabil — Dapat Diandalkan — Berorientasi Tim',
+    desc:'Anda adalah fondasi tim. Anda konsisten, dapat diandalkan, dan selalu hadir ketika orang membutuhkan. Anda memastikan semua orang merasa aman, dihargai, dan memiliki ruang untuk berkontribusi.',
+    strengths:['Sangat konsisten dan dapat dipercaya','Mendengarkan dengan tulus dan penuh perhatian','Menciptakan stabilitas dan rasa aman dalam tim','Teliti dalam menjalankan tanggung jawab','Setia dan berkomitmen jangka panjang'],
+    areas:['Terkadang sulit berkata tidak atau mendelegasikan','Kurang nyaman dengan perubahan mendadak yang besar','Bisa mengorbankan kebutuhan sendiri untuk kebutuhan tim'],
+    tendencies:['Memastikan semua orang sudah dilibatkan sebelum memutuskan','Menyelesaikan tugas dengan tertib dan konsisten','Menghindari konflik kecuali benar-benar diperlukan','Membangun kepercayaan melalui konsistensi tindakan'],
+    positions:'HR Manager, Operations Coordinator, Customer Service Lead, Project Coordinator, atau posisi yang mengandalkan keandalan, kesabaran, dan orientasi pada orang.'
+  },
+  GRN_N:{
+    id:'GRN_N', icon:'💚',
+    color:'#059669', colorLt:'#ECFDF5', colorDk:'#065F46',
+    name:'Pemikir Empatik', tagline:'Idealis — Reflektif — Berorientasi Nilai',
+    desc:'Anda memiliki kompas moral yang kuat dan kemampuan luar biasa untuk memahami perspektif orang lain secara mendalam. Anda membawa keaslian dan makna ke dalam pekerjaan, dan orang datang kepada Anda ketika mereka butuh didengar dan dipahami.',
+    strengths:['Kecerdasan emosional yang sangat tinggi','Kemampuan membangun kepercayaan mendalam dan otentik','Visi yang jelas tentang apa yang bermakna dan bernilai','Memotivasi melalui tujuan dan makna, bukan hanya insentif','Pandai dalam peran mediasi dan fasilitasi'],
+    areas:['Terkadang terlalu idealis dalam lingkungan yang sangat pragmatis','Bisa terlalu menyerap beban emosional orang lain','Kurang nyaman dengan lingkungan yang sangat kompetitif'],
+    tendencies:['Mempertanyakan "mengapa" di balik setiap keputusan besar','Mencari keselarasan antara nilai pribadi dan pekerjaan','Merespons dengan empati sebelum solusi','Mendorong budaya yang autentik dan berorientasi pada makna'],
+    positions:'Counselor, Learning & Development, Organizational Culture, CSR Manager, atau posisi yang menggabungkan empati, nilai, dan pengembangan manusia.'
+  },
+  // BIRU variants (I+T dominant)
+  BLU_S:{
+    id:'BLU_S', icon:'🔬',
+    color:'#1D4ED8', colorLt:'#EFF6FF', colorDk:'#1E3A8A',
+    name:'Analis', tagline:'Metodis — Presisi — Berbasis Bukti',
+    desc:'Anda adalah penjamin kualitas. Anda tidak puas dengan jawaban yang setengah-setengah — Anda menggali lebih dalam, memverifikasi setiap asumsi, dan memastikan setiap keputusan didukung oleh data yang solid. Ketelitian Anda adalah aset yang tidak ternilai.',
+    strengths:['Sangat teliti dan presisi dalam pekerjaan','Kemampuan analisis data yang kuat dan sistematis','Mengidentifikasi risiko dan potensi masalah sebelum terjadi','Konsisten dalam menjaga standar kualitas tinggi','Dapat diandalkan untuk pekerjaan yang butuh akurasi'],
+    areas:['Terkadang terlalu perfeksionis hingga memperlambat eksekusi','Kurang nyaman dalam presentasi publik atau spontanitas sosial','Bisa terlalu kritis terhadap pekerjaan orang lain'],
+    tendencies:['Memulai dengan data, bukan asumsi','Mendokumentasikan proses dan keputusan secara lengkap','Mengajukan pertanyaan kritis yang orang lain tidak berani tanyakan','Memastikan semua risiko sudah diperhitungkan'],
+    positions:'Data Analyst, Financial Controller, Quality Assurance, Risk Manager, Auditor, atau posisi yang mengandalkan ketelitian, analisis, dan akurasi.'
+  },
+  BLU_N:{
+    id:'BLU_N', icon:'♟️',
+    color:'#1D4ED8', colorLt:'#EFF6FF', colorDk:'#1E3A8A',
+    name:'Ahli Strategi', tagline:'Konseptual — Independen — Pemikir Jangka Panjang',
+    desc:'Anda adalah arsitek sistem dan strategi. Anda melihat pola yang orang lain lewatkan, berpikir beberapa langkah ke depan, dan menghasilkan kerangka konseptual yang mengubah cara organisasi memahami masalah kompleks.',
+    strengths:['Pemikiran strategis jangka panjang yang luar biasa','Kemampuan mensintesis informasi kompleks dari berbagai sumber','Mandiri dan dapat dipercaya untuk mengerjakan masalah sulit sendiri','Menghasilkan solusi orisinal untuk masalah yang belum pernah dipecahkan','Sangat efektif dalam perencanaan dan pengembangan kebijakan'],
+    areas:['Terkadang sulit menjelaskan ide kompleks kepada audiens yang beragam','Kurang nyaman dengan pekerjaan repetitif atau detail operasional','Bisa terlihat jarak secara sosial karena preferensi kerja mandiri'],
+    tendencies:['Membangun model mental sebelum berbicara atau bertindak','Menghindari pembicaraan basa-basi, lebih suka diskusi substansif','Terus mempertanyakan dan menyempurnakan cara berpikir','Mengerjakan masalah paling kompleks yang ada'],
+    positions:'Chief Strategy Officer, Policy Director, Research Lead, Management Consultant, atau posisi senior yang menggabungkan pemikiran konseptual dan perencanaan strategis.'
+  }
+};
+
+// ── 72 FORCED-CHOICE PAIRS ──
+// sa/sb: dimension scored for A/B choice
+// Dimensions: E, I, T, F, S, N
+const PAIRS = [
+  // ═══ E/I SCALE (24 pairs) ═══
+  {a:"Saya lebih suka mendiskusikan ide dengan orang lain sebelum mengambil keputusan.",b:"Saya lebih suka memikirkan ide sendiri secara mendalam sebelum mendiskusikannya.",sa:'E',sb:'I'},
+  {a:"Saya merasa bersemangat setelah bertemu banyak orang baru.",b:"Saya merasa perlu waktu sendiri untuk memulihkan energi setelah acara sosial yang padat.",sa:'E',sb:'I'},
+  {a:"Saya cenderung berbicara lebih dulu dan berpikir sambil bicara.",b:"Saya cenderung berpikir matang dan menyeluruh sebelum berbicara.",sa:'E',sb:'I'},
+  {a:"Saya lebih produktif di lingkungan kerja yang ramai dan penuh interaksi.",b:"Saya lebih produktif di lingkungan kerja yang tenang dan minim gangguan.",sa:'E',sb:'I'},
+  {a:"Saya lebih suka berkolaborasi dalam kelompok untuk menyelesaikan masalah besar.",b:"Saya lebih suka bekerja mandiri terlebih dahulu, lalu berbagi hasilnya dengan tim.",sa:'E',sb:'I'},
+  {a:"Saya mudah memulai percakapan dengan orang yang baru saya kenal.",b:"Saya lebih nyaman berbicara mendalam dengan orang yang sudah saya kenal baik.",sa:'E',sb:'I'},
+  {a:"Ketika menghadapi masalah besar, saya langsung mencari orang untuk diajak berdiskusi.",b:"Ketika menghadapi masalah besar, saya perlu memproses sendiri terlebih dahulu.",sa:'E',sb:'I'},
+  {a:"Saya merasa kurang bersemangat jika harus bekerja sendiri dalam waktu yang lama.",b:"Saya merasa terkuras energinya jika harus banyak berinteraksi sosial sepanjang hari.",sa:'E',sb:'I'},
+  {a:"Dalam rapat, saya biasanya aktif menyampaikan pendapat dan menggerakkan diskusi.",b:"Dalam rapat, saya lebih banyak mendengarkan dan berpikir mendalam sebelum berkomentar.",sa:'E',sb:'I'},
+  {a:"Saya lebih suka mendapat feedback langsung melalui diskusi tatap muka.",b:"Saya lebih suka mendapat feedback tertulis sehingga bisa memprosesnya lebih dalam.",sa:'E',sb:'I'},
+  {a:"Jaringan sosial yang luas adalah aset kerja yang sangat penting bagi saya.",b:"Hubungan kerja yang sedikit namun berkualitas dalam lebih berarti dari jaringan yang luas.",sa:'E',sb:'I'},
+  {a:"Saya merasa lebih kreatif dan energik setelah sesi brainstorming kelompok yang intens.",b:"Saya lebih kreatif ketika bekerja dalam kesunyian tanpa interupsi.",sa:'E',sb:'I'},
+  {a:"Saya cenderung berbagi kemajuan pekerjaan secara terbuka dan antusias dengan tim.",b:"Saya cenderung bekerja diam-diam dan menunjukkan hasilnya saat sudah matang.",sa:'E',sb:'I'},
+  {a:"Saya merasa nyaman menjadi pusat perhatian saat presentasi atau diskusi kelompok besar.",b:"Saya lebih nyaman berkontribusi signifikan dari belakang layar daripada tampil di depan.",sa:'E',sb:'I'},
+  {a:"Ketika ada konflik, saya cenderung langsung membicarakannya untuk segera diselesaikan.",b:"Ketika ada konflik, saya butuh waktu untuk menenangkan diri sebelum bisa membicarakannya.",sa:'E',sb:'I'},
+  {a:"Lingkungan kerja saya cenderung ramai dengan percakapan dan interaksi spontan.",b:"Lingkungan kerja saya cenderung tenang dengan gangguan yang sangat minimal.",sa:'E',sb:'I'},
+  {a:"Saya mudah beradaptasi dan nyaman dengan pertemuan mendadak dan improvisasi.",b:"Saya lebih nyaman dengan jadwal dan agenda yang sudah direncanakan sebelumnya.",sa:'E',sb:'I'},
+  {a:"Saya mendapat energi dari memimpin diskusi dan mengarahkan percakapan.",b:"Saya mendapat energi dari observasi mendalam dan analisis yang terfokus.",sa:'E',sb:'I'},
+  {a:"Saya lebih suka mengekspresikan pikiran secara verbal dalam diskusi langsung.",b:"Saya lebih suka mengekspresikan pikiran melalui tulisan yang terstruktur.",sa:'E',sb:'I'},
+  {a:"Saya senang mengenal banyak aspek dari berbagai topik secara luas.",b:"Saya lebih senang mendalami satu topik secara sangat spesifik dan mendalam.",sa:'E',sb:'I'},
+  {a:"Ketika belajar hal baru, saya lebih suka kelas, diskusi, atau workshop kelompok.",b:"Ketika belajar hal baru, saya lebih suka belajar mandiri atau membaca secara mendalam.",sa:'E',sb:'I'},
+  {a:"Saya biasanya yang aktif memperkenalkan diri dan memulai interaksi dalam pertemuan baru.",b:"Saya biasanya menunggu dan mengobservasi sebelum memperkenalkan diri.",sa:'E',sb:'I'},
+  {a:"Saya merasa nyaman di ruang terbuka yang memungkinkan interaksi spontan.",b:"Saya merasa nyaman di ruang privat yang memungkinkan konsentrasi penuh.",sa:'E',sb:'I'},
+  {a:"Saya mendapat inspirasi terbesar dari bertukar pikiran dengan banyak orang berbeda.",b:"Saya mendapat inspirasi terbesar dari waktu merenung, membaca, dan refleksi diri.",sa:'E',sb:'I'},
+  // ═══ T/F SCALE (24 pairs) ═══
+  {a:"Ketika mengambil keputusan, saya mengutamakan logika, data, dan konsekuensi objektif.",b:"Ketika mengambil keputusan, saya mempertimbangkan dampaknya terhadap orang yang terlibat.",sa:'T',sb:'F'},
+  {a:"Saya lebih nyaman memberikan kritik yang jujur dan langsung daripada bersikap terlalu lembut.",b:"Saya selalu mempertimbangkan perasaan orang sebelum menyampaikan kritik.",sa:'T',sb:'F'},
+  {a:"Keadilan bagi saya berarti menerapkan aturan yang sama pada semua orang tanpa pengecualian.",b:"Keadilan bagi saya berarti mempertimbangkan situasi dan kebutuhan unik setiap individu.",sa:'T',sb:'F'},
+  {a:"Dalam argumen, saya lebih fokus pada siapa yang benar secara logis.",b:"Dalam argumen, saya lebih fokus pada menjaga hubungan dan memastikan semua pihak merasa didengar.",sa:'T',sb:'F'},
+  {a:"Saya lebih menghargai rekan kerja yang kompeten dan efisien.",b:"Saya lebih menghargai rekan kerja yang hangat dan mampu membangun atmosfer tim yang positif.",sa:'T',sb:'F'},
+  {a:"Saya biasanya bisa memisahkan emosi pribadi dari pertimbangan profesional dengan baik.",b:"Saya percaya bahwa empati dan intuisi emosional adalah bagian penting dari keputusan yang baik.",sa:'T',sb:'F'},
+  {a:"Ketika memberi feedback, saya langsung pada poin utama masalah.",b:"Ketika memberi feedback, saya pastikan orang merasa dihargai dan didukung sebelum ke poin masalah.",sa:'T',sb:'F'},
+  {a:"Saya lebih termotivasi oleh tantangan intelektual dan pencapaian yang terukur.",b:"Saya lebih termotivasi oleh dampak positif yang saya berikan kepada orang-orang di sekitar saya.",sa:'T',sb:'F'},
+  {a:"Saya merasa nyaman membuat keputusan yang tidak populer jika memang paling logis.",b:"Saya berusaha menemukan solusi yang bisa diterima semua pihak.",sa:'T',sb:'F'},
+  {a:"Tujuan dan hasil akhir adalah hal utama yang perlu dijaga.",b:"Cara kita mencapai tujuan — termasuk menjaga hubungan — sama pentingnya dengan hasilnya.",sa:'T',sb:'F'},
+  {a:"Saya cenderung skeptis terhadap argumen yang terlalu emosional dan lebih percaya bukti konkret.",b:"Saya percaya bahwa nilai-nilai dan keyakinan seseorang adalah dasar yang sama sahnya dengan data.",sa:'T',sb:'F'},
+  {a:"Dalam negosiasi, saya fokus pada fakta, angka, dan kekuatan argumen logis.",b:"Dalam negosiasi, saya fokus pada memahami motivasi dan kepentingan di balik posisi masing-masing.",sa:'T',sb:'F'},
+  {a:"Saya lebih suka struktur organisasi yang jelas dengan hierarki dan tanggung jawab terdefinisi.",b:"Saya lebih suka budaya kerja yang mengutamakan rasa memiliki, kepercayaan, dan nilai bersama.",sa:'T',sb:'F'},
+  {a:"Saya biasanya menganalisis pro dan kontra secara sistematis sebelum memutuskan.",b:"Saya memperhatikan bagaimana suatu keputusan terasa secara intuitif dan apakah sesuai nilai saya.",sa:'T',sb:'F'},
+  {a:"Saya lebih memilih pemimpin yang tegas dan objektif.",b:"Saya lebih memilih pemimpin yang peduli dan inspiratif.",sa:'T',sb:'F'},
+  {a:"Ketika tim mengalami masalah, saya langsung fokus pada identifikasi penyebab dan solusi.",b:"Ketika tim mengalami masalah, saya pertama-tama memastikan setiap orang merasa aman dan didengar.",sa:'T',sb:'F'},
+  {a:"Saya lebih nyaman dengan evaluasi berbasis angka dan metrik yang terukur.",b:"Saya lebih nyaman dengan evaluasi yang mempertimbangkan faktor kualitatif dan konteks personal.",sa:'T',sb:'F'},
+  {a:"Ketidaksepakatan bagi saya adalah kesempatan untuk menemukan kebenaran yang lebih akurat.",b:"Ketidaksepakatan bagi saya adalah sinyal untuk memperkuat kepercayaan dan pemahaman bersama.",sa:'T',sb:'F'},
+  {a:"Saya lebih memilih penjelasan yang singkat, langsung, dan to-the-point.",b:"Saya lebih memilih penjelasan yang kontekstual, personal, dan mempertimbangkan cerita di baliknya.",sa:'T',sb:'F'},
+  {a:"Saya percaya bahwa aturan yang konsisten menciptakan sistem yang adil dan dapat diprediksi.",b:"Saya percaya bahwa fleksibilitas dan pertimbangan situasional menciptakan lingkungan yang lebih baik.",sa:'T',sb:'F'},
+  {a:"Saya merasa puas ketika masalah terpecahkan secara efisien dan optimal.",b:"Saya merasa puas ketika semua pihak yang terlibat merasa dihargai sepanjang prosesnya.",sa:'T',sb:'F'},
+  {a:"Dalam presentasi, saya mengutamakan keakuratan data dan kekuatan argumen.",b:"Dalam presentasi, saya mengutamakan keterhubungan emosional dan dampak pada audiens.",sa:'T',sb:'F'},
+  {a:"Saya lebih suka dikenal sebagai orang yang selalu jujur dan objektif.",b:"Saya lebih suka dikenal sebagai orang yang selalu memperhatikan dan mendukung orang lain.",sa:'T',sb:'F'},
+  {a:"Saya merasa tidak nyaman ketika keputusan dibuat berdasarkan sentimen daripada analisis.",b:"Saya merasa tidak nyaman ketika keputusan mengabaikan dimensi manusiawi demi efisiensi semata.",sa:'T',sb:'F'},
+  // ═══ S/N SCALE (24 pairs) ═══
+  {a:"Saya lebih fokus pada detail konkret dan fakta yang bisa diverifikasi.",b:"Saya lebih fokus pada pola besar dan makna di balik data.",sa:'S',sb:'N'},
+  {a:"Saya lebih percaya pada pengalaman yang terbukti daripada teori yang belum teruji.",b:"Saya lebih tertarik pada pendekatan inovatif dan kemungkinan baru yang belum pernah dicoba.",sa:'S',sb:'N'},
+  {a:"Saya lebih nyaman dengan instruksi yang jelas, langkah demi langkah, dan terstruktur.",b:"Saya lebih nyaman dengan kebebasan untuk menemukan cara terbaik sendiri menuju tujuan.",sa:'S',sb:'N'},
+  {a:"Ketika merencanakan, saya fokus pada apa yang perlu dilakukan sekarang dan waktu dekat.",b:"Ketika merencanakan, saya lebih fokus pada visi jangka panjang dan gambaran besarnya.",sa:'S',sb:'N'},
+  {a:"Saya cenderung praktis dan realistis — percaya pada apa yang bisa dilihat dan dibuktikan.",b:"Saya cenderung imajinatif dan visioner — tertarik pada kemungkinan yang belum terwujud.",sa:'S',sb:'N'},
+  {a:"Saya lebih suka pekerjaan yang jelas, terdefinisi, dan memiliki hasil yang terukur.",b:"Saya lebih suka pekerjaan yang membutuhkan kreativitas dan pemikiran di luar kebiasaan.",sa:'S',sb:'N'},
+  {a:"Dalam memecahkan masalah, saya lebih suka solusi yang sudah terbukti berhasil.",b:"Dalam memecahkan masalah, saya senang mencari pendekatan baru yang lebih inovatif.",sa:'S',sb:'N'},
+  {a:"Saya sangat memperhatikan detail dan biasanya menyadari ketika ada yang tidak sesuai.",b:"Saya lebih tertarik pada gambaran besar dan terkadang melewatkan detail karena fokus pada konsep.",sa:'S',sb:'N'},
+  {a:"Saya lebih nyaman mendiskusikan hal-hal yang konkret dan nyata.",b:"Saya lebih menikmati diskusi tentang ide-ide abstrak, teori, dan kemungkinan.",sa:'S',sb:'N'},
+  {a:"Pengalaman masa lalu adalah panduan terbaik untuk mengambil keputusan di masa kini.",b:"Setiap situasi adalah unik dan membutuhkan perspektif segar, bukan hanya pola lama.",sa:'S',sb:'N'},
+  {a:"Saya percaya pada intuisi yang dibangun dari pengalaman dan bukti yang terkumpul.",b:"Saya sering mendapat wawasan dari koneksi tak terduga antara ide-ide yang tampaknya tidak terkait.",sa:'S',sb:'N'},
+  {a:"Saya cenderung membaca petunjuk dan mengikuti prosedur dengan teliti.",b:"Saya cenderung langsung mencoba dan belajar dari prosesnya.",sa:'S',sb:'N'},
+  {a:"Saya lebih suka pekerjaan yang bisa diselesaikan dengan tuntas dan hasilnya terlihat jelas.",b:"Saya lebih suka pekerjaan yang terus berkembang dan membuka peluang eksplorasi baru.",sa:'S',sb:'N'},
+  {a:"Ketika belajar, saya memulai dari dasar dan membangun pemahaman secara bertahap.",b:"Ketika belajar, saya langsung ke gambaran besarnya dan kemudian mengisi detailnya.",sa:'S',sb:'N'},
+  {a:"Saya lebih menyukai lingkungan kerja yang stabil dan dapat diprediksi.",b:"Saya lebih menyukai lingkungan kerja yang dinamis dan terus berubah.",sa:'S',sb:'N'},
+  {a:"Dalam komunikasi, saya menghargai kepresisian dan akurasi lebih dari kreativitas bahasa.",b:"Dalam komunikasi, saya menggunakan metafora dan analogi untuk menyampaikan konsep dengan hidup.",sa:'S',sb:'N'},
+  {a:"Saya lebih baik dalam mengimplementasikan rencana yang sudah ada dengan konsisten.",b:"Saya lebih baik dalam menghasilkan ide-ide baru dan memetakan kemungkinan yang belum ada.",sa:'S',sb:'N'},
+  {a:"Saya lebih tertarik pada aplikasi praktis dari sebuah ide.",b:"Saya lebih tertarik memahami teori dan prinsip di balik sesuatu.",sa:'S',sb:'N'},
+  {a:"Saya lebih suka kerja keras yang konsisten daripada mengandalkan inspirasi mendadak.",b:"Saya sering mendapat ide terbaik secara mendadak setelah periode inkubasi yang tidak terstruktur.",sa:'S',sb:'N'},
+  {a:"Keberhasilan saya dibangun di atas perhatian terhadap detail dan eksekusi yang presisi.",b:"Keberhasilan saya sering datang dari kemampuan melihat peluang yang orang lain belum lihat.",sa:'S',sb:'N'},
+  {a:"Saya lebih nyaman dengan definisi yang jelas dan batasan yang terdefinisi dengan baik.",b:"Saya lebih nyaman dengan ambiguitas dan masalah yang tidak memiliki satu jawaban benar.",sa:'S',sb:'N'},
+  {a:"Saya lebih percaya pada metode yang sudah teruji dan terstandarisasi.",b:"Saya sering mempertanyakan cara lama dan aktif mencari pendekatan yang lebih baik.",sa:'S',sb:'N'},
+  {a:"Presentasi saya cenderung penuh data konkret, contoh spesifik, dan bukti terverifikasi.",b:"Presentasi saya cenderung berfokus pada visi, konsep besar, dan implikasi jangka panjang.",sa:'S',sb:'N'},
+  {a:"Saya mengutamakan kualitas eksekusi yang konsisten daripada inovasi yang sporadis.",b:"Saya mengutamakan eksplorasi ide baru dan potensi terobosan daripada konsistensi rutinitas.",sa:'S',sb:'N'}
+];
+
+// ── SCORING ──
+function computeProfile(answers){
+  let E=0,I=0,T=0,F=0,S=0,N=0;
+  answers.forEach((ans,i)=>{
+    if(ans===null)return;
+    const p=PAIRS[i];
+    const dim=ans==='A'?p.sa:p.sb;
+    if(dim==='E')E++;else if(dim==='I')I++;
+    else if(dim==='T')T++;else if(dim==='F')F++;
+    else if(dim==='S')S++;else if(dim==='N')N++;
+  });
+  // Normalize to percent (max 24 per scale)
+  const Epct=Math.round(E/24*100), Ipct=100-Epct;
+  const Tpct=Math.round(T/24*100), Fpct=100-Tpct;
+  const Spct=Math.round(S/24*100), Npct=100-Spct;
+  // 4 quadrant color scores (0-100)
+  const RED  =Math.round((Epct+Tpct)/2);
+  const YEL  =Math.round((Epct+Fpct)/2);
+  const GRN  =Math.round((Ipct+Fpct)/2);
+  const BLU  =Math.round((Ipct+Tpct)/2);
+  // Dominant quadrant
+  const quad={RED,YEL,GRN,BLU};
+  const dominantColor=Object.entries(quad).sort((a,b)=>b[1]-a[1])[0][0];
+  // S/N secondary
+  const variant=Spct>=50?'S':'N';
+  const profileId=dominantColor+'_'+variant;
+  const profile=PROFILES[profileId];
+  // Composite 1-10 = clarity of dominant profile (how concentrated the score is)
+  const dominantScore=quad[dominantColor];
+  const composite=Math.max(1,Math.min(10,Math.round((dominantScore-40)/(65-40)*9+1)));
+  const verdictV=composite>=7?'pass':composite>=5?'warn':'fail';
+  return{E,I,T,F,S,N,Epct,Ipct,Tpct,Fpct,Spct,Npct,
+         RED,YEL,GRN,BLU,dominantColor,variant,profileId,profile,
+         composite,verdictV};
+}
+
+function pctToScore10(pct){return Math.max(1,Math.min(10,Math.round(pct/10)));}
+function getVerdict(s10){
+  if(s10>=7)return{v:'pass',label:'PROFIL JELAS',emoji:'✅'};
+  if(s10>=5)return{v:'warn',label:'PROFIL CAMPURAN',emoji:'⚡'};
+  return{v:'fail',label:'PROFIL BERAGAM',emoji:'🔄'};
+}
+
+// ── ANTI-AI SECURITY ──
+let _tabSw=0;
+function antiAiInit(){
+  document.addEventListener('visibilitychange',()=>{
+    if(document.hidden&&S.phase==='test'){
+      _tabSw++;
+      const w=document.getElementById('tabWarn');
+      if(w){w.classList.add('show');const c=document.getElementById('tabCount');if(c)c.textContent=_tabSw;}
+    }
+  });
+  document.addEventListener('contextmenu',e=>e.preventDefault());
+  ['keydown'].forEach(ev=>document.addEventListener(ev,e=>{
+    if((e.ctrlKey||e.metaKey)&&['c','a','u','s','p','f'].includes(e.key.toLowerCase()))e.preventDefault();
+  }));
+  document.querySelectorAll('svg').forEach(el=>el.style.pointerEvents='none');
+}
+
+// ── STATE ──
+const TOTAL_Q=72;
+let S={phase:'welcome',cand:{},curQ:0,answers:new Array(TOTAL_Q).fill(null),result:null};
+const SKEY='myx-jungian-v1';            // history list (preserved from v8)
+const HKEY='myx-id-preday-v9';          // handoff to laporan (latest {cand, result})
+const LAPORAN_URL='Myralix_Insights_Discovery_Assessment_PreDay_Laporan_Psikologis_v9.html';
+function loadHist(){try{return JSON.parse(localStorage.getItem(SKEY)||'[]')}catch{return[]}}
+function saveHist(r){const a=loadHist();a.unshift(r);localStorage.setItem(SKEY,JSON.stringify(a.slice(0,100)))}
+function saveHandoff(){try{localStorage.setItem(HKEY,JSON.stringify({cand:S.cand,result:S.result,savedAt:Date.now()}));}catch(e){}}
+
+function go(phase){
+  S.phase=phase;
+  const app=document.getElementById('app');
+  app.className='wrap anim';
+  if(phase==='welcome') app.innerHTML=renderWelcome();
+  else if(phase==='form') app.innerHTML=renderForm();
+  else if(phase==='test') app.innerHTML=renderTest();
+  else if(phase==='result') app.innerHTML=renderResult();
+  else if(phase==='history') app.innerHTML=renderHistory();
+}
+
+// ── WELCOME ──
+function renderWelcome(){
+  return`
+  <div class="hero">
+    <h1>Insights-Discovery Assessment</h1>
+    <p>Tes ini mengidentifikasi profil kepribadian kerja Anda melalui 8 dimensi yang mencerminkan orientasi energi, cara pengambilan keputusan, dan pendekatan terhadap informasi. Tidak ada profil yang lebih baik — setiap profil memiliki kekuatan uniknya.</p>
+    <div class="hero-pills">
+      <span class="hp">📝 72 Pasang Pernyataan</span>
+      <span class="hp">⏱ ±25 Menit</span>
+      <span class="hp">🧩 8 Profil Kerja</span>
+      <span class="hp">📊 Skor 1–10</span>
+    </div>
+  </div>
+  <div class="info-grid">
+    <div class="ic"><div class="ic-i">⚖️</div><div class="ic-t">Format Pilihan Paksa</div><div class="ic-d">Setiap soal menyajikan dua pernyataan — pilih satu yang LEBIH mencerminkan cara Anda bekerja dan berpikir sehari-hari. Tidak ada jawaban benar atau salah.</div></div>
+    <div class="ic"><div class="ic-i">🧩</div><div class="ic-t">3 Dimensi Kepribadian</div><div class="ic-d">Tes ini mengukur orientasi energi, cara pengambilan keputusan, dan pendekatan terhadap informasi — menghasilkan 1 dari 8 profil kepribadian kerja.</div></div>
+    <div class="ic"><div class="ic-i">📊</div><div class="ic-t">Profil Lengkap</div><div class="ic-d">Hasil mencakup profil dominan, kekuatan dan area pengembangan, serta panduan interpretasi untuk rekruter.</div></div>
+    <div class="ic"><div class="ic-i">🚫</div><div class="ic-t">Jawab Jujur</div><div class="ic-d">Pilih berdasarkan cara Anda BENAR-BENAR bekerja — bukan yang terlihat paling ideal. Hasilnya lebih akurat jika Anda jujur tentang preferensi nyata.</div></div>
+  </div>
+  <div class="instr-box">
+    <div class="ib-t">📌 Petunjuk Penting</div>
+    <div class="ib-d">• Tidak ada batas waktu formal — kerjakan dengan santai namun fokus<br>• Pilih berdasarkan PREFERENSI alami, bukan yang terlihat paling profesional<br>• Perpindahan tab saat tes berlangsung akan dicatat<br>• Jawaban pertama Anda biasanya yang paling akurat — jangan terlalu lama berpikir</div>
+  </div>
+  <button class="btn-main" onclick="go('form')">Mulai Tes →</button>`;
+}
+
+// ── FORM ──
+function renderForm(){
+  return`
+  <button class="back-btn" onclick="go('welcome')">← Kembali</button>
+  <div class="form-card">
+    <h2 class="form-title">Data Peserta</h2>
+    <p class="form-sub">Informasi ini digunakan untuk laporan hasil Anda.</p>
+    <div class="fg2">
+      <div><label class="flabel">Nama Lengkap *</label>
+        <input class="finput" id="fn" placeholder="Nama Anda"></div>
+      <div><label class="flabel">Jabatan</label>
+        <input class="finput" id="fj" placeholder="Posisi Anda"></div>
+    </div>
+    <div class="fg2">
+      <div><label class="flabel">Tanggal Lahir *</label>
+        <input class="finput" type="date" id="fl"></div>
+      <div><label class="flabel">Pendidikan Terakhir</label>
+        <select class="fsel" id="fp">
+          <option value="">Pilih</option>
+          <option>SMA/SMK</option><option>D3</option><option>S1</option><option>S2</option><option>S3</option>
+        </select></div>
+    </div>
+    <div class="fg1"><label class="flabel">Tanggal Tes</label>
+      <input class="finput" type="date" id="ft" value="${new Date().toISOString().split('T')[0]}"></div>
+    <button class="btn-main" onclick="startTest()">Mulai Tes →</button>
+  </div>`;
+}
+
+function startTest(){
+  const nm=document.getElementById('fn')?.value?.trim()||'';
+  const lb=document.getElementById('fl')?.value||'';
+  if(!nm||!lb){alert('Nama dan tanggal lahir wajib diisi.');return;}
+  S.cand={name:nm,tglLahir:lb,jabatan:document.getElementById('fj')?.value?.trim()||'',
+    pendidikan:document.getElementById('fp')?.value||'',tglTes:document.getElementById('ft')?.value||''};
+  S.answers=new Array(TOTAL_Q).fill(null);
+  S.curQ=0;_tabSw=0;
+  antiAiInit();
+  go('test');
+}
+
+// ── TEST ──
+function renderTest(){
+  const q=PAIRS[S.curQ];
+  const ans=S.answers[S.curQ];
+  const answered=S.answers.filter(a=>a!==null).length;
+  const pct=Math.round((S.curQ+1)/TOTAL_Q*100);
+  const section=S.curQ<24?'Bagian 1 / 3':S.curQ<48?'Bagian 2 / 3':'Bagian 3 / 3';
+  return`
+  <div class="q-topbar"><div class="q-topbar-inner">
+    <div class="q-prog-track"><div class="q-prog-fill" style="width:${pct}%"></div></div>
+    <span class="q-ans-count">${answered}/${TOTAL_Q} terjawab</span>
+    <span style="font-size:10px;color:var(--slate-lt)">${section}</span>
+  </div></div>
+  <div id="tabWarn" class="tab-warn-bar">⚠️ Perpindahan tab terdeteksi (<span id="tabCount">${_tabSw}</span>×) — dicatat dalam laporan.</div>
+  <div class="q-card">
+    <div class="q-num">Soal ${S.curQ+1} dari ${TOTAL_Q} &nbsp;·&nbsp; ${section}</div>
+    <div class="q-choices">
+      <div class="q-choice${ans==='A'?' sel':''}" onclick="selectAns('A')">
+        <div class="q-choice-let">Pilihan A</div>
+        ${q.a}
+      </div>
+      <div class="q-choice${ans==='B'?' sel':''}" onclick="selectAns('B')">
+        <div class="q-choice-let">Pilihan B</div>
+        ${q.b}
+      </div>
+    </div>
+    <div class="q-footer">
+      <button class="btn-prev" onclick="prevQ()" ${S.curQ===0?'disabled':''}>← Sebelumnya</button>
+      <span style="flex:1;font-size:11px;color:var(--slate-lt);text-align:center">${S.curQ+1} / ${TOTAL_Q}</span>
+      ${S.curQ<TOTAL_Q-1
+        ?'<button class="btn-next" onclick="nextQ()">Berikutnya →</button>'
+        :'<button class="btn-next" onclick="computeAndShow()">Lihat Hasil →</button>'}
+    </div>
+  </div>`;
+}
+
+function selectAns(v){S.answers[S.curQ]=v;if(S.curQ<TOTAL_Q-1){S.curQ++;go('test');}else{go('test');}}
+function prevQ(){if(S.curQ>0){S.curQ--;go('test');}}
+function nextQ(){if(S.curQ<TOTAL_Q-1){S.curQ++;go('test');}}
+
+function computeAndShow(){
+  const unanswered=S.answers.filter(a=>a===null).length;
+  if(unanswered>0&&!confirm(`${unanswered} soal belum dijawab. Lanjutkan ke hasil?`))return;
+  const r=computeProfile(S.answers);
+  const date=new Date().toLocaleDateString('id-ID',{day:'2-digit',month:'long',year:'numeric'});
+  S.result={...r,date,cand:{...S.cand},tabSwitches:_tabSw};
+  saveHandoff();
+  saveHist({name:S.cand.name,jabatan:S.cand.jabatan,date,profileId:r.profileId,composite:r.composite,
+    dominantColor:r.dominantColor,Epct:r.Epct,Tpct:r.Tpct,Spct:r.Spct,verdictV:r.verdictV});
+  go('result');
+}
+
+// ── RESULT ──
+function renderResult(){
+  const r=S.result;
+  const name=r&&r.cand&&r.cand.name?r.cand.name:'';
+  return`
+  <div class="completion-hero">
+    <div class="completion-icon">
+      <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M5 13l4 4L19 7"/></svg>
+    </div>
+    <h1 class="completion-title">Asesmen Selesai</h1>
+    <p class="completion-sub">Terima kasih${name?', '+name:''}. Jawaban Anda telah tersimpan.</p>
+  </div>
+  <div class="form-card completion-card">
+    <div class="completion-msg">
+      <p style="margin-bottom:10px"><strong>Apa selanjutnya?</strong></p>
+      <p style="font-size:13px;color:var(--slate-md);line-height:1.7">
+        Hasil asesmen Anda telah dicatat dan akan ditinjau oleh tim HR/fasilitator.
+        Anda akan menerima debrief dan pembahasan hasil pada sesi onboarding berikutnya.
+      </p>
+      <p style="font-size:13px;color:var(--slate-md);line-height:1.7;margin-top:10px">
+        Profil kepribadian bukan penilaian baik/buruk — hanya gambaran gaya komunikasi
+        dan preferensi kerja Anda.
+      </p>
+    </div>
+    <button class="btn-main" onclick="go('welcome')">← Kembali ke Beranda</button>
+  </div>
+  <div class="hr-nav-card">
+    <div class="hr-nav-header">
+      <span class="hr-nav-badge">🔒 HR / Fasilitator</span>
+      <div class="hr-nav-title">Buat Laporan Psikologis</div>
+    </div>
+    <p class="hr-nav-desc">
+      Untuk membuat dan meninjau laporan psikologis kandidat, klik tombol di bawah.
+      Laporan akan dibuka di tab baru dan dapat dicetak atau disimpan sebagai PDF.
+    </p>
+    <a href="${LAPORAN_URL}" target="_blank" onclick="saveHandoff()" class="btn-laporan">
+      📊 Buka Laporan Psikologis →
+    </a>
+    <p class="hr-nav-note">
+      Akses ini ditujukan untuk HR/fasilitator yang melakukan asesmen.
+      Data peserta otomatis tersinkron dari kartu asesmen ini.
+    </p>
+  </div>`;
+}
+
+function afterResult(){/* no-op: result view no longer renders charts */}
+function doSave(){/* no-op: history is saved automatically on completion */}
+
+
+// ── HISTORY ──
+function renderHistory(){
+  const hist=loadHist();
+  if(!hist.length)return`
+  <div class="hist-empty">
+    <div style="font-size:32px;margin-bottom:10px">📋</div>
+    <div style="font-size:15px;font-weight:700;margin-bottom:6px">Belum Ada Riwayat</div>
+    <p style="font-size:13px">Hasil tes tersimpan di sini secara otomatis.</p>
+    <button class="btn-main" style="max-width:220px;margin:16px auto 0" onclick="go('welcome')">Mulai Tes</button>
+  </div>`;
+  return`
+  <h2 style="font-size:16px;margin-bottom:14px">Riwayat Tes</h2>
+  ${hist.map((r,i)=>{
+    const p=PROFILES[r.profileId];
+    return`<div class="hi">
+      <div class="hi-hd" onclick="this.nextElementSibling.classList.toggle('open')">
+        <div class="hi-icon" style="background:${p?.colorLt||'#F3F4F6'};color:${p?.color||'#6B7280'}">${p?.icon||'🧩'}</div>
+        <div class="hi-info">
+          <div class="hi-name">${r.name||'—'}</div>
+          <div class="hi-sub">${r.date||''}${r.jabatan?' · '+r.jabatan:''}</div>
+        </div>
+        <div class="hi-right">
+          <div class="hi-score" style="color:${p?.color||'#6B7280'}">${r.composite||'—'}/10</div>
+          <div class="hi-date">${p?.name||r.profileId||'—'}</div>
+        </div>
+      </div>
+      <div class="hi-body" id="hb${i}">
+        <div style="font-size:12px;color:var(--slate-md);line-height:1.8">
+          Profil: <strong>${p?.name||r.profileId}</strong> · ${p?.tagline||''}<br>
+          E/I: ${r.Epct>=50?'E'+r.Epct+'%':'I'+(100-r.Epct)+'%'} · T/F: ${r.Tpct>=50?'T'+r.Tpct+'%':'F'+(100-r.Tpct)+'%'} · S/N: ${r.Spct>=50?'S'+r.Spct+'%':'N'+(100-r.Spct)+'%'}
+        </div>
+      </div>
+    </div>`;
+  }).join('')}
+  <button class="btn-sec" style="margin-top:10px" onclick="if(confirm('Hapus semua riwayat?')){localStorage.removeItem(SKEY);go('history')}">🗑 Hapus Semua Riwayat</button>
+  <button class="btn-sec" style="margin-top:8px" onclick="go('welcome')">← Kembali</button>`;
+}
+
+
+
+// ── INIT ──
+go('welcome');
+</script>
+</body>
+</html>

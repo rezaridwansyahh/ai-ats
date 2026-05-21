@@ -75,6 +75,8 @@ const routeMap = {
   'Assessment B':      '/asesmen/assessment-b',
   'Assessment C':      '/asesmen/assessment-c',
   'Assessment D':      '/asesmen/assessment-d',
+  'Insights Discovery Assessment': '/asesmen/insights-discovery-assessment',
+  'Thomas Kilmann Assessment':     '/asesmen/thomas-kilmann-assessment',
 };
 
 const useSidebarStructure = (permissions) => {
