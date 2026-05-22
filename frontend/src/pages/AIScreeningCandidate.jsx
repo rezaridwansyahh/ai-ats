@@ -17,6 +17,13 @@ import {
 } from '@/components/ui/table';
 
 import { getScreening, setScreeningDecision, getRubric, runMatching } from '@/api/screening.api';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
 
 /* ─── Engine config (mirrors the spec) ─── */
 const ENGINES = [
@@ -693,14 +700,195 @@ function ScoreTile({ label, score, bold }) {
 /* ─────────── QA panel (stub) ─────────── */
 function QAPanel() {
   return (
-    <Card>
-      <CardHeader className="pb-3">
-        <CardTitle className="text-sm flex items-center gap-2">
-          <MessageSquare className="h-4 w-4 text-primary" /> Q&A
-        </CardTitle>
+    <Card className="overflow-hidden border shadow-sm">
+      {/* Header */}
+      <CardHeader className="space-y-4 border-b bg-muted/20">
+        <div className="flex items-center justify-between">
+          <CardTitle className="flex items-center gap-2 text-sm font-semibold">
+            <MessageSquare className="h-4 w-4 text-primary" />
+            Follow-up Q&A
+            <Badge
+              variant="secondary"
+              className="rounded-md text-[10px]"
+            >
+              auto-generated
+            </Badge>
+          </CardTitle>
+
+          <div className="text-xs text-muted-foreground">
+            ~Rp 18 / set · 22 sent · 14 responded · response rate 68%
+          </div>
+        </div>
+
+        {/* Top Actions */}
+        <div className="grid grid-cols-12 gap-3">
+          <Button
+            variant="outline"
+            className="col-span-3 justify-start"
+          >
+            Response Inbox
+            <Badge className="ml-2">24</Badge>
+          </Button>
+
+          <Button className="col-span-5">
+            <Wand2 className="mr-2 h-4 w-4" />
+            Generate
+          </Button>
+
+          <Button
+            variant="outline"
+            className="col-span-4"
+          >
+            Templates
+          </Button>
+        </div>
       </CardHeader>
-      <CardContent className="py-8 text-center text-xs text-muted-foreground italic">
-        Q&A engine arrives in a future release. Borderline candidates (60–82 fit) will receive 3–5 follow-up questions here.
+
+      {/* Body */}
+      <CardContent className="space-y-6 pt-6">
+        {/* Controls */}
+        <div className="space-y-3">
+          <div className="text-[11px] uppercase tracking-wide text-muted-foreground">
+            Generate follow-up Q&A · tuned to JD + parsed CV
+          </div>
+
+          <div className="grid grid-cols-1 gap-3 md:grid-cols-3">
+            {/* Focus */}
+            <div className="space-y-2">
+              <div className="text-xs font-medium">
+                Focus Area
+              </div>
+
+              <Select defaultValue="motivation">
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+
+                <SelectContent>
+                  <SelectItem value="motivation">
+                    Motivation + availability
+                  </SelectItem>
+
+                  <SelectItem value="technical">
+                    Technical depth
+                  </SelectItem>
+
+                  <SelectItem value="culture">
+                    Culture fit
+                  </SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
+            {/* Count */}
+            <div className="space-y-2">
+              <div className="text-xs font-medium">
+                # Questions
+              </div>
+
+              <Select defaultValue="4">
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+
+                <SelectContent>
+                  <SelectItem value="3">3</SelectItem>
+                  <SelectItem value="4">4</SelectItem>
+                  <SelectItem value="5">5</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
+            {/* Language */}
+            <div className="space-y-2">
+              <div className="text-xs font-medium">
+                Language
+              </div>
+
+              <Select defaultValue="id-en">
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+
+                <SelectContent>
+                  <SelectItem value="id-en">
+                    Bahasa ID + EN
+                  </SelectItem>
+
+                  <SelectItem value="en">
+                    English
+                  </SelectItem>
+
+                  <SelectItem value="id">
+                    Bahasa Indonesia
+                  </SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+        </div>
+
+        {/* Questions */}
+        <div className="rounded-xl border bg-muted/10 p-4">
+          <div className="mb-4 flex items-center justify-between">
+            <div className="text-[11px] uppercase tracking-wide text-muted-foreground">
+              Drafted Questions · click to edit
+            </div>
+
+            <div className="flex gap-2">
+              <Button
+                size="sm"
+                variant="outline"
+              >
+                Regenerate
+              </Button>
+
+              <Button
+                size="sm"
+                variant="outline"
+              >
+                + Add custom
+              </Button>
+            </div>
+          </div>
+
+          <div className="space-y-3">
+            {questions.map((q, index) => (
+              <div
+                key={index}
+                className="rounded-lg border bg-background p-4 transition hover:border-primary/40"
+              >
+                <div className="text-sm leading-relaxed">
+                  <span className="font-semibold">
+                    {index + 1}. {q.title}
+                  </span>
+
+                  <span className="text-muted-foreground">
+                    {' '}
+                    — {q.text}
+                  </span>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        {/* Footer */}
+        <div className="flex flex-col gap-3 border-t pt-4 md:flex-row md:items-center md:justify-between">
+          <div className="text-xs text-muted-foreground">
+            Cost ~Rp 18 per candidate · response window 48h
+          </div>
+
+          <div className="flex gap-2">
+            <Button variant="outline">
+              Preview email
+            </Button>
+
+            <Button>
+              Send to candidate
+            </Button>
+          </div>
+        </div>
       </CardContent>
     </Card>
   );

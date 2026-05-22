@@ -17,8 +17,7 @@ import CandidateCardB from '@/components/assessment-b/CandidateCard';
 import CandidateCardC from '@/components/assessment-c/CandidateCard';
 import CandidateCardD from '@/components/assessment-d/CandidateCard';
 
-// Public candidate-facing page. Lives OUTSIDE the recruiter DashboardLayout.
-// Flow: loading → email-gate → runner (CandidateCard).
+// Public candidate-facing page.
 export default function AssessmentPlacementPage() {
   const { hash } = useParams();
   const [view, setView]         = useState('loading'); // loading | gate | runner | completed | error
@@ -29,11 +28,6 @@ export default function AssessmentPlacementPage() {
   const [verifying, setVerifying] = useState(false);
   const [gateError, setGateError] = useState(null);
 
-  // Initial fetch — also auto-resumes the runner if a still-valid portal_token is in localStorage.
-  // NOTE: the public lookup doesn't return PII, so to enter the runner directly we additionally
-  // re-call verify with the cached email... but we don't have the cached email. So if the JWT is
-  // valid but no enriched session is available, fall through to the gate. Simpler UX, costs the
-  // candidate one extra email entry per browser reload.
   useEffect(() => {
     let cancelled = false;
     (async () => {
@@ -80,7 +74,6 @@ export default function AssessmentPlacementPage() {
       const sess = res.data?.session ?? session;
       setSession(sess);
       // Defensive: a session that flipped to completed between page-load and email submit
-      // should still lock the candidate out.
       setView(sess?.status === 'completed' ? 'completed' : 'runner');
     } catch (err) {
       setGateError(err.response?.data?.message || 'Verification failed.');
@@ -197,14 +190,20 @@ export default function AssessmentPlacementPage() {
 
 function BatteryRunner({ session, hash, onSubmit }) {
   if (!session) return null;
+  const clean    = (v) => (v == null || v === '—' || v === 'Unknown' ? '' : v);
+  const cleanDOB = (v) => {
+    if (!v) return '';
+    const s = String(v).slice(0, 10);
+    return Number(s.slice(0, 4)) <= 1900 ? '' : s;
+  };
 
   const prefilledProfile = {
-    name:       session.participant_name       || '',
-    email:      session.participant_email      || '',
-    position:   session.participant_position   || '',
-    department: session.participant_department || '',
-    education:  session.participant_education  || '',
-    date_birth: session.participant_date_birth || '',
+    name:       clean(session.participant_name),
+    email:      session.participant_email || '', // verified gate key — kept as-is
+    position:   clean(session.participant_position),
+    department: clean(session.participant_department),
+    education:  clean(session.participant_education),
+    date_birth: cleanDOB(session.participant_date_birth),
     participant_id: session.participant_id ?? null,
   };
   const commonProps = {

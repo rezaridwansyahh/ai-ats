@@ -2,6 +2,7 @@ import jwt from 'jsonwebtoken';
 import PortalAssessment from './portal-assessment.model.js';
 import AssessmentBatteryResult from '../assessment/assessment-battery-result/assessment-battery-result.model.js';
 import Session from '../assessment/session/session.model.js';
+import participantService from '../assessment/participant/participant.service.js';
 import getDb from '../../config/postgres.js';
 
 const JWT_SECRET = process.env.JWT_SECRET;
@@ -78,6 +79,35 @@ class PortalAssessmentService {
         participant_date_birth: session.participant_date_birth,
       },
     };
+  }
+
+  // Candidate fills the participant-data form (image 2) after the email gate. The
+  // invitation already created a participant from the applicant record; here we update
+  // that bound record with the candidate's own input. Email is NOT updatable — it's the
+  // verified invitation key the email gate matches against.
+  async updateParticipant({ sessionId, fields }) {
+    if (!sessionId) throw { status: 400, message: 'session_id is required' };
+
+    const session = await Session.getById(sessionId);
+    if (!session) throw { status: 404, message: 'Session not found' };
+    if (session.participant_id == null) {
+      throw { status: 400, message: 'Session is not bound to a participant.' };
+    }
+    if (session.status === 'completed') {
+      throw { status: 409, message: 'This assessment has already been submitted.' };
+    }
+
+    const ALLOWED = ['name', 'position', 'department', 'education', 'date_birth'];
+    const allowed = {};
+    for (const k of ALLOWED) {
+      if (fields?.[k] !== undefined) allowed[k] = fields[k];
+    }
+    if (Object.keys(allowed).length === 0) {
+      throw { status: 400, message: 'No valid participant fields to update.' };
+    }
+
+    const participant = await participantService.update(session.participant_id, allowed);
+    return { participant };
   }
 
   async submit({ sessionId, results, summary }) {

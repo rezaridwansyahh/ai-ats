@@ -3,6 +3,7 @@ import { loadCardData, saveCardData, clearCardData, SKEY } from './utils/storage
 import { fmtDateID } from './utils/scoring';
 import { calc3Pillar } from './report/report-utils';
 import { createParticipantByEmail } from '@/api/participant.api';
+import { updatePortalParticipant } from '@/api/portal-assessment.api';
 import { submitAssessment } from '@/api/assessment-battery-result.api';
 import Setup from './candidate/Setup';
 import Overview from './candidate/Overview';
@@ -32,10 +33,13 @@ export default function CandidateCard({
   const initial = (() => {
     const data = loadCardData(storageKey);
     if (isPortal && prefilledProfile) {
+      const savedProfile = data?.profile || null;
       return {
-        profile: data?.profile || prefilledProfile,
+        profile: savedProfile || prefilledProfile,
         results: data?.results || {},
-        screen: 'overview',
+        // Invited candidates fill the participant-data form (image 2) first; skip it
+        // only once they've confirmed their data this session.
+        screen: savedProfile?.confirmed ? 'overview' : 'setup',
       };
     }
     return {
@@ -92,6 +96,24 @@ export default function CandidateCard({
   }, []);
 
   const handleSetupSubmit = useCallback(async (newProfile) => {
+    if (isPortal) {
+      // Portal: update the participant the invitation already created (bound to the
+      // session). Email is the verified invitation key and isn't editable here.
+      const { data } = await updatePortalParticipant(portalHash, {
+        name: newProfile.name,
+        position: newProfile.position,
+        department: newProfile.department,
+        education: newProfile.education,
+        date_birth: newProfile.date_birth,
+      });
+      setProfile({
+        ...newProfile,
+        participant_id: data?.participant?.id ?? prefilledProfile?.participant_id ?? null,
+        confirmed: true,
+      });
+      goTo('overview');
+      return;
+    }
     const { data } = await createParticipantByEmail({
       name: newProfile.name,
       email: newProfile.email,
@@ -103,7 +125,7 @@ export default function CandidateCard({
     const merged = { ...newProfile, participant_id: data?.participant?.id ?? null };
     setProfile(merged);
     goTo('overview');
-  }, [goTo]);
+  }, [goTo, isPortal, portalHash, prefilledProfile]);
 
   const handleReset = useCallback(() => {
     if (!window.confirm('Reset semua data dan progres Battery B?')) return;
@@ -187,7 +209,7 @@ export default function CandidateCard({
   }, [tabSwitches, goTo]);
 
   // Routing
-  if (screen === 'setup') return <Setup initial={profile} onSubmit={handleSetupSubmit} />;
+  if (screen === 'setup') return <Setup initial={profile} onSubmit={handleSetupSubmit} emailReadOnly={isPortal} />;
 
   if (screen === 'overview') {
     return (

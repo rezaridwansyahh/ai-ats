@@ -52,6 +52,18 @@ class PortalAssessmentController {
     });
   }
 
+  async updateParticipant(req, res) {
+    try {
+      const result = await portalAssessmentService.updateParticipant({
+        sessionId: req.portalSessionId,
+        fields: req.body || {},
+      });
+      res.status(200).json({ message: 'Participant updated', ...result });
+    } catch (err) {
+      res.status(err.status || 500).json({ message: err.message });
+    }
+  }
+
   async submit(req, res) {
     try {
       const { results, summary } = req.body || {};
