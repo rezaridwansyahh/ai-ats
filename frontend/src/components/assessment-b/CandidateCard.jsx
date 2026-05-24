@@ -6,6 +6,7 @@ import { createParticipantByEmail } from '@/api/participant.api';
 import { updatePortalParticipant } from '@/api/portal-assessment.api';
 import { submitAssessment } from '@/api/assessment-battery-result.api';
 import Setup from './candidate/Setup';
+import Briefing from './candidate/Briefing';
 import Overview from './candidate/Overview';
 import Intro from './candidate/Intro';
 import TKTest from './candidate/TKTest';
@@ -111,7 +112,7 @@ export default function CandidateCard({
         participant_id: data?.participant?.id ?? prefilledProfile?.participant_id ?? null,
         confirmed: true,
       });
-      goTo('overview');
+      goTo('briefing');
       return;
     }
     const { data } = await createParticipantByEmail({
@@ -124,7 +125,7 @@ export default function CandidateCard({
     });
     const merged = { ...newProfile, participant_id: data?.participant?.id ?? null };
     setProfile(merged);
-    goTo('overview');
+    goTo('briefing');
   }, [goTo, isPortal, portalHash, prefilledProfile]);
 
   const handleReset = useCallback(() => {
@@ -210,6 +211,8 @@ export default function CandidateCard({
 
   // Routing
   if (screen === 'setup') return <Setup initial={profile} onSubmit={handleSetupSubmit} emailReadOnly={isPortal} />;
+
+  if (screen === 'briefing') return <Briefing profile={profile} onStart={() => goTo('overview')} />;
 
   if (screen === 'overview') {
     return (
