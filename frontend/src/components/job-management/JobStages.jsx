@@ -1,12 +1,11 @@
-import { useState, useEffect, useRef, useMemo } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import {
   Plus, X, Lock, ArrowUp, ArrowDown, Check,
-  Briefcase, MapPin, AlertTriangle, Zap, Clock, Mail, Save,
+  Briefcase, MapPin, AlertTriangle, Zap, Clock, Mail, Save, Loader2,
 } from 'lucide-react';
 import { getJobPipeline, saveJobPipeline } from '@/api/pipeline.api';
 import { getStageCategories } from '@/api/stage-category.api';
 import { getTemplateStages, getTemplateStageById } from '@/api/template-stage.api';
-import { getAutomationSetting, createAutomationSetting } from '@/api/automation-setting.api';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
@@ -45,39 +44,26 @@ const STATUS_COLORS = {
 // ── Component ────────────────────────────────────────────────────────
 export default function JobStagesStep({ selectedJob, onPipelineChange }) {
   const nextIdRef = useRef(1);
+  // Guards the debounced auto-save from firing on programmatic state updates
+  // (initial load + the post-save id-sync), so we only persist real user edits.
+  const skipAutoSaveRef = useRef(true);
   const [stages, setStages] = useState([]);
   const [loadingStages, setLoadingStages] = useState(false);
   const [savingStages, setSavingStages] = useState(false);
   const [saveMessage, setSaveMessage] = useState(null);
-  const [savingAutomation, setSavingAutomation] = useState(false);
-  const [automationMessage, setAutomationMessage] = useState(null);
 
   // Template / Custom state
   const [isCustom, setIsCustom] = useState(false);
   const [categories, setCategories] = useState([]);
   const [templates, setTemplates] = useState([]);
   const [selectedTemplateId, setSelectedTemplateId] = useState(null);
-  const [loadingCategories, setLoadingCategories] = useState(false);
   const [loadingTemplates, setLoadingTemplates] = useState(false);
-
-  const [automation, setAutomation] = useState({
-    aiScreening: false,
-    aiFollowUp: false,
-    autoSchedule: false,
-    autoReject: false,
-    autoAdvance: false,
-    emailNotify: false,
-    rejectThreshold: 0,
-    advanceThreshold: 0,
-  });
 
   // ── Load categories & templates on mount ──
   useEffect(() => {
-    setLoadingCategories(true);
     getStageCategories()
       .then(res => setCategories(res.data.data))
-      .catch(() => {})
-      .finally(() => setLoadingCategories(false));
+      .catch(() => {});
 
     setLoadingTemplates(true);
     getTemplateStages()
@@ -94,12 +80,10 @@ export default function JobStagesStep({ selectedJob, onPipelineChange }) {
     setLoadingStages(true);
     setSaveMessage(null);
 
-    Promise.all([
-      getJobPipeline(selectedJob.id),
-      getAutomationSetting(selectedJob.id).catch(() => ({ data: { data: null } })),
-    ])
-      .then(([pipelineRes, autoRes]) => {
+    getJobPipeline(selectedJob.id)
+      .then((pipelineRes) => {
         if (cancelled) return;
+        skipAutoSaveRef.current = true; // loaded data — don't echo it back as a save
         const data = pipelineRes.data.data;
         const mapStage = (s) => ({
           id: s.id,
@@ -131,20 +115,6 @@ export default function JobStagesStep({ selectedJob, onPipelineChange }) {
         onPipelineChange?.({
           hasStages: Array.isArray(data.stages) && data.stages.length > 0,
         });
-
-        const autoData = autoRes.data.data;
-        if (autoData) {
-          setAutomation({
-            aiScreening: autoData.ai_screening,
-            aiFollowUp: autoData.ai_follow_up,
-            autoSchedule: autoData.auto_schedule,
-            autoReject: autoData.auto_reject,
-            autoAdvance: autoData.auto_advance,
-            emailNotify: autoData.email_notify,
-            rejectThreshold: autoData.reject_threshold,
-            advanceThreshold: autoData.advance_threshold,
-          });
-        }
       })
       .catch(() => {
         if (!cancelled) {
@@ -160,6 +130,16 @@ export default function JobStagesStep({ selectedJob, onPipelineChange }) {
 
     return () => { cancelled = true; };
   }, [selectedJob?.id]);
+
+  // ── Auto-save pipeline (debounced) once it's in a valid, user-edited state ──
+  // skipAutoSaveRef suppresses the initial load and the post-save id-sync.
+  useEffect(() => {
+    if (skipAutoSaveRef.current) { skipAutoSaveRef.current = false; return; }
+    if (!selectedJob?.id || !canSave) return;
+    const t = setTimeout(() => { handleSave(); }, 1200);
+    return () => clearTimeout(t);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [stages, selectedTemplateId, isCustom]);
 
   // ── Template selection handler ──
   const handleTemplateSelect = async (templateId) => {
@@ -215,6 +195,7 @@ export default function JobStagesStep({ selectedJob, onPipelineChange }) {
 
       // Sync frontend state with DB-assigned stage IDs
       const savedStages = pipelineRes.data.data.stages;
+      skipAutoSaveRef.current = true; // id-sync only — not a user edit
       setStages(prev => prev.map((s, idx) => ({
         ...s,
         id: savedStages[idx]?.id ?? s.id,
@@ -233,34 +214,6 @@ export default function JobStagesStep({ selectedJob, onPipelineChange }) {
       setSavingStages(false);
     }
   };
-
-  // ── Save Automation to API ──
-  const handleSaveAutomation = async () => {
-    if (!selectedJob?.id) return;
-    setSavingAutomation(true);
-    setAutomationMessage(null);
-
-    try {
-      await createAutomationSetting({
-        job_id: selectedJob.id,
-        ai_screening: automation.aiScreening,
-        ai_follow_up: automation.aiFollowUp,
-        auto_schedule: automation.autoSchedule,
-        auto_reject: automation.autoReject,
-        auto_advance: automation.autoAdvance,
-        email_notify: automation.emailNotify,
-        reject_threshold: automation.rejectThreshold,
-        advance_threshold: automation.advanceThreshold,
-      });
-      setAutomationMessage({ type: 'success', text: 'Automation settings saved successfully' });
-    } catch (err) {
-      const msg = err.response?.data?.message || 'Failed to save automation settings';
-      setAutomationMessage({ type: 'error', text: msg });
-    } finally {
-      setSavingAutomation(false);
-    }
-  };
-
 
   // ── Stage handlers ──
   const updateStage = (id, field, value) => {
@@ -289,11 +242,6 @@ export default function JobStagesStep({ selectedJob, onPipelineChange }) {
     setStages(updated);
   };
 
-  // ── Automation handler ──
-  const setAuto = (key, value) => {
-    setAutomation(prev => ({ ...prev, [key]: value }));
-  };
-
   // ── No job selected guard ──
   if (!selectedJob) {
     return (
@@ -309,7 +257,6 @@ export default function JobStagesStep({ selectedJob, onPipelineChange }) {
     ? stages.length > 0 && stages.every(s => s.name?.trim())
     : selectedTemplateId !== null;
 
-  console.log(selectedJob);
   return (
     <div className="space-y-5">
 
@@ -342,39 +289,6 @@ export default function JobStagesStep({ selectedJob, onPipelineChange }) {
         </CardContent>
       </Card>
 
-      {/* ── AI Automation Quick-Access Banner ── */}
-      <div className="flex items-center gap-3 px-4 py-3 rounded-xl border border-amber-200"
-        style={{ background: 'linear-gradient(90deg, #FEF3C7, #FFFBEB)' }}>
-        <Zap className="h-5 w-5 text-amber-600 shrink-0" />
-        <div className="flex-1">
-          <p className="text-xs font-bold text-amber-800">AI & Automation rules are configured below on this page</p>
-          <p className="text-[10px] text-amber-700 mt-0.5">
-            Set auto-reject/advance thresholds, enable Q&A, and toggle interview scheduling. These settings control candidate flow for this job.
-          </p>
-        </div>
-        <a href="#ai-automation-card"
-          onClick={(e) => { e.preventDefault(); document.getElementById('ai-automation-card')?.scrollIntoView({ behavior: 'smooth' }); }}
-          className="text-[10px] font-bold text-primary px-3 py-1.5 border border-primary/30 rounded-md bg-primary/5 whitespace-nowrap hover:bg-primary/10 transition-colors cursor-pointer">
-          Jump to AI Settings
-        </a>
-      </div>
-
-      {/* ── Pipeline Configuration Info ── */}
-      <div className="flex items-start gap-3 px-4 py-3 rounded-xl border border-primary/15"
-        style={{ background: 'linear-gradient(135deg, rgba(10,110,92,0.05), rgba(59,130,246,0.05))' }}>
-        <div className="h-9 w-9 rounded-full bg-primary text-white flex items-center justify-center shrink-0 mt-0.5">
-          <Zap className="h-4 w-4" />
-        </div>
-        <div>
-          <p className="text-[13px] font-bold text-primary mb-1">This Stage Order Drives the Entire Process</p>
-          <p className="text-[11px] text-muted-foreground leading-relaxed">
-            The sequence you configure here determines the <strong>exact order</strong> candidates flow through the recruitment process.
-            Every navigation button, every "Next Stage" action, and every Kanban column across all modules will follow this order.
-            You can place stages in any order — the system adapts to your configuration.
-          </p>
-        </div>
-      </div>
-
       {/* ── Section B: Pipeline Configuration ── */}
       <Card className="pt-0 gap-0">
         <CardHeader className="py-3 px-5 space-y-3">
@@ -383,15 +297,22 @@ export default function JobStagesStep({ selectedJob, onPipelineChange }) {
               <CardTitle className="text-[13px] font-bold">Recruitment Pipeline</CardTitle>
               <p className="text-[10px] text-muted-foreground mt-0.5">Configure recruitment pipeline stages. Use a template or create a custom pipeline.</p>
             </div>
-            <Button
-              size="sm"
-              className="text-xs gap-1.5"
-              onClick={handleSave}
-              disabled={savingStages || loadingStages || !canSave}
-            >
-              <Save className="h-3.5 w-3.5" />
-              {savingStages ? 'Saving...' : 'Save Stages'}
-            </Button>
+            {/* Auto-save status — replaces the manual Save button */}
+            <span className="text-[11px] flex items-center gap-1.5 text-muted-foreground">
+              {loadingStages ? (
+                <><Loader2 className="h-3.5 w-3.5 animate-spin" /> Loading…</>
+              ) : savingStages ? (
+                <><Loader2 className="h-3.5 w-3.5 animate-spin" /> Saving…</>
+              ) : saveMessage?.type === 'error' ? (
+                <span className="text-red-500 flex items-center gap-1.5"><AlertTriangle className="h-3.5 w-3.5" /> {saveMessage.text}</span>
+              ) : saveMessage?.type === 'success' ? (
+                <><Check className="h-3.5 w-3.5 text-emerald-600" /> Saved</>
+              ) : !canSave ? (
+                <><Save className="h-3.5 w-3.5" /> Pick a template or name every stage to save</>
+              ) : (
+                <><Save className="h-3.5 w-3.5" /> Auto-save on</>
+              )}
+            </span>
           </div>
 
           {/* Template / Custom Controls */}
@@ -429,17 +350,6 @@ export default function JobStagesStep({ selectedJob, onPipelineChange }) {
               </label>
             </div>
           </div>
-
-          {saveMessage && (
-            <div className={`text-xs px-3 py-2 rounded-lg ${
-              saveMessage.type === 'success'
-                ? 'bg-emerald-50 text-emerald-600'
-                : 'bg-red-50 text-red-500'
-            }`}>
-              {saveMessage.type === 'success' ? <Check className="h-3.5 w-3.5 inline mr-1" /> : <AlertTriangle className="h-3.5 w-3.5 inline mr-1" />}
-              {saveMessage.text}
-            </div>
-          )}
         </CardHeader>
         <CardContent className="p-0">
           <Table>
@@ -577,124 +487,6 @@ export default function JobStagesStep({ selectedJob, onPipelineChange }) {
       </Card>
 
 
-      {/* ── Automation Rules Reminder ── */}
-      <div className="flex items-center justify-between px-4 py-3 rounded-xl border-l-4 border-primary"
-        style={{ background: 'linear-gradient(90deg, rgba(10,110,92,0.05), rgba(224,255,245,0.5))' }}>
-        <div className="flex items-center gap-2">
-          <Zap className="h-5 w-5 text-primary" />
-          <div>
-            <p className="text-xs font-bold text-primary">Automation Rules — Configure Here Before Publishing</p>
-            <p className="text-[10px] text-muted-foreground">
-              Auto-reject thresholds, auto-advance rules, and notification settings live below. <strong>Set them now</strong> to avoid manual processing later.
-            </p>
-          </div>
-        </div>
-      </div>
-
-      {/* ── Section D: AI & Automation ── */}
-      <Card id="ai-automation-card" className="scroll-mt-20 pt-0 gap-0">
-        <CardHeader className="py-3 px-5 rounded-t-xl border-b-2 border-amber-400"
-          style={{ background: 'linear-gradient(90deg, #FEF3C7, #FFFBEB)' }}>
-          <div className="flex items-center justify-between">
-            <CardTitle className="text-[13px] font-bold text-amber-800">
-              AI & Automation in Recruitment Process
-            </CardTitle>
-            <div className="flex items-center gap-2">
-              <Badge variant="outline" className="text-[9px] bg-red-50 text-red-500 border-red-200 font-bold">
-                Configure before publishing
-              </Badge>
-              <Button
-                size="sm"
-                className="text-xs gap-1.5 bg-amber-600 hover:bg-amber-700"
-                onClick={handleSaveAutomation}
-                disabled={savingAutomation}
-              >
-                <Save className="h-3.5 w-3.5" />
-                {savingAutomation ? 'Saving...' : 'Save Automation'}
-              </Button>
-            </div>
-          </div>
-          {automationMessage && (
-            <div className={`text-xs px-3 py-2 rounded-lg ${
-              automationMessage.type === 'success'
-                ? 'bg-emerald-50 text-emerald-600'
-                : 'bg-red-50 text-red-500'
-            }`}>
-              {automationMessage.type === 'success' ? <Check className="h-3.5 w-3.5 inline mr-1" /> : <AlertTriangle className="h-3.5 w-3.5 inline mr-1" />}
-              {automationMessage.text}
-            </div>
-          )}
-        </CardHeader>
-        <CardContent className="p-5 pt-5 space-y-5">
-
-          {/* AI Screening */}
-          <AutoRow
-            title="Enable AI Screening"
-            desc="Auto-parse and score CVs using AI matching"
-            checked={automation.aiScreening}
-            onChange={v => setAuto('aiScreening', v)}
-          />
-
-          {/* AI Follow-up Q&A */}
-          <AutoRow
-            title="AI Follow-up Q&A"
-            desc="AI sends follow-up questions by email. Candidates have 7 days to respond. Answers are auto-scored."
-            checked={automation.aiFollowUp}
-            onChange={v => setAuto('aiFollowUp', v)}
-          />
-
-          {/* Auto-schedule Interviews */}
-          <AutoRow
-            title="Auto-schedule Interviews"
-            desc="Calendar sync + auto-invite shortlisted candidates"
-            checked={automation.autoSchedule}
-            onChange={v => setAuto('autoSchedule', v)}
-          />
-
-          {/* Auto-reject Below Threshold */}
-          <div className="space-y-2">
-            <AutoRow
-              title="Auto-reject Below Threshold"
-              desc="Auto-decline candidates scoring below AI minimum"
-              checked={automation.autoReject}
-              onChange={v => setAuto('autoReject', v)}
-            />
-            {automation.autoReject && (
-              <ThresholdSlider
-                value={automation.rejectThreshold}
-                onChange={v => setAuto('rejectThreshold', v)}
-                color="red"
-              />
-            )}
-          </div>
-
-          {/* Auto-advance Top Candidates */}
-          <div className="space-y-2">
-            <AutoRow
-              title="Auto-advance Top Candidates"
-              desc="Automatically move candidates scoring above threshold to next stage"
-              checked={automation.autoAdvance}
-              onChange={v => setAuto('autoAdvance', v)}
-            />
-            {automation.autoAdvance && (
-              <ThresholdSlider
-                value={automation.advanceThreshold}
-                onChange={v => setAuto('advanceThreshold', v)}
-                color="green"
-              />
-            )}
-          </div>
-
-          {/* Email Notification */}
-          <AutoRow
-            title="Email Notification"
-            desc="Automated status updates via Email at each stage transition"
-            checked={automation.emailNotify}
-            onChange={v => setAuto('emailNotify', v)}
-            icon={<Mail className="h-4 w-4 text-muted-foreground" />}
-          />
-        </CardContent>
-      </Card>
     </div>
   );
 }

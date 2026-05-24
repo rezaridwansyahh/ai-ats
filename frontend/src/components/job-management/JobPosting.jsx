@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import {
   Briefcase, MapPin, AlertTriangle, Eye, Save, Rocket,
-  Info, BarChart3, ChevronDown, Globe, Lock, Home,
+  Info, ChevronDown, Globe, Lock, Home,
 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -10,9 +10,6 @@ import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group"
 import { Collapsible, CollapsibleContent } from '@/components/ui/collapsible';
-import {
-  Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
-} from '@/components/ui/table';
 
 import { getJobAccountsByUserId } from '@/api/job-accounts.api';
 import { getJobPostingByJobId } from '@/api/job-postings.api';
@@ -49,17 +46,9 @@ const PRIVATE_CHANNELS = [
   { id: 'whatsapp', name: 'WhatsApp', published: false }
 ];
 
-const PERFORMANCE_DATA = [
-  { channel: 'LinkedIn',    apps: 128, aiScore: '82%', cost: 'Rp 45K' },
-  { channel: 'JobStreet',   apps: 96,  aiScore: '74%', cost: 'Rp 32K' },
-  { channel: 'Glints',      apps: 67,  aiScore: '68%', cost: 'Free' },
-  { channel: 'Career Page', apps: 21,  aiScore: '79%', cost: 'Free' },
-];
-
 // ── Component ────────────────────────────────────────────────────────
 
 export default function JobPosting({ selectedJob, onSelectionChange }) {
-  const [jobPosts, setJobPosts] = useState(null);
   const [group, setGroup] = useState(null);
   const [channels, setChannels] = useState({ "public": false, "private": false });
   const [publicChannels, setPublicChannels] = useState(PUBLIC_CHANNELS);
@@ -351,51 +340,6 @@ export default function JobPosting({ selectedJob, onSelectionChange }) {
         </Button>
       </div>
 
-      {/* ── Info Note ── */}
-      <div className="flex items-center gap-2 px-4 py-3 rounded-lg bg-primary/5 border border-primary/10">
-        <Info className="h-4 w-4 text-primary shrink-0" />
-        <p className="text-[11px] text-muted-foreground">
-          Myralix automatically customizes the job information form to suit each channel's requirements (e.g., LinkedIn format, JobStreet fields). You can publish to all channels simultaneously or selectively.
-        </p>
-      </div>
-
-      {/* ── Channel Performance Insights ── */}
-      <Card className="pt-0 gap-0">
-        <CardHeader className="py-3 px-5">
-          <div className="flex items-center justify-between">
-            <CardTitle className="text-[13px] font-bold flex items-center gap-2">
-              <BarChart3 className="h-4 w-4" /> Channel Performance Insights
-            </CardTitle>
-            <span className="text-[10px] text-muted-foreground">After 48+ hours of posting &middot; Based on this job</span>
-          </div>
-        </CardHeader>
-        <CardContent className="px-5 pb-5">
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead className="text-[10px] font-bold">CHANNEL</TableHead>
-                <TableHead className="text-[10px] font-bold text-right">APPLICATIONS RECEIVED</TableHead>
-                <TableHead className="text-[10px] font-bold text-right">AVG AI SCORE</TableHead>
-                <TableHead className="text-[10px] font-bold text-right">COST / APPLICATION</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {PERFORMANCE_DATA.map(row => (
-                <TableRow key={row.channel}>
-                  <TableCell className="text-xs font-medium text-primary">{row.channel}</TableCell>
-                  <TableCell className="text-xs text-right">{row.apps}</TableCell>
-                  <TableCell className="text-xs text-right text-primary font-semibold">{row.aiScore}</TableCell>
-                  <TableCell className="text-xs text-right">{row.cost}</TableCell>
-                </TableRow>
-              ))}
-            </TableBody>
-          </Table>
-          <p className="text-[10px] text-primary font-semibold mt-3">
-            LinkedIn delivers the highest quality candidates (82% avg AI score). Detailed analytics available in{' '}
-            <span className="underline cursor-pointer">Reports & Analytics &rarr; Channel Analytics</span>.
-          </p>
-        </CardContent>
-      </Card>
     </div>
   );
 }

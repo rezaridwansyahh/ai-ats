@@ -15,6 +15,8 @@ export default [
   { id: 8,  module_id: 3, menu_id: 8  }, // Assessment B
   { id: 9,  module_id: 3, menu_id: 9  }, // Assessment C
   { id: 10, module_id: 3, menu_id: 10 }, // Assessment D
+  { id: 18, module_id: 3, menu_id: 18 }, // Insights Discovery Assessment
+  { id: 19, module_id: 3, menu_id: 19 }, // Thomas Kilmann Assessment
 
   // Selection (module 4)
   { id: 11, module_id: 4, menu_id: 11 }, // AI Screening

@@ -1,0 +1,481 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Myralix — Laporan Psikologis · Thomas-Kilmann Assessment v9</title>
+<style>
+:root{
+  --teal:#0A6E5C;--teal-dk:#064E3B;--teal-md:#0D9488;--teal-lt:#C7E8E3;--teal-xlt:#EDF7F5;
+  --amber:#D97706;--amber-lt:#FFFBEB;--amber-bd:#FDE68A;
+  --red:#DC2626;--red-lt:#FEF2F2;--red-bd:#FECACA;
+  --green:#059669;--green-lt:#ECFDF5;--green-bd:#A7F3D0;
+  --navy:#0F172A;--slate:#334155;--slate-md:#64748B;--slate-lt:#94A3B8;
+  --border:#E2E8F0;--border-dk:#CBD5E1;--white:#fff;--cream:#FAFAF8;
+  --r:14px;--rs:9px;
+  --sh:0 1px 4px rgba(15,23,42,.07),0 4px 16px rgba(15,23,42,.05);
+  --sh-lg:0 8px 32px rgba(15,23,42,.12),0 2px 8px rgba(15,23,42,.06);
+}
+*{box-sizing:border-box;margin:0;padding:0}
+html{scroll-behavior:smooth}
+body{background:var(--cream);color:var(--navy);font-family:'Trebuchet MS',Tahoma,Geneva,sans-serif;font-size:14px;line-height:1.6;min-height:100vh}
+h1,h2,h3{font-family:Georgia,serif}
+.navbar{background:linear-gradient(135deg,var(--teal-dk),var(--teal) 55%,var(--teal-md));padding:0 20px;position:sticky;top:0;z-index:300;box-shadow:0 2px 12px rgba(6,78,59,.25)}
+.nav-inner{max-width:1100px;margin:0 auto;display:flex;align-items:center;justify-content:space-between;height:56px;gap:12px}
+.nav-logo{display:flex;align-items:center;gap:10px;flex-shrink:0}
+.logo-txt{font-family:Georgia,serif;font-size:16px;font-weight:700;color:#fff;letter-spacing:.04em}
+.nav-right{display:flex;align-items:center;gap:7px;flex-wrap:wrap}
+.nav-badge{background:rgba(255,255,255,.15);color:#fff;padding:4px 12px;border-radius:20px;font-size:11px;font-weight:600;border:1px solid rgba(255,255,255,.2)}
+.nav-btn{background:rgba(255,255,255,.12);color:#fff;border:1px solid rgba(255,255,255,.25);padding:5px 13px;border-radius:8px;font-size:12px;font-weight:600;cursor:pointer;font-family:inherit;transition:.15s;text-decoration:none;display:inline-flex;align-items:center;gap:5px;white-space:nowrap}
+.nav-btn:hover{background:rgba(255,255,255,.22)}
+.nav-btn.print-btn{background:rgba(255,255,255,.9);color:var(--teal-dk)}
+.section-nav{background:#fff;border-bottom:1px solid var(--border);position:sticky;top:54px;z-index:200;transition:.3s;transform:translateY(-100%);opacity:0;pointer-events:none}
+.section-nav.visible{transform:translateY(0);opacity:1;pointer-events:all}
+.snav-inner{max-width:1100px;margin:0 auto;display:flex;align-items:center;gap:4px;padding:8px 20px;overflow-x:auto;scrollbar-width:none}
+.snav-inner::-webkit-scrollbar{display:none}
+.sn-link{padding:5px 14px;border-radius:20px;font-size:12px;font-weight:600;color:var(--slate-md);white-space:nowrap;transition:.15s;border:1px solid transparent;cursor:pointer}
+.sn-link:hover{background:var(--teal-xlt);color:var(--teal-dk);border-color:var(--teal-lt)}
+.wrap{max-width:1100px;margin:0 auto;padding:24px 18px 80px}
+@keyframes fadeUp{from{opacity:0;transform:translateY(12px)}to{opacity:1;transform:translateY(0)}}
+.anim{animation:fadeUp .35s ease}
+.flabel{display:block;font-size:11px;font-weight:600;letter-spacing:.07em;text-transform:uppercase;color:var(--slate-md);margin-bottom:5px}
+.finput,.fsel{width:100%;background:#fff;border:1.5px solid var(--border);border-radius:var(--rs);padding:9px 13px;color:var(--navy);font-size:13.5px;font-family:inherit;outline:none;transition:.2s}
+.finput:focus,.fsel:focus{border-color:var(--teal);box-shadow:0 0 0 3px rgba(10,110,92,.08)}
+.fg2{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:12px}
+.fg3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px;margin-bottom:12px}
+.fg1{margin-bottom:12px}
+@media(max-width:600px){.fg2,.fg3{grid-template-columns:1fr}}
+.btn-primary{background:linear-gradient(135deg,var(--teal-dk),var(--teal));color:#fff;padding:12px 24px;border-radius:var(--rs);font-size:14px;font-weight:600;cursor:pointer;border:none;font-family:inherit;width:100%;transition:.2s}
+.btn-primary:hover{opacity:.9}
+.btn-sec{background:#fff;border:1.5px solid var(--border);color:var(--slate);padding:8px 16px;border-radius:var(--rs);font-size:12.5px;font-weight:600;cursor:pointer;font-family:inherit;transition:.15s;text-decoration:none;display:inline-flex;align-items:center;gap:5px}
+.btn-sec:hover{border-color:var(--teal);color:var(--teal);background:var(--teal-xlt)}
+.setup-hero{background:linear-gradient(135deg,#022C22 0%,var(--teal-dk) 50%,var(--teal) 100%);border-radius:var(--r);padding:32px;color:#fff;margin-bottom:20px;position:relative;overflow:hidden}
+.setup-hero::before{content:'⚖';position:absolute;right:-10px;bottom:-20px;font-size:150px;opacity:.06;line-height:1;pointer-events:none}
+.card{background:#fff;border:1px solid var(--border);border-radius:var(--r);padding:24px;box-shadow:var(--sh);margin-bottom:16px}
+/* ── Report letterhead + body (carried from card v8 with mild tweaks) ── */
+.lp-wrap{max-width:1100px;margin:0 auto;padding:0 0 80px}
+.lp-header{background:linear-gradient(135deg,var(--teal-dk),var(--teal) 55%,var(--teal-md));border-radius:var(--r);padding:22px 26px;color:#fff;margin-bottom:16px;display:flex;justify-content:space-between;align-items:flex-start;gap:16px;box-shadow:var(--sh-lg)}
+.lp-org{font-size:22px;font-weight:800;letter-spacing:.02em;margin-bottom:3px}
+.lp-type-label{font-size:10px;opacity:.75;margin-bottom:8px;letter-spacing:.06em;text-transform:uppercase}
+.lp-inst-name{font-size:15px;font-weight:700;margin-bottom:2px}
+.lp-inst-sub{font-size:11px;opacity:.8}
+.lp-conf{font-size:10px;font-weight:700;color:#FEF9C3;letter-spacing:.08em;margin-bottom:6px}
+.lp-table{width:100%;border-collapse:collapse;margin-bottom:12px;font-size:12.5px}
+.lp-table th{background:var(--teal);color:#fff;padding:8px 11px;text-align:left;font-size:11px;font-weight:700}
+.lp-table td{padding:7px 11px;border-bottom:1px solid #E5E7EB;vertical-align:middle}
+.lp-table tr:nth-child(even) td{background:var(--teal-xlt)}
+.lp-table .lp-total td{background:var(--teal-lt);font-weight:700;color:var(--teal-dk)}
+.lp-h1{font-size:12.5px;font-weight:800;color:var(--teal-dk);border-bottom:2.5px solid var(--teal);padding:8px 0 9px;margin:22px 0 12px;letter-spacing:.05em;text-transform:uppercase}
+.lp-h2{font-size:12.5px;font-weight:700;color:var(--navy);margin:14px 0 7px}
+.lp-note-txt{font-size:11px;color:var(--slate-md);font-style:italic;margin-bottom:10px;line-height:1.6}
+.mode-card{border-radius:var(--rs);overflow:hidden;margin-bottom:10px;border:1.5px solid}
+.mode-card-head{padding:9px 14px;font-size:13px;font-weight:700;color:#fff;display:flex;align-items:center;justify-content:space-between}
+.mode-card-axis{padding:4px 14px;font-size:11px;font-style:italic}
+.mode-card-body{padding:12px 14px;font-size:12.5px;line-height:1.65}
+.mode-card-body .mc-label{font-weight:700;margin-right:4px}
+.mode-card-body p{margin:0 0 7px}
+.dom-badge{background:rgba(255,255,255,.25);font-size:10px;padding:2px 8px;border-radius:10px;font-weight:700}
+.band-badge{display:inline-block;padding:2px 8px;border-radius:10px;font-size:10px;font-weight:700}
+.matrix-svg-wrap{border:1px solid #E5E7EB;border-radius:var(--rs);background:#FAFAFA;padding:10px;margin-bottom:10px}
+.lp-textarea{width:100%;min-height:70px;border:1.5px dashed #CBD5E1;border-radius:8px;padding:10px;font-size:12.5px;font-family:inherit;color:var(--slate);resize:vertical;background:#FAFAFA;box-sizing:border-box;outline:none;transition:.2s}
+.lp-textarea:focus{border-color:var(--teal);background:#fff;box-shadow:0 0 0 3px rgba(10,110,92,.08);border-style:solid}
+.lp-sign-grid{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-top:14px}
+.lp-sign-box{border:1px solid #E5E7EB;border-radius:8px;padding:14px;min-height:90px}
+.lp-sign-role{font-size:10px;font-weight:700;color:var(--slate-lt);margin-bottom:4px;text-transform:uppercase;letter-spacing:.06em}
+.lp-sign-line{border-top:1px solid var(--slate-lt);margin-top:55px;padding-top:4px;font-size:10px;color:var(--slate-lt)}
+.lp-foot-disc{font-size:10px;color:var(--slate-lt);text-align:center;border-top:1px solid #E5E7EB;padding-top:10px;margin-top:16px;font-style:italic;line-height:1.6}
+/* Recruiter assessment chip */
+.rcr-section{background:var(--teal-xlt);border:1px solid var(--teal-lt);border-radius:var(--rs);padding:12px 14px;margin:10px 0}
+.rcr-label{font-size:11px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--slate-md);margin-bottom:8px}
+.rcr-buttons{display:flex;gap:7px;flex-wrap:wrap}
+.rcr-btn{flex:1;min-width:140px;background:#fff;border:1.5px solid var(--border);color:var(--slate);padding:8px 12px;border-radius:var(--rs);font-size:11.5px;font-weight:700;cursor:pointer;font-family:inherit;transition:.15s}
+.rcr-btn.sesuai.active{background:var(--green-lt);border-color:var(--green);color:var(--green)}
+.rcr-btn.pertimbangkan.active{background:var(--amber-lt);border-color:var(--amber);color:var(--amber)}
+.rcr-btn.tidak.active{background:var(--red-lt);border-color:var(--red);color:var(--red)}
+.no-print{display:flex;gap:8px;flex-wrap:wrap;margin:14px 0}
+@media print{
+  .navbar,.section-nav,.no-print,.rcr-section{display:none!important}
+  .wrap{padding:0;max-width:100%}
+  .lp-wrap{padding:0}
+  .mode-card,.lp-table{page-break-inside:avoid}
+  .lp-textarea{border:none;background:transparent;min-height:auto;padding:0}
+  body{background:#fff}
+}
+</style>
+</head>
+<body>
+<nav class="navbar">
+  <div class="nav-inner">
+    <div class="nav-logo">
+      <svg width="22" height="22" viewBox="-50 -10 220 220" xmlns="http://www.w3.org/2000/svg"><path d="M30,10 C70,30 90,70 60,100 C30,130 70,170 90,190" stroke="url(#lg1)" stroke-width="7" fill="none" stroke-linecap="round"/><path d="M90,10 C50,30 30,70 60,100 C90,130 70,170 30,190" stroke="url(#lg2)" stroke-width="7" fill="none" stroke-linecap="round"/><circle cx="60" cy="100" r="9" fill="#fff" opacity=".85"/><defs><linearGradient id="lg1" x1="0%" y1="0%" x2="100%" y2="100%"><stop offset="0%" stop-color="#0A6E5C"/><stop offset="100%" stop-color="#14B8A6"/></linearGradient><linearGradient id="lg2" x1="100%" y1="0%" x2="0%" y2="100%"><stop offset="0%" stop-color="#F59E0B"/><stop offset="50%" stop-color="#14B8A6"/><stop offset="100%" stop-color="#0A6E5C"/></linearGradient></defs></svg>
+      <span class="logo-txt">MYRALIX</span>
+    </div>
+    <div class="nav-right">
+      <span class="nav-badge">Thomas-Kilmann Assessment · Laporan · v9</span>
+      <button onclick="window.print()" class="nav-btn print-btn">🖨 Cetak PDF</button>
+      <button onclick="goTo('setup')" class="nav-btn">✏️ Edit Data</button>
+    </div>
+  </div>
+</nav>
+<div class="section-nav" id="section-nav">
+  <div class="snav-inner">
+    <span class="sn-link" onclick="scrollToSec('lp-header')">📋 Letterhead</span>
+    <span class="sn-link" onclick="scrollToSec('sec-I')">I · Profil Skor</span>
+    <span class="sn-link" onclick="scrollToSec('sec-II')">II · Interpretasi</span>
+    <span class="sn-link" onclick="scrollToSec('sec-III')">III · Matriks</span>
+    <span class="sn-link" onclick="scrollToSec('sec-IV')">IV · Panduan</span>
+    <span class="sn-link" onclick="scrollToSec('sec-V')">V · Pengembangan</span>
+    <span class="sn-link" onclick="scrollToSec('sec-VI')">VI · Observasi HR</span>
+  </div>
+</div>
+<div id="app" class="wrap anim"></div>
+<script>
+// ════════════════════════════════════════════════════════════════
+//  MYRALIX — LAPORAN PSIKOLOGIS · Thomas-Kilmann Assessment PreDay v9
+//  Reads test data from card via localStorage handoff key.
+// ════════════════════════════════════════════════════════════════
+const HKEY='myx-tki-preday-v9';                // handoff key (written by Candidate Card)
+const STATE_KEY='myx-rpt-tki-preday-v9';       // recruiter annotations
+const CARD_URL='Myralix_Thomas_Kilmann_Assessment_PreDay_Candidate_Card_v9.html';
+
+const MODES = {
+  CP:{name:'Bersaing',eng:'Competing',color:'#DC2626',bg:'#FEF2F2',tag:'Asertif & Tidak Kooperatif',
+    desc:'Mengejar tujuan sendiri dengan tegas, tidak memprioritaskan hubungan. Berguna saat keputusan cepat diperlukan, isu penting membutuhkan pendirian tegas, atau saat melindungi diri dari eksploitasi.',
+    when:'Keputusan darurat · Isu prinsipil · Melindungi kepentingan vital',
+    risk:'Dapat merusak kepercayaan jika terlalu sering digunakan'},
+  CL:{name:'Berkolaborasi',eng:'Collaborating',color:'#0A6E5C',bg:'#E0F0ED',tag:'Asertif & Kooperatif',
+    desc:'Berusaha memuaskan semua pihak secara penuh melalui kerja sama mendalam. Berguna saat kepentingan kedua pihak terlalu penting untuk dikompromikan dan ada waktu untuk eksplorasi bersama.',
+    when:'Solusi integratif penting · Belajar dari perspektif lain · Membangun komitmen',
+    risk:'Membutuhkan waktu dan energi besar; tidak cocok untuk isu minor'},
+  CM:{name:'Berkompromi',eng:'Compromising',color:'#D97706',bg:'#FFFBEB',tag:'Tengah-tengah',
+    desc:'Mencari solusi yang memberikan kepuasan sebagian kepada semua pihak. Berguna ketika solusi sempurna tidak memungkinkan dan kedua belah pihak perlu maju.',
+    when:'Solusi sementara · Waktu terbatas · Tujuan keduanya cukup penting',
+    risk:'Bisa menghasilkan solusi yang tidak optimal untuk kedua pihak'},
+  AV:{name:'Menghindar',eng:'Avoiding',color:'#7C3AED',bg:'#F5F3FF',tag:'Tidak Asertif & Tidak Kooperatif',
+    desc:'Tidak mengejar kepentingan sendiri maupun orang lain secara langsung. Berguna saat isu trivial, perlu waktu untuk menenangkan diri, atau informasi belum cukup.',
+    when:'Isu tidak penting · Perlu pendinginan · Orang lain lebih mampu menangani',
+    risk:'Masalah penting bisa terakumulasi jika selalu dihindari'},
+  AC:{name:'Mengakomodasi',eng:'Accommodating',color:'#0891B2',bg:'#ECFEFF',tag:'Tidak Asertif & Kooperatif',
+    desc:'Mengutamakan kebutuhan orang lain di atas kebutuhan sendiri. Berguna untuk menjaga hubungan baik, saat Anda salah, atau saat isu lebih penting bagi pihak lain.',
+    when:'Menjaga hubungan · Isu lebih penting bagi orang lain · Membangun goodwill',
+    risk:'Kepentingan sendiri bisa terabaikan jika terlalu sering digunakan'}
+};
+const NORMS={CP:6,CL:6,CM:7,AV:6,AC:7};
+function normBand(k,v){
+  const a=NORMS[k]||6;
+  if(v>=a+2)return{l:'Tinggi',c:'#15803D',bg:'#ECFDF5'};
+  if(v>=a-2)return{l:'Rata-rata',c:'#D97706',bg:'#FFFBEB'};
+  return{l:'Rendah',c:'#6B7280',bg:'#F3F4F6'};
+}
+
+const NOTE_IDS=['note-obs','note-surprises','note-friction','note-followup'];
+const RCR_SECTIONS=['dominan','fleksibilitas','kesesuaian'];
+
+let REPORT={profile:null,result:null,screen:'setup'};
+let STATE={};
+
+function loadState(){try{STATE=JSON.parse(localStorage.getItem(STATE_KEY)||'{}');}catch{STATE={};}}
+function saveState(){
+  NOTE_IDS.forEach(id=>{const el=document.getElementById(id);if(el)STATE['note_'+id]=el.value;});
+  ['r-nomer','r-dept','r-asesor','r-mengetahui','r-tgl-tes'].forEach(id=>{
+    const el=document.getElementById(id);if(el)STATE['xt_'+id]=el.value;
+  });
+  try{localStorage.setItem(STATE_KEY,JSON.stringify(STATE));}catch(e){}
+}
+function restoreState(){
+  NOTE_IDS.forEach(id=>{const el=document.getElementById(id);if(el&&STATE['note_'+id])el.value=STATE['note_'+id];});
+  RCR_SECTIONS.forEach(sec=>{if(STATE['rcr_'+sec])setRcr(sec,STATE['rcr_'+sec],true);});
+}
+function setRcr(section,value,silent=false){
+  if(!silent){STATE['rcr_'+section]=value;saveState();}
+  document.querySelectorAll('[data-rcr-sec="'+section+'"]').forEach(btn=>btn.classList.toggle('active',btn.dataset.val===value));
+}
+function scrollToSec(id){const el=document.getElementById(id);if(el)el.scrollIntoView({behavior:'smooth',block:'start'});}
+window.addEventListener('scroll',()=>{const sn=document.getElementById('section-nav');if(sn)sn.classList.toggle('visible',window.scrollY>200);});
+
+function loadHandoff(){
+  try{
+    const raw=localStorage.getItem(HKEY);
+    if(!raw)return null;
+    const d=JSON.parse(raw);
+    if(!d||!d.result||!d.cand)return null;
+    REPORT.profile=d.cand;
+    REPORT.result=d.result;
+    return d;
+  }catch{return null;}
+}
+
+function goTo(screen){
+  REPORT.screen=screen;
+  const app=document.getElementById('app');
+  app.innerHTML='';
+  if(screen==='setup')app.innerHTML=renderSetup();
+  else if(screen==='report'){app.innerHTML=renderTKIReport();restoreState();}
+  window.scrollTo(0,0);
+}
+
+function renderSetup(){
+  const has=loadHandoff();
+  const xt=k=>STATE['xt_'+k]||'';
+  return `
+  <div class="setup-hero">
+    <h2 style="font-family:Georgia,serif;font-size:clamp(18px,3vw,24px);margin-bottom:6px;position:relative;z-index:1">Laporan Psikologis — Pre-Day 1</h2>
+    <p style="font-size:13px;opacity:.88;line-height:1.7;max-width:520px;position:relative;z-index:1">Thomas-Kilmann Assessment · 5 Mode Konflik · 30 Pernyataan Berpasangan</p>
+    <div style="position:relative;z-index:1;margin-top:8px;font-size:11px;opacity:.6">v9 · 🔒 Rahasia — hanya untuk HR / Rekruter</div>
+  </div>
+  ${has?`<div style="background:var(--green-lt);border:1.5px solid var(--green-bd);border-radius:var(--r);padding:14px 18px;margin-bottom:16px;display:flex;align-items:center;justify-content:space-between;gap:14px;flex-wrap:wrap">
+    <div>
+      <div style="font-size:10px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--green);margin-bottom:3px">✅ Data Tes Ditemukan</div>
+      <div style="font-size:16px;font-weight:700;color:var(--navy)">${REPORT.profile.name}${REPORT.profile.jabatan?' · '+REPORT.profile.jabatan:''}</div>
+      <div style="font-size:12px;color:#065F46">Tes diselesaikan ${REPORT.result.date||''} · Mode dominan: ${MODES[REPORT.result.dominant]?.name||'—'}</div>
+    </div>
+    <button onclick="goTo('report')" style="background:var(--teal);color:#fff;border:none;padding:10px 22px;border-radius:var(--rs);font-size:13px;font-weight:700;cursor:pointer;font-family:inherit">Buat Laporan →</button>
+  </div>`:`<div style="background:var(--amber-lt);border:1.5px solid var(--amber-bd);border-radius:var(--r);padding:12px 16px;margin-bottom:16px;font-size:12.5px;color:#78350F">
+    ⚠️ Tidak ada data tes di browser ini. Peserta harus menyelesaikan tes pada Candidate Card terlebih dahulu.
+    <a href="${CARD_URL}" style="display:inline-block;margin-left:8px;color:var(--teal);font-weight:700;text-decoration:none">→ Buka Candidate Card</a>
+  </div>`}
+  <div class="card">
+    <div style="font-size:10px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:var(--slate-lt);margin-bottom:14px">📋 Data Tambahan Laporan (diisi oleh HR / Asesor)</div>
+    <div class="fg2">
+      <div class="fg1"><label class="flabel">No. Kandidat / Pegawai</label><input class="finput" id="r-nomer" value="${xt('r-nomer')}" oninput="STATE['xt_r-nomer']=this.value;saveState()"></div>
+      <div class="fg1"><label class="flabel">Departemen / Tim (override)</label><input class="finput" id="r-dept" value="${xt('r-dept')}" oninput="STATE['xt_r-dept']=this.value;saveState()"></div>
+    </div>
+    <div class="fg2">
+      <div class="fg1"><label class="flabel">Tanggal Laporan</label><input class="finput" id="r-tgl-tes" type="date" value="${xt('r-tgl-tes')||new Date().toISOString().split('T')[0]}" oninput="STATE['xt_r-tgl-tes']=this.value;saveState()"></div>
+      <div class="fg1"><label class="flabel">Nama HR / Fasilitator</label><input class="finput" id="r-asesor" value="${xt('r-asesor')}" oninput="STATE['xt_r-asesor']=this.value;saveState()"></div>
+    </div>
+    <div class="fg1"><label class="flabel">Mengetahui</label><input class="finput" id="r-mengetahui" value="${xt('r-mengetahui')}" oninput="STATE['xt_r-mengetahui']=this.value;saveState()"></div>
+  </div>
+  <button class="btn-primary" onclick="saveState();goTo('report')">✨ Buat Laporan Psikologis →</button>
+  <div style="margin-top:14px;display:flex;gap:8px;flex-wrap:wrap" class="no-print">
+    <a href="${CARD_URL}" class="btn-sec">← Kembali ke Candidate Card</a>
+    <button onclick="if(confirm('Hapus semua catatan HR (notes, penilaian, data tambahan) untuk laporan ini?')){localStorage.removeItem(STATE_KEY);STATE={};goTo('setup')}" class="btn-sec" style="color:var(--red)">🗑 Reset Anotasi</button>
+  </div>`;
+}
+
+// ── Main report renderer ──
+function renderTKIReport(){
+  const r=REPORT.result; if(!r)return '<div style="padding:40px;text-align:center;color:var(--slate-md)">Data tes tidak ditemukan. <a href="'+CARD_URL+'" style="color:var(--teal)">Buka Candidate Card</a></div>';
+  const {scores,dominant,cand,date}=r;
+  const sorted=Object.entries(scores).sort((a,b)=>b[1]-a[1]);
+  const secondary=sorted[1][0];
+  const maxScore=12;
+  const xt=k=>STATE['xt_'+k]||'';
+
+  const header=`<div class="lp-header" id="lp-header">
+    <div>
+      <div class="lp-org">MYRALIX</div>
+      <div class="lp-type-label">Laporan Asesmen Onboarding · Pre-Day 1</div>
+      <div class="lp-inst-name">Thomas-Kilmann Assessment</div>
+      <div class="lp-inst-sub">Laporan Asesmen Mode Konflik</div>
+    </div>
+    <div style="text-align:right;flex-shrink:0">
+      <div class="lp-conf">🔒 RAHASIA</div>
+      <div style="font-size:10px;color:rgba(255,255,255,.7)">Onboarding Pre-Day 1</div>
+      <div style="font-size:10px;color:rgba(255,255,255,.6);margin-top:2px">Untuk Penggunaan Internal HR</div>
+    </div>
+  </div>`;
+
+  const dataPeserta=`<div class="lp-h1">Data Peserta</div>
+  <table class="lp-table">
+    <tr><th colspan="2">Data Peserta</th></tr>
+    <tr><td style="width:35%;font-weight:600">Nama Lengkap</td><td>${cand.name||'—'}</td></tr>
+    <tr><td style="font-weight:600">Jabatan / Posisi</td><td>${cand.jabatan||'—'}</td></tr>
+    <tr><td style="font-weight:600">Departemen / Divisi</td><td>${xt('r-dept')||cand.dept||'—'}</td></tr>
+    <tr><td style="font-weight:600">Usia</td><td>${cand.umur||'—'}</td></tr>
+    <tr><td style="font-weight:600">Jenis Kelamin</td><td>${cand.gender||'—'}</td></tr>
+    <tr><td style="font-weight:600">No. Kandidat / Pegawai</td><td>${xt('r-nomer')||'—'}</td></tr>
+    <tr><td style="font-weight:600">Tanggal Tes</td><td>${date||cand.date||'—'}</td></tr>
+    <tr><td style="font-weight:600">Tanggal Laporan</td><td>${xt('r-tgl-tes')?new Date(xt('r-tgl-tes')).toLocaleDateString('id-ID',{day:'2-digit',month:'long',year:'numeric'}):'—'}</td></tr>
+  </table>`;
+
+  // ── I. Profil Skor 5 Mode ──
+  const scoreRows=sorted.map(([k,v])=>{
+    const nb=normBand(k,v);
+    const isDom=k===dominant; const isSec=k===secondary;
+    const barW=Math.round(v/maxScore*160);
+    return `<tr style="${isDom?'background:'+MODES[k].bg+';':isSec?'background:#FFFBEB;':''}">
+      <td style="font-weight:${isDom?'700':'400'};color:${isDom?MODES[k].color:'inherit'}">
+        ${MODES[k].name}${isDom?` <span class="band-badge" style="background:${MODES[k].color};color:#fff;font-size:9px">★ DOMINAN</span>`:''}${isSec?` <span class="band-badge" style="background:#E5E7EB;color:#475569;font-size:9px">2nd</span>`:''}
+      </td>
+      <td style="color:${MODES[k].color};font-size:10px">${MODES[k].tag}</td>
+      <td style="text-align:center">${NORMS[k]} / ${maxScore}</td>
+      <td style="text-align:center;font-family:Georgia,serif;font-size:16px;font-weight:700;color:${MODES[k].color}">${v} / ${maxScore}</td>
+      <td>
+        <div style="background:#F1F5F9;border-radius:4px;height:6px;width:160px;overflow:hidden">
+          <div style="background:${MODES[k].color};width:${barW}px;height:6px;border-radius:4px"></div>
+        </div>
+        <div style="margin-top:3px">
+          <span class="band-badge" style="background:${nb.bg};color:${nb.c}">${nb.l}</span>
+        </div>
+      </td>
+    </tr>`;
+  }).join('');
+
+  const sectionI=`<div class="lp-h1" id="sec-I">I. Profil Skor Lima Mode Konflik</div>
+  <p class="lp-note-txt"><strong>Instrumen:</strong> Thomas-Kilmann Assessment · 30 pasang pernyataan pilihan paksa · Skor maks. 12 per mode</p>
+  <p class="lp-note-txt"><strong>Keterangan Band:</strong> Tinggi = skor ≥ (rata-rata+2) · Rata-rata = dalam ±2 dari rata-rata · Rendah = skor &lt; (rata-rata−2)</p>
+  <table class="lp-table">
+    <tr><th>Mode Konflik</th><th>Karakteristik</th><th>Norma</th><th>Skor Peserta</th><th>Band &amp; Profil</th></tr>
+    ${scoreRows}
+  </table>
+  <table class="lp-table">
+    <tr><th>Mode Dominan (skor tertinggi)</th><th>Mode Sekunder (skor kedua)</th></tr>
+    <tr>
+      <td style="font-weight:700;color:${MODES[dominant].color};font-size:14px">${MODES[dominant].name}</td>
+      <td style="font-weight:600;color:${MODES[secondary].color}">${MODES[secondary].name}</td>
+    </tr>
+  </table>`;
+
+  // ── II. Interpretasi Mode Dominan ──
+  const modeCards=sorted.map(([k,v])=>{
+    const m=MODES[k];const isDom=k===dominant;
+    return `<div class="mode-card" style="border-color:${m.color}${isDom?'':'60'}">
+      <div class="mode-card-head" style="background:${isDom?m.color:m.color+'CC'}">
+        <span>${m.name} <span style="opacity:.85;font-weight:400;font-size:11px">(${m.eng})</span></span>
+        ${isDom?'<span class="dom-badge">★ Mode Dominan</span>':'<span style="font-size:11px;opacity:.85">Skor: '+v+'/12</span>'}
+      </div>
+      <div class="mode-card-axis" style="background:${m.bg};color:${m.color}">${m.tag}</div>
+      <div class="mode-card-body">
+        <p><span class="mc-label">Deskripsi:</span>${m.desc}</p>
+        <p><span class="mc-label">Kapan Efektif:</span>${m.when}</p>
+        <p style="margin-bottom:0"><span class="mc-label">⚠️ Risiko Overuse:</span>${m.risk}</p>
+      </div>
+    </div>`;
+  }).join('');
+
+  const sectionII=`<div class="lp-h1" id="sec-II">II. Interpretasi Mode Konflik</div>
+  <p class="lp-note-txt">Mode dominan mencerminkan kecenderungan alami dalam menghadapi konflik. Ini bukan penilaian baik atau buruk — setiap mode efektif dalam konteks yang tepat.</p>
+  ${modeCards}
+  <div class="rcr-section no-print">
+    <div class="rcr-label">⚖️ Penilaian HR — Mode Dominan untuk Posisi/Tim:</div>
+    <div class="rcr-buttons">
+      <button class="rcr-btn sesuai" data-rcr-sec="dominan" data-val="sesuai" onclick="setRcr('dominan','sesuai')">✅ Sesuai Konteks</button>
+      <button class="rcr-btn pertimbangkan" data-rcr-sec="dominan" data-val="pertimbangkan" onclick="setRcr('dominan','pertimbangkan')">⚠️ Perlu Dipertimbangkan</button>
+      <button class="rcr-btn tidak" data-rcr-sec="dominan" data-val="tidak" onclick="setRcr('dominan','tidak')">❌ Berisiko untuk Tim</button>
+    </div>
+  </div>`;
+
+  // ── III. Matriks SVG ──
+  const POSITIONS={CP:{cx:80,cy:38},CL:{cx:240,cy:38},CM:{cx:160,cy:100},AV:{cx:80,cy:162},AC:{cx:240,cy:162}};
+  const svgCircles=Object.entries(scores).map(([k,v])=>{
+    const pos=POSITIONS[k]; const isDom=k===dominant;
+    const rad=Math.max(12,v*2.5);
+    return `<circle cx="${pos.cx}" cy="${pos.cy}" r="${rad}" fill="${MODES[k].color}33" stroke="${MODES[k].color}" stroke-width="${isDom?3:1.5}"/>
+    <text x="${pos.cx}" y="${pos.cy+4}" text-anchor="middle" font-size="${isDom?12:10}" font-weight="${isDom?'700':'400'}" fill="${MODES[k].color}" font-family="Arial,sans-serif">${isDom?'★':''} ${v}</text>
+    <text x="${pos.cx}" y="${pos.cy+18}" text-anchor="middle" font-size="8" fill="${MODES[k].color}" font-family="Arial,sans-serif">${MODES[k].name.split(' ')[0]}</text>`;
+  }).join('');
+
+  const matrixSVG=`<div class="matrix-svg-wrap">
+    <svg viewBox="0 0 320 210" xmlns="http://www.w3.org/2000/svg" style="width:100%;max-height:280px">
+      <defs><marker id="arr" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="5" markerHeight="5" orient="auto-start-reverse"><path d="M2 1L8 5L2 9" fill="none" stroke="#94A3B8" stroke-width="1.5"/></marker></defs>
+      <line x1="160" y1="12" x2="160" y2="195" stroke="#E5E7EB" stroke-width="1" stroke-dasharray="4,4"/>
+      <line x1="20" y1="100" x2="302" y2="100" stroke="#E5E7EB" stroke-width="1" stroke-dasharray="4,4"/>
+      <line x1="160" y1="195" x2="160" y2="15" stroke="#CBD5E1" stroke-width="1.5" marker-end="url(#arr)"/>
+      <line x1="20" y1="100" x2="300" y2="100" stroke="#CBD5E1" stroke-width="1.5" marker-end="url(#arr)"/>
+      <text x="160" y="10" text-anchor="middle" font-size="9" fill="#64748B" font-family="Arial,sans-serif">ASERTIF TINGGI</text>
+      <text x="160" y="206" text-anchor="middle" font-size="9" fill="#64748B" font-family="Arial,sans-serif">ASERTIF RENDAH</text>
+      <text x="305" y="103" text-anchor="start" font-size="9" fill="#64748B" font-family="Arial,sans-serif">Kooperatif →</text>
+      <text x="22" y="103" text-anchor="start" font-size="9" fill="#64748B" font-family="Arial,sans-serif">← Tidak Koop.</text>
+      ${svgCircles}
+    </svg>
+    <p style="font-size:10px;color:#94A3B8;margin:4px 0 0;text-align:center">Ukuran lingkaran = skor (maks. 12). Lingkaran tebal = mode dominan.</p>
+  </div>`;
+
+  const matrixTable=`<table class="lp-table">
+    <tr><th>Mode</th><th>Asertivitas</th><th>Kooperativitas</th><th>Posisi di Matriks</th></tr>
+    <tr><td><strong style="color:#DC2626">Bersaing (Competing)</strong></td><td style="color:#DC2626">TINGGI</td><td style="color:#DC2626">RENDAH</td><td>Sudut kiri atas — Dominan, menegaskan diri</td></tr>
+    <tr><td><strong style="color:#0A6E5C">Berkolaborasi (Collaborating)</strong></td><td style="color:#0A6E5C">TINGGI</td><td style="color:#0A6E5C">TINGGI</td><td>Sudut kanan atas — Ideal, butuh waktu &amp; energi</td></tr>
+    <tr><td><strong style="color:#D97706">Berkompromi (Compromising)</strong></td><td style="color:#D97706">TENGAH</td><td style="color:#D97706">TENGAH</td><td>Pusat — Pragmatis, solusi sementara</td></tr>
+    <tr><td><strong style="color:#7C3AED">Menghindar (Avoiding)</strong></td><td style="color:#7C3AED">RENDAH</td><td style="color:#7C3AED">RENDAH</td><td>Sudut kiri bawah — Menarik diri dari konflik</td></tr>
+    <tr><td><strong style="color:#0891B2">Mengakomodasi (Accommodating)</strong></td><td style="color:#0891B2">RENDAH</td><td style="color:#0891B2">TINGGI</td><td>Sudut kanan bawah — Mendahulukan pihak lain</td></tr>
+  </table>`;
+
+  const sectionIII=`<div class="lp-h1" id="sec-III">III. Posisi dalam Matriks Konflik</div>
+  <p class="lp-note-txt">Matriks Thomas-Kilmann Assessment memetakan lima mode pada dua sumbu: Tingkat Asertivitas (vertikal) dan Tingkat Kooperativitas (horizontal).</p>
+  ${matrixSVG}${matrixTable}`;
+
+  // ── IV. Panduan Situasional ──
+  const sectionIV=`<div class="lp-h1" id="sec-IV">IV. Panduan Situasional — Mode yang Tepat untuk Situasi Apa</div>
+  <table class="lp-table">
+    <tr><th style="width:55%">Situasi</th><th>Mode yang Direkomendasikan</th></tr>
+    <tr><td>Keputusan harus cepat; Anda memiliki otoritas dan data yang jelas</td><td style="color:#DC2626;font-weight:700">🎯 Bersaing (Competing)</td></tr>
+    <tr><td>Isu sangat penting bagi semua pihak; hubungan jangka panjang harus dijaga</td><td style="color:#0A6E5C;font-weight:700">🤝 Berkolaborasi (Collaborating)</td></tr>
+    <tr><td>Waktu terbatas; kedua pihak perlu maju walau tanpa solusi sempurna</td><td style="color:#D97706;font-weight:700">⚖️ Berkompromi (Compromising)</td></tr>
+    <tr><td>Isu tidak cukup penting untuk diperdebatkan sekarang; perlu jeda emosional</td><td style="color:#7C3AED;font-weight:700">🌿 Menghindar (Avoiding)</td></tr>
+    <tr><td>Anda menyadari kesalahan Anda; hubungan lebih penting dari isu ini</td><td style="color:#0891B2;font-weight:700">💙 Mengakomodasi (Accommodating)</td></tr>
+  </table>
+  <div class="rcr-section no-print">
+    <div class="rcr-label">⚖️ Penilaian HR — Fleksibilitas Mode Peserta:</div>
+    <div class="rcr-buttons">
+      <button class="rcr-btn sesuai" data-rcr-sec="fleksibilitas" data-val="sesuai" onclick="setRcr('fleksibilitas','sesuai')">✅ Fleksibel &amp; Adaptif</button>
+      <button class="rcr-btn pertimbangkan" data-rcr-sec="fleksibilitas" data-val="pertimbangkan" onclick="setRcr('fleksibilitas','pertimbangkan')">⚠️ Perlu Pengembangan</button>
+      <button class="rcr-btn tidak" data-rcr-sec="fleksibilitas" data-val="tidak" onclick="setRcr('fleksibilitas','tidak')">❌ Sangat Kaku</button>
+    </div>
+  </div>`;
+
+  // ── V. Saran Pengembangan ──
+  const devTips={
+    CP:'Latih empati aktif dalam diskusi. Coba kolaborasi untuk isu non-darurat. Perhatikan dampak terhadap kepercayaan tim jangka panjang.',
+    CL:'Pertahankan kemampuan kolaborasi. Belajar membaca kapan isu memerlukan kolaborasi penuh vs. kompromi cepat untuk menghemat energi.',
+    CM:'Jadikan kompromi sebagai alat strategis, bukan default. Pertimbangkan apakah beberapa situasi bisa diselesaikan lebih baik dengan kolaborasi penuh.',
+    AV:'Identifikasi situasi mana yang benar-benar tidak penting vs. yang dihindari karena ketidaknyamanan. Latih keberanian untuk mengangkat isu yang bermakna.',
+    AC:'Bedakan mengakomodasi dengan tulus vs. dari rasa tidak nyaman menghadapi konflik. Latih asertivitas untuk isu yang benar-benar penting bagi Anda.',
+  };
+  const devRows=sorted.map(([k,])=>`<tr><td style="font-weight:700;color:${MODES[k].color};background:${MODES[k].bg}">${MODES[k].name}</td><td>${devTips[k]}</td></tr>`).join('');
+
+  const sectionV=`<div class="lp-h1" id="sec-V">V. Saran Pengembangan per Mode</div>
+  <table class="lp-table">
+    <tr><th style="width:35%">Mode</th><th>Saran Pengembangan</th></tr>
+    ${devRows}
+  </table>`;
+
+  // ── VI. Observasi Rekruter ──
+  const sectionVI=`<div class="lp-h1" id="sec-VI">VI. Observasi Rekruter &amp; Catatan Onboarding</div>
+  <p class="lp-note-txt">Gunakan bagian ini untuk mencatat observasi saat debrief hasil Thomas-Kilmann Assessment bersama karyawan baru.</p>
+  <table class="lp-table">
+    <tr><th style="width:35%">Aspek Observasi</th><th>Catatan</th></tr>
+    <tr><td style="font-weight:600;vertical-align:top;padding-top:10px">Reaksi peserta terhadap hasil</td>
+        <td><textarea id="note-obs" class="lp-textarea" oninput="saveState()" placeholder="Tulis observasi reaksi peserta saat melihat hasilnya..."></textarea></td></tr>
+    <tr><td style="font-weight:600;vertical-align:top;padding-top:10px">Mode yang mengejutkan peserta</td>
+        <td><textarea id="note-surprises" class="lp-textarea" oninput="saveState()" placeholder="Aspek mana yang membuat peserta refleksi..."></textarea></td></tr>
+    <tr><td style="font-weight:600;vertical-align:top;padding-top:10px">Potensi gesekan dengan tim / atasan</td>
+        <td><textarea id="note-friction" class="lp-textarea" oninput="saveState()" placeholder="Antisipasi gesekan gaya dengan profil tim..."></textarea></td></tr>
+    <tr><td style="font-weight:600;vertical-align:top;padding-top:10px">Rencana tindak lanjut / pengembangan</td>
+        <td><textarea id="note-followup" class="lp-textarea" oninput="saveState()" placeholder="Langkah konkret untuk coaching atau debrief lanjutan..."></textarea></td></tr>
+  </table>
+  <div class="rcr-section no-print" style="margin-top:14px">
+    <div class="rcr-label">📋 Rekomendasi HR — Kesesuaian Onboarding Keseluruhan:</div>
+    <div class="rcr-buttons">
+      <button class="rcr-btn sesuai" data-rcr-sec="kesesuaian" data-val="sesuai" onclick="setRcr('kesesuaian','sesuai')">✅ Siap Onboarding Standar</button>
+      <button class="rcr-btn pertimbangkan" data-rcr-sec="kesesuaian" data-val="pertimbangkan" onclick="setRcr('kesesuaian','pertimbangkan')">⚠️ Perlu Coaching Tambahan</button>
+      <button class="rcr-btn tidak" data-rcr-sec="kesesuaian" data-val="tidak" onclick="setRcr('kesesuaian','tidak')">❌ Perlu Penyesuaian Khusus</button>
+    </div>
+  </div>
+  <div class="lp-sign-grid">
+    <div class="lp-sign-box"><div class="lp-sign-role">Peserta</div><div class="lp-sign-line">Nama: ${cand.name||'_______________________'}<br>Tanda Tangan: _______________</div></div>
+    <div class="lp-sign-box"><div class="lp-sign-role">HR / Fasilitator</div><div class="lp-sign-line">Nama: ${xt('r-asesor')||'_______________________'}<br>Tanda Tangan: _______________</div></div>
+  </div>
+  ${xt('r-mengetahui')?`<div class="lp-sign-box" style="margin-top:10px;max-width:300px"><div class="lp-sign-role">Mengetahui</div><div class="lp-sign-line">${xt('r-mengetahui')}</div></div>`:''}
+  <div class="lp-foot-disc">Dokumen ini bersifat rahasia. Untuk keperluan onboarding internal. Hasil bukan penilaian baik/buruk — hanya gambaran preferensi gaya konflik.<br>Versi adaptasi Bahasa Indonesia oleh Myralix. Bukan administrasi resmi TKI® CPP Inc. © Myralix Assessment Platform 2026.</div>`;
+
+  const topActions=`<div class="no-print">
+    <button onclick="window.print()" class="btn-sec" style="background:var(--teal);color:#fff;border-color:var(--teal)">🖨 Cetak / Simpan PDF</button>
+    <button onclick="goTo('setup')" class="btn-sec">✏️ Edit Data</button>
+    <a href="${CARD_URL}" class="btn-sec">← Kembali ke Candidate Card</a>
+    <button onclick="if(confirm('Hapus semua anotasi HR (notes &amp; penilaian)? Data tes peserta tidak akan terhapus.')){const xtkeep=Object.keys(STATE).filter(k=>k.startsWith('xt_')).reduce((o,k)=>(o[k]=STATE[k],o),{});STATE=xtkeep;localStorage.setItem(STATE_KEY,JSON.stringify(STATE));goTo('report')}" class="btn-sec" style="color:var(--red)">🗑 Reset Anotasi</button>
+  </div>`;
+
+  return `<div class="lp-wrap">${topActions}${header}${dataPeserta}${sectionI}${sectionII}${sectionIII}${sectionIV}${sectionV}${sectionVI}${topActions}</div>`;
+}
+
+// ── INIT ──
+function init(){
+  loadState();
+  loadHandoff();
+  goTo('setup');
+}
+init();
+</script>
+</body>
+</html>

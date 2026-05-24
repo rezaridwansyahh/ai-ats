@@ -1,5 +1,5 @@
 import { Button } from '@/components/ui/button';
-import { Brain, Star, Map, Settings, Timer, ClipboardList, Trash2, Check, CheckCircle2, Play, Lock } from 'lucide-react';
+import { Brain, Star, Map, Settings, Timer, ClipboardList, Trash2, Check, CheckCircle2, Play, Lock, FileText } from 'lucide-react';
 
 const TEST_META = {
   tk: {
@@ -36,8 +36,9 @@ const TEST_META = {
   },
 };
 
-export default function Overview({ profile, results, tests, onPick, onReset, onSeeComplete }) {
+export default function Overview({ profile, results, tests, onPick, onReset, onSeeComplete, onViewReport }) {
   const doneCount = Object.keys(results || {}).length;
+  const allDone = tests.every((t) => results?.[t]);
 
   return (
     <div className="max-w-[900px] mx-auto px-4 py-6">
@@ -132,6 +133,12 @@ export default function Overview({ profile, results, tests, onPick, onReset, onS
       </div>
 
       <div className="flex flex-wrap gap-2 mt-4">
+        {/* View Report button - only shown when all tests done AND allowViewReport=true */}
+        {allDone && onViewReport && (
+          <Button onClick={onViewReport} className="bg-gradient-to-br from-teal-800 to-teal-600 hover:opacity-90 gap-2">
+            <FileText className="w-4 h-4" /> Lihat Laporan Hasil
+          </Button>
+        )}
         {doneCount > 0 && (
           <Button variant="outline" onClick={onSeeComplete} className="gap-2">
             <ClipboardList className="w-4 h-4" /> Lihat Ringkasan

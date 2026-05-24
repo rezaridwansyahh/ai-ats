@@ -1,5 +1,5 @@
 import { Button } from '@/components/ui/button';
-import { PartyPopper, Check, CheckCircle2, Circle } from 'lucide-react';
+import { PartyPopper, Check, CheckCircle2, Circle, FileText } from 'lucide-react';
 
 const TEST_LABELS = {
   tk: 'Tes 1 — Kemampuan Kognitif',
@@ -9,7 +9,7 @@ const TEST_LABELS = {
 };
 
 export default function Complete({
-  profile, results, tests, onBack, onContinue,
+  profile, results, tests, onBack, onContinue, onViewReport,
   submitStatus = 'idle', submitError = null, onRetrySubmit,
 }) {
   const allDone = tests.every((t) => results[t]);
@@ -40,9 +40,21 @@ export default function Complete({
             </div>
           )}
           {submitStatus === 'success' && (
-            <div className="mt-3 bg-emerald-100 border border-emerald-300 rounded-lg px-3 py-2 text-xs text-emerald-800 flex items-center justify-center gap-2">
-              <Check className="w-4 h-4" /> Hasil tersimpan di server
-            </div>
+            <>
+              <div className="mt-3 bg-emerald-100 border border-emerald-300 rounded-lg px-3 py-2 text-xs text-emerald-800 flex items-center justify-center gap-2">
+                <Check className="w-4 h-4" /> Hasil tersimpan di server
+              </div>
+              {/* View Report button - controlled by allowViewReport prop from parent (CandidateCard) */}
+              {onViewReport && (
+                <Button
+                  onClick={onViewReport}
+                  className="w-full mt-3 bg-gradient-to-br from-teal-800 to-teal-600 hover:opacity-90 h-11 gap-2"
+                >
+                  <FileText className="w-5 h-5" />
+                  Lihat Laporan Hasil Asesmen →
+                </Button>
+              )}
+            </>
           )}
           {submitStatus === 'error' && (
             <div className="mt-3 bg-red-50 border border-red-300 rounded-lg px-3 py-2.5 text-xs text-red-700 text-left">

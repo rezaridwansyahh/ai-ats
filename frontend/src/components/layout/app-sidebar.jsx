@@ -70,11 +70,17 @@ const routeMap = {
   'Talent Pool':       '/sourcing/talent-pool',
   'Source Candidate':  '/sourcing/source-candidate',
   'AI Screening':      '/selection/ai-screening',
+  // Backward-compat: clients with stale localStorage permissions may still
+  // see the old menu name "AI Matching". Map it to the new route so the
+  // click lands on the workboard instead of the catch-all ComingSoon page.
+  'AI Matching':       '/selection/ai-screening',
   'Report':            '/selection/report',
   'Assessment A':      '/asesmen/assessment-a',
   'Assessment B':      '/asesmen/assessment-b',
   'Assessment C':      '/asesmen/assessment-c',
   'Assessment D':      '/asesmen/assessment-d',
+  'Insights Discovery Assessment': '/asesmen/insights-discovery-assessment',
+  'Thomas Kilmann Assessment':     '/asesmen/thomas-kilmann-assessment',
 };
 
 const useSidebarStructure = (permissions) => {
