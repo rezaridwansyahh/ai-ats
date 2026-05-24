@@ -480,14 +480,15 @@ export default function ReportView({ profile, results, state, updateState, saveN
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-1.5">
                         {dims.map((code) => {
                           const dim = DIMS[code];
-                          const score = papil.scores[code] || 0;
+                          if (!dim) return null;
+                          const score = papil.scores?.[code] || 0;
                           const range = getRange(code, score);
                           return (
                             <div key={code} className="rounded-lg border px-3 py-1.5 flex items-center gap-2.5" style={{ borderColor: '#E2E8F0', background: '#FAFAFA' }}>
                               <div className="w-7 h-7 rounded grid place-items-center font-serif font-bold text-xs flex-shrink-0" style={{ background: dim.bg, color: dim.color }}>{code}</div>
                               <div className="flex-1 min-w-0">
-                                <div className="text-[11.5px] font-bold text-slate-700 truncate">{dim.label}</div>
-                                <div className="text-[10px] text-slate-500 truncate">{dim.aspect}</div>
+                                <div className="text-[11.5px] font-bold text-slate-700 truncate">{String(dim.label)}</div>
+                                <div className="text-[10px] text-slate-500 truncate">{String(dim.aspect)}</div>
                               </div>
                               <span className="px-2 py-0.5 rounded-full text-[10px] font-bold" style={{ background: rangeBg(range), color: rangeColor(range) }}>
                                 {score} · {rangeLbl(range)}

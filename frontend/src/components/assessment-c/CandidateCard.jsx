@@ -13,8 +13,9 @@ import PAPITest from './candidate/PAPITest';
 import SJTTest from './candidate/SJTTest';
 import TestDone from './candidate/TestDone';
 import Complete from './candidate/Complete';
+import CandidateReportView from './report/CandidateReportView';
 
-// Screens: setup | overview | tk_intro | tk | epps_intro | epps | papi_intro | papi | sjt_intro | sjt | done_<n> | complete
+// Screens: setup | overview | tk_intro | tk | epps_intro | epps | papi_intro | papi | sjt_intro | sjt | done_<n> | complete | report
 const TESTS = ['tk', 'epps', 'papi', 'sjt'];
 const ASSESSMENT_ID_BATTERY_C = 3;
 const TIMED_SCREENS = ['tk', 'sjt']; // both timed → ctrl-block + integrity gate
@@ -24,6 +25,7 @@ export default function CandidateCard({
   prefilledProfile = null,
   onPortalSubmit = null,
   portalHash = null,
+  allowViewReport = true, // Toggle to show/hide "View Report" button (can be disabled in future)
 } = {}) {
   const isPortal = mode === 'portal';
   const storageKey = isPortal && portalHash ? `${SKEY}::portal::${portalHash}` : SKEY;
@@ -259,11 +261,21 @@ export default function CandidateCard({
         tests={TESTS}
         onBack={() => goTo('overview')}
         onContinue={(t) => goTo(t + '_intro')}
+        onViewReport={allowViewReport ? () => goTo('report') : null}
         submitStatus={submitStatus}
         submitError={submitError}
         onRetrySubmit={submitResults}
       />
     );
+  }
+
+  if (screen === 'report') {
+    const allDone = TESTS.every((t) => results[t]);
+    if (!allDone) {
+      goTo('complete');
+      return null;
+    }
+    return <CandidateReportView profile={profile} results={results} onClose={() => goTo('complete')} />;
   }
 
   return null;

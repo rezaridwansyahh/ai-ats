@@ -1,5 +1,7 @@
+import { useState } from 'react';
 import { Button } from '@/components/ui/button';
-import { PartyPopper, Check, CheckCircle2, Circle } from 'lucide-react';
+import { PartyPopper, Check, CheckCircle2, Circle, FileText } from 'lucide-react';
+import CandidateReportView from '../report/CandidateReportView';
 
 const TEST_LABELS = {
   tk: 'Tes 1 — Kemampuan Kognitif',
@@ -13,9 +15,14 @@ export default function Complete({
   profile, results, tests, onBack, onContinue,
   submitStatus = 'idle', submitError = null, onRetrySubmit,
 }) {
+  const [showReport, setShowReport] = useState(false);
   const allDone = tests.every((t) => results[t]);
   const doneCount = Object.keys(results || {}).length;
   const firstUndone = tests.find((t) => !results[t]);
+
+  if (showReport && allDone) {
+    return <CandidateReportView profile={profile} results={results} onClose={() => setShowReport(false)} />;
+  }
 
   return (
     <div className="max-w-[700px] mx-auto px-4 py-6">
@@ -103,6 +110,12 @@ export default function Complete({
         <Button variant="outline" onClick={onBack}>
           ← Kembali ke Daftar Tes
         </Button>
+        {allDone && submitStatus === 'success' && (
+          <Button onClick={() => setShowReport(true)} className="bg-gradient-to-br from-blue-700 to-blue-500 hover:opacity-90 ml-auto gap-2">
+            <FileText className="w-4 h-4" />
+            Lihat Laporan Hasil
+          </Button>
+        )}
         {!allDone && firstUndone && (
           <Button onClick={() => onContinue(firstUndone)} className="bg-gradient-to-br from-teal-800 to-teal-600 hover:opacity-90 ml-auto">
             Lanjutkan Tes →
