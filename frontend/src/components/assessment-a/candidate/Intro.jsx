@@ -1,8 +1,9 @@
 import { Button } from '@/components/ui/button';
+import { Brain, Star, Target, Map } from 'lucide-react';
 
 const INTRO = {
   tk: {
-    icon: '🧠',
+    Icon: Brain,
     title: 'Tes Kemampuan Kognitif',
     fn: 'Mengukur kapasitas berpikir, analisis, dan kecepatan akurasi klerikal',
     items: '90 soal',
@@ -11,7 +12,7 @@ const INTRO = {
       'Dua subtes bertimer: GI Kemampuan Umum (50 soal, 12 menit) dan KA Kecepatan & Akurasi (40 soal, 8 menit). Selama tes, hindari pindah tab — setiap pindah dicatat sebagai indikator integritas.',
   },
   bigfive: {
-    icon: '🌟',
+    Icon: Star,
     title: 'Tes Kepribadian (Big Five)',
     fn: 'Mengukur 5 trait kepribadian: E, A, C, N, O',
     items: '44 pernyataan',
@@ -20,7 +21,7 @@ const INTRO = {
       'Nilai setiap pernyataan dalam skala 1 (Sangat Tidak Sesuai) sampai 5 (Sangat Sesuai). Tidak ada jawaban benar atau salah. Menjawab langsung lanjut ke soal berikutnya secara otomatis.',
   },
   disc: {
-    icon: '🎯',
+    Icon: Target,
     title: 'Tes Gaya Kerja (DISC)',
     fn: 'Mengukur gaya perilaku dominan: Dominance, Influence, Steadiness, Compliance',
     items: '24 kelompok',
@@ -29,7 +30,7 @@ const INTRO = {
       'Untuk setiap kelompok 4 pernyataan, pilih satu yang PALING mencerminkan Anda (M) dan satu yang PALING TIDAK mencerminkan Anda (L). Setelah keduanya dipilih, otomatis lanjut.',
   },
   holland: {
-    icon: '🗺️',
+    Icon: Map,
     title: 'Tes Minat Kerja (Holland RIASEC)',
     fn: 'Mengukur minat vokasional menggunakan model Holland RIASEC',
     items: '108 pernyataan',
@@ -46,7 +47,9 @@ export default function Intro({ test, onStart, onBack }) {
   return (
     <div className="max-w-[640px] mx-auto px-4 py-10">
       <div className="bg-white border border-slate-200 rounded-xl p-8 text-center shadow-lg">
-        <div className="text-5xl mb-3">{meta.icon}</div>
+        <div className="mb-3 flex justify-center">
+          <meta.Icon className="w-12 h-12 text-teal-700" />
+        </div>
         <h2 className="font-serif text-2xl mb-1">{meta.title}</h2>
         <div className="text-sm font-semibold text-slate-500 mb-5">{meta.fn}</div>
 

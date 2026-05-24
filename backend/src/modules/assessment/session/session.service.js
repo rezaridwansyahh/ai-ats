@@ -1,5 +1,6 @@
 import Session from './session.model.js';
 import Participant from '../participant/participant.model.js';
+import { resolveParticipantByCandidate } from '../../../shared/services/candidate-resolver.js';
 
 const EDITABLE_FIELDS = ['battery', 'participant_id', 'job_id', 'status', 'expired_at', 'notes'];
 const VALID_BATTERIES = ['A', 'B', 'C', 'D'];
@@ -55,6 +56,49 @@ class SessionService {
     }
 
     return await Session.create({ battery, participant_id, job_id, created_by, expired_at, notes });
+  }
+
+  async findOrCreateFromCandidate({ candidate_id, job_id, battery, created_by, expired_at }) {
+    if (!candidate_id) throw { status: 400, message: 'candidate_id is required' };
+    if (!battery)      throw { status: 400, message: 'battery is required' };
+    if (!VALID_BATTERIES.includes(battery)) {
+      throw { status: 400, message: `battery must be one of ${VALID_BATTERIES.join(', ')}` };
+    }
+
+    const { participant, candidateJobId } =
+      await resolveParticipantByCandidate(candidate_id, { createIfMissing: true });
+
+    const effectiveJobId = job_id ?? candidateJobId ?? null;
+
+    // Idempotency: return live session if one already exists for this triple.
+    const existing = await Session.getByParticipantJobBattery(participant.id, effectiveJobId, battery);
+    if (existing) {
+      return { session: existing, participant, created: false };
+    }
+
+    const ttlMs = 7 * 24 * 60 * 60 * 1000;
+    const expiry = expired_at || new Date(Date.now() + ttlMs).toISOString();
+
+    const session = await Session.create({
+      battery,
+      participant_id: participant.id,
+      job_id:         effectiveJobId,
+      created_by:     created_by ?? null,
+      expired_at:     expiry,
+      notes:          null,
+    });
+    return { session, participant, created: true };
+  }
+
+  async getActiveByCandidateJob({ candidate_id, job_id }) {
+    if (!candidate_id) throw { status: 400, message: 'candidate_id is required' };
+
+    const { participant, candidateJobId } =
+      await resolveParticipantByCandidate(candidate_id, { createIfMissing: false });
+    if (!participant) return [];
+
+    const effectiveJobId = job_id ?? candidateJobId ?? null;
+    return await Session.getActiveByParticipantJob(participant.id, effectiveJobId);
   }
 
   async update(id, fields) {

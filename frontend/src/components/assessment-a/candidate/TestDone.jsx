@@ -1,10 +1,11 @@
 import { Button } from '@/components/ui/button';
+import { CheckCircle2 } from 'lucide-react';
 
 export default function TestDone({ label, isLast, onNext, onBack }) {
   return (
     <div className="max-w-[480px] mx-auto px-4 py-16 text-center">
-      <div className="w-20 h-20 rounded-full bg-green-50 border-[3px] border-green-600 inline-flex items-center justify-center text-4xl mb-5">
-        ✅
+      <div className="w-20 h-20 rounded-full bg-green-50 border-[3px] border-green-600 inline-flex items-center justify-center mb-5">
+        <CheckCircle2 className="w-12 h-12 text-green-600" />
       </div>
       <h2 className="font-serif text-2xl text-green-800 mb-2">{label} Selesai</h2>
       <p className="text-sm text-slate-500 leading-relaxed mb-7">

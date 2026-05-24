@@ -2,21 +2,21 @@
 // to/from a core_applicant_assessment row.
 //
 // DB layout used:
-//   - 4 free-text columns hold the four "Section V" narratives that have direct slots:
-//       narrative_report     ← edit_narr-konsol
-//       strengths            ← edit_narr-strength
-//       development_areas    ← edit_narr-dev
-//       recommended_roles    ← edit_narr-rec
-//   - Everything else lives under summary.assessor JSONB:
-//       narratives.{tk, epps, hol, papi, fit, bigfive, disc, holland}
-//       ratings.{tk, epps, papi, bigfive, disc}
+//   - 4 free-text columns hold the four "Section V/VI" synthesis narratives:
+//       narrative_report     ← edit_narr-konsol     (Ringkasan Profil Terintegrasi)
+//       strengths            ← edit_narr-strength   (Kekuatan Utama Kandidat)
+//       development_areas    ← edit_narr-dev        (Area Pengembangan & Risiko)
+//       recommended_roles    ← edit_narr-fit        (Analisis Kesesuaian Peran)
+//   - Per-section narratives (variable per battery) live in summary.assessor JSONB:
+//       narratives.{tk, bigfive, disc, holland, epps, hol, papi, sjt, pf, msdt, papil}
+//       ratings.{tk, epps, papi, bigfive, disc, sjt, pf, msdt, papil}
 //       finalRec
-//       notes.{tk, epps, hol, papi, final, bigfive, disc, holland}
+//       notes.{tk, epps, hol, papi, final, bigfive, disc, holland, sjt, pf, msdt, papil}
 //       meta.{nomerKandidat, asesor, mengetahui}
 //
-// Battery A uses `bigfive`, `disc`, `holland`; Battery B uses `epps`, `hol`, `papi`.
-// `tk` and `fit` are shared. The packer/unpacker walks the union of keys so the same code path
-// round-trips either battery without dropping fields.
+// Battery A uses bigfive/disc/holland; B uses epps/hol/papi; C uses epps/papi/sjt; D uses sjt/pf/msdt/papil.
+// `tk` is shared across A-D. `fit` is the synthesis narrative for "Analisis Kesesuaian Peran"
+// in A-C (D synthesis is only konsol+strength). The packer/unpacker walks the union of keys.
 
 const NARR_KEYS   = ['tk', 'epps', 'hol', 'papi', 'fit', 'bigfive', 'disc', 'holland', 'sjt', 'pf', 'msdt', 'papil'];
 const RATING_KEYS = ['tk', 'epps', 'papi', 'bigfive', 'disc', 'sjt', 'pf', 'msdt', 'papil'];
@@ -32,13 +32,14 @@ export function unpackAssessorState(row) {
 
   const state = {};
 
-  // Section V narratives → flat edit_narr-* keys (from TEXT columns)
+  // Synthesis narratives → flat edit_narr-* keys (from TEXT columns)
   if (row.narrative_report  != null) state['edit_narr-konsol']   = row.narrative_report;
   if (row.strengths         != null) state['edit_narr-strength'] = row.strengths;
   if (row.development_areas != null) state['edit_narr-dev']      = row.development_areas;
-  if (row.recommended_roles != null) state['edit_narr-rec']      = row.recommended_roles;
+  if (row.recommended_roles != null) state['edit_narr-fit']      = row.recommended_roles;
 
-  // Per-section narratives → flat edit_narr-* keys (from JSONB)
+  // Per-section narratives → flat edit_narr-* keys (from JSONB).
+  // For `fit`, JSONB wins if both sources are present (kept in sync by packAssessorState).
   for (const k of NARR_KEYS) {
     if (narratives[k] != null) state[`edit_narr-${k}`] = narratives[k];
   }
@@ -101,6 +102,6 @@ export function packAssessorState(state, existingSummary) {
     narrative_report:   state['edit_narr-konsol']   ?? null,
     strengths:          state['edit_narr-strength'] ?? null,
     development_areas:  state['edit_narr-dev']      ?? null,
-    recommended_roles:  state['edit_narr-rec']      ?? null,
+    recommended_roles:  state['edit_narr-fit']      ?? null,
   };
 }

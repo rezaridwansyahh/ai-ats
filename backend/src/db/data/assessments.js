@@ -74,4 +74,36 @@ export default [
     },
     is_active: true,
   },
+  {
+    id: 5,
+    assessment_code: 'myralix_insights_discovery',
+    name: 'Insights Discovery Assessment',
+    description: 'Tes profil kepribadian kerja — 72 pasang pernyataan forced-choice; 3 dimensi (E/I, T/F, S/N), 8 profil & 4 warna energi. Frontend pre-scores dan mengirim results+summary.',
+    duration_minutes: 25,
+    options: {
+      // Single subtest 'insights'. Frontend computes the profile and submits results.by_subtest.insights + summary.
+      subtests: ['insights'],
+      scoring: {
+        insights: { weight: 1.0, items: 72, dimensions: ['EI', 'TF', 'SN'], profiles: 8 },
+      },
+      // No questions bank — frontend owns the 72 forced-choice pairs and scoring.
+    },
+    is_active: true,
+  },
+  {
+    id: 6,
+    assessment_code: 'myralix_thomas_kilmann',
+    name: 'Thomas-Kilmann Assessment',
+    description: 'Asesmen mode penanganan konflik (TKI) — 30 pasang pernyataan forced-choice, 5 mode (Bersaing, Berkolaborasi, Berkompromi, Menghindar, Mengakomodasi). Frontend pre-scores dan mengirim results+summary.',
+    duration_minutes: 15,
+    options: {
+      // Single subtest 'tki'. Frontend computes per-mode scores and submits results.by_subtest.tki + summary.
+      subtests: ['tki'],
+      scoring: {
+        tki: { weight: 1.0, items: 30, modes: ['CP', 'CL', 'CM', 'AV', 'AC'], max_per_mode: 12 },
+      },
+      // No questions bank — frontend owns the 30 forced-choice pairs and scoring.
+    },
+    is_active: true,
+  },
 ];

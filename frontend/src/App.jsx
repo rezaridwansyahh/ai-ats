@@ -17,14 +17,17 @@ import RecruitersPage from "./pages/Recruiters"
 import ComingSoonPage from "./pages/ComingSoon"
 import AssessmentAPage from "./pages/AssessmentA"
 import ReportPage from "./pages/Report"
+import CandidateDetailPage from "./pages/CandidateDetail"
+import AssessmentPlacementPage from "./pages/portal/AssessmentPlacement"
 import AIScreeningPage from "./pages/AIScreening"
 import AIScreeningWorkboard from "./pages/AIScreeningWorkboard"
 import AIScreeningCandidatePage from "./pages/AIScreeningCandidate"
-import AIScreeningCalibrationPage from "./pages/AIScreeningCalibration"
 import AssessmentBPage from "./pages/AssessmentB"
 import CandidatePipelinePage from "./pages/CandidatePipeline"
 import AssessmentCPage from "./pages/AssessmentC"
 import AssessmentDPage from "./pages/AssessmentD"
+import InsightsDiscoveryAssessmentPage from "./pages/InsightsDiscoveryAssessment"
+import ThomasKilmannAssessmentPage from "./pages/ThomasKilmannAssessment"
 
 function App() {
   return (
@@ -32,6 +35,9 @@ function App() {
       <Route path="/" element={<LoginPage />} />
       <Route path="/login" element={<LoginPage />} />
       <Route path="/register" element={<RegisterPage />} />
+
+      {/* Public candidate-facing portal */}
+      <Route path="/assessment-placement/:hash" element={<AssessmentPlacementPage />} />
 
       {/* All authenticated routes share DashboardLayout */}
       <Route element={<DashboardLayout />}>
@@ -53,13 +59,15 @@ function App() {
         <Route path="/selection/ai-screening" element={<AIScreeningWorkboard />} />
         <Route path="/selection/ai-screening/job/:jobId" element={<AIScreeningPage />} />
         <Route path="/selection/ai-screening/candidate/:screeningId" element={<AIScreeningCandidatePage />} />
-        <Route path="/selection/ai-screening/job/:jobId/calibrate" element={<AIScreeningCalibrationPage />} />
         <Route path="/selection/report" element={<ReportPage />} />
+        <Route path="/selection/report/:jobId/:participantId" element={<CandidateDetailPage />} />
 
         <Route path="/asesmen/assessment-a" element={<AssessmentAPage />} />
         <Route path="/asesmen/assessment-b" element={<AssessmentBPage />} />
         <Route path="/asesmen/assessment-c" element={<AssessmentCPage />} />
         <Route path="/asesmen/assessment-d" element={<AssessmentDPage />} />
+        <Route path="/asesmen/insights-discovery-assessment" element={<InsightsDiscoveryAssessmentPage />} />
+        <Route path="/asesmen/thomas-kilmann-assessment" element={<ThomasKilmannAssessmentPage />} />
 
         <Route path="/settings/user-management" element={<UserManagementPage />} />
         <Route path="/settings/role-management" element={<RoleManagementPage />} />

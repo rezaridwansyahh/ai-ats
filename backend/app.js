@@ -30,6 +30,7 @@ import participant from "./src/modules/assessment/participant/participant.route.
 import question from "./src/modules/assessment/question/question.route.js"
 import session from "./src/modules/assessment/session/session.route.js"
 import assessmentBatteryResult from "./src/modules/assessment/assessment-battery-result/assessment-battery-result.route.js"
+import assessmentAI from "./src/modules/assessment/assessment-ai/assessment-ai.route.js"
 import sourcing from "./src/modules/sourcing/sourcing.route.js"
 import recruiter from "./src/modules/recruiter/recruiter.route.js"
 import pipeline from "./src/modules/pipeline/pipeline.route.js"
@@ -39,6 +40,7 @@ import automationSetting from "./src/modules/automation-setting/automation.route
 import screening from "./src/modules/screening/screening.route.js"
 import company from "./src/modules/company/company.route.js"
 import companyUsage from "./src/modules/company-usage/company-usage.route.js"
+import portalAssessment from "./src/modules/portal-assessment/portal-assessment.route.js"
 
 app.use(express.json());
 app.use(cors({
@@ -74,6 +76,8 @@ portal.use("/api/participant", participant);
 portal.use("/api/question", question);
 portal.use("/api/session", session);
 portal.use("/api/assessment-battery-result", assessmentBatteryResult);
+portal.use("/api/assessment-ai", assessmentAI);
+portal.use("/api/portal-assessment", portalAssessment);
 
 app.use("/portal", portal);
 app.use("/api/auth", auth);
@@ -94,6 +98,7 @@ app.use("/api/participant", participant);
 app.use("/api/question", question);
 app.use("/api/session", session);
 app.use("/api/assessment-battery-result", assessmentBatteryResult);
+app.use("/api/assessment-ai", assessmentAI);
 app.use("/api/sourcing", sourcing);
 app.use("/api/recruiter", recruiter);
 app.use("/api/pipeline", pipeline);
@@ -103,6 +108,7 @@ app.use("/api/automation-setting", automationSetting);
 app.use("/api/screening", screening);
 app.use("/api/company", company);
 app.use("/api/company-usage", companyUsage);
+app.use("/api/portal-assessment", portalAssessment);
 
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => {

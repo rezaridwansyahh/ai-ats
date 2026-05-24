@@ -12,11 +12,13 @@ import stageCategoriesData from '../data/stage_categories.js';
 import { templateStages, templateStageRows } from '../data/template_stages.js';
 import { jobAccounts, coreJobs, jobSourcing } from '../data/job_sourcing.js';
 import applicantsData from '../data/applicants.js';
+import candidatesData from '../data/candidate.js';
 import skillAliasesData from '../data/skill_aliases.js';
 import companiesData from '../data/companies.js';
 import assessmentsData from '../data/assessments.js';
 import jobTemplatesData from '../data/job_templates.js';
 import recruitersData from '../data/recruiters.js';
+import { applicantScores, candidateScreenings } from '../data/applicant_scores.js';
 
 const seed = async () => {
   await getDb().query('BEGIN');
@@ -25,9 +27,11 @@ const seed = async () => {
     await getDb().query('DELETE FROM company_usage');
     await getDb().query('DELETE FROM candidate_interview');
     await getDb().query('DELETE FROM candidate_screening');
+    await getDb().query('DELETE FROM applicant_job_score');
     await getDb().query('DELETE FROM master_skill_alias');
     await getDb().query('DELETE FROM core_applicant_assessment');
     await getDb().query('DELETE FROM master_assessment');
+    await getDb().query('DELETE FROM master_candidate');
     await getDb().query('DELETE FROM master_applicant');
     await getDb().query('DELETE FROM master_recruiters');
     await getDb().query('DELETE FROM core_job_sourcing');
@@ -183,15 +187,16 @@ const seed = async () => {
         `INSERT INTO core_job (
            id, company_id, job_title, job_desc, job_location, work_option, work_type,
            pay_type, currency, pay_min, pay_max, pay_display, status,
-           required_skills, preferred_skills
+           required_skills, preferred_skills, rubric
          )
-         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15)`,
+         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16)`,
         [
           job.id, job.company_id ?? null,
           job.job_title, job.job_desc, job.job_location, job.work_option, job.work_type,
           job.pay_type, job.currency, job.pay_min, job.pay_max, job.pay_display, job.status,
           job.required_skills ? JSON.stringify(job.required_skills) : null,
           job.preferred_skills ? JSON.stringify(job.preferred_skills) : null,
+          job.rubric ? JSON.stringify(job.rubric) : null,
         ]
       );
     }
@@ -262,6 +267,67 @@ const seed = async () => {
         ]
       );
     }
+
+    // 19. master_candidate — candidates live per job (job_id), may reference an
+    //     originating applicant. latest_stage points at job_stage (template
+    //     stages for active jobs, null for draft jobs without a pipeline).
+    for (const c of candidatesData) {
+      await getDb().query(
+        `INSERT INTO master_candidate (
+           id, job_id, applicant_id, name, last_position, address, education,
+           information, date, attachment, latest_stage
+         )
+         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)`,
+        [
+          c.id, c.job_id, c.applicant_id ?? null, c.name, c.last_position ?? null,
+          c.address ?? null, c.education ?? null,
+          c.information ? JSON.stringify(c.information) : null,
+          c.date ?? null, c.attachment ?? null, c.latest_stage ?? null,
+        ]
+      );
+    }
+
+    // 20. applicant_job_score — synthetic AI Matching results (no LLM call).
+    //     Computed deterministically in data/applicant_scores.js from
+    //     master_applicant.information + core_job.rubric.
+    for (const s of applicantScores) {
+      await getDb().query(
+        `INSERT INTO applicant_job_score (
+           applicant_id, job_id,
+           overall_score, skills_score, experience_score, career_trajectory_score, education_score,
+           matched_skills, missing_skills, custom_criteria_results,
+           rubric_snapshot, role_profile, summary, scored_at
+         )
+         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, NOW() - INTERVAL '2 hours')`,
+        [
+          s.applicant_id, s.job_id,
+          s.overall_score, s.skills_score, s.experience_score, s.career_trajectory_score, s.education_score,
+          JSON.stringify(s.matched_skills),
+          JSON.stringify(s.missing_skills),
+          JSON.stringify(s.custom_criteria_results),
+          JSON.stringify(s.rubric_snapshot),
+          s.role_profile, s.summary,
+        ]
+      );
+    }
+
+    // 21. candidate_screening — one row per scored candidate.
+    //     decision = NULL → row appears in the calibration cohort.
+    //     2 pre-decided rows on Job 2 exercise the "already decided" L3 state.
+    for (const cs of candidateScreenings) {
+      await getDb().query(
+        `INSERT INTO candidate_screening (
+           candidate_id, job_id, company_id, decision, decision_reason, decided_at, decided_by
+         )
+         VALUES ($1, $2, $3, $4, $5, $6, $7)`,
+        [
+          cs.candidate_id, cs.job_id, cs.company_id ?? null,
+          cs.decision, cs.decision_reason, cs.decided_at, cs.decided_by,
+        ]
+      );
+    }
+
+    console.log(`Seeded ${applicantScores.length} scores and ${candidateScreenings.length} screenings`);
 
     await getDb().query('COMMIT');
     console.log('Seed completed successfully');

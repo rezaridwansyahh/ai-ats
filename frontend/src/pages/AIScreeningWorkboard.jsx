@@ -280,14 +280,14 @@ export default function AIScreeningWorkboard() {
               bulkRunning={bulkRunning}
               onOpenJob={() => navigate(`/selection/ai-screening/job/${activeJobId}`)}
               onOpenCandidate={openCandidate}
-              onCalibrate={() => navigate(`/selection/ai-screening/job/${activeJobId}/calibrate`)}
+              onCalibrate={() => navigate(`/selection/ai-screening/job/${activeJobId}#cohort`)}
             />
           ) : (
             <AttentionFeed
               attention={attention}
               loading={loading}
               onOpenJob={(jobId) => navigate(`/selection/ai-screening/job/${jobId}`)}
-              onCalibrate={(jobId) => navigate(`/selection/ai-screening/job/${jobId}/calibrate`)}
+              onCalibrate={(jobId) => navigate(`/selection/ai-screening/job/${jobId}#cohort`)}
             />
           )}
         </div>

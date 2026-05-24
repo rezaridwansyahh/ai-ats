@@ -1,5 +1,5 @@
 import { useEffect, useState, useCallback, useRef } from 'react';
-import { loadCardData, saveCardData, clearCardData } from './utils/storage';
+import { loadCardData, saveCardData, clearCardData, SKEY } from './utils/storage';
 import { fmtDateID } from './utils/scoring';
 import { calc3Pillar } from './report/report-utils';
 import { createParticipantByEmail } from '@/api/participant.api';
@@ -13,14 +13,32 @@ import DISCTest from './candidate/DISCTest';
 import HollandTest from './candidate/HollandTest';
 import TestDone from './candidate/TestDone';
 import Complete from './candidate/Complete';
+import CandidateReportView from './report/CandidateReportView';
 
-// Screens: setup | overview | tk_intro | tk | bigfive_intro | bigfive | disc_intro | disc | holland_intro | holland | done_<n> | complete
+// Screens: setup | overview | tk_intro | tk | bigfive_intro | bigfive | disc_intro | disc | holland_intro | holland | done_<n> | complete | report
 const TESTS = ['tk', 'bigfive', 'disc', 'holland'];
 const ASSESSMENT_ID_BATTERY_A = 1;
 
-export default function CandidateCard() {
+export default function CandidateCard({
+  mode = 'standalone',
+  prefilledProfile = null,
+  onPortalSubmit = null,
+  portalHash = null,
+  allowViewReport = true, // Toggle to show/hide "View Report" button (can be disabled in future)
+} = {}) {
+  const isPortal = mode === 'portal';
+  // Scope localStorage per portal session so multiple invitations in the same browser don't collide.
+  const storageKey = isPortal && portalHash ? `${SKEY}::portal::${portalHash}` : SKEY;
+
   const initial = (() => {
-    const data = loadCardData();
+    const data = loadCardData(storageKey);
+    if (isPortal && prefilledProfile) {
+      return {
+        profile: data?.profile || prefilledProfile,
+        results: data?.results || {},
+        screen: 'overview',
+      };
+    }
     return {
       profile: data?.profile || null,
       results: data?.results || {},
@@ -38,8 +56,8 @@ export default function CandidateCard() {
   const submitOnceRef = useRef(false);
 
   useEffect(() => {
-    if (profile) saveCardData(profile, results);
-  }, [profile, results]);
+    if (profile) saveCardData(profile, results, storageKey);
+  }, [profile, results, storageKey]);
 
   // Tab-switch detector during tests
   useEffect(() => {
@@ -89,21 +107,23 @@ export default function CandidateCard() {
 
   const handleReset = useCallback(() => {
     if (!window.confirm('Reset semua data dan progres Battery A?')) return;
-    clearCardData();
-    setProfile(null);
+    clearCardData(storageKey);
+    if (!isPortal) setProfile(null);
     setResults({});
     setTabSwitches(0);
     setSubmitStatus('idle');
     setSubmitError(null);
     submitOnceRef.current = false;
-    goTo('setup');
-  }, [goTo]);
+    goTo(isPortal ? 'overview' : 'setup');
+  }, [goTo, storageKey, isPortal]);
 
   // Battery A scoring lives entirely on the client (Big Five traits, DISC line1/2/3,
   // Holland code3 + consistency, TK composite). Send `results` + `summary` JSONB
   // matching Battery B's submission contract.
   const submitResults = useCallback(async () => {
-    if (!profile?.participant_id) {
+    // In portal mode the backend resolves participant_id from the session JWT,
+    // so we don't need it on the client.
+    if (!isPortal && !profile?.participant_id) {
       setSubmitStatus('error');
       setSubmitError('Participant ID belum tersedia. Silakan ulangi pengisian data peserta dari awal.');
       return;
@@ -112,9 +132,7 @@ export default function CandidateCard() {
     setSubmitError(null);
     try {
       const pillars = calc3Pillar(results);
-      await submitAssessment({
-        participant_id: profile.participant_id,
-        assessment_id: ASSESSMENT_ID_BATTERY_A,
+      const payload = {
         results: {
           by_subtest: {
             tk:      results.tk      ?? null,
@@ -134,7 +152,17 @@ export default function CandidateCard() {
           tk_composite:  results.tk?.composite  ?? null,
           holland_code3: results.holland?.code3 ?? null,
         },
-      });
+      };
+
+      if (isPortal && onPortalSubmit) {
+        await onPortalSubmit(payload);
+      } else {
+        await submitAssessment({
+          participant_id: profile.participant_id,
+          assessment_id: ASSESSMENT_ID_BATTERY_A,
+          ...payload,
+        });
+      }
       setSubmitStatus('success');
     } catch (e) {
       if (e?.response?.status === 409) {
@@ -144,7 +172,7 @@ export default function CandidateCard() {
       setSubmitStatus('error');
       setSubmitError(e?.response?.data?.message || e?.message || 'Gagal mengirim hasil ke server.');
     }
-  }, [profile?.participant_id, results]);
+  }, [profile?.participant_id, results, isPortal, onPortalSubmit]);
 
   useEffect(() => {
     if (screen === 'complete' && !submitOnceRef.current && submitStatus === 'idle') {
@@ -164,6 +192,7 @@ export default function CandidateCard() {
   if (screen === 'setup') return <Setup initial={profile} onSubmit={handleSetupSubmit} />;
 
   if (screen === 'overview') {
+    const allDone = TESTS.every((t) => results[t]);
     return (
       <Overview
         profile={profile}
@@ -172,6 +201,7 @@ export default function CandidateCard() {
         onPick={(t) => goTo(t + '_intro')}
         onReset={handleReset}
         onSeeComplete={() => goTo('complete')}
+        onViewReport={allDone && allowViewReport ? () => goTo('report') : null}
       />
     );
   }
@@ -235,9 +265,25 @@ export default function CandidateCard() {
         tests={TESTS}
         onBack={() => goTo('overview')}
         onContinue={(t) => goTo(t + '_intro')}
+        onViewReport={allowViewReport ? () => goTo('report') : null}
         submitStatus={submitStatus}
         submitError={submitError}
         onRetrySubmit={submitResults}
+      />
+    );
+  }
+
+  if (screen === 'report') {
+    const allDone = TESTS.every((t) => results[t]);
+    if (!allDone) {
+      goTo('complete');
+      return null;
+    }
+    return (
+      <CandidateReportView
+        profile={profile}
+        results={results}
+        onClose={() => goTo('complete')}
       />
     );
   }

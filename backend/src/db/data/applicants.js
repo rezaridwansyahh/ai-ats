@@ -5,7 +5,7 @@
 export default [
   // --- Sourcing 1 (internal / Senior Frontend Engineer) ---
   {
-    id: 1, job_sourcing_id: 1, name: 'Ayu Pratiwi', last_position: 'Frontend Engineer',
+    id: 1, job_sourcing_id: 1, name: 'Ayu Pratiwi', email: 'ayu.pratiwi@example.com', last_position: 'Frontend Engineer',
     address: 'Jakarta, Indonesia', education: "Bachelor's in Computer Science",
     information: {
       job_position: { current: 'Frontend Engineer', category: 'Frontend' },
@@ -24,7 +24,7 @@ export default [
     date: '2026-04-05 10:12:00', attachment: null,
   },
   {
-    id: 2, job_sourcing_id: 1, name: 'Budi Santoso', last_position: 'UI Engineer',
+    id: 2, job_sourcing_id: 1, name: 'Budi Santoso', email: 'budi.santoso@example.com', last_position: 'UI Engineer',
     address: 'Bandung, Indonesia', education: "Bachelor's in Informatics",
     information: {
       job_position: { current: 'UI Engineer', category: 'Frontend' },
@@ -45,7 +45,7 @@ export default [
 
   // --- Sourcing 2 (internal / Product Designer) ---
   {
-    id: 3, job_sourcing_id: 2, name: 'Citra Lestari', last_position: 'Senior Product Designer',
+    id: 3, job_sourcing_id: 2, name: 'Citra Lestari', email: 'citra.lestari@example.com', last_position: 'Senior Product Designer',
     address: 'Singapore', education: "Bachelor's in Design",
     information: {
       job_position: { current: 'Senior Product Designer', category: 'Product Design' },
@@ -66,7 +66,7 @@ export default [
 
   // --- Sourcing 3 (seek / Senior Frontend Engineer) ---
   {
-    id: 4, job_sourcing_id: 3, name: 'Dewi Anggraini', last_position: 'Frontend Developer',
+    id: 4, job_sourcing_id: 3, name: 'Dewi Anggraini', email: 'dewi.anggraini@example.com', last_position: 'Frontend Developer',
     address: 'Jakarta, Indonesia', education: "Bachelor's in Computer Science",
     information: {
       job_position: { current: 'Frontend Developer', category: 'Frontend' },
@@ -85,7 +85,7 @@ export default [
     date: '2026-04-08 11:05:00', attachment: null,
   },
   {
-    id: 5, job_sourcing_id: 3, name: 'Eko Nugroho', last_position: 'React Engineer',
+    id: 5, job_sourcing_id: 3, name: 'Eko Nugroho', email: 'eko.nugroho@example.com', last_position: 'React Engineer',
     address: 'Surabaya, Indonesia', education: 'Diploma in Software Engineering',
     information: {
       job_position: { current: 'React Engineer', category: 'Frontend' },
@@ -103,7 +103,7 @@ export default [
     date: '2026-04-09 08:45:00', attachment: null,
   },
   {
-    id: 6, job_sourcing_id: 3, name: 'Fitri Handayani', last_position: 'Software Engineer',
+    id: 6, job_sourcing_id: 3, name: 'Fitri Handayani', email: 'fitri.handayani@example.com', last_position: 'Software Engineer',
     address: 'Yogyakarta, Indonesia', education: "Bachelor's in Computer Engineering",
     information: {
       job_position: { current: 'Software Engineer', category: 'Full Stack' },
@@ -124,7 +124,7 @@ export default [
 
   // --- Sourcing 4 (seek / Backend Engineer Node.js) ---
   {
-    id: 7, job_sourcing_id: 4, name: 'Gilang Ramadhan', last_position: 'Backend Engineer',
+    id: 7, job_sourcing_id: 4, name: 'Gilang Ramadhan', email: 'gilang.ramadhan@example.com', last_position: 'Backend Engineer',
     address: 'Bali, Indonesia', education: "Bachelor's in Computer Science",
     information: {
       job_position: { current: 'Backend Engineer', category: 'Backend' },
@@ -143,7 +143,7 @@ export default [
     date: '2026-04-10 09:20:00', attachment: null,
   },
   {
-    id: 8, job_sourcing_id: 4, name: 'Hana Putri', last_position: 'Full-Stack Engineer',
+    id: 8, job_sourcing_id: 4, name: 'Hana Putri', email: 'hana.putri@example.com', last_position: 'Full-Stack Engineer',
     address: 'Denpasar, Indonesia', education: "Bachelor's in Information Systems",
     information: {
       job_position: { current: 'Full-Stack Engineer', category: 'Full Stack' },
@@ -166,7 +166,7 @@ export default [
 
   // --- Sourcing 6 (linkedin / Senior Frontend Engineer) ---
   {
-    id: 9, job_sourcing_id: 6, name: 'Irfan Maulana', last_position: 'Frontend Lead',
+    id: 9, job_sourcing_id: 6, name: 'Irfan Maulana', email: 'irfan.maulana@example.com', last_position: 'Frontend Lead',
     address: 'Jakarta, Indonesia', education: "Master's in Software Engineering",
     information: {
       job_position: { current: 'Frontend Lead', category: 'Frontend' },
@@ -187,7 +187,7 @@ export default [
     date: '2026-04-09 13:40:00', attachment: null,
   },
   {
-    id: 10, job_sourcing_id: 6, name: 'Julia Saputra', last_position: 'Frontend Engineer',
+    id: 10, job_sourcing_id: 6, name: 'Julia Saputra', email: 'julia.saputra@example.com', last_position: 'Frontend Engineer',
     address: 'Kuala Lumpur, Malaysia', education: "Bachelor's in Computer Science",
     information: {
       job_position: { current: 'Frontend Engineer', category: 'Frontend' },
@@ -208,7 +208,7 @@ export default [
 
   // --- Sourcing 7 (linkedin / Backend Engineer Node.js) ---
   {
-    id: 11, job_sourcing_id: 7, name: 'Kevin Wijaya', last_position: 'Senior Backend Engineer',
+    id: 11, job_sourcing_id: 7, name: 'Kevin Wijaya', email: 'kevin.wijaya@example.com', last_position: 'Senior Backend Engineer',
     address: 'Singapore', education: "Bachelor's in Computer Science",
     information: {
       job_position: { current: 'Senior Backend Engineer', category: 'Backend' },
@@ -228,7 +228,7 @@ export default [
     date: '2026-03-18 09:05:00', attachment: null,
   },
   {
-    id: 12, job_sourcing_id: 7, name: 'Laras Wulandari', last_position: 'Backend Developer',
+    id: 12, job_sourcing_id: 7, name: 'Laras Wulandari', email: 'laras.wulandari@example.com', last_position: 'Backend Developer',
     address: 'Manila, Philippines', education: "Bachelor's in Information Technology",
     information: {
       job_position: { current: 'Backend Developer', category: 'Backend' },

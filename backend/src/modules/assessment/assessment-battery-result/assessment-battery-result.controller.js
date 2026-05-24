@@ -28,6 +28,19 @@ class AssessmentBatteryResultController {
     }
   }
 
+  async getByCandidateBattery(req, res) {
+    try {
+      const { candidate_id, battery } = req.query;
+      const result = await assessmentBatteryResultService.getByCandidateBattery({
+        candidate_id: candidate_id != null ? Number(candidate_id) : null,
+        battery,
+      });
+      res.status(200).json({ message: 'Latest result for candidate', result });
+    } catch (err) {
+      res.status(err.status || 500).json({ message: err.message });
+    }
+  }
+
   async getActiveProgress(req, res) {
     try {
       const progress = await assessmentBatteryResultService.getActiveProgress(

@@ -66,6 +66,17 @@ class AssessmentBatteryResult {
     return result.rows[0];
   }
 
+  static async getLatestByParticipantAssessment(participant_id, assessment_id) {
+    const result = await getDb().query(`
+      ${RESULT_SELECT}
+      WHERE caa.participant_id = $1
+        AND caa.assessment_id  = $2
+      ORDER BY caa.created_at DESC
+      LIMIT 1
+    `, [participant_id, assessment_id]);
+    return result.rows[0];
+  }
+
   static async getActiveByParticipantAssessment(participant_id, assessment_id) {
     const result = await getDb().query(`
       ${RESULT_SELECT}

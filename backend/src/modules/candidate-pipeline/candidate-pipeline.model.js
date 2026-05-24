@@ -13,9 +13,11 @@ const CANDIDATE_PIPELINE_SELECT = `
          c.latest_stage,
          c.created_at,
          c.updated_at,
+         a.email AS candidate_email,
          COALESCE(js.name, 'Not Started') AS latest_stage_name
   FROM master_candidate c
-  LEFT JOIN job_stage js ON js.id = c.latest_stage
+  LEFT JOIN job_stage js       ON js.id = c.latest_stage
+  LEFT JOIN master_applicant a ON a.id  = c.applicant_id
 `;
 
 class CandidatePipeline {
@@ -33,6 +35,19 @@ class CandidatePipeline {
       WHERE c.id = $1
     `, [id]);
     return result.rows[0];
+  }
+
+  static async getSummary() {
+    const result = await getDb().query(`
+      SELECT j.id          AS job_id,
+             j.job_title,
+             COUNT(c.id)::int AS total
+      FROM core_job j
+      LEFT JOIN master_candidate c ON c.job_id = j.id
+      GROUP BY j.id, j.job_title
+      ORDER BY j.id ASC
+    `);
+    return result.rows;
   }
 
   static async getByJobId(job_id) {

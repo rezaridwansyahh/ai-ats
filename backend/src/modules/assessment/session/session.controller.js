@@ -47,6 +47,37 @@ class SessionController {
     }
   }
 
+  async getActiveByCandidateJob(req, res) {
+    try {
+      const { candidate_id, job_id } = req.query;
+      const sessions = await sessionService.getActiveByCandidateJob({
+        candidate_id: candidate_id != null ? Number(candidate_id) : null,
+        job_id:       job_id != null && job_id !== '' ? Number(job_id) : null,
+      });
+      res.status(200).json({ message: 'Active sessions for candidate', sessions });
+    } catch (err) {
+      res.status(err.status || 500).json({ message: err.message });
+    }
+  }
+
+  async findOrCreateFromCandidate(req, res) {
+    try {
+      const { candidate_id, job_id, battery, expired_at } = req.body;
+      const created_by = req.user?.id ?? req.body.created_by;
+      const result = await sessionService.findOrCreateFromCandidate({
+        candidate_id, job_id, battery, created_by, expired_at,
+      });
+      res.status(result.created ? 201 : 200).json({
+        message: result.created ? 'Session created' : 'Existing session returned',
+        session: result.session,
+        participant: result.participant,
+        created: result.created,
+      });
+    } catch (err) {
+      res.status(err.status || 500).json({ message: err.message });
+    }
+  }
+
   async create(req, res) {
     try {
       const { battery, participant_id, job_id, expired_at, notes } = req.body;

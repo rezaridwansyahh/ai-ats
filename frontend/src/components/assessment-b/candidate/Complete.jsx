@@ -1,4 +1,5 @@
 import { Button } from '@/components/ui/button';
+import { PartyPopper, Check, CheckCircle2, Circle, FileText } from 'lucide-react';
 
 const TEST_LABELS = {
   tk: 'Tes 1 — Kemampuan Kognitif',
@@ -8,7 +9,7 @@ const TEST_LABELS = {
 };
 
 export default function Complete({
-  profile, results, tests, onBack, onContinue,
+  profile, results, tests, onBack, onContinue, onViewReport,
   submitStatus = 'idle', submitError = null, onRetrySubmit,
 }) {
   const allDone = tests.every((t) => results[t]);
@@ -19,7 +20,9 @@ export default function Complete({
     <div className="max-w-[700px] mx-auto px-4 py-6">
       {allDone && (
         <div className="bg-gradient-to-br from-green-50 to-green-100/40 border-2 border-green-600 rounded-xl p-7 text-center mb-4">
-          <div className="text-5xl mb-2">🎉</div>
+          <div className="mb-2 flex justify-center">
+            <PartyPopper className="w-12 h-12 text-green-600" />
+          </div>
           <div className="font-serif text-2xl text-green-800 mb-1.5">Semua Tes Selesai!</div>
           <div className="text-sm text-slate-500 leading-relaxed mb-4">
             Selamat <strong>{profile?.name}</strong>! Anda telah menyelesaikan seluruh rangkaian tes Battery B.
@@ -37,9 +40,21 @@ export default function Complete({
             </div>
           )}
           {submitStatus === 'success' && (
-            <div className="mt-3 bg-emerald-100 border border-emerald-300 rounded-lg px-3 py-2 text-xs text-emerald-800">
-              ✓ Hasil tersimpan di server
-            </div>
+            <>
+              <div className="mt-3 bg-emerald-100 border border-emerald-300 rounded-lg px-3 py-2 text-xs text-emerald-800 flex items-center justify-center gap-2">
+                <Check className="w-4 h-4" /> Hasil tersimpan di server
+              </div>
+              {/* View Report button - controlled by allowViewReport prop from parent (CandidateCard) */}
+              {onViewReport && (
+                <Button
+                  onClick={onViewReport}
+                  className="w-full mt-3 bg-gradient-to-br from-teal-800 to-teal-600 hover:opacity-90 h-11 gap-2"
+                >
+                  <FileText className="w-5 h-5" />
+                  Lihat Laporan Hasil Asesmen →
+                </Button>
+              )}
+            </>
           )}
           {submitStatus === 'error' && (
             <div className="mt-3 bg-red-50 border border-red-300 rounded-lg px-3 py-2.5 text-xs text-red-700 text-left">
@@ -79,7 +94,7 @@ export default function Complete({
                   isDone ? 'bg-green-600 text-white text-lg' : 'bg-slate-200 text-slate-400 text-sm',
                 ].join(' ')}
               >
-                {isDone ? '✓' : i + 1}
+                {isDone ? <Check className="w-5 h-5" /> : i + 1}
               </div>
               <div className="flex-1">
                 <div className={['text-sm font-bold', isDone ? 'text-green-800' : 'text-slate-400'].join(' ')}>
@@ -87,7 +102,9 @@ export default function Complete({
                 </div>
                 <div className="text-[11px] text-slate-400 mt-0.5">{isDone ? 'Selesai' : 'Belum dikerjakan'}</div>
               </div>
-              <div className="text-xl">{isDone ? '✅' : '⭕'}</div>
+              <div className="text-xl">
+                {isDone ? <CheckCircle2 className="w-6 h-6 text-green-600" /> : <Circle className="w-6 h-6 text-slate-300" />}
+              </div>
             </div>
           );
         })}

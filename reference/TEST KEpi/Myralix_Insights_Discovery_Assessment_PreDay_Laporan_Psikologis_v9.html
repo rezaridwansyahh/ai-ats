@@ -1,0 +1,471 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Myralix — Laporan Psikologis · Insights-Discovery Assessment v9</title>
+<style>
+:root{
+  --teal:#0A6E5C;--teal-dk:#064E3B;--teal-md:#0D9488;--teal-lt:#C7E8E3;--teal-xlt:#EDF7F5;
+  --indigo:#4338CA;--indigo-dk:#312E81;--indigo-lt:#EEF2FF;
+  --purple:#7C3AED;--purple-lt:#F5F3FF;
+  --amber:#D97706;--amber-lt:#FFFBEB;--amber-bd:#FDE68A;
+  --red:#DC2626;--red-lt:#FEF2F2;--red-bd:#FECACA;
+  --green:#059669;--green-lt:#ECFDF5;--green-bd:#A7F3D0;
+  --navy:#0F172A;--slate:#334155;--slate-md:#64748B;--slate-lt:#94A3B8;
+  --border:#E2E8F0;--border-dk:#CBD5E1;--white:#fff;--cream:#FAFAF8;
+  --r:14px;--rs:9px;
+  --sh:0 1px 4px rgba(15,23,42,.07),0 4px 16px rgba(15,23,42,.05);
+  --sh-lg:0 8px 32px rgba(15,23,42,.12),0 2px 8px rgba(15,23,42,.06);
+}
+*{box-sizing:border-box;margin:0;padding:0}
+html{scroll-behavior:smooth}
+body{background:var(--cream);color:var(--navy);font-family:'Trebuchet MS',Tahoma,Geneva,sans-serif;font-size:14px;line-height:1.6;min-height:100vh}
+h1,h2,h3{font-family:Georgia,serif}
+.navbar{background:linear-gradient(135deg,var(--indigo-dk),var(--indigo) 55%,var(--purple));padding:0 20px;position:sticky;top:0;z-index:300;box-shadow:0 2px 12px rgba(67,56,202,.25)}
+.nav-inner{max-width:1100px;margin:0 auto;display:flex;align-items:center;justify-content:space-between;height:56px;gap:12px}
+.nav-logo{display:flex;align-items:center;gap:10px;flex-shrink:0}
+.logo-txt{font-family:Georgia,serif;font-size:16px;font-weight:700;color:#fff;letter-spacing:.04em}
+.nav-right{display:flex;align-items:center;gap:7px;flex-wrap:wrap}
+.nav-badge{background:rgba(255,255,255,.15);color:#fff;padding:4px 12px;border-radius:20px;font-size:11px;font-weight:600;border:1px solid rgba(255,255,255,.2)}
+.nav-btn{background:rgba(255,255,255,.12);color:#fff;border:1px solid rgba(255,255,255,.25);padding:5px 13px;border-radius:8px;font-size:12px;font-weight:600;cursor:pointer;font-family:inherit;transition:.15s;text-decoration:none;display:inline-flex;align-items:center;gap:5px;white-space:nowrap}
+.nav-btn:hover{background:rgba(255,255,255,.22)}
+.nav-btn.print-btn{background:rgba(255,255,255,.9);color:var(--indigo-dk)}
+.section-nav{background:#fff;border-bottom:1px solid var(--border);position:sticky;top:54px;z-index:200;transition:.3s;transform:translateY(-100%);opacity:0;pointer-events:none}
+.section-nav.visible{transform:translateY(0);opacity:1;pointer-events:all}
+.snav-inner{max-width:1100px;margin:0 auto;display:flex;align-items:center;gap:4px;padding:8px 20px;overflow-x:auto;scrollbar-width:none}
+.snav-inner::-webkit-scrollbar{display:none}
+.sn-link{padding:5px 14px;border-radius:20px;font-size:12px;font-weight:600;color:var(--slate-md);white-space:nowrap;transition:.15s;border:1px solid transparent;cursor:pointer}
+.sn-link:hover{background:var(--indigo-lt);color:var(--indigo-dk);border-color:#C7D2FE}
+.wrap{max-width:1100px;margin:0 auto;padding:24px 18px 80px}
+@keyframes fadeUp{from{opacity:0;transform:translateY(12px)}to{opacity:1;transform:translateY(0)}}
+.anim{animation:fadeUp .35s ease}
+.flabel{display:block;font-size:11px;font-weight:600;letter-spacing:.07em;text-transform:uppercase;color:var(--slate-md);margin-bottom:5px}
+.finput,.fsel{width:100%;background:#fff;border:1.5px solid var(--border);border-radius:var(--rs);padding:9px 13px;color:var(--navy);font-size:13.5px;font-family:inherit;outline:none;transition:.2s}
+.finput:focus,.fsel:focus{border-color:var(--indigo);box-shadow:0 0 0 3px rgba(67,56,202,.08)}
+.fg2{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:12px}
+.fg3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px;margin-bottom:12px}
+.fg1{margin-bottom:12px}
+@media(max-width:600px){.fg2,.fg3{grid-template-columns:1fr}}
+.btn-primary{background:linear-gradient(135deg,var(--indigo-dk),var(--indigo));color:#fff;padding:12px 24px;border-radius:var(--rs);font-size:14px;font-weight:600;cursor:pointer;border:none;font-family:inherit;width:100%;transition:.2s}
+.btn-primary:hover{opacity:.9}
+.btn-sec{background:#fff;border:1.5px solid var(--border);color:var(--slate);padding:8px 16px;border-radius:var(--rs);font-size:12.5px;font-weight:600;cursor:pointer;font-family:inherit;transition:.15s;text-decoration:none;display:inline-flex;align-items:center;gap:5px}
+.btn-sec:hover{border-color:var(--indigo);color:var(--indigo);background:var(--indigo-lt)}
+.setup-hero{background:linear-gradient(135deg,#1E1B4B 0%,var(--indigo) 55%,var(--purple) 100%);border-radius:var(--r);padding:32px;color:#fff;margin-bottom:20px;position:relative;overflow:hidden}
+.setup-hero::before{content:'⬟';position:absolute;right:-10px;bottom:-20px;font-size:140px;opacity:.07;line-height:1;pointer-events:none}
+.card{background:#fff;border:1px solid var(--border);border-radius:var(--r);padding:24px;box-shadow:var(--sh);margin-bottom:16px}
+/* ── Report letterhead + body (carried from card v8 with mild tweaks) ── */
+.lp-wrap{max-width:1100px;margin:0 auto;padding:0 0 80px}
+.lp-header{background:linear-gradient(135deg,#1E1B4B,var(--indigo) 55%,var(--purple));border-radius:var(--r);padding:22px 26px;color:#fff;margin-bottom:16px;display:flex;justify-content:space-between;align-items:flex-start;gap:16px;box-shadow:var(--sh-lg)}
+.lp-org{font-size:22px;font-weight:800;letter-spacing:.02em;margin-bottom:3px}
+.lp-type-label{font-size:10px;opacity:.75;margin-bottom:8px;letter-spacing:.06em;text-transform:uppercase}
+.lp-inst-name{font-size:15px;font-weight:700;margin-bottom:2px}
+.lp-inst-sub{font-size:11px;opacity:.8}
+.lp-conf{font-size:10px;font-weight:700;color:#FEF9C3;letter-spacing:.08em;margin-bottom:6px}
+.lp-table{width:100%;border-collapse:collapse;margin-bottom:12px;font-size:12.5px}
+.lp-table th{background:var(--indigo);color:#fff;padding:8px 11px;text-align:left;font-size:11px;font-weight:700}
+.lp-table td{padding:7px 11px;border-bottom:1px solid #E5E7EB;vertical-align:middle}
+.lp-table tr:nth-child(even) td{background:var(--purple-lt)}
+.lp-table .lp-total td{background:#EDE9FE;font-weight:700;color:var(--indigo)}
+.lp-h1{font-size:12.5px;font-weight:800;color:var(--indigo);border-bottom:2.5px solid var(--purple);padding:8px 0 9px;margin:22px 0 12px;letter-spacing:.05em;text-transform:uppercase}
+.lp-h2{font-size:12.5px;font-weight:700;color:var(--navy);margin:14px 0 7px}
+.lp-note-txt{font-size:11px;color:var(--slate-md);font-style:italic;margin-bottom:10px;line-height:1.6}
+.prof-card{border-radius:var(--rs);overflow:hidden;margin-bottom:14px}
+.prof-card-head{padding:14px 16px;color:#fff;display:flex;align-items:center;gap:12px}
+.prof-card-icon{font-size:28px}
+.prof-card-name{font-size:18px;font-weight:800;margin-bottom:2px}
+.prof-card-tagline{font-size:11px;opacity:.85}
+.prof-card-body{padding:14px 16px;font-size:12.5px;line-height:1.7}
+.dim-track-lp{flex:1;background:#E2E8F0;border-radius:99px;height:8px;overflow:hidden;position:relative}
+.dim-mid-lp{position:absolute;left:50%;top:-2px;width:2px;height:12px;background:#94A3B8;border-radius:1px}
+.lp-textarea{width:100%;min-height:70px;border:1.5px dashed #CBD5E1;border-radius:8px;padding:10px;font-size:12.5px;font-family:inherit;color:var(--slate);resize:vertical;background:#FAFAFA;box-sizing:border-box;outline:none;transition:.2s}
+.lp-textarea:focus{border-color:var(--indigo);background:#fff;box-shadow:0 0 0 3px rgba(67,56,202,.08);border-style:solid}
+.lp-sign-grid{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-top:14px}
+.lp-sign-box{border:1px solid #E5E7EB;border-radius:8px;padding:14px;min-height:90px}
+.lp-sign-role{font-size:10px;font-weight:700;color:var(--slate-lt);margin-bottom:4px;text-transform:uppercase;letter-spacing:.06em}
+.lp-sign-line{border-top:1px solid var(--slate-lt);margin-top:55px;padding-top:4px;font-size:10px;color:var(--slate-lt)}
+.lp-foot-disc{font-size:10px;color:var(--slate-lt);text-align:center;border-top:1px solid #E5E7EB;padding-top:10px;margin-top:16px;font-style:italic;line-height:1.6}
+/* Recruiter assessment chip */
+.rcr-section{background:#FAFBFF;border:1px solid var(--border);border-radius:var(--rs);padding:12px 14px;margin:10px 0}
+.rcr-label{font-size:11px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--slate-md);margin-bottom:8px}
+.rcr-buttons{display:flex;gap:7px;flex-wrap:wrap}
+.rcr-btn{flex:1;min-width:140px;background:#fff;border:1.5px solid var(--border);color:var(--slate);padding:8px 12px;border-radius:var(--rs);font-size:11.5px;font-weight:700;cursor:pointer;font-family:inherit;transition:.15s}
+.rcr-btn.sesuai.active{background:var(--green-lt);border-color:var(--green);color:var(--green)}
+.rcr-btn.pertimbangkan.active{background:var(--amber-lt);border-color:var(--amber);color:var(--amber)}
+.rcr-btn.tidak.active{background:var(--red-lt);border-color:var(--red);color:var(--red)}
+.no-print{display:flex;gap:8px;flex-wrap:wrap;margin:14px 0}
+@media print{
+  .navbar,.section-nav,.no-print,.rcr-section{display:none!important}
+  .wrap{padding:0;max-width:100%}
+  .lp-wrap{padding:0}
+  .prof-card,.lp-table{page-break-inside:avoid}
+  .lp-textarea{border:none;background:transparent;min-height:auto;padding:0}
+  body{background:#fff}
+}
+</style>
+</head>
+<body>
+<nav class="navbar">
+  <div class="nav-inner">
+    <div class="nav-logo">
+      <svg width="22" height="22" viewBox="-50 -10 220 220" xmlns="http://www.w3.org/2000/svg"><path d="M30,10 C70,30 90,70 60,100 C30,130 70,170 90,190" stroke="url(#lg1)" stroke-width="7" fill="none" stroke-linecap="round"/><path d="M90,10 C50,30 30,70 60,100 C90,130 70,170 30,190" stroke="url(#lg2)" stroke-width="7" fill="none" stroke-linecap="round"/><circle cx="60" cy="100" r="9" fill="#fff" opacity=".85"/><defs><linearGradient id="lg1" x1="0%" y1="0%" x2="100%" y2="100%"><stop offset="0%" stop-color="#0A6E5C"/><stop offset="100%" stop-color="#14B8A6"/></linearGradient><linearGradient id="lg2" x1="100%" y1="0%" x2="0%" y2="100%"><stop offset="0%" stop-color="#F59E0B"/><stop offset="50%" stop-color="#14B8A6"/><stop offset="100%" stop-color="#0A6E5C"/></linearGradient></defs></svg>
+      <span class="logo-txt">MYRALIX</span>
+    </div>
+    <div class="nav-right">
+      <span class="nav-badge">Insights-Discovery Assessment · Laporan · v9</span>
+      <button onclick="window.print()" class="nav-btn print-btn">🖨 Cetak PDF</button>
+      <button onclick="goTo('setup')" class="nav-btn">✏️ Edit Data</button>
+    </div>
+  </div>
+</nav>
+<div class="section-nav" id="section-nav">
+  <div class="snav-inner">
+    <span class="sn-link" onclick="scrollToSec('lp-header')">📋 Letterhead</span>
+    <span class="sn-link" onclick="scrollToSec('sec-I')">I · Skor Dimensi</span>
+    <span class="sn-link" onclick="scrollToSec('sec-II')">II · Profil Dominan</span>
+    <span class="sn-link" onclick="scrollToSec('sec-III')">III · Kekuatan</span>
+    <span class="sn-link" onclick="scrollToSec('sec-IV')">IV · Pengembangan</span>
+    <span class="sn-link" onclick="scrollToSec('sec-V')">V · Kecenderungan</span>
+    <span class="sn-link" onclick="scrollToSec('sec-VI')">VI · 4 Warna</span>
+    <span class="sn-link" onclick="scrollToSec('sec-VII')">VII · Observasi HR</span>
+  </div>
+</div>
+<div id="app" class="wrap anim"></div>
+<script>
+// ════════════════════════════════════════════════════════════════
+//  MYRALIX — LAPORAN PSIKOLOGIS · ID PreDay v9
+//  Reads test data from card via localStorage handoff key.
+// ════════════════════════════════════════════════════════════════
+const HKEY='myx-id-preday-v9';                 // handoff key (written by Candidate Card)
+const STATE_KEY='myx-rpt-id-preday-v9';        // recruiter annotations
+const CARD_URL='Myralix_Insights_Discovery_Assessment_PreDay_Candidate_Card_v9.html';
+
+// Section IDs that house recruiter-editable notes (textareas) and rcr-buttons
+const NOTE_IDS=['note-obs','note-team','note-synergy','note-followup'];
+const RCR_SECTIONS=['profil','komunikasi','kesesuaian'];
+
+let REPORT={profile:null,result:null,screen:'setup'};
+let STATE={};
+
+function loadState(){try{STATE=JSON.parse(localStorage.getItem(STATE_KEY)||'{}');}catch{STATE={};}}
+function saveState(){
+  NOTE_IDS.forEach(id=>{const el=document.getElementById(id);if(el)STATE['note_'+id]=el.value;});
+  RCR_SECTIONS.forEach(sec=>{if(STATE['rcr_'+sec])STATE['rcr_'+sec]=STATE['rcr_'+sec];});
+  if(STATE.finalRec)STATE.finalRec=STATE.finalRec;
+  // recruiter-extra-profile fields
+  ['r-nomer','r-dept','r-asesor','r-mengetahui','r-tgl-tes'].forEach(id=>{
+    const el=document.getElementById(id);if(el)STATE['xt_'+id]=el.value;
+  });
+  try{localStorage.setItem(STATE_KEY,JSON.stringify(STATE));}catch(e){}
+}
+function restoreState(){
+  NOTE_IDS.forEach(id=>{const el=document.getElementById(id);if(el&&STATE['note_'+id])el.value=STATE['note_'+id];});
+  RCR_SECTIONS.forEach(sec=>{if(STATE['rcr_'+sec])setRcr(sec,STATE['rcr_'+sec],true);});
+  if(STATE.finalRec)setFinalRec(STATE.finalRec,true);
+}
+function setRcr(section,value,silent=false){
+  if(!silent){STATE['rcr_'+section]=value;saveState();}
+  document.querySelectorAll('[data-rcr-sec="'+section+'"]').forEach(btn=>btn.classList.toggle('active',btn.dataset.val===value));
+}
+function setFinalRec(val,silent=false){
+  if(!silent){STATE.finalRec=val;saveState();}
+  document.querySelectorAll('.final-rec-btn').forEach(btn=>btn.classList.toggle('active',btn.dataset.val===val));
+}
+function scrollToSec(id){const el=document.getElementById(id);if(el)el.scrollIntoView({behavior:'smooth',block:'start'});}
+window.addEventListener('scroll',()=>{const sn=document.getElementById('section-nav');if(sn)sn.classList.toggle('visible',window.scrollY>200);});
+
+function loadHandoff(){
+  try{
+    const raw=localStorage.getItem(HKEY);
+    if(!raw)return null;
+    const d=JSON.parse(raw);
+    if(!d||!d.result||!d.cand)return null;
+    REPORT.profile=d.cand;
+    REPORT.result=d.result;
+    return d;
+  }catch{return null;}
+}
+
+function goTo(screen){
+  REPORT.screen=screen;
+  const app=document.getElementById('app');
+  app.innerHTML='';
+  if(screen==='setup')app.innerHTML=renderSetup();
+  else if(screen==='report'){app.innerHTML=renderInsightsReport();restoreState();}
+  window.scrollTo(0,0);
+}
+
+function renderSetup(){
+  const has=loadHandoff();
+  const xt=k=>STATE['xt_'+k]||'';
+  return `
+  <div class="setup-hero">
+    <h2 style="font-family:Georgia,serif;font-size:clamp(18px,3vw,24px);margin-bottom:6px;position:relative;z-index:1">Laporan Psikologis — Pre-Day 1</h2>
+    <p style="font-size:13px;opacity:.88;line-height:1.7;max-width:520px;position:relative;z-index:1">Insights-Discovery Assessment · 8 Profil · 3 Dimensi (E/I · T/F · S/N) · 4 Warna Energi</p>
+    <div style="position:relative;z-index:1;margin-top:8px;font-size:11px;opacity:.6">v9 · 🔒 Rahasia — hanya untuk HR / Rekruter</div>
+  </div>
+  ${has?`<div style="background:var(--green-lt);border:1.5px solid var(--green-bd);border-radius:var(--r);padding:14px 18px;margin-bottom:16px;display:flex;align-items:center;justify-content:space-between;gap:14px;flex-wrap:wrap">
+    <div>
+      <div style="font-size:10px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--green);margin-bottom:3px">✅ Data Tes Ditemukan</div>
+      <div style="font-size:16px;font-weight:700;color:var(--navy)">${REPORT.profile.name}${REPORT.profile.jabatan?' · '+REPORT.profile.jabatan:''}</div>
+      <div style="font-size:12px;color:#065F46">Tes diselesaikan ${REPORT.result.date||''} · Skor kejelasan ${REPORT.result.composite}/10 · Profil: ${REPORT.result.profile?.name||'—'}</div>
+    </div>
+    <button onclick="goTo('report')" style="background:var(--indigo);color:#fff;border:none;padding:10px 22px;border-radius:var(--rs);font-size:13px;font-weight:700;cursor:pointer;font-family:inherit">Buat Laporan →</button>
+  </div>`:`<div style="background:var(--amber-lt);border:1.5px solid var(--amber-bd);border-radius:var(--r);padding:12px 16px;margin-bottom:16px;font-size:12.5px;color:#78350F">
+    ⚠️ Tidak ada data tes di browser ini. Peserta harus menyelesaikan tes pada Candidate Card terlebih dahulu.
+    <a href="${CARD_URL}" style="display:inline-block;margin-left:8px;color:var(--indigo);font-weight:700;text-decoration:none">→ Buka Candidate Card</a>
+  </div>`}
+  <div class="card">
+    <div style="font-size:10px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:var(--slate-lt);margin-bottom:14px">📋 Data Tambahan Laporan (diisi oleh HR / Asesor)</div>
+    <div class="fg2">
+      <div class="fg1"><label class="flabel">No. Kandidat / Pegawai</label><input class="finput" id="r-nomer" value="${xt('r-nomer')}" oninput="STATE['xt_r-nomer']=this.value;saveState()"></div>
+      <div class="fg1"><label class="flabel">Departemen / Tim</label><input class="finput" id="r-dept" value="${xt('r-dept')}" oninput="STATE['xt_r-dept']=this.value;saveState()"></div>
+    </div>
+    <div class="fg2">
+      <div class="fg1"><label class="flabel">Tanggal Laporan</label><input class="finput" id="r-tgl-tes" type="date" value="${xt('r-tgl-tes')||new Date().toISOString().split('T')[0]}" oninput="STATE['xt_r-tgl-tes']=this.value;saveState()"></div>
+      <div class="fg1"><label class="flabel">Nama HR / Fasilitator</label><input class="finput" id="r-asesor" value="${xt('r-asesor')}" oninput="STATE['xt_r-asesor']=this.value;saveState()"></div>
+    </div>
+    <div class="fg1"><label class="flabel">Mengetahui</label><input class="finput" id="r-mengetahui" value="${xt('r-mengetahui')}" oninput="STATE['xt_r-mengetahui']=this.value;saveState()"></div>
+  </div>
+  <button class="btn-primary" onclick="saveState();goTo('report')">✨ Buat Laporan Psikologis →</button>
+  <div style="margin-top:14px;display:flex;gap:8px;flex-wrap:wrap" class="no-print">
+    <a href="${CARD_URL}" class="btn-sec">← Kembali ke Candidate Card</a>
+    <button onclick="if(confirm('Hapus semua catatan HR (notes, penilaian, data tambahan) untuk laporan ini?')){localStorage.removeItem(STATE_KEY);STATE={};goTo('setup')}" class="btn-sec" style="color:var(--red)">🗑 Reset Anotasi</button>
+  </div>`;
+}
+
+// ── Main report renderer ──
+function renderInsightsReport(){
+  const r=REPORT.result; if(!r)return '<div style="padding:40px;text-align:center;color:var(--slate-md)">Data tes tidak ditemukan. <a href="'+CARD_URL+'" style="color:var(--indigo)">Buka Candidate Card</a></div>';
+  const p=r.profile;
+  const cand=r.cand;
+  const xt=k=>STATE['xt_'+k]||'';
+
+  const COLOR_MAP={
+    RED:{name:'Merah',icon:'🎯',color:'#DC2626',bg:'#FEF2F2',label:'Kuadran I — Ekstraversi + Berpikir'},
+    YEL:{name:'Kuning',icon:'✨',color:'#D97706',bg:'#FEF3C7',label:'Kuadran II — Ekstraversi + Perasaan'},
+    GRN:{name:'Hijau',icon:'🌿',color:'#059669',bg:'#ECFDF5',label:'Kuadran III — Introversi + Perasaan'},
+    BLU:{name:'Biru',icon:'🔬',color:'#1D4ED8',bg:'#EFF6FF',label:'Kuadran IV — Introversi + Berpikir'},
+  };
+  const cm=COLOR_MAP[r.dominantColor]||COLOR_MAP.BLU;
+
+  const quadrantScores=[
+    {key:'RED',score:r.RED,color:'#DC2626',bg:'#FEF2F2',label:'🎯 Merah — Kuadran I (E+T)'},
+    {key:'YEL',score:r.YEL,color:'#D97706',bg:'#FEF3C7',label:'✨ Kuning — Kuadran II (E+F)'},
+    {key:'GRN',score:r.GRN,color:'#059669',bg:'#ECFDF5',label:'🌿 Hijau — Kuadran III (I+F)'},
+    {key:'BLU',score:r.BLU,color:'#1D4ED8',bg:'#EFF6FF',label:'🔬 Biru — Kuadran IV (I+T)'},
+  ].sort((a,b)=>b.score-a.score);
+
+  const clarityLabel=r.composite>=7?'✅ Profil Jelas & Konsisten':r.composite>=5?'⚡ Profil Campuran':'🔄 Profil Beragam/Fleksibel';
+  const clarityColor=r.composite>=7?'#15803D':r.composite>=5?'#92400E':'#6B7280';
+
+  const header=`<div class="lp-header" id="lp-header">
+    <div>
+      <div class="lp-org">MYRALIX</div>
+      <div class="lp-type-label">Laporan Asesmen Onboarding · Pre-Day 1</div>
+      <div class="lp-inst-name">Insights-Discovery Assessment — 8 Profil · 3 Dimensi · 4 Warna</div>
+      <div class="lp-inst-sub">Laporan Profil Kepribadian Kerja</div>
+    </div>
+    <div style="text-align:right;flex-shrink:0">
+      <div class="lp-conf">🔒 RAHASIA</div>
+      <div style="font-size:22px;font-weight:800;color:#FEF9C3;margin:4px 0">${r.composite}<span style="font-size:12px;font-weight:400;opacity:.8"> / 10</span></div>
+      <div style="font-size:10px;color:rgba(255,255,255,.7)">Skor Kejelasan Profil</div>
+    </div>
+  </div>`;
+
+  const dataPeserta=`<div class="lp-h1">Data Peserta</div>
+  <table class="lp-table">
+    <tr><th colspan="2">Data Peserta</th></tr>
+    <tr><td style="width:35%;font-weight:600">Nama Lengkap</td><td>${cand.name||'—'}</td></tr>
+    <tr><td style="font-weight:600">Jabatan / Posisi</td><td>${cand.jabatan||'—'}</td></tr>
+    <tr><td style="font-weight:600">Departemen / Tim</td><td>${xt('r-dept')||'—'}</td></tr>
+    <tr><td style="font-weight:600">Pendidikan Terakhir</td><td>${cand.pendidikan||'—'}</td></tr>
+    <tr><td style="font-weight:600">Tanggal Lahir</td><td>${cand.tglLahir||'—'}</td></tr>
+    <tr><td style="font-weight:600">No. Kandidat / Pegawai</td><td>${xt('r-nomer')||'—'}</td></tr>
+    <tr><td style="font-weight:600">Tanggal Tes</td><td>${r.date||'—'}</td></tr>
+    <tr><td style="font-weight:600">Tanggal Laporan</td><td>${xt('r-tgl-tes')?new Date(xt('r-tgl-tes')).toLocaleDateString('id-ID',{day:'2-digit',month:'long',year:'numeric'}):'—'}</td></tr>
+    ${r.tabSwitches?`<tr><td style="font-weight:600">Tab Switch Terdeteksi</td><td>${r.tabSwitches}×</td></tr>`:''}
+  </table>`;
+
+  // ── I. Skor Dimensi ──
+  const dimBars=[
+    {label1:'Ekstraversi (E)',label2:'Introversi (I)',pct:r.Epct,color:'#7C3AED'},
+    {label1:'Berpikir/Logika (T)',label2:'Perasaan/Empati (F)',pct:r.Tpct,color:'#0A6E5C'},
+    {label1:'Konkret/Praktis (S)',label2:'Intuitif/Konseptual (N)',pct:r.Spct,color:'#D97706'},
+  ].map(d=>{
+    const domPct=d.pct>=50?d.pct:(100-d.pct);
+    const intensity=domPct>=75?'Kuat':domPct>=55?'Moderat':'Seimbang';
+    const domLabel=d.pct>=50?d.label1.split(' ')[0]:d.label2.split('/')[0].split(' ')[0];
+    return `<tr>
+      <td style="font-weight:600">${d.label1.split('(')[0].trim()} / ${d.label2.split('(')[0].trim()}</td>
+      <td style="color:${d.color};font-weight:700">${domLabel} (${domPct}%)</td>
+      <td>
+        <div class="dim-track-lp">
+          <div style="height:8px;border-radius:99px;background:${d.color};width:${d.pct}%"></div>
+          <div class="dim-mid-lp"></div>
+        </div>
+        <div style="display:flex;justify-content:space-between;font-size:9px;color:#94A3B8;margin-top:2px"><span>E/T/S 0%</span><span>50%</span><span>100% I/F/N</span></div>
+      </td>
+      <td><span style="background:${d.color}18;color:${d.color};padding:2px 8px;border-radius:10px;font-size:10px;font-weight:700">${intensity}</span></td>
+    </tr>`;
+  }).join('');
+
+  const quadRows=quadrantScores.map((q,i)=>`<tr>
+    <td style="font-weight:700;color:${q.color};background:${q.bg}">${q.label}</td>
+    <td style="text-align:center;font-family:Georgia,serif;font-size:16px;font-weight:700;color:${q.color}">${q.score}%</td>
+    <td>
+      <div style="background:#F1F5F9;border-radius:99px;height:7px;overflow:hidden">
+        <div style="background:${q.color};width:${q.score}%;height:7px;border-radius:99px"></div>
+      </div>
+    </td>
+    <td>${i===0?`<span style="background:${q.color};color:#fff;padding:2px 8px;border-radius:10px;font-size:10px;font-weight:700">★ Dominan</span>`:i===1?'<span style="background:#E5E7EB;color:#475569;padding:2px 8px;border-radius:10px;font-size:10px;font-weight:700">Sekunder</span>':''}</td>
+  </tr>`).join('');
+
+  const sectionI=`<div class="lp-h1" id="sec-I">I. Skor Dimensi & Distribusi Warna Energi</div>
+  <p class="lp-note-txt"><strong>Instrumen:</strong> 72 pasang pernyataan pilihan paksa (24 E/I + 24 T/F + 24 S/N) · Tidak masuk komposit seleksi</p>
+  <p class="lp-note-txt"><strong>Skor Kejelasan Profil:</strong> ≥7 = Profil Jelas · 5–6 = Profil Campuran · &lt;5 = Profil Beragam/Fleksibel</p>
+  <div style="background:var(--purple-lt);border:1.5px solid var(--indigo);border-radius:8px;padding:10px 14px;margin-bottom:14px;display:flex;align-items:center;gap:12px">
+    <div style="font-family:Georgia,serif;font-size:28px;font-weight:700;color:var(--indigo)">${r.composite}</div>
+    <div><div style="font-size:12px;font-weight:700;color:${clarityColor}">${clarityLabel}</div>
+    <div style="font-size:11px;color:var(--slate-md);margin-top:2px">Profil dominan: <strong>${p.name}</strong> (${cm.label})</div></div>
+  </div>
+  <div class="lp-h2">Dimensi Kepribadian (3 Skala)</div>
+  <table class="lp-table">
+    <tr><th>Dimensi</th><th>Arah Dominan</th><th>Distribusi</th><th>Intensitas</th></tr>
+    ${dimBars}
+  </table>
+  <div class="lp-h2">Distribusi 4 Warna Energi</div>
+  <table class="lp-table">
+    <tr><th>Warna Energi & Kuadran</th><th>Skor (%)</th><th>Profil Bar</th><th>Keterangan</th></tr>
+    ${quadRows}
+  </table>
+  <table class="lp-table">
+    <tr><th>Profil Kepribadian Dominan</th><th>Skor Kejelasan Profil</th></tr>
+    <tr><td style="font-weight:700;color:${cm.color};font-size:14px">${cm.icon} ${p.name} — ${cm.label}</td>
+        <td style="font-family:Georgia,serif;font-size:18px;font-weight:700;color:${clarityColor};text-align:center">${r.composite} / 10</td></tr>
+  </table>`;
+
+  // ── II. Profil Dominan ──
+  const sectionII=`<div class="lp-h1" id="sec-II">II. Profil Kepribadian Kerja Dominan</div>
+  <div class="prof-card">
+    <div class="prof-card-head" style="background:linear-gradient(135deg,${cm.color}DD,${cm.color})">
+      <div class="prof-card-icon">${p.icon||cm.icon}</div>
+      <div>
+        <div style="font-size:10px;opacity:.8;letter-spacing:.06em;text-transform:uppercase;margin-bottom:3px">Profil Kepribadian Kerja Dominan</div>
+        <div class="prof-card-name">${p.name}</div>
+        <div class="prof-card-tagline">${p.tagline}</div>
+      </div>
+    </div>
+    <div class="prof-card-body" style="background:${cm.bg};border:1.5px solid ${cm.color}30">
+      <p style="margin-bottom:10px">${p.desc}</p>
+      <p style="margin:0"><strong style="color:${cm.color}">Posisi yang Sesuai:</strong> ${p.positions}</p>
+    </div>
+  </div>
+  <div class="rcr-section no-print">
+    <div class="rcr-label">⚖️ Penilaian HR — Profil Kepribadian:</div>
+    <div class="rcr-buttons">
+      <button class="rcr-btn sesuai" data-rcr-sec="profil" data-val="sesuai" onclick="setRcr('profil','sesuai')">✅ Sesuai Posisi</button>
+      <button class="rcr-btn pertimbangkan" data-rcr-sec="profil" data-val="pertimbangkan" onclick="setRcr('profil','pertimbangkan')">⚠️ Perlu Dipertimbangkan</button>
+      <button class="rcr-btn tidak" data-rcr-sec="profil" data-val="tidak" onclick="setRcr('profil','tidak')">❌ Tidak Sesuai</button>
+    </div>
+  </div>`;
+
+  // ── III. Kekuatan ──
+  const strengthRows=(p.strengths||[]).map((s,i)=>`<tr><td style="text-align:center;color:#15803D;font-weight:700">${i+1}</td><td>${s}</td><td><input type="text" placeholder="Relevansi untuk posisi ini..." style="width:100%;border:none;border-bottom:1px solid #E5E7EB;font-size:11.5px;padding:4px 0;outline:none;background:transparent"></td></tr>`).join('');
+  const sectionIII=`<div class="lp-h1" id="sec-III">III. Kekuatan Utama — ${p.name}</div>
+  <table class="lp-table">
+    <tr><th style="width:5%">No.</th><th style="width:45%">Kekuatan Utama</th><th>Relevansi untuk Posisi (catatan HR)</th></tr>
+    ${strengthRows}
+  </table>`;
+
+  // ── IV. Area Pengembangan ──
+  const areaRows=(p.areas||[]).map((a,i)=>`<tr><td style="text-align:center;color:#D97706;font-weight:700">${i+1}</td><td>${a}</td><td><input type="text" placeholder="Rencana tindak lanjut..." style="width:100%;border:none;border-bottom:1px solid #E5E7EB;font-size:11.5px;padding:4px 0;outline:none;background:transparent"></td></tr>`).join('');
+  const sectionIV=`<div class="lp-h1" id="sec-IV">IV. Area Pengembangan</div>
+  <table class="lp-table">
+    <tr><th style="width:5%">No.</th><th style="width:45%">Area Pengembangan</th><th>Rencana Tindak Lanjut</th></tr>
+    ${areaRows}
+  </table>`;
+
+  // ── V. Kecenderungan ──
+  const tendRows=(p.tendencies||[]).map(t=>`<tr><td>${t}</td><td><input type="text" placeholder="Implikasi praktis..." style="width:100%;border:none;border-bottom:1px solid #E5E7EB;font-size:11.5px;padding:4px 0;outline:none;background:transparent"></td></tr>`).join('');
+  const sectionV=`<div class="lp-h1" id="sec-V">V. Kecenderungan Perilaku Kerja</div>
+  <table class="lp-table">
+    <tr><th style="width:50%">Kecenderungan Perilaku</th><th>Implikasi Praktis di Lingkungan Kerja</th></tr>
+    ${tendRows}
+  </table>`;
+
+  // ── VI. Panduan 4 Warna ──
+  const colorGuide=[
+    {key:'RED',icon:'🎯',color:'#DC2626',bg:'#FEF2F2',name:'Merah',howTo:'Langsung, konkret, fokus pada hasil dan tenggat waktu'},
+    {key:'YEL',icon:'✨',color:'#D97706',bg:'#FEF3C7',name:'Kuning',howTo:'Antusias, personal, berikan ruang berekspresi dan berkreasi'},
+    {key:'GRN',icon:'🌿',color:'#059669',bg:'#ECFDF5',name:'Hijau',howTo:'Sabar, hangat, hormati proses dan jangan terburu-buru'},
+    {key:'BLU',icon:'🔬',color:'#1D4ED8',bg:'#EFF6FF',name:'Biru',howTo:'Berikan data dan logika, beri waktu untuk berpikir mendalam'},
+  ];
+  const colorGuideRows=colorGuide.map(cg=>`<tr>
+    <td style="font-weight:700;color:${cg.color};background:${cg.bg}">${cg.icon} ${cg.name}</td>
+    <td>${cg.howTo}</td>
+    <td>${r.dominantColor===cg.key?`<span style="background:${cg.color};color:#fff;padding:2px 8px;border-radius:10px;font-size:10px;font-weight:700">★ Profil Ini</span>`:''}</td>
+  </tr>`).join('');
+  const sectionVI=`<div class="lp-h1" id="sec-VI">VI. Panduan 4 Warna Energi</div>
+  <p class="lp-note-txt">Setiap orang memiliki keempat warna — yang membedakan adalah proporsinya. Pemahaman ini membantu komunikasi tim yang lebih efektif.</p>
+  <table class="lp-table">
+    <tr><th>Warna Energi</th><th>Cara Berkomunikasi Efektif</th><th></th></tr>
+    ${colorGuideRows}
+  </table>
+  <div class="rcr-section no-print">
+    <div class="rcr-label">⚖️ Penilaian HR — Cocok dengan Gaya Komunikasi Tim:</div>
+    <div class="rcr-buttons">
+      <button class="rcr-btn sesuai" data-rcr-sec="komunikasi" data-val="sesuai" onclick="setRcr('komunikasi','sesuai')">✅ Selaras</button>
+      <button class="rcr-btn pertimbangkan" data-rcr-sec="komunikasi" data-val="pertimbangkan" onclick="setRcr('komunikasi','pertimbangkan')">⚠️ Perlu Coaching</button>
+      <button class="rcr-btn tidak" data-rcr-sec="komunikasi" data-val="tidak" onclick="setRcr('komunikasi','tidak')">❌ Berpotensi Friksi</button>
+    </div>
+  </div>`;
+
+  // ── VII. Observasi Tim ──
+  const sectionVII=`<div class="lp-h1" id="sec-VII">VII. Observasi Tim & Catatan Onboarding</div>
+  <table class="lp-table">
+    <tr><th style="width:35%">Aspek</th><th>Catatan HR / Fasilitator</th></tr>
+    <tr><td style="font-weight:600;vertical-align:top;padding-top:10px">Profil & warna dominan karyawan</td>
+        <td><textarea id="note-obs" class="lp-textarea" oninput="saveState()" placeholder="Catatan ringkas profil dan warna dominan..."></textarea></td></tr>
+    <tr><td style="font-weight:600;vertical-align:top;padding-top:10px">Warna dominan di tim (hasil sebelumnya)</td>
+        <td><textarea id="note-team" class="lp-textarea" oninput="saveState()" placeholder="Distribusi warna tim yang akan diikuti..."></textarea></td></tr>
+    <tr><td style="font-weight:600;vertical-align:top;padding-top:10px">Potensi sinergi & gesekan gaya</td>
+        <td><textarea id="note-synergy" class="lp-textarea" oninput="saveState()" placeholder="Area sinergi dan area perhatian..."></textarea></td></tr>
+    <tr><td style="font-weight:600;vertical-align:top;padding-top:10px">Rencana tindak lanjut debrief</td>
+        <td><textarea id="note-followup" class="lp-textarea" oninput="saveState()" placeholder="Langkah selanjutnya untuk debrief & coaching..."></textarea></td></tr>
+  </table>
+  <div class="rcr-section no-print" style="margin-top:14px">
+    <div class="rcr-label">📋 Rekomendasi HR — Kesesuaian Onboarding Keseluruhan:</div>
+    <div class="rcr-buttons">
+      <button class="rcr-btn sesuai" data-rcr-sec="kesesuaian" data-val="sesuai" onclick="setRcr('kesesuaian','sesuai')">✅ Siap Onboarding Standar</button>
+      <button class="rcr-btn pertimbangkan" data-rcr-sec="kesesuaian" data-val="pertimbangkan" onclick="setRcr('kesesuaian','pertimbangkan')">⚠️ Perlu Coaching Tambahan</button>
+      <button class="rcr-btn tidak" data-rcr-sec="kesesuaian" data-val="tidak" onclick="setRcr('kesesuaian','tidak')">❌ Perlu Penyesuaian Khusus</button>
+    </div>
+  </div>
+  <div class="lp-sign-grid">
+    <div class="lp-sign-box"><div class="lp-sign-role">Peserta</div><div class="lp-sign-line">Nama: ${cand.name||'_______________________'}<br>Tanda Tangan: _______________</div></div>
+    <div class="lp-sign-box"><div class="lp-sign-role">HR / Fasilitator</div><div class="lp-sign-line">Nama: ${xt('r-asesor')||'_______________________'}<br>Tanda Tangan: _______________</div></div>
+  </div>
+  ${xt('r-mengetahui')?`<div class="lp-sign-box" style="margin-top:10px;max-width:300px"><div class="lp-sign-role">Mengetahui</div><div class="lp-sign-line">${xt('r-mengetahui')}</div></div>`:''}
+  <div class="lp-foot-disc">Dokumen ini bersifat rahasia. Untuk keperluan onboarding internal. Profil kepribadian bukan penilaian baik/buruk — hanya gambaran gaya komunikasi dan preferensi kerja.<br>Versi adaptasi Bahasa Indonesia oleh Myralix. Bukan administrasi resmi Insights Discovery® Lumina Learning. © Myralix Assessment Platform 2026.</div>`;
+
+  const topActions=`<div class="no-print">
+    <button onclick="window.print()" class="btn-sec" style="background:var(--indigo);color:#fff;border-color:var(--indigo)">🖨 Cetak / Simpan PDF</button>
+    <button onclick="goTo('setup')" class="btn-sec">✏️ Edit Data</button>
+    <a href="${CARD_URL}" class="btn-sec">← Kembali ke Candidate Card</a>
+    <button onclick="if(confirm('Hapus semua anotasi HR (notes & penilaian)? Data tes peserta tidak akan terhapus.')){const xt=Object.keys(STATE).filter(k=>k.startsWith('xt_')).reduce((o,k)=>(o[k]=STATE[k],o),{});STATE=xt;localStorage.setItem(STATE_KEY,JSON.stringify(STATE));goTo('report')}" class="btn-sec" style="color:var(--red)">🗑 Reset Anotasi</button>
+  </div>`;
+
+  return `<div class="lp-wrap">${topActions}${header}${dataPeserta}${sectionI}${sectionII}${sectionIII}${sectionIV}${sectionV}${sectionVI}${sectionVII}${topActions}</div>`;
+}
+
+// ── INIT ──
+function init(){
+  loadState();
+  loadHandoff();
+  goTo('setup');
+}
+init();
+</script>
+</body>
+</html>

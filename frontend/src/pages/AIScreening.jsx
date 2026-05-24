@@ -1,14 +1,17 @@
-import { useState, useEffect, useMemo, useCallback } from 'react';
-import { useNavigate, useParams } from 'react-router-dom';
+import { useState, useEffect, useMemo, useCallback, useRef } from 'react';
+import { useNavigate, useParams, useLocation } from 'react-router-dom';
 import {
   Sparkles, Briefcase, Loader2, Plus, X, AlertTriangle, Wand2,
   GraduationCap, Target, TrendingUp, Code2, Info,
+  ArrowRight, Check, ChevronUp, ChevronDown,
 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Slider } from '@/components/ui/slider';
+import { Checkbox } from '@/components/ui/checkbox';
+import { Textarea } from '@/components/ui/textarea';
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from '@/components/ui/select';
@@ -17,7 +20,7 @@ import {
 } from '@/components/ui/table';
 
 import { getJobs } from '@/api/job.api';
-import { getRubric, runMatching, getMatchingResults } from '@/api/screening.api';
+import { getRubric, runMatching, getCalibration, advanceBulk } from '@/api/screening.api';
 
 const FIXED_KEYS = ['skills', 'experience', 'career_trajectory', 'education'];
 
@@ -45,15 +48,31 @@ function totalWeight(rubric) {
 }
 
 function scoreColor(score) {
-  if (score == null) return 'bg-gray-100 text-gray-500';
-  if (score >= 80) return 'bg-emerald-100 text-emerald-700';
-  if (score >= 60) return 'bg-amber-100 text-amber-700';
-  return 'bg-rose-100 text-rose-700';
+  if (score == null) return 'text-muted-foreground';
+  if (score >= 80) return 'text-emerald-700';
+  if (score >= 60) return 'text-amber-700';
+  return 'text-rose-700';
+}
+
+function scoreBg(score) {
+  if (score == null) return 'bg-gray-100 text-gray-500 border-gray-200';
+  if (score >= 80) return 'bg-emerald-100 text-emerald-700 border-emerald-200';
+  if (score >= 60) return 'bg-amber-100 text-amber-700 border-amber-200';
+  return 'bg-rose-100 text-rose-700 border-rose-200';
+}
+
+function recommendation(score) {
+  if (score == null) return { label: 'Awaiting score', tone: 'bg-muted text-muted-foreground border-border' };
+  if (score >= 90) return { label: 'Strong advance', tone: 'bg-emerald-50 text-emerald-700 border-emerald-200' };
+  if (score >= 80) return { label: 'Advance',         tone: 'bg-emerald-50 text-emerald-700 border-emerald-200' };
+  if (score >= 60) return { label: 'Hold · borderline', tone: 'bg-amber-50 text-amber-700 border-amber-200' };
+  return                  { label: 'Reject · below threshold', tone: 'bg-rose-50 text-rose-700 border-rose-200' };
 }
 
 export default function AIScreeningPage() {
   const navigate = useNavigate();
-  const { jobId: jobIdParam } = useParams(); // L2: /selection/ai-screening/job/:jobId
+  const location = useLocation();
+  const { jobId: jobIdParam } = useParams();
   const [jobs, setJobs] = useState([]);
   const [jobsLoading, setJobsLoading] = useState(true);
   const [selectedJobId, setSelectedJobId] = useState(
@@ -70,9 +89,19 @@ export default function AIScreeningPage() {
   const [customDraftWeight, setCustomDraftWeight] = useState(5);
 
   const [running, setRunning] = useState(false);
-  const [results, setResults] = useState([]);
-  const [errors, setErrors] = useState([]);
   const [error, setError] = useState(null);
+
+  // Cohort state (merged from former Calibration page)
+  const [cohortRows, setCohortRows] = useState([]);
+  const [selected, setSelected] = useState(new Set());
+  const [sortKey, setSortKey] = useState('overall_score');
+  const [sortDir, setSortDir] = useState('desc');
+  const [reason, setReason] = useState('');
+  const [advancing, setAdvancing] = useState(false);
+  const [resultBanner, setResultBanner] = useState(null);
+
+  const cohortRef = useRef(null);
+  const hashHandled = useRef(false);
 
   // Load jobs
   useEffect(() => {
@@ -92,20 +121,33 @@ export default function AIScreeningPage() {
     return () => { cancelled = true; };
   }, []);
 
-  // Load rubric + previously saved results for selected job
+  const loadCohort = useCallback(async () => {
+    if (!selectedJobId) {
+      setCohortRows([]);
+      return;
+    }
+    try {
+      const res = await getCalibration(selectedJobId);
+      setCohortRows(Array.isArray(res.data?.rows) ? res.data.rows : []);
+    } catch {
+      setCohortRows([]);
+    }
+  }, [selectedJobId]);
+
+  // Load rubric + cohort for selected job
   useEffect(() => {
     if (!selectedJobId) {
       setRubric(DEFAULT_RUBRIC);
-      setResults([]);
-      setErrors([]);
+      setCohortRows([]);
+      setSelected(new Set());
       return;
     }
     let cancelled = false;
     (async () => {
       try {
-        const [rubricRes, resultsRes] = await Promise.all([
+        const [rubricRes, calRes] = await Promise.all([
           getRubric(selectedJobId),
-          getMatchingResults(selectedJobId),
+          getCalibration(selectedJobId),
         ]);
         if (cancelled) return;
 
@@ -118,18 +160,28 @@ export default function AIScreeningPage() {
           setRubric(DEFAULT_RUBRIC);
         }
 
-        setResults(Array.isArray(resultsRes.data?.results) ? resultsRes.data.results : []);
-        setErrors([]);
+        setCohortRows(Array.isArray(calRes.data?.rows) ? calRes.data.rows : []);
+        setSelected(new Set());
       } catch {
         if (!cancelled) {
           setRubric(DEFAULT_RUBRIC);
-          setResults([]);
-          setErrors([]);
+          setCohortRows([]);
         }
       }
     })();
     return () => { cancelled = true; };
   }, [selectedJobId]);
+
+  // Hash-scroll: when arriving via /job/:id#cohort, scroll once after cohort renders
+  useEffect(() => {
+    if (location.hash !== '#cohort' || hashHandled.current) return;
+    if (cohortRows.length === 0) return;
+    hashHandled.current = true;
+    const t = setTimeout(() => {
+      cohortRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }, 80);
+    return () => clearTimeout(t);
+  }, [location.hash, cohortRows.length]);
 
   const total = totalWeight(rubric);
   const totalIs100 = Math.round(total) === 100;
@@ -173,18 +225,74 @@ export default function AIScreeningPage() {
     if (!selectedJobId || !totalIs100 || running) return;
     setRunning(true);
     setError(null);
-    setResults([]);
-    setErrors([]);
+    setResultBanner(null);
     try {
       const res = await runMatching(selectedJobId, { rubric, role_profile: roleProfile });
-      setResults(res.data.results || []);
-      setErrors(res.data.errors || []);
+      const { scored = 0, total_candidates = 0, errors = [] } = res.data || {};
+      await loadCohort();
+      setSelected(new Set());
+      setResultBanner({
+        ok: errors.length === 0,
+        text: `Scored ${scored} of ${total_candidates} candidates${errors.length ? ` · ${errors.length} errors` : ''}`,
+      });
     } catch (err) {
       setError(err.response?.data?.message || err.message || 'AI matching failed');
     } finally {
       setRunning(false);
     }
-  }, [selectedJobId, rubric, roleProfile, running, totalIs100]);
+  }, [selectedJobId, rubric, roleProfile, running, totalIs100, loadCohort]);
+
+  // Cohort sort + selection
+  const sortedRows = useMemo(() => {
+    const list = [...cohortRows];
+    list.sort((a, b) => {
+      const av = a[sortKey] ?? -1;
+      const bv = b[sortKey] ?? -1;
+      const diff = av === bv ? a.screening_id - b.screening_id : (av < bv ? -1 : 1);
+      return sortDir === 'desc' ? -diff : diff;
+    });
+    return list;
+  }, [cohortRows, sortKey, sortDir]);
+
+  const toggleSort = (key) => {
+    if (sortKey === key) setSortDir((d) => (d === 'desc' ? 'asc' : 'desc'));
+    else { setSortKey(key); setSortDir('desc'); }
+  };
+
+  const allSelected = sortedRows.length > 0 && sortedRows.every((r) => selected.has(r.screening_id));
+  const toggleAll = () => {
+    setSelected(allSelected ? new Set() : new Set(sortedRows.map((r) => r.screening_id)));
+  };
+
+  const toggle = (id) => {
+    setSelected((cur) => {
+      const next = new Set(cur);
+      next.has(id) ? next.delete(id) : next.add(id);
+      return next;
+    });
+  };
+
+  const handleAdvance = async () => {
+    if (selected.size === 0 || advancing) return;
+    setAdvancing(true);
+    setError(null);
+    setResultBanner(null);
+    try {
+      const res = await advanceBulk(selectedJobId, [...selected], { decision_reason: reason || undefined });
+      const { advanced = [], skipped = [], errors = [], interview_ids = [] } = res.data || {};
+      setResultBanner({
+        ok: errors.length === 0,
+        text: `${advanced.length} advanced · ${skipped.length} skipped · ${errors.length} errors · ${interview_ids.length} interview rows created`,
+      });
+      setSelected(new Set());
+      setReason('');
+      await loadCohort();
+    } catch (err) {
+      setError(err.response?.data?.message || err.message || 'Advance-bulk failed');
+    } finally {
+      setAdvancing(false);
+    }
+  };
 
   const requiredSkills = Array.isArray(selectedJob?.required_skills) ? selectedJob.required_skills : [];
   const preferredSkills = Array.isArray(selectedJob?.preferred_skills) ? selectedJob.preferred_skills : [];
@@ -196,7 +304,7 @@ export default function AIScreeningPage() {
           <Sparkles className="h-5 w-5 text-primary" /> AI Screening
         </h1>
         <p className="text-sm text-muted-foreground mt-0.5">
-          Pick a job, set the rubric, and score every candidate in its pipeline at once.
+          Pick a job, set the rubric, score every candidate in its pipeline, then advance the top performers to Interview.
         </p>
       </div>
 
@@ -405,15 +513,6 @@ export default function AIScreeningPage() {
               {running ? <Loader2 className="h-3.5 w-3.5 mr-1.5 animate-spin" /> : <Wand2 className="h-3.5 w-3.5 mr-1.5" />}
               Run AI Matching
             </Button>
-            <Button
-              variant="outline"
-              className="text-xs"
-              disabled={!selectedJobId || (results.length === 0)}
-              onClick={() => navigate(`/selection/ai-screening/job/${selectedJobId}/calibrate`)}
-              title={results.length === 0 ? 'Run AI Matching first — Calibration needs at least one scored candidate' : 'Open the cohort calibration view'}
-            >
-              Calibrate cohort
-            </Button>
           </div>
 
           {error && (
@@ -423,83 +522,152 @@ export default function AIScreeningPage() {
             </div>
           )}
 
-          {/* Results */}
-          {(running || results.length > 0 || errors.length > 0) && (
-            <Card>
-              <CardHeader className="pb-3">
-                <CardTitle className="text-sm">Results</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <Table className="table-fixed w-full">
-                  <TableHeader className="bg-muted/50">
+          {resultBanner && (
+            <div className={`flex items-center gap-2 px-4 py-3 rounded-lg border text-sm ${
+              resultBanner.ok
+                ? 'border-emerald-200 bg-emerald-50 text-emerald-700'
+                : 'border-amber-200 bg-amber-50 text-amber-700'
+            }`}>
+              <Check className="h-4 w-4 shrink-0" />
+              {resultBanner.text}
+            </div>
+          )}
+
+          {/* Ready cohort */}
+          <Card ref={cohortRef} id="cohort">
+            <CardHeader className="pb-3">
+              <CardTitle className="text-sm">
+                Ready cohort
+                <span className="ml-2 text-[11px] font-normal text-muted-foreground">
+                  {cohortRows.length} candidate{cohortRows.length === 1 ? '' : 's'} · select top performers to advance to Interview
+                </span>
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="px-0 py-0">
+              {running && cohortRows.length === 0 ? (
+                <p className="py-10 text-center text-xs text-muted-foreground italic">
+                  Scoring candidates with the LLM… this can take 30s+ for many candidates.
+                </p>
+              ) : cohortRows.length === 0 ? (
+                <p className="py-10 text-center text-xs text-muted-foreground italic">
+                  No candidates in the ready cohort. Run AI Matching above to score candidates.
+                </p>
+              ) : (
+                <Table className="w-full">
+                  <TableHeader className="bg-muted/40">
                     <TableRow>
-                      <TableHead className="w-[18%] text-[10px] font-bold uppercase">Candidate</TableHead>
-                      <TableHead className="w-[10%] text-[10px] font-bold uppercase text-center">Overall</TableHead>
-                      <TableHead className="w-[8%] text-[10px] font-bold uppercase text-center">Skills</TableHead>
-                      <TableHead className="w-[8%] text-[10px] font-bold uppercase text-center">Exp</TableHead>
-                      <TableHead className="w-[10%] text-[10px] font-bold uppercase text-center">Trajectory</TableHead>
-                      <TableHead className="w-[8%] text-[10px] font-bold uppercase text-center">Edu</TableHead>
-                      <TableHead className="text-[10px] font-bold uppercase">Summary</TableHead>
+                      <TableHead className="w-[36px] pl-4">
+                        <Checkbox checked={allSelected} onCheckedChange={toggleAll} />
+                      </TableHead>
+                      <TableHead className="text-[10px] font-bold uppercase">Candidate</TableHead>
+                      <SortableHeader label="Fit"        col="overall_score"           sortKey={sortKey} sortDir={sortDir} onClick={toggleSort} className="text-center" />
+                      <SortableHeader label="Skills"     col="skills_score"            sortKey={sortKey} sortDir={sortDir} onClick={toggleSort} className="text-center" />
+                      <SortableHeader label="Exp"        col="experience_score"        sortKey={sortKey} sortDir={sortDir} onClick={toggleSort} className="text-center" />
+                      <SortableHeader label="Trajectory" col="career_trajectory_score" sortKey={sortKey} sortDir={sortDir} onClick={toggleSort} className="text-center" />
+                      <SortableHeader label="Edu"        col="education_score"         sortKey={sortKey} sortDir={sortDir} onClick={toggleSort} className="text-center" />
+                      <TableHead className="text-[10px] font-bold uppercase">Recommendation</TableHead>
+                      <TableHead className="text-[10px] font-bold uppercase pr-4">Summary</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {running && results.length === 0 ? (
-                      <TableRow>
-                        <TableCell colSpan={7} className="text-center py-8 text-xs text-muted-foreground">
-                          Scoring candidates with the LLM... this can take 30s+ for many candidates.
-                        </TableCell>
-                      </TableRow>
-                    ) : results.length === 0 ? (
-                      <TableRow>
-                        <TableCell colSpan={7} className="text-center py-8 text-xs text-muted-foreground">
-                          No candidates scored. Have you added applicants to this job's pipeline?
-                        </TableCell>
-                      </TableRow>
-                    ) : (
-                      results
-                        .slice()
-                        .sort((a, b) => (b.overall_score ?? 0) - (a.overall_score ?? 0))
-                        .map((r) => (
-                          <TableRow key={r.id ?? r.applicant_id}>
-                            <TableCell className="text-xs">
-                              <div className="font-semibold truncate">
-                                {r.applicant_name || `#${r.applicant_id}`}
-                              </div>
-                              {r.applicant_name && (
-                                <div className="text-[10px] text-muted-foreground">#{r.applicant_id}</div>
+                    {sortedRows.map((r) => {
+                      const rec = recommendation(r.overall_score);
+                      const isSel = selected.has(r.screening_id);
+                      return (
+                        <TableRow
+                          key={r.screening_id}
+                          onClick={() => navigate(`/selection/ai-screening/candidate/${r.screening_id}`)}
+                          className={`cursor-pointer hover:bg-muted/30 transition-colors ${
+                            isSel ? 'bg-primary/5' : ''
+                          }`}
+                        >
+                          <TableCell className="pl-4" onClick={(e) => e.stopPropagation()}>
+                            <Checkbox checked={isSel} onCheckedChange={() => toggle(r.screening_id)} />
+                          </TableCell>
+                          <TableCell className="text-xs">
+                            <div className="font-medium truncate">{r.applicant_name || `#${r.applicant_id}`}</div>
+                            <div className="text-[10px] text-muted-foreground truncate">
+                              {r.last_position || '—'}
+                              {r.rubric_is_stale && (
+                                <Badge variant="outline" className="ml-1 text-[9px] border-amber-300 text-amber-700">stale</Badge>
                               )}
-                            </TableCell>
-                            <TableCell className="text-center">
-                              <Badge className={`text-xs font-semibold ${scoreColor(r.overall_score)}`}>
-                                {r.overall_score ?? '—'}
-                              </Badge>
-                            </TableCell>
-                            <TableCell className="text-center text-xs">{r.skills_score ?? '—'}</TableCell>
-                            <TableCell className="text-center text-xs">{r.experience_score ?? '—'}</TableCell>
-                            <TableCell className="text-center text-xs">{r.career_trajectory_score ?? '—'}</TableCell>
-                            <TableCell className="text-center text-xs">{r.education_score ?? '—'}</TableCell>
-                            <TableCell className="text-xs text-muted-foreground">{r.summary || '—'}</TableCell>
-                          </TableRow>
-                        ))
-                    )}
+                            </div>
+                          </TableCell>
+                          <TableCell className="text-center">
+                            <Badge className={`text-xs font-mono font-bold ${scoreBg(r.overall_score)}`}>
+                              {r.overall_score ?? '—'}
+                            </Badge>
+                          </TableCell>
+                          <TableCell className={`text-center text-xs font-mono ${scoreColor(r.skills_score)}`}>{r.skills_score ?? '—'}</TableCell>
+                          <TableCell className={`text-center text-xs font-mono ${scoreColor(r.experience_score)}`}>{r.experience_score ?? '—'}</TableCell>
+                          <TableCell className={`text-center text-xs font-mono ${scoreColor(r.career_trajectory_score)}`}>{r.career_trajectory_score ?? '—'}</TableCell>
+                          <TableCell className={`text-center text-xs font-mono ${scoreColor(r.education_score)}`}>{r.education_score ?? '—'}</TableCell>
+                          <TableCell>
+                            <Badge variant="outline" className={`text-[10px] ${rec.tone}`}>
+                              {rec.label}
+                            </Badge>
+                          </TableCell>
+                          <TableCell className="text-xs text-muted-foreground pr-4 align-top whitespace-normal leading-snug">
+                            {r.score_summary || '—'}
+                          </TableCell>
+                        </TableRow>
+                      );
+                    })}
                   </TableBody>
                 </Table>
+              )}
+            </CardContent>
+          </Card>
 
-                {errors.length > 0 && (
-                  <div className="mt-3 text-[11px] text-rose-600 space-y-1">
-                    <div className="font-semibold flex items-center gap-1">
-                      <AlertTriangle className="h-3 w-3" /> {errors.length} error{errors.length === 1 ? '' : 's'} during matching:
-                    </div>
-                    {errors.slice(0, 5).map((e, i) => (
-                      <div key={i} className="pl-4">applicant #{e.applicant_id}: {e.message}</div>
-                    ))}
+          {/* Advance action bar */}
+          {cohortRows.length > 0 && (
+            <Card>
+              <CardContent className="py-4 space-y-3">
+                <div className="flex items-center justify-between gap-3 flex-wrap">
+                  <div className="text-xs text-muted-foreground">
+                    <span className="font-semibold text-foreground">{selected.size} selected</span>
+                    {' '}· {cohortRows.length} ready · candidates without a decision
                   </div>
-                )}
+                  <div className="flex items-center gap-2">
+                    <Button
+                      size="sm"
+                      className="text-xs"
+                      disabled={selected.size === 0 || advancing}
+                      onClick={handleAdvance}
+                    >
+                      {advancing
+                        ? <><Loader2 className="h-3.5 w-3.5 mr-1.5 animate-spin" />Advancing…</>
+                        : <>Advance {selected.size} to Interview <ArrowRight className="h-3.5 w-3.5 ml-1.5" /></>}
+                    </Button>
+                  </div>
+                </div>
+                <Textarea
+                  placeholder="Optional reason (applies to all advanced candidates)…"
+                  value={reason}
+                  onChange={(e) => setReason(e.target.value)}
+                  rows={2}
+                  className="text-xs"
+                />
               </CardContent>
             </Card>
           )}
         </>
       )}
     </div>
+  );
+}
+
+function SortableHeader({ label, col, sortKey, sortDir, onClick, className }) {
+  const active = sortKey === col;
+  return (
+    <TableHead
+      className={`text-[10px] font-bold uppercase cursor-pointer select-none ${className || ''}`}
+      onClick={() => onClick(col)}
+    >
+      <span className="inline-flex items-center gap-1 justify-center">
+        {label}
+        {active && (sortDir === 'desc' ? <ChevronDown className="h-3 w-3" /> : <ChevronUp className="h-3 w-3" />)}
+      </span>
+    </TableHead>
   );
 }

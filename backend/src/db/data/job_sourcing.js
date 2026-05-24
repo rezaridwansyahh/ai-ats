@@ -2,6 +2,28 @@
 // job_post is NOT seeded — those are created through the SaaS publish flow
 // Focus: platforms seek, linkedin, internal
 
+// Default AI-Screening rubric — Myralix jobs use this. Weights sum to 100.
+const DEFAULT_RUBRIC = {
+  fixed_criteria: {
+    skills:            { weight: 45 },
+    experience:        { weight: 35 },
+    career_trajectory: { weight: 15 },
+    education:         { weight: 5 },
+  },
+  custom_criteria: [],
+};
+
+// Skills-heavy variant — Acme jobs use this. Weights sum to 100.
+const SKILLS_HEAVY_RUBRIC = {
+  fixed_criteria: {
+    skills:            { weight: 60 },
+    experience:        { weight: 25 },
+    career_trajectory: { weight: 10 },
+    education:         { weight: 5 },
+  },
+  custom_criteria: [],
+};
+
 // Multi-tenancy split:
 //   user 1 + user 2 → company 1 (Myralix)
 //   user 4          → company 2 (Acme Recruiting)
@@ -25,6 +47,7 @@ export const coreJobs = [
     pay_type: 'Annually', currency: 'IDR', pay_min: 180000000, pay_max: 240000000, pay_display: 'Show', status: 'Active',
     required_skills: ['React', 'TypeScript', 'JavaScript', 'HTML', 'CSS', 'Git'],
     preferred_skills: ['Next.js', 'Tailwind CSS', 'Redux', 'Vite', 'Jest'],
+    rubric: DEFAULT_RUBRIC,
   },
   {
     id: 2, company_id: 1, job_title: 'Backend Engineer (Node.js)',
@@ -33,6 +56,7 @@ export const coreJobs = [
     pay_type: 'Annually', currency: 'IDR', pay_min: 160000000, pay_max: 220000000, pay_display: 'Show', status: 'Active',
     required_skills: ['Node.js', 'JavaScript', 'PostgreSQL', 'REST APIs', 'Git'],
     preferred_skills: ['Express', 'Docker', 'Redis', 'GraphQL', 'AWS'],
+    rubric: DEFAULT_RUBRIC,
   },
   {
     id: 3, company_id: 1, job_title: 'Product Designer',
@@ -41,6 +65,7 @@ export const coreJobs = [
     pay_type: 'Annually', currency: 'SGD', pay_min: 70000, pay_max: 95000, pay_display: 'Hide', status: 'Active',
     required_skills: ['Figma', 'UI/UX Design', 'Prototyping', 'Design Systems'],
     preferred_skills: ['Adobe XD', 'Sketch', 'User Research', 'Accessibility'],
+    rubric: DEFAULT_RUBRIC,
   },
   {
     id: 4, company_id: 2, job_title: 'DevOps Engineer',
@@ -49,6 +74,7 @@ export const coreJobs = [
     pay_type: 'Annually', currency: 'IDR', pay_min: 200000000, pay_max: 270000000, pay_display: 'Show', status: 'Active',
     required_skills: ['AWS', 'Docker', 'Kubernetes', 'CI/CD', 'Linux', 'Terraform'],
     preferred_skills: ['GitHub Actions', 'Prometheus', 'Grafana', 'Ansible'],
+    rubric: SKILLS_HEAVY_RUBRIC,
   },
   {
     id: 5, company_id: 2, job_title: 'QA Automation Engineer',
@@ -57,6 +83,7 @@ export const coreJobs = [
     pay_type: 'Monthly', currency: 'IDR', pay_min: 15000000, pay_max: 22000000, pay_display: 'Show', status: 'Active',
     required_skills: ['Cypress', 'Selenium', 'JavaScript', 'Test Automation', 'Git'],
     preferred_skills: ['Playwright', 'Jest', 'Postman', 'CI/CD'],
+    rubric: SKILLS_HEAVY_RUBRIC,
   },
 
   // --- Draft jobs ---

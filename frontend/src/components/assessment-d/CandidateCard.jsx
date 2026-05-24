@@ -1,5 +1,5 @@
 import { useEffect, useState, useCallback, useRef } from 'react';
-import { loadCardData, saveCardData, clearCardData } from './utils/storage';
+import { loadCardData, saveCardData, clearCardData, SKEY } from './utils/storage';
 import { fmtDateID } from './utils/scoring';
 import { calc3Pillar } from './report/report-utils';
 import { createParticipantByEmail } from '@/api/participant.api';
@@ -20,9 +20,24 @@ const TESTS = ['tk', 'sjt', 'pf', 'msdt', 'papil'];
 const ASSESSMENT_ID_BATTERY_D = 4;
 const TIMED_SCREENS = ['tk', 'sjt']; // only TK + SJT have timers — others are untimed auto-advance
 
-export default function CandidateCard() {
+export default function CandidateCard({
+  mode = 'standalone',
+  prefilledProfile = null,
+  onPortalSubmit = null,
+  portalHash = null,
+} = {}) {
+  const isPortal = mode === 'portal';
+  const storageKey = isPortal && portalHash ? `${SKEY}::portal::${portalHash}` : SKEY;
+
   const initial = (() => {
-    const data = loadCardData();
+    const data = loadCardData(storageKey);
+    if (isPortal && prefilledProfile) {
+      return {
+        profile: data?.profile || prefilledProfile,
+        results: data?.results || {},
+        screen: 'overview',
+      };
+    }
     return {
       profile: data?.profile || null,
       results: data?.results || {},
@@ -40,8 +55,8 @@ export default function CandidateCard() {
   const submitOnceRef = useRef(false);
 
   useEffect(() => {
-    if (profile) saveCardData(profile, results);
-  }, [profile, results]);
+    if (profile) saveCardData(profile, results, storageKey);
+  }, [profile, results, storageKey]);
 
   // Tab-switch detector during any test screen
   useEffect(() => {
@@ -92,20 +107,20 @@ export default function CandidateCard() {
 
   const handleReset = useCallback(() => {
     if (!window.confirm('Reset semua data dan progres Battery D?')) return;
-    clearCardData();
-    setProfile(null);
+    clearCardData(storageKey);
+    if (!isPortal) setProfile(null);
     setResults({});
     setTabSwitches(0);
     setSubmitStatus('idle');
     setSubmitError(null);
     submitOnceRef.current = false;
-    goTo('setup');
-  }, [goTo]);
+    goTo(isPortal ? 'overview' : 'setup');
+  }, [goTo, storageKey, isPortal]);
 
   // Battery D scoring lives entirely on the client (TK weighted composite, SJT 6 competencies → 5 senior profiles,
   // 16PF 16 sten factors, MSDT 8 styles + TO/RO/E, PAPI-L 20 dim Role+Need).
   const submitResults = useCallback(async () => {
-    if (!profile?.participant_id) {
+    if (!isPortal && !profile?.participant_id) {
       setSubmitStatus('error');
       setSubmitError('Participant ID belum tersedia. Silakan ulangi pengisian data peserta dari awal.');
       return;
@@ -114,9 +129,7 @@ export default function CandidateCard() {
     setSubmitError(null);
     try {
       const pillars = calc3Pillar(results);
-      await submitAssessment({
-        participant_id: profile.participant_id,
-        assessment_id: ASSESSMENT_ID_BATTERY_D,
+      const payload = {
         results: {
           by_subtest: {
             tk:    results.tk    ?? null,
@@ -138,7 +151,17 @@ export default function CandidateCard() {
           sjt_profile:   results.sjt?.profile    ?? null,
           msdt_dominant: results.msdt?.dominant  ?? null,
         },
-      });
+      };
+
+      if (isPortal && onPortalSubmit) {
+        await onPortalSubmit(payload);
+      } else {
+        await submitAssessment({
+          participant_id: profile.participant_id,
+          assessment_id: ASSESSMENT_ID_BATTERY_D,
+          ...payload,
+        });
+      }
       setSubmitStatus('success');
     } catch (e) {
       if (e?.response?.status === 409) {
@@ -148,7 +171,7 @@ export default function CandidateCard() {
       setSubmitStatus('error');
       setSubmitError(e?.response?.data?.message || e?.message || 'Gagal mengirim hasil ke server.');
     }
-  }, [profile?.participant_id, results]);
+  }, [profile?.participant_id, results, isPortal, onPortalSubmit]);
 
   useEffect(() => {
     if (screen === 'complete' && !submitOnceRef.current && submitStatus === 'idle') {
