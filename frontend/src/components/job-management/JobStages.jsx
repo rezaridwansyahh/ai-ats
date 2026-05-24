@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
 import {
   Plus, X, Lock, ArrowUp, ArrowDown, Check,
-  Briefcase, MapPin, AlertTriangle, Zap, Clock, Mail, Save,
+  Briefcase, MapPin, AlertTriangle, Zap, Clock, Mail, Save, Loader2,
 } from 'lucide-react';
 import { getJobPipeline, saveJobPipeline } from '@/api/pipeline.api';
 import { getStageCategories } from '@/api/stage-category.api';
@@ -44,6 +44,9 @@ const STATUS_COLORS = {
 // ── Component ────────────────────────────────────────────────────────
 export default function JobStagesStep({ selectedJob, onPipelineChange }) {
   const nextIdRef = useRef(1);
+  // Guards the debounced auto-save from firing on programmatic state updates
+  // (initial load + the post-save id-sync), so we only persist real user edits.
+  const skipAutoSaveRef = useRef(true);
   const [stages, setStages] = useState([]);
   const [loadingStages, setLoadingStages] = useState(false);
   const [savingStages, setSavingStages] = useState(false);
@@ -80,6 +83,7 @@ export default function JobStagesStep({ selectedJob, onPipelineChange }) {
     getJobPipeline(selectedJob.id)
       .then((pipelineRes) => {
         if (cancelled) return;
+        skipAutoSaveRef.current = true; // loaded data — don't echo it back as a save
         const data = pipelineRes.data.data;
         const mapStage = (s) => ({
           id: s.id,
@@ -126,6 +130,16 @@ export default function JobStagesStep({ selectedJob, onPipelineChange }) {
 
     return () => { cancelled = true; };
   }, [selectedJob?.id]);
+
+  // ── Auto-save pipeline (debounced) once it's in a valid, user-edited state ──
+  // skipAutoSaveRef suppresses the initial load and the post-save id-sync.
+  useEffect(() => {
+    if (skipAutoSaveRef.current) { skipAutoSaveRef.current = false; return; }
+    if (!selectedJob?.id || !canSave) return;
+    const t = setTimeout(() => { handleSave(); }, 1200);
+    return () => clearTimeout(t);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [stages, selectedTemplateId, isCustom]);
 
   // ── Template selection handler ──
   const handleTemplateSelect = async (templateId) => {
@@ -181,6 +195,7 @@ export default function JobStagesStep({ selectedJob, onPipelineChange }) {
 
       // Sync frontend state with DB-assigned stage IDs
       const savedStages = pipelineRes.data.data.stages;
+      skipAutoSaveRef.current = true; // id-sync only — not a user edit
       setStages(prev => prev.map((s, idx) => ({
         ...s,
         id: savedStages[idx]?.id ?? s.id,
@@ -242,7 +257,6 @@ export default function JobStagesStep({ selectedJob, onPipelineChange }) {
     ? stages.length > 0 && stages.every(s => s.name?.trim())
     : selectedTemplateId !== null;
 
-  console.log(selectedJob);
   return (
     <div className="space-y-5">
 
@@ -283,15 +297,22 @@ export default function JobStagesStep({ selectedJob, onPipelineChange }) {
               <CardTitle className="text-[13px] font-bold">Recruitment Pipeline</CardTitle>
               <p className="text-[10px] text-muted-foreground mt-0.5">Configure recruitment pipeline stages. Use a template or create a custom pipeline.</p>
             </div>
-            <Button
-              size="sm"
-              className="text-xs gap-1.5"
-              onClick={handleSave}
-              disabled={savingStages || loadingStages || !canSave}
-            >
-              <Save className="h-3.5 w-3.5" />
-              {savingStages ? 'Saving...' : 'Save Stages'}
-            </Button>
+            {/* Auto-save status — replaces the manual Save button */}
+            <span className="text-[11px] flex items-center gap-1.5 text-muted-foreground">
+              {loadingStages ? (
+                <><Loader2 className="h-3.5 w-3.5 animate-spin" /> Loading…</>
+              ) : savingStages ? (
+                <><Loader2 className="h-3.5 w-3.5 animate-spin" /> Saving…</>
+              ) : saveMessage?.type === 'error' ? (
+                <span className="text-red-500 flex items-center gap-1.5"><AlertTriangle className="h-3.5 w-3.5" /> {saveMessage.text}</span>
+              ) : saveMessage?.type === 'success' ? (
+                <><Check className="h-3.5 w-3.5 text-emerald-600" /> Saved</>
+              ) : !canSave ? (
+                <><Save className="h-3.5 w-3.5" /> Pick a template or name every stage to save</>
+              ) : (
+                <><Save className="h-3.5 w-3.5" /> Auto-save on</>
+              )}
+            </span>
           </div>
 
           {/* Template / Custom Controls */}
@@ -329,17 +350,6 @@ export default function JobStagesStep({ selectedJob, onPipelineChange }) {
               </label>
             </div>
           </div>
-
-          {saveMessage && (
-            <div className={`text-xs px-3 py-2 rounded-lg ${
-              saveMessage.type === 'success'
-                ? 'bg-emerald-50 text-emerald-600'
-                : 'bg-red-50 text-red-500'
-            }`}>
-              {saveMessage.type === 'success' ? <Check className="h-3.5 w-3.5 inline mr-1" /> : <AlertTriangle className="h-3.5 w-3.5 inline mr-1" />}
-              {saveMessage.text}
-            </div>
-          )}
         </CardHeader>
         <CardContent className="p-0">
           <Table>

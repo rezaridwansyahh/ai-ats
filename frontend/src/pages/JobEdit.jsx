@@ -2,7 +2,7 @@ import { useEffect, useMemo, useRef, useState, useCallback } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import {
   Loader2, AlertTriangle, ArrowLeft, ArrowRight, Check, Save, Send, ChevronUp,
-  Briefcase, FileText, Workflow, Megaphone, Sparkles,
+  Briefcase, FileText, Workflow, Megaphone, Sparkles, Calendar as CalendarIcon,
 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -12,8 +12,11 @@ import { Textarea } from '@/components/ui/textarea';
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from '@/components/ui/select';
+import { Popover, PopoverTrigger, PopoverContent } from '@/components/ui/popover';
+import { Calendar } from '@/components/ui/calendar';
 
 import { getJobById, createJob, updateJob, updateJobStatus, generateJobAI } from '@/api/job.api';
+import { getJobPipeline } from '@/api/pipeline.api';
 
 import JobStages from '@/components/job-management/JobStages';
 import JobPosting from '@/components/job-management/JobPosting';
@@ -40,6 +43,7 @@ const TRACKED_FIELDS = [
   'pay_type', 'currency', 'pay_min', 'pay_max', 'pay_display',
   'company', 'seniority_level', 'company_url',
   'qualifications', 'required_skills', 'preferred_skills',
+  'sla_start_date', 'sla_end_date',
 ];
 
 // Required fields for Publish (must be filled). Pipeline + posting validation
@@ -49,7 +53,15 @@ const REQUIRED_BASICS = [
   'job_location', 'work_option', 'work_type', 'seniority_level',
   'pay_type', 'currency', 'pay_min', 'pay_max', 'pay_display',
 ];
-const REQUIRED_JD = ['job_desc'];
+const REQUIRED_JD = ['job_desc', 'qualifications', 'required_skills'];
+
+// Date helpers (timezone-safe YYYY-MM-DD ↔ Date)
+const parseLocalDate = (str) => {
+  const [y, m, d] = str.split('-').map(Number);
+  return new Date(y, m - 1, d);
+};
+const formatLocalDate = (d) =>
+  `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
 
 function fieldsDiffer(a, b) {
   // Deep enough for our shapes (primitives, arrays of strings)
@@ -77,6 +89,7 @@ export default function JobEditPage() {
   const [generating, setGenerating] = useState(false);
   const [generateError, setGenerateError] = useState(null);
   const [step, setStep] = useState(0); // active step: 0=Basics 1=JD 2=Pipeline 3=Posting
+  const [hasStages, setHasStages] = useState(false); // server-confirmed pipeline presence
 
   // Ref to coalesce auto-save requests
   const savingRef = useRef(false);
@@ -94,6 +107,7 @@ export default function JobEditPage() {
         qualifications: '',
         required_skills: [],
         preferred_skills: [],
+        sla_start_date: '', sla_end_date: '',
       });
       setLoading(false);
       return;
@@ -113,6 +127,8 @@ export default function JobEditPage() {
           pay_max: j.pay_max ?? '',
           required_skills:  Array.isArray(j.required_skills)  ? j.required_skills  : [],
           preferred_skills: Array.isArray(j.preferred_skills) ? j.preferred_skills : [],
+          sla_start_date: j.sla_start_date ? formatLocalDate(new Date(j.sla_start_date)) : '',
+          sla_end_date:   j.sla_end_date   ? formatLocalDate(new Date(j.sla_end_date))   : '',
         });
       } catch (err) {
         if (!cancelled) setError(err.response?.data?.message || err.message || 'Failed to load job');
@@ -122,6 +138,18 @@ export default function JobEditPage() {
     })();
     return () => { cancelled = true; };
   }, [idParam, creating]);
+
+  // Pipeline is a publish requirement — track whether the server has stages.
+  // Refetched when the job id changes (after load or after the draft is created);
+  // kept live by JobStages' onPipelineChange while the user is on that step.
+  useEffect(() => {
+    if (!job?.id) { setHasStages(false); return; }
+    let cancelled = false;
+    getJobPipeline(job.id)
+      .then((res) => { if (!cancelled) setHasStages((res.data?.data?.stages?.length || 0) > 0); })
+      .catch(() => { if (!cancelled) setHasStages(false); });
+    return () => { cancelled = true; };
+  }, [job?.id]);
 
   // --- Field locks for non-Draft jobs (plan §6) ---
   const isLocked = useCallback((field) => {
@@ -236,7 +264,11 @@ export default function JobEditPage() {
     const missing = [];
     for (const k of [...REQUIRED_BASICS, ...REQUIRED_JD]) {
       const v = form[k];
-      if (v == null || (typeof v === 'string' && !v.trim())) missing.push(k);
+      if (
+        v == null ||
+        (typeof v === 'string' && !v.trim()) ||
+        (Array.isArray(v) && v.length === 0)
+      ) missing.push(k);
     }
     if (form.pay_min !== '' && form.pay_max !== '' && Number(form.pay_min) >= Number(form.pay_max)) {
       missing.push('pay_max'); // logical error — show under pay_max
@@ -249,11 +281,13 @@ export default function JobEditPage() {
       setValidationErrors(['Save the draft first by filling Basics.']);
       return;
     }
-    if (missingRequired.length > 0) {
-      setValidationErrors(missingRequired);
-      // jump to the first step with a missing field
-      const firstStep =
-        missingRequired.some((k) => REQUIRED_BASICS.includes(k)) ? 0 : 1;
+    if (missingRequired.length > 0 || !hasStages) {
+      setValidationErrors([...missingRequired, ...(!hasStages ? ['pipeline'] : [])]);
+      // jump to the first incomplete step: Basics → JD → Pipeline
+      let firstStep = 0;
+      if (missingRequired.some((k) => REQUIRED_BASICS.includes(k))) firstStep = 0;
+      else if (missingRequired.some((k) => REQUIRED_JD.includes(k))) firstStep = 1;
+      else if (!hasStages) firstStep = 2;
       setStep(firstStep);
       window.scrollTo({ top: 0, behavior: 'smooth' });
       return;
@@ -305,25 +339,10 @@ export default function JobEditPage() {
           -mx-5 + px-5 cancels <main>'s p-5 so the bar spans edge-to-edge. */}
       <div className="sticky top-[52px] z-10 bg-background/95 backdrop-blur-sm -mt-5 -mx-5 px-5 pt-5 pb-5 border-b border-border/60 space-y-3">
         {/* Top action row */}
-        <div className="flex items-center justify-between gap-3 flex-wrap">
+        <div className="flex items-center gap-3 flex-wrap">
           <Button variant="ghost" size="sm" className="text-xs" onClick={() => navigate('/sourcing/job-management')}>
             <ArrowLeft className="h-3.5 w-3.5 mr-1" /> Back to Jobs
           </Button>
-          <div className="flex items-center gap-2">
-            <SavedIndicator saving={saving} savedAt={savedAt} error={error} />
-            {!isPublished && (
-              <Button
-                size="sm"
-                className="text-xs"
-                onClick={handlePublish}
-                disabled={publishing || !job?.id}
-                title={!job?.id ? 'Fill Basics to start (auto-creates draft)' : ''}
-              >
-                {publishing ? <Loader2 className="h-3.5 w-3.5 mr-1.5 animate-spin" /> : <Send className="h-3.5 w-3.5 mr-1.5" />}
-                Publish job
-              </Button>
-            )}
-          </div>
         </div>
 
         {/* Title + lede */}
@@ -345,16 +364,6 @@ export default function JobEditPage() {
                   : 'Auto-saving as Draft. Click Publish job when all required fields are green.'}
             </p>
           </div>
-          {isPublished && (
-            <Button
-              size="sm"
-              variant="outline"
-              className="text-xs"
-              onClick={() => navigate(`/sourcing/job-management/${job.id}`)}
-            >
-              View detail
-            </Button>
-          )}
         </div>
       </div>
 
@@ -393,11 +402,15 @@ export default function JobEditPage() {
                 <CardHeader>
                   <CardTitle className="text-sm flex items-center gap-2">
                     <Workflow className="h-4 w-4 text-primary" /> Pipeline & AI
+                    <span className="text-rose-600">*</span>
                   </CardTitle>
                 </CardHeader>
                 <CardContent>
                   {job?.id ? (
-                    <JobStages selectedJob={job} />
+                    <JobStages
+                      selectedJob={job}
+                      onPipelineChange={({ hasStages: hs }) => setHasStages(hs)}
+                    />
                   ) : (
                     <p className="text-xs text-muted-foreground italic py-2">
                       Pipeline can be configured after the draft is created. Fill the job title above to begin.
@@ -448,7 +461,9 @@ export default function JobEditPage() {
                     ? missingRequired.filter((k) => REQUIRED_BASICS.includes(k)).length
                     : s.id === 'jd'
                       ? missingRequired.filter((k) => REQUIRED_JD.includes(k)).length
-                      : 0;
+                      : s.id === 'pipeline'
+                        ? (hasStages ? 0 : 1)
+                        : 0;
                   return (
                     <button
                       key={s.id}
@@ -491,6 +506,32 @@ export default function JobEditPage() {
               Sticky offset = Dashboard topbar (52px) + JobEdit sticky header (~110px) + breathing space. */}
           <aside className="hidden lg:block">
             <div className="sticky top-[200px] space-y-3">
+              {/* Save status (left) + publish (right) — moved out of the sticky header */}
+              <div className="flex items-center justify-between gap-2 px-1">
+                <SavedIndicator saving={saving} savedAt={savedAt} error={error} />
+                {!isPublished ? (
+                  <Button
+                    size="sm"
+                    className="text-xs"
+                    onClick={handlePublish}
+                    disabled={publishing || !job?.id}
+                    title={!job?.id ? 'Fill Basics to start (auto-creates draft)' : ''}
+                  >
+                    {publishing ? <Loader2 className="h-3.5 w-3.5 mr-1.5 animate-spin" /> : <Send className="h-3.5 w-3.5 mr-1.5" />}
+                    Publish job
+                  </Button>
+                ) : (
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    className="text-xs"
+                    onClick={() => navigate(`/sourcing/job-management/${job.id}`)}
+                  >
+                    View detail
+                  </Button>
+                )}
+              </div>
+
               <Card>
                 <CardContent className="p-3 space-y-1">
                   <p className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground mb-1.5">
@@ -503,7 +544,9 @@ export default function JobEditPage() {
                       ? missingRequired.filter((k) => REQUIRED_BASICS.includes(k)).length
                       : s.id === 'jd'
                         ? missingRequired.filter((k) => REQUIRED_JD.includes(k)).length
-                        : 0;
+                        : s.id === 'pipeline'
+                          ? (hasStages ? 0 : 1)
+                          : 0;
                     return (
                       <button
                         key={s.id}
@@ -537,8 +580,8 @@ export default function JobEditPage() {
               </Card>
 
               <CompletenessCard
-                missing={missingRequired.length}
-                total={REQUIRED_BASICS.length + REQUIRED_JD.length}
+                missing={missingRequired.length + (hasStages ? 0 : 1)}
+                total={REQUIRED_BASICS.length + REQUIRED_JD.length + 1}
               />
 
               {isPublished && (
@@ -590,6 +633,15 @@ function BasicsSection({ form, setField, isLocked, missingRequired, showValidati
     return `${fmt(min || max)}${unit}`;
   }, [form.pay_min, form.pay_max, form.currency, form.pay_type, form.pay_display]);
 
+  // Target hiring window length, in days (inclusive).
+  const slaDuration = useMemo(() => {
+    if (!form.sla_start_date || !form.sla_end_date) return null;
+    const days = Math.round(
+      (parseLocalDate(form.sla_end_date) - parseLocalDate(form.sla_start_date)) / 86400000
+    ) + 1;
+    return days > 0 ? days : null;
+  }, [form.sla_start_date, form.sla_end_date]);
+
   return (
     <Card className="py-4 gap-3">
       <CardHeader>
@@ -634,84 +686,148 @@ function BasicsSection({ form, setField, isLocked, missingRequired, showValidati
           </Field>
         </div>
 
-        <Field label="Location" help="City + country (or hybrid base)." required missing={isMissing('job_location')}>
-          <Input
-            value={form.job_location || ''}
-            onChange={(e) => setField('job_location', e.target.value)}
-            placeholder="e.g. Jakarta, Indonesia"
-            className="text-sm"
-          />
-        </Field>
-
-        {/* ── Engagement ── */}
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-          <Field label="Work option" required missing={isMissing('work_option')}>
-            <SelectBox value={form.work_option || ''} onChange={(v) => setField('work_option', v)} options={WORK_OPTIONS} />
+        {/* ── Location (left) + engagement (right) ── */}
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+          <Field label="Location" help="City + country (or hybrid base)." required missing={isMissing('job_location')}>
+            <Input
+              value={form.job_location || ''}
+              onChange={(e) => setField('job_location', e.target.value)}
+              placeholder="e.g. Jakarta, Indonesia"
+              className="text-sm"
+            />
           </Field>
-          <Field label="Work type" required missing={isMissing('work_type')}>
-            <SelectBox value={form.work_type || ''} onChange={(v) => setField('work_type', v)} options={WORK_TYPES} />
-          </Field>
-          <Field label="Seniority" required missing={isMissing('seniority_level')}>
-            <SelectBox value={form.seniority_level || ''} onChange={(v) => setField('seniority_level', v)} options={SENIORITY_LEVELS} />
-          </Field>
+          <div className="grid grid-cols-3 gap-2">
+            <Field label="Work option" required missing={isMissing('work_option')}>
+              <SelectBox value={form.work_option || ''} onChange={(v) => setField('work_option', v)} options={WORK_OPTIONS} />
+            </Field>
+            <Field label="Work type" required missing={isMissing('work_type')}>
+              <SelectBox value={form.work_type || ''} onChange={(v) => setField('work_type', v)} options={WORK_TYPES} />
+            </Field>
+            <Field label="Seniority" required missing={isMissing('seniority_level')}>
+              <SelectBox value={form.seniority_level || ''} onChange={(v) => setField('seniority_level', v)} options={SENIORITY_LEVELS} />
+            </Field>
+          </div>
         </div>
 
-        {/* ── Compensation ── */}
-        <div className="pt-2 border-t">
-          <div className="flex items-center justify-between mb-3">
-            <p className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
-              Compensation
+        {/* ── Compensation (left) + hiring timeline (right) ── */}
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 pt-2 border-t">
+          {/* Compensation */}
+          <div>
+            <div className="flex items-center justify-between mb-3">
+              <p className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
+                Compensation
+              </p>
+              {salaryPreview && (
+                <span className="text-[11px] font-mono text-muted-foreground">
+                  {salaryPreview}
+                </span>
+              )}
+            </div>
+
+            <div className="grid grid-cols-3 gap-3">
+              <Field label="Pay type" required missing={isMissing('pay_type')}>
+                <SelectBox
+                  value={form.pay_type || ''}
+                  onChange={(v) => setField('pay_type', v)}
+                  options={PAY_TYPES}
+                  disabled={isLocked('pay_type')}
+                />
+              </Field>
+              <Field label="Currency" required missing={isMissing('currency')}>
+                <SelectBox
+                  value={form.currency || ''}
+                  onChange={(v) => setField('currency', v)}
+                  options={CURRENCIES}
+                  disabled={isLocked('currency')}
+                />
+              </Field>
+              <Field label="Show salary?" required missing={isMissing('pay_display')}>
+                <SelectBox value={form.pay_display || ''} onChange={(v) => setField('pay_display', v)} options={PAY_DISPLAY_OPTIONS} />
+              </Field>
+            </div>
+
+            <div className="grid grid-cols-2 gap-3 mt-3">
+              <Field label="Pay min" required missing={isMissing('pay_min')}>
+                <Input
+                  type="number"
+                  value={form.pay_min ?? ''}
+                  onChange={(e) => setField('pay_min', e.target.value === '' ? '' : Number(e.target.value))}
+                  disabled={isLocked('pay_min')}
+                  className="text-sm font-mono"
+                  placeholder="0"
+                />
+              </Field>
+              <Field label="Pay max" required missing={isMissing('pay_max')}>
+                <Input
+                  type="number"
+                  value={form.pay_max ?? ''}
+                  onChange={(e) => setField('pay_max', e.target.value === '' ? '' : Number(e.target.value))}
+                  disabled={isLocked('pay_max')}
+                  className="text-sm font-mono"
+                  placeholder="0"
+                />
+              </Field>
+            </div>
+          </div>
+
+          {/* Hiring timeline (SLA) */}
+          <div>
+            <div className="flex items-center justify-between mb-3">
+              <p className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
+                Hiring timeline
+              </p>
+              {slaDuration && (
+                <span className="text-[11px] font-mono text-muted-foreground">
+                  {slaDuration} day{slaDuration > 1 ? 's' : ''} target
+                </span>
+              )}
+            </div>
+
+            <Popover>
+            <PopoverTrigger asChild>
+              <div
+                role="button"
+                tabIndex={0}
+                className="grid grid-cols-2 rounded-md border border-input bg-background cursor-pointer hover:bg-muted/30 transition-colors focus:outline-none focus:ring-1 focus:ring-ring"
+              >
+                <div className="flex flex-col gap-1 p-3 border-r">
+                  <span className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wide">Start date</span>
+                  <div className="flex items-center gap-2">
+                    <CalendarIcon className="h-4 w-4 text-muted-foreground shrink-0" />
+                    <span className={`text-sm ${form.sla_start_date ? 'font-medium' : 'text-muted-foreground'}`}>
+                      {form.sla_start_date || 'Pick start date'}
+                    </span>
+                  </div>
+                </div>
+                <div className="flex flex-col gap-1 p-3">
+                  <span className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wide">End date</span>
+                  <div className="flex items-center gap-2">
+                    <CalendarIcon className="h-4 w-4 text-muted-foreground shrink-0" />
+                    <span className={`text-sm ${form.sla_end_date ? 'font-medium' : 'text-muted-foreground'}`}>
+                      {form.sla_end_date || 'Pick end date'}
+                    </span>
+                  </div>
+                </div>
+              </div>
+            </PopoverTrigger>
+            <PopoverContent className="w-auto p-0" align="start">
+              <Calendar
+                mode="range"
+                selected={{
+                  from: form.sla_start_date ? parseLocalDate(form.sla_start_date) : undefined,
+                  to: form.sla_end_date ? parseLocalDate(form.sla_end_date) : undefined,
+                }}
+                onSelect={(range) => {
+                  setField('sla_start_date', range?.from ? formatLocalDate(range.from) : '');
+                  setField('sla_end_date', range?.to ? formatLocalDate(range.to) : '');
+                }}
+                numberOfMonths={2}
+              />
+            </PopoverContent>
+          </Popover>
+            <p className="text-[10px] text-muted-foreground mt-1 leading-snug">
+              Optional — the target window to fill this role. A job's age is counted from the start date.
             </p>
-            {salaryPreview && (
-              <span className="text-[11px] font-mono text-muted-foreground">
-                {salaryPreview}
-              </span>
-            )}
-          </div>
-
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-            <Field label="Pay type" required missing={isMissing('pay_type')}>
-              <SelectBox
-                value={form.pay_type || ''}
-                onChange={(v) => setField('pay_type', v)}
-                options={PAY_TYPES}
-                disabled={isLocked('pay_type')}
-              />
-            </Field>
-            <Field label="Currency" required missing={isMissing('currency')}>
-              <SelectBox
-                value={form.currency || ''}
-                onChange={(v) => setField('currency', v)}
-                options={CURRENCIES}
-                disabled={isLocked('currency')}
-              />
-            </Field>
-            <Field label="Pay min" required missing={isMissing('pay_min')}>
-              <Input
-                type="number"
-                value={form.pay_min ?? ''}
-                onChange={(e) => setField('pay_min', e.target.value === '' ? '' : Number(e.target.value))}
-                disabled={isLocked('pay_min')}
-                className="text-sm font-mono"
-                placeholder="0"
-              />
-            </Field>
-            <Field label="Pay max" required missing={isMissing('pay_max')}>
-              <Input
-                type="number"
-                value={form.pay_max ?? ''}
-                onChange={(e) => setField('pay_max', e.target.value === '' ? '' : Number(e.target.value))}
-                disabled={isLocked('pay_max')}
-                className="text-sm font-mono"
-                placeholder="0"
-              />
-            </Field>
-          </div>
-
-          <div className="mt-3">
-            <Field label="Show salary band to candidates?" required missing={isMissing('pay_display')}>
-              <SelectBox value={form.pay_display || ''} onChange={(v) => setField('pay_display', v)} options={PAY_DISPLAY_OPTIONS} />
-            </Field>
           </div>
         </div>
       </CardContent>
@@ -781,7 +897,7 @@ function JDSection({
           />
         </Field>
 
-        <Field label="Responsibilities & qualifications">
+        <Field label="Responsibilities & qualifications" required missing={isMissing('qualifications')}>
           <Textarea
             value={form.qualifications || ''}
             onChange={(e) => setField('qualifications', e.target.value)}
@@ -792,7 +908,7 @@ function JDSection({
         </Field>
 
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-          <Field label="Required skills">
+          <Field label="Required skills" required missing={isMissing('required_skills')}>
             <SkillChips
               values={form.required_skills || []}
               onRemove={(i) => removeSkill('required_skills', i)}
