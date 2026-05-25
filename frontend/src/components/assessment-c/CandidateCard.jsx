@@ -3,8 +3,10 @@ import { loadCardData, saveCardData, clearCardData, SKEY } from './utils/storage
 import { fmtDateID } from './utils/scoring';
 import { calc3Pillar } from './report/report-utils';
 import { createParticipantByEmail } from '@/api/participant.api';
+import { updatePortalParticipant } from '@/api/portal-assessment.api';
 import { submitAssessment } from '@/api/assessment-battery-result.api';
 import Setup from './candidate/Setup';
+import Briefing from './candidate/Briefing';
 import Overview from './candidate/Overview';
 import Intro from './candidate/Intro';
 import TKTest from './candidate/TKTest';
@@ -13,8 +15,9 @@ import PAPITest from './candidate/PAPITest';
 import SJTTest from './candidate/SJTTest';
 import TestDone from './candidate/TestDone';
 import Complete from './candidate/Complete';
+import CandidateReportView from './report/CandidateReportView';
 
-// Screens: setup | overview | tk_intro | tk | epps_intro | epps | papi_intro | papi | sjt_intro | sjt | done_<n> | complete
+// Screens: setup | overview | tk_intro | tk | epps_intro | epps | papi_intro | papi | sjt_intro | sjt | done_<n> | complete | report
 const TESTS = ['tk', 'epps', 'papi', 'sjt'];
 const ASSESSMENT_ID_BATTERY_C = 3;
 const TIMED_SCREENS = ['tk', 'sjt']; // both timed → ctrl-block + integrity gate
@@ -24,6 +27,7 @@ export default function CandidateCard({
   prefilledProfile = null,
   onPortalSubmit = null,
   portalHash = null,
+  allowViewReport = true, // Toggle to show/hide "View Report" button (can be disabled in future)
 } = {}) {
   const isPortal = mode === 'portal';
   const storageKey = isPortal && portalHash ? `${SKEY}::portal::${portalHash}` : SKEY;
@@ -31,10 +35,13 @@ export default function CandidateCard({
   const initial = (() => {
     const data = loadCardData(storageKey);
     if (isPortal && prefilledProfile) {
+      const savedProfile = data?.profile || null;
       return {
-        profile: data?.profile || prefilledProfile,
+        profile: savedProfile || prefilledProfile,
         results: data?.results || {},
-        screen: 'overview',
+        // Invited candidates fill the participant-data form (image 2) first; skip it
+        // only once they've confirmed their data this session.
+        screen: savedProfile?.confirmed ? 'overview' : 'setup',
       };
     }
     return {
@@ -91,6 +98,24 @@ export default function CandidateCard({
   }, []);
 
   const handleSetupSubmit = useCallback(async (newProfile) => {
+    if (isPortal) {
+      // Portal: update the participant the invitation already created (bound to the
+      // session). Email is the verified invitation key and isn't editable here.
+      const { data } = await updatePortalParticipant(portalHash, {
+        name: newProfile.name,
+        position: newProfile.position,
+        department: newProfile.department,
+        education: newProfile.education,
+        date_birth: newProfile.date_birth,
+      });
+      setProfile({
+        ...newProfile,
+        participant_id: data?.participant?.id ?? prefilledProfile?.participant_id ?? null,
+        confirmed: true,
+      });
+      goTo('briefing');
+      return;
+    }
     const { data } = await createParticipantByEmail({
       name: newProfile.name,
       email: newProfile.email,
@@ -101,8 +126,8 @@ export default function CandidateCard({
     });
     const merged = { ...newProfile, participant_id: data?.participant?.id ?? null };
     setProfile(merged);
-    goTo('overview');
-  }, [goTo]);
+    goTo('briefing');
+  }, [goTo, isPortal, portalHash, prefilledProfile]);
 
   const handleReset = useCallback(() => {
     if (!window.confirm('Reset semua data dan progres Battery C?')) return;
@@ -185,7 +210,9 @@ export default function CandidateCard({
   }, [tabSwitches, goTo]);
 
   // ── Routing ──
-  if (screen === 'setup') return <Setup initial={profile} onSubmit={handleSetupSubmit} />;
+  if (screen === 'setup') return <Setup initial={profile} onSubmit={handleSetupSubmit} emailReadOnly={isPortal} />;
+
+  if (screen === 'briefing') return <Briefing profile={profile} onStart={() => goTo('overview')} />;
 
   if (screen === 'overview') {
     return (
@@ -259,11 +286,21 @@ export default function CandidateCard({
         tests={TESTS}
         onBack={() => goTo('overview')}
         onContinue={(t) => goTo(t + '_intro')}
+        onViewReport={allowViewReport ? () => goTo('report') : null}
         submitStatus={submitStatus}
         submitError={submitError}
         onRetrySubmit={submitResults}
       />
     );
+  }
+
+  if (screen === 'report') {
+    const allDone = TESTS.every((t) => results[t]);
+    if (!allDone) {
+      goTo('complete');
+      return null;
+    }
+    return <CandidateReportView profile={profile} results={results} onClose={() => goTo('complete')} />;
   }
 
   return null;

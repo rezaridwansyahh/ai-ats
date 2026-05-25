@@ -1,52 +1,72 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import {
-  Sparkles, AlertTriangle, Loader2, Briefcase, ArrowRight,
-  CircleAlert, Hourglass, CheckCircle2, RotateCw,
-} from 'lucide-react';
+import { Sparkles, AlertTriangle, Loader2, RotateCw, Search } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import {
-  Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
-} from '@/components/ui/table';
-import { Checkbox } from '@/components/ui/checkbox';
+import { Input } from '@/components/ui/input';
+import { TablePagination } from '@/components/shared/TablePagination';
+import { getInitials } from '@/lib/batteries';
 
-import {
-  getWorkboard, getLaneCandidates, matchBulk, getScreeningByCandidate,
-} from '@/api/screening.api';
+import { getWorkboard, getLaneCandidates, getScreeningByCandidate } from '@/api/screening.api';
 
-const ENGINE_META = {
-  parse: { label: 'Parse',    color: 'bg-blue-100 text-blue-700 border-blue-200',     dot: 'bg-blue-500' },
-  match: { label: 'Match',    color: 'bg-purple-100 text-purple-700 border-purple-200', dot: 'bg-purple-500' },
-  qa:    { label: 'Q&A',      color: 'bg-amber-100 text-amber-700 border-amber-200',   dot: 'bg-amber-500' },
-  ready: { label: 'Ready',    color: 'bg-emerald-100 text-emerald-700 border-emerald-200', dot: 'bg-emerald-500' },
+// Sub-stage chip + pill styling. q&a kept for parity (engine not built → always 0).
+const STAGE_META = {
+  parse: { label: 'Parse', color: 'bg-blue-100 text-blue-700',     dot: 'bg-blue-500' },
+  match: { label: 'Match', color: 'bg-purple-100 text-purple-700', dot: 'bg-purple-500' },
+  qa:    { label: 'Q&A',   color: 'bg-amber-100 text-amber-700',   dot: 'bg-amber-500' },
+  ready: { label: 'Ready', color: 'bg-emerald-100 text-emerald-700', dot: 'bg-emerald-500' },
 };
+
+function statusTone(status) {
+  switch ((status || '').toLowerCase()) {
+    case 'active':
+    case 'open':
+    case 'running':
+      return 'border-emerald-200 text-emerald-700 bg-emerald-50';
+    case 'draft':
+      return 'border-amber-200 text-amber-700 bg-amber-50';
+    case 'expired':
+    case 'failed':
+      return 'border-rose-200 text-rose-700 bg-rose-50';
+    default:
+      return 'border-border text-muted-foreground bg-muted/40';
+  }
+}
 
 export default function AIScreeningWorkboard() {
   const navigate = useNavigate();
 
-  const [data, setData] = useState(null);
+  const [positions, setPositions] = useState([]);
+  const [candidates, setCandidates] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
-  // Active chip filter (null = show needs-attention feed by default)
-  const [activeChip, setActiveChip] = useState(null);
-  // Position rail selection (null = all positions)
-  const [activeJobId, setActiveJobId] = useState(null);
-
-  // Lane list state (loaded when a chip is active)
-  const [laneRows, setLaneRows] = useState([]);
-  const [laneLoading, setLaneLoading] = useState(false);
-  const [selected, setSelected] = useState(new Set());
-  const [bulkRunning, setBulkRunning] = useState(false);
+  const [activeStage, setActiveStage] = useState(null); // null = all stages
+  const [search, setSearch] = useState('');
+  const [page, setPage] = useState(1);
+  const [pageSize, setPageSize] = useState(25);
 
   const loadWorkboard = async () => {
     setLoading(true);
     setError(null);
     try {
-      const res = await getWorkboard();
-      setData(res.data);
+      const wb = await getWorkboard();
+      const pos = wb.data?.positions || [];
+      setPositions(pos);
+      // No cross-job candidate endpoint — fan out per position and tag with job_title.
+      const laneResults = await Promise.all(
+        pos.map((p) =>
+          getLaneCandidates(p.job_id)
+            .then((r) => ({ p, rows: r.data?.candidates || [] }))
+            .catch(() => ({ p, rows: [] }))
+        )
+      );
+      setCandidates(
+        laneResults.flatMap(({ p, rows }) =>
+          rows.map((c) => ({ ...c, job_title: p.job_title }))
+        )
+      );
     } catch (err) {
       setError(err.response?.data?.message || err.message || 'Failed to load workboard');
     } finally {
@@ -56,86 +76,54 @@ export default function AIScreeningWorkboard() {
 
   useEffect(() => { loadWorkboard(); }, []);
 
-  // When chip + job change, load lane candidates from the chosen job
-  useEffect(() => {
-    if (!activeChip || !activeJobId) { setLaneRows([]); setSelected(new Set()); return; }
-    if (activeChip === 'qa') { setLaneRows([]); return; } // Q&A engine not built
-    let cancelled = false;
-    (async () => {
-      setLaneLoading(true);
-      try {
-        const res = await getLaneCandidates(activeJobId, activeChip);
-        if (!cancelled) {
-          setLaneRows(res.data?.candidates || []);
-          setSelected(new Set());
-        }
-      } catch {
-        if (!cancelled) setLaneRows([]);
-      } finally {
-        if (!cancelled) setLaneLoading(false);
-      }
-    })();
-    return () => { cancelled = true; };
-  }, [activeChip, activeJobId]);
+  // Stage counts derived from the candidate list so chips match the filter exactly.
+  const stageCounts = useMemo(() => {
+    const c = { parse: 0, match: 0, qa: 0, ready: 0 };
+    for (const cand of candidates) if (c[cand.engine] != null) c[cand.engine]++;
+    return c;
+  }, [candidates]);
 
-  const counts = data?.counts || { parse: 0, match: 0, qa: 0, ready: 0 };
-  const positions = data?.positions || [];
-  const attention = data?.attention || {
-    ready_per_job: [], needs_parsing_per_job: [], needs_matching_per_job: [], stale_rubric: [],
-  };
-
-  const toggleChip = (chip) => {
-    setActiveChip((cur) => (cur === chip ? null : chip));
-    if (!activeJobId && positions.length > 0) {
-      // Auto-pick the first job with rows in that lane.
-      const target = positions.find((p) => (p[chip] || 0) > 0);
-      if (target) setActiveJobId(target.job_id);
+  const filtered = useMemo(() => {
+    let list = candidates;
+    if (activeStage) list = list.filter((c) => c.engine === activeStage);
+    const q = search.trim().toLowerCase();
+    if (q) {
+      list = list.filter((c) =>
+        (c.applicant_name || '').toLowerCase().includes(q) ||
+        (c.last_position || '').toLowerCase().includes(q) ||
+        (c.job_title || '').toLowerCase().includes(q)
+      );
     }
+    return list;
+  }, [candidates, activeStage, search]);
+
+  const totalPages = Math.max(1, Math.ceil(filtered.length / pageSize));
+  const pageClamped = Math.min(page, totalPages);
+  const paged = filtered.slice((pageClamped - 1) * pageSize, pageClamped * pageSize);
+
+  const totalCandidates = candidates.length;
+  const activePositions = positions.filter((p) =>
+    ['active', 'open', 'running'].includes((p.status || '').toLowerCase())
+  ).length;
+
+  const toggleStage = (stage) => {
+    setActiveStage((cur) => (cur === stage ? null : stage));
+    setPage(1);
   };
 
-  const toggleSelected = (id) => {
-    setSelected((cur) => {
-      const next = new Set(cur);
-      next.has(id) ? next.delete(id) : next.add(id);
-      return next;
-    });
-  };
+  const resetView = () => { setActiveStage(null); setSearch(''); setPage(1); };
 
-  const allLaneIds = useMemo(() => laneRows.map((r) => r.applicant_id), [laneRows]);
-  const allSelected = allLaneIds.length > 0 && allLaneIds.every((id) => selected.has(id));
-  const toggleSelectAll = () => {
-    setSelected(allSelected ? new Set() : new Set(allLaneIds));
-  };
-
-  // Lazy-creates the screening row if missing, then navigates to L3.
-  const openCandidate = async (row) => {
+  const openCandidate = async (c) => {
     try {
-      if (row.screening_id) {
-        navigate(`/selection/ai-screening/candidate/${row.screening_id}`);
+      if (c.screening_id) {
+        navigate(`/selection/ai-screening/candidate/${c.screening_id}`);
         return;
       }
-      const res = await getScreeningByCandidate(row.candidate_id);
+      const res = await getScreeningByCandidate(c.candidate_id);
       const sid = res.data?.screening?.screening_id;
       if (sid) navigate(`/selection/ai-screening/candidate/${sid}`);
     } catch (err) {
       setError(err.response?.data?.message || err.message || 'Failed to open candidate');
-    }
-  };
-
-  const handleBulkMatch = async () => {
-    if (selected.size === 0 || !activeJobId) return;
-    setBulkRunning(true);
-    try {
-      await matchBulk(activeJobId, [...selected]);
-      await loadWorkboard();
-      // refresh lane
-      const res = await getLaneCandidates(activeJobId, activeChip);
-      setLaneRows(res.data?.candidates || []);
-      setSelected(new Set());
-    } catch (err) {
-      setError(err.response?.data?.message || err.message || 'Match-bulk failed');
-    } finally {
-      setBulkRunning(false);
     }
   };
 
@@ -148,7 +136,7 @@ export default function AIScreeningWorkboard() {
             <Sparkles className="h-5 w-5 text-primary" /> AI Screening
           </h1>
           <p className="text-sm text-muted-foreground mt-0.5">
-            Workboard across all jobs — pick a lane, multi-select, bulk-action. Or jump into a single job for the full rubric flow.
+            {activePositions} active position{activePositions === 1 ? '' : 's'} · {totalCandidates} candidate{totalCandidates === 1 ? '' : 's'} being screened
           </p>
         </div>
         <Button variant="outline" size="sm" onClick={loadWorkboard} className="text-xs">
@@ -163,46 +151,40 @@ export default function AIScreeningWorkboard() {
         </div>
       )}
 
-      {/* Chip strip */}
+      {/* Sub-stage chip strip */}
       <Card>
         <CardContent className="py-4">
           <div className="flex items-center gap-3 flex-wrap">
             <span className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wide">
-              By engine
+              By sub-stage · click to filter
             </span>
-            {['parse', 'match', 'qa', 'ready'].map((chip) => {
-              const meta = ENGINE_META[chip];
-              const count = counts[chip] || 0;
-              const active = activeChip === chip;
-              const disabled = chip === 'qa';
+            {['parse', 'match', 'qa', 'ready'].map((stage) => {
+              const meta = STAGE_META[stage];
+              const count = stageCounts[stage] || 0;
+              const active = activeStage === stage;
+              const disabled = stage === 'qa';
               return (
                 <button
-                  key={chip}
+                  key={stage}
                   type="button"
-                  onClick={() => !disabled && toggleChip(chip)}
+                  onClick={() => !disabled && toggleStage(stage)}
                   disabled={disabled}
                   className={`inline-flex items-center gap-2 px-3 py-1.5 rounded-full border text-xs font-semibold transition-colors ${
                     active
                       ? 'bg-primary text-primary-foreground border-primary'
                       : disabled
                         ? 'bg-muted text-muted-foreground border-border cursor-not-allowed opacity-60'
-                        : `${meta.color} hover:brightness-95 cursor-pointer`
+                        : `${meta.color} border-transparent hover:brightness-95 cursor-pointer`
                   }`}
                 >
-                  <span className={`h-1.5 w-1.5 rounded-full ${active ? 'bg-primary-foreground' : meta.dot}`} />
                   <span className="font-mono">{count}</span>
                   <span>{meta.label}</span>
-                  {disabled && <span className="text-[9px] uppercase tracking-wider ml-1 opacity-70">soon</span>}
+                  {disabled && <span className="text-[9px] uppercase tracking-wider ml-0.5 opacity-70">soon</span>}
                 </button>
               );
             })}
-            {activeChip && (
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={() => setActiveChip(null)}
-                className="text-xs text-muted-foreground"
-              >
+            {activeStage && (
+              <Button variant="ghost" size="sm" onClick={resetView} className="text-xs text-muted-foreground">
                 Clear
               </Button>
             )}
@@ -210,10 +192,10 @@ export default function AIScreeningWorkboard() {
         </CardContent>
       </Card>
 
-      {/* Two-column grid: position rail + main pane */}
+      {/* Two-column: positions rail + candidates panel */}
       <div className="grid grid-cols-1 md:grid-cols-[240px_1fr] gap-4">
-        {/* Position rail */}
-        <Card>
+        {/* Positions rail */}
+        <Card className="self-start">
           <CardHeader className="pb-2">
             <CardTitle className="text-xs uppercase tracking-wide text-muted-foreground">
               Positions · {positions.length}
@@ -230,32 +212,30 @@ export default function AIScreeningWorkboard() {
               <>
                 <button
                   type="button"
-                  onClick={() => setActiveJobId(null)}
-                  className={`w-full flex items-center justify-between px-3 py-2 rounded-md text-xs transition-colors ${
-                    activeJobId === null
-                      ? 'bg-primary/10 text-primary font-semibold'
-                      : 'hover:bg-muted/50 text-foreground'
-                  }`}
+                  onClick={resetView}
+                  className="w-full flex items-center justify-between px-3 py-2 rounded-md text-xs bg-primary/10 text-primary font-semibold"
                 >
                   <span>All positions</span>
-                  <span className="font-mono text-[10px] text-muted-foreground">
-                    {positions.reduce((a, p) => a + p.total, 0)}
-                  </span>
+                  <span className="font-mono text-[10px]">{totalCandidates}</span>
                 </button>
                 <div className="space-y-0.5 mt-1">
                   {positions.map((p) => (
                     <button
                       key={p.job_id}
                       type="button"
-                      onClick={() => setActiveJobId(p.job_id)}
-                      className={`w-full flex items-center justify-between px-3 py-2 rounded-md text-xs transition-colors ${
-                        activeJobId === p.job_id
-                          ? 'bg-primary/10 text-primary font-semibold'
-                          : 'hover:bg-muted/50 text-foreground'
-                      }`}
+                      onClick={() => navigate(`/selection/ai-screening/job/${p.job_id}`)}
+                      className="w-full flex items-center justify-between gap-2 px-3 py-2 rounded-md text-xs hover:bg-muted/50 text-foreground transition-colors"
+                      title="Open position dashboard"
                     >
-                      <span className="truncate text-left">{p.job_title}</span>
-                      <span className="font-mono text-[10px] text-muted-foreground ml-2">{p.total}</span>
+                      <span className="truncate text-left flex items-center gap-1.5 min-w-0">
+                        <span className="truncate">{p.job_title}</span>
+                        {p.status && (
+                          <Badge variant="outline" className={`text-[8px] uppercase tracking-wide shrink-0 ${statusTone(p.status)}`}>
+                            {p.status}
+                          </Badge>
+                        )}
+                      </span>
+                      <span className="font-mono text-[10px] text-muted-foreground shrink-0">{p.total}</span>
                     </button>
                   ))}
                 </div>
@@ -264,287 +244,83 @@ export default function AIScreeningWorkboard() {
           </CardContent>
         </Card>
 
-        {/* Main pane: lane list OR attention feed */}
-        <div className="space-y-3">
-          {activeChip && activeJobId ? (
-            <LanePanel
-              chip={activeChip}
-              jobTitle={positions.find((p) => p.job_id === activeJobId)?.job_title}
-              rows={laneRows}
-              loading={laneLoading}
-              selected={selected}
-              allSelected={allSelected}
-              onToggle={toggleSelected}
-              onToggleAll={toggleSelectAll}
-              onBulkMatch={handleBulkMatch}
-              bulkRunning={bulkRunning}
-              onOpenJob={() => navigate(`/selection/ai-screening/job/${activeJobId}`)}
-              onOpenCandidate={openCandidate}
-              onCalibrate={() => navigate(`/selection/ai-screening/job/${activeJobId}#cohort`)}
-            />
-          ) : (
-            <AttentionFeed
-              attention={attention}
-              loading={loading}
-              onOpenJob={(jobId) => navigate(`/selection/ai-screening/job/${jobId}`)}
-              onCalibrate={(jobId) => navigate(`/selection/ai-screening/job/${jobId}#cohort`)}
-            />
-          )}
-        </div>
+        {/* Candidates panel */}
+        <Card>
+          <CardHeader className="pb-3 space-y-3">
+            <CardTitle className="text-sm">
+              All candidates
+              <span className="ml-2 text-[11px] font-normal text-muted-foreground">
+                {filtered.length} {activeStage ? `at ${STAGE_META[activeStage].label}` : 'total'}
+              </span>
+            </CardTitle>
+            <div className="relative max-w-sm">
+              <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
+              <Input
+                placeholder="Search name, position, or job…"
+                className="pl-8 h-8 text-xs"
+                value={search}
+                onChange={(e) => { setSearch(e.target.value); setPage(1); }}
+              />
+            </div>
+          </CardHeader>
+          <CardContent>
+            {loading ? (
+              <div className="text-center py-10 text-xs text-muted-foreground">
+                <Loader2 className="h-4 w-4 animate-spin inline mr-1.5" />Loading candidates…
+              </div>
+            ) : filtered.length === 0 ? (
+              <div className="text-center py-10 text-xs text-muted-foreground">
+                {candidates.length === 0 ? 'No candidates in screening yet.' : 'No candidates match this filter.'}
+              </div>
+            ) : (
+              <>
+                <div className="space-y-2">
+                  {paged.map((c) => {
+                    const name = c.applicant_name || `#${c.applicant_id}`;
+                    const meta = STAGE_META[c.engine] || { label: c.engine, color: 'bg-muted text-muted-foreground' };
+                    return (
+                      <div
+                        key={`${c.job_id}-${c.applicant_id}`}
+                        onClick={() => openCandidate(c)}
+                        className="flex items-center justify-between gap-3 p-3 border rounded-lg transition-colors hover:bg-muted/30 cursor-pointer"
+                      >
+                        <div className="flex items-center gap-3 min-w-0 flex-1">
+                          <div className="h-8 w-8 rounded-full bg-primary/10 text-primary flex items-center justify-center text-[11px] font-bold shrink-0">
+                            {getInitials(name)}
+                          </div>
+                          <div className="min-w-0">
+                            <div className="text-sm font-semibold truncate">{name}</div>
+                            <div className="flex items-center gap-3 mt-1">
+                              {c.last_position && <span className="text-[10px] text-muted-foreground truncate">{c.last_position}</span>}
+                              <span className="text-[10px] text-muted-foreground truncate">{c.job_title || '—'}</span>
+                            </div>
+                          </div>
+                        </div>
+                        <div className="flex items-center gap-3 shrink-0">
+                          <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-semibold ${meta.color}`}>
+                            {meta.label}
+                          </span>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+
+                <div className="pt-3">
+                  <TablePagination
+                    page={pageClamped}
+                    totalPages={totalPages}
+                    totalItems={filtered.length}
+                    pageSize={pageSize}
+                    setPage={setPage}
+                    setPageSize={setPageSize}
+                  />
+                </div>
+              </>
+            )}
+          </CardContent>
+        </Card>
       </div>
     </div>
   );
-}
-
-/* ─── Lane panel: list of candidates at one engine for one job ─── */
-function LanePanel({
-  chip, jobTitle, rows, loading, selected, allSelected,
-  onToggle, onToggleAll, onBulkMatch, bulkRunning, onOpenJob, onOpenCandidate, onCalibrate,
-}) {
-  const meta = ENGINE_META[chip];
-
-  return (
-    <Card>
-      <CardHeader className="pb-3 flex flex-row items-center justify-between gap-3 flex-wrap">
-        <div>
-          <CardTitle className="text-sm flex items-center gap-2">
-            <span className={`h-2 w-2 rounded-full ${meta.dot}`} />
-            {meta.label} lane · <span className="text-muted-foreground font-normal">{jobTitle || '—'}</span>
-          </CardTitle>
-          <p className="text-[11px] text-muted-foreground mt-0.5">
-            {rows.length} candidate{rows.length === 1 ? '' : 's'} · select multiple to act in bulk
-          </p>
-        </div>
-        <div className="flex items-center gap-2">
-          <Button variant="outline" size="sm" className="text-xs" onClick={onOpenJob}>
-            Open job <ArrowRight className="h-3 w-3 ml-1" />
-          </Button>
-          {chip === 'match' && (
-            <Button
-              size="sm"
-              className="text-xs"
-              disabled={selected.size === 0 || bulkRunning}
-              onClick={onBulkMatch}
-            >
-              {bulkRunning
-                ? <><Loader2 className="h-3 w-3 mr-1 animate-spin" />Scoring…</>
-                : `Score ${selected.size} selected`}
-            </Button>
-          )}
-          {chip === 'parse' && (
-            <Button size="sm" className="text-xs" disabled title="Parse bulk arrives in Phase 2.5">
-              Parse {selected.size} selected
-            </Button>
-          )}
-          {chip === 'ready' && (
-            <Button size="sm" className="text-xs" onClick={onCalibrate}>
-              Calibrate cohort <ArrowRight className="h-3 w-3 ml-1" />
-            </Button>
-          )}
-        </div>
-      </CardHeader>
-      <CardContent>
-        {loading ? (
-          <div className="flex justify-center py-8">
-            <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
-          </div>
-        ) : rows.length === 0 ? (
-          <p className="text-xs text-muted-foreground text-center py-8 italic">
-            No candidates in this lane for this job.
-          </p>
-        ) : (
-          <Table className="w-full">
-            <TableHeader className="bg-muted/40">
-              <TableRow>
-                <TableHead className="w-[36px]">
-                  <Checkbox checked={allSelected} onCheckedChange={onToggleAll} />
-                </TableHead>
-                <TableHead className="text-[10px] font-bold uppercase">Candidate</TableHead>
-                <TableHead className="text-[10px] font-bold uppercase">Last position</TableHead>
-                <TableHead className="text-[10px] font-bold uppercase">Location</TableHead>
-                <TableHead className="text-[10px] font-bold uppercase text-right">Score</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {rows.map((r) => (
-                <TableRow
-                  key={r.applicant_id}
-                  className="cursor-pointer hover:bg-muted/30 transition-colors"
-                  onClick={() => onOpenCandidate?.(r)}
-                >
-                  <TableCell onClick={(e) => e.stopPropagation()}>
-                    <Checkbox
-                      checked={selected.has(r.applicant_id)}
-                      onCheckedChange={() => onToggle(r.applicant_id)}
-                    />
-                  </TableCell>
-                  <TableCell className="text-xs">
-                    <div className="font-medium truncate">{r.applicant_name || `#${r.applicant_id}`}</div>
-                    <div className="text-[10px] text-muted-foreground">#{r.applicant_id}</div>
-                  </TableCell>
-                  <TableCell className="text-xs text-muted-foreground truncate">
-                    {r.last_position || '—'}
-                  </TableCell>
-                  <TableCell className="text-xs text-muted-foreground truncate">
-                    {r.address || '—'}
-                  </TableCell>
-                  <TableCell className="text-right text-xs font-mono">
-                    {r.overall_score ?? '—'}
-                  </TableCell>
-                </TableRow>
-              ))}
-            </TableBody>
-          </Table>
-        )}
-      </CardContent>
-    </Card>
-  );
-}
-
-/* ─── Needs-attention feed (default L1 view) ─── */
-function AttentionFeed({ attention, loading, onOpenJob, onCalibrate }) {
-  if (loading) {
-    return (
-      <Card>
-        <CardContent className="flex justify-center py-10">
-          <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
-        </CardContent>
-      </Card>
-    );
-  }
-
-  const blockers = (attention.stale_rubric || []).slice(0, 5);
-  const ready    = attention.ready_per_job || [];
-  const parse    = attention.needs_parsing_per_job || [];
-  const match    = attention.needs_matching_per_job || [];
-  const empty = blockers.length === 0 && ready.length === 0 && parse.length === 0 && match.length === 0;
-
-  if (empty) {
-    return (
-      <Card>
-        <CardContent className="py-12 text-center text-xs text-muted-foreground">
-          <CheckCircle2 className="h-5 w-5 mx-auto mb-2 text-emerald-500" />
-          Nothing needs your attention right now.
-        </CardContent>
-      </Card>
-    );
-  }
-
-  return (
-    <>
-      {blockers.length > 0 && (
-        <AttentionSection
-          title="Blockers"
-          icon={<CircleAlert className="h-4 w-4 text-red-600" />}
-          accent="border-red-200 bg-red-50/40"
-        >
-          {blockers.map((b) => (
-            <button
-              key={`${b.applicant_id}-${b.job_id}`}
-              type="button"
-              onClick={() => onOpenJob(b.job_id)}
-              className="w-full text-left flex items-center justify-between gap-3 px-3 py-2 rounded-md hover:bg-white/60 transition-colors"
-            >
-              <div className="min-w-0">
-                <div className="text-xs font-medium truncate">
-                  {b.applicant_name || `#${b.applicant_id}`} · stale rubric
-                </div>
-                <div className="text-[10px] text-muted-foreground truncate">
-                  {b.job_title} · scored {fmtDate(b.scored_at)}
-                </div>
-              </div>
-              <Badge variant="outline" className="text-[10px] shrink-0 border-red-200 text-red-700">
-                rescore needed
-              </Badge>
-            </button>
-          ))}
-        </AttentionSection>
-      )}
-
-      {ready.length > 0 && (
-        <AttentionSection
-          title="Ready for you"
-          icon={<CheckCircle2 className="h-4 w-4 text-emerald-600" />}
-          accent="border-emerald-200 bg-emerald-50/40"
-        >
-          {ready.map((r) => (
-            <button
-              key={r.job_id}
-              type="button"
-              onClick={() => onCalibrate(r.job_id)}
-              className="w-full text-left flex items-center justify-between gap-3 px-3 py-2 rounded-md hover:bg-white/60 transition-colors"
-            >
-              <div className="min-w-0">
-                <div className="text-xs font-medium truncate">
-                  {r.count} candidate{r.count === 1 ? '' : 's'} ready to advance
-                </div>
-                <div className="text-[10px] text-muted-foreground truncate">{r.job_title}</div>
-              </div>
-              <Badge variant="outline" className="text-[10px] shrink-0 border-emerald-200 text-emerald-700">
-                calibrate →
-              </Badge>
-            </button>
-          ))}
-        </AttentionSection>
-      )}
-
-      {(parse.length > 0 || match.length > 0) && (
-        <AttentionSection
-          title="Backlog"
-          icon={<Hourglass className="h-4 w-4 text-amber-600" />}
-          accent="border-amber-200 bg-amber-50/40"
-        >
-          {parse.map((p) => (
-            <button
-              key={`parse-${p.job_id}`}
-              type="button"
-              onClick={() => onOpenJob(p.job_id)}
-              className="w-full text-left flex items-center justify-between gap-3 px-3 py-2 rounded-md hover:bg-white/60 transition-colors"
-            >
-              <div className="min-w-0">
-                <div className="text-xs font-medium truncate">{p.count} need parsing</div>
-                <div className="text-[10px] text-muted-foreground truncate">{p.job_title}</div>
-              </div>
-              <Badge variant="outline" className="text-[10px] shrink-0 border-amber-200 text-amber-700">parse</Badge>
-            </button>
-          ))}
-          {match.map((m) => (
-            <button
-              key={`match-${m.job_id}`}
-              type="button"
-              onClick={() => onOpenJob(m.job_id)}
-              className="w-full text-left flex items-center justify-between gap-3 px-3 py-2 rounded-md hover:bg-white/60 transition-colors"
-            >
-              <div className="min-w-0">
-                <div className="text-xs font-medium truncate">{m.count} need matching</div>
-                <div className="text-[10px] text-muted-foreground truncate">{m.job_title}</div>
-              </div>
-              <Badge variant="outline" className="text-[10px] shrink-0 border-amber-200 text-amber-700">match</Badge>
-            </button>
-          ))}
-        </AttentionSection>
-      )}
-    </>
-  );
-}
-
-function AttentionSection({ title, icon, accent, children }) {
-  return (
-    <Card className={`border ${accent || ''}`}>
-      <CardHeader className="pb-2">
-        <CardTitle className="text-xs uppercase tracking-wide text-muted-foreground flex items-center gap-2">
-          {icon}
-          {title}
-        </CardTitle>
-      </CardHeader>
-      <CardContent className="pt-0 px-2 pb-2 space-y-0.5">
-        {children}
-      </CardContent>
-    </Card>
-  );
-}
-
-function fmtDate(d) {
-  if (!d) return '—';
-  try { return new Date(d).toISOString().slice(0, 10); } catch { return '—'; }
 }

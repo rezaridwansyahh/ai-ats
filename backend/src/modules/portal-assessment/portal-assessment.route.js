@@ -12,6 +12,12 @@ router.get(
   portalAssessmentController.getForm
 );
 
+router.put(
+  '/:hash/participant',
+  portalAssessmentController.requirePortalAuth.bind(portalAssessmentController),
+  portalAssessmentController.updateParticipant
+);
+
 router.post(
   '/:hash/submit',
   portalAssessmentController.requirePortalAuth.bind(portalAssessmentController),
