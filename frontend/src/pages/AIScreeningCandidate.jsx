@@ -5,6 +5,7 @@ import {
   Briefcase, MapPin, GraduationCap, FileText, Wand2, ShieldCheck,
   ThumbsUp, ThumbsDown, Pause, MessageSquare,
   Plus, X, Target, TrendingUp, Code2, Info,
+  Send, RefreshCw, Mail, Clock, Pencil,
 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -16,7 +17,10 @@ import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from '@/components/ui/table';
 
-import { getScreening, setScreeningDecision, getRubric, runMatching } from '@/api/screening.api';
+import {
+  getScreening, setScreeningDecision, getRubric, runMatching,
+  getQa, getQaResponses, generateQa, updateQa, sendQa,
+} from '@/api/screening.api';
 import {
   Select,
   SelectContent,
@@ -62,6 +66,26 @@ function fmt(d) {
   if (!d) return '—';
   try { return new Date(d).toISOString().slice(0, 10); } catch { return '—'; }
 }
+
+/* ─── Follow-up Q&A config ─── */
+const QA_FOCUS_OPTIONS = [
+  'Technical depth + culture',
+  'Technical only',
+  'Motivation + availability',
+  'Leadership scope',
+];
+const QA_LANGUAGES = [
+  { value: 'id-en', label: 'Bahasa ID + EN' },
+  { value: 'en',    label: 'English' },
+  { value: 'id',    label: 'Bahasa Indonesia' },
+];
+const QA_NUM_OPTIONS = [2, 3, 4, 5, 6]; // backend clamps 2–6, default 3
+const QA_STATUS_META = {
+  draft:     { label: 'Draft',     cls: 'border-slate-300 text-slate-600 bg-slate-50' },
+  sent:      { label: 'Sent',      cls: 'border-blue-300 text-blue-700 bg-blue-50' },
+  responded: { label: 'Responded', cls: 'border-emerald-300 text-emerald-700 bg-emerald-50' },
+  expired:   { label: 'Expired',   cls: 'border-rose-300 text-rose-700 bg-rose-50' },
+};
 
 export default function AIScreeningCandidatePage() {
   const { screeningId } = useParams();
@@ -236,7 +260,14 @@ export default function AIScreeningCandidatePage() {
       {/* Engine panel */}
       {activeEngine === 'parse' && <ParsePanel facets={facets} />}
       {activeEngine === 'match' && <MatchPanel data={data} onScored={load} />}
-      {activeEngine === 'qa'    && <QAPanel />}
+      {activeEngine === 'qa'    && (
+        <QAPanel
+          screeningId={screeningId}
+          candidateName={candidate_name}
+          jobTitle={job_title}
+          scored={engine === 'done'}
+        />
+      )}
 
       {/* Decision bar */}
       <Card>
@@ -697,199 +728,385 @@ function ScoreTile({ label, score, bold }) {
   );
 }
 
-/* ─────────── QA panel (stub) ─────────── */
-function QAPanel() {
+/* ─────────── QA panel (follow-up Q&A) ─────────── */
+function QAPanel({ screeningId, candidateName, jobTitle, scored }) {
+  const [tab, setTab] = useState('generate'); // 'generate' | 'inbox' — generate first per spec
+  const [qa, setQa] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+
+  // Generate controls
+  const [focusArea, setFocusArea] = useState(QA_FOCUS_OPTIONS[0]);
+  const [numQuestions, setNumQuestions] = useState('3');
+  const [language, setLanguage] = useState('id-en');
+  const [generating, setGenerating] = useState(false);
+
+  // Editable working copy of the question set (flushed to the backend on send)
+  const [questions, setQuestions] = useState([]); // [{ topic, text }]
+  const [editingIdx, setEditingIdx] = useState(null);
+
+  const [sending, setSending] = useState(false);
+
+  const status = qa?.status || (qa ? 'draft' : null);
+  const meta = status ? QA_STATUS_META[status] : null;
+
+  const load = async () => {
+    setLoading(true);
+    setError(null);
+    try {
+      const res = await getQa(screeningId);
+      let row = res.data?.qa || null;
+      if (row && row.status === 'responded') {
+        const full = await getQaResponses(screeningId);
+        row = full.data?.qa || row;
+      }
+      setQa(row);
+      const qs = Array.isArray(row?.questions) ? row.questions : [];
+      setQuestions(qs.map((q) => ({ topic: q.topic || '', text: q.text || '' })));
+      if (row) {
+        if (row.focus_area) setFocusArea(row.focus_area);
+        if (row.num_questions) setNumQuestions(String(row.num_questions));
+        if (row.language) setLanguage(row.language);
+      }
+    } catch (err) {
+      setError(err.response?.data?.message || err.message || 'Failed to load Q&A');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    if (scored) load();
+    else setLoading(false);
+  }, [screeningId, scored]);
+
+  const handleGenerate = async () => {
+    if (!scored || generating) return;
+    if (qa && status !== 'draft') {
+      const ok = window.confirm(
+        'Regenerating replaces the sent questions and permanently deletes the candidate’s answers. Continue?'
+      );
+      if (!ok) return;
+    }
+    setGenerating(true);
+    setError(null);
+    try {
+      const n = Math.max(2, Math.min(6, Number(numQuestions) || 3));
+      const res = await generateQa(screeningId, { focus_area: focusArea, num_questions: n, language });
+      const row = res.data?.qa || null;
+      setQa(row);
+      const qs = Array.isArray(row?.questions) ? row.questions : [];
+      setQuestions(qs.map((q) => ({ topic: q.topic || '', text: q.text || '' })));
+      setEditingIdx(null);
+    } catch (err) {
+      setError(err.response?.data?.message || err.message || 'Failed to generate questions');
+    } finally {
+      setGenerating(false);
+    }
+  };
+
+  const setQuestionField = (idx, field, val) =>
+    setQuestions((qs) => qs.map((q, i) => (i === idx ? { ...q, [field]: val } : q)));
+
+  const addQuestion = () => {
+    setQuestions((qs) => [...qs, { topic: '', text: '' }]);
+    setEditingIdx(questions.length);
+  };
+
+  const removeQuestion = (idx) => {
+    setQuestions((qs) => qs.filter((_, i) => i !== idx));
+    setEditingIdx(null);
+  };
+
+  const handleSend = async () => {
+    if (sending) return;
+    const cleaned = questions
+      .map((q) => ({ topic: (q.topic || '').trim(), text: (q.text || '').trim() }))
+      .filter((q) => q.text.length > 0);
+    if (cleaned.length === 0) {
+      setError('Add at least one question with text before sending.');
+      return;
+    }
+    setSending(true);
+    setError(null);
+    try {
+      await updateQa(screeningId, cleaned); // 1. persist edits/customs
+      await sendQa(screeningId);            // 2. email candidate, marks status 'sent'
+      await load();                         // 3. reload status + timestamps
+      setTab('inbox');                      // 4. show the sent state
+    } catch (err) {
+      setError(err.response?.data?.message || err.message || 'Failed to send Q&A');
+    } finally {
+      setSending(false);
+    }
+  };
+
+  // Follow-up Q&A is the step after AI Matching — gate the whole panel until the candidate is scored.
+  if (!scored) {
+    return (
+      <Card>
+        <CardHeader className="pb-3">
+          <CardTitle className="text-sm flex items-center gap-2">
+            <MessageSquare className="h-4 w-4 text-primary" /> Follow-up Q&A
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="py-8 text-center text-xs text-muted-foreground italic">
+          Run AI Matching first — follow-up Q&A unlocks once this candidate has a fit score.
+          Open the <span className="font-medium not-italic">Match</span> step and click <span className="font-medium not-italic">Run AI Matching</span>.
+        </CardContent>
+      </Card>
+    );
+  }
+
+  if (loading) {
+    return (
+      <Card>
+        <CardContent className="py-10 flex items-center justify-center">
+          <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
+        </CardContent>
+      </Card>
+    );
+  }
+
   return (
-    <Card className="overflow-hidden border shadow-sm">
-      {/* Header */}
-      <CardHeader className="space-y-4 border-b bg-muted/20">
-        <div className="flex items-center justify-between">
-          <CardTitle className="flex items-center gap-2 text-sm font-semibold">
+    <Card>
+      <CardHeader className="pb-3">
+        <div className="flex items-center justify-between gap-2 flex-wrap">
+          <CardTitle className="text-sm flex items-center gap-2">
             <MessageSquare className="h-4 w-4 text-primary" />
             Follow-up Q&A
-            <Badge
-              variant="secondary"
-              className="rounded-md text-[10px]"
-            >
-              auto-generated
-            </Badge>
+            <span className="text-[10px] font-normal text-muted-foreground">· auto-generated for borderline candidates</span>
           </CardTitle>
-
-          <div className="text-xs text-muted-foreground">
-            ~Rp 18 / set · 22 sent · 14 responded · response rate 68%
-          </div>
+          {meta && (
+            <Badge variant="outline" className={`text-[10px] uppercase tracking-wide ${meta.cls}`}>
+              {meta.label}
+              {status === 'sent'      && qa?.expired_at   && ` · closes ${fmt(qa.expired_at)}`}
+              {status === 'responded' && qa?.responded_at && ` · ${fmt(qa.responded_at)}`}
+              {status === 'expired'   && qa?.expired_at   && ` · ${fmt(qa.expired_at)}`}
+            </Badge>
+          )}
         </div>
 
-        {/* Top Actions */}
-        <div className="grid grid-cols-12 gap-3">
-          <Button
-            variant="outline"
-            className="col-span-3 justify-start"
-          >
-            Response Inbox
-            <Badge className="ml-2">24</Badge>
-          </Button>
-
-          <Button className="col-span-5">
-            <Wand2 className="mr-2 h-4 w-4" />
-            Generate
-          </Button>
-
-          <Button
-            variant="outline"
-            className="col-span-4"
-          >
-            Templates
-          </Button>
+        {/* Segmented control — Generate first, then Response Inbox */}
+        <div className="inline-flex rounded-lg border bg-muted/30 p-0.5 mt-3 w-fit">
+          {[
+            { key: 'generate', label: 'Generate' },
+            { key: 'inbox',    label: 'Response Inbox' },
+          ].map((t) => (
+            <button
+              key={t.key}
+              type="button"
+              onClick={() => setTab(t.key)}
+              className={`px-3 py-1.5 rounded-md text-xs font-semibold transition-colors ${
+                tab === t.key ? 'bg-background shadow-sm text-primary' : 'text-muted-foreground hover:text-foreground'
+              }`}
+            >
+              {t.label}
+            </button>
+          ))}
         </div>
       </CardHeader>
 
-      {/* Body */}
-      <CardContent className="space-y-6 pt-6">
-        {/* Controls */}
-        <div className="space-y-3">
-          <div className="text-[11px] uppercase tracking-wide text-muted-foreground">
-            Generate follow-up Q&A · tuned to JD + parsed CV
+      <CardContent className="space-y-4">
+        {error && (
+          <div className="flex items-center gap-2 px-3 py-2 rounded-md border border-red-200 bg-red-50 text-xs text-red-600">
+            <AlertTriangle className="h-3.5 w-3.5 shrink-0" /> {error}
           </div>
+        )}
 
-          <div className="grid grid-cols-1 gap-3 md:grid-cols-3">
-            {/* Focus */}
-            <div className="space-y-2">
-              <div className="text-xs font-medium">
-                Focus Area
+        {tab === 'generate' ? (
+          <>
+            <div className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
+              Generate · tuned to {jobTitle || 'the role'} + parsed CV
+            </div>
+
+            <div className="grid grid-cols-1 gap-3 md:grid-cols-3">
+              <div className="space-y-1.5">
+                <label className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">Focus area</label>
+                <Select value={focusArea} onValueChange={setFocusArea}>
+                  <SelectTrigger className="w-full text-xs h-9"><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    {QA_FOCUS_OPTIONS.map((f) => (
+                      <SelectItem key={f} value={f} className="text-xs">{f}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
               </div>
-
-              <Select defaultValue="motivation">
-                <SelectTrigger>
-                  <SelectValue />
-                </SelectTrigger>
-
-                <SelectContent>
-                  <SelectItem value="motivation">
-                    Motivation + availability
-                  </SelectItem>
-
-                  <SelectItem value="technical">
-                    Technical depth
-                  </SelectItem>
-
-                  <SelectItem value="culture">
-                    Culture fit
-                  </SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-
-            {/* Count */}
-            <div className="space-y-2">
-              <div className="text-xs font-medium">
-                # Questions
+              <div className="space-y-1.5">
+                <label className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground"># Questions</label>
+                <Select value={numQuestions} onValueChange={setNumQuestions}>
+                  <SelectTrigger className="w-full text-xs h-9"><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    {QA_NUM_OPTIONS.map((n) => (
+                      <SelectItem key={n} value={String(n)} className="text-xs">{n}{n === 3 ? ' (recommended)' : ''}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
               </div>
-
-              <Select defaultValue="4">
-                <SelectTrigger>
-                  <SelectValue />
-                </SelectTrigger>
-
-                <SelectContent>
-                  <SelectItem value="3">3</SelectItem>
-                  <SelectItem value="4">4</SelectItem>
-                  <SelectItem value="5">5</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-
-            {/* Language */}
-            <div className="space-y-2">
-              <div className="text-xs font-medium">
-                Language
+              <div className="space-y-1.5">
+                <label className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">Language</label>
+                <Select value={language} onValueChange={setLanguage}>
+                  <SelectTrigger className="w-full text-xs h-9"><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    {QA_LANGUAGES.map((l) => (
+                      <SelectItem key={l.value} value={l.value} className="text-xs">{l.label}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
               </div>
-
-              <Select defaultValue="id-en">
-                <SelectTrigger>
-                  <SelectValue />
-                </SelectTrigger>
-
-                <SelectContent>
-                  <SelectItem value="id-en">
-                    Bahasa ID + EN
-                  </SelectItem>
-
-                  <SelectItem value="en">
-                    English
-                  </SelectItem>
-
-                  <SelectItem value="id">
-                    Bahasa Indonesia
-                  </SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-          </div>
-        </div>
-
-        {/* Questions */}
-        <div className="rounded-xl border bg-muted/10 p-4">
-          <div className="mb-4 flex items-center justify-between">
-            <div className="text-[11px] uppercase tracking-wide text-muted-foreground">
-              Drafted Questions · click to edit
             </div>
 
-            <div className="flex gap-2">
-              <Button
-                size="sm"
-                variant="outline"
-              >
-                Regenerate
-              </Button>
+            {qa && status !== 'draft' && (
+              <div className="flex items-center gap-2 px-3 py-2 rounded-lg border border-amber-200 bg-amber-50 text-xs text-amber-700">
+                <AlertTriangle className="h-3.5 w-3.5 shrink-0" />
+                <span>Already {meta?.label.toLowerCase()}. Regenerating or re-sending replaces the questions and deletes the candidate’s answers.</span>
+              </div>
+            )}
 
-              <Button
-                size="sm"
-                variant="outline"
-              >
-                + Add custom
-              </Button>
-            </div>
-          </div>
-
-          <div className="space-y-3">
-            {questions.map((q, index) => (
-              <div
-                key={index}
-                className="rounded-lg border bg-background p-4 transition hover:border-primary/40"
-              >
-                <div className="text-sm leading-relaxed">
-                  <span className="font-semibold">
-                    {index + 1}. {q.title}
-                  </span>
-
-                  <span className="text-muted-foreground">
-                    {' '}
-                    — {q.text}
-                  </span>
+            <div className="rounded-lg border bg-muted/20 p-4">
+              <div className="mb-3 flex items-center justify-between gap-2 flex-wrap">
+                <div className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
+                  Drafted questions · click to edit
+                </div>
+                <div className="flex gap-2">
+                  <Button size="sm" variant="outline" className="text-xs" onClick={handleGenerate} disabled={generating}>
+                    {generating ? <Loader2 className="h-3 w-3 mr-1 animate-spin" /> : <RefreshCw className="h-3 w-3 mr-1" />}
+                    {questions.length ? 'Regenerate' : 'Generate'}
+                  </Button>
+                  <Button size="sm" variant="outline" className="text-xs" onClick={addQuestion} disabled={generating}>
+                    <Plus className="h-3 w-3 mr-1" /> Add custom
+                  </Button>
                 </div>
               </div>
-            ))}
-          </div>
-        </div>
 
-        {/* Footer */}
-        <div className="flex flex-col gap-3 border-t pt-4 md:flex-row md:items-center md:justify-between">
-          <div className="text-xs text-muted-foreground">
-            Cost ~Rp 18 per candidate · response window 48h
-          </div>
+              {questions.length === 0 ? (
+                <div className="py-6 text-center text-[11px] text-muted-foreground italic">
+                  No questions yet. Pick a focus area and Generate, or Add custom.
+                </div>
+              ) : (
+                <div className="space-y-2">
+                  {questions.map((q, i) => (
+                    <div key={i} className="rounded-lg border bg-background p-3">
+                      {editingIdx === i ? (
+                        <div className="space-y-2">
+                          <Input
+                            value={q.topic}
+                            onChange={(e) => setQuestionField(i, 'topic', e.target.value)}
+                            placeholder="Topic (e.g. Technical depth)"
+                            className="text-xs h-8"
+                          />
+                          <Textarea
+                            value={q.text}
+                            onChange={(e) => setQuestionField(i, 'text', e.target.value)}
+                            placeholder="Question text"
+                            rows={2}
+                            className="text-xs"
+                          />
+                          <div className="flex items-center justify-between">
+                            <button
+                              type="button"
+                              onClick={() => removeQuestion(i)}
+                              className="text-[11px] text-rose-600 inline-flex items-center gap-1"
+                            >
+                              <X className="h-3 w-3" /> Remove
+                            </button>
+                            <Button size="sm" variant="ghost" className="text-xs" onClick={() => setEditingIdx(null)}>Done</Button>
+                          </div>
+                        </div>
+                      ) : (
+                        <button
+                          type="button"
+                          onClick={() => setEditingIdx(i)}
+                          className="w-full text-left text-xs leading-relaxed group"
+                        >
+                          <span className="font-semibold">{i + 1}. {q.topic || 'Untitled'}</span>
+                          <span className="text-muted-foreground"> — {q.text || <em>click to add text</em>}</span>
+                          <Pencil className="inline h-3 w-3 ml-1.5 text-muted-foreground opacity-0 group-hover:opacity-100" />
+                        </button>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
 
-          <div className="flex gap-2">
-            <Button variant="outline">
-              Preview email
-            </Button>
+            <div className="flex flex-col gap-3 border-t pt-4 md:flex-row md:items-center md:justify-between">
+              <div className="text-[11px] text-muted-foreground">
+                Sent to {candidateName || 'the candidate'} · response window 48h
+              </div>
+              <Button size="sm" className="text-xs" onClick={handleSend} disabled={sending || questions.length === 0}>
+                {sending ? <Loader2 className="h-3.5 w-3.5 mr-1.5 animate-spin" /> : <Send className="h-3.5 w-3.5 mr-1.5" />}
+                Send to candidate
+              </Button>
+            </div>
+          </>
+        ) : (
+          <>
+            {(!qa || status === 'draft') && (
+              <div className="py-10 text-center text-xs text-muted-foreground italic">
+                Nothing sent yet. Draft questions in the Generate tab and Send to the candidate.
+              </div>
+            )}
 
-            <Button>
-              Send to candidate
-            </Button>
-          </div>
-        </div>
+            {status === 'sent' && (
+              <div className="space-y-4">
+                <div className="flex items-center gap-2 px-3 py-2 rounded-lg border bg-muted/20 text-xs text-muted-foreground">
+                  <Clock className="h-3.5 w-3.5 shrink-0" />
+                  Sent {fmt(qa.sent_at)} · awaiting response · window closes {fmt(qa.expired_at)}
+                </div>
+                <SentQuestionList questions={qa.questions} />
+              </div>
+            )}
+
+            {status === 'responded' && (
+              <div className="space-y-3">
+                <div className="flex items-center gap-2 text-[11px] text-muted-foreground">
+                  <Mail className="h-3.5 w-3.5" /> Responded {fmt(qa.responded_at)}
+                </div>
+                {(Array.isArray(qa.answers) ? qa.answers : []).map((a, i) => (
+                  <div key={i} className="rounded-lg border bg-background p-3 space-y-1.5">
+                    <div className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
+                      {a.topic || qa.questions?.[i]?.topic || `Question ${i + 1}`}
+                    </div>
+                    <div className="text-xs font-medium">{a.question || qa.questions?.[i]?.text}</div>
+                    <div className="text-[11px] text-muted-foreground italic px-3 py-2 rounded-md bg-muted/30 border">
+                      {a.answer ? `“${a.answer}”` : <span className="not-italic">No answer provided.</span>}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+
+            {status === 'expired' && (
+              <div className="space-y-4">
+                <div className="flex items-center gap-2 px-3 py-2 rounded-lg border border-rose-200 bg-rose-50 text-xs text-rose-700">
+                  <AlertTriangle className="h-3.5 w-3.5 shrink-0" />
+                  Response window expired {fmt(qa.expired_at)}. Regenerate from the Generate tab to send a fresh set.
+                </div>
+                <SentQuestionList questions={qa.questions} />
+              </div>
+            )}
+          </>
+        )}
       </CardContent>
     </Card>
+  );
+}
+
+/* Read-only ordered list of a sent question set (topic + text). */
+function SentQuestionList({ questions }) {
+  const qs = Array.isArray(questions) ? questions : [];
+  if (qs.length === 0) {
+    return <div className="text-[11px] text-muted-foreground italic">No questions on record.</div>;
+  }
+  return (
+    <div className="space-y-2">
+      {qs.map((q, i) => (
+        <div key={i} className="rounded-lg border bg-background p-3 text-xs leading-relaxed">
+          <span className="font-semibold">{i + 1}. {q.topic || 'Untitled'}</span>
+          <span className="text-muted-foreground"> — {q.text}</span>
+        </div>
+      ))}
+    </div>
   );
 }

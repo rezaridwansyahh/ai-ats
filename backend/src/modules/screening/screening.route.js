@@ -35,4 +35,13 @@ router.patch('/screening/:screening_id/decision',     screeningController.setDec
 router.get('/job/:job_id/calibration',                screeningController.getCalibration);
 router.post('/job/:job_id/advance-bulk',              screeningController.advanceBulk);
 
+// Follow-up Q&A — send side (generate / edit / send) + recruiter inbox (responses).
+// Candidate-facing receive lives in the public portal-qa module.
+router.get('/qa/inbox',                               screeningController.qaInbox);
+router.get('/screening/:screening_id/qa',             screeningController.qaGet);
+router.get('/screening/:screening_id/qa/responses',   screeningController.qaResponses);
+router.post('/screening/:screening_id/qa/generate',   screeningController.qaGenerate);
+router.put('/screening/:screening_id/qa',             screeningController.qaUpdate);
+router.post('/screening/:screening_id/qa/send',       screeningController.qaSend);
+
 export default router;

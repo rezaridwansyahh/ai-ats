@@ -684,6 +684,115 @@ class ScreeningModel {
     const rows = result.rows.map(({ total_count, ...rest }) => rest);
     return { total, rows };
   }
+
+  async getQaContext(screening_id) {
+    const result = await getDb().query(
+      `
+      SELECT
+        cs.id          AS screening_id,
+        cs.candidate_id,
+        cs.job_id,
+        mc.applicant_id,
+        mc.name        AS candidate_name,
+        ma.email       AS candidate_email,
+        ma.information AS facets,
+        cj.job_title
+      FROM candidate_screening cs
+      JOIN master_candidate mc ON mc.id = cs.candidate_id
+      JOIN core_job cj          ON cj.id = cs.job_id
+      LEFT JOIN master_applicant ma ON ma.id = mc.applicant_id
+      WHERE cs.id = $1
+      `,
+      [screening_id]
+    );
+    return result.rows[0] || null;
+  }
+
+  async getQaByScreening(screening_id) {
+    const result = await getDb().query(
+      `SELECT * FROM screening_qa WHERE screening_id = $1`,
+      [screening_id]
+    );
+    return result.rows[0] || null;
+  }
+
+  // Insert or replace the Q&A set for a screening; regenerate resets it to draft.
+  async upsertQa({ screening_id, focus_area, language, num_questions, questions, created_by }) {
+    const result = await getDb().query(
+      `
+      INSERT INTO screening_qa (screening_id, focus_area, language, num_questions, questions, status, created_by)
+      VALUES ($1, $2, $3, $4, $5::jsonb, 'draft', $6)
+      ON CONFLICT (screening_id) DO UPDATE SET
+        focus_area    = EXCLUDED.focus_area,
+        language      = EXCLUDED.language,
+        num_questions = EXCLUDED.num_questions,
+        questions     = EXCLUDED.questions,
+        status        = 'draft',
+        answers       = NULL,
+        sent_at       = NULL,
+        responded_at  = NULL,
+        expired_at    = NULL,
+        updated_at    = NOW()
+      RETURNING *
+      `,
+      [screening_id, focus_area || null, language || null, num_questions || null, JSON.stringify(questions || []), created_by || null]
+    );
+    return result.rows[0];
+  }
+
+  async updateQaQuestions(screening_id, questions) {
+    const result = await getDb().query(
+      `
+      UPDATE screening_qa
+      SET questions = $2::jsonb, updated_at = NOW()
+      WHERE screening_id = $1
+      RETURNING *
+      `,
+      [screening_id, JSON.stringify(questions || [])]
+    );
+    return result.rows[0] || null;
+  }
+
+  async markQaSent(screening_id, expired_at) {
+    const result = await getDb().query(
+      `
+      UPDATE screening_qa
+      SET status = 'sent', sent_at = NOW(), expired_at = $2, updated_at = NOW()
+      WHERE screening_id = $1
+      RETURNING *
+      `,
+      [screening_id, expired_at]
+    );
+    return result.rows[0] || null;
+  }
+
+  // Recruiter "Response Inbox" — sent/responded Q&A sets for a company, with candidate + job.
+  async qaInbox(company_id) {
+    const result = await getDb().query(
+      `
+      SELECT sq.screening_id,
+             sq.status,
+             sq.focus_area,
+             sq.num_questions,
+             sq.sent_at,
+             sq.responded_at,
+             sq.expired_at,
+             mc.name     AS candidate_name,
+             cs.candidate_id,
+             cj.id       AS job_id,
+             cj.job_title
+      FROM screening_qa sq
+      JOIN candidate_screening cs ON cs.id = sq.screening_id
+      JOIN master_candidate mc    ON mc.id = cs.candidate_id
+      JOIN core_job cj            ON cj.id = cs.job_id
+      WHERE cs.company_id = $1
+        AND sq.status IN ('sent', 'responded')
+      ORDER BY COALESCE(sq.responded_at, sq.sent_at) DESC
+      `,
+      [company_id]
+    );
+    return result.rows;
+  }
 }
 
 export default new ScreeningModel();

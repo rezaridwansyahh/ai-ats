@@ -3,6 +3,7 @@ import jobModel from '../job/job.model.js';
 import automationModel from '../automation-setting/automation.model.js';
 import aiService from '../../shared/services/ai.service.js';
 import { parseFileToText } from '../../shared/utils/file-parser.js';
+import { sendQuestionsEmail } from '../../shared/services/candidate-mailer.js';
 
 class ScreeningService {
   // Layer 1 — extract facets from a CV file (multer file object).
@@ -431,6 +432,106 @@ class ScreeningService {
 
   async search(params) {
     return await screeningModel.search(params);
+  }
+
+
+  async qaGenerate(screening_id, { focus_area, num_questions, language } = {}, context = {}) {
+    if (!screening_id) throw { status: 400, message: 'screening_id is required' };
+
+    const ctx = await screeningModel.getQaContext(screening_id);
+    if (!ctx) throw { status: 404, message: 'Screening not found' };
+    if (!ctx.facets) throw { status: 400, message: 'Candidate CV not parsed yet — cannot generate questions' };
+
+    // Follow-up Q&A is the step after AI Matching — require a score first.
+    const score = await screeningModel.getByApplicantAndJob(ctx.applicant_id, ctx.job_id);
+    if (!score) {
+      throw { status: 400, message: 'Run AI Matching for this candidate before generating follow-up Q&A' };
+    }
+
+    const job = await jobModel.getById(ctx.job_id);
+    if (!job) throw { status: 404, message: 'Job not found' };
+
+    const aiContext = { ...context, metadata: { screening_id, ...(context.metadata || {}) } };
+    const { questions } = await aiService.generateFollowupQuestions(
+      job,
+      ctx.facets,
+      { focusArea: focus_area, numQuestions: num_questions, language },
+      aiContext
+    );
+
+    return await screeningModel.upsertQa({
+      screening_id,
+      focus_area: focus_area || null,
+      language: language || null,
+      num_questions: questions.length,
+      questions,
+      created_by: context.user_id || null,
+    });
+  }
+
+  // Read the current Q&A set (without answers — that's the deferred inbox).
+  async qaGet(screening_id) {
+    const qa = await screeningModel.getQaByScreening(screening_id);
+    if (!qa) return null;
+    const { answers, ...rest } = qa; 
+    return rest;
+  }
+
+  // Persist recruiter edits to the drafted questions.
+  async qaUpdate(screening_id, questions) {
+    if (!Array.isArray(questions) || questions.length === 0) {
+      throw { status: 400, message: 'questions[] is required' };
+    }
+    const clean = questions
+      .filter((q) => q && typeof q === 'object' && typeof q.text === 'string' && q.text.trim())
+      .map((q) => ({ topic: typeof q.topic === 'string' ? q.topic.trim() : '', text: q.text.trim() }));
+    if (clean.length === 0) throw { status: 400, message: 'No valid questions provided' };
+
+    const updated = await screeningModel.updateQaQuestions(screening_id, clean);
+    if (!updated) throw { status: 404, message: 'No Q&A set for this screening — generate first' };
+    return updated;
+  }
+
+  // Email the questions to the candidate via the portal link; mark the set sent.
+  async qaSend(screening_id) {
+    const qa = await screeningModel.getQaByScreening(screening_id);
+    if (!qa) throw { status: 404, message: 'No Q&A set for this screening — generate first' };
+    if (!Array.isArray(qa.questions) || qa.questions.length === 0) {
+      throw { status: 400, message: 'Q&A set has no questions' };
+    }
+
+    const ctx = await screeningModel.getQaContext(screening_id);
+    if (!ctx?.candidate_email) {
+      throw { status: 400, message: `Candidate "${ctx?.candidate_name || screening_id}" has no email on the linked applicant` };
+    }
+
+    const expired_at = new Date(Date.now() + 48 * 60 * 60 * 1000); // 48h response window
+    const sent = await screeningModel.markQaSent(screening_id, expired_at);
+
+    const base = (process.env.PORTAL_BASE_URL || 'http://localhost:5173').replace(/\/$/, '');
+    const link = `${base}/qa/${qa.token}`;
+
+    await sendQuestionsEmail({
+      candidateName: ctx.candidate_name,
+      candidateEmail: ctx.candidate_email,
+      jobTitle: ctx.job_title,
+      questions: qa.questions,
+      link,
+    });
+
+    return { sent_to: ctx.candidate_email, link, status: sent.status, expired_at: sent.expired_at };
+  }
+
+  // Recruiter inbox — the Q&A set WITH the candidate's answers (qaGet strips them).
+  async qaGetWithAnswers(screening_id) {
+    if (!screening_id) throw { status: 400, message: 'screening_id is required' };
+    return await screeningModel.getQaByScreening(screening_id);
+  }
+
+  // Recruiter inbox list — sent/responded Q&A across the company.
+  async qaInbox(company_id) {
+    if (!company_id) throw { status: 400, message: 'company_id is required' };
+    return await screeningModel.qaInbox(company_id);
   }
 }
 

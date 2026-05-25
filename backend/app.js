@@ -41,6 +41,7 @@ import screening from "./src/modules/screening/screening.route.js"
 import company from "./src/modules/company/company.route.js"
 import companyUsage from "./src/modules/company-usage/company-usage.route.js"
 import portalAssessment from "./src/modules/portal-assessment/portal-assessment.route.js"
+import portalQa from "./src/modules/portal-qa/portal-qa.route.js"
 
 app.use(express.json());
 app.use(cors({
@@ -78,6 +79,7 @@ portal.use("/api/session", session);
 portal.use("/api/assessment-battery-result", assessmentBatteryResult);
 portal.use("/api/assessment-ai", assessmentAI);
 portal.use("/api/portal-assessment", portalAssessment);
+portal.use("/api/portal-qa", portalQa);
 
 app.use("/portal", portal);
 app.use("/api/auth", auth);
@@ -109,6 +111,7 @@ app.use("/api/screening", screening);
 app.use("/api/company", company);
 app.use("/api/company-usage", companyUsage);
 app.use("/api/portal-assessment", portalAssessment);
+app.use("/api/portal-qa", portalQa);
 
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => {

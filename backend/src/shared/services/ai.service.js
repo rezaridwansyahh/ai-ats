@@ -376,6 +376,95 @@ Return STRICT JSON:
       summary: typeof parsed.summary === 'string' ? parsed.summary : '',
     };
   }
+
+
+  async generateFollowupQuestions(job, facets, { focusArea, numQuestions, language } = {}, context = {}) {
+    if (!job || typeof job !== 'object') throw new Error('generateFollowupQuestions: job is required');
+    if (!facets || typeof facets !== 'object') throw new Error('generateFollowupQuestions: facets are required');
+
+    const count = Math.max(2, Math.min(6, Number(numQuestions) || 3));
+    const focus = typeof focusArea === 'string' && focusArea.trim() ? focusArea.trim() : 'technical depth + culture fit';
+    const langMap = {
+      'id-en': 'Mixed Bahasa Indonesia and English — write each question in Bahasa Indonesia but keep technical terms in English.',
+      en: 'English only.',
+      id: 'Bahasa Indonesia only.',
+    };
+    const langGuidance = langMap[language] || langMap['id-en'];
+
+    const jobPayload = {
+      job_title: job.job_title || '',
+      job_desc: typeof job.job_desc === 'string' ? job.job_desc.slice(0, 4000) : '',
+      qualifications: typeof job.qualifications === 'string' ? job.qualifications.slice(0, 2000) : '',
+      required_skills: Array.isArray(job.required_skills) ? job.required_skills : [],
+      preferred_skills: Array.isArray(job.preferred_skills) ? job.preferred_skills : [],
+      seniority_level: job.seniority_level || '',
+    };
+
+    const prompt = `You are an expert recruiter writing follow-up screening questions for a borderline candidate, to validate fit before an interview. Return STRICT JSON only.
+
+FOCUS AREA: ${focus}
+NUMBER OF QUESTIONS: exactly ${count}
+LANGUAGE: ${langGuidance}
+
+JOB:
+${JSON.stringify(jobPayload, null, 2)}
+
+CANDIDATE FACETS (parsed from CV):
+${JSON.stringify(facets, null, 2)}
+
+Write ${count} sharp, specific questions tuned to THIS candidate's gaps vs THIS job. Avoid generic questions; probe ambiguous tenure, missing required skills, and claims that need validation. Give each question a short topic label.
+
+Return STRICT JSON:
+{
+  "questions": [
+    { "topic": "<2-4 word label, e.g. 'Technical depth'>", "text": "<the question>" }
+  ]
+}`;
+
+    const response = await openai.chat.completions.create({
+      model: SCORING_MODEL,
+      messages: [{ role: 'user', content: prompt }],
+      response_format: { type: 'json_object' },
+      temperature: 0.4,
+    });
+
+    await this._logUsage({
+      context,
+      model: SCORING_MODEL,
+      operation: 'generate_followup_qa',
+      usage: response.usage,
+      request_id: response.id,
+      metadata: {
+        job_title: job.job_title || null,
+        focus_area: focus,
+        num_questions: count,
+        ...(context.metadata || {}),
+      },
+    });
+
+    const raw = response.choices[0]?.message?.content || '{}';
+    let parsed;
+    try {
+      parsed = JSON.parse(raw);
+    } catch {
+      throw new Error('generateFollowupQuestions: model returned non-JSON');
+    }
+
+    const questions = Array.isArray(parsed.questions)
+      ? parsed.questions
+          .filter((q) => q && typeof q === 'object' && typeof q.text === 'string' && q.text.trim())
+          .map((q) => ({
+            topic: typeof q.topic === 'string' ? q.topic.trim() : '',
+            text: q.text.trim(),
+          }))
+          .slice(0, count)
+      : [];
+
+    if (questions.length === 0) throw new Error('generateFollowupQuestions: model returned no questions');
+
+    return { questions };
+  }
+
 }
 
 export default new AIService();

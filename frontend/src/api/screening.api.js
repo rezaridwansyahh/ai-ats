@@ -75,3 +75,19 @@ export const getCalibration = (job_id) =>
 
 export const advanceBulk = (job_id, screening_ids, { decision_reason } = {}) =>
   api.post(`/screening/job/${job_id}/advance-bulk`, { screening_ids, decision_reason });
+
+// Follow-up Q&A (L3 candidate detail)
+export const getQa = (screening_id) =>
+  api.get(`/screening/screening/${screening_id}/qa`);
+
+export const getQaResponses = (screening_id) =>
+  api.get(`/screening/screening/${screening_id}/qa/responses`);
+
+export const generateQa = (screening_id, { focus_area, num_questions, language }) =>
+  api.post(`/screening/screening/${screening_id}/qa/generate`, { focus_area, num_questions, language });
+
+export const updateQa = (screening_id, questions) =>
+  api.put(`/screening/screening/${screening_id}/qa`, { questions });
+
+export const sendQa = (screening_id) =>
+  api.post(`/screening/screening/${screening_id}/qa/send`);

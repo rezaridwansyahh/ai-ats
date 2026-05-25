@@ -1,6 +1,7 @@
 -- Drop tables in reverse dependency order (most dependent first)
 DROP TABLE IF EXISTS company_usage CASCADE;
 DROP TABLE IF EXISTS candidate_interview CASCADE;
+DROP TABLE IF EXISTS screening_qa CASCADE;
 DROP TABLE IF EXISTS candidate_screening CASCADE;
 DROP TABLE IF EXISTS applicant_job_score CASCADE;
 DROP TABLE IF EXISTS master_skill_alias CASCADE;
@@ -64,6 +65,7 @@ DROP TYPE IF EXISTS sourcing_status_type CASCADE;
 DROP TYPE IF EXISTS battery_type CASCADE;
 DROP TYPE IF EXISTS status_session_type CASCADE;
 DROP TYPE IF EXISTS assessment_status_type CASCADE;
+DROP TYPE IF EXISTS screening_qa_status_type CASCADE;
 
 -- Create ENUM type
 CREATE TYPE status_type AS ENUM ('Draft', 'Active', 'Running', 'Expired', 'Failed', 'Blocked');
@@ -85,6 +87,7 @@ CREATE TYPE stage_category_type AS ENUM ('Job Management', 'Screening & Matching
 CREATE TYPE battery_type AS ENUM ('A', 'B', 'C', 'D');
 CREATE TYPE status_session_type AS ENUM ('invited', 'in_progress', 'completed', 'expired');
 CREATE TYPE assessment_status_type AS ENUM ('in_progress', 'completed', 'expired');
+CREATE TYPE screening_qa_status_type AS ENUM ('draft', 'sent', 'responded', 'expired');
 CREATE EXTENSION IF NOT EXISTS pgcrypto;
 CREATE EXTENSION IF NOT EXISTS pg_trgm;
 
@@ -483,6 +486,24 @@ CREATE TABLE candidate_screening (
 CREATE INDEX idx_cs_job        ON candidate_screening (job_id);
 CREATE INDEX idx_cs_company    ON candidate_screening (company_id);
 CREATE INDEX idx_cs_decision   ON candidate_screening (decision);
+
+CREATE TABLE screening_qa (
+  id SERIAL PRIMARY KEY,
+  screening_id INTEGER NOT NULL UNIQUE REFERENCES candidate_screening(id) ON DELETE CASCADE,
+  token UUID NOT NULL UNIQUE DEFAULT gen_random_uuid(), 
+  focus_area VARCHAR(50),
+  language VARCHAR(20),
+  num_questions INTEGER,
+  questions JSONB NOT NULL,
+  answers JSONB,      
+  status screening_qa_status_type NOT NULL DEFAULT 'draft',
+  sent_at  TIMESTAMPTZ,
+  responded_at TIMESTAMPTZ,
+  expired_at  TIMESTAMPTZ,
+  created_by  INTEGER REFERENCES master_users(id) ON DELETE SET NULL,
+  created_at  TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  updated_at  TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
 
 -- candidate_interview: stub for the Interview module's R1 prep queue.
 -- Phase 4 only writes here (via advance-bulk on Calibration). The Interview
