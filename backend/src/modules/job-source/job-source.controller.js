@@ -47,6 +47,15 @@ class JobSourceController {
     }
   }
 
+  async getByJobId(req, res) {
+    try {
+      const { job, postings } = await jobSourceService.getByJobId(req.params.job_id);
+      res.status(200).json({ message: 'Sourcing channels for this job', job, postings });
+    } catch (err) {
+      res.status(err.status || 500).json({ message: err.message });
+    }
+  }
+
   async getByUserIdAndStatus(req, res) {
     try {
       const { user, postings, status } = await jobSourceService.getByUserIdAndStatus(req.params.user_id, req.query.status);

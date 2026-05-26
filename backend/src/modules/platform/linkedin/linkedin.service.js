@@ -11,6 +11,7 @@ import loginRpa from "./rpa/login.rpa.js"
 import jobSourceModel from "../../job-source/job-source.model.js"
 import jobPostLinkedinModel from "./job-post-linkedin.model.js"
 import applicantModel from "../../applicant/applicant.model.js"
+import candidatePipelineModel from "../../candidate-pipeline/candidate-pipeline.model.js"
 
 import { joinArrayFields } from '../../../shared/utils/format.js';
 
@@ -134,8 +135,13 @@ class LinkedInService {
         limit
       });
 
+      // Owned posting → resolves to a core_job; auto-promote synced applicants to
+      // candidates for that job (parity with the Seek sync hook). Orphan → null → skip.
+      const linkedJobId = await jobSourceModel.getLinkedJobId(job_sourcing_id);
+
+      let promoted = 0;
       for (const candidate of candidates) {
-        await applicantModel.create({
+        const applicant = await applicantModel.create({
           job_sourcing_id,
           name: candidate.name,
           last_position: candidate.last_position,
@@ -143,9 +149,18 @@ class LinkedInService {
           information: candidate.information ? JSON.stringify(candidate.information) : null,
           attachment: candidate.attachment || null,
         });
+
+        if (linkedJobId && applicant?.id) {
+          try {
+            const created = await candidatePipelineModel.createFromApplicantIfAbsent(applicant.id, linkedJobId);
+            if (created) promoted++;
+          } catch (err) {
+            console.error(`Auto-promote failed for applicant ${applicant.id} → job ${linkedJobId}:`, err.message);
+          }
+        }
       }
 
-      return { saved: candidates.length };
+      return { saved: candidates.length, promoted, linkedJobId };
     } catch (err) {
       console.log(err);
       throw err;

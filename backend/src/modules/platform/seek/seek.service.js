@@ -8,6 +8,7 @@ import browserPuppeteer from "../../../shared/services/puppeteer/browser.puppete
 import extractJobPostRpa from "../seek/rpa/extract-job-post.rpa.js"
 import applicantModel from "../../applicant/applicant.model.js"
 import jobAccountModel from "../../job-account/job-account.model.js"
+import candidatePipelineModel from "../../candidate-pipeline/candidate-pipeline.model.js"
 
 class SeekService {
   async jobPost(account_id, service, dataForm) {
@@ -101,6 +102,10 @@ class SeekService {
 
     const jobPostSeek = await jobPostSeekModel.getDetailsByJobSourcingId(job_sourcing_id);
 
+    // Owned posting (created in our platform) → resolves to a core_job; orphan → null.
+    // When linked, each synced applicant is auto-promoted to a candidate for that job.
+    const linkedJobId = await jobSourceModel.getLinkedJobId(job_sourcing_id);
+
     try {
       await loginRpa.authenticatedPage(page, account_id);
       await extractCandidateRpa.navigateToCandidatePage(page, jobPostSeek.seek_id);
@@ -113,17 +118,18 @@ class SeekService {
 
       for (const bucket of buckets) {
         if (bucket.count === 0) {
-          results.push({ bucket: bucket.name, saved: 0 });
+          results.push({ bucket: bucket.name, saved: 0, promoted: 0 });
           continue;
         }
 
         await extractCandidateRpa.navigateToCandidateDetail(page, bucket.name);
         const candidates = await extractCandidateRpa.extractCandidates(page, bucket, account_id, jobPostSeek.seek_id, job_name);
 
+        let promoted = 0;
         for (const candidate of candidates) {
           if (!candidate.candidate_id) continue;
 
-          await applicantModel.create({
+          const applicant = await applicantModel.create({
             job_sourcing_id,
             name: candidate.name,
             last_position: candidate.last_position,
@@ -133,12 +139,23 @@ class SeekService {
             date: candidate.date || null,
             attachment: candidate.attachment || null,
           });
+
+          // Auto-promote to candidate for owned postings only. Dup-safe (ON CONFLICT
+          // DO NOTHING) and individually guarded so one failure never aborts the batch.
+          if (linkedJobId && applicant?.id) {
+            try {
+              const created = await candidatePipelineModel.createFromApplicantIfAbsent(applicant.id, linkedJobId);
+              if (created) promoted++;
+            } catch (err) {
+              console.error(`Auto-promote failed for applicant ${applicant.id} → job ${linkedJobId}:`, err.message);
+            }
+          }
         }
 
-        results.push({ bucket: bucket.name, saved: candidates.length });
+        results.push({ bucket: bucket.name, saved: candidates.length, promoted });
       }
 
-      return { buckets, results };
+      return { buckets, results, linkedJobId };
     } catch (err) {
       throw err;
     } finally {

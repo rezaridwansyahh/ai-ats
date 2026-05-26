@@ -86,6 +86,26 @@ class CandidatePipeline {
     return result.rows[0];
   }
 
+  // Dup-safe variant for the sync path: promotes an applicant to a candidate
+  // for a job, but silently no-ops if they're already a candidate for it
+  // (UNIQUE(name, job_id)). Returns the new row, or undefined if it already
+  // existed — so a single duplicate never aborts a sync batch.
+  static async createFromApplicantIfAbsent(applicant_id, job_id) {
+    const result = await getDb().query(`
+      INSERT INTO master_candidate (
+        job_id, applicant_id, name, last_position, address,
+        education, information, date, attachment
+      )
+      SELECT $1, a.id, a.name, a.last_position, a.address,
+             a.education, a.information, a.date, a.attachment
+      FROM master_applicant a
+      WHERE a.id = $2
+      ON CONFLICT (name, job_id) DO NOTHING
+      RETURNING *
+    `, [job_id, applicant_id]);
+    return result.rows[0];
+  }
+
   static async getNotificationContext(candidate_id) {
     const result = await getDb().query(`
       SELECT c.name AS candidate_name,

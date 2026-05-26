@@ -1,9 +1,11 @@
+import { useCallback, useMemo, useState } from 'react'
 import { Outlet, useLocation } from 'react-router-dom'
 import { SidebarProvider, SidebarTrigger, SidebarInset } from '@/components/ui/sidebar'
 import { AppSidebar } from '@/components/layout/app-sidebar'
 import { Separator } from '@/components/ui/separator'
 import { ChevronRight, Home } from 'lucide-react'
 import { Toaster } from "@/components/ui/sonner"
+import { BreadcrumbContext } from '@/components/layout/breadcrumb-context'
 
 const BREADCRUMB_MAP = {
   '/dashboard':          ['Dashboard'],
@@ -27,6 +29,10 @@ const BREADCRUMB_MAP = {
 
 function resolveBreadcrumbs(pathname) {
   if (BREADCRUMB_MAP[pathname]) return BREADCRUMB_MAP[pathname]
+  // Candidate Pipeline detail (per job)
+  if (/^\/candidate-pipeline\/\d+$/.test(pathname)) {
+    return ['Candidate Pipeline', 'Detail']
+  }
   // Nested AI Screening routes
   if (pathname.startsWith('/selection/ai-screening/job/')) {
     return ['Selection', 'AI Screening', 'Position']
@@ -52,7 +58,21 @@ function resolveBreadcrumbs(pathname) {
 
 export default function DashboardLayout() {
   const location = useLocation()
-  const breadcrumbs = resolveBreadcrumbs(location.pathname)
+
+  // Dynamic last-crumb override, published by detail pages (e.g. a job title).
+  const [dynCrumb, setDynCrumb] = useState(null) // { path, label }
+  const setBreadcrumb = useCallback((path, label) => {
+    setDynCrumb((prev) => {
+      if (label) return { path, label }
+      return prev && prev.path === path ? null : prev
+    })
+  }, [])
+  const breadcrumbCtx = useMemo(() => ({ set: setBreadcrumb }), [setBreadcrumb])
+
+  let breadcrumbs = resolveBreadcrumbs(location.pathname)
+  if (dynCrumb && dynCrumb.path === location.pathname && breadcrumbs.length > 0) {
+    breadcrumbs = [...breadcrumbs.slice(0, -1), dynCrumb.label]
+  }
 
   return (
     
@@ -97,7 +117,9 @@ export default function DashboardLayout() {
         {/* Main content */}
         <main className="p-5 min-h-[calc(100vh-3.25rem)]">
           <Toaster />
-          <Outlet />
+          <BreadcrumbContext.Provider value={breadcrumbCtx}>
+            <Outlet />
+          </BreadcrumbContext.Provider>
         </main>
       </SidebarInset>
     </SidebarProvider>
