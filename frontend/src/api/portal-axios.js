@@ -5,7 +5,7 @@
 import axios from 'axios';
 
 const portalApi = axios.create({
-  baseURL: 'http://localhost:3000/portal/api',
+  baseURL: `${import.meta.env.VITE_API_BASE_URL || 'http://localhost:3000'}/portal/api`,
 });
 
 export const PORTAL_TOKEN_KEY = 'portal_token';

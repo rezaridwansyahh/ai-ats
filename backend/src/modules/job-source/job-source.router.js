@@ -12,6 +12,7 @@ router.get('/user/:user_id/status', jobSourcingController.getByUserIdAndStatus);
 router.get('/user/:user_id/full', jobSourcingController.getSeekByUserId);
 
 router.get('/jobPost/:job_post_id', jobSourcingController.getByJobPostId);
+router.get('/job/:job_id', jobSourcingController.getByJobId);
 
 router.get('/:id', jobSourcingController.getById);
 router.get('/:id/full', jobSourcingController.getFullById);

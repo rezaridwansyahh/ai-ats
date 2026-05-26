@@ -58,6 +58,7 @@ DROP TYPE IF EXISTS platform_type CASCADE;
 DROP TYPE IF EXISTS candidate_status_type CASCADE;
 DROP TYPE IF EXISTS status_connection_type CASCADE;
 DROP TYPE IF EXISTS status_sync_type CASCADE;
+DROP TYPE IF EXISTS sync_state_type CASCADE;
 DROP TYPE IF EXISTS stage_category_type CASCADE;
 DROP TYPE IF EXISTS booking_status_type CASCADE;
 DROP TYPE IF EXISTS session_slot_type CASCADE;
@@ -82,6 +83,7 @@ CREATE TYPE booking_status_type AS ENUM ('pending', 'approved', 'rejected');
 CREATE TYPE session_slot_type   AS ENUM ('10-12', '1-3', '4-6');
 CREATE TYPE status_connection_type AS ENUM ('Connected', 'Not Connected', 'Error');
 CREATE TYPE status_sync_type AS ENUM ('Sync', 'Not Sync', 'Error');
+CREATE TYPE sync_state_type AS ENUM ('idle', 'syncing', 'error');
 CREATE TYPE job_post_type AS ENUM ('Internal', 'Publish');
 CREATE TYPE sourcing_status_type AS ENUM ('Pending', 'Processing', 'Done', 'Failed');
 CREATE TYPE stage_category_type AS ENUM ('Job Management', 'Screening & Matching', 'Interview', 'Assessment', 'Background Check', 'Offering & Contract', 'Other');
@@ -293,6 +295,8 @@ CREATE TABLE core_job_sourcing (
   platform_job_id VARCHAR(255),
   status status_type NOT NULL DEFAULT 'Active',
   last_sync TIMESTAMP,
+  sync_state sync_state_type NOT NULL DEFAULT 'idle',  -- live applicant-sync state for this channel
+  sync_started_at TIMESTAMP,
   created_at TIMESTAMP NOT NULL DEFAULT NOW(),
   updated_at TIMESTAMP NOT NULL DEFAULT NOW(),
   additional JSONB,
