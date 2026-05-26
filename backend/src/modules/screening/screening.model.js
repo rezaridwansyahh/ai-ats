@@ -17,7 +17,7 @@ class ScreeningModel {
     summary,
   }) {
     const result = await getDb().query(
-      `INSERT INTO applicant_job_score (
+      `INSERT INTO candidate_job_score (
          applicant_id, job_id,
          overall_score, skills_score, experience_score, career_trajectory_score, education_score,
          matched_skills, missing_skills, custom_criteria_results,
@@ -74,7 +74,7 @@ class ScreeningModel {
 
   async getByApplicantAndJob(applicant_id, job_id) {
     const result = await getDb().query(
-      `SELECT * FROM applicant_job_score
+      `SELECT * FROM candidate_job_score
        WHERE applicant_id = $1 AND job_id = $2`,
       [applicant_id, job_id]
     );
@@ -195,7 +195,7 @@ class ScreeningModel {
       JOIN master_candidate mc ON mc.id = cs.candidate_id
       JOIN core_job cj          ON cj.id = cs.job_id
       LEFT JOIN master_applicant ma ON ma.id = mc.applicant_id
-      LEFT JOIN applicant_job_score s
+      LEFT JOIN candidate_job_score s
         ON s.applicant_id = mc.applicant_id AND s.job_id = cs.job_id
       WHERE cs.id = $1
       `,
@@ -233,7 +233,7 @@ class ScreeningModel {
       JOIN master_candidate mc       ON mc.id = cs.candidate_id
       JOIN core_job cj                ON cj.id = cs.job_id
       LEFT JOIN master_applicant a    ON a.id  = mc.applicant_id
-      JOIN applicant_job_score s
+      JOIN candidate_job_score s
         ON s.applicant_id = mc.applicant_id AND s.job_id = cs.job_id
       WHERE cs.job_id = $1 AND cs.decision IS NULL
       ORDER BY s.overall_score DESC NULLS LAST, cs.id ASC
@@ -340,8 +340,8 @@ class ScreeningModel {
   // Workboard data scoped to a company.
   // Engine status is derived from existing tables (no candidate_screening parent yet):
   //   parse  = master_applicant.information IS NULL
-  //   match  = parsed but no applicant_job_score row for this (applicant, job)
-  //   ready  = applicant_job_score row exists
+  //   match  = parsed but no candidate_job_score row for this (applicant, job)
+  //   ready  = candidate_job_score row exists
   //   qa     = 0 for v1 (engine not implemented)
   // Returns { counts, positions, attention } shaped for the L1 Workboard UI.
   async getWorkboardData(company_id) {
@@ -362,7 +362,7 @@ class ScreeningModel {
         FROM master_candidate mc
         JOIN core_job cj            ON cj.id = mc.job_id
         LEFT JOIN master_applicant ma ON ma.id = mc.applicant_id
-        LEFT JOIN applicant_job_score s
+        LEFT JOIN candidate_job_score s
           ON s.applicant_id = mc.applicant_id AND s.job_id = mc.job_id
         WHERE cj.company_id = $1 AND mc.applicant_id IS NOT NULL
       )
@@ -413,7 +413,7 @@ class ScreeningModel {
       `
       SELECT s.applicant_id, s.job_id, a.name AS applicant_name,
              cj.job_title, s.overall_score, s.scored_at
-      FROM applicant_job_score s
+      FROM candidate_job_score s
       JOIN core_job cj          ON cj.id = s.job_id
       LEFT JOIN master_applicant a ON a.id = s.applicant_id
       WHERE cj.company_id = $1
@@ -464,7 +464,7 @@ class ScreeningModel {
         END AS engine
       FROM master_candidate mc
       LEFT JOIN master_applicant a   ON a.id = mc.applicant_id
-      LEFT JOIN applicant_job_score s
+      LEFT JOIN candidate_job_score s
         ON s.applicant_id = mc.applicant_id AND s.job_id = mc.job_id
       LEFT JOIN candidate_screening cs ON cs.candidate_id = mc.id
       WHERE mc.job_id = $1 AND mc.applicant_id IS NOT NULL
@@ -484,7 +484,7 @@ class ScreeningModel {
               s.matched_skills, s.missing_skills, s.custom_criteria_results,
               s.rubric_snapshot, s.role_profile, s.summary, s.scored_at,
               a.name AS applicant_name
-       FROM applicant_job_score s
+       FROM candidate_job_score s
        LEFT JOIN master_applicant a ON a.id = s.applicant_id
        WHERE s.job_id = $1
        ORDER BY s.overall_score DESC, s.applicant_id ASC`,
@@ -494,7 +494,7 @@ class ScreeningModel {
   }
 
   // Faceted search.
-  // mode = 'pool'     → all applicants matching facets, scores from applicant_job_score for the optional job_id.
+  // mode = 'pool'     → all applicants matching facets, scores from candidate_job_score for the optional job_id.
   // mode = 'pipeline' → only applicants who exist in master_candidate for the given job_id, JOINed to scores.
   async search({
     mode = 'pool',
@@ -519,10 +519,10 @@ class ScreeningModel {
     let scoreJoin = '';
     if (job_id) {
       params.push(job_id);
-      scoreJoin = `LEFT JOIN applicant_job_score s
+      scoreJoin = `LEFT JOIN candidate_job_score s
                      ON s.applicant_id = a.id AND s.job_id = $${params.length}`;
     } else {
-      scoreJoin = `LEFT JOIN applicant_job_score s ON FALSE`;
+      scoreJoin = `LEFT JOIN candidate_job_score s ON FALSE`;
     }
 
     if (mode === 'pipeline') {

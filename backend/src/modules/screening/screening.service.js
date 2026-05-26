@@ -508,14 +508,15 @@ class ScreeningService {
     const expired_at = new Date(Date.now() + 48 * 60 * 60 * 1000); // 48h response window
     const sent = await screeningModel.markQaSent(screening_id, expired_at);
 
-    const base = (process.env.PORTAL_BASE_URL || 'http://localhost:5173').replace(/\/$/, '');
-    const link = `${base}/qa/${qa.token}`;
+    const origin = (process.env.PORTAL_BASE_URL || 'http://localhost:5173')
+      .replace(/\/+$/, '')
+      .replace(/\/portal$/, '');
+    const link = `${origin}/portal/qa/${qa.token}`;
 
     await sendQuestionsEmail({
       candidateName: ctx.candidate_name,
       candidateEmail: ctx.candidate_email,
       jobTitle: ctx.job_title,
-      questions: qa.questions,
       link,
     });
 

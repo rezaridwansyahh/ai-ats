@@ -13,23 +13,28 @@ export async function sendScreeningEmail({candidateName, candidateEmail, jobTitl
   await sendMail(candidateEmail, `Invitation to next stage: ${stageName}`, html);
 }
 
-export async function sendQuestionsEmail({ candidateName, candidateEmail, jobTitle, questions, link }) {
+// Link-only follow-up Q&A invite, in Bahasa Indonesia. The questions themselves
+// live behind the portal link — the email only directs the candidate there.
+export async function sendQuestionsEmail({ candidateName, candidateEmail, jobTitle, link }) {
   if (!candidateEmail) {
     console.warn(`[candidate-mailer] Skipping no email for candidate ${candidateName}`);
     return;
   }
 
-  const items = (Array.isArray(questions) ? questions : [])
-    .map((q) => `<li><strong>${q.topic || ""}</strong> — ${q.text || ""}</li>`)
-    .join("");
-
   const html = `
-  <p>Hi ${candidateName},</p>
-  <p>Thanks for applying for the <strong>${jobTitle}</strong> role. As a quick next step, please answer a few short follow-up questions:</p>
-  <ol>${items}</ol>
-  <p><a href="${link}">Answer the questions here</a></p>
-  <p>Please respond within 48 hours. This link is personal to you — please don't share it.</p>
+  <div style="font-family:Arial,sans-serif;color:#1a1a1f;line-height:1.6;">
+    <p>Halo ${candidateName},</p>
+    <p>Terima kasih telah melamar untuk posisi <strong>${jobTitle}</strong>. Sebagai langkah
+       selanjutnya, kami memiliki beberapa pertanyaan singkat untuk Anda.</p>
+    <p>Silakan kerjakan melalui tautan berikut:</p>
+    <p>
+      <a href="${link}" style="display:inline-block;padding:10px 18px;background:#0A6E5C;color:#ffffff;text-decoration:none;border-radius:6px;font-weight:600;">Kerjakan Pertanyaan</a>
+    </p>
+    <p style="color:#6B6660;font-size:13px;">Mohon diselesaikan dalam waktu 48 jam. Tautan ini bersifat
+       pribadi — mohon untuk tidak membagikannya kepada orang lain.</p>
+    <p>Terima kasih,<br/>Tim Rekrutmen</p>
+  </div>
   `;
 
-  await sendMail(candidateEmail, `Follow-up questions for ${jobTitle}`, html);
+  await sendMail(candidateEmail, `Pertanyaan Lanjutan — ${jobTitle}`, html);
 }

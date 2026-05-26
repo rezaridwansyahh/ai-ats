@@ -389,7 +389,9 @@ Return STRICT JSON:
       en: 'English only.',
       id: 'Bahasa Indonesia only.',
     };
-    const langGuidance = langMap[language] || langMap['id-en'];
+    // Locked to Bahasa Indonesia for now — questions are always written in Bahasa
+    // regardless of the requested `language`.
+    const langGuidance = langMap['id'];
 
     const jobPayload = {
       job_title: job.job_title || '',
@@ -398,6 +400,17 @@ Return STRICT JSON:
       required_skills: Array.isArray(job.required_skills) ? job.required_skills : [],
       preferred_skills: Array.isArray(job.preferred_skills) ? job.preferred_skills : [],
       seniority_level: job.seniority_level || '',
+      job_location: job.job_location || '',
+      work_option: job.work_option || '',   // On-site | Hybrid | Remote
+      work_type: job.work_type || '',       // Full-time | Part-time | Contract | Casual
+      benefits: job.benefits ?? [],
+      compensation: {
+        pay_type: job.pay_type || null,     // Hourly | Monthly | Annually
+        currency: job.currency || null,
+        pay_min: job.pay_min ?? null,
+        pay_max: job.pay_max ?? null,
+        pay_display: job.pay_display || null, // Show | Hide
+      },
     };
 
     const prompt = `You are an expert recruiter writing follow-up screening questions for a borderline candidate, to validate fit before an interview. Return STRICT JSON only.
@@ -413,6 +426,8 @@ CANDIDATE FACETS (parsed from CV):
 ${JSON.stringify(facets, null, 2)}
 
 Write ${count} sharp, specific questions tuned to THIS candidate's gaps vs THIS job. Avoid generic questions; probe ambiguous tenure, missing required skills, and claims that need validation. Give each question a short topic label.
+
+When the FOCUS AREA concerns job requirements or compensation, ground the questions in the JOB's stated compensation, benefits, work arrangement (work_option / work_type), location, qualifications and skills — e.g. confirm the candidate's salary expectation against the offered range, their availability / earliest start date, and their willingness regarding the work arrangement and location. ONLY quote specific salary figures if compensation.pay_display is "Show"; if it is "Hide" or absent, ask about the candidate's salary expectation WITHOUT revealing the offered range.
 
 Return STRICT JSON:
 {

@@ -27,7 +27,7 @@ const seed = async () => {
     await getDb().query('DELETE FROM company_usage');
     await getDb().query('DELETE FROM candidate_interview');
     await getDb().query('DELETE FROM candidate_screening');
-    await getDb().query('DELETE FROM applicant_job_score');
+    await getDb().query('DELETE FROM candidate_job_score');
     await getDb().query('DELETE FROM master_skill_alias');
     await getDb().query('DELETE FROM core_applicant_assessment');
     await getDb().query('DELETE FROM master_assessment');
@@ -287,12 +287,12 @@ const seed = async () => {
       );
     }
 
-    // 20. applicant_job_score — synthetic AI Matching results (no LLM call).
+    // 20. candidate_job_score — synthetic AI Matching results (no LLM call).
     //     Computed deterministically in data/applicant_scores.js from
     //     master_applicant.information + core_job.rubric.
     for (const s of applicantScores) {
       await getDb().query(
-        `INSERT INTO applicant_job_score (
+        `INSERT INTO candidate_job_score (
            applicant_id, job_id,
            overall_score, skills_score, experience_score, career_trajectory_score, education_score,
            matched_skills, missing_skills, custom_criteria_results,

@@ -3,7 +3,8 @@ DROP TABLE IF EXISTS company_usage CASCADE;
 DROP TABLE IF EXISTS candidate_interview CASCADE;
 DROP TABLE IF EXISTS screening_qa CASCADE;
 DROP TABLE IF EXISTS candidate_screening CASCADE;
-DROP TABLE IF EXISTS applicant_job_score CASCADE;
+DROP TABLE IF EXISTS candidate_job_score CASCADE;
+DROP TABLE IF EXISTS applicant_job_score CASCADE;  -- orphan cleanup: old name (renamed → candidate_job_score)
 DROP TABLE IF EXISTS master_skill_alias CASCADE;
 DROP TABLE IF EXISTS core_company CASCADE;
 DROP TABLE IF EXISTS mapping_applicant_linkedin CASCADE;
@@ -39,7 +40,7 @@ DROP TABLE IF EXISTS master_template_stage CASCADE;
 DROP TABLE IF EXISTS job_stage_category CASCADE;
 DROP TABLE IF EXISTS recruitment_stage_category CASCADE;
 DROP TABLE IF EXISTS job_automation_settings CASCADE;
-DROP TABLE IF EXISTS applicant_job_score CASCADE;
+DROP TABLE IF EXISTS candidate_job_score CASCADE;
 DROP TABLE IF EXISTS assessment_sessions CASCADE;
 DROP TABLE IF EXISTS core_applicant_assessment CASCADE;
 DROP TABLE IF EXISTS master_assessment CASCADE;
@@ -444,7 +445,7 @@ CREATE TABLE job_automation_settings (
   updated_at TIMESTAMP NOT NULL DEFAULT NOW()
 );
 
-CREATE TABLE applicant_job_score (
+CREATE TABLE candidate_job_score (
   id                       SERIAL PRIMARY KEY,
   applicant_id             INTEGER NOT NULL REFERENCES master_applicant(id) ON DELETE CASCADE,
   job_id                   INTEGER NOT NULL REFERENCES core_job(id) ON DELETE CASCADE,
@@ -463,13 +464,13 @@ CREATE TABLE applicant_job_score (
   UNIQUE (applicant_id, job_id)
 );
 
-CREATE INDEX idx_ajs_job_score ON applicant_job_score (job_id, overall_score DESC);
-CREATE INDEX idx_ajs_applicant ON applicant_job_score (applicant_id);
+CREATE INDEX idx_cjs_job_score ON candidate_job_score (job_id, overall_score DESC);
+CREATE INDEX idx_cjs_applicant ON candidate_job_score (applicant_id);
 
 -- candidate_screening: parent row for the L3 candidate-detail surface.
 -- 1:1 with master_candidate; tracks recruiter decision (advance/hold/reject) at
 -- the (candidate, job) scope. Engine state (parse/match/done) is *derived* from
--- master_applicant.information + applicant_job_score in queries — not stored
+-- master_applicant.information + candidate_job_score in queries — not stored
 -- here to avoid sync drift for v1.
 CREATE TABLE candidate_screening (
   id              SERIAL PRIMARY KEY,
