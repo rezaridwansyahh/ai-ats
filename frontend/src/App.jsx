@@ -19,6 +19,7 @@ import AssessmentAPage from "./pages/AssessmentA"
 import ReportPage from "./pages/Report"
 import CandidateDetailPage from "./pages/CandidateDetail"
 import AssessmentPlacementPage from "./pages/portal/AssessmentPlacement"
+import QAFollowUpPage from "./pages/portal/QAFollowUp"
 import AIScreeningPage from "./pages/AIScreening"
 import AIScreeningWorkboard from "./pages/AIScreeningWorkboard"
 import AIScreeningCandidatePage from "./pages/AIScreeningCandidate"
@@ -39,6 +40,7 @@ function App() {
 
       {/* Public candidate-facing portal */}
       <Route path="/assessment-placement/:hash" element={<AssessmentPlacementPage />} />
+      <Route path="/qa/:token" element={<QAFollowUpPage />} />
 
       {/* All authenticated routes share DashboardLayout */}
       <Route element={<DashboardLayout />}>
