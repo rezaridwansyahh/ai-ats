@@ -197,7 +197,7 @@ export default function BatteryA({ questions, completedSubtests = [], onSubtestC
                   disabled={done || locked}
                   className="w-full flex items-center gap-3 p-3.5 rounded-lg border-2 text-left transition disabled:opacity-50"
                   style={{
-                    borderColor: done ? '#BBF7D0' : locked ? '#E2E8F0' : meta.color,
+                    borderColor: done ? '#BBF7D0' : locked ? '#E9E3D5' : meta.color,
                     background: done ? '#ECFDF5' : '#FAFBFC',
                   }}
                 >
@@ -213,7 +213,7 @@ export default function BatteryA({ questions, completedSubtests = [], onSubtestC
                       {itemsCount} item{SUBTEST_DURATIONS[k] ? ` · ~${Math.round(SUBTEST_DURATIONS[k] / 60)} menit` : ' · Tanpa timer'}
                     </div>
                   </div>
-                  <div className="text-xs font-bold" style={{ color: done ? '#059669' : '#64748B' }}>
+                  <div className="text-xs font-bold" style={{ color: done ? '#059669' : '#6E6A5E' }}>
                     {done ? 'SELESAI' : locked ? 'TERKUNCI' : 'MULAI →'}
                   </div>
                 </button>
@@ -440,7 +440,7 @@ function DotGrid({ count, currentIdx, isDone, color, onJump }) {
             className="w-3.5 h-3.5 rounded-sm border transition"
             style={{
               background: cur ? color : done ? `${color}55` : '#fff',
-              borderColor: cur ? color : done ? `${color}80` : '#E2E8F0',
+              borderColor: cur ? color : done ? `${color}80` : '#E9E3D5',
             }}
           />
         );
@@ -460,7 +460,7 @@ function McChoices({ q, color, selected, onPick }) {
             onClick={() => onPick(i)}
             className="text-left p-4 rounded-lg border-2 transition"
             style={{
-              borderColor: sel ? color : '#E2E8F0',
+              borderColor: sel ? color : '#E9E3D5',
               background: sel ? `${color}15` : '#FAFBFC',
             }}
           >
@@ -468,8 +468,8 @@ function McChoices({ q, color, selected, onPick }) {
               className="w-7 h-7 rounded-md grid place-items-center text-xs font-bold mb-2"
               style={{
                 background: sel ? color : '#fff',
-                color: sel ? '#fff' : '#64748B',
-                border: `1.5px solid ${sel ? color : '#E2E8F0'}`,
+                color: sel ? '#fff' : '#6E6A5E',
+                border: `1.5px solid ${sel ? color : '#E9E3D5'}`,
               }}
             >
               {String.fromCharCode(65 + i)}
@@ -492,7 +492,7 @@ function LikertScale({ color, selected, onPick }) {
             onClick={() => onPick(v)}
             className="w-12 h-12 rounded-full border-2 font-bold transition"
             style={{
-              borderColor: selected === v ? color : '#E2E8F0',
+              borderColor: selected === v ? color : '#E9E3D5',
               background: selected === v ? `${color}15` : '#fff',
               color: selected === v ? color : '#334155',
             }}
@@ -524,7 +524,7 @@ function DiscPicker({ q, color, selected, flashIdx, onPickMost, onPickLeast }) {
               key={i}
               className="flex items-center gap-3 p-3 rounded-lg border-2 transition"
               style={{
-                borderColor: flash ? '#DC2626' : isMost ? color : isLeast ? '#DC2626' : '#E2E8F0',
+                borderColor: flash ? '#DC2626' : isMost ? color : isLeast ? '#DC2626' : '#E9E3D5',
                 background: flash ? '#FEF2F2' : isMost ? `${color}10` : isLeast ? '#FEF2F2' : '#FAFBFC',
               }}
             >
@@ -535,9 +535,9 @@ function DiscPicker({ q, color, selected, flashIdx, onPickMost, onPickLeast }) {
                 aria-label="Paling sesuai"
                 className="w-9 h-9 rounded-md border-2 font-bold text-xs transition"
                 style={{
-                  borderColor: isMost ? color : '#E2E8F0',
+                  borderColor: isMost ? color : '#E9E3D5',
                   background: isMost ? color : '#fff',
-                  color: isMost ? '#fff' : '#64748B',
+                  color: isMost ? '#fff' : '#6E6A5E',
                 }}
               >
                 M
@@ -547,9 +547,9 @@ function DiscPicker({ q, color, selected, flashIdx, onPickMost, onPickLeast }) {
                 aria-label="Paling tidak sesuai"
                 className="w-9 h-9 rounded-md border-2 font-bold text-xs transition"
                 style={{
-                  borderColor: isLeast ? '#DC2626' : '#E2E8F0',
+                  borderColor: isLeast ? '#DC2626' : '#E9E3D5',
                   background: isLeast ? '#DC2626' : '#fff',
-                  color: isLeast ? '#fff' : '#64748B',
+                  color: isLeast ? '#fff' : '#6E6A5E',
                 }}
               >
                 L
@@ -579,7 +579,7 @@ function YesNoChoice({ color, selected, onPick }) {
             onClick={() => onPick(value)}
             className="flex-1 max-w-[200px] py-4 px-6 rounded-lg border-2 font-bold transition"
             style={{
-              borderColor: sel ? color : '#E2E8F0',
+              borderColor: sel ? color : '#E9E3D5',
               background: sel ? `${color}15` : '#fff',
               color: sel ? color : '#334155',
             }}

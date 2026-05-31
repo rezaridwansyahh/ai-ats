@@ -113,7 +113,7 @@ export default function MSDTTest({ onComplete, onAbort }) {
                   onClick={() => setAns(k)}
                   className="flex items-start gap-3 px-4 py-3 rounded-lg border-2 text-left transition"
                   style={{
-                    borderColor: sel ? COLOR : '#E2E8F0',
+                    borderColor: sel ? COLOR : '#E9E3D5',
                     background: sel ? COLOR + '15' : '#FAFAFA',
                   }}
                 >
@@ -122,7 +122,7 @@ export default function MSDTTest({ onComplete, onAbort }) {
                     style={{
                       background: sel ? COLOR : '#fff',
                       color: sel ? '#fff' : COLOR,
-                      border: sel ? `1.5px solid ${COLOR}` : '1.5px solid #E2E8F0',
+                      border: sel ? `1.5px solid ${COLOR}` : '1.5px solid #E9E3D5',
                     }}
                   >
                     {label}

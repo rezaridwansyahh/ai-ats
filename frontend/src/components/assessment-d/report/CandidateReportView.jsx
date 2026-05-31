@@ -30,7 +30,7 @@ function rangeLbl(r) {
 }
 
 function rangeColor(r) {
-  return { HIGH: '#059669', MIDDLE: '#D97706', LOW: '#DC2626' }[r] || '#64748B';
+  return { HIGH: '#059669', MIDDLE: '#D97706', LOW: '#DC2626' }[r] || '#6E6A5E';
 }
 
 function rangeBg(r) {
@@ -45,7 +45,7 @@ function getSJTVerdict(score, maxScore) {
   if (pct >= 70) return { label, emoji: '⭐', bg: '#F0FDF4', br: '#16A34A' };
   if (pct >= 55) return { label, emoji: '✓', bg: '#FFFBEB', br: '#D97706' };
   if (pct >= 40) return { label, emoji: '→', bg: '#FEF2F2', br: '#DC2626' };
-  return { label, emoji: '○', bg: '#F9FAFB', br: '#64748B' };
+  return { label, emoji: '○', bg: '#F9FAFB', br: '#6E6A5E' };
 }
 
 /**
