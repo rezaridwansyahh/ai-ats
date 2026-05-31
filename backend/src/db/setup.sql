@@ -1,8 +1,10 @@
 -- Drop tables in reverse dependency order (most dependent first)
 DROP TABLE IF EXISTS company_usage CASCADE;
 DROP TABLE IF EXISTS candidate_interview CASCADE;
+DROP TABLE IF EXISTS screening_qa CASCADE;
 DROP TABLE IF EXISTS candidate_screening CASCADE;
-DROP TABLE IF EXISTS applicant_job_score CASCADE;
+DROP TABLE IF EXISTS candidate_job_score CASCADE;
+DROP TABLE IF EXISTS applicant_job_score CASCADE;  -- orphan cleanup: old name (renamed → candidate_job_score)
 DROP TABLE IF EXISTS master_skill_alias CASCADE;
 DROP TABLE IF EXISTS core_company CASCADE;
 DROP TABLE IF EXISTS mapping_applicant_linkedin CASCADE;
@@ -38,7 +40,7 @@ DROP TABLE IF EXISTS master_template_stage CASCADE;
 DROP TABLE IF EXISTS job_stage_category CASCADE;
 DROP TABLE IF EXISTS recruitment_stage_category CASCADE;
 DROP TABLE IF EXISTS job_automation_settings CASCADE;
-DROP TABLE IF EXISTS applicant_job_score CASCADE;
+DROP TABLE IF EXISTS candidate_job_score CASCADE;
 DROP TABLE IF EXISTS assessment_sessions CASCADE;
 DROP TABLE IF EXISTS core_applicant_assessment CASCADE;
 DROP TABLE IF EXISTS master_assessment CASCADE;
@@ -56,6 +58,7 @@ DROP TYPE IF EXISTS platform_type CASCADE;
 DROP TYPE IF EXISTS candidate_status_type CASCADE;
 DROP TYPE IF EXISTS status_connection_type CASCADE;
 DROP TYPE IF EXISTS status_sync_type CASCADE;
+DROP TYPE IF EXISTS sync_state_type CASCADE;
 DROP TYPE IF EXISTS stage_category_type CASCADE;
 DROP TYPE IF EXISTS booking_status_type CASCADE;
 DROP TYPE IF EXISTS session_slot_type CASCADE;
@@ -64,6 +67,7 @@ DROP TYPE IF EXISTS sourcing_status_type CASCADE;
 DROP TYPE IF EXISTS battery_type CASCADE;
 DROP TYPE IF EXISTS status_session_type CASCADE;
 DROP TYPE IF EXISTS assessment_status_type CASCADE;
+DROP TYPE IF EXISTS screening_qa_status_type CASCADE;
 
 -- Create ENUM type
 CREATE TYPE status_type AS ENUM ('Draft', 'Active', 'Running', 'Expired', 'Failed', 'Blocked');
@@ -79,12 +83,14 @@ CREATE TYPE booking_status_type AS ENUM ('pending', 'approved', 'rejected');
 CREATE TYPE session_slot_type   AS ENUM ('10-12', '1-3', '4-6');
 CREATE TYPE status_connection_type AS ENUM ('Connected', 'Not Connected', 'Error');
 CREATE TYPE status_sync_type AS ENUM ('Sync', 'Not Sync', 'Error');
+CREATE TYPE sync_state_type AS ENUM ('idle', 'syncing', 'error');
 CREATE TYPE job_post_type AS ENUM ('Internal', 'Publish');
 CREATE TYPE sourcing_status_type AS ENUM ('Pending', 'Processing', 'Done', 'Failed');
 CREATE TYPE stage_category_type AS ENUM ('Job Management', 'Screening & Matching', 'Interview', 'Assessment', 'Background Check', 'Offering & Contract', 'Other');
 CREATE TYPE battery_type AS ENUM ('A', 'B', 'C', 'D', 'I', 'T');
 CREATE TYPE status_session_type AS ENUM ('invited', 'in_progress', 'completed', 'expired');
 CREATE TYPE assessment_status_type AS ENUM ('in_progress', 'completed', 'expired');
+CREATE TYPE screening_qa_status_type AS ENUM ('draft', 'sent', 'responded', 'expired');
 CREATE EXTENSION IF NOT EXISTS pgcrypto;
 CREATE EXTENSION IF NOT EXISTS pg_trgm;
 
@@ -289,6 +295,8 @@ CREATE TABLE core_job_sourcing (
   platform_job_id VARCHAR(255),
   status status_type NOT NULL DEFAULT 'Active',
   last_sync TIMESTAMP,
+  sync_state sync_state_type NOT NULL DEFAULT 'idle',  -- live applicant-sync state for this channel
+  sync_started_at TIMESTAMP,
   created_at TIMESTAMP NOT NULL DEFAULT NOW(),
   updated_at TIMESTAMP NOT NULL DEFAULT NOW(),
   additional JSONB,
@@ -441,7 +449,7 @@ CREATE TABLE job_automation_settings (
   updated_at TIMESTAMP NOT NULL DEFAULT NOW()
 );
 
-CREATE TABLE applicant_job_score (
+CREATE TABLE candidate_job_score (
   id                       SERIAL PRIMARY KEY,
   applicant_id             INTEGER NOT NULL REFERENCES master_applicant(id) ON DELETE CASCADE,
   job_id                   INTEGER NOT NULL REFERENCES core_job(id) ON DELETE CASCADE,
@@ -460,13 +468,13 @@ CREATE TABLE applicant_job_score (
   UNIQUE (applicant_id, job_id)
 );
 
-CREATE INDEX idx_ajs_job_score ON applicant_job_score (job_id, overall_score DESC);
-CREATE INDEX idx_ajs_applicant ON applicant_job_score (applicant_id);
+CREATE INDEX idx_cjs_job_score ON candidate_job_score (job_id, overall_score DESC);
+CREATE INDEX idx_cjs_applicant ON candidate_job_score (applicant_id);
 
 -- candidate_screening: parent row for the L3 candidate-detail surface.
 -- 1:1 with master_candidate; tracks recruiter decision (advance/hold/reject) at
 -- the (candidate, job) scope. Engine state (parse/match/done) is *derived* from
--- master_applicant.information + applicant_job_score in queries — not stored
+-- master_applicant.information + candidate_job_score in queries — not stored
 -- here to avoid sync drift for v1.
 CREATE TABLE candidate_screening (
   id              SERIAL PRIMARY KEY,
@@ -483,6 +491,24 @@ CREATE TABLE candidate_screening (
 CREATE INDEX idx_cs_job        ON candidate_screening (job_id);
 CREATE INDEX idx_cs_company    ON candidate_screening (company_id);
 CREATE INDEX idx_cs_decision   ON candidate_screening (decision);
+
+CREATE TABLE screening_qa (
+  id SERIAL PRIMARY KEY,
+  screening_id INTEGER NOT NULL UNIQUE REFERENCES candidate_screening(id) ON DELETE CASCADE,
+  token UUID NOT NULL UNIQUE DEFAULT gen_random_uuid(), 
+  focus_area VARCHAR(50),
+  language VARCHAR(20),
+  num_questions INTEGER,
+  questions JSONB NOT NULL,
+  answers JSONB,      
+  status screening_qa_status_type NOT NULL DEFAULT 'draft',
+  sent_at  TIMESTAMPTZ,
+  responded_at TIMESTAMPTZ,
+  expired_at  TIMESTAMPTZ,
+  created_by  INTEGER REFERENCES master_users(id) ON DELETE SET NULL,
+  created_at  TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  updated_at  TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
 
 -- candidate_interview: stub for the Interview module's R1 prep queue.
 -- Phase 4 only writes here (via advance-bulk on Calibration). The Interview

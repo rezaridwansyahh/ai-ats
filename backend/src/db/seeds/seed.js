@@ -34,7 +34,7 @@ const seed = async () => {
     await getDb().query('DELETE FROM company_usage');
     await getDb().query('DELETE FROM candidate_interview');
     await getDb().query('DELETE FROM candidate_screening');
-    await getDb().query('DELETE FROM applicant_job_score');
+    await getDb().query('DELETE FROM candidate_job_score');
     await getDb().query('DELETE FROM master_skill_alias');
     await getDb().query('DELETE FROM core_applicant_assessment');
     await getDb().query('DELETE FROM participants');
@@ -195,9 +195,9 @@ const seed = async () => {
         `INSERT INTO core_job (
            id, company_id, job_title, job_desc, job_location, work_option, work_type,
            pay_type, currency, pay_min, pay_max, pay_display, status,
-           required_skills, preferred_skills, rubric
+           required_skills, preferred_skills, rubric, qualifications
          )
-         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16)`,
+         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17)`,
         [
           job.id, job.company_id ?? null,
           job.job_title, job.job_desc, job.job_location, job.work_option, job.work_type,
@@ -205,6 +205,7 @@ const seed = async () => {
           job.required_skills ? JSON.stringify(job.required_skills) : null,
           job.preferred_skills ? JSON.stringify(job.preferred_skills) : null,
           job.rubric ? JSON.stringify(job.rubric) : null,
+          job.qualifications ?? null,
         ]
       );
     }
@@ -295,12 +296,12 @@ const seed = async () => {
       );
     }
 
-    // 20. applicant_job_score — synthetic AI Matching results (no LLM call).
+    // 20. candidate_job_score — synthetic AI Matching results (no LLM call).
     //     Computed deterministically in data/applicant_scores.js from
     //     master_applicant.information + core_job.rubric.
     for (const s of applicantScores) {
       await getDb().query(
-        `INSERT INTO applicant_job_score (
+        `INSERT INTO candidate_job_score (
            applicant_id, job_id,
            overall_score, skills_score, experience_score, career_trajectory_score, education_score,
            matched_skills, missing_skills, custom_criteria_results,

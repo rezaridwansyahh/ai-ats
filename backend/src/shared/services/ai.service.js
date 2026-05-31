@@ -376,6 +376,110 @@ Return STRICT JSON:
       summary: typeof parsed.summary === 'string' ? parsed.summary : '',
     };
   }
+
+
+  async generateFollowupQuestions(job, facets, { focusArea, numQuestions, language } = {}, context = {}) {
+    if (!job || typeof job !== 'object') throw new Error('generateFollowupQuestions: job is required');
+    if (!facets || typeof facets !== 'object') throw new Error('generateFollowupQuestions: facets are required');
+
+    const count = Math.max(2, Math.min(6, Number(numQuestions) || 3));
+    const focus = typeof focusArea === 'string' && focusArea.trim() ? focusArea.trim() : 'technical depth + culture fit';
+    const langMap = {
+      'id-en': 'Mixed Bahasa Indonesia and English — write each question in Bahasa Indonesia but keep technical terms in English.',
+      en: 'English only.',
+      id: 'Bahasa Indonesia only.',
+    };
+    // Locked to Bahasa Indonesia for now — questions are always written in Bahasa
+    // regardless of the requested `language`.
+    const langGuidance = langMap['id'];
+
+    const jobPayload = {
+      job_title: job.job_title || '',
+      job_desc: typeof job.job_desc === 'string' ? job.job_desc.slice(0, 4000) : '',
+      qualifications: typeof job.qualifications === 'string' ? job.qualifications.slice(0, 2000) : '',
+      required_skills: Array.isArray(job.required_skills) ? job.required_skills : [],
+      preferred_skills: Array.isArray(job.preferred_skills) ? job.preferred_skills : [],
+      seniority_level: job.seniority_level || '',
+      job_location: job.job_location || '',
+      work_option: job.work_option || '',   // On-site | Hybrid | Remote
+      work_type: job.work_type || '',       // Full-time | Part-time | Contract | Casual
+      benefits: job.benefits ?? [],
+      compensation: {
+        pay_type: job.pay_type || null,     // Hourly | Monthly | Annually
+        currency: job.currency || null,
+        pay_min: job.pay_min ?? null,
+        pay_max: job.pay_max ?? null,
+        pay_display: job.pay_display || null, // Show | Hide
+      },
+    };
+
+    const prompt = `You are an expert recruiter writing follow-up screening questions for a borderline candidate, to validate fit before an interview. Return STRICT JSON only.
+
+FOCUS AREA: ${focus}
+NUMBER OF QUESTIONS: exactly ${count}
+LANGUAGE: ${langGuidance}
+
+JOB:
+${JSON.stringify(jobPayload, null, 2)}
+
+CANDIDATE FACETS (parsed from CV):
+${JSON.stringify(facets, null, 2)}
+
+Write ${count} sharp, specific questions tuned to THIS candidate's gaps vs THIS job. Avoid generic questions; probe ambiguous tenure, missing required skills, and claims that need validation. Give each question a short topic label.
+
+When the FOCUS AREA concerns job requirements or compensation, ground the questions in the JOB's stated compensation, benefits, work arrangement (work_option / work_type), location, qualifications and skills — e.g. confirm the candidate's salary expectation against the offered range, their availability / earliest start date, and their willingness regarding the work arrangement and location. ONLY quote specific salary figures if compensation.pay_display is "Show"; if it is "Hide" or absent, ask about the candidate's salary expectation WITHOUT revealing the offered range.
+
+Return STRICT JSON:
+{
+  "questions": [
+    { "topic": "<2-4 word label, e.g. 'Technical depth'>", "text": "<the question>" }
+  ]
+}`;
+
+    const response = await openai.chat.completions.create({
+      model: SCORING_MODEL,
+      messages: [{ role: 'user', content: prompt }],
+      response_format: { type: 'json_object' },
+      temperature: 0.4,
+    });
+
+    await this._logUsage({
+      context,
+      model: SCORING_MODEL,
+      operation: 'generate_followup_qa',
+      usage: response.usage,
+      request_id: response.id,
+      metadata: {
+        job_title: job.job_title || null,
+        focus_area: focus,
+        num_questions: count,
+        ...(context.metadata || {}),
+      },
+    });
+
+    const raw = response.choices[0]?.message?.content || '{}';
+    let parsed;
+    try {
+      parsed = JSON.parse(raw);
+    } catch {
+      throw new Error('generateFollowupQuestions: model returned non-JSON');
+    }
+
+    const questions = Array.isArray(parsed.questions)
+      ? parsed.questions
+          .filter((q) => q && typeof q === 'object' && typeof q.text === 'string' && q.text.trim())
+          .map((q) => ({
+            topic: typeof q.topic === 'string' ? q.topic.trim() : '',
+            text: q.text.trim(),
+          }))
+          .slice(0, count)
+      : [];
+
+    if (questions.length === 0) throw new Error('generateFollowupQuestions: model returned no questions');
+
+    return { questions };
+  }
+
 }
 
 export default new AIService();

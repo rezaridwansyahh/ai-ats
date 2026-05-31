@@ -44,6 +44,20 @@ class JobSourceModel {
     return result.rows;
   }
 
+  // Resolve the owning core_job for a sourcing, via its job_post link.
+  // Returns the job_id (Number) for postings created in our platform, or
+  // null for orphan sourcings (job_post_id IS NULL, e.g. discovered externally).
+  async getLinkedJobId(sourcing_id) {
+    const result = await getDb().query(`
+      SELECT jp.job_id
+      FROM core_job_sourcing cjs
+      JOIN job_post jp ON jp.id = cjs.job_post_id
+      WHERE cjs.id = $1
+    `, [sourcing_id]);
+
+    return result.rows[0]?.job_id ?? null;
+  }
+
   async getByJobPostId(job_post_id) {
     const result = await getDb().query(`
       SELECT *
@@ -120,6 +134,37 @@ class JobSourceModel {
       RETURNING *
     `, [...values, id]);
 
+    return result.rows[0];
+  }
+
+  // --- Live sync-state transitions (per channel) ---
+  async markSyncing(id) {
+    const result = await getDb().query(`
+      UPDATE core_job_sourcing
+      SET sync_state = 'syncing', sync_started_at = NOW(), updated_at = NOW()
+      WHERE id = $1
+      RETURNING *
+    `, [id]);
+    return result.rows[0];
+  }
+
+  async markSynced(id) {
+    const result = await getDb().query(`
+      UPDATE core_job_sourcing
+      SET sync_state = 'idle', last_sync = NOW(), updated_at = NOW()
+      WHERE id = $1
+      RETURNING *
+    `, [id]);
+    return result.rows[0];
+  }
+
+  async markSyncError(id) {
+    const result = await getDb().query(`
+      UPDATE core_job_sourcing
+      SET sync_state = 'error', updated_at = NOW()
+      WHERE id = $1
+      RETURNING *
+    `, [id]);
     return result.rows[0];
   }
 

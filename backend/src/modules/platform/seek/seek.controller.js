@@ -2,6 +2,7 @@ import seekService from "./seek.service.js";
 import SeekProducer from "../../../bullmq/seek/seek.producer.js";
 import seekQueue from "../../../bullmq/seek/seek.queue.js";
 import seekProducer from "../../../bullmq/seek/seek.producer.js";
+import jobSourceModel from "../../job-source/job-source.model.js";
 
 class SeekController {
   async jobPostRpa(req, res) {
@@ -63,9 +64,13 @@ class SeekController {
     const { account_id, job_sourcing_id } = req.body;
 
     try {
-      const result = await seekService.extractCandidates(account_id, job_sourcing_id);
-      return res.status(200).json({ message: "success", ...result });
+      // Mark the channel "syncing" up front so the UI reflects it immediately,
+      // then enqueue — the worker pulls applicants and flips it back to idle/error.
+      await jobSourceModel.markSyncing(job_sourcing_id);
+      const job = await seekProducer.extractSeekCandidate(account_id, job_sourcing_id);
+      return res.status(202).json({ message: "queued", job_id: job.id, job_sourcing_id });
     } catch (err) {
+      try { await jobSourceModel.markSyncError(job_sourcing_id); } catch { /* no-op */ }
       return res.status(err.status || 500).json({
         message: err.message
       });

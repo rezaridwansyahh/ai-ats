@@ -43,6 +43,7 @@ export const coreJobs = [
   {
     id: 1, company_id: 1, job_title: 'Senior Frontend Engineer',
     job_desc: 'Build React applications for a modern ATS platform.',
+    qualifications: '• 5+ years building production React applications\n• Strong TypeScript and modern JavaScript (ES6+)\n• Experience with component libraries and design systems\n• Solid understanding of REST APIs and client-side state management\n• Bachelor\'s in Computer Science or equivalent experience',
     job_location: 'Jakarta, Indonesia', work_option: 'Hybrid', work_type: 'Full-time',
     pay_type: 'Annually', currency: 'IDR', pay_min: 180000000, pay_max: 240000000, pay_display: 'Show', status: 'Active',
     required_skills: ['React', 'TypeScript', 'JavaScript', 'HTML', 'CSS', 'Git'],
@@ -52,6 +53,7 @@ export const coreJobs = [
   {
     id: 2, company_id: 1, job_title: 'Backend Engineer (Node.js)',
     job_desc: 'Design and maintain Node.js services, PostgreSQL, and RPA flows.',
+    qualifications: '• 4+ years building Node.js services in production\n• Strong PostgreSQL and relational data modeling\n• Experience designing and consuming REST APIs\n• Familiarity with RPA / browser-automation workflows a plus\n• Bachelor\'s in Computer Science or equivalent experience',
     job_location: 'Bali, Indonesia', work_option: 'Remote', work_type: 'Full-time',
     pay_type: 'Annually', currency: 'IDR', pay_min: 160000000, pay_max: 220000000, pay_display: 'Show', status: 'Active',
     required_skills: ['Node.js', 'JavaScript', 'PostgreSQL', 'REST APIs', 'Git'],
@@ -61,6 +63,7 @@ export const coreJobs = [
   {
     id: 3, company_id: 1, job_title: 'Product Designer',
     job_desc: 'Own the product design system and user flows for the ATS.',
+    qualifications: '• 4+ years in product design for web applications\n• Expert in Figma and maintaining design systems\n• Strong portfolio of end-to-end user flows\n• Experience with prototyping and user research\n• Excellent communication and stakeholder collaboration',
     job_location: 'Singapore', work_option: 'On-site', work_type: 'Full-time',
     pay_type: 'Annually', currency: 'SGD', pay_min: 70000, pay_max: 95000, pay_display: 'Hide', status: 'Active',
     required_skills: ['Figma', 'UI/UX Design', 'Prototyping', 'Design Systems'],
@@ -70,6 +73,7 @@ export const coreJobs = [
   {
     id: 4, company_id: 2, job_title: 'DevOps Engineer',
     job_desc: 'Own CI/CD, observability, and infra for the ATS platform.',
+    qualifications: '• 5+ years in DevOps or platform engineering\n• Hands-on with AWS, Docker, and Kubernetes\n• Built and maintained CI/CD pipelines at scale\n• Strong Linux administration and Terraform / IaC\n• Experience with observability tooling (Prometheus, Grafana)',
     job_location: 'Jakarta, Indonesia', work_option: 'Remote', work_type: 'Full-time',
     pay_type: 'Annually', currency: 'IDR', pay_min: 200000000, pay_max: 270000000, pay_display: 'Show', status: 'Active',
     required_skills: ['AWS', 'Docker', 'Kubernetes', 'CI/CD', 'Linux', 'Terraform'],
@@ -79,6 +83,7 @@ export const coreJobs = [
   {
     id: 5, company_id: 2, job_title: 'QA Automation Engineer',
     job_desc: 'Build and maintain automated test suites across frontend and backend.',
+    qualifications: '• 3+ years in test automation\n• Proficient with Cypress and/or Selenium\n• Strong JavaScript and test-design skills\n• Experience integrating tests into CI/CD\n• Detail-oriented with a quality-first mindset',
     job_location: 'Surabaya, Indonesia', work_option: 'Hybrid', work_type: 'Full-time',
     pay_type: 'Monthly', currency: 'IDR', pay_min: 15000000, pay_max: 22000000, pay_display: 'Show', status: 'Active',
     required_skills: ['Cypress', 'Selenium', 'JavaScript', 'Test Automation', 'Git'],
@@ -90,6 +95,7 @@ export const coreJobs = [
   {
     id: 6, company_id: 1, job_title: 'Talent Acquisition Specialist',
     job_desc: 'Source and screen candidates across multiple platforms.',
+    qualifications: '• 3+ years in full-cycle recruiting\n• Skilled in sourcing and LinkedIn Recruiter\n• Strong interviewing and candidate assessment\n• Experience with ATS tools and Boolean search\n• Excellent communication and stakeholder management',
     job_location: 'Sydney, Australia', work_option: 'Hybrid', work_type: 'Full-time',
     pay_type: 'Annually', currency: 'AUD', pay_min: 80000, pay_max: 110000, pay_display: 'Show', status: 'Draft',
     required_skills: ['Recruiting', 'Sourcing', 'LinkedIn Recruiter', 'Interviewing'],
@@ -98,6 +104,7 @@ export const coreJobs = [
   {
     id: 7, company_id: 2, job_title: 'HR Business Partner',
     job_desc: 'Partner with leaders on people strategy and org health.',
+    qualifications: '• 5+ years as an HRBP or senior HR generalist\n• Strong in employee relations and performance management\n• Experience partnering with senior leadership\n• Knowledge of compensation and org design\n• Bachelor\'s in HR, Psychology, or a related field',
     job_location: 'Kuala Lumpur, Malaysia', work_option: 'On-site', work_type: 'Full-time',
     pay_type: 'Annually', currency: 'MYR', pay_min: 120000, pay_max: 160000, pay_display: 'Hide', status: 'Draft',
     required_skills: ['HR Strategy', 'Employee Relations', 'Performance Management', 'Communication'],
@@ -106,6 +113,7 @@ export const coreJobs = [
   {
     id: 8, company_id: 1, job_title: 'Marketing Content Writer',
     job_desc: 'Produce blog posts, case studies, and social copy.',
+    qualifications: '• 3+ years writing B2B / SaaS content\n• Strong SEO and editing skills\n• Portfolio of blog posts, case studies, and social copy\n• Ability to translate technical topics into clear copy\n• Familiarity with WordPress and analytics tools',
     job_location: 'Bangkok, Thailand', work_option: 'Remote', work_type: 'Contract',
     pay_type: 'Monthly', currency: 'THB', pay_min: 60000, pay_max: 85000, pay_display: 'Show', status: 'Draft',
     required_skills: ['Content Writing', 'SEO', 'Editing', 'Storytelling'],
@@ -114,6 +122,7 @@ export const coreJobs = [
   {
     id: 9, company_id: 2, job_title: 'Junior Data Analyst',
     job_desc: 'Support reporting and analytics across recruiting funnels.',
+    qualifications: '• 1+ years in data analysis or reporting\n• Proficient in SQL and Excel\n• Experience with data visualization tools\n• Strong analytical and problem-solving skills\n• Bachelor\'s in a quantitative field preferred',
     job_location: 'Manila, Philippines', work_option: 'Hybrid', work_type: 'Part-time',
     pay_type: 'Hourly', currency: 'PHP', pay_min: 450, pay_max: 650, pay_display: 'Show', status: 'Draft',
     required_skills: ['SQL', 'Excel', 'Data Visualization', 'Analytical Thinking'],
@@ -122,6 +131,7 @@ export const coreJobs = [
   {
     id: 10, company_id: 2, job_title: 'Mobile Engineer (React Native)',
     job_desc: 'Build the mobile companion app for recruiters on the go.',
+    qualifications: '• 3+ years building React Native apps\n• Strong JavaScript and TypeScript\n• Shipped apps to the iOS App Store and Google Play\n• Experience with native modules and app performance\n• Bachelor\'s in Computer Science or equivalent experience',
     job_location: 'Ho Chi Minh, Vietnam', work_option: 'Remote', work_type: 'Full-time',
     pay_type: 'Annually', currency: 'USD', pay_min: 45000, pay_max: 65000, pay_display: 'Hide', status: 'Draft',
     required_skills: ['React Native', 'JavaScript', 'TypeScript', 'iOS', 'Android'],

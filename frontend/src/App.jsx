@@ -19,11 +19,13 @@ import AssessmentAPage from "./pages/AssessmentA"
 import ReportPage from "./pages/Report"
 import CandidateDetailPage from "./pages/CandidateDetail"
 import AssessmentPlacementPage from "./pages/portal/AssessmentPlacement"
+import QAFollowUpPage from "./pages/portal/QAFollowUp"
 import AIScreeningPage from "./pages/AIScreening"
 import AIScreeningWorkboard from "./pages/AIScreeningWorkboard"
 import AIScreeningCandidatePage from "./pages/AIScreeningCandidate"
 import AssessmentBPage from "./pages/AssessmentB"
 import CandidatePipelinePage from "./pages/CandidatePipeline"
+import CandidatePipelineDetailPage from "./pages/CandidatePipelineDetail"
 import AssessmentCPage from "./pages/AssessmentC"
 import AssessmentDPage from "./pages/AssessmentD"
 import InsightsDiscoveryAssessmentPage from "./pages/InsightsDiscoveryAssessment"
@@ -38,11 +40,13 @@ function App() {
 
       {/* Public candidate-facing portal */}
       <Route path="/assessment-placement/:hash" element={<AssessmentPlacementPage />} />
+      <Route path="/qa/:token" element={<QAFollowUpPage />} />
 
       {/* All authenticated routes share DashboardLayout */}
       <Route element={<DashboardLayout />}>
         <Route path="/dashboard" element={<DashboardPage />} />
         <Route path="/candidate-pipeline" element={<CandidatePipelinePage />} />
+        <Route path="/candidate-pipeline/:id" element={<CandidatePipelineDetailPage />} />
 
         <Route path="/sourcing/job-management" element={<JobManagementPage />} />
         <Route path="/sourcing/job-management/new" element={<JobEditPage />} />

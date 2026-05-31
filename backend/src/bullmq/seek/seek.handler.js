@@ -1,4 +1,5 @@
 import seekService from "../../modules/platform/seek/seek.service.js";
+import jobSourceModel from "../../modules/job-source/job-source.model.js";
 
 const createJobPostHandler = async (data) => {
   await seekService.jobPost(data.account_id, data.service, data.dataForm);
@@ -13,7 +14,13 @@ const deleteJobPostDraftHandler = async (data) => {
 }
 
 const extractCandidateHandler = async (data) => {
-  await seekService.extractCandidates(data.account_id, data.job_sourcing_id);
+  try {
+    await seekService.extractCandidates(data.account_id, data.job_sourcing_id);
+    await jobSourceModel.markSynced(data.job_sourcing_id);   // idle + last_sync
+  } catch (err) {
+    await jobSourceModel.markSyncError(data.job_sourcing_id); // error badge in UI
+    throw err;
+  }
 }
 
 const syncSeekJobPostHandler = async (data) => {

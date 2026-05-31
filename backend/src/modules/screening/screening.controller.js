@@ -281,6 +281,78 @@ class ScreeningController {
       res.status(err.status || 500).json({ message: err.message });
     }
   }
+
+  // ── Follow-up Q&A (send side) ──
+  async qaGet(req, res) {
+    try {
+      const screening_id = Number(req.params.screening_id);
+      const qa = await screeningService.qaGet(screening_id);
+      res.status(200).json({ message: 'Q&A set', qa });
+    } catch (err) {
+      res.status(err.status || 500).json({ message: err.message });
+    }
+  }
+
+  async qaGenerate(req, res) {
+    try {
+      const screening_id = Number(req.params.screening_id);
+      const { focus_area, num_questions, language } = req.body || {};
+      const qa = await screeningService.qaGenerate(
+        screening_id,
+        { focus_area, num_questions, language },
+        ctxFromReq(req)
+      );
+      res.status(200).json({ message: 'Q&A generated', qa });
+    } catch (err) {
+      res.status(err.status || 500).json({ message: err.message });
+    }
+  }
+
+  async qaUpdate(req, res) {
+    try {
+      const screening_id = Number(req.params.screening_id);
+      const { questions } = req.body || {};
+      const qa = await screeningService.qaUpdate(screening_id, questions);
+      res.status(200).json({ message: 'Q&A updated', qa });
+    } catch (err) {
+      res.status(err.status || 500).json({ message: err.message });
+    }
+  }
+
+  async qaSend(req, res) {
+    try {
+      const screening_id = Number(req.params.screening_id);
+      const result = await screeningService.qaSend(screening_id);
+      res.status(200).json({ message: 'Q&A sent', ...result });
+    } catch (err) {
+      res.status(err.status || 500).json({ message: err.message });
+    }
+  }
+
+  // Recruiter inbox — single set with answers.
+  async qaResponses(req, res) {
+    try {
+      const screening_id = Number(req.params.screening_id);
+      const qa = await screeningService.qaGetWithAnswers(screening_id);
+      res.status(200).json({ message: 'Q&A responses', qa });
+    } catch (err) {
+      res.status(err.status || 500).json({ message: err.message });
+    }
+  }
+
+  // Recruiter inbox — company-wide list of sent/responded sets.
+  async qaInbox(req, res) {
+    try {
+      const company_id = req.user?.company_id;
+      if (!company_id) {
+        return res.status(400).json({ message: 'No company_id on token' });
+      }
+      const items = await screeningService.qaInbox(company_id);
+      res.status(200).json({ message: 'Q&A inbox', items });
+    } catch (err) {
+      res.status(err.status || 500).json({ message: err.message });
+    }
+  }
 }
 
 export default new ScreeningController();
