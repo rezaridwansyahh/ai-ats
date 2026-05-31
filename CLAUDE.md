@@ -83,7 +83,7 @@ API route prefixes:
 - **HTTP**: Axios instance in `src/api/axios.js` with JWT interceptors, token expiry check, and 401 redirect. Exception: `job.api.js` uses raw `fetch()` for SSE streaming.
 - **Path alias**: `@` → `./src` (configured in both `vite.config.js` and `jsconfig.json`)
 - **State**: localStorage for auth (token, user, role, permissions, userData); component-level `useState` — no global state library
-- **API base URL**: Hardcoded ngrok URL in `src/api/axios.js` (changes per tunnel session)
+- **API base URL**: Set via `VITE_API_BASE_URL` environment variable in `.env` (defaults to `http://localhost:3000` in development)
 - **Routing**: React Router v7 in `App.jsx`. Authenticated pages nest inside `<DashboardLayout />` which provides sidebar + `<Outlet />`
 
 **Data flow pattern** across pages: `fetchData → filter (search/status) → sort (useSort) → paginate → render`. Shared `TablePagination` component in `src/components/shared/`.
