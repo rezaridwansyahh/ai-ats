@@ -25,7 +25,6 @@ import {
   unpackAssessorState as unpackTKI,
   packAssessorState   as packTKI,
 } from '@/components/assessment-tki/report/assessor-state';
-import { updateAssessmentReport } from '@/api/assessment-battery-result.api';
 
 // Per-assessment annotation shapes (notes/ratings/meta differ across Insights, TKI, A-D).
 // Pick the codec by assessment_id at render time.

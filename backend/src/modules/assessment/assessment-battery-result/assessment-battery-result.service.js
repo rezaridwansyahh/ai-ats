@@ -7,8 +7,7 @@ import {
 } from '../assessment-ai/battery-pregen.service.js';
 import logger from '../../../shared/utils/logger.js';
 
-const ASSESSMENT_ID_BY_BATTERY = { A: 1, B: 2, C: 3, D: 4 };
-const BATTERY_BY_ASSESSMENT_ID = { 1: 'A', 2: 'B', 3: 'C', 4: 'D' };
+const BATTERY_BY_ASSESSMENT_ID = { 1: 'A', 2: 'B', 3: 'C', 4: 'D', 5: 'I', 6: 'T' };
 // 'I' (Insights) is mapped here so /from-candidate?battery=I resolves to assessment_id 5.
 // Note: this does NOT enable Insights as an invitation-flow battery — the assessment_sessions
 // table's battery_type ENUM still allows only A/B/C/D, so HR can't generate Insights invites
