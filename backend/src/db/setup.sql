@@ -87,7 +87,7 @@ CREATE TYPE sync_state_type AS ENUM ('idle', 'syncing', 'error');
 CREATE TYPE job_post_type AS ENUM ('Internal', 'Publish');
 CREATE TYPE sourcing_status_type AS ENUM ('Pending', 'Processing', 'Done', 'Failed');
 CREATE TYPE stage_category_type AS ENUM ('Job Management', 'Screening & Matching', 'Interview', 'Assessment', 'Background Check', 'Offering & Contract', 'Other');
-CREATE TYPE battery_type AS ENUM ('A', 'B', 'C', 'D');
+CREATE TYPE battery_type AS ENUM ('A', 'B', 'C', 'D', 'I', 'T');
 CREATE TYPE status_session_type AS ENUM ('invited', 'in_progress', 'completed', 'expired');
 CREATE TYPE assessment_status_type AS ENUM ('in_progress', 'completed', 'expired');
 CREATE TYPE screening_qa_status_type AS ENUM ('draft', 'sent', 'responded', 'expired');

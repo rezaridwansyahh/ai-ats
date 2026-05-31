@@ -5,8 +5,9 @@ import { BATTERIES } from '@/lib/batteries';
 // Tab 1: battery picker. Four cards (A/B/C/D) selectable. Below: test sequence of the chosen battery.
 // "Send invitation" → parent advances to Take tab.
 export default function SetupTab({ selectedBattery, onSelectBattery, onSendInvitation }) {
-  const codes = ['A', 'B', 'C', 'D'];
+  const codes = ['A', 'B', 'C', 'D', 'I', 'T'];
   const active = selectedBattery ? BATTERIES[selectedBattery] : null;
+  const canInvite = active ? active.invitable !== false : false;
 
   return (
     <Card>
@@ -77,9 +78,14 @@ export default function SetupTab({ selectedBattery, onSelectBattery, onSendInvit
         )}
 
         <div className="flex items-center justify-end gap-2 pt-1">
+          {active && !canInvite && (
+            <span className="text-[10.5px] text-muted-foreground italic mr-auto">
+              No invitation flow for {active.label} yet — kandidat takes it via the <strong>Asesmen</strong> menu.
+            </span>
+          )}
           <Button
             size="sm"
-            disabled={!selectedBattery}
+            disabled={!selectedBattery || !canInvite}
             onClick={onSendInvitation}
           >
             Send invitation →

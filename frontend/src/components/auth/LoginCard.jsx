@@ -1,4 +1,4 @@
-import { useState } from "react"
+import { useEffect, useState } from "react"
 import { useNavigate } from "react-router-dom"
 import { loginUser } from "@/services/auth"
 import { AlertCircle, Loader2 } from "lucide-react"
@@ -7,12 +7,38 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 
+// On mount: if handleExpired just kicked us back here, the redirect happens through
+// window.location which wipes any React error state. handleExpired clears `token` +
+// `user` but leaves `role` / `permissions` / `userData` behind — that asymmetry is
+// the only signal we have that we were just redirected (vs. a fresh visit). Surface
+// a session-expired hint and tidy up the leftovers so a normal re-login is clean.
+function consumeExpiredRedirectHint() {
+  if (typeof window === 'undefined') return null;
+  const hasToken     = !!localStorage.getItem('token');
+  const hasUser      = !!localStorage.getItem('user');
+  const hasResiduals = !!(localStorage.getItem('role')
+                       || localStorage.getItem('permissions')
+                       || localStorage.getItem('userData'));
+  if (!hasToken && !hasUser && hasResiduals) {
+    localStorage.removeItem('role');
+    localStorage.removeItem('permissions');
+    localStorage.removeItem('userData');
+    return 'Sesi sebelumnya berakhir atau token tidak valid. Silakan login ulang.';
+  }
+  return null;
+}
+
 export function LoginCard() {
   const [email, setEmail] = useState("")
   const [password, setPassword] = useState("")
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState("")
   const navigate = useNavigate();
+
+  useEffect(() => {
+    const hint = consumeExpiredRedirectHint();
+    if (hint) setError(hint);
+  }, []);
 
   const handleSubmitLogin = async (e) => {
     e.preventDefault()
@@ -25,6 +51,14 @@ export function LoginCard() {
         password
       });
 
+      // Guard against a backend response that's missing the JWT — without this we'd
+      // store the literal string "undefined" in localStorage, which the axios
+      // request interceptor then treats as a malformed token on every subsequent
+      // call and silently kicks the user back to /portal/login forever.
+      if (typeof res?.token !== 'string' || res.token.length < 10) {
+        throw new Error(res?.message || 'Login response missing token. Hubungi admin.');
+      }
+
       localStorage.setItem('token', res.token)
       localStorage.setItem('user', JSON.stringify(res.user ?? null))
       localStorage.setItem('role', JSON.stringify(res.role ?? []))
@@ -33,7 +67,11 @@ export function LoginCard() {
 
       navigate("/dashboard");
     } catch (err) {
-      setError(err.response?.data?.message || "Invalid email or password")
+      setError(
+        err.response?.data?.message
+        || err.message
+        || "Invalid email or password"
+      )
     } finally {
       setLoading(false)
     }

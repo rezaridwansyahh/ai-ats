@@ -3,7 +3,7 @@ import Participant from '../participant/participant.model.js';
 import { resolveParticipantByCandidate } from '../../../shared/services/candidate-resolver.js';
 
 const EDITABLE_FIELDS = ['battery', 'participant_id', 'job_id', 'status', 'expired_at', 'notes'];
-const VALID_BATTERIES = ['A', 'B', 'C', 'D'];
+const VALID_BATTERIES = ['A', 'B', 'C', 'D', 'I', 'T'];
 const VALID_STATUSES = ['invited', 'in_progress', 'completed', 'expired'];
 
 function isExpired(session) {

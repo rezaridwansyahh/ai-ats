@@ -16,6 +16,8 @@ import CandidateCardA from '@/components/assessment-a/CandidateCard';
 import CandidateCardB from '@/components/assessment-b/CandidateCard';
 import CandidateCardC from '@/components/assessment-c/CandidateCard';
 import CandidateCardD from '@/components/assessment-d/CandidateCard';
+import CandidateCardInsights from '@/components/assessment-insights/CandidateCard';
+import CandidateCardTKI from '@/components/assessment-tki/CandidateCard';
 
 // Public candidate-facing page.
 export default function AssessmentPlacementPage() {
@@ -218,6 +220,8 @@ function BatteryRunner({ session, hash, onSubmit }) {
     case 'B': return <CandidateCardB {...commonProps} />;
     case 'C': return <CandidateCardC {...commonProps} />;
     case 'D': return <CandidateCardD {...commonProps} />;
+    case 'I': return <CandidateCardInsights {...commonProps} />;
+    case 'T': return <CandidateCardTKI {...commonProps} />;
     default:
       return (
         <div className="min-h-screen flex items-center justify-center p-4">

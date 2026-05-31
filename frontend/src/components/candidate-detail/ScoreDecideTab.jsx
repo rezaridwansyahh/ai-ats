@@ -11,6 +11,33 @@ import {
   regenerateNarrative,
   getAssessmentResultById,
 } from '@/api/assessment-battery-result.api';
+import ReportViewInsights from '@/components/assessment-insights/report/ReportView';
+import ReportViewTKI from '@/components/assessment-tki/report/ReportView';
+import {
+  unpackAssessorState as unpackGeneric,
+  packAssessorState   as packGeneric,
+} from '@/components/assessment/assessor-state';
+import {
+  unpackAssessorState as unpackInsights,
+  packAssessorState   as packInsights,
+} from '@/components/assessment-insights/report/assessor-state';
+import {
+  unpackAssessorState as unpackTKI,
+  packAssessorState   as packTKI,
+} from '@/components/assessment-tki/report/assessor-state';
+import { updateAssessmentReport } from '@/api/assessment-battery-result.api';
+
+// Per-assessment annotation shapes (notes/ratings/meta differ across Insights, TKI, A-D).
+// Pick the codec by assessment_id at render time.
+const INSIGHTS_ASSESSMENT_ID = 5;
+const TKI_ASSESSMENT_ID      = 6;
+function pickCodec(result) {
+  switch (result?.assessment_id) {
+    case INSIGHTS_ASSESSMENT_ID: return { unpack: unpackInsights, pack: packInsights };
+    case TKI_ASSESSMENT_ID:      return { unpack: unpackTKI,      pack: packTKI      };
+    default:                     return { unpack: unpackGeneric,  pack: packGeneric  };
+  }
+}
 
 // Debounce window — mirrors the value in the retired AssessmentDetailDialog.
 const SAVE_DEBOUNCE_MS = 600;

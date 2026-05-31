@@ -57,6 +57,26 @@ export const BATTERIES = {
       { key: 'papil', name: 'PAPI-L Kepemimpinan',       detail: 'preferensi kepemimpinan · 20 dim · 90 pasang' },
     ],
   },
+  I: {
+    code: 'I',
+    label: 'Insights Discovery',
+    duration: '~25 min',
+    test_count: 1,
+    blurb: 'pre-day onboarding profile — 8 work profiles across 4 colour quadrants.',
+    tests: [
+      { key: 'insights', name: 'Insights Discovery', detail: '72 pasang pernyataan forced-choice · 3 dimensi (E/I, T/F, S/N)' },
+    ],
+  },
+  T: {
+    code: 'T',
+    label: 'Thomas-Kilmann',
+    duration: '~15 min',
+    test_count: 1,
+    blurb: 'conflict-mode profile — 5 modes (competing / collaborating / compromising / avoiding / accommodating).',
+    tests: [
+      { key: 'tki', name: 'Thomas-Kilmann', detail: '30 pasang pernyataan forced-choice · 5 mode konflik' },
+    ],
+  },
 };
 
 export function getInitials(name = '') {
