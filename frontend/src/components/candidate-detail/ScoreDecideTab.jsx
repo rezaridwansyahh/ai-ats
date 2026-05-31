@@ -4,8 +4,33 @@ import ReportViewA from '@/components/assessment-a/report/ReportView';
 import ReportViewB from '@/components/assessment-b/report/ReportView';
 import ReportViewC from '@/components/assessment-c/report/ReportView';
 import ReportViewD from '@/components/assessment-d/report/ReportView';
-import { unpackAssessorState, packAssessorState } from '@/components/assessment/assessor-state';
+import ReportViewInsights from '@/components/assessment-insights/report/ReportView';
+import ReportViewTKI from '@/components/assessment-tki/report/ReportView';
+import {
+  unpackAssessorState as unpackGeneric,
+  packAssessorState   as packGeneric,
+} from '@/components/assessment/assessor-state';
+import {
+  unpackAssessorState as unpackInsights,
+  packAssessorState   as packInsights,
+} from '@/components/assessment-insights/report/assessor-state';
+import {
+  unpackAssessorState as unpackTKI,
+  packAssessorState   as packTKI,
+} from '@/components/assessment-tki/report/assessor-state';
 import { updateAssessmentReport } from '@/api/assessment-battery-result.api';
+
+// Per-assessment annotation shapes (notes/ratings/meta differ across Insights, TKI, A-D).
+// Pick the codec by assessment_id at render time.
+const INSIGHTS_ASSESSMENT_ID = 5;
+const TKI_ASSESSMENT_ID      = 6;
+function pickCodec(result) {
+  switch (result?.assessment_id) {
+    case INSIGHTS_ASSESSMENT_ID: return { unpack: unpackInsights, pack: packInsights };
+    case TKI_ASSESSMENT_ID:      return { unpack: unpackTKI,      pack: packTKI      };
+    default:                     return { unpack: unpackGeneric,  pack: packGeneric  };
+  }
+}
 
 // Debounce window — mirrors the value in the retired AssessmentDetailDialog.
 const SAVE_DEBOUNCE_MS = 600;
@@ -21,7 +46,8 @@ const SAVE_DEBOUNCE_MS = 600;
 export default function ScoreDecideTab({ candidate, battery, result, onJumpToTab }) {
   const hasResults = !!result?.results?.by_subtest;
 
-  const [state, setState]           = useState(() => (result ? unpackAssessorState(result) : {}));
+  const codec = pickCodec(result);
+  const [state, setState]           = useState(() => (result ? codec.unpack(result) : {}));
   const [isDirty, setIsDirty]       = useState(false);
   const [saveStatus, setSaveStatus] = useState('idle'); // idle | saving | saved | error
   const [saveError, setSaveError]   = useState(null);
@@ -36,7 +62,7 @@ export default function ScoreDecideTab({ candidate, battery, result, onJumpToTab
     setSaveStatus('saving');
     setSaveError(null);
     try {
-      await updateAssessmentReport(result.id, packAssessorState(latestStateRef.current, result.summary));
+      await updateAssessmentReport(result.id, codec.pack(latestStateRef.current, result.summary));
       setSaveStatus('saved');
       setIsDirty(false);
       return { ok: true };
@@ -125,12 +151,16 @@ export default function ScoreDecideTab({ candidate, battery, result, onJumpToTab
   return (
     <div>
       <SaveStatusBadge status={saveStatus} error={saveError} />
-      {renderReportView(battery, reportProps)}
+      {renderReportView(result, battery, reportProps)}
     </div>
   );
 }
 
-function renderReportView(battery, props) {
+// Dispatch prefers `result.assessment_id` (decoupled from the battery_type ENUM, which
+// doesn't include 'I'). Falls back to the battery code for A/B/C/D.
+function renderReportView(result, battery, props) {
+  if (result?.assessment_id === INSIGHTS_ASSESSMENT_ID) return <ReportViewInsights {...props} />;
+  if (result?.assessment_id === TKI_ASSESSMENT_ID)      return <ReportViewTKI {...props} />;
   switch (battery) {
     case 'A': return <ReportViewA {...props} />;
     case 'C': return <ReportViewC {...props} />;

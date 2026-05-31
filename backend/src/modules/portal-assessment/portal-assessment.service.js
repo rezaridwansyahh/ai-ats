@@ -9,7 +9,7 @@ const JWT_SECRET = process.env.JWT_SECRET;
 const PORTAL_TOKEN_TTL_SECONDS = 4 * 60 * 60; // 4 hours
 
 // Battery code → master_assessment.id (seeded in db/data/assessments.js).
-const ASSESSMENT_ID_BY_BATTERY = { A: 1, B: 2, C: 3, D: 4 };
+const ASSESSMENT_ID_BY_BATTERY = { A: 1, B: 2, C: 3, D: 4, I: 5, T: 6 };
 
 // Accept a hash with or without dashes; reject anything else.
 function isHashFormat(s) {

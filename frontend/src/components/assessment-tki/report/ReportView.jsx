@@ -1,13 +1,6 @@
-import { useState, useCallback } from 'react';
 import { Button } from '@/components/ui/button';
 import { ArrowLeft, Printer } from 'lucide-react';
 import { MODES, MODE_KEYS, MAX_PER_MODE, NORMS, normBand, MATRIX_POS, SITUATIONS } from '../data/tki';
-
-const RPT_KEY = 'myx-rpt-tki-v9';
-
-function loadRpt() {
-  try { return JSON.parse(localStorage.getItem(RPT_KEY) || '{}'); } catch { return {}; }
-}
 
 const RCR_OPTIONS = {
   dominan: [
@@ -34,20 +27,19 @@ const RCR_STYLE = {
 };
 
 /**
- * Integrated HR psychological report for Thomas-Kilmann (6 sections + SVG matrix).
- * Reads the in-memory result; HR annotations persist to localStorage (RPT_KEY).
+ * Integrated HR psychological report for Thomas-Kilmann (controlled-state).
+ *
+ * Props:
+ *  - profile:    participant data (name, position, department, umur, gender, ...)
+ *  - results:    { tki: <computeTKI output> }   ← ScoreDecideTab convention
+ *                If `results.tki` is missing, the report renders an empty notice.
+ *  - state:      flat HR-annotation state from unpackAssessorState
+ *  - updateState({ [key]: value }):  patches state and marks dirty (parent auto-saves)
+ *  - saveNow:    optional async fn to force an immediate save
+ *  - onClose:    optional back-button handler (standalone use)
  */
-export default function ReportView({ profile, result, onClose }) {
-  const [state, setState] = useState(loadRpt);
-
-  const setField = useCallback((key, value) => {
-    setState((prev) => {
-      const next = { ...prev, [key]: value };
-      try { localStorage.setItem(RPT_KEY, JSON.stringify(next)); } catch { /* ignore */ }
-      return next;
-    });
-  }, []);
-
+export default function ReportView({ profile, results, state = {}, updateState, saveNow, onClose }) {
+  const result = results?.tki;
   if (!result) {
     return (
       <div className="max-w-[700px] mx-auto px-4 py-10 text-center text-slate-500">
@@ -61,7 +53,9 @@ export default function ReportView({ profile, result, onClose }) {
   const sorted = Object.entries(scores).sort((a, b) => b[1] - a[1]);
   const dominant = result.dominant || sorted[0]?.[0];
   const secondary = result.secondary || sorted[1]?.[0];
-  const xt = (k) => state['xt_' + k] || '';
+
+  const meta = (k) => state[`meta_${k}`] || '';
+  const setMeta = (k, v) => updateState?.({ [`meta_${k}`]: v });
 
   return (
     <div className="max-w-[1100px] mx-auto px-4 py-5 pb-20">
@@ -70,6 +64,11 @@ export default function ReportView({ profile, result, onClose }) {
         <Button size="sm" onClick={() => window.print()} className="bg-teal-700 hover:bg-teal-800 gap-1.5">
           <Printer className="w-4 h-4" /> Cetak / Simpan PDF
         </Button>
+        {saveNow && (
+          <Button size="sm" variant="outline" onClick={() => saveNow().catch(() => {})}>
+            💾 Simpan Sekarang
+          </Button>
+        )}
         {onClose && (
           <Button variant="outline" size="sm" onClick={onClose} className="ml-auto gap-1.5">
             <ArrowLeft className="w-4 h-4" /> Kembali
@@ -100,17 +99,17 @@ export default function ReportView({ profile, result, onClose }) {
         <div className="text-[10px] font-bold tracking-wider uppercase text-slate-400 mb-3">📋 Data Tambahan Laporan (diisi HR / Asesor)</div>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
           {[
-            ['r-nomer', 'No. Kandidat / Pegawai', 'text'],
-            ['r-dept', 'Departemen / Tim (override)', 'text'],
-            ['r-tgl', 'Tanggal Laporan', 'date'],
-            ['r-asesor', 'Nama HR / Fasilitator', 'text'],
+            ['nomer', 'No. Kandidat / Pegawai', 'text'],
+            ['dept', 'Departemen / Tim (override)', 'text'],
+            ['tgl', 'Tanggal Laporan', 'date'],
+            ['asesor', 'Nama HR / Fasilitator', 'text'],
           ].map(([k, label, type]) => (
             <div key={k}>
               <label className="text-[11px] font-semibold uppercase tracking-wider text-slate-500 mb-1 block">{label}</label>
               <input
                 type={type}
-                value={xt(k)}
-                onChange={(e) => setField('xt_' + k, e.target.value)}
+                value={meta(k)}
+                onChange={(e) => setMeta(k, e.target.value)}
                 className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm outline-none focus:border-teal-500"
               />
             </div>
@@ -118,8 +117,8 @@ export default function ReportView({ profile, result, onClose }) {
           <div className="md:col-span-2">
             <label className="text-[11px] font-semibold uppercase tracking-wider text-slate-500 mb-1 block">Mengetahui</label>
             <input
-              value={xt('r-mengetahui')}
-              onChange={(e) => setField('xt_r-mengetahui', e.target.value)}
+              value={meta('mengetahui')}
+              onChange={(e) => setMeta('mengetahui', e.target.value)}
               className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm outline-none focus:border-teal-500"
             />
           </div>
@@ -133,12 +132,12 @@ export default function ReportView({ profile, result, onClose }) {
             {[
               ['Nama Lengkap', profile?.name],
               ['Jabatan / Posisi', profile?.position],
-              ['Departemen / Divisi', xt('r-dept') || profile?.department],
+              ['Departemen / Divisi', meta('dept') || profile?.department],
               ['Usia', profile?.umur],
               ['Jenis Kelamin', profile?.gender],
-              ['No. Kandidat / Pegawai', xt('r-nomer')],
+              ['No. Kandidat / Pegawai', meta('nomer')],
               ['Tanggal Tes', result.date || profile?.date],
-              ['Tanggal Laporan', xt('r-tgl') ? new Date(xt('r-tgl')).toLocaleDateString('id-ID', { day: '2-digit', month: 'long', year: 'numeric' }) : null],
+              ['Tanggal Laporan', meta('tgl') ? new Date(meta('tgl')).toLocaleDateString('id-ID', { day: '2-digit', month: 'long', year: 'numeric' }) : null],
             ].map(([label, val]) => (
               <tr key={label} className="border-b border-slate-100">
                 <td className="px-3 py-2 font-semibold text-slate-600 w-[38%]">{label}</td>
@@ -231,7 +230,7 @@ export default function ReportView({ profile, result, onClose }) {
           })}
         </div>
         <div className="mt-3">
-          <RcrButtons section="dominan" label="⚖️ Penilaian HR — Mode Dominan untuk Posisi/Tim:" value={state['rcr_dominan']} onPick={(val) => setField('rcr_dominan', val)} />
+          <RcrButtons section="dominan" label="⚖️ Penilaian HR — Mode Dominan untuk Posisi/Tim:" value={state['rcr_dominan']} onPick={(val) => updateState?.({ rcr_dominan: val })} />
         </div>
       </Section>
 
@@ -319,7 +318,7 @@ export default function ReportView({ profile, result, onClose }) {
           </tbody>
         </table>
         <div className="mt-3">
-          <RcrButtons section="fleksibilitas" label="⚖️ Penilaian HR — Fleksibilitas Mode Peserta:" value={state['rcr_fleksibilitas']} onPick={(val) => setField('rcr_fleksibilitas', val)} />
+          <RcrButtons section="fleksibilitas" label="⚖️ Penilaian HR — Fleksibilitas Mode Peserta:" value={state['rcr_fleksibilitas']} onPick={(val) => updateState?.({ rcr_fleksibilitas: val })} />
         </div>
       </Section>
 
@@ -353,16 +352,16 @@ export default function ReportView({ profile, result, onClose }) {
         </p>
         <div className="space-y-3">
           {[
-            ['note-obs', 'Reaksi peserta terhadap hasil', 'Tulis observasi reaksi peserta saat melihat hasilnya…'],
-            ['note-surprises', 'Mode yang mengejutkan peserta', 'Aspek mana yang membuat peserta refleksi…'],
-            ['note-friction', 'Potensi gesekan dengan tim / atasan', 'Antisipasi gesekan gaya dengan profil tim…'],
-            ['note-followup', 'Rencana tindak lanjut / pengembangan', 'Langkah konkret untuk coaching atau debrief lanjutan…'],
+            ['obs', 'Reaksi peserta terhadap hasil', 'Tulis observasi reaksi peserta saat melihat hasilnya…'],
+            ['surprises', 'Mode yang mengejutkan peserta', 'Aspek mana yang membuat peserta refleksi…'],
+            ['friction', 'Potensi gesekan dengan tim / atasan', 'Antisipasi gesekan gaya dengan profil tim…'],
+            ['followup', 'Rencana tindak lanjut / pengembangan', 'Langkah konkret untuk coaching atau debrief lanjutan…'],
           ].map(([k, label, placeholder]) => (
             <div key={k}>
               <div className="text-xs font-semibold text-slate-600 mb-1">{label}</div>
               <textarea
-                value={state['note_' + k] || ''}
-                onChange={(e) => setField('note_' + k, e.target.value)}
+                value={state[`note_${k}`] || ''}
+                onChange={(e) => updateState?.({ [`note_${k}`]: e.target.value })}
                 placeholder={placeholder}
                 className="w-full min-h-[64px] border border-slate-200 rounded-lg p-2.5 text-[13px] outline-none focus:border-teal-500 resize-y"
               />
@@ -371,15 +370,15 @@ export default function ReportView({ profile, result, onClose }) {
         </div>
 
         <div className="mt-4">
-          <RcrButtons section="kesesuaian" label="📋 Rekomendasi HR — Kesesuaian Onboarding Keseluruhan:" value={state['rcr_kesesuaian']} onPick={(val) => setField('rcr_kesesuaian', val)} />
+          <RcrButtons section="kesesuaian" label="📋 Rekomendasi HR — Kesesuaian Onboarding Keseluruhan:" value={state['rcr_kesesuaian']} onPick={(val) => updateState?.({ rcr_kesesuaian: val })} />
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-3.5 mt-4">
           <SignBox role="Peserta" name={profile?.name} />
-          <SignBox role="HR / Fasilitator" name={xt('r-asesor')} />
+          <SignBox role="HR / Fasilitator" name={meta('asesor')} />
         </div>
-        {xt('r-mengetahui') && (
-          <div className="mt-3 max-w-[300px]"><SignBox role="Mengetahui" name={xt('r-mengetahui')} /></div>
+        {meta('mengetahui') && (
+          <div className="mt-3 max-w-[300px]"><SignBox role="Mengetahui" name={meta('mengetahui')} /></div>
         )}
       </Section>
 

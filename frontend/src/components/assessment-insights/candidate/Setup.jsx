@@ -6,7 +6,7 @@ import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { fmtDateID } from '../utils/scoring';
 
-export default function Setup({ initial, onSubmit }) {
+export default function Setup({ initial, onSubmit, emailReadOnly = false }) {
   const [name, setName] = useState(initial?.name || '');
   const [email, setEmail] = useState(initial?.email || '');
   const [position, setPosition] = useState(initial?.position || '');
@@ -78,8 +78,17 @@ export default function Setup({ initial, onSubmit }) {
               <Input value={name} onChange={(e) => setName(e.target.value)} placeholder="Nama lengkap" />
             </div>
             <div>
-              <Label className="mb-1.5 block">Email *</Label>
-              <Input type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="email@contoh.com" />
+              <Label className="mb-1.5 block">
+                Email *{emailReadOnly && <span className="ml-1.5 text-[10px] font-normal text-slate-400">(terverifikasi · tidak dapat diubah)</span>}
+              </Label>
+              <Input
+                type="email"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                placeholder="email@contoh.com"
+                readOnly={emailReadOnly}
+                className={emailReadOnly ? 'bg-slate-50 text-slate-500 cursor-not-allowed' : undefined}
+              />
             </div>
           </div>
 

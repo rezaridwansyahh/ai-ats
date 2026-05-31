@@ -2,7 +2,12 @@ import AssessmentBatteryResult from './assessment-battery-result.model.js';
 import getDb from '../../../config/postgres.js';
 import { resolveParticipantByCandidate } from '../../../shared/services/candidate-resolver.js';
 
-const ASSESSMENT_ID_BY_BATTERY = { A: 1, B: 2, C: 3, D: 4 };
+// 'I' (Insights) is mapped here so /from-candidate?battery=I resolves to assessment_id 5.
+// Note: this does NOT enable Insights as an invitation-flow battery — the assessment_sessions
+// table's battery_type ENUM still allows only A/B/C/D, so HR can't generate Insights invites
+// via /api/session. Kandidat takes Insights via the Asesmen menu (standalone), then HR
+// views the result row in the Selection → Report → Score & Decide flow.
+const ASSESSMENT_ID_BY_BATTERY = { A: 1, B: 2, C: 3, D: 4, I: 5, T: 6 };
 
 function scoreCognitive(items, answers) {
   const graded = answers.map((a) => {
