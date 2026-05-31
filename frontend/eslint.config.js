@@ -3,6 +3,7 @@ import globals from 'globals'
 import reactHooks from 'eslint-plugin-react-hooks'
 import reactRefresh from 'eslint-plugin-react-refresh'
 import { defineConfig, globalIgnores } from 'eslint/config'
+import localRules from './eslint-local-rules.js'
 
 export default defineConfig([
   globalIgnores(['dist']),
@@ -22,8 +23,16 @@ export default defineConfig([
         sourceType: 'module',
       },
     },
+    plugins: {
+      'local': {
+        rules: localRules,
+      },
+    },
     rules: {
       'no-unused-vars': ['error', { varsIgnorePattern: '^[A-Z_]' }],
+      // Custom rules for design system enforcement
+      'local/no-hardcoded-hex': 'warn', // Warn on hardcoded hex colors
+      // 'local/prefer-css-variables': 'warn', // Disabled for now - too many existing violations
     },
   },
 ])

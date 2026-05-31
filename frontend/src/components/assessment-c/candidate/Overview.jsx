@@ -97,7 +97,7 @@ export default function Overview({ profile, results, tests, onPick, onReset, onS
                 style={{
                   background: isDone ? '#059669' : isActive ? meta.color : '#E9E3D5',
                   borderColor: isDone ? '#059669' : isActive ? meta.color : '#E9E3D5',
-                  color: isDone || isActive ? '#fff' : '#94A3B8',
+                  color: isDone || isActive ? '#fff' : '#9C9684',
                 }}
               >
 {isDone ? <Check className="w-5 h-5" /> : i + 1}

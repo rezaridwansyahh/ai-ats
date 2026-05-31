@@ -111,7 +111,7 @@ export default function Briefing({ profile, onStart }) {
         </div>
 
         {/* Catatan */}
-        <div className="rounded-r-lg px-3.5 py-3 mb-5 text-left" style={{ background: '#F1F5F9', borderLeft: '3px solid #0A6E5C' }}>
+        <div className="rounded-r-lg px-3.5 py-3 mb-5 text-left" style={{ background: '#F4F1E8', borderLeft: '3px solid #0A6E5C' }}>
           <div className="text-xs leading-relaxed" style={{ color: '#334155' }}>
             <strong>Catatan:</strong> Asesmen ini dirancang untuk memetakan kekuatan dan gaya kerja Anda —
             bukan untuk dijadikan ujian. Hasil terbaik diperoleh ketika Anda menjawab sesuai dengan diri Anda

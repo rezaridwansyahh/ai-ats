@@ -243,7 +243,7 @@ export default function ReportView({ profile, results, state = {}, updateState, 
           <svg viewBox="0 0 320 210" xmlns="http://www.w3.org/2000/svg" className="w-full" style={{ maxHeight: 280 }}>
             <defs>
               <marker id="tki-arr" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="5" markerHeight="5" orient="auto-start-reverse">
-                <path d="M2 1L8 5L2 9" fill="none" stroke="#94A3B8" strokeWidth="1.5" />
+                <path d="M2 1L8 5L2 9" fill="none" stroke="#9C9684" strokeWidth="1.5" />
               </marker>
             </defs>
             <line x1="160" y1="12" x2="160" y2="195" stroke="#E5E7EB" strokeWidth="1" strokeDasharray="4,4" />

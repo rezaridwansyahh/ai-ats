@@ -98,7 +98,7 @@ export default function Briefing({ profile, onStart }) {
         </div>
 
         {/* Catatan */}
-        <div className="rounded-r-lg px-3.5 py-3 mb-5 text-left" style={{ background: '#F1F5F9', borderLeft: '3px solid #4338CA' }}>
+        <div className="rounded-r-lg px-3.5 py-3 mb-5 text-left" style={{ background: '#F4F1E8', borderLeft: '3px solid #4338CA' }}>
           <div className="text-xs leading-relaxed" style={{ color: '#334155' }}>
             <strong>Catatan:</strong> Asesmen ini mengidentifikasi profil kepribadian kerja Anda —
             bukan ujian dan tidak ada profil yang lebih baik dari yang lain. Hasil terbaik diperoleh
