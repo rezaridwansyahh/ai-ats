@@ -11,6 +11,11 @@ const RESULT_SELECT = `
          caa.strengths,
          caa.development_areas,
          caa.recommended_roles,
+         caa.ai_section_narratives,
+         caa.ai_evidence_bundle,
+         caa.ai_report_status,
+         caa.ai_report_generated_at,
+         caa.ai_report_error,
          caa.started_at,
          caa.completed_at,
          caa.assessment_date,
@@ -154,6 +159,54 @@ class AssessmentBatteryResult {
       strengths ?? null,
       development_areas ?? null,
       recommended_roles ?? null,
+      id,
+    ]);
+    return result.rows[0];
+  }
+
+  // Used by the AI pre-generation service. Any field not provided keeps its existing
+  // value (COALESCE pattern), so we can call this with a partial payload (e.g. just
+  // ai_report_status='generating') to flip the state mid-flight.
+  //
+  // For ai_report_error, pass empty string '' to CLEAR a previous error (the
+  // COALESCE preserves the prior value when passed null).
+  static async updateAiReport(id, fields = {}) {
+    const {
+      ai_section_narratives,
+      ai_evidence_bundle,
+      ai_report_status,
+      ai_report_generated_at,
+      ai_report_error,
+      narrative_report,
+      strengths,
+      development_areas,
+      recommended_roles,
+    } = fields;
+
+    const result = await getDb().query(`
+      UPDATE core_applicant_assessment
+      SET ai_section_narratives  = COALESCE($1::jsonb, ai_section_narratives),
+          ai_evidence_bundle     = COALESCE($2::jsonb, ai_evidence_bundle),
+          ai_report_status       = COALESCE($3,        ai_report_status),
+          ai_report_generated_at = COALESCE($4,        ai_report_generated_at),
+          ai_report_error        = COALESCE($5,        ai_report_error),
+          narrative_report       = COALESCE($6,        narrative_report),
+          strengths              = COALESCE($7,        strengths),
+          development_areas      = COALESCE($8,        development_areas),
+          recommended_roles      = COALESCE($9,        recommended_roles),
+          updated_at             = NOW()
+      WHERE id = $10
+      RETURNING *
+    `, [
+      ai_section_narratives ? JSON.stringify(ai_section_narratives) : null,
+      ai_evidence_bundle    ? JSON.stringify(ai_evidence_bundle)    : null,
+      ai_report_status       ?? null,
+      ai_report_generated_at ?? null,
+      ai_report_error        ?? null,
+      narrative_report       ?? null,
+      strengths              ?? null,
+      development_areas      ?? null,
+      recommended_roles      ?? null,
       id,
     ]);
     return result.rows[0];

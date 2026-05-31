@@ -15,6 +15,7 @@ router.get('/:id', assessmentBatteryResultController.getById);
 router.post('/', assessmentBatteryResultController.submit);
 
 router.put('/:id/report', assessmentBatteryResultController.updateReport);
+router.post('/:id/regenerate-narrative', assessmentBatteryResultController.regenerateAiReport);
 
 router.delete('/:id', assessmentBatteryResultController.delete);
 

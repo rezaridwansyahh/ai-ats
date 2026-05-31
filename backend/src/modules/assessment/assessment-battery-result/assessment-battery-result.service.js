@@ -1,8 +1,14 @@
 import AssessmentBatteryResult from './assessment-battery-result.model.js';
 import getDb from '../../../config/postgres.js';
 import { resolveParticipantByCandidate } from '../../../shared/services/candidate-resolver.js';
+import {
+  generateBatteryReport,
+  withResolvedAiStatus,
+} from '../assessment-ai/battery-pregen.service.js';
+import logger from '../../../shared/utils/logger.js';
 
 const ASSESSMENT_ID_BY_BATTERY = { A: 1, B: 2, C: 3, D: 4 };
+const BATTERY_BY_ASSESSMENT_ID = { 1: 'A', 2: 'B', 3: 'C', 4: 'D' };
 
 function scoreCognitive(items, answers) {
   const graded = answers.map((a) => {
@@ -227,18 +233,18 @@ function groupAnswersBySubtest(answers) {
 
 class AssessmentBatteryResultService {
   async getAll() {
-    return await AssessmentBatteryResult.getAll();
+    return withResolvedAiStatus(await AssessmentBatteryResult.getAll());
   }
 
   async getById(id) {
     const row = await AssessmentBatteryResult.getById(id);
     if (!row) throw { status: 404, message: 'Assessment result not found' };
-    return row;
+    return withResolvedAiStatus(row);
   }
 
   async getByParticipantId(participant_id) {
     if (!participant_id) throw { status: 400, message: 'participant_id is required' };
-    return await AssessmentBatteryResult.getByParticipantId(participant_id);
+    return withResolvedAiStatus(await AssessmentBatteryResult.getByParticipantId(participant_id));
   }
 
   // Latest result for (candidate, battery). Returns null when the chain can't be resolved
@@ -255,7 +261,7 @@ class AssessmentBatteryResultService {
     if (!participant) return null;
 
     const row = await AssessmentBatteryResult.getLatestByParticipantAssessment(participant.id, assessmentId);
-    return row || null;
+    return row ? withResolvedAiStatus(row) : null;
   }
 
   async submit({ participant_id, assessment_id, answers, started_at, results: bodyResults, summary: bodySummary }) {
@@ -349,6 +355,17 @@ class AssessmentBatteryResultService {
           });
 
       await client.query('COMMIT');
+
+      // Fire-and-forget pre-generation for any recognized battery (A/B/C/D)
+      // the moment status flips to 'completed' for the first time.
+      const battery = BATTERY_BY_ASSESSMENT_ID[aid];
+      const wasAlreadyCompleted = existing?.status === 'completed';
+      if (status === 'completed' && !wasAlreadyCompleted && battery && row?.id) {
+        generateBatteryReport(battery, row.id).catch((err) => {
+          logger.warn(`pregen_battery_${battery.toLowerCase()} trigger from submit failed: ${err?.message || err}`);
+        });
+      }
+
       return row;
     } catch (err) {
       await client.query('ROLLBACK');
@@ -356,6 +373,32 @@ class AssessmentBatteryResultService {
     } finally {
       client.release();
     }
+  }
+
+  // Triggers pre-generation. Used for auto-backfill on legacy rows and for the
+  // recruiter-initiated "Generate Ulang" button. Works for any recognized battery
+  // (A/B/C/D). Fire-and-forget on the backend: returns immediately with the row's
+  // current state (status will be 'pending' so the frontend can start polling).
+  async regenerateAiReport(id) {
+    const existing = await AssessmentBatteryResult.getById(id);
+    if (!existing) throw { status: 404, message: 'Assessment result not found' };
+
+    const battery = BATTERY_BY_ASSESSMENT_ID[existing.assessment_id];
+    if (!battery) {
+      throw { status: 400, message: 'Unknown battery for this assessment row' };
+    }
+    if (existing.status !== 'completed') {
+      throw { status: 409, message: 'Assessment not yet completed' };
+    }
+
+    // Flip status synchronously so the immediate read sees 'pending'.
+    const pending = await AssessmentBatteryResult.updateAiReport(id, { ai_report_status: 'pending' });
+
+    generateBatteryReport(battery, id).catch((err) => {
+      logger.warn(`pregen_battery_${battery.toLowerCase()} regenerate failed for id=${id}: ${err?.message || err}`);
+    });
+
+    return withResolvedAiStatus(pending);
   }
 
   async getActiveProgress(participant_id, assessment_id) {

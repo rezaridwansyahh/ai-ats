@@ -74,6 +74,18 @@ class AssessmentBatteryResultController {
     }
   }
 
+  // Fire-and-forget Battery A regeneration. Returns 202 with the row in 'pending'
+  // state; the frontend polls /from-candidate (or /:id) to see when it flips to
+  // 'completed' or 'failed'.
+  async regenerateAiReport(req, res) {
+    try {
+      const result = await assessmentBatteryResultService.regenerateAiReport(req.params.id);
+      res.status(202).json({ message: 'AI report generation queued', result });
+    } catch (err) {
+      res.status(err.status || 500).json({ message: err.message });
+    }
+  }
+
   async delete(req, res) {
     try {
       const result = await assessmentBatteryResultService.delete(req.params.id);

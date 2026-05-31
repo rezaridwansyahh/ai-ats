@@ -14,4 +14,11 @@ export const getActiveProgress = (participant_id, assessment_id) =>
 export const submitAssessment = (data) => api.post('/assessment-battery-result', data);
 export const updateAssessmentReport = (id, data) =>
   api.put(`/assessment-battery-result/${id}/report`, data);
+
+// Fire-and-forget Battery A AI report (re)generation. Server flips ai_report_status
+// to 'pending' synchronously and runs the LLM in the background; poll
+// getResultFromCandidate to see 'completed' or 'failed'.
+export const regenerateNarrative = (id) =>
+  api.post(`/assessment-battery-result/${id}/regenerate-narrative`);
+
 export const deleteAssessmentResult = (id) => api.delete(`/assessment-battery-result/${id}`);

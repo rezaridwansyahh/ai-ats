@@ -588,6 +588,12 @@ CREATE TABLE core_applicant_assessment(
   strengths TEXT, -- kekuatan kandidat (bullet points)
   development_areas TEXT, -- area pengembangan (bullet points)
   recommended_roles TEXT, -- rekomendasi posisi yang sesuai (bullet points)
+  ai_section_narratives JSONB, -- per-subtest AI interpretations: { tk, bigfive, disc, holland, ... }
+  ai_evidence_bundle JSONB, -- deterministic anchors fed to the LLM (audit + regenerate)
+  ai_report_status TEXT, -- pending | generating | completed | failed (NULL on legacy rows; resolved to 'not_generated' in JS)
+  ai_report_generated_at TIMESTAMP,
+  ai_report_error TEXT, -- last failure reason, surfaced in UI; cleared on next successful generation
+
   started_at TIMESTAMP,
   completed_at TIMESTAMPTZ,
   assessment_date DATE NOT NULL DEFAULT CURRENT_DATE,

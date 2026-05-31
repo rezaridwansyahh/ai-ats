@@ -1,23 +1,3 @@
-// Maps the flat ReportView `state` shape (keys like edit_narr-tk, rcr_papi, finalRec, notes_final, …)
-// to/from a core_applicant_assessment row.
-//
-// DB layout used:
-//   - 4 free-text columns hold the four "Section V/VI" synthesis narratives:
-//       narrative_report     ← edit_narr-konsol     (Ringkasan Profil Terintegrasi)
-//       strengths            ← edit_narr-strength   (Kekuatan Utama Kandidat)
-//       development_areas    ← edit_narr-dev        (Area Pengembangan & Risiko)
-//       recommended_roles    ← edit_narr-fit        (Analisis Kesesuaian Peran)
-//   - Per-section narratives (variable per battery) live in summary.assessor JSONB:
-//       narratives.{tk, bigfive, disc, holland, epps, hol, papi, sjt, pf, msdt, papil}
-//       ratings.{tk, epps, papi, bigfive, disc, sjt, pf, msdt, papil}
-//       finalRec
-//       notes.{tk, epps, hol, papi, final, bigfive, disc, holland, sjt, pf, msdt, papil}
-//       meta.{nomerKandidat, asesor, mengetahui}
-//
-// Battery A uses bigfive/disc/holland; B uses epps/hol/papi; C uses epps/papi/sjt; D uses sjt/pf/msdt/papil.
-// `tk` is shared across A-D. `fit` is the synthesis narrative for "Analisis Kesesuaian Peran"
-// in A-C (D synthesis is only konsol+strength). The packer/unpacker walks the union of keys.
-
 const NARR_KEYS   = ['tk', 'epps', 'hol', 'papi', 'fit', 'bigfive', 'disc', 'holland', 'sjt', 'pf', 'msdt', 'papil'];
 const RATING_KEYS = ['tk', 'epps', 'papi', 'bigfive', 'disc', 'sjt', 'pf', 'msdt', 'papil'];
 const NOTE_KEYS   = ['tk', 'epps', 'hol', 'papi', 'final', 'bigfive', 'disc', 'holland', 'sjt', 'pf', 'msdt', 'papil'];
@@ -30,6 +10,8 @@ export function unpackAssessorState(row) {
   const notes      = a.notes      || {};
   const meta       = a.meta       || {};
 
+  const aiSections = row.ai_section_narratives || {};
+
   const state = {};
 
   // Synthesis narratives → flat edit_narr-* keys (from TEXT columns)
@@ -38,10 +20,14 @@ export function unpackAssessorState(row) {
   if (row.development_areas != null) state['edit_narr-dev']      = row.development_areas;
   if (row.recommended_roles != null) state['edit_narr-fit']      = row.recommended_roles;
 
-  // Per-section narratives → flat edit_narr-* keys (from JSONB).
-  // For `fit`, JSONB wins if both sources are present (kept in sync by packAssessorState).
   for (const k of NARR_KEYS) {
-    if (narratives[k] != null) state[`edit_narr-${k}`] = narratives[k];
+    const assessorVal = narratives[k];
+    const aiVal       = aiSections[k];
+    if (assessorVal != null && assessorVal !== '') {
+      state[`edit_narr-${k}`] = assessorVal;
+    } else if (aiVal != null && aiVal !== '') {
+      state[`edit_narr-${k}`] = aiVal;
+    }
   }
 
   // Recruiter ratings
