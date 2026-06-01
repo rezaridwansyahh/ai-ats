@@ -60,6 +60,9 @@ class AIService {
   }
 
   async *generateStream(formFields, fileText, context = {}) {
+    // Task 6.12: Check AI budget before OpenAI call
+    await companyUsageService.checkBudgetOrThrow(context.company_id);
+
     const prompt = this.buildPrompt(formFields, fileText);
 
     const stream = await openai.chat.completions.create({
@@ -93,6 +96,10 @@ class AIService {
     if (!cvText || typeof cvText !== 'string') {
       throw new Error('extractFacets: cvText is required');
     }
+
+    // Task 6.12: Check AI budget before OpenAI call
+    await companyUsageService.checkBudgetOrThrow(context.company_id);
+
     const trimmed = cvText.slice(0, CV_TEXT_LIMIT);
 
     const prompt = `You are a CV parser. Extract structured facets from the CV text below and return STRICT JSON matching this schema (no prose, no markdown):
@@ -185,6 +192,9 @@ ${trimmed}
     if (!job || typeof job !== 'object') throw new Error('scoreApplicantAgainstJob: job is required');
     if (!facets || typeof facets !== 'object') throw new Error('scoreApplicantAgainstJob: facets are required');
 
+    // Task 6.12: Check AI budget before OpenAI call
+    await companyUsageService.checkBudgetOrThrow(context.company_id);
+
     const jobPayload = {
       job_title: job.job_title || '',
       job_desc: typeof job.job_desc === 'string' ? job.job_desc.slice(0, 4000) : '',
@@ -266,6 +276,9 @@ ${JSON.stringify(facets, null, 2)}`;
     if (!job || typeof job !== 'object') throw new Error('scoreWithRubric: job is required');
     if (!facets || typeof facets !== 'object') throw new Error('scoreWithRubric: facets are required');
     if (!rubric || typeof rubric !== 'object') throw new Error('scoreWithRubric: rubric is required');
+
+    // Task 6.12: Check AI budget before OpenAI call
+    await companyUsageService.checkBudgetOrThrow(context.company_id);
 
     const fixed = rubric.fixed_criteria || {};
     const customCriteria = Array.isArray(rubric.custom_criteria) ? rubric.custom_criteria : [];
@@ -381,6 +394,9 @@ Return STRICT JSON:
   async generateFollowupQuestions(job, facets, { focusArea, numQuestions, language } = {}, context = {}) {
     if (!job || typeof job !== 'object') throw new Error('generateFollowupQuestions: job is required');
     if (!facets || typeof facets !== 'object') throw new Error('generateFollowupQuestions: facets are required');
+
+    // Task 6.12: Check AI budget before OpenAI call
+    await companyUsageService.checkBudgetOrThrow(context.company_id);
 
     const count = Math.max(2, Math.min(6, Number(numQuestions) || 3));
     const focus = typeof focusArea === 'string' && focusArea.trim() ? focusArea.trim() : 'technical depth + culture fit';

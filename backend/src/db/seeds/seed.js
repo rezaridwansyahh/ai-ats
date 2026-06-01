@@ -26,11 +26,13 @@ import {
   buildSummaryJSON,
   INSIGHTS_COMPLETED_AT,
 } from '../data/dummy_insights.js';
+import companyBudgetsData, { createCompanyBudget } from '../data/company_budgets.js';
 
 const seed = async () => {
   await getDb().query('BEGIN');
 
   try {
+    await getDb().query('DELETE FROM company_budgets');
     await getDb().query('DELETE FROM company_usage');
     await getDb().query('DELETE FROM candidate_interview');
     await getDb().query('DELETE FROM candidate_screening');
@@ -370,6 +372,38 @@ const seed = async () => {
       );
     }
     console.log(`Seeded ${insightsParticipants.length} Insights participants and ${insightsResults.length} Insights results`);
+
+    // 24. company_budgets — monthly AI budget caps (Task 6.12: AI cost cap)
+    //     Seed budgets for current month for all companies in companiesData.
+    //     Creates default $100/month budget (configurable per pilot contract).
+    console.log('Seeding company budgets for current month...');
+
+    // First, seed explicit budget records from company_budgets.js
+    for (const b of companyBudgetsData) {
+      await getDb().query(
+        `INSERT INTO company_budgets (company_id, month_year, budget_usd, alert_80_sent)
+         VALUES ($1, $2, $3, $4)
+         ON CONFLICT (company_id, month_year) DO UPDATE
+         SET budget_usd = EXCLUDED.budget_usd, alert_80_sent = false, updated_at = NOW()`,
+        [b.company_id, b.month_year, b.budget_usd, b.alert_80_sent]
+      );
+    }
+
+    // Then, create budgets for any companies in companiesData that don't have explicit budgets
+    const seededCompanyIds = new Set(companyBudgetsData.map(b => b.company_id));
+    const unseededCompanies = companiesData.filter(c => !seededCompanyIds.has(c.id));
+
+    for (const c of unseededCompanies) {
+      const budget = createCompanyBudget(c.id);
+      await getDb().query(
+        `INSERT INTO company_budgets (company_id, month_year, budget_usd, alert_80_sent)
+         VALUES ($1, $2, $3, $4)
+         ON CONFLICT (company_id, month_year) DO NOTHING`,
+        [budget.company_id, budget.month_year, budget.budget_usd, budget.alert_80_sent]
+      );
+    }
+
+    console.log(`Seeded budgets for ${companyBudgetsData.length + unseededCompanies.length} companies`);
 
     await getDb().query('COMMIT');
     console.log('Seed completed successfully');

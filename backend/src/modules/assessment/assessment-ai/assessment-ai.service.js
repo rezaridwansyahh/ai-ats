@@ -282,6 +282,9 @@ class AssessmentAIService {
   }
 
   async *generateSection({ battery, section, scores, profile = {} }, context = {}) {
+    // Task 6.12: Check AI budget before OpenAI call
+    await companyUsageService.checkBudgetOrThrow(context.company_id);
+
     const prompt = buildSectionPrompt(battery, section, scores, profile);
     const stream = await openai.chat.completions.create({
       model: MODEL,
@@ -310,6 +313,9 @@ class AssessmentAIService {
   }
 
   async *generateSynthesis({ battery, allScores, sectionInterpretations, profile = {} }, context = {}) {
+    // Task 6.12: Check AI budget before OpenAI call
+    await companyUsageService.checkBudgetOrThrow(context.company_id);
+
     const prompt = buildSynthesisPrompt(battery, allScores, sectionInterpretations, profile);
     const stream = await openai.chat.completions.create({
       model: MODEL,
