@@ -88,7 +88,7 @@ CREATE TYPE job_post_type AS ENUM ('Internal', 'Publish');
 CREATE TYPE sourcing_status_type AS ENUM ('Pending', 'Processing', 'Done', 'Failed');
 CREATE TYPE stage_category_type AS ENUM ('Job Management', 'Screening & Matching', 'Interview', 'Assessment', 'Background Check', 'Offering & Contract', 'Other');
 CREATE TYPE battery_type AS ENUM ('A', 'B', 'C', 'D', 'I', 'T');
-CREATE TYPE status_session_type AS ENUM ('invited', 'in_progress', 'completed', 'expired');
+CREATE TYPE status_session_type AS ENUM ('invited', 'in_progress', 'completed', 'expired', 'revoked');
 CREATE TYPE assessment_status_type AS ENUM ('in_progress', 'completed', 'expired');
 CREATE TYPE screening_qa_status_type AS ENUM ('draft', 'sent', 'responded', 'expired');
 CREATE EXTENSION IF NOT EXISTS pgcrypto;
@@ -615,6 +615,8 @@ CREATE TABLE assessment_sessions(
   status status_session_type NOT NULL DEFAULT 'invited',
   expired_at TIMESTAMP NOT NULL,
   submitted_at TIMESTAMP,
+  revoked_by INTEGER REFERENCES master_users(id) ON DELETE SET NULL,
+  revoked_at TIMESTAMP,
   notes TEXT,
   created_at TIMESTAMP NOT NULL DEFAULT NOW(),
   updated_at TIMESTAMP NOT NULL DEFAULT NOW()

@@ -52,7 +52,7 @@ class Session {
       FROM assessment_sessions
       WHERE participant_id = $1
         AND job_id IS NOT DISTINCT FROM $2
-        AND status <> 'expired'
+        AND status NOT IN ('expired', 'revoked')
       ORDER BY created_at DESC
     `, [participant_id, job_id]);
     return result.rows;
@@ -88,6 +88,16 @@ class Session {
       WHERE id = $1
       RETURNING *
     `, [id]);
+    return result.rows[0];
+  }
+
+  static async revoke(id, revoked_by) {
+    const result = await getDb().query(`
+      UPDATE assessment_sessions
+      SET status = 'revoked', revoked_by = $2, revoked_at = NOW(), updated_at = NOW()
+      WHERE id = $1
+      RETURNING *
+    `, [id, revoked_by ?? null]);
     return result.rows[0];
   }
 

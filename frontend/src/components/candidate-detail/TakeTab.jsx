@@ -2,9 +2,10 @@ import { useState } from 'react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { Copy, Check, Loader2, AlertTriangle, Sparkles, CheckCircle2 } from 'lucide-react';
+import { Copy, Check, Loader2, AlertTriangle, Sparkles, CheckCircle2, Ban } from 'lucide-react';
 import { BATTERIES } from '@/lib/batteries';
-import { generateSessionFromCandidate } from '@/api/session.api';
+import { generateSessionFromCandidate, revokeSession } from '@/api/session.api';
+import { RevokeSessionDialog } from './RevokeSessionDialog';
 
 // Tab 2: portal-link generator + read-only per-subtest status.
 // Session state is owned by the parent (CandidateDetail) so it survives refresh —
@@ -17,9 +18,13 @@ export default function TakeTab({
   jobId,
   existingSessions = [],
   onSessionsChange,
+  onRevoke,
 }) {
   const [generating, setGenerating] = useState(false);
   const [error, setError]           = useState(null);
+  const [revokeOpen, setRevokeOpen] = useState(false);
+  const [revoking, setRevoking]     = useState(false);
+  const [revokeError, setRevokeError] = useState(null);
 
   if (!battery) {
     return (
@@ -61,6 +66,22 @@ export default function TakeTab({
     }
   };
 
+  const handleRevokeConfirm = async (sessionId) => {
+    if (!sessionId) return;
+    setRevoking(true);
+    setRevokeError(null);
+    try {
+      await revokeSession(sessionId);
+      onRevoke?.(sessionId);
+    } catch (err) {
+      const msg = err.response?.data?.message || 'Failed to revoke invitation.';
+      setRevokeError(msg);
+      throw err;
+    } finally {
+      setRevoking(false);
+    }
+  };
+
   return (
     <Card>
       <CardContent className="space-y-4 p-5">
@@ -83,8 +104,18 @@ export default function TakeTab({
               token={session.token}
               status={session.status}
               submittedAt={session.submitted_at}
+              onRevokeClick={() => { setRevokeError(null); setRevokeOpen(true); }}
+              revokeError={revokeError}
             />
           : <GeneratePanel onGenerate={handleGenerate} generating={generating} error={error} />}
+
+        <RevokeSessionDialog
+          open={revokeOpen}
+          onOpenChange={setRevokeOpen}
+          session={session}
+          onConfirm={handleRevokeConfirm}
+          loading={revoking}
+        />
 
         <div className="rounded-lg border overflow-hidden">
           <Table>
@@ -140,11 +171,12 @@ function GeneratePanel({ onGenerate, generating, error }) {
   );
 }
 
-function PortalLinkPanel({ battery, token, status, submittedAt }) {
+function PortalLinkPanel({ battery, token, status, submittedAt, onRevokeClick, revokeError }) {
   const dashless = String(token || '').replaceAll('-', '');
   const url = `${window.location.origin}/portal/assessment-placement/${dashless}`;
   const [copied, setCopied] = useState(false);
   const isCompleted = status === 'completed';
+  const canRevoke   = status === 'invited' || status === 'in_progress';
 
   const handleCopy = async () => {
     try {
@@ -179,7 +211,23 @@ function PortalLinkPanel({ battery, token, status, submittedAt }) {
         <Button size="sm" variant="outline" className="h-7 text-xs shrink-0" onClick={handleCopy}>
           {copied ? <><Check className="h-3 w-3 mr-1" />Copied</> : <><Copy className="h-3 w-3 mr-1" />Copy</>}
         </Button>
+        {canRevoke && (
+          <Button
+            size="sm"
+            variant="outline"
+            className="h-7 text-xs shrink-0 text-red-600 hover:text-red-700 hover:bg-red-50 border-red-200"
+            onClick={onRevokeClick}
+          >
+            <Ban className="h-3 w-3 mr-1" />Revoke
+          </Button>
+        )}
       </div>
+      {revokeError && (
+        <div className="mt-2 text-[10.5px] text-red-600 flex items-center gap-1.5">
+          <AlertTriangle className="h-3 w-3" />
+          {revokeError}
+        </div>
+      )}
     </div>
   );
 }

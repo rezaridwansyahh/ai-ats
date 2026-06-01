@@ -1,5 +1,12 @@
 import getDb from "../../config/postgres.js"
 
+// current_step drives the Report page's step filter (Setup / Take / Score & Decide).
+// It mirrors the CandidateDetail tab flow: an active session means the recruiter
+// has picked a battery (Take); a completed session means an assessment result
+// exists (Score & Decide); neither means we're still at battery-pick (Setup).
+//
+// Candidate → participant link goes through master_applicant.email, since
+// master_candidate has no direct participant_id (see candidate-resolver.js).
 const CANDIDATE_PIPELINE_SELECT = `
   SELECT c.id,
          c.job_id,
@@ -14,10 +21,27 @@ const CANDIDATE_PIPELINE_SELECT = `
          c.created_at,
          c.updated_at,
          a.email AS candidate_email,
-         COALESCE(js.name, 'Not Started') AS latest_stage_name
+         COALESCE(js.name, 'Not Started') AS latest_stage_name,
+         CASE
+           WHEN latest_active.status = 'completed'         THEN 'decide'
+           WHEN latest_active.status IS NOT NULL           THEN 'take'
+           ELSE 'setup'
+         END AS current_step
   FROM master_candidate c
   LEFT JOIN job_stage js       ON js.id = c.latest_stage
   LEFT JOIN master_applicant a ON a.id  = c.applicant_id
+  LEFT JOIN LATERAL (
+    SELECT s.status
+    FROM assessment_sessions s
+    JOIN participants p ON p.id = s.participant_id
+    WHERE LOWER(TRIM(p.email)) = LOWER(TRIM(a.email))
+      AND s.job_id = c.job_id
+      AND s.status IN ('invited', 'in_progress', 'completed')
+    ORDER BY
+      CASE s.status WHEN 'completed' THEN 0 WHEN 'in_progress' THEN 1 ELSE 2 END,
+      s.created_at DESC
+    LIMIT 1
+  ) latest_active ON TRUE
 `;
 
 class CandidatePipeline {

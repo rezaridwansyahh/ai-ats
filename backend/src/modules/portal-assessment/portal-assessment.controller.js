@@ -9,7 +9,7 @@ class PortalAssessmentController {
       const session = await portalAssessmentService.getByHash(req.params.hash);
       res.status(200).json({ message: 'Invitation found', session });
     } catch (err) {
-      res.status(err.status || 500).json({ message: err.message });
+      res.status(err.status || 500).json({ message: err.message, ...(err.code ? { code: err.code } : {}) });
     }
   }
 
@@ -19,7 +19,7 @@ class PortalAssessmentController {
       const result = await portalAssessmentService.verifyEmail(req.params.hash, email);
       res.status(200).json({ message: 'Email verified', ...result });
     } catch (err) {
-      res.status(err.status || 500).json({ message: err.message });
+      res.status(err.status || 500).json({ message: err.message, ...(err.code ? { code: err.code } : {}) });
     }
   }
 
@@ -60,7 +60,7 @@ class PortalAssessmentController {
       });
       res.status(200).json({ message: 'Participant updated', ...result });
     } catch (err) {
-      res.status(err.status || 500).json({ message: err.message });
+      res.status(err.status || 500).json({ message: err.message, ...(err.code ? { code: err.code } : {}) });
     }
   }
 
@@ -74,7 +74,7 @@ class PortalAssessmentController {
       });
       res.status(201).json({ message: 'Submission accepted', ...result });
     } catch (err) {
-      res.status(err.status || 500).json({ message: err.message });
+      res.status(err.status || 500).json({ message: err.message, ...(err.code ? { code: err.code } : {}) });
     }
   }
 }
