@@ -13,7 +13,9 @@ const setupSqlPath = path.join(__dirname, 'setup.sql');
 const seedScriptPath = path.join(__dirname, 'seeds', 'run-seed.js');
 const syncSqlPath = path.join(__dirname, 'sync-seq.sql');
 
-const psqlCommand = `psql "${process.env.DATABASEURL}" -f "${setupSqlPath}"`;
+// ON_ERROR_STOP=1 → psql aborts (non-zero exit) on the first SQL error.
+// Without it, errors are silently skipped and the wrapper reports "success".
+const psqlCommand = `psql "${process.env.DATABASEURL}" -v ON_ERROR_STOP=1 -f "${setupSqlPath}"`;
 
 console.log('Running setup.sql...');
 
@@ -40,7 +42,7 @@ exec(psqlCommand, { env: { ...process.env, PGPASSWORD: process.env.PGPASSWORD } 
 
     console.log('Running sync-seq.sql...');
     exec(
-      `psql "${process.env.DATABASEURL}" -f "${syncSqlPath}"`,
+      `psql "${process.env.DATABASEURL}" -v ON_ERROR_STOP=1 -f "${syncSqlPath}"`,
       { env: { ...process.env, PGPASSWORD: process.env.PGPASSWORD } },
       (syncErr, syncOut, syncErrOut) => {
         if (syncErrOut) console.warn('sync warnings:\n', syncErrOut);

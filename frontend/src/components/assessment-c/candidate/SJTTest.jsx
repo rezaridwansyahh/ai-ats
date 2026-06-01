@@ -163,7 +163,7 @@ export default function SJTTest({ onComplete, onAbort }) {
                     style={{
                       background: sel || isFlashing ? comp.color : '#fff',
                       color: sel || isFlashing ? '#fff' : comp.color,
-                      border: `1.5px solid ${sel || isFlashing ? comp.color : '#E2E8F0'}`,
+                      border: `1.5px solid ${sel || isFlashing ? comp.color : '#E9E3D5'}`,
                     }}
                   >
                     {opt.l}

@@ -48,6 +48,14 @@ class AssessmentAIController {
       res.end();
     } catch (err) {
       if (!res.headersSent) {
+        // Task 6.12: Pass through 402 budget exceeded error
+        if (err.status === 402) {
+          return res.status(402).json({
+            message: err.message,
+            budget: err.budget,
+            spent: err.spent
+          });
+        }
         return res.status(err.status || 500).json({ message: err.message });
       }
       res.write(`data: ${JSON.stringify({ error: err.message })}\n\n`);
@@ -91,6 +99,14 @@ class AssessmentAIController {
       res.end();
     } catch (err) {
       if (!res.headersSent) {
+        // Task 6.12: Pass through 402 budget exceeded error
+        if (err.status === 402) {
+          return res.status(402).json({
+            message: err.message,
+            budget: err.budget,
+            spent: err.spent
+          });
+        }
         return res.status(err.status || 500).json({ message: err.message });
       }
       res.write(`data: ${JSON.stringify({ error: err.message })}\n\n`);

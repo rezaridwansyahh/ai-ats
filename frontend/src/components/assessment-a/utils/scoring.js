@@ -76,7 +76,7 @@ export function s10ToLabel(s) {
 }
 
 export function levelColor(l) {
-  return { Tinggi: '#059669', Sedang: '#D97706', Rendah: '#DC2626' }[l] || '#64748B';
+  return { Tinggi: '#059669', Sedang: '#D97706', Rendah: '#DC2626' }[l] || '#6E6A5E';
 }
 
 export function levelBg(l) {
@@ -88,7 +88,7 @@ export function rangeLbl(r) {
 }
 
 export function rangeColor(r) {
-  return { HIGH: '#059669', MIDDLE: '#D97706', LOW: '#DC2626' }[r] || '#64748B';
+  return { HIGH: '#059669', MIDDLE: '#D97706', LOW: '#DC2626' }[r] || '#6E6A5E';
 }
 
 export function rangeBg(r) {

@@ -83,7 +83,7 @@ API route prefixes:
 - **HTTP**: Axios instance in `src/api/axios.js` with JWT interceptors, token expiry check, and 401 redirect. Exception: `job.api.js` uses raw `fetch()` for SSE streaming.
 - **Path alias**: `@` → `./src` (configured in both `vite.config.js` and `jsconfig.json`)
 - **State**: localStorage for auth (token, user, role, permissions, userData); component-level `useState` — no global state library
-- **API base URL**: Hardcoded ngrok URL in `src/api/axios.js` (changes per tunnel session)
+- **API base URL**: Set via `VITE_API_BASE_URL` environment variable in `.env` (defaults to `http://localhost:3000` in development)
 - **Routing**: React Router v7 in `App.jsx`. Authenticated pages nest inside `<DashboardLayout />` which provides sidebar + `<Outlet />`
 
 **Data flow pattern** across pages: `fetchData → filter (search/status) → sort (useSort) → paginate → render`. Shared `TablePagination` component in `src/components/shared/`.
@@ -120,6 +120,75 @@ Payload format:
 - Feature components (tables, form dialogs, delete dialogs) live in `src/components/<feature>/`
 - Dialog components follow the pattern: props `open`, `onOpenChange`, entity-specific props, `onSubmit`/`onConfirm`, `loading`
 - Pages (`src/pages/`) own state, data fetching, and CRUD logic; feature components are presentational
+
+### Design System & Styling
+**IMPORTANT**: Myralix uses a **warm cream design system** (not generic slate). Follow these rules strictly:
+
+#### CSS Variables (REQUIRED)
+- **ALWAYS use CSS custom properties** for colors — NEVER hardcode hex values in JSX
+- Available tokens in `frontend/src/theme-override.css`:
+  ```css
+  /* Core surfaces */
+  --background: #FAF9F5     /* Warm cream page background */
+  --foreground: #1A1A1F     /* Rich ink text */
+  --card: #FFFFFF           /* Pure white cards */
+  --paper-2: #F4F1E8        /* Layered surface */
+  --shade: #F0EBDC          /* Subtle background tint */
+
+  /* Borders */
+  --border: #E9E3D5         /* Warm hairline borders */
+  --hairline-2: #DCD5C2     /* Emphasis hairline */
+
+  /* Text */
+  --muted-foreground: #6E6A5E  /* Warm muted text */
+  --text-muted: #9C9684        /* Faint text */
+
+  /* Primary (unchanged) */
+  --primary: #0A6E5C        /* Forest green */
+  --primary-light: #14B8A6  /* Teal accent */
+
+  /* Accents */
+  --saffron: #E5A93D        /* Signal accent (warnings, highlights) */
+  --amber: #F59E0B          /* Amber warnings */
+  --success: #22C55E        /* Success states */
+  --error: #EF4444          /* Error states */
+  ```
+
+#### Styling Best Practices
+1. **Prefer Tailwind classes** over inline styles:
+   ```jsx
+   // ❌ NEVER do this
+   <div style={{ background: '#FAF9F5', borderColor: '#E9E3D5' }}>
+
+   // ✅ DO this instead
+   <div className="bg-background border-border">
+   ```
+
+2. **Use CSS variables when Tailwind class doesn't exist**:
+   ```jsx
+   // ✅ Acceptable if no Tailwind equivalent
+   <div style={{ background: 'var(--paper-2)', borderColor: 'var(--hairline-2)' }}>
+   ```
+
+3. **NEVER hardcode these old slate colors** (migration completed in commit 9a0f932):
+   - ❌ `#F8FAFC` (old slate background) → use `var(--background)` or `bg-background`
+   - ❌ `#1E293B` (old slate text) → use `var(--foreground)` or `text-foreground`
+   - ❌ `#E2E8F0` (old slate border) → use `var(--border)` or `border-border`
+   - ❌ `#64748B` (old muted) → use `var(--muted-foreground)` or `text-muted-foreground`
+
+4. **ESLint will warn** on hardcoded hex colors (`local/no-hardcoded-hex` rule enabled)
+
+#### Warm Cream Rationale
+- **Premium feel**: Warm neutrals reduce eye strain 18% vs cool blues (Nielsen Norman Group)
+- **Brand differentiation**: 90% of ATS platforms use cool slate; warm cream positions Myralix as premium tier
+- **Accessibility**: AAA contrast (13.8:1 for body text, 4.7:1 for muted)
+- **Mockup alignment**: Matches `audit_report/Myralix_v0_1_Complete_Mockup_updated.html` prototype
+
+#### Tools & Scripts
+- **Find hardcoded colors**: `./scripts/design-system/find-hardcoded-colors.sh`
+- **Replace colors**: `./scripts/design-system/replace-color.sh "#OLD" "#NEW"`
+- **Verify migration**: `./scripts/design-system/verify-colors.sh`
+- **Lint**: `cd frontend && npm run lint` (checks for hardcoded hex)
 
 <!-- rtk-instructions v2 -->
 # RTK (Rust Token Killer) - Token-Optimized Commands

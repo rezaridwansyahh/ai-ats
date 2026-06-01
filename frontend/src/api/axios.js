@@ -37,12 +37,30 @@ api.interceptors.request.use(
 )
 
 // Response interceptor — catch 401 from backend (token invalid/expired)
+// Task 6.12: Handle 402 budget exceeded
 api.interceptors.response.use(
   (response) => response,
   (error) => {
     if (error.response?.status === 401) {
       handleExpired();
     }
+
+    // Task 6.12: Budget exceeded error (Payment Required)
+    if (error.response?.status === 402) {
+      const { budget, spent } = error.response.data;
+      const budgetStr = budget?.toFixed?.(2) || '?';
+      const spentStr = spent?.toFixed?.(2) || '?';
+
+      // Show toast notification (if toast library is available)
+      // Otherwise, the error will be caught by individual components
+      if (typeof window !== 'undefined' && window.alert) {
+        alert(
+          `AI budget exceeded: $${spentStr} / $${budgetStr} used this month.\n\n` +
+          `Contact your administrator to increase the budget limit.`
+        );
+      }
+    }
+
     return Promise.reject(error);
   }
 )

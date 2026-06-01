@@ -95,9 +95,9 @@ export default function Overview({ profile, results, tests, onPick, onReset, onS
               <div
                 className="w-10 h-10 rounded-full grid place-items-center font-serif font-bold text-sm flex-shrink-0 border-2"
                 style={{
-                  background: isDone ? '#059669' : isActive ? meta.color : '#E2E8F0',
-                  borderColor: isDone ? '#059669' : isActive ? meta.color : '#E2E8F0',
-                  color: isDone || isActive ? '#fff' : '#94A3B8',
+                  background: isDone ? '#059669' : isActive ? meta.color : '#E9E3D5',
+                  borderColor: isDone ? '#059669' : isActive ? meta.color : '#E9E3D5',
+                  color: isDone || isActive ? '#fff' : '#9C9684',
                 }}
               >
 {isDone ? <Check className="w-5 h-5" /> : i + 1}

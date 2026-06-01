@@ -1,4 +1,5 @@
 -- Drop tables in reverse dependency order (most dependent first)
+DROP TABLE IF EXISTS company_budgets CASCADE;
 DROP TABLE IF EXISTS company_usage CASCADE;
 DROP TABLE IF EXISTS candidate_interview CASCADE;
 DROP TABLE IF EXISTS screening_qa CASCADE;
@@ -130,6 +131,20 @@ CREATE TABLE company_usage (
 );
 CREATE INDEX idx_company_usage_company_created ON company_usage (company_id, created_at DESC);
 CREATE INDEX idx_company_usage_operation ON company_usage (operation);
+
+-- Migration 009: Company AI Budget Management (Task 6.12)
+CREATE TABLE company_budgets (
+  id                SERIAL PRIMARY KEY,
+  company_id        INTEGER NOT NULL REFERENCES core_company(id) ON DELETE CASCADE,
+  month_year        DATE NOT NULL,
+  budget_usd        NUMERIC(10,2) NOT NULL,
+  alert_80_sent     BOOLEAN NOT NULL DEFAULT false,
+  created_at        TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  updated_at        TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  CONSTRAINT uq_company_budgets_company_month UNIQUE (company_id, month_year)
+);
+CREATE INDEX idx_company_budgets_company_month ON company_budgets (company_id, month_year DESC);
+CREATE INDEX idx_company_budgets_month_year ON company_budgets (month_year DESC);
 
 CREATE TABLE master_roles (
   id SERIAL PRIMARY KEY,

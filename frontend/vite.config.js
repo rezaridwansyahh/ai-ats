@@ -7,9 +7,6 @@ import { defineConfig } from "vite"
 export default defineConfig({
   base: '/portal/',
   plugins: [react(), tailwindcss()],
-  server: {
-    allowedHosts: ["242c-180-247-60-184.ngrok-free.app"]
-  },
   resolve: {
     alias: {
       "@": path.resolve(__dirname, "./src"),

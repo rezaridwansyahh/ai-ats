@@ -43,7 +43,7 @@ function rangeLbl(r) {
 }
 
 function rangeColor(r) {
-  return { HIGH: '#059669', MIDDLE: '#D97706', LOW: '#DC2626' }[r] || '#64748B';
+  return { HIGH: '#059669', MIDDLE: '#D97706', LOW: '#DC2626' }[r] || '#6E6A5E';
 }
 
 function rangeBg(r) {
@@ -444,7 +444,7 @@ export default function ReportView({ profile, results, state, updateState, saveN
                     const raw = msdt.raw?.[code] || 0;
                     const isDom = code === msdt.dominant;
                     return (
-                      <div key={code} className="rounded-lg border px-3 py-2 flex items-center gap-2" style={{ borderColor: isDom ? s.color : '#E2E8F0', background: isDom ? s.colorLt : '#fff' }}>
+                      <div key={code} className="rounded-lg border px-3 py-2 flex items-center gap-2" style={{ borderColor: isDom ? s.color : '#E9E3D5', background: isDom ? s.colorLt : '#fff' }}>
                         <div className="w-7 h-7 rounded grid place-items-center font-serif font-bold text-xs" style={{ background: s.color, color: '#fff' }}>{code}</div>
                         <div className="flex-1 min-w-0">
                           <div className="text-[11px] font-bold truncate" style={{ color: s.color }}>{s.name}</div>
@@ -484,7 +484,7 @@ export default function ReportView({ profile, results, state, updateState, saveN
                           const score = papil.scores?.[code] || 0;
                           const range = getRange(code, score);
                           return (
-                            <div key={code} className="rounded-lg border px-3 py-1.5 flex items-center gap-2.5" style={{ borderColor: '#E2E8F0', background: '#FAFAFA' }}>
+                            <div key={code} className="rounded-lg border px-3 py-1.5 flex items-center gap-2.5" style={{ borderColor: '#E9E3D5', background: '#FAFAFA' }}>
                               <div className="w-7 h-7 rounded grid place-items-center font-serif font-bold text-xs flex-shrink-0" style={{ background: dim.bg, color: dim.color }}>{code}</div>
                               <div className="flex-1 min-w-0">
                                 <div className="text-[11.5px] font-bold text-slate-700 truncate">{String(dim.label)}</div>
