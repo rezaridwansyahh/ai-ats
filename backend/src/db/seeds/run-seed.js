@@ -7,7 +7,9 @@ seed()
     console.log("Seed run complete. Closing DB connection...");
     return getDb().end();
   })
-  .catch((err) => {
+  .catch(async (err) => {
     console.error("Seed run failed:", err.message);
-    getDb().end();
+    await getDb().end().catch(() => {});
+    // Surface as a non-zero exit so run-script.js doesn't report "success" on a broken seed.
+    process.exit(1);
   });
