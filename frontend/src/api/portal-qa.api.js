@@ -19,6 +19,7 @@ export const verifyQaEmail = async (token, email) => {
 export const getQaFull = (token) =>
   portalApi.get(`/portal-qa/${token}/questions`);
 
-// JWT-protected (scope='qa') — body: { answers: string[] }. Marks status 'responded'.
-export const submitQa = (token, answers) =>
-  portalApi.post(`/portal-qa/${token}/submit`, { answers });
+// JWT-protected (scope='qa') — body: { answers: string[], application_form: object }.
+// Marks status 'responded'. application_form is the candidate's filled standard form.
+export const submitQa = (token, answers, application_form = null) =>
+  portalApi.post(`/portal-qa/${token}/submit`, { answers, application_form });

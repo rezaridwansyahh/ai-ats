@@ -2,12 +2,16 @@ import { useEffect, useState } from 'react';
 import { useParams } from 'react-router-dom';
 import {
   Loader2, AlertTriangle, Mail, CheckCircle2, MessageSquare, Clock, Send,
+  ClipboardList, Check,
 } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
+import {
+  Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
+} from '@/components/ui/select';
 import {
   getQaSummary, verifyQaEmail, submitQa,
 } from '@/api/portal-qa.api';
@@ -39,12 +43,20 @@ const T = {
   formLabel:       'Pertanyaan Tindak Lanjut',
   formForPosition: (job) => `Untuk posisi ${job || '—'}`,
   formDeadline:    (when) => `Mohon kirim sebelum ${when}.`,
-  formIntro:       'Jawablah pertanyaan berikut sejujur dan sejelas mungkin. Anda dapat mengosongkan jawaban yang tidak relevan.',
+  formIntro:       'Lengkapi formulir lamaran dan jawab pertanyaan berikut. Field bertanda * wajib diisi, dan minimal satu pertanyaan harus dijawab.',
   answerLabel:     'Jawaban Anda',
   answerPlaceholder: 'Tulis jawaban Anda di sini…',
   submitButton:    'Kirim Jawaban',
   submitting:      'Mengirim…',
   topicFallback:   'Pertanyaan',
+  // Tabs + application form
+  tabForm:         'Formulir Lamaran',
+  tabQuestions:    'Pertanyaan',
+  requiredHint:    'Wajib diisi',
+  selectPlaceholder: 'Pilih…',
+  formMissingError: 'Lengkapi field wajib yang ditandai pada Formulir Lamaran.',
+  needOneAnswer:   'Mohon jawab minimal satu pertanyaan.',
+  citiesHint:      'Pilih satu atau lebih.',
   // Submitted
   submittedTitle:  'Terima kasih!',
   submittedBody:   'Jawaban Anda sudah terkirim. Anda dapat menutup tab ini.',
@@ -69,6 +81,74 @@ function isExpired(summary) {
   return new Date(summary.expired_at).getTime() < Date.now();
 }
 
+/* ─── Application Form (Bahasa labels + client-side schema helpers) ─── */
+// Schema field/section labels are English; localize known keys, fall back to the
+// schema label for any unknown/custom field so future custom forms still render.
+const FORM_FIELD_LABEL_ID = {
+  full_name:         'Nama Lengkap',
+  date_of_birth:     'Tanggal Lahir',
+  national_id:       'KTP / NIK',
+  education_level:   'Pendidikan (Gelar Tertinggi)',
+  institution:       'Nama Institusi',
+  last_employer:     'Perusahaan Terakhir',
+  last_position:     'Posisi Terakhir',
+  employment_period: 'Periode Kerja',
+  preferred_cities:  'Preferensi Kota Penempatan',
+};
+const FORM_SECTION_LABEL_ID = {
+  personal:   'Data Pribadi',
+  education:  'Riwayat Pendidikan',
+  experience: 'Pengalaman Kerja',
+  placement:  'Preferensi Penempatan',
+};
+// Bahasa placeholders so every text field reads "like any other field".
+const FORM_FIELD_PLACEHOLDER_ID = {
+  full_name:         'Nama lengkap sesuai KTP',
+  national_id:       '16 digit NIK',
+  institution:       'Nama universitas / sekolah',
+  last_employer:     'Nama perusahaan',
+  last_position:     'Jabatan terakhir',
+  employment_period: 'mis. Jan 2020 – Des 2023',
+  preferred_cities:  'mis. Jakarta, Surabaya, atau terbuka untuk relokasi',
+};
+const labelFor = (field) => FORM_FIELD_LABEL_ID[field?.key] || field?.label || field?.key || '';
+const sectionLabelFor = (section) => FORM_SECTION_LABEL_ID[section?.key] || section?.label || '';
+const placeholderFor = (field) => FORM_FIELD_PLACEHOLDER_ID[field?.key] || '';
+
+function flattenFields(schema) {
+  const sections = Array.isArray(schema?.sections) ? schema.sections : [];
+  return sections.flatMap((s) => (Array.isArray(s?.fields) ? s.fields : []));
+}
+
+// Seed every field by type, then merge any previously-saved values (re-opened row).
+function buildInitialFormValues(schema, saved) {
+  const src = saved && typeof saved === 'object' ? saved : {};
+  const out = {};
+  for (const f of flattenFields(schema)) {
+    if (f.type === 'multiselect') {
+      const opts = Array.isArray(f.options) ? f.options : [];
+      const arr = Array.isArray(src[f.key]) ? src[f.key].filter((x) => opts.includes(x)) : [];
+      out[f.key] = arr;
+    } else {
+      out[f.key] = typeof src[f.key] === 'string' ? src[f.key] : '';
+    }
+  }
+  return out;
+}
+
+// Mirror of the backend findMissingRequired — keeps the user from hitting a server 400.
+function findMissingRequiredClient(schema, values) {
+  const v = values || {};
+  return flattenFields(schema)
+    .filter((f) => f.required)
+    .filter((f) => {
+      const val = v[f.key];
+      if (Array.isArray(val)) return val.length === 0;
+      return val == null || String(val).trim() === '';
+    })
+    .map((f) => ({ key: f.key, label: labelFor(f) }));
+}
+
 export default function QAFollowUpPage() {
   const { token } = useParams();
 
@@ -80,6 +160,11 @@ export default function QAFollowUpPage() {
   const [busy, setBusy]       = useState(false);     // shared button-spinner flag
   const [error, setError]     = useState(null);      // inline form error
   const [pageError, setPageError] = useState(null);  // for the 'error' view
+
+  // Application Form (filled alongside the questions)
+  const [formValues, setFormValues] = useState({});  // keyed by schema field key
+  const [fieldErrors, setFieldErrors] = useState({});// key -> true when required + empty
+  const [portalTab, setPortalTab] = useState('form');// 'form' | 'questions' — form first (required)
 
   /* Initial load — pick a view based on the public summary. */
   useEffect(() => {
@@ -128,6 +213,9 @@ export default function QAFollowUpPage() {
       setQa(fresh);
       const qs = Array.isArray(fresh.questions) ? fresh.questions : [];
       setAnswers(qs.map(() => ''));
+      setFormValues(buildInitialFormValues(fresh.application_form_schema, fresh.application_form));
+      setFieldErrors({});
+      setPortalTab('form');
       setView('form');
     } catch (err) {
       const status = err.response?.status;
@@ -142,12 +230,46 @@ export default function QAFollowUpPage() {
   const setAnswerAt = (i, val) =>
     setAnswers((cur) => cur.map((a, idx) => (idx === i ? val : a)));
 
+  // Set a single form field value and clear its error.
+  const setFormField = (key, val) => {
+    setFormValues((cur) => ({ ...cur, [key]: val }));
+    setFieldErrors((cur) => (cur[key] ? { ...cur, [key]: false } : cur));
+  };
+
+  // Toggle one option of a multiselect field.
+  const toggleFormOption = (key, opt) => {
+    setFormValues((cur) => {
+      const arr = Array.isArray(cur[key]) ? cur[key] : [];
+      return { ...cur, [key]: arr.includes(opt) ? arr.filter((x) => x !== opt) : [...arr, opt] };
+    });
+    setFieldErrors((cur) => (cur[key] ? { ...cur, [key]: false } : cur));
+  };
+
   const handleSubmit = async () => {
     if (busy) return;
-    setBusy(true);
     setError(null);
+
+    // 1) Application Form required fields (matches server order — no un-preventable 400).
+    const schema = qa?.application_form_schema;
+    const missing = schema ? findMissingRequiredClient(schema, formValues) : [];
+    if (missing.length) {
+      setFieldErrors(Object.fromEntries(missing.map((m) => [m.key, true])));
+      setPortalTab('form');
+      setError(T.formMissingError);
+      return;
+    }
+
+    // 2) At least one answer when questions exist.
+    const questions = Array.isArray(qa?.questions) ? qa.questions : [];
+    if (questions.length > 0 && !answers.some((a) => (a || '').trim().length > 0)) {
+      setPortalTab('questions');
+      setError(T.needOneAnswer);
+      return;
+    }
+
+    setBusy(true);
     try {
-      await submitQa(token, answers);
+      await submitQa(token, answers, schema ? formValues : null);
       localStorage.removeItem(PORTAL_TOKEN_KEY);
       setView('submitted');
     } catch (err) {
@@ -163,7 +285,7 @@ export default function QAFollowUpPage() {
   const wide = view === 'form';
 
   return (
-    <div className="min-h-screen bg-muted/30 flex items-center justify-center p-4">
+    <div className={`min-h-screen bg-muted/30 flex justify-center p-4 ${wide ? 'items-start' : 'items-center'}`}>
       <div className={`w-full ${wide ? 'max-w-2xl' : 'max-w-md'}`}>
         <Header />
 
@@ -263,73 +385,137 @@ export default function QAFollowUpPage() {
           </Card>
         )}
 
-        {view === 'form' && qa && (
-          <div className="space-y-3">
-            <Card>
-              <CardContent className="p-5 space-y-1.5">
-                <div className="text-[10px] font-bold tracking-widest uppercase text-muted-foreground">
-                  {T.formLabel}
-                </div>
-                <h1 className="text-base font-bold flex items-center gap-2">
-                  <MessageSquare className="h-4 w-4 text-primary" />
-                  {T.formForPosition(qa.job_title || summary?.job_title)}
-                </h1>
-                {qa.expired_at && (
-                  <p className="text-[11px] text-muted-foreground inline-flex items-center gap-1">
-                    <Clock className="h-3 w-3" /> {T.formDeadline(fmtDate(qa.expired_at))}
-                  </p>
-                )}
-                <p className="text-[11px] text-muted-foreground leading-relaxed pt-1">
-                  {T.formIntro}
-                </p>
-              </CardContent>
-            </Card>
+        {view === 'form' && qa && (() => {
+          const schema = qa.application_form_schema;
+          const questions = Array.isArray(qa.questions) ? qa.questions : [];
+          const formComplete = schema ? findMissingRequiredClient(schema, formValues).length === 0 : true;
+          const answeredCount = answers.filter((a) => (a || '').trim().length > 0).length;
 
-            {(Array.isArray(qa.questions) ? qa.questions : []).map((q, i) => (
-              <Card key={i}>
-                <CardContent className="p-5 space-y-2">
-                  <div className="flex items-center gap-2">
-                    <span className="flex h-5 w-5 items-center justify-center rounded-full bg-primary text-primary-foreground text-[10px] font-semibold shrink-0">
-                      {i + 1}
-                    </span>
-                    {q.topic && (
-                      <Badge variant="outline" className="text-[10px] uppercase tracking-wide">
-                        {q.topic}
-                      </Badge>
-                    )}
+          return (
+            <div className="space-y-3 pb-20">
+              <Card>
+                <CardContent className="p-5 space-y-1.5">
+                  <div className="text-[10px] font-bold tracking-widest uppercase text-muted-foreground">
+                    {T.formLabel}
                   </div>
-                  <p className="text-sm leading-relaxed">{q.text || T.topicFallback}</p>
-                  <div>
-                    <label className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
-                      {T.answerLabel}
-                    </label>
-                    <Textarea
-                      value={answers[i] ?? ''}
-                      onChange={(e) => setAnswerAt(i, e.target.value)}
-                      placeholder={T.answerPlaceholder}
-                      rows={5}
-                      className="text-sm mt-1"
-                    />
-                  </div>
+                  <h1 className="text-base font-bold flex items-center gap-2">
+                    <MessageSquare className="h-4 w-4 text-primary" />
+                    {T.formForPosition(qa.job_title || summary?.job_title)}
+                  </h1>
+                  {qa.expired_at && (
+                    <p className="text-[11px] text-muted-foreground inline-flex items-center gap-1">
+                      <Clock className="h-3 w-3" /> {T.formDeadline(fmtDate(qa.expired_at))}
+                    </p>
+                  )}
+                  <p className="text-[11px] text-muted-foreground leading-relaxed pt-1">
+                    {T.formIntro}
+                  </p>
                 </CardContent>
               </Card>
-            ))}
 
-            {error && (
-              <div className="flex items-center gap-2 px-3 py-2 rounded-md border border-rose-200 bg-rose-50 text-xs text-rose-600">
-                <AlertTriangle className="h-3.5 w-3.5 shrink-0" /> {error}
+              {/* Tab bar — Application Form first (required), Questions second */}
+              <div className="flex w-full gap-1 rounded-lg border bg-muted p-1">
+                <button
+                  type="button"
+                  onClick={() => setPortalTab('form')}
+                  className={`flex-1 rounded-md px-3 py-2 text-xs font-semibold inline-flex items-center justify-center gap-1.5 transition-colors ${
+                    portalTab === 'form' ? 'bg-primary text-primary-foreground shadow-sm' : 'text-muted-foreground hover:text-foreground'
+                  }`}
+                >
+                  <ClipboardList className="h-3.5 w-3.5" />
+                  {T.tabForm}
+                  {schema && (
+                    formComplete
+                      ? <Check className="h-3.5 w-3.5 text-emerald-500" />
+                      : <span className="h-2 w-2 rounded-full bg-amber-500 inline-block" />
+                  )}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setPortalTab('questions')}
+                  className={`flex-1 rounded-md px-3 py-2 text-xs font-semibold inline-flex items-center justify-center gap-1.5 transition-colors ${
+                    portalTab === 'questions' ? 'bg-primary text-primary-foreground shadow-sm' : 'text-muted-foreground hover:text-foreground'
+                  }`}
+                >
+                  <MessageSquare className="h-3.5 w-3.5" />
+                  {T.tabQuestions}
+                  {questions.length > 0 && (
+                    <span className="text-[10px] font-normal opacity-80">{answeredCount}/{questions.length}</span>
+                  )}
+                </button>
               </div>
-            )}
 
-            <div className="flex justify-end pt-1">
-              <Button onClick={handleSubmit} disabled={busy} className="text-sm">
-                {busy
-                  ? <><Loader2 className="h-3.5 w-3.5 mr-1.5 animate-spin" />{T.submitting}</>
-                  : <><Send className="h-3.5 w-3.5 mr-1.5" />{T.submitButton}</>}
-              </Button>
+              {portalTab === 'form' ? (
+                schema ? (
+                  <PortalApplicationForm
+                    schema={schema}
+                    values={formValues}
+                    errors={fieldErrors}
+                    onField={setFormField}
+                    onToggle={toggleFormOption}
+                  />
+                ) : (
+                  <Card><CardContent className="p-5 text-center text-[11px] text-muted-foreground italic">
+                    Tidak ada formulir lamaran untuk tautan ini.
+                  </CardContent></Card>
+                )
+              ) : (
+                questions.length === 0 ? (
+                  <Card><CardContent className="p-5 text-center text-[11px] text-muted-foreground italic">
+                    Tidak ada pertanyaan tambahan.
+                  </CardContent></Card>
+                ) : (
+                  questions.map((q, i) => (
+                    <Card key={i}>
+                      <CardContent className="p-5 space-y-2">
+                        <div className="flex items-center gap-2">
+                          <span className="flex h-5 w-5 items-center justify-center rounded-full bg-primary text-primary-foreground text-[10px] font-semibold shrink-0">
+                            {i + 1}
+                          </span>
+                          {q.topic && (
+                            <Badge variant="outline" className="text-[10px] uppercase tracking-wide">
+                              {q.topic}
+                            </Badge>
+                          )}
+                        </div>
+                        <p className="text-sm leading-relaxed">{q.text || T.topicFallback}</p>
+                        <div>
+                          <label className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
+                            {T.answerLabel}
+                          </label>
+                          <Textarea
+                            value={answers[i] ?? ''}
+                            onChange={(e) => setAnswerAt(i, e.target.value)}
+                            placeholder={T.answerPlaceholder}
+                            rows={5}
+                            className="text-sm mt-1"
+                          />
+                        </div>
+                      </CardContent>
+                    </Card>
+                  ))
+                )
+              )}
+
+              {error && (
+                <div className="flex items-center gap-2 px-3 py-2 rounded-md border border-rose-200 bg-rose-50 text-xs text-rose-600">
+                  <AlertTriangle className="h-3.5 w-3.5 shrink-0" /> {error}
+                </div>
+              )}
+
+              {/* One submit, sticky + visible from both tabs */}
+              <div className="sticky bottom-3 pt-1">
+                <div className="rounded-lg border bg-background shadow-lg p-2">
+                  <Button onClick={handleSubmit} disabled={busy} className="w-full text-sm">
+                    {busy
+                      ? <><Loader2 className="h-3.5 w-3.5 mr-1.5 animate-spin" />{T.submitting}</>
+                      : <><Send className="h-3.5 w-3.5 mr-1.5" />{T.submitButton}</>}
+                  </Button>
+                </div>
+              </div>
             </div>
-          </div>
-        )}
+          );
+        })()}
 
         {view === 'submitted' && (
           <Card>
@@ -363,5 +549,90 @@ function CenteredCard({ children }) {
         {children}
       </CardContent>
     </Card>
+  );
+}
+
+/* ─── Candidate-editable Application Form, rendered from the schema snapshot ─── */
+function PortalApplicationForm({ schema, values, errors, onField, onToggle }) {
+  const sections = Array.isArray(schema?.sections) ? schema.sections : [];
+  return (
+    <div className="space-y-3">
+      {sections.map((section) => (
+        <Card key={section.key}>
+          <CardContent className="p-5 space-y-3">
+            <div className="text-[10px] font-bold tracking-widest uppercase text-muted-foreground">
+              {sectionLabelFor(section)}
+            </div>
+            {(Array.isArray(section.fields) ? section.fields : []).map((field) => (
+              <PortalFormField
+                key={field.key}
+                field={field}
+                value={values[field.key]}
+                invalid={!!errors[field.key]}
+                onField={onField}
+                onToggle={onToggle}
+              />
+            ))}
+          </CardContent>
+        </Card>
+      ))}
+    </div>
+  );
+}
+
+function PortalFormField({ field, value, invalid, onField, onToggle }) {
+  const errCls = invalid ? 'border-rose-400 focus-visible:ring-rose-300' : '';
+  return (
+    <div className="space-y-1">
+      <label className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
+        {labelFor(field)}
+        {field.required && <span className="text-rose-500 ml-0.5">*</span>}
+      </label>
+
+      {field.type === 'select' ? (
+        <Select value={value || undefined} onValueChange={(v) => onField(field.key, v)}>
+          <SelectTrigger aria-invalid={invalid} className={`h-9 text-sm ${errCls}`}>
+            <SelectValue placeholder={T.selectPlaceholder} />
+          </SelectTrigger>
+          <SelectContent>
+            {(Array.isArray(field.options) ? field.options : []).map((o) => (
+              <SelectItem key={o} value={o} className="text-sm">{o}</SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+      ) : field.type === 'multiselect' ? (
+        <>
+          <div className="flex flex-wrap gap-1.5">
+            {(Array.isArray(field.options) ? field.options : []).map((o) => {
+              const sel = Array.isArray(value) && value.includes(o);
+              return (
+                <button
+                  key={o}
+                  type="button"
+                  onClick={() => onToggle(field.key, o)}
+                  className={`px-3 py-1.5 rounded-md border text-xs font-medium transition-colors ${
+                    sel ? 'bg-primary text-primary-foreground border-primary' : 'bg-background text-foreground hover:bg-muted'
+                  }`}
+                >
+                  {o}
+                </button>
+              );
+            })}
+          </div>
+          <p className="text-[10px] text-muted-foreground">{T.citiesHint}</p>
+        </>
+      ) : (
+        <Input
+          type={field.type === 'date' ? 'date' : 'text'}
+          value={value ?? ''}
+          onChange={(e) => onField(field.key, e.target.value)}
+          placeholder={placeholderFor(field)}
+          aria-invalid={invalid}
+          className={`h-9 text-sm ${errCls}`}
+        />
+      )}
+
+      {invalid && <p className="text-[10px] text-rose-600">{T.requiredHint}</p>}
+    </div>
   );
 }

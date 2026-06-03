@@ -4,6 +4,7 @@ import automationModel from '../automation-setting/automation.model.js';
 import aiService from '../../shared/services/ai.service.js';
 import { parseFileToText } from '../../shared/utils/file-parser.js';
 import { sendQuestionsEmail } from '../../shared/services/candidate-mailer.js';
+import { getApplicationFormTemplate } from './screening-applicationForm.js';
 
 class ScreeningService {
   // Layer 1 — extract facets from a CV file (multer file object).
@@ -469,11 +470,18 @@ class ScreeningService {
     });
   }
 
-  // Read the current Q&A set (without answers — that's the deferred inbox).
+  // The standard Application Form template (static single source of truth).
+  // Recruiter UI fetches this for the read-only preview.
+  getApplicationFormTemplate() {
+    return getApplicationFormTemplate();
+  }
+
+  // Read the current Q&A set (without response data — answers + submitted form are
+  // the deferred inbox, surfaced via qaGetWithAnswers). Keeps the schema snapshot.
   async qaGet(screening_id) {
     const qa = await screeningModel.getQaByScreening(screening_id);
     if (!qa) return null;
-    const { answers, ...rest } = qa; 
+    const { answers, application_form, ...rest } = qa;
     return rest;
   }
 
@@ -506,7 +514,10 @@ class ScreeningService {
     }
 
     const expired_at = new Date(Date.now() + 48 * 60 * 60 * 1000); // 48h response window
-    const sent = await screeningModel.markQaSent(screening_id, expired_at);
+    // Freeze the application-form schema onto the row so the candidate is always
+    // validated against the exact definition they were served (custom-ready hook).
+    const tpl = getApplicationFormTemplate();
+    const sent = await screeningModel.markQaSent(screening_id, expired_at, tpl);
 
     const origin = (process.env.PORTAL_BASE_URL || 'http://localhost:5173')
       .replace(/\/+$/, '')

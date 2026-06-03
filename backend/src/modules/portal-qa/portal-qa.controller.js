@@ -51,8 +51,11 @@ class PortalQaController {
 
   async submit(req, res) {
     try {
-      const { answers } = req.body || {};
-      const result = await portalQaService.submit(req.params.token, req.screeningQaId, answers);
+      const { answers, application_form } = req.body || {};
+      const result = await portalQaService.submit(req.params.token, req.screeningQaId, {
+        answers,
+        application_form,
+      });
       res.status(200).json({ message: 'Answers submitted', ...result });
     } catch (err) {
       res.status(err.status || 500).json({ message: err.message });

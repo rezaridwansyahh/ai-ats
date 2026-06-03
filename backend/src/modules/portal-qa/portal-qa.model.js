@@ -15,6 +15,8 @@ class PortalQa {
              sq.num_questions,
              sq.questions,
              sq.answers,
+             sq.application_form,
+             sq.application_form_schema,
              sq.status,
              sq.sent_at,
              sq.responded_at,
@@ -36,18 +38,19 @@ class PortalQa {
     return result.rows[0] || null;
   }
 
-  static async saveAnswers(id, answers) {
+  static async saveAnswers(id, answers, application_form = null) {
     const result = await getDb().query(
       `
       UPDATE screening_qa
-      SET answers      = $2::jsonb,
-          status       = 'responded',
-          responded_at = NOW(),
-          updated_at   = NOW()
+      SET answers          = $2::jsonb,
+          application_form = $3::jsonb,
+          status           = 'responded',
+          responded_at     = NOW(),
+          updated_at       = NOW()
       WHERE id = $1
       RETURNING *
       `,
-      [id, JSON.stringify(answers)]
+      [id, JSON.stringify(answers), application_form ? JSON.stringify(application_form) : null]
     );
     return result.rows[0] || null;
   }

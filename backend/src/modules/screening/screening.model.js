@@ -729,6 +729,8 @@ class ScreeningModel {
         questions     = EXCLUDED.questions,
         status        = 'draft',
         answers       = NULL,
+        application_form        = NULL,
+        application_form_schema = NULL,
         sent_at       = NULL,
         responded_at  = NULL,
         expired_at    = NULL,
@@ -753,15 +755,19 @@ class ScreeningModel {
     return result.rows[0] || null;
   }
 
-  async markQaSent(screening_id, expired_at) {
+  async markQaSent(screening_id, expired_at, schema = null) {
     const result = await getDb().query(
       `
       UPDATE screening_qa
-      SET status = 'sent', sent_at = NOW(), expired_at = $2, updated_at = NOW()
+      SET status = 'sent',
+          sent_at = NOW(),
+          expired_at = $2,
+          application_form_schema = $3::jsonb,
+          updated_at = NOW()
       WHERE screening_id = $1
       RETURNING *
       `,
-      [screening_id, expired_at]
+      [screening_id, expired_at, schema ? JSON.stringify(schema) : null]
     );
     return result.rows[0] || null;
   }

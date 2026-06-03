@@ -314,6 +314,16 @@ class ScreeningController {
     }
   }
 
+  // Standard Application Form template (read-only preview for the recruiter UI).
+  async getApplicationFormTemplate(req, res) {
+    try {
+      const template = screeningService.getApplicationFormTemplate();
+      res.status(200).json({ message: 'Application form template', template });
+    } catch (err) {
+      res.status(err.status || 500).json({ message: err.message });
+    }
+  }
+
   // ── Follow-up Q&A (send side) ──
   async qaGet(req, res) {
     try {
