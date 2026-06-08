@@ -2,6 +2,7 @@
 DROP TABLE IF EXISTS company_budgets CASCADE;
 DROP TABLE IF EXISTS company_usage CASCADE;
 DROP TABLE IF EXISTS candidate_interview CASCADE;
+DROP TABLE IF EXISTS interview_position_prep CASCADE;
 DROP TABLE IF EXISTS screening_qa CASCADE;
 DROP TABLE IF EXISTS candidate_screening CASCADE;
 DROP TABLE IF EXISTS candidate_job_score CASCADE;
@@ -527,23 +528,36 @@ CREATE TABLE screening_qa (
   updated_at  TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
--- candidate_interview: stub for the Interview module's R1 prep queue.
--- Phase 4 only writes here (via advance-bulk on Calibration). The Interview
--- module replaces this with its own schema when it ships.
 CREATE TABLE candidate_interview (
-  id              SERIAL PRIMARY KEY,
-  candidate_id    INTEGER NOT NULL REFERENCES master_candidate(id) ON DELETE CASCADE,
-  job_id          INTEGER NOT NULL REFERENCES core_job(id) ON DELETE CASCADE,
-  screening_id    INTEGER REFERENCES candidate_screening(id) ON DELETE SET NULL,
-  company_id      INTEGER REFERENCES core_company(id) ON DELETE CASCADE,
-  status          VARCHAR(20) NOT NULL DEFAULT 'r1_prep',  -- r1_prep | scheduled | done | cancelled
-  scheduled_at    TIMESTAMPTZ,
-  created_at      TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-  updated_at      TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  id SERIAL PRIMARY KEY,
+  candidate_id INTEGER NOT NULL REFERENCES master_candidate(id) ON DELETE CASCADE,
+  job_id INTEGER NOT NULL REFERENCES core_job(id) ON DELETE CASCADE,
+  screening_id INTEGER REFERENCES candidate_screening(id) ON DELETE SET NULL,
+  company_id INTEGER REFERENCES core_company(id) ON DELETE CASCADE,
+  status VARCHAR(20) NOT NULL DEFAULT 'ongoing',  -- ongoing | scheduled | done | cancelled
+  scheduled_at TIMESTAMPTZ,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
   UNIQUE (candidate_id, job_id)
 );
 CREATE INDEX idx_ci_job     ON candidate_interview (job_id);
 CREATE INDEX idx_ci_company ON candidate_interview (company_id);
+
+CREATE TABLE interview_position_prep (
+  id SERIAL PRIMARY KEY,
+  job_id INTEGER NOT NULL REFERENCES core_job(id) ON DELETE CASCADE,
+  company_id INTEGER REFERENCES core_company(id) ON DELETE CASCADE,
+  questions JSONB NOT NULL,          -- generated from JD + skills
+  rubric_items JSONB NOT NULL,          -- competency framework with weights & anchors
+  rubric_locked BOOLEAN NOT NULL DEFAULT false,       -- must be true before any batch is sent
+  rubric_locked_at TIMESTAMPTZ,
+  locked_by INTEGER REFERENCES master_users(id) ON DELETE SET NULL,
+  created_by INTEGER REFERENCES master_users(id) ON DELETE SET NULL,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  UNIQUE (job_id)
+);
+
 
 CREATE INDEX idx_applicant_information_gin
   ON master_applicant USING GIN (information jsonb_path_ops);

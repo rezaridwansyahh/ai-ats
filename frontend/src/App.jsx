@@ -30,6 +30,7 @@ import AssessmentCPage from "./pages/AssessmentC"
 import AssessmentDPage from "./pages/AssessmentD"
 import InsightsDiscoveryAssessmentPage from "./pages/InsightsDiscoveryAssessment"
 import ThomasKilmannAssessmentPage from "./pages/ThomasKilmannAssessment"
+import InterviewWorkboard from "./pages/InterviewWorkboard"
 
 function App() {
   return (
@@ -65,6 +66,9 @@ function App() {
         <Route path="/selection/ai-screening/candidate/:screeningId" element={<AIScreeningCandidatePage />} />
         <Route path="/selection/report" element={<ReportPage />} />
         <Route path="/selection/report/:jobId/:participantId" element={<CandidateDetailPage />} />
+        <Route path="/selection/interview" element={<InterviewWorkboard />} />
+        <Route path="/selection/interview/job/:jobId" element={<ComingSoonPage />} />
+        <Route path="/selection/interview/candidate/:interviewId" element={<ComingSoonPage />} />
 
         <Route path="/asesmen/assessment-a" element={<AssessmentAPage />} />
         <Route path="/asesmen/assessment-b" element={<AssessmentBPage />} />
