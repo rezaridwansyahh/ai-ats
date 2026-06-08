@@ -6,7 +6,7 @@
 //
 // permissions.js generates ids as: (module_menu_id - 1) * 4 + offset
 //   offset 1 = read, 2 = create, 3 = update, 4 = delete
-const MENU_COUNT = 19;
+const MENU_COUNT = 20; // Updated to include Budget menu (id 20)
 const FUNC_OFFSET = { read: 1, create: 2, update: 3, delete: 4 };
 
 let nextId = 1;

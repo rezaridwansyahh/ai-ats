@@ -30,6 +30,7 @@ import AssessmentCPage from "./pages/AssessmentC"
 import AssessmentDPage from "./pages/AssessmentD"
 import InsightsDiscoveryAssessmentPage from "./pages/InsightsDiscoveryAssessment"
 import ThomasKilmannAssessmentPage from "./pages/ThomasKilmannAssessment"
+import BudgetSettingsPage from "./pages/BudgetSettings"
 
 function App() {
   return (
@@ -77,6 +78,7 @@ function App() {
         <Route path="/settings/role-management" element={<RoleManagementPage />} />
         <Route path="/settings/integrations" element={<IntegrationsPage />} />
         <Route path="/settings/account" element={<AccountPage />} />
+        <Route path="/settings/budget" element={<BudgetSettingsPage />} />
         <Route path="/settings/recruiters" element={<RecruitersPage />} />
 
         {/* Catch-all: any unregistered path shows Coming Soon */}

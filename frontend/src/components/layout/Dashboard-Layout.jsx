@@ -24,6 +24,7 @@ const BREADCRUMB_MAP = {
   '/settings/role-management':   ['Settings', 'Role Management'],
   '/settings/integrations':      ['Settings', 'Integrations'],
   '/settings/account':           ['Settings', 'Account'],
+  '/settings/budget':            ['Settings', 'Budget'],
   '/settings/recruiters':        ['Settings', 'Recruiters'],
 }
 

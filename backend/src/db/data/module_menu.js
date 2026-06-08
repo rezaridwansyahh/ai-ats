@@ -28,4 +28,5 @@ export default [
   { id: 15, module_id: 5, menu_id: 15 }, // Integrations
   { id: 16, module_id: 5, menu_id: 16 }, // Account
   { id: 17, module_id: 5, menu_id: 17 }, // Recruiters
+  { id: 20, module_id: 5, menu_id: 20 }, // Budget (Task 6.12b)
 ];

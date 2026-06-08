@@ -64,6 +64,7 @@ const routeMap = {
   'Role Management':   '/settings/role-management',
   'Recruiters':        '/settings/recruiters',
   'Account':           '/settings/account',
+  'Budget':            '/settings/budget',
   'Integrations':      '/settings/integrations',
   'Job Management':    '/sourcing/job-management',
   'Source Management': '/sourcing/source-management',

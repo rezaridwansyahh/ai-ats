@@ -157,6 +157,37 @@ class CompanyUsageService {
   }
 
   /**
+   * Update budget for current month
+   * @param {number} company_id - Company ID
+   * @param {number} budget_usd - New budget amount
+   * @returns {Promise<object>} Updated budget record
+   */
+  async updateCurrentBudget(company_id, budget_usd) {
+    const monthStart = getCurrentMonthStart();
+
+    const result = await getDb().query(
+      `UPDATE company_budgets
+       SET budget_usd = $1, updated_at = NOW()
+       WHERE company_id = $2 AND month_year = $3
+       RETURNING *`,
+      [budget_usd, company_id, monthStart]
+    );
+
+    if (result.rows.length === 0) {
+      // Create if doesn't exist
+      const insert = await getDb().query(
+        `INSERT INTO company_budgets (company_id, month_year, budget_usd)
+         VALUES ($1, $2, $3)
+         RETURNING *`,
+        [company_id, monthStart, budget_usd]
+      );
+      return insert.rows[0];
+    }
+
+    return result.rows[0];
+  }
+
+  /**
    * Send Slack alert when company hits 80% of budget
    * Fire-and-forget, never throws
    *
