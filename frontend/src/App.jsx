@@ -31,6 +31,8 @@ import AssessmentDPage from "./pages/AssessmentD"
 import InsightsDiscoveryAssessmentPage from "./pages/InsightsDiscoveryAssessment"
 import ThomasKilmannAssessmentPage from "./pages/ThomasKilmannAssessment"
 import InterviewWorkboard from "./pages/InterviewWorkboard"
+import InterviewJobPage from "./components/interview/Interview-Job"
+import InterviewCandidatePage from "./components/interview/Interview-Candidate"
 import BudgetSettingsPage from "./pages/BudgetSettings"
 
 function App() {
@@ -68,8 +70,8 @@ function App() {
         <Route path="/selection/report" element={<ReportPage />} />
         <Route path="/selection/report/:jobId/:participantId" element={<CandidateDetailPage />} />
         <Route path="/selection/interview" element={<InterviewWorkboard />} />
-        <Route path="/selection/interview/job/:jobId" element={<ComingSoonPage />} />
-        <Route path="/selection/interview/candidate/:interviewId" element={<ComingSoonPage />} />
+        <Route path="/selection/interview/job/:jobId" element={<InterviewJobPage/>} />
+        <Route path="/selection/interview/candidate/:interviewId" element={<InterviewCandidatePage />} />
 
         <Route path="/asesmen/assessment-a" element={<AssessmentAPage />} />
         <Route path="/asesmen/assessment-b" element={<AssessmentBPage />} />
