@@ -55,20 +55,6 @@ class InterviewController {
     }
   }
 
-  async scheduleInterview(req, res) {
-    try {
-      const interview_id = Number(req.params.interview_id);
-      const { scheduled_at } = req.body || {};
-      const result = await interviewService.scheduleInterview(interview_id, {
-        scheduled_at,
-        company_id: req.user?.company_id || null,
-      });
-      res.status(200).json({ message: 'Interview scheduled', interview: result });
-    } catch (err) {
-      res.status(err.status || 500).json({ message: err.message });
-    }
-  }
-
   async updateStatus(req, res) {
     try {
       const interview_id = Number(req.params.interview_id);
@@ -78,6 +64,89 @@ class InterviewController {
         company_id: req.user?.company_id || null,
       });
       res.status(200).json({ message: 'Interview status updated', interview: result });
+    } catch (err) {
+      res.status(err.status || 500).json({ message: err.message });
+    }
+  }
+
+  async getSchedules(req, res) {
+    try {
+      const interview_id = Number(req.params.interview_id);
+      const schedules = await interviewService.getSchedules(interview_id, {
+        company_id: req.user?.company_id || null,
+      });
+      res.status(200).json({ message: 'Schedules fetched', schedules });
+    } catch (err) {
+      res.status(err.status || 500).json({ message: err.message });
+    }
+  }
+
+  async createSchedule(req, res) {
+    try {
+      const interview_id = Number(req.params.interview_id);
+      const { title, description, scheduled_at } = req.body || {};
+      const result = await interviewService.createSchedule(interview_id, {
+        title,
+        description,
+        scheduled_at,
+        company_id: req.user?.company_id || null,
+        created_by: req.user?.user_id    || null,
+      });
+      res.status(201).json({ message: 'Schedule created', schedule: result });
+    } catch (err) {
+      res.status(err.status || 500).json({ message: err.message });
+    }
+  }
+
+  async updateSchedule(req, res) {
+    try {
+      const schedule_id = Number(req.params.schedule_id);
+      const { title, description, scheduled_at } = req.body || {};
+      const result = await interviewService.updateSchedule(
+        schedule_id,
+        { title, description, scheduled_at },
+        { company_id: req.user?.company_id || null }
+      );
+      res.status(200).json({ message: 'Schedule updated', schedule: result });
+    } catch (err) {
+      res.status(err.status || 500).json({ message: err.message });
+    }
+  }
+
+  async confirmSchedule(req, res) {
+    try {
+      const schedule_id = Number(req.params.schedule_id);
+      const { confirmation_note } = req.body || {};
+      const result = await interviewService.confirmSchedule(schedule_id, {
+        confirmed_by:      req.user?.user_id    || null,
+        confirmation_note: confirmation_note    || null,
+        company_id:        req.user?.company_id || null,
+      });
+      res.status(200).json({ message: 'Schedule confirmed', schedule: result });
+    } catch (err) {
+      res.status(err.status || 500).json({ message: err.message });
+    }
+  }
+
+  async unconfirmSchedule(req, res) {
+    try {
+      const schedule_id = Number(req.params.schedule_id);
+      const result = await interviewService.unconfirmSchedule(schedule_id, {
+        company_id: req.user?.company_id || null,
+      });
+      res.status(200).json({ message: 'Schedule unconfirmed', schedule: result });
+    } catch (err) {
+      res.status(err.status || 500).json({ message: err.message });
+    }
+  }
+
+  async deleteSchedule(req, res) {
+    try {
+      const schedule_id = Number(req.params.schedule_id);
+      const result = await interviewService.deleteSchedule(schedule_id, {
+        company_id: req.user?.company_id || null,
+      });
+      res.status(200).json({ message: 'Schedule deleted', schedule: result });
     } catch (err) {
       res.status(err.status || 500).json({ message: err.message });
     }

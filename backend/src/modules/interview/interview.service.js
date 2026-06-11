@@ -37,17 +37,6 @@ class InterviewService {
     return await interviewModel.getByJob(job_id);
   }
 
-  async scheduleInterview(interview_id, { scheduled_at, company_id = null } = {}) {
-    if (!interview_id) throw { status: 400, message: 'interview_id is required' };
-    if (!scheduled_at) throw { status: 400, message: 'scheduled_at is required' };
-    const existing = await interviewModel.getById(interview_id);
-    if (!existing) throw { status: 404, message: 'Interview not found' };
-    if (company_id && existing.company_id && existing.company_id !== company_id) {
-      throw { status: 403, message: 'Cross-tenant access denied' };
-    }
-    return await interviewModel.scheduleInterview(interview_id, scheduled_at);
-  }
-
   async updateStatus(interview_id, { status, company_id = null } = {}) {
     if (!interview_id) throw { status: 400, message: 'interview_id is required' };
     const valid = ['ongoing', 'scheduled', 'in_batch', 'scored', 'decided', 'done'];
@@ -60,6 +49,142 @@ class InterviewService {
       throw { status: 403, message: 'Cross-tenant access denied' };
     }
     return await interviewModel.updateInterviewStatus(interview_id, status);
+  }
+
+  async getSchedules(interview_id, { company_id = null } = {}) {
+    if (!interview_id) throw { status: 400, message: 'interview_id is required' };
+    const interview = await interviewModel.getById(interview_id);
+    if (!interview) throw { status: 404, message: 'Interview not found' };
+    if (company_id && interview.company_id && interview.company_id !== company_id) {
+      throw { status: 403, message: 'Cross-tenant access denied' };
+    }
+    return await interviewModel.getSchedulesByInterview(interview_id);
+  }
+
+  async createSchedule(interview_id, { title, description, scheduled_at, company_id = null, created_by = null } = {}) {
+    if (!interview_id) throw { status: 400, message: 'interview_id is required' };
+    if (!title || !title.trim()) throw { status: 400, message: 'title is required' };
+    if (!scheduled_at) throw { status: 400, message: 'scheduled_at is required' };
+
+    const interview = await interviewModel.getById(interview_id);
+    if (!interview) throw { status: 404, message: 'Interview not found' };
+    if (company_id && interview.company_id && interview.company_id !== company_id) {
+      throw { status: 403, message: 'Cross-tenant access denied' };
+    }
+
+    // enforce max 3 sessions per candidate interview
+    const count = await interviewModel.countSchedules(interview_id);
+    if (count >= 3) {
+      throw { status: 400, message: 'Maximum 3 sessions per candidate interview' };
+    }
+
+    const schedule = await interviewModel.createSchedule({
+      interview_id,
+      company_id: company_id || interview.company_id || null,
+      title: title.trim(),
+      description: description || null,
+      scheduled_at,
+      created_by,
+    });
+
+    // sync candidate_interview.scheduled_at to next upcoming session
+    await interviewModel.syncScheduledAt(interview_id);
+
+    return schedule;
+  }
+
+  async updateSchedule(schedule_id, fields, { company_id = null } = {}) {
+    if (!schedule_id) throw { status: 400, message: 'schedule_id is required' };
+
+    const existing = await interviewModel.getScheduleById(schedule_id);
+    if (!existing) throw { status: 404, message: 'Schedule not found' };
+
+    // tenant guard via parent interview
+    if (company_id) {
+      const interview = await interviewModel.getById(existing.interview_id);
+      if (interview?.company_id && interview.company_id !== company_id) {
+        throw { status: 403, message: 'Cross-tenant access denied' };
+      }
+    }
+
+    // only allow updating title, description, scheduled_at
+    const allowed = {};
+    if (fields.title       !== undefined) allowed.title        = fields.title.trim();
+    if (fields.description !== undefined) allowed.description  = fields.description || null;
+    if (fields.scheduled_at !== undefined) allowed.scheduled_at = fields.scheduled_at;
+
+    if (Object.keys(allowed).length === 0) {
+      throw { status: 400, message: 'No valid fields to update' };
+    }
+
+    const updated = await interviewModel.updateSchedule(schedule_id, allowed);
+
+    await interviewModel.syncScheduledAt(existing.interview_id);
+    return updated;
+  }
+
+  async confirmSchedule(schedule_id, { confirmed_by = null, confirmation_note = null, company_id = null } = {}) {
+    if (!schedule_id) throw { status: 400, message: 'schedule_id is required' };
+
+    const existing = await interviewModel.getScheduleById(schedule_id);
+    if (!existing) throw { status: 404, message: 'Schedule not found' };
+
+    if (company_id) {
+      const interview = await interviewModel.getById(existing.interview_id);
+      if (interview?.company_id && interview.company_id !== company_id) {
+        throw { status: 403, message: 'Cross-tenant access denied' };
+      }
+    }
+
+    if (existing.confirmed) return existing; 
+    return await interviewModel.confirmSchedule(schedule_id, {
+      confirmed_by,
+      confirmation_note,
+    });
+  }
+
+  async unconfirmSchedule(schedule_id, { company_id = null } = {}) {
+    if (!schedule_id) throw { status: 400, message: 'schedule_id is required' };
+
+    const existing = await interviewModel.getScheduleById(schedule_id);
+    if (!existing) throw { status: 404, message: 'Schedule not found' };
+
+    if (company_id) {
+      const interview = await interviewModel.getById(existing.interview_id);
+      if (interview?.company_id && interview.company_id !== company_id) {
+        throw { status: 403, message: 'Cross-tenant access denied' };
+      }
+    }
+
+    if (!existing.confirmed) return existing; 
+
+    return await interviewModel.unconfirmSchedule(schedule_id);
+  }
+
+  async deleteSchedule(schedule_id, { company_id = null } = {}) {
+    if (!schedule_id) throw { status: 400, message: 'schedule_id is required' };
+
+    const existing = await interviewModel.getScheduleById(schedule_id);
+    if (!existing) throw { status: 404, message: 'Schedule not found' };
+
+    if (company_id) {
+      const interview = await interviewModel.getById(existing.interview_id);
+      if (interview?.company_id && interview.company_id !== company_id) {
+        throw { status: 403, message: 'Cross-tenant access denied' };
+      }
+    }
+
+    // block deletion of confirmed sessions — must unconfirm first
+    if (existing.confirmed) {
+      throw { status: 400, message: 'Cannot delete a confirmed session — unconfirm it first' };
+    }
+
+    const deleted = await interviewModel.deleteSchedule(schedule_id);
+
+    // re-sync scheduled_at on parent after removal
+    await interviewModel.syncScheduledAt(existing.interview_id);
+
+    return deleted;
   }
 
   async getPrep(job_id, { company_id = null } = {}) {

@@ -558,6 +558,21 @@ CREATE TABLE interview_position_prep (
   UNIQUE (job_id)
 );
 
+CREATE TABLE interview_schedule (
+  id SERIAL PRIMARY KEY,
+  interview_id INTEGER NOT NULL REFERENCES candidate_interview(id) ON DELETE CASCADE,
+  company_id INTEGER REFERENCES core_company(id) ON DELETE CASCADE,
+  title VARCHAR(255) NOT NULL,
+  description TEXT,
+  scheduled_at TIMESTAMPTZ NOT NULL,
+  confirmed BOOLEAN NOT NULL DEFAULT false,
+  confirmed_at TIMESTAMPTZ,
+  confirmed_by INTEGER REFERENCES master_users(id) ON DELETE SET NULL,
+  confirmation_note TEXT,
+  created_by INTEGER REFERENCES master_users(id) ON DELETE SET NULL,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
 
 CREATE INDEX idx_applicant_information_gin
   ON master_applicant USING GIN (information jsonb_path_ops);

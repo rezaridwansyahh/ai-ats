@@ -25,3 +25,14 @@ export const lockRubric = (job_id) => api.post(`/interview/job/${job_id}/prep/ru
  
 export const unlockRubric = (job_id) => api.post(`/interview/job/${job_id}/prep/rubric/unlock`);
  
+export const getSchedules = (interview_id) => api.get(`/interview/${interview_id}/schedules`);
+ 
+export const createSchedule = (interview_id, { title, description, scheduled_at }) => api.post(`/interview/${interview_id}/schedules`, { title, description, scheduled_at });
+ 
+export const updateSchedule = (schedule_id, fields) => api.put(`/interview/schedules/${schedule_id}`, fields);
+ 
+export const confirmSchedule = (schedule_id, { confirmation_note } = {}) => api.post(`/interview/schedules/${schedule_id}/confirm`, { confirmation_note });
+ 
+export const unconfirmSchedule = (schedule_id) => api.post(`/interview/schedules/${schedule_id}/unconfirm`);
+ 
+export const deleteSchedule = (schedule_id) => api.delete(`/interview/schedules/${schedule_id}`);

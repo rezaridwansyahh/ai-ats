@@ -111,15 +111,28 @@ class InterviewModel {
     return result.rows[0] || null;
   }
 
-  async scheduleInterview(interview_id, scheduled_at) {
+  // Updates the denormalized scheduled_at on candidate_interview (mirrors next upcoming session).
+  async syncScheduledAt(interview_id) {
     const result = await getDb().query(
       `UPDATE candidate_interview
-          SET scheduled_at = $2,
-              status       = 'scheduled',
-              updated_at   = NOW()
+          SET scheduled_at = (
+                SELECT MIN(scheduled_at)
+                FROM interview_schedule
+                WHERE interview_id = $1
+                  AND confirmed = false
+                  AND scheduled_at >= NOW()
+              ),
+              status = CASE
+                WHEN EXISTS (
+                  SELECT 1 FROM interview_schedule
+                  WHERE interview_id = $1
+                ) THEN 'scheduled'
+                ELSE status
+              END,
+              updated_at = NOW()
         WHERE id = $1
         RETURNING *`,
-      [interview_id, scheduled_at]
+      [interview_id]
     );
     return result.rows[0] || null;
   }
@@ -167,7 +180,108 @@ class InterviewModel {
     return { counts, positions };
   }
 
-  //interview_position_prep
+  async getSchedulesByInterview(interview_id) {
+    const result = await getDb().query(
+      `SELECT * FROM interview_schedule
+       WHERE interview_id = $1
+       ORDER BY scheduled_at ASC`,
+      [interview_id]
+    );
+    return result.rows;
+  }
+
+  // Get a single schedule row by id.
+  async getScheduleById(schedule_id) {
+    const result = await getDb().query(
+      `SELECT * FROM interview_schedule WHERE id = $1`,
+      [schedule_id]
+    );
+    return result.rows[0] || null;
+  }
+
+  // Count existing sessions for an interview 
+  async countSchedules(interview_id) {
+    const result = await getDb().query(
+      `SELECT COUNT(*) FROM interview_schedule WHERE interview_id = $1`,
+      [interview_id]
+    );
+    return Number(result.rows[0].count);
+  }
+
+  async createSchedule({ interview_id, company_id, title, description, scheduled_at, created_by }) {
+    const result = await getDb().query(
+      `INSERT INTO interview_schedule
+         (interview_id, company_id, title, description, scheduled_at, created_by)
+       VALUES ($1, $2, $3, $4, $5, $6)
+       RETURNING *`,
+      [
+        interview_id,
+        company_id || null,
+        title,
+        description || null,
+        scheduled_at,
+        created_by || null,
+      ]
+    );
+    return result.rows[0];
+  }
+
+  async updateSchedule(schedule_id, fields) {
+    const keys   = Object.keys(fields).filter((k) => fields[k] !== undefined);
+    const values = keys.map((k) => fields[k]);
+
+    if (keys.length === 0) throw new Error('No fields provided for update');
+
+    const setClause = keys.map((k, i) => `"${k}" = $${i + 1}`).join(', ');
+
+    const result = await getDb().query(
+      `UPDATE interview_schedule
+          SET ${setClause}, updated_at = NOW()
+        WHERE id = $${keys.length + 1}
+        RETURNING *`,
+      [...values, schedule_id]
+    );
+    return result.rows[0] || null;
+  }
+
+  async confirmSchedule(schedule_id, { confirmed_by, confirmation_note }) {
+    const result = await getDb().query(
+      `UPDATE interview_schedule
+          SET confirmed          = true,
+              confirmed_at       = NOW(),
+              confirmed_by       = $2,
+              confirmation_note  = $3,
+              updated_at         = NOW()
+        WHERE id = $1
+        RETURNING *`,
+      [schedule_id, confirmed_by || null, confirmation_note || null]
+    );
+    return result.rows[0] || null;
+  }
+
+  // Unconfirm — recruiter reverses a confirmation.
+  async unconfirmSchedule(schedule_id) {
+    const result = await getDb().query(
+      `UPDATE interview_schedule
+          SET confirmed         = false,
+              confirmed_at      = NULL,
+              confirmed_by      = NULL,
+              confirmation_note = NULL,
+              updated_at        = NOW()
+        WHERE id = $1
+        RETURNING *`,
+      [schedule_id]
+    );
+    return result.rows[0] || null;
+  }
+
+  async deleteSchedule(schedule_id) {
+    const result = await getDb().query(
+      `DELETE FROM interview_schedule WHERE id = $1 RETURNING *`,
+      [schedule_id]
+    );
+    return result.rows[0] || null;
+  }
 
   async getPrepByJob(job_id) {
     const result = await getDb().query(
