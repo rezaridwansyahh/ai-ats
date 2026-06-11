@@ -153,6 +153,15 @@ export default function CandidateDetailPage() {
 
   const handleSendInvitation = () => setActiveKey('take');
 
+  const handleRevoke = (sessionId) => {
+    setExistingSessions((prev) => prev.filter((s) => s.id !== sessionId));
+  };
+
+  // One battery per (candidate, job). Derived from existingSessions, which already
+  // excludes revoked/expired server-side (session.model.js:getActiveByParticipantJob).
+  // Completed sessions still lock — recruiter cannot switch batteries post-completion.
+  const lockedBattery = existingSessions[0]?.battery ?? null;
+
   return (
     <div className="space-y-4">
       <BackButton onBack={() => navigate('/selection/report')} />
@@ -170,6 +179,7 @@ export default function CandidateDetailPage() {
           selectedBattery={battery}
           onSelectBattery={setBattery}
           onSendInvitation={handleSendInvitation}
+          lockedBattery={lockedBattery}
         />
       )}
       {activeKey === 'take' && (
@@ -180,6 +190,7 @@ export default function CandidateDetailPage() {
           jobId={jobId}
           existingSessions={existingSessions}
           onSessionsChange={setExistingSessions}
+          onRevoke={handleRevoke}
         />
       )}
       {activeKey === 'decide' && (

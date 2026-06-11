@@ -74,7 +74,11 @@ class SessionController {
         created: result.created,
       });
     } catch (err) {
-      res.status(err.status || 500).json({ message: err.message });
+      res.status(err.status || 500).json({
+        message: err.message,
+        ...(err.code ? { code: err.code } : {}),
+        ...(err.locked_battery ? { locked_battery: err.locked_battery } : {}),
+      });
     }
   }
 
@@ -118,6 +122,15 @@ class SessionController {
     try {
       const session = await sessionService.markCompletedByToken(req.params.token);
       res.status(200).json({ message: 'Session marked completed', session });
+    } catch (err) {
+      res.status(err.status || 500).json({ message: err.message });
+    }
+  }
+
+  async revoke(req, res) {
+    try {
+      const session = await sessionService.revoke(req.params.id, req.user?.id);
+      res.status(200).json({ message: 'Session revoked', session });
     } catch (err) {
       res.status(err.status || 500).json({ message: err.message });
     }

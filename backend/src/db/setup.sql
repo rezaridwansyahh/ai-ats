@@ -1,6 +1,8 @@
 -- Drop tables in reverse dependency order (most dependent first)
+DROP TABLE IF EXISTS company_budgets CASCADE;
 DROP TABLE IF EXISTS company_usage CASCADE;
 DROP TABLE IF EXISTS candidate_interview CASCADE;
+DROP TABLE IF EXISTS interview_position_prep CASCADE;
 DROP TABLE IF EXISTS screening_qa CASCADE;
 DROP TABLE IF EXISTS candidate_screening CASCADE;
 DROP TABLE IF EXISTS candidate_job_score CASCADE;
@@ -88,7 +90,7 @@ CREATE TYPE job_post_type AS ENUM ('Internal', 'Publish');
 CREATE TYPE sourcing_status_type AS ENUM ('Pending', 'Processing', 'Done', 'Failed');
 CREATE TYPE stage_category_type AS ENUM ('Job Management', 'Screening & Matching', 'Interview', 'Assessment', 'Background Check', 'Offering & Contract', 'Other');
 CREATE TYPE battery_type AS ENUM ('A', 'B', 'C', 'D', 'I', 'T');
-CREATE TYPE status_session_type AS ENUM ('invited', 'in_progress', 'completed', 'expired');
+CREATE TYPE status_session_type AS ENUM ('invited', 'in_progress', 'completed', 'expired', 'revoked');
 CREATE TYPE assessment_status_type AS ENUM ('in_progress', 'completed', 'expired');
 CREATE TYPE screening_qa_status_type AS ENUM ('draft', 'sent', 'responded', 'expired');
 CREATE EXTENSION IF NOT EXISTS pgcrypto;
@@ -130,6 +132,20 @@ CREATE TABLE company_usage (
 );
 CREATE INDEX idx_company_usage_company_created ON company_usage (company_id, created_at DESC);
 CREATE INDEX idx_company_usage_operation ON company_usage (operation);
+
+-- Migration 009: Company AI Budget Management (Task 6.12)
+CREATE TABLE company_budgets (
+  id                SERIAL PRIMARY KEY,
+  company_id        INTEGER NOT NULL REFERENCES core_company(id) ON DELETE CASCADE,
+  month_year        DATE NOT NULL,
+  budget_usd        NUMERIC(10,2) NOT NULL,
+  alert_80_sent     BOOLEAN NOT NULL DEFAULT false,
+  created_at        TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  updated_at        TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  CONSTRAINT uq_company_budgets_company_month UNIQUE (company_id, month_year)
+);
+CREATE INDEX idx_company_budgets_company_month ON company_budgets (company_id, month_year DESC);
+CREATE INDEX idx_company_budgets_month_year ON company_budgets (month_year DESC);
 
 CREATE TABLE master_roles (
   id SERIAL PRIMARY KEY,
@@ -500,7 +516,9 @@ CREATE TABLE screening_qa (
   language VARCHAR(20),
   num_questions INTEGER,
   questions JSONB NOT NULL,
-  answers JSONB,      
+  answers JSONB,
+  application_form        JSONB,        
+  application_form_schema JSONB,       
   status screening_qa_status_type NOT NULL DEFAULT 'draft',
   sent_at  TIMESTAMPTZ,
   responded_at TIMESTAMPTZ,
@@ -510,23 +528,51 @@ CREATE TABLE screening_qa (
   updated_at  TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
--- candidate_interview: stub for the Interview module's R1 prep queue.
--- Phase 4 only writes here (via advance-bulk on Calibration). The Interview
--- module replaces this with its own schema when it ships.
 CREATE TABLE candidate_interview (
-  id              SERIAL PRIMARY KEY,
-  candidate_id    INTEGER NOT NULL REFERENCES master_candidate(id) ON DELETE CASCADE,
-  job_id          INTEGER NOT NULL REFERENCES core_job(id) ON DELETE CASCADE,
-  screening_id    INTEGER REFERENCES candidate_screening(id) ON DELETE SET NULL,
-  company_id      INTEGER REFERENCES core_company(id) ON DELETE CASCADE,
-  status          VARCHAR(20) NOT NULL DEFAULT 'r1_prep',  -- r1_prep | scheduled | done | cancelled
-  scheduled_at    TIMESTAMPTZ,
-  created_at      TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-  updated_at      TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  id SERIAL PRIMARY KEY,
+  candidate_id INTEGER NOT NULL REFERENCES master_candidate(id) ON DELETE CASCADE,
+  job_id INTEGER NOT NULL REFERENCES core_job(id) ON DELETE CASCADE,
+  screening_id INTEGER REFERENCES candidate_screening(id) ON DELETE SET NULL,
+  company_id INTEGER REFERENCES core_company(id) ON DELETE CASCADE,
+  status VARCHAR(20) NOT NULL DEFAULT 'ongoing',  -- ongoing | scheduled | done | cancelled
+  scheduled_at TIMESTAMPTZ,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
   UNIQUE (candidate_id, job_id)
 );
 CREATE INDEX idx_ci_job     ON candidate_interview (job_id);
 CREATE INDEX idx_ci_company ON candidate_interview (company_id);
+
+CREATE TABLE interview_position_prep (
+  id SERIAL PRIMARY KEY,
+  job_id INTEGER NOT NULL REFERENCES core_job(id) ON DELETE CASCADE,
+  company_id INTEGER REFERENCES core_company(id) ON DELETE CASCADE,
+  questions JSONB NOT NULL,          -- generated from JD + skills
+  rubric_items JSONB NOT NULL,          -- competency framework with weights & anchors
+  rubric_locked BOOLEAN NOT NULL DEFAULT false,       -- must be true before any batch is sent
+  rubric_locked_at TIMESTAMPTZ,
+  locked_by INTEGER REFERENCES master_users(id) ON DELETE SET NULL,
+  created_by INTEGER REFERENCES master_users(id) ON DELETE SET NULL,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  UNIQUE (job_id)
+);
+
+CREATE TABLE interview_schedule (
+  id SERIAL PRIMARY KEY,
+  interview_id INTEGER NOT NULL REFERENCES candidate_interview(id) ON DELETE CASCADE,
+  company_id INTEGER REFERENCES core_company(id) ON DELETE CASCADE,
+  title VARCHAR(255) NOT NULL,
+  description TEXT,
+  scheduled_at TIMESTAMPTZ NOT NULL,
+  confirmed BOOLEAN NOT NULL DEFAULT false,
+  confirmed_at TIMESTAMPTZ,
+  confirmed_by INTEGER REFERENCES master_users(id) ON DELETE SET NULL,
+  confirmation_note TEXT,
+  created_by INTEGER REFERENCES master_users(id) ON DELETE SET NULL,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
 
 CREATE INDEX idx_applicant_information_gin
   ON master_applicant USING GIN (information jsonb_path_ops);
@@ -615,6 +661,8 @@ CREATE TABLE assessment_sessions(
   status status_session_type NOT NULL DEFAULT 'invited',
   expired_at TIMESTAMP NOT NULL,
   submitted_at TIMESTAMP,
+  revoked_by INTEGER REFERENCES master_users(id) ON DELETE SET NULL,
+  revoked_at TIMESTAMP,
   notes TEXT,
   created_at TIMESTAMP NOT NULL DEFAULT NOW(),
   updated_at TIMESTAMP NOT NULL DEFAULT NOW()

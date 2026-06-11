@@ -42,13 +42,13 @@ export default function Briefing({ profile, onStart }) {
         </p>
 
         {/* Struktur Asesmen */}
-        <div className="rounded-[10px] border p-4 mb-3.5 text-left" style={{ background: '#F8FAFC', borderColor: '#E2E8F0' }}>
+        <div className="rounded-[10px] border p-4 mb-3.5 text-left" style={{ background: '#FAF9F5', borderColor: '#E9E3D5' }}>
           <div className="text-[10px] font-bold tracking-[.09em] uppercase mb-2.5" style={{ color: '#475569' }}>
             🧩 Struktur Asesmen
           </div>
           <div className="grid grid-cols-1 gap-2">
             {STRUCTURE.map((s) => (
-              <div key={s.n} className="flex items-start gap-2.5 px-3 py-2.5 rounded-lg bg-white border" style={{ borderColor: '#E2E8F0' }}>
+              <div key={s.n} className="flex items-start gap-2.5 px-3 py-2.5 rounded-lg bg-white border" style={{ borderColor: '#E9E3D5' }}>
                 <div
                   className="w-[26px] h-[26px] rounded-full grid place-items-center text-xs font-bold text-white flex-shrink-0"
                   style={{ background: s.color }}
@@ -62,7 +62,7 @@ export default function Briefing({ profile, onStart }) {
                       AUTO-LANJUT
                     </span>
                   </div>
-                  <div className="text-[11px] mt-0.5" style={{ color: '#64748B' }}>{s.meta}</div>
+                  <div className="text-[11px] mt-0.5" style={{ color: '#6E6A5E' }}>{s.meta}</div>
                 </div>
               </div>
             ))}
@@ -98,7 +98,7 @@ export default function Briefing({ profile, onStart }) {
         </div>
 
         {/* Catatan */}
-        <div className="rounded-r-lg px-3.5 py-3 mb-5 text-left" style={{ background: '#F1F5F9', borderLeft: '3px solid #4338CA' }}>
+        <div className="rounded-r-lg px-3.5 py-3 mb-5 text-left" style={{ background: '#F4F1E8', borderLeft: '3px solid #4338CA' }}>
           <div className="text-xs leading-relaxed" style={{ color: '#334155' }}>
             <strong>Catatan:</strong> Asesmen ini mengidentifikasi profil kepribadian kerja Anda —
             bukan ujian dan tidak ada profil yang lebih baik dari yang lain. Hasil terbaik diperoleh

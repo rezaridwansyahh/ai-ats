@@ -166,5 +166,5 @@ Standard data flow across list pages: `fetchData → filter (search + status/rol
 ## Configuration
 - **Path alias**: `@` → `./src` (defined in `vite.config.js` + `jsconfig.json`)
 - **UI components**: Added via Shadcn CLI, configured in `components.json`
-- **Base URL**: Hardcoded ngrok URL in `src/api/axios.js` (changes per tunnel session)
+- **API base URL**: Set via `VITE_API_BASE_URL` environment variable in `.env` (defaults to `http://localhost:3000` in development). Configured in `src/api/axios.js`.
 - **Icons**: Lucide React

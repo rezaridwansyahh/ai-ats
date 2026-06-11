@@ -22,6 +22,14 @@ class ScreeningController {
       }
       res.status(200).json({ message: 'Facets extracted', ...result });
     } catch (err) {
+      // Task 6.12: Pass through 402 budget exceeded error
+      if (err.status === 402) {
+        return res.status(402).json({
+          message: err.message,
+          budget: err.budget,
+          spent: err.spent
+        });
+      }
       res.status(err.status || 500).json({ message: err.message });
     }
   }
@@ -36,6 +44,14 @@ class ScreeningController {
       );
       res.status(200).json({ message: 'Candidate scored', score: result });
     } catch (err) {
+      // Task 6.12: Pass through 402 budget exceeded error
+      if (err.status === 402) {
+        return res.status(402).json({
+          message: err.message,
+          budget: err.budget,
+          spent: err.spent
+        });
+      }
       res.status(err.status || 500).json({ message: err.message });
     }
   }
@@ -46,6 +62,14 @@ class ScreeningController {
       const result = await screeningService.scoreBulkForJob(job_id, ctxFromReq(req));
       res.status(200).json({ message: 'Bulk scoring complete', ...result });
     } catch (err) {
+      // Task 6.12: Pass through 402 budget exceeded error
+      if (err.status === 402) {
+        return res.status(402).json({
+          message: err.message,
+          budget: err.budget,
+          spent: err.spent
+        });
+      }
       res.status(err.status || 500).json({ message: err.message });
     }
   }
@@ -96,6 +120,14 @@ class ScreeningController {
       });
       res.status(200).json({ message: 'AI matching complete', ...result });
     } catch (err) {
+      // Task 6.12: Pass through 402 budget exceeded error
+      if (err.status === 402) {
+        return res.status(402).json({
+          message: err.message,
+          budget: err.budget,
+          spent: err.spent
+        });
+      }
       res.status(err.status || 500).json({ message: err.message });
     }
   }
@@ -277,6 +309,16 @@ class ScreeningController {
         limit: limit ? Number(limit) : 20,
       });
       res.status(200).json({ message: 'Search results', ...result });
+    } catch (err) {
+      res.status(err.status || 500).json({ message: err.message });
+    }
+  }
+
+  // Standard Application Form template (read-only preview for the recruiter UI).
+  async getApplicationFormTemplate(req, res) {
+    try {
+      const template = screeningService.getApplicationFormTemplate();
+      res.status(200).json({ message: 'Application form template', template });
     } catch (err) {
       res.status(err.status || 500).json({ message: err.message });
     }

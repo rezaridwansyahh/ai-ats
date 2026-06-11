@@ -94,7 +94,7 @@ export default function PAPILTest({ onComplete, onAbort }) {
                   onClick={() => setAns(k)}
                   className="flex items-start gap-3 px-4 py-3 rounded-lg border-2 text-left transition"
                   style={{
-                    borderColor: sel ? aspColor : '#E2E8F0',
+                    borderColor: sel ? aspColor : '#E9E3D5',
                     background: sel ? aspColor + '15' : '#FAFAFA',
                   }}
                 >
@@ -103,7 +103,7 @@ export default function PAPILTest({ onComplete, onAbort }) {
                     style={{
                       background: sel ? aspColor : '#fff',
                       color: sel ? '#fff' : aspColor,
-                      border: sel ? `1.5px solid ${aspColor}` : '1.5px solid #E2E8F0',
+                      border: sel ? `1.5px solid ${aspColor}` : '1.5px solid #E9E3D5',
                     }}
                   >
                     {label}

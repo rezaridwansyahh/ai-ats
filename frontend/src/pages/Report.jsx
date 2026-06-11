@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import JobsSidebar from '@/components/report/JobsSidebar';
 import CandidatesPanel from '@/components/report/CandidatesPanel';
+import StepFilterBar from '@/components/report/StepFilterBar';
 import { getCandidatePipelineSummary, getCandidatesByJobId } from '@/api/candidate.api';
 
 // Real-data Report page.
@@ -18,6 +19,9 @@ export default function ReportPage() {
   const [candidates, setCandidates]       = useState([]);
   const [candidatesLoading, setCandidatesLoading] = useState(false);
   const [candidatesError, setCandidatesError]     = useState(null);
+
+  // Step filter (Setup / Take / Score & Decide) — null = no filter.
+  const [activeStep, setActiveStep] = useState(null);
 
   // Initial summary fetch — also seeds the selected job.
   useEffect(() => {
@@ -72,6 +76,24 @@ export default function ReportPage() {
     [jobs, selectedJobId]
   );
 
+  // Pill counts always reflect the full unfiltered list — clicking a pill
+  // focuses the candidate list without hiding what's available in other steps.
+  const stepCounts = useMemo(() => {
+    const c = { setup: 0, take: 0, decide: 0 };
+    for (const cand of candidates) {
+      if (c[cand.current_step] != null) c[cand.current_step]++;
+    }
+    return c;
+  }, [candidates]);
+
+  const filteredCandidates = useMemo(
+    () => (activeStep ? candidates.filter((c) => c.current_step === activeStep) : candidates),
+    [candidates, activeStep]
+  );
+
+  // Clear the filter when switching jobs so the new job starts unfocused.
+  useEffect(() => { setActiveStep(null); }, [selectedJobId]);
+
   const handleSelectCandidate = (candidate) => {
     navigate(`/selection/report/${candidate.job_id}/${candidate.id}`);
   };
@@ -91,6 +113,12 @@ export default function ReportPage() {
         </div>
       ) : null}
 
+      <StepFilterBar
+        counts={stepCounts}
+        activeStep={activeStep}
+        onChange={setActiveStep}
+      />
+
       <div className="grid grid-cols-1 md:grid-cols-[220px_1fr] gap-4">
         <JobsSidebar
           jobs={jobs}
@@ -101,7 +129,7 @@ export default function ReportPage() {
         <CandidatesPanel
           key={selectedJobId ?? 'none'}
           jobTitle={selectedJob?.job_title ?? '—'}
-          candidates={candidates}
+          candidates={filteredCandidates}
           loading={candidatesLoading}
           error={candidatesError}
           onSelectCandidate={handleSelectCandidate}

@@ -17,19 +17,35 @@ function isHashFormat(s) {
   return /^[0-9a-fA-F]{32}$/.test(s) || /^[0-9a-fA-F-]{36}$/.test(s);
 }
 
+const TERMINAL_STATUSES = ['completed', 'revoked', 'expired'];
+
+async function lazyExpire(session) {
+  if (!session) return session;
+  if (TERMINAL_STATUSES.includes(session.status)) return session;
+  if (!session.expired_at) return session;
+  if (new Date(session.expired_at).getTime() >= Date.now()) return session;
+  const result = await getDb().query(
+    `UPDATE assessment_sessions
+        SET status = 'expired', updated_at = NOW()
+      WHERE id = $1
+      RETURNING status, updated_at`,
+    [session.id]
+  );
+  return { ...session, ...result.rows[0] };
+}
+
 class PortalAssessmentService {
   async getByHash(hash) {
     if (!isHashFormat(hash)) {
       throw { status: 404, message: 'Invalid invitation link.' };
     }
-    const session = await PortalAssessment.getByHash(hash);
-    if (!session) throw { status: 404, message: 'Invalid invitation link.' };
+    const raw = await PortalAssessment.getByHash(hash);
+    if (!raw) throw { status: 404, message: 'Invalid invitation link.' };
+    const session = await lazyExpire(raw);
 
-    if (session.expired_at && new Date(session.expired_at) < new Date()) {
-      throw { status: 410, message: 'This invitation has expired.' };
-    }
-
-    // Public payload — strip PII (no email, no participant_id).
+    // Public payload — strip PII (no email, no participant_id). Terminal
+    // statuses (expired/revoked/completed) are returned so the frontend can
+    // route to a dedicated view instead of falling through to the email gate.
     return {
       battery:    session.battery,
       job_title:  session.job_title,
@@ -46,10 +62,14 @@ class PortalAssessmentService {
       throw { status: 400, message: 'Email is required.' };
     }
 
-    const session = await PortalAssessment.getByHash(hash);
-    if (!session) throw { status: 404, message: 'Invalid invitation link.' };
-    if (session.expired_at && new Date(session.expired_at) < new Date()) {
-      throw { status: 410, message: 'This invitation has expired.' };
+    const raw = await PortalAssessment.getByHash(hash);
+    if (!raw) throw { status: 404, message: 'Invalid invitation link.' };
+    const session = await lazyExpire(raw);
+    if (session.status === 'expired') {
+      throw { status: 410, message: 'This invitation has expired.', code: 'expired' };
+    }
+    if (session.status === 'revoked') {
+      throw { status: 410, message: 'This invitation has been revoked by the recruiter.', code: 'revoked' };
     }
 
     const expected = (session.participant_email || '').trim().toLowerCase();
@@ -88,13 +108,20 @@ class PortalAssessmentService {
   async updateParticipant({ sessionId, fields }) {
     if (!sessionId) throw { status: 400, message: 'session_id is required' };
 
-    const session = await Session.getById(sessionId);
-    if (!session) throw { status: 404, message: 'Session not found' };
+    const raw = await Session.getById(sessionId);
+    if (!raw) throw { status: 404, message: 'Session not found' };
+    const session = await lazyExpire(raw);
     if (session.participant_id == null) {
       throw { status: 400, message: 'Session is not bound to a participant.' };
     }
     if (session.status === 'completed') {
       throw { status: 409, message: 'This assessment has already been submitted.' };
+    }
+    if (session.status === 'revoked') {
+      throw { status: 410, message: 'This invitation has been revoked by the recruiter.', code: 'revoked' };
+    }
+    if (session.status === 'expired') {
+      throw { status: 410, message: 'This invitation has expired.', code: 'expired' };
     }
 
     const ALLOWED = ['name', 'position', 'department', 'education', 'date_birth'];
@@ -114,12 +141,19 @@ class PortalAssessmentService {
     if (!sessionId)               throw { status: 400, message: 'session_id is required' };
     if (!results?.by_subtest)     throw { status: 400, message: 'results.by_subtest is required' };
 
-    const session = await Session.getById(sessionId);
-    if (!session) throw { status: 404, message: 'Session not found' };
+    const raw = await Session.getById(sessionId);
+    if (!raw) throw { status: 404, message: 'Session not found' };
+    const session = await lazyExpire(raw);
     if (!session.participant_id)  throw { status: 400, message: 'Session is not bound to a participant.' };
     // One-time attempt: an already-completed invitation can't be re-submitted.
     if (session.status === 'completed') {
       throw { status: 409, message: 'This assessment has already been submitted. Re-takes are not allowed.' };
+    }
+    if (session.status === 'revoked') {
+      throw { status: 410, message: 'This invitation has been revoked by the recruiter.', code: 'revoked' };
+    }
+    if (session.status === 'expired') {
+      throw { status: 410, message: 'This invitation has expired.', code: 'expired' };
     }
 
     const assessmentId = ASSESSMENT_ID_BY_BATTERY[session.battery];

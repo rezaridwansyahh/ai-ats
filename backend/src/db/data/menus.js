@@ -1,9 +1,3 @@
-// Menu ids are unique — they back the primary key on master_menus and are
-// referenced by mapping_modules_menus. Ids 1-17 are declared grouped by module;
-// ids 18-19 (Insights Discovery / Thomas Kilmann Assessment) are appended to the
-// Asesmen module without renumbering. The sidebar orders menus within a module by NAME
-// (permission.model.js checkPermissionsRoleId → ORDER BY mo.name, me.name),
-// so id order does not affect sidebar placement.
 export default [
   // Main / Dashboard module
   { id: 1,  name: 'Dashboard' },
@@ -21,12 +15,13 @@ export default [
   { id: 8,  name: 'Assessment B' },
   { id: 9,  name: 'Assessment C' },
   { id: 10, name: 'Assessment D' },
-  { id: 18, name: 'Insights Discovery Assessment' }, // appended to Asesmen (see header note)
-  { id: 19, name: 'Thomas Kilmann Assessment' },     // appended to Asesmen (see header note)
+  { id: 18, name: 'Insights Discovery Assessment' },
+  { id: 19, name: 'Thomas Kilmann Assessment' },
 
   // Selection module
   { id: 11, name: 'AI Screening' },
   { id: 12, name: 'Report' },
+  { id: 20, name: 'Interview' }, 
 
   // Settings module
   { id: 13, name: 'User Management' },
@@ -34,4 +29,5 @@ export default [
   { id: 15, name: 'Integrations' },
   { id: 16, name: 'Account' },
   { id: 17, name: 'Recruiters' },
+  { id: 21, name: 'Budget' }, // AI Budget Settings (Task 6.12b)
 ];

@@ -4,7 +4,7 @@ import { resolveParticipantByCandidate } from '../../../shared/services/candidat
 
 const EDITABLE_FIELDS = ['battery', 'participant_id', 'job_id', 'status', 'expired_at', 'notes'];
 const VALID_BATTERIES = ['A', 'B', 'C', 'D', 'I', 'T'];
-const VALID_STATUSES = ['invited', 'in_progress', 'completed', 'expired'];
+const VALID_STATUSES = ['invited', 'in_progress', 'completed', 'expired', 'revoked'];
 
 function isExpired(session) {
   if (!session?.expired_at) return false;
@@ -27,7 +27,12 @@ class SessionService {
     const session = await Session.getByToken(token);
     if (!session) throw { status: 404, message: 'Session not found' };
 
-    if (session.status !== 'completed' && session.status !== 'expired' && isExpired(session)) {
+    if (
+      session.status !== 'completed' &&
+      session.status !== 'expired' &&
+      session.status !== 'revoked' &&
+      isExpired(session)
+    ) {
       return await Session.update(session.id, { status: 'expired' });
     }
     return session;
@@ -69,6 +74,20 @@ class SessionService {
       await resolveParticipantByCandidate(candidate_id, { createIfMissing: true });
 
     const effectiveJobId = job_id ?? candidateJobId ?? null;
+
+    // One-battery-per-(candidate, job). Completed and live sessions both lock;
+    // recruiter must revoke before switching. Revoked/expired are excluded by
+    // getActiveByParticipantJob.
+    const active = await Session.getActiveByParticipantJob(participant.id, effectiveJobId);
+    const lockedBattery = active[0]?.battery ?? null;
+    if (lockedBattery && lockedBattery !== battery) {
+      throw {
+        status:  409,
+        message: `This candidate already has Battery ${lockedBattery} for this job. Revoke it before picking a different battery.`,
+        code:    'battery_locked',
+        locked_battery: lockedBattery,
+      };
+    }
 
     // Idempotency: return live session if one already exists for this triple.
     const existing = await Session.getByParticipantJobBattery(participant.id, effectiveJobId, battery);
@@ -138,7 +157,23 @@ class SessionService {
     const session = await this.getByToken(token);
     if (session.status === 'completed') throw { status: 409, message: 'Session is already completed' };
     if (session.status === 'expired') throw { status: 410, message: 'Session has expired' };
+    if (session.status === 'revoked') throw { status: 410, message: 'Session has been revoked' };
     return await Session.markCompleted(session.id);
+  }
+
+  async revoke(id, user_id) {
+    const session = await Session.getById(id);
+    if (!session) throw { status: 404, message: 'Session not found' };
+    if (session.status === 'completed') {
+      throw { status: 409, message: 'Cannot revoke a completed session' };
+    }
+    if (session.status === 'expired') {
+      throw { status: 409, message: 'Session has already expired' };
+    }
+    if (session.status === 'revoked') {
+      throw { status: 409, message: 'Session has already been revoked' };
+    }
+    return await Session.revoke(id, user_id);
   }
 
   async delete(id) {

@@ -61,5 +61,5 @@ export function getProfile(profileId) {
 export function getClarity(composite) {
   if (composite >= 7) return { v: 'pass', label: 'Profil Jelas & Konsisten', emoji: '✅', color: '#15803D', bg: '#F0FDF4', br: '#16A34A' };
   if (composite >= 5) return { v: 'warn', label: 'Profil Campuran', emoji: '⚡', color: '#92400E', bg: '#FFFBEB', br: '#D97706' };
-  return { v: 'fail', label: 'Profil Beragam / Fleksibel', emoji: '🔄', color: '#475569', bg: '#F8FAFC', br: '#94A3B8' };
+  return { v: 'fail', label: 'Profil Beragam / Fleksibel', emoji: '🔄', color: '#475569', bg: '#FAF9F5', br: '#94A3B8' };
 }

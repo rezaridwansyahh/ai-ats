@@ -32,6 +32,10 @@ import AssessmentCPage from "./pages/AssessmentC"
 import AssessmentDPage from "./pages/AssessmentD"
 import InsightsDiscoveryAssessmentPage from "./pages/InsightsDiscoveryAssessment"
 import ThomasKilmannAssessmentPage from "./pages/ThomasKilmannAssessment"
+import InterviewWorkboard from "./pages/InterviewWorkboard"
+import InterviewJobPage from "./components/interview/Interview-Job"
+import InterviewCandidatePage from "./components/interview/Interview-Candidate"
+import BudgetSettingsPage from "./pages/BudgetSettings"
 
 function App() {
   return (
@@ -67,6 +71,9 @@ function App() {
         <Route path="/selection/ai-screening/candidate/:screeningId" element={<AIScreeningCandidatePage />} />
         <Route path="/selection/report" element={<ReportPage />} />
         <Route path="/selection/report/:jobId/:participantId" element={<CandidateDetailPage />} />
+        <Route path="/selection/interview" element={<InterviewWorkboard />} />
+        <Route path="/selection/interview/job/:jobId" element={<InterviewJobPage/>} />
+        <Route path="/selection/interview/candidate/:interviewId" element={<InterviewCandidatePage />} />
 
         <Route path="/asesmen/assessment-a" element={<AssessmentAPage />} />
         <Route path="/asesmen/assessment-b" element={<AssessmentBPage />} />
@@ -79,6 +86,7 @@ function App() {
         <Route path="/settings/role-management" element={<RoleManagementPage />} />
         <Route path="/settings/integrations" element={<IntegrationsPage />} />
         <Route path="/settings/account" element={<AccountPage />} />
+        <Route path="/settings/budget" element={<BudgetSettingsPage />} />
         <Route path="/settings/recruiters" element={<RecruitersPage />} />
 
         <Route path="/report-candidate" element={<ReportCandidatePage />} />

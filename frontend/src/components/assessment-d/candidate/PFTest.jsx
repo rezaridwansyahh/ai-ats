@@ -111,7 +111,7 @@ export default function PFTest({ onComplete, onAbort }) {
                   onClick={() => setAns(k)}
                   className="flex items-start gap-3 px-4 py-3 rounded-lg border-2 text-left transition hover:opacity-90"
                   style={{
-                    borderColor: sel ? color : '#E2E8F0',
+                    borderColor: sel ? color : '#E9E3D5',
                     background: sel ? color + '15' : '#FAFAFA',
                   }}
                 >
@@ -120,7 +120,7 @@ export default function PFTest({ onComplete, onAbort }) {
                     style={{
                       background: sel ? color : '#fff',
                       color: sel ? '#fff' : color,
-                      border: sel ? `1.5px solid ${color}` : '1.5px solid #E2E8F0',
+                      border: sel ? `1.5px solid ${color}` : '1.5px solid #E9E3D5',
                     }}
                   >
                     {k}

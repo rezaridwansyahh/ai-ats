@@ -20,6 +20,7 @@ router.get('/:id', sessionController.getById);
 router.post('/', sessionController.create);
 router.post('/from-candidate', sessionController.findOrCreateFromCandidate);
 router.post('/:id/complete', sessionController.markCompleted);
+router.post('/:id/revoke', sessionController.revoke);
 
 router.put('/:id', sessionController.update);
 

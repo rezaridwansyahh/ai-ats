@@ -6,6 +6,7 @@ import {
   ThumbsUp, ThumbsDown, Pause, MessageSquare,
   Plus, X, Target, TrendingUp, Code2, Info,
   Send, RefreshCw, Mail, Clock, Pencil,
+  ClipboardList, ChevronDown, ChevronRight,
 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -23,6 +24,7 @@ import {
 import {
   getScreening, setScreeningDecision, getRubric, runMatching,
   getQa, getQaResponses, generateQa, updateQa, sendQa,
+  getApplicationFormTemplate,
 } from '@/api/screening.api';
 import {
   Select,
@@ -185,6 +187,10 @@ function useQa(screeningId, scored, enabled) {
   const [questions, setQuestions] = useState([]); // [{ topic, text }]
   const [sending, setSending] = useState(false);
 
+  // Standard Application Form template — read-only preview of what gets sent
+  // alongside the questions. Static, so fetched once when the Q&A step opens.
+  const [formTemplate, setFormTemplate] = useState(null);
+
   const status = qa?.status || (qa ? 'draft' : null);
   const meta = status ? QA_STATUS_META[status] : null;
 
@@ -225,6 +231,20 @@ function useQa(screeningId, scored, enabled) {
     else setLoading(false);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [screeningId, scored, latched]);
+
+  // Fetch the static Application Form template once the step is opened.
+  useEffect(() => {
+    if (!latched || formTemplate) return;
+    let cancelled = false;
+    (async () => {
+      try {
+        const res = await getApplicationFormTemplate();
+        if (!cancelled) setFormTemplate(res.data?.template || null);
+      } catch { /* preview is non-critical — ignore */ }
+    })();
+    return () => { cancelled = true; };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [latched]);
 
   const handleGenerate = async () => {
     if (!scored || generating) return;
@@ -284,7 +304,7 @@ function useQa(screeningId, scored, enabled) {
     tab, setTab, qa, status, meta, loading, error,
     focusArea, setFocusArea, numQuestions, setNumQuestions, language, setLanguage,
     generating, questions, setQuestionField, addQuestion, removeQuestion, sending,
-    handleGenerate, handleSend,
+    handleGenerate, handleSend, formTemplate,
   };
 }
 
@@ -1078,7 +1098,7 @@ function QAPanel({ qaCtl, jobTitle, scored }) {
     tab, setTab, qa: qaRow, status, meta, loading, error,
     focusArea, setFocusArea, numQuestions, setNumQuestions, language, setLanguage,
     generating, questions, setQuestionField, addQuestion, removeQuestion,
-    handleGenerate,
+    handleGenerate, formTemplate,
   } = qaCtl;
 
   // `editingIdx` is purely presentational — which drafted card is in edit mode.
@@ -1289,9 +1309,7 @@ function QAPanel({ qaCtl, jobTitle, scored }) {
               )}
             </div>
 
-            <p className="text-[11px] text-muted-foreground border-t pt-3">
-              Edit the set above, then <span className="font-medium">Send to candidate</span> from the sidebar · response window 48h.
-            </p>
+            <ApplicationFormPreview template={formTemplate} />
           </>
         ) : (
           <>
@@ -1308,6 +1326,7 @@ function QAPanel({ qaCtl, jobTitle, scored }) {
                   Sent {fmt(qaRow.sent_at)} · awaiting response · window closes {fmt(qaRow.expired_at)}
                 </div>
                 <SentQuestionList questions={qaRow.questions} />
+                <SubmittedApplicationForm schema={qaRow.application_form_schema} awaiting />
               </div>
             )}
 
@@ -1327,6 +1346,10 @@ function QAPanel({ qaCtl, jobTitle, scored }) {
                     </div>
                   </div>
                 ))}
+                <SubmittedApplicationForm
+                  schema={qaRow.application_form_schema}
+                  values={qaRow.application_form}
+                />
               </div>
             )}
 
@@ -1337,12 +1360,117 @@ function QAPanel({ qaCtl, jobTitle, scored }) {
                   Response window expired {fmt(qaRow.expired_at)}. Regenerate from the Generate tab to send a fresh set.
                 </div>
                 <SentQuestionList questions={qaRow.questions} />
+                <SubmittedApplicationForm
+                  schema={qaRow.application_form_schema}
+                  values={qaRow.application_form}
+                  awaiting
+                />
               </div>
             )}
           </>
         )}
       </CardContent>
     </Card>
+  );
+}
+
+/* Flat field list across all sections of an application-form schema. */
+function flattenFields(schema) {
+  const sections = Array.isArray(schema?.sections) ? schema.sections : [];
+  return sections.flatMap((s) => (Array.isArray(s?.fields) ? s.fields : []));
+}
+
+/* ─────────── Application Form — read-only template preview (Generate tab) ─────────── */
+function ApplicationFormPreview({ template }) {
+  const [open, setOpen] = useState(false);
+
+  if (!template) {
+    return (
+      <div className="rounded-lg border bg-muted/20 px-3 py-2 text-[11px] text-muted-foreground italic">
+        <ClipboardList className="inline h-3 w-3 mr-1.5 -mt-0.5" />
+        Application Form preview unavailable.
+      </div>
+    );
+  }
+
+  const sections = Array.isArray(template.sections) ? template.sections : [];
+
+  return (
+    <div className="rounded-lg border bg-muted/20">
+      <button
+        type="button"
+        onClick={() => setOpen((o) => !o)}
+        className="w-full flex items-center gap-2 px-3 py-2.5 text-left"
+      >
+        {open ? <ChevronDown className="h-3.5 w-3.5 text-muted-foreground" /> : <ChevronRight className="h-3.5 w-3.5 text-muted-foreground" />}
+        <ClipboardList className="h-3.5 w-3.5 text-primary" />
+        <span className="text-xs font-semibold">Application Form</span>
+        <span className="text-[10px] text-muted-foreground">· sent with these questions</span>
+      </button>
+
+      {open && (
+        <div className="px-3 pb-3 space-y-3">
+          <p className="text-[10px] text-muted-foreground leading-snug">
+            Read-only standard form. The candidate fills this alongside the questions; fields flow downstream
+            to the modules tagged below.
+          </p>
+          {sections.map((sec) => (
+            <div key={sec.key} className="space-y-1.5">
+              <div className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">{sec.label}</div>
+              <div className="grid gap-1.5">
+                {(Array.isArray(sec.fields) ? sec.fields : []).map((f) => (
+                  <div key={f.key} className="rounded-md border bg-background px-2.5 py-2">
+                    <div className="flex items-center gap-1.5 flex-wrap">
+                      <span className="text-xs font-medium">{f.label}</span>
+                      {f.required && <span className="text-rose-500 text-xs">*</span>}
+                      <Badge variant="secondary" className="text-[9px]">{f.type}</Badge>
+                    </div>
+                    {Array.isArray(f.options) && f.options.length > 0 && (
+                      <div className="mt-1 text-[10px] text-muted-foreground">
+                        Options: {f.options.join(' · ')}
+                      </div>
+                    )}
+                  </div>
+                ))}
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+/* ─────────── Application Form — submitted (or awaiting) values (Response Inbox) ─────────── */
+function SubmittedApplicationForm({ schema, values, awaiting }) {
+  if (!schema) return null;
+  const fields = flattenFields(schema);
+  if (fields.length === 0) return null;
+  const v = values && typeof values === 'object' ? values : {};
+
+  const display = (f) => {
+    const raw = v[f.key];
+    if (Array.isArray(raw)) return raw.length ? raw.join(', ') : '—';
+    return raw != null && String(raw).trim() !== '' ? String(raw) : '—';
+  };
+
+  return (
+    <div className="rounded-lg border bg-background p-3 space-y-2">
+      <div className="flex items-center gap-1.5">
+        <ClipboardList className="h-3.5 w-3.5 text-primary" />
+        <span className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
+          {awaiting ? 'Application form · awaiting candidate input' : 'Submitted application form'}
+        </span>
+      </div>
+      <div className="grid gap-1.5 sm:grid-cols-2">
+        {fields.map((f) => (
+          <div key={f.key} className="rounded-md bg-muted/30 border px-2.5 py-1.5">
+            <div className="text-[9px] font-semibold uppercase tracking-wide text-muted-foreground">{f.label}</div>
+            <div className="text-xs">{display(f)}</div>
+          </div>
+        ))}
+      </div>
+    </div>
   );
 }
 

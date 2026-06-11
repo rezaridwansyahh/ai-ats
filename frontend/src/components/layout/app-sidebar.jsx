@@ -65,15 +65,13 @@ const routeMap = {
   'Role Management':   '/settings/role-management',
   'Recruiters':        '/settings/recruiters',
   'Account':           '/settings/account',
+  'Budget':            '/settings/budget',
   'Integrations':      '/settings/integrations',
   'Job Management':    '/sourcing/job-management',
   'Source Management': '/sourcing/source-management',
   'Talent Pool':       '/sourcing/talent-pool',
   'Source Candidate':  '/sourcing/source-candidate',
   'AI Screening':      '/selection/ai-screening',
-  // Backward-compat: clients with stale localStorage permissions may still
-  // see the old menu name "AI Matching". Map it to the new route so the
-  // click lands on the workboard instead of the catch-all ComingSoon page.
   'AI Matching':       '/selection/ai-screening',
   'Report':            '/selection/report',
   'Assessment A':      '/asesmen/assessment-a',
@@ -82,6 +80,7 @@ const routeMap = {
   'Assessment D':      '/asesmen/assessment-d',
   'Insights Discovery Assessment': '/asesmen/insights-discovery-assessment',
   'Thomas Kilmann Assessment':     '/asesmen/thomas-kilmann-assessment',
+  'Interview': '/selection/interview',
 };
 
 const useSidebarStructure = (permissions) => {

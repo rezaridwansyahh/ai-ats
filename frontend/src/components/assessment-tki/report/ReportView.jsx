@@ -243,17 +243,17 @@ export default function ReportView({ profile, results, state = {}, updateState, 
           <svg viewBox="0 0 320 210" xmlns="http://www.w3.org/2000/svg" className="w-full" style={{ maxHeight: 280 }}>
             <defs>
               <marker id="tki-arr" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="5" markerHeight="5" orient="auto-start-reverse">
-                <path d="M2 1L8 5L2 9" fill="none" stroke="#94A3B8" strokeWidth="1.5" />
+                <path d="M2 1L8 5L2 9" fill="none" stroke="#9C9684" strokeWidth="1.5" />
               </marker>
             </defs>
             <line x1="160" y1="12" x2="160" y2="195" stroke="#E5E7EB" strokeWidth="1" strokeDasharray="4,4" />
             <line x1="20" y1="100" x2="302" y2="100" stroke="#E5E7EB" strokeWidth="1" strokeDasharray="4,4" />
             <line x1="160" y1="195" x2="160" y2="15" stroke="#CBD5E1" strokeWidth="1.5" markerEnd="url(#tki-arr)" />
             <line x1="20" y1="100" x2="300" y2="100" stroke="#CBD5E1" strokeWidth="1.5" markerEnd="url(#tki-arr)" />
-            <text x="160" y="10" textAnchor="middle" fontSize="9" fill="#64748B" fontFamily="Arial,sans-serif">ASERTIF TINGGI</text>
-            <text x="160" y="206" textAnchor="middle" fontSize="9" fill="#64748B" fontFamily="Arial,sans-serif">ASERTIF RENDAH</text>
-            <text x="305" y="103" textAnchor="start" fontSize="9" fill="#64748B" fontFamily="Arial,sans-serif">Kooperatif →</text>
-            <text x="22" y="103" textAnchor="start" fontSize="9" fill="#64748B" fontFamily="Arial,sans-serif">← Tidak Koop.</text>
+            <text x="160" y="10" textAnchor="middle" fontSize="9" fill="#6E6A5E" fontFamily="Arial,sans-serif">ASERTIF TINGGI</text>
+            <text x="160" y="206" textAnchor="middle" fontSize="9" fill="#6E6A5E" fontFamily="Arial,sans-serif">ASERTIF RENDAH</text>
+            <text x="305" y="103" textAnchor="start" fontSize="9" fill="#6E6A5E" fontFamily="Arial,sans-serif">Kooperatif →</text>
+            <text x="22" y="103" textAnchor="start" fontSize="9" fill="#6E6A5E" fontFamily="Arial,sans-serif">← Tidak Koop.</text>
             {MODE_KEYS.map((k) => {
               const pos = MATRIX_POS[k];
               const v = scores[k] ?? 0;

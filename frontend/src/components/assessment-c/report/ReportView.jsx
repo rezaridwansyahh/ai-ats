@@ -443,7 +443,7 @@ export default function ReportView({ profile, results, state, updateState, saveN
                     <div className="flex gap-1.5 mt-2 flex-wrap">
                       <span
                         className="px-2.5 py-0.5 rounded-full text-[10.5px] font-bold"
-                        style={{ background: sjtProfile?.colorLt || '#F1F5F9', color: sjtProfile?.color || '#64748B' }}
+                        style={{ background: sjtProfile?.colorLt || '#F4F1E8', color: sjtProfile?.color || '#6E6A5E' }}
                       >
                         Skor Total: {sjt.totalScore}/{COMP_TOTAL_MAX}
                       </span>

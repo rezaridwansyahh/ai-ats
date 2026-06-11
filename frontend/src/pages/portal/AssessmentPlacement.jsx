@@ -3,7 +3,7 @@ import { useParams } from 'react-router-dom';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Loader2, AlertTriangle, Mail, CheckCircle2 } from 'lucide-react';
+import { Loader2, AlertTriangle, Mail, CheckCircle2, Ban, Clock } from 'lucide-react';
 import {
   getPortalSession,
   verifyPortalEmail,
@@ -22,7 +22,7 @@ import CandidateCardTKI from '@/components/assessment-tki/CandidateCard';
 // Public candidate-facing page.
 export default function AssessmentPlacementPage() {
   const { hash } = useParams();
-  const [view, setView]         = useState('loading'); // loading | gate | runner | completed | error
+  const [view, setView]         = useState('loading'); // loading | gate | runner | completed | revoked | expired | error
   const [session, setSession]   = useState(null);
   const [error, setError]       = useState(null);
 
@@ -42,6 +42,14 @@ export default function AssessmentPlacementPage() {
         // One-time attempt — if this invitation has already been submitted, lock out.
         if (sess?.status === 'completed') {
           setView('completed');
+          return;
+        }
+        if (sess?.status === 'revoked') {
+          setView('revoked');
+          return;
+        }
+        if (sess?.status === 'expired') {
+          setView('expired');
           return;
         }
         if (localStorage.getItem(PORTAL_TOKEN_KEY)) {
@@ -75,9 +83,19 @@ export default function AssessmentPlacementPage() {
       if (token) localStorage.setItem(PORTAL_TOKEN_KEY, token);
       const sess = res.data?.session ?? session;
       setSession(sess);
-      // Defensive: a session that flipped to completed between page-load and email submit
-      setView(sess?.status === 'completed' ? 'completed' : 'runner');
+      // Defensive: a session that flipped to a terminal state between page-load and email submit
+      if (sess?.status === 'completed') setView('completed');
+      else if (sess?.status === 'revoked') setView('revoked');
+      else if (sess?.status === 'expired') setView('expired');
+      else setView('runner');
     } catch (err) {
+      // Session went terminal between page-load and email submit — flip the whole view
+      // so the candidate sees the matching card instead of a red error under the gate.
+      if (err?.response?.status === 410) {
+        const code = err.response?.data?.code;
+        if (code === 'expired')      { setView('expired'); return; }
+        if (code === 'revoked')      { setView('revoked'); return; }
+      }
       setGateError(err.response?.data?.message || 'Verification failed.');
     } finally {
       setVerifying(false);
@@ -85,9 +103,21 @@ export default function AssessmentPlacementPage() {
   };
 
   // Sole submission entrypoint for the runner — always-insert, always-marks-session-complete.
+  // If the session went terminal mid-take (recruiter revoked, or expired_at passed), the
+  // backend returns 410 with a `code` field — swap the whole view to the matching terminal
+  // state and re-throw so the candidate card can stop its loading spinner.
   const handlePortalSubmit = useCallback(
     async ({ results, summary }) => {
-      await submitPortalAssessment(hash, { results, summary });
+      try {
+        await submitPortalAssessment(hash, { results, summary });
+      } catch (err) {
+        if (err?.response?.status === 410) {
+          const code = err.response?.data?.code;
+          if (code === 'expired')      setView('expired');
+          else if (code === 'revoked') setView('revoked');
+        }
+        throw err;
+      }
     },
     [hash]
   );
@@ -123,6 +153,38 @@ export default function AssessmentPlacementPage() {
                 <p className="text-[11px] text-muted-foreground pt-2">
                   This invitation is one-time. Your responses have been recorded — re-takes are not allowed.
                   If you believe this is in error, please contact the recruiter who sent you this link.
+                </p>
+              </CardContent>
+            </Card>
+          )}
+
+          {view === 'revoked' && (
+            <Card>
+              <CardContent className="p-6 space-y-2 text-center">
+                <Ban className="h-8 w-8 text-amber-600 mx-auto" />
+                <h2 className="text-sm font-bold">Assessment invitation revoked</h2>
+                <p className="text-[11px] text-muted-foreground">
+                  Battery {session?.battery ?? '—'}{session?.job_title ? ` · ${session.job_title}` : ''}
+                </p>
+                <p className="text-[11px] text-muted-foreground pt-2">
+                  This invitation has been revoked by the recruiter. If you believe this is in error,
+                  please contact the recruiter who sent you this link to request a new one.
+                </p>
+              </CardContent>
+            </Card>
+          )}
+
+          {view === 'expired' && (
+            <Card>
+              <CardContent className="p-6 space-y-2 text-center">
+                <Clock className="h-8 w-8 text-amber-600 mx-auto" />
+                <h2 className="text-sm font-bold">Assessment invitation expired</h2>
+                <p className="text-[11px] text-muted-foreground">
+                  Battery {session?.battery ?? '—'}{session?.job_title ? ` · ${session.job_title}` : ''}
+                </p>
+                <p className="text-[11px] text-muted-foreground pt-2">
+                  This invitation link is no longer valid. If you believe this is in error,
+                  please contact the recruiter who sent you this link to request a new one.
                 </p>
               </CardContent>
             </Card>

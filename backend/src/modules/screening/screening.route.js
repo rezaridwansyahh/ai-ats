@@ -9,6 +9,7 @@ router.use(authToken);
 
 router.get('/search', screeningController.search);
 router.get('/result', screeningController.getResult);
+router.get('/application-form/template', screeningController.getApplicationFormTemplate);
 
 router.post('/extract-facets/:applicant_id', upload.single('cv'), screeningController.extractFacets);
 router.post('/score', screeningController.score);

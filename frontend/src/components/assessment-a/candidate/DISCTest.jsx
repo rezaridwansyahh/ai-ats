@@ -73,7 +73,7 @@ export default function DISCTest({ onComplete, onAbort }) {
               const isM = ans.m === idx;
               const isL = ans.l === idx;
               const bothPicked = isM && isL; // Should never happen — clears handled above.
-              const borderColor = bothPicked ? '#9333EA' : isM ? '#2563EB' : isL ? '#DC2626' : '#E2E8F0';
+              const borderColor = bothPicked ? '#9333EA' : isM ? '#2563EB' : isL ? '#DC2626' : '#E9E3D5';
               const bg = bothPicked ? '#F3E8FF' : isM ? '#EFF6FF' : isL ? '#FEF2F2' : '#FAFAFA';
               return (
                 <div

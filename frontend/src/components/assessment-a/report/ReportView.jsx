@@ -454,7 +454,7 @@ export default function ReportView({ profile, results, state, updateState, saveN
                       <span
                         key={c}
                         className="px-2.5 py-0.5 rounded-full text-[11px] font-bold"
-                        style={{ background: HOL_TYPES[c]?.bg || '#F9FAFB', color: HOL_TYPES[c]?.color || '#64748B' }}
+                        style={{ background: HOL_TYPES[c]?.bg || '#F9FAFB', color: HOL_TYPES[c]?.color || '#6E6A5E' }}
                       >
                         {HOL_TYPES[c]?.nameID || c}
                       </span>
@@ -475,7 +475,7 @@ export default function ReportView({ profile, results, state, updateState, saveN
                   {Object.entries(hol.scores)
                     .sort((a, b) => b[1] - a[1])
                     .map(([c, v]) => {
-                      const tc = HOL_TYPES[c] || { color: '#64748B', nameID: c };
+                      const tc = HOL_TYPES[c] || { color: '#6E6A5E', nameID: c };
                       const max = Math.max(...Object.values(hol.scores), 1);
                       return (
                         <div key={c} className="flex items-center gap-2 mb-1">
