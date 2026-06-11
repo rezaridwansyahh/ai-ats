@@ -31,7 +31,7 @@ export default function JobDetailPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [syncing, setSyncing] = useState(false);
-
+  
   const CANDIDATES_PAGE_SIZE = 6;
 
   const fetchJob = useCallback(async () => {

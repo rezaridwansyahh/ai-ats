@@ -25,7 +25,8 @@ const BREADCRUMB_MAP = {
   '/settings/integrations':      ['Settings', 'Integrations'],
   '/settings/account':           ['Settings', 'Account'],
   '/settings/recruiters':        ['Settings', 'Recruiters'],
-}
+  '/report-candidate':           ['Report Candidate']
+} 
 
 function resolveBreadcrumbs(pathname) {
   if (BREADCRUMB_MAP[pathname]) return BREADCRUMB_MAP[pathname]

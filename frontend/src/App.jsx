@@ -17,6 +17,8 @@ import RecruitersPage from "./pages/Recruiters"
 import ComingSoonPage from "./pages/ComingSoon"
 import AssessmentAPage from "./pages/AssessmentA"
 import ReportPage from "./pages/Report"
+import ReportCandidatePage from "./pages/ReportCandidate"
+import ReportCandidateDetailPage from "./pages/ReportCandidateDetail"
 import CandidateDetailPage from "./pages/CandidateDetail"
 import AssessmentPlacementPage from "./pages/portal/AssessmentPlacement"
 import QAFollowUpPage from "./pages/portal/QAFollowUp"
@@ -78,6 +80,9 @@ function App() {
         <Route path="/settings/integrations" element={<IntegrationsPage />} />
         <Route path="/settings/account" element={<AccountPage />} />
         <Route path="/settings/recruiters" element={<RecruitersPage />} />
+
+        <Route path="/report-candidate" element={<ReportCandidatePage />} />
+        <Route path="/report-candidate/:candidateId" element={<ReportCandidateDetailPage />} />
 
         {/* Catch-all: any unregistered path shows Coming Soon */}
         <Route path="*" element={<ComingSoonPage />} />

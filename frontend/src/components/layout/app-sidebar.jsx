@@ -60,6 +60,7 @@ const iconMap = {
 const routeMap = {
   'Dashboard':          '/dashboard',
   'Candidate Pipeline': '/candidate-pipeline',
+  'Report Candidate': '/report-candidate',
   'User Management':   '/settings/user-management',
   'Role Management':   '/settings/role-management',
   'Recruiters':        '/settings/recruiters',
@@ -210,9 +211,11 @@ export function AppSidebar() {
 
   const isDashboardActive       = location.pathname === '/dashboard';
   const isCandidatePipelineActive = location.pathname === '/candidate-pipeline';
+  const isReportCandidateActive = location.pathname ==='/report-candidate';
   const canSeeDashboard         = hasPermission('Main', 'Dashboard', 'read');
   const canSeeCandidatePipeline = hasPermission('Main', 'Candidate Pipeline', 'read');
-  const canSeeMain              = canSeeDashboard || canSeeCandidatePipeline;
+  const canSeeReportCandidate = hasPermission('Main', 'Report Candidate', 'read');
+  const canSeeMain              = canSeeDashboard || canSeeCandidatePipeline || canSeeReportCandidate;
 
   return (
     <Sidebar>
@@ -293,6 +296,25 @@ export function AppSidebar() {
                         <Workflow className={`h-3 w-3 ${isCandidatePipelineActive ? 'text-white' : 'text-primary'}`} />
                       </div>
                       <span className="text-sm">Candidate Pipeline</span>
+                    </SidebarMenuButton>
+                  </SidebarMenuItem>
+                )}
+                {canSeeReportCandidate && (
+                  <SidebarMenuItem>
+                    <SidebarMenuButton
+                      className={`cursor-pointer transition-all duration-200 rounded-lg h-8 ${
+                        isReportCandidateActive
+                          ? 'bg-primary text-primary-foreground font-semibold shadow-sm'
+                          : 'text-muted-foreground hover:bg-accent/80 hover:text-foreground'
+                      }`}
+                      onClick={() => navigate('/report-candidate')}
+                    >
+                      <div className={`h-5 w-5 rounded-md flex items-center justify-center flex-shrink-0 transition-all duration-200 ${
+                        isReportCandidateActive ? 'bg-white/20' : 'bg-primary/10'
+                      }`}>
+                        <Workflow className={`h-3 w-3 ${isReportCandidateActive ? 'text-white' : 'text-primary'}`} />
+                      </div>
+                      <span className="text-sm">Report Candidate</span>
                     </SidebarMenuButton>
                   </SidebarMenuItem>
                 )}

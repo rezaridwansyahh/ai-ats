@@ -3,6 +3,7 @@ export default [
   // Main / Dashboard (module 1)
   { id: 1,  module_id: 1, menu_id: 1  }, // Dashboard
   { id: 2,  module_id: 1, menu_id: 2  }, // Candidate Pipeline
+  { id: 20, module_id: 1, menu_id: 20 }, // Report Candidate
 
   // Sourcing (module 2)
   { id: 3,  module_id: 2, menu_id: 3  }, // Job Management

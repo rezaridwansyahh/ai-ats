@@ -23,7 +23,25 @@ const CANDIDATE_PIPELINE_SELECT = `
 class CandidatePipeline {
   static async getAll() {
     const result = await getDb().query(`
-      ${CANDIDATE_PIPELINE_SELECT}
+      SELECT c.id,
+         c.job_id,
+         cj.job_title,  
+         c.name AS candidate_name,
+         c.last_position,
+         c.address,
+         c.education,
+         c.information,
+         c.date,
+         c.attachment,
+         c.latest_stage,
+         c.created_at,
+         c.updated_at,
+         a.email AS candidate_email,
+         COALESCE(js.name, 'Not Started') AS latest_stage_name
+      FROM master_candidate c
+      LEFT JOIN job_stage js       ON js.id = c.latest_stage
+      LEFT JOIN master_applicant a ON a.id  = c.applicant_id
+      LEFT JOIN core_job cj ON cj.id = c.job_id
       ORDER BY c.created_at DESC
     `);
     return result.rows;
@@ -190,6 +208,63 @@ class CandidatePipeline {
     } finally {
       client.release();
     }
+  }
+
+  static async getProgress(candidate_id) {
+    const result = await getDb().query(`
+      WITH candidate_data AS (
+          -- Get candidate info + their job_id
+          SELECT 
+              mc.*,
+              cs.decision as screening_decision,
+              cs.decision_reason,
+              cs.decided_at
+          FROM master_candidate mc
+          LEFT JOIN candidate_screening cs ON cs.candidate_id = mc.id
+          WHERE mc.id = $1  -- Only candidate_id needed
+      ),
+      job_stages AS (
+          -- Use the job_id from candidate_data
+          SELECT
+              rs.id AS stage_id,
+              rs.stage_order,
+              rs.name AS stage_name,
+              rs.stage_type_id,
+              rsc.name AS category,
+              cjt.template_stage_id,
+              mts.name AS template_name,
+              CASE 
+                  WHEN cjt.template_stage_id IS NOT NULL THEN 'from_template'
+                  ELSE 'custom'
+              END AS stage_source,
+              -- Get candidate's progress for this stage
+              cs.id AS candidate_stage_id,
+              cs.decision AS stage_decision,
+              CASE 
+                  WHEN cs.id IS NULL THEN 'locked'
+                  WHEN cs.decision->>'status' = 'passed' THEN 'completed'
+                  WHEN cs.decision->>'status' = 'in_progress' THEN 'current'
+                  WHEN cs.decision->>'status' = 'failed' THEN 'rejected'
+                  ELSE 'pending'
+              END AS stage_status
+          FROM candidate_data cd
+          LEFT JOIN core_job_template cjt ON cjt.job_id = cd.job_id
+          LEFT JOIN master_template_stage mts ON mts.id = cjt.template_stage_id
+          LEFT JOIN job_stage rs ON (
+              CASE
+                  WHEN cjt.template_stage_id IS NOT NULL THEN rs.master_id = cjt.template_stage_id
+                  ELSE rs.job_id = cd.job_id
+              END
+          )
+          LEFT JOIN recruitment_stage_category rsc ON rsc.id = rs.stage_type_id
+          LEFT JOIN candidate_stages cs ON cs.job_stage_id = rs.id AND cs.candidate_id = cd.id
+      )
+      SELECT 
+          (SELECT row_to_json(candidate_data) FROM candidate_data) as candidate,
+          (SELECT json_agg(job_stages ORDER BY stage_order) FROM job_stages) as stages;
+    `, [candidate_id]);
+
+    return result.rows[0];
   }
 }
 
