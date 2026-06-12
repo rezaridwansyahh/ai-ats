@@ -265,7 +265,12 @@ class CandidatePipeline {
                   WHEN rsc.name = 'Screening & Matching' THEN
                       jsonb_build_object(
                           'parse', jsonb_build_object('result', ma.information),
-                          'match', jsonb_build_object('result', row_to_json(cjs)),
+                          'match', jsonb_build_object('result', jsonb_build_object(
+                            'score_data', row_to_json(cjs),
+                            'additional_info', jsonb_build_object(
+                                'required_skills', cj.required_skills,
+                                'preferred_skills', cj.preferred_skills
+                            ))),
                           'qa', jsonb_build_object('result', row_to_json(sq))
                       )
                   ELSE
@@ -279,8 +284,8 @@ class CandidatePipeline {
                   ELSE 'pending'
               END AS stage_status
           FROM candidate_data cd
-          LEFT JOIN core_job_template cjt ON cjt.job_id = cd.job_id
-          LEFT JOIN master_template_stage mts ON mts.id = cjt.template_stage_id
+          LEFT JOIN core_job_template cjt ON cjt.job_id = cd.job_id 
+	        LEFT JOIN master_template_stage mts ON mts.id = cjt.template_stage_id
           LEFT JOIN job_stage rs ON (
               CASE
                   WHEN cjt.template_stage_id IS NOT NULL THEN rs.master_id = cjt.template_stage_id
@@ -288,6 +293,7 @@ class CandidatePipeline {
               END
           )
           LEFT JOIN recruitment_stage_category rsc ON rsc.id = rs.stage_type_id
+          LEFT JOIN core_job cj ON cj.id = cd.job_id
           LEFT JOIN candidate_stages cst ON cst.job_stage_id = rs.id AND cst.candidate_id = cd.id
           LEFT JOIN master_applicant ma ON ma.id = cd.applicant_id
           LEFT JOIN candidate_screening csr ON csr.candidate_id = cd.id

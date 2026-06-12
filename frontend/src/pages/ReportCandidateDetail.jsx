@@ -5,15 +5,7 @@ import {
   Briefcase, FileText, Wand2, Workflow, Megaphone, Sparkles, Calendar as CalendarIcon,
 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Textarea } from '@/components/ui/textarea';
-import {
-  Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
-} from '@/components/ui/select';
-import { Popover, PopoverTrigger, PopoverContent } from '@/components/ui/popover';
-import { Calendar } from '@/components/ui/calendar';
 
 import { Pattern } from "@/components/report-candidate/report-stepper"
 import ScreeningMain from "@/components/report-candidate/screening/screening-main"
@@ -73,6 +65,7 @@ export default function ReportCandidateDetailPage() {
 
   const parsedData = screeningData.parsedDone;
   const scoredData = screeningData.scoredDone;
+  console.log(scoredData);
   const qaData = screeningData.qaDone;
 
   return (
@@ -114,7 +107,7 @@ export default function ReportCandidateDetailPage() {
                   {/* Dynamic Sub-step Details */}
                   {activeSubStep === 1 && <ParseDetails data={parsedData} />}
                   {activeSubStep === 2 && <MatchDetails data={scoredData} />}
-                  {activeSubStep === 3 && <QADetails data={qaData} />}
+                  {activeSubStep === 3 && <QaDetails data={qaData} />}
                 </>
               }
             
