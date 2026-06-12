@@ -2,7 +2,7 @@ export default [
   // Main / Dashboard module
   { id: 1,  name: 'Dashboard' },
   { id: 2,  name: 'Candidate Pipeline' },
-  { id: 20, name: 'Report Candidate'},
+  { id: 22, name: 'Report Candidate'},
 
   // Sourcing module
   { id: 3,  name: 'Job Management' },
