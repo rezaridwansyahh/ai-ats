@@ -237,18 +237,16 @@ class CandidatePipeline {
   static async getProgress(candidate_id) {
     const result = await getDb().query(`
       WITH candidate_data AS (
-          -- Get candidate info + their job_id
           SELECT 
-              mc.*,
+              mc.*,  -- This includes mc.applicant_id
               cs.decision as screening_decision,
               cs.decision_reason,
               cs.decided_at
           FROM master_candidate mc
           LEFT JOIN candidate_screening cs ON cs.candidate_id = mc.id
-          WHERE mc.id = $1  -- Only candidate_id needed
+          WHERE mc.id = $1
       ),
       job_stages AS (
-          -- Use the job_id from candidate_data
           SELECT
               rs.id AS stage_id,
               rs.stage_order,
@@ -261,14 +259,23 @@ class CandidatePipeline {
                   WHEN cjt.template_stage_id IS NOT NULL THEN 'from_template'
                   ELSE 'custom'
               END AS stage_source,
-              -- Get candidate's progress for this stage
-              cs.id AS candidate_stage_id,
-              cs.decision AS stage_decision,
+              cst.id AS candidate_stage_id,
+              cst.decision AS stage_decision,
+              CASE
+                  WHEN rsc.name = 'Screening & Matching' THEN
+                      jsonb_build_object(
+                          'parse', jsonb_build_object('result', ma.information),
+                          'match', jsonb_build_object('result', row_to_json(cjs)),
+                          'qa', jsonb_build_object('result', row_to_json(sq))
+                      )
+                  ELSE
+                      jsonb_build_object('process', NULL)
+              END AS process,
               CASE 
-                  WHEN cs.id IS NULL THEN 'locked'
-                  WHEN cs.decision->>'status' = 'passed' THEN 'completed'
-                  WHEN cs.decision->>'status' = 'in_progress' THEN 'current'
-                  WHEN cs.decision->>'status' = 'failed' THEN 'rejected'
+                  WHEN cst.id IS NULL THEN 'locked'
+                  WHEN cst.decision->>'status' = 'passed' THEN 'completed'
+                  WHEN cst.decision->>'status' = 'in_progress' THEN 'current'
+                  WHEN cst.decision->>'status' = 'failed' THEN 'rejected'
                   ELSE 'pending'
               END AS stage_status
           FROM candidate_data cd
@@ -281,11 +288,16 @@ class CandidatePipeline {
               END
           )
           LEFT JOIN recruitment_stage_category rsc ON rsc.id = rs.stage_type_id
-          LEFT JOIN candidate_stages cs ON cs.job_stage_id = rs.id AND cs.candidate_id = cd.id
+          LEFT JOIN candidate_stages cst ON cst.job_stage_id = rs.id AND cst.candidate_id = cd.id
+          LEFT JOIN master_applicant ma ON ma.id = cd.applicant_id
+          LEFT JOIN candidate_screening csr ON csr.candidate_id = cd.id
+          LEFT JOIN screening_qa sq ON sq.screening_id = csr.id 
+          LEFT JOIN candidate_job_score cjs ON cjs.applicant_id = cd.applicant_id
       )
       SELECT 
-          (SELECT row_to_json(candidate_data) FROM candidate_data) as candidate,
-          (SELECT json_agg(job_stages ORDER BY stage_order) FROM job_stages) as stages;
+          row_to_json(candidate_data) as candidate,
+          COALESCE((SELECT json_agg(job_stages ORDER BY stage_order) FROM job_stages), '[]'::json) as stages
+      FROM candidate_data;
     `, [candidate_id]);
 
     return result.rows[0];

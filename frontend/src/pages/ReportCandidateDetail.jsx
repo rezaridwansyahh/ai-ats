@@ -1,8 +1,8 @@
 import { useEffect, useCallback, useMemo, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import {
-  Loader2, AlertTriangle, ArrowLeft, ArrowRight, MapPin, Save, Send, ChevronUp,
-  Briefcase, FileText, Workflow, Megaphone, Sparkles, Calendar as CalendarIcon,
+  Loader2, AlertTriangle, ArrowLeft, MessageSquare, ArrowRight, MapPin, Save, Send, ChevronUp,
+  Briefcase, FileText, Wand2, Workflow, Megaphone, Sparkles, Calendar as CalendarIcon,
 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -17,13 +17,6 @@ import { Calendar } from '@/components/ui/calendar';
 import { Pattern } from "@/components/examples/c-stepper-7"
 
 import { getProgress } from '@/api/candidate.api';
-
-const SECTIONS = [
-  { id: 'basics',   label: 'Basics',           icon: Briefcase },
-  { id: 'jd',       label: 'Job description',  icon: FileText },
-  { id: 'pipeline', label: 'Pipeline & AI',    icon: Workflow },
-  { id: 'posting',  label: 'Posting',          icon: Megaphone },
-];
 
 export default function ReportCandidateDetailPage() {
   const { candidateId } = useParams();
@@ -52,6 +45,27 @@ export default function ReportCandidateDetailPage() {
     fetchCandidate();
   }, [fetchCandidate]);
 
+  const parsedDone = true;
+  const scoredDone = true;
+  const qaDone = true;
+
+  const engineTiles = [
+    {
+      key: 'parse', num: 1, label: 'Resume Parsing', icon: FileText,
+      done: parsedDone, word: 'parsed',
+      footer: `${parsedDone ? 'Parsed' : 'Not Parsed' }`,
+    },
+    {
+      key: 'match', num: 2, label: 'AI Matching', icon: Wand2,
+      done: scoredDone, word: 'scored',
+      footer: `${scoredDone ? 'Scored' : 'Not Scored'}`,
+    },
+    {
+      key: 'qa', num: 3, label: 'Follow-up Q&A', icon: MessageSquare,
+      done: true, pct: 0,
+    },
+  ];
+
   return (
     <>
       {/* Sticky header — lean, mirrors JobEdit's header. Posting + Re-sync live in the aside.
@@ -62,19 +76,6 @@ export default function ReportCandidateDetailPage() {
           <Button variant="ghost" size="sm" className="text-xs" onClick={() => navigate('/report-candidate')}>
             <ArrowLeft className="h-3.5 w-3.5 mr-1" /> Back to Jobs
           </Button>
-        </div>
-
-        {/* Title + meta */}
-        <div>
-          <div className="flex items-center gap-3 mb-1.5 flex-wrap">
-            <h1 className="text-2xl font-bold tracking-tight">{candidate.name}</h1>
-          </div>
-          <div className="text-xs text-muted-foreground flex flex-wrap items-center gap-x-3 gap-y-1">
-            {candidate.address && <span className="flex items-center gap-1"><MapPin className="h-3 w-3" /> {candidate.address}</span>}
-            {candidate.last_position && <span>{candidate.last_position}</span>}
-            {candidate.education && <span>· {candidate.education}</span>}
-            {candidate.latest_stage && <span>· Latest stage: {candidate.latest_stage}</span>}
-          </div>
         </div>
       </div>
 
@@ -92,7 +93,42 @@ export default function ReportCandidateDetailPage() {
                 </CardContent>
               </Card>
             
-              <div>Step still {activeStep}</div>
+              {activeStep === 1 && 
+                <Card>
+                  <CardHeader className="flex flex-row items-center justify-between">
+                    <CardTitle className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
+                      Engine progress
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent className="pt-0">
+                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                      {engineTiles.map((t) => {
+                        const Icon = t.icon;
+                        return (
+                          <button
+                            key={t.key}
+                            type="button"
+                            onClick={() => console.log("clicked")}
+                            className="text-left p-3 rounded-lg border bg-muted/20 hover:bg-muted/60 transition-colors cursor-pointer"
+                          >
+                            <div className="flex items-center justify-between gap-2">
+                              <span className="text-xs font-semibold flex items-center gap-1.5">
+                                <Icon className="h-3.5 w-3.5 text-primary" /> {t.num} · {t.label}
+                              </span>
+                            </div>
+                            <div className="mt-2 h-1.5 rounded-full bg-muted overflow-hidden">
+                              <div className="h-full bg-primary transition-all"  /> 
+                            </div>
+                            <div className="mt-1.5 text-[10px] text-muted-foreground">
+                              {`${t.footer} · Click to see details`}
+                            </div>
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </CardContent>
+                </Card>
+              }
             
           </div>
         </div>
