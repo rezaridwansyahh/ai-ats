@@ -4,7 +4,7 @@ import {
   ArrowLeft, Loader2, AlertTriangle, Check, ChevronRight,
   Plus, X, Pencil, Briefcase, MapPin, Lock, CalendarCheck,
   ClipboardList, Clock, Users, Trash2, Calendar as CalendarIcon,
-  MessageSquare,
+  MessageSquare, CheckCircle2, XCircle, RefreshCw,
 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -21,13 +21,14 @@ import {
   getInterview,
   getPrep,
   updateQuestions,
-  updateInterviewStatus,
   getSchedules,
   createSchedule,
   updateSchedule,
   confirmSchedule,
   unconfirmSchedule,
   deleteSchedule,
+  recordOutcome,
+  clearOutcome,
 } from '@/api/interview.api';
 
 const COMPETENCY_CODES = ['HRD-01', 'HRD-02', 'HRD-03', 'HRD-04', 'HRD-05', 'HRD-06'];
@@ -41,10 +42,20 @@ const COMPETENCY_NAMES = {
 };
 
 const STATUS_META = {
-  ongoing:   { label: 'Ongoing',   color: 'bg-blue-100 text-blue-700'       },
-  scheduled: { label: 'Scheduled', color: 'bg-violet-100 text-violet-700'   },
-  done:      { label: 'Done',      color: 'bg-emerald-100 text-emerald-700' },
+  ongoing:    { label: 'Ongoing',    color: 'bg-blue-100 text-blue-700'       },
+  scheduled:  { label: 'Scheduled',  color: 'bg-violet-100 text-violet-700'   },
+  interviewed:{ label: 'Interviewed',color: 'bg-emerald-100 text-emerald-700' },
+  no_show:    { label: 'No Show',    color: 'bg-rose-100 text-rose-700'       },
+  reschedule: { label: 'Reschedule', color: 'bg-amber-100 text-amber-700'     },
+  cancelled:  { label: 'Cancelled',  color: 'bg-gray-100 text-gray-600'       },
+  done:       { label: 'Done',       color: 'bg-emerald-100 text-emerald-700' },
 };
+
+const OUTCOME_OPTIONS = [
+  { value: 'interviewed', label: 'Interviewed',  icon: CheckCircle2, color: 'text-emerald-600' },
+  { value: 'no_show',     label: 'No Show',      icon: XCircle,      color: 'text-rose-600'    },
+  { value: 'reschedule',  label: 'Reschedule',   icon: RefreshCw,    color: 'text-amber-600'   },
+];
 
 const SECTIONS = [
   { key: 'prep',     label: 'Prep',     icon: ClipboardList },
@@ -68,22 +79,12 @@ function fmt(d) {
 function fmtTime(d) {
   if (!d) return '';
   try {
-    return new Date(d).toLocaleTimeString('en-GB', {
-      hour: '2-digit', minute: '2-digit',
-    });
+    return new Date(d).toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' });
   } catch { return ''; }
 }
 
-const parseLocalDate = (str) => {
-  if (!str) return undefined;
-  const [y, m, d] = str.split('-').map(Number);
-  return new Date(y, m - 1, d);
-};
-
 const formatLocalDate = (d) =>
   `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
-
-// ─── main component ───────────────────────────────────────────────────────────
 
 export default function InterviewCandidatePage() {
   const navigate                 = useNavigate();
@@ -177,9 +178,9 @@ export default function InterviewCandidatePage() {
                     <MapPin className="h-3 w-3" /> {job_location}
                   </span>
                 )}
-                {work_type       && <span>· {work_type}</span>}
-                {seniority_level && <span>· {seniority_level}</span>}
-                {scheduled_at    && <span>· next session {fmt(scheduled_at)}</span>}
+                {work_type        && <span>· {work_type}</span>}
+                {seniority_level  && <span>· {seniority_level}</span>}
+                {scheduled_at     && <span>· next session {fmt(scheduled_at)}</span>}
               </div>
             </div>
             <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] font-semibold ${statusMeta.color}`}>
@@ -249,7 +250,17 @@ export default function InterviewCandidatePage() {
               />
             )}
 
-            {(activeSection === 'conduct' || activeSection === 'evaluate' || activeSection === 'decide') && (
+            {activeSection === 'conduct' && (
+              <ConductSection
+                interviewId={interviewId}
+                interview={interview}
+                setInterview={setInterview}
+                setBanner={setBanner}
+                setError={setError}
+              />
+            )}
+
+            {(activeSection === 'evaluate' || activeSection === 'decide') && (
               <ComingSoonSection label={SECTIONS.find((s) => s.key === activeSection)?.label} />
             )}
           </div>
@@ -262,7 +273,11 @@ export default function InterviewCandidatePage() {
                 address={address}
                 education_text={education_text}
               />
-              <StepsNav activeSection={activeSection} onStep={setActiveSection} status={status} />
+              <StepsNav
+                activeSection={activeSection}
+                onStep={setActiveSection}
+                status={status}
+              />
             </div>
           </aside>
         </div>
@@ -485,20 +500,19 @@ function PrepSection({ jobId, prep, setPrep, setBanner, setError }) {
 }
 
 function ScheduleSection({ interviewId, interview, setInterview, setBanner, setError }) {
-  const [sessions, setSessions]       = useState([]);
+  const [sessions, setSessions]             = useState([]);
   const [loadingSessions, setLoadingSessions] = useState(true);
-  const [showForm, setShowForm]       = useState(false);
-  const [editingSession, setEditingSession] = useState(null); // null = new, object = edit
+  const [showForm, setShowForm]             = useState(false);
+  const [editingSession, setEditingSession] = useState(null);
 
-  // form state
-  const [title, setTitle]             = useState('');
+  const [title, setTitle]           = useState('');
   const [description, setDescription] = useState('');
   const [selectedDate, setSelectedDate] = useState(undefined);
-  const [timeValue, setTimeValue]     = useState('09:00');
-  const [saving, setSaving]           = useState(false);
+  const [timeValue, setTimeValue]   = useState('09:00');
+  const [saving, setSaving]         = useState(false);
   const [confirmNote, setConfirmNote] = useState('');
   const [confirmingId, setConfirmingId] = useState(null);
-  const [deletingId, setDeletingId]   = useState(null);
+  const [deletingId, setDeletingId] = useState(null);
 
   const loadSessions = useCallback(async () => {
     setLoadingSessions(true);
@@ -530,15 +544,13 @@ function ScheduleSection({ interviewId, interview, setInterview, setBanner, setE
     setSelectedDate(session.scheduled_at ? new Date(session.scheduled_at) : undefined);
     setTimeValue(session.scheduled_at
       ? new Date(session.scheduled_at).toTimeString().slice(0, 5)
-      : '09:00'
-    );
+      : '09:00');
     setShowForm(true);
   };
 
   const buildScheduledAt = () => {
     if (!selectedDate) return null;
-    const dateStr = formatLocalDate(selectedDate);
-    return new Date(`${dateStr}T${timeValue}:00`).toISOString();
+    return new Date(`${formatLocalDate(selectedDate)}T${timeValue}:00`).toISOString();
   };
 
   const handleSave = async () => {
@@ -555,7 +567,6 @@ function ScheduleSection({ interviewId, interview, setInterview, setBanner, setE
       } else {
         const res = await createSchedule(interviewId, { title, description, scheduled_at });
         setSessions((prev) => [...prev, res.data.schedule]);
-        // sync the header's next-session date
         setInterview((prev) => ({ ...prev, scheduled_at: res.data.schedule.scheduled_at }));
         setBanner({ ok: true, text: 'Session created.' });
       }
@@ -611,7 +622,6 @@ function ScheduleSection({ interviewId, interview, setInterview, setBanner, setE
 
   return (
     <div className="space-y-4">
-      {/* header row */}
       <div className="flex items-center justify-between gap-3">
         <div>
           <h2 className="text-sm font-semibold">Interview Sessions</h2>
@@ -626,7 +636,6 @@ function ScheduleSection({ interviewId, interview, setInterview, setBanner, setE
         )}
       </div>
 
-      {/* add / edit form */}
       {showForm && (
         <Card className="border-primary/30 bg-primary/5">
           <CardHeader className="pb-3">
@@ -646,11 +655,8 @@ function ScheduleSection({ interviewId, interview, setInterview, setBanner, setE
                 className="text-xs h-9"
               />
             </div>
-
             <div className="space-y-1.5">
-              <label className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
-                Description
-              </label>
+              <label className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">Description</label>
               <Textarea
                 value={description}
                 onChange={(e) => setDescription(e.target.value)}
@@ -659,8 +665,6 @@ function ScheduleSection({ interviewId, interview, setInterview, setBanner, setE
                 className="text-xs"
               />
             </div>
-
-            {/* date + time picker — same calendar pattern as JobCreation */}
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <div className="space-y-1.5">
                 <label className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
@@ -668,11 +672,7 @@ function ScheduleSection({ interviewId, interview, setInterview, setBanner, setE
                 </label>
                 <Popover>
                   <PopoverTrigger asChild>
-                    <div
-                      role="button"
-                      tabIndex={0}
-                      className="flex items-center gap-2 h-9 px-3 rounded-md border border-input bg-background text-xs cursor-pointer hover:bg-muted/30 transition-colors"
-                    >
+                    <div role="button" tabIndex={0} className="flex items-center gap-2 h-9 px-3 rounded-md border border-input bg-background text-xs cursor-pointer hover:bg-muted/30 transition-colors">
                       <CalendarIcon className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
                       <span className={selectedDate ? 'font-medium' : 'text-muted-foreground'}>
                         {selectedDate ? formatLocalDate(selectedDate) : 'Pick date'}
@@ -689,7 +689,6 @@ function ScheduleSection({ interviewId, interview, setInterview, setBanner, setE
                   </PopoverContent>
                 </Popover>
               </div>
-
               <div className="space-y-1.5">
                 <label className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
                   Time <span className="text-rose-500">*</span>
@@ -702,20 +701,9 @@ function ScheduleSection({ interviewId, interview, setInterview, setBanner, setE
                 />
               </div>
             </div>
-
             <div className="flex items-center justify-end gap-2 pt-1 border-t">
-              <Button
-                size="sm" variant="ghost" className="text-xs"
-                onClick={() => setShowForm(false)}
-                disabled={saving}
-              >
-                Cancel
-              </Button>
-              <Button
-                size="sm" className="text-xs"
-                onClick={handleSave}
-                disabled={!title.trim() || !selectedDate || saving}
-              >
+              <Button size="sm" variant="ghost" className="text-xs" onClick={() => setShowForm(false)} disabled={saving}>Cancel</Button>
+              <Button size="sm" className="text-xs" onClick={handleSave} disabled={!title.trim() || !selectedDate || saving}>
                 {saving ? <Loader2 className="h-3.5 w-3.5 mr-1.5 animate-spin" /> : <Check className="h-3.5 w-3.5 mr-1.5" />}
                 {editingSession ? 'Update' : 'Create session'}
               </Button>
@@ -724,7 +712,6 @@ function ScheduleSection({ interviewId, interview, setInterview, setBanner, setE
         </Card>
       )}
 
-      {/* sessions list */}
       {loadingSessions ? (
         <div className="flex justify-center py-8">
           <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
@@ -755,7 +742,6 @@ function ScheduleSection({ interviewId, interview, setInterview, setBanner, setE
         </div>
       )}
 
-      {/* max sessions reached notice */}
       {sessions.length >= MAX_SESSIONS && !showForm && (
         <div className="flex items-center gap-2 px-3 py-2 rounded-lg border border-slate-200 bg-slate-50 text-xs text-slate-600">
           <MessageSquare className="h-3.5 w-3.5 shrink-0" />
@@ -766,27 +752,33 @@ function ScheduleSection({ interviewId, interview, setInterview, setBanner, setE
   );
 }
 
-function SessionCard({
-  session, sessionNumber,
-  confirmNote, setConfirmNote,
-  confirmingId, deletingId,
-  onEdit, onConfirm, onUnconfirm, onDelete,
-}) {
+function SessionCard({ session, sessionNumber, confirmNote, setConfirmNote, confirmingId, deletingId, onEdit, onConfirm, onUnconfirm, onDelete }) {
   const [showConfirmInput, setShowConfirmInput] = useState(false);
   const isConfirmed  = session.confirmed;
   const isConfirming = confirmingId === session.id;
   const isDeleting   = deletingId === session.id;
+  const hasOutcome   = !!session.status && session.status !== 'ongoing';
+
+  const outcomeMeta = hasOutcome ? OUTCOME_OPTIONS.find((o) => o.value === session.status) : null;
 
   return (
-    <Card className={`transition-colors ${isConfirmed ? 'border-emerald-200 bg-emerald-50/30' : ''}`}>
+    <Card className={`transition-colors ${
+      hasOutcome && session.status === 'interviewed' ? 'border-emerald-200 bg-emerald-50/20'
+      : hasOutcome && session.status === 'no_show'   ? 'border-rose-200 bg-rose-50/20'
+      : hasOutcome && session.status === 'reschedule'? 'border-amber-200 bg-amber-50/20'
+      : isConfirmed ? 'border-emerald-200 bg-emerald-50/20'
+      : ''
+    }`}>
       <CardContent className="p-4 space-y-3">
-        {/* top row */}
         <div className="flex items-start justify-between gap-3">
           <div className="flex items-start gap-3 min-w-0 flex-1">
             <div className={`h-7 w-7 rounded-full flex items-center justify-center text-[11px] font-bold shrink-0 ${
-              isConfirmed ? 'bg-emerald-500 text-white' : 'bg-muted text-muted-foreground'
+              hasOutcome && session.status === 'interviewed' ? 'bg-emerald-500 text-white'
+              : hasOutcome ? 'bg-amber-400 text-white'
+              : isConfirmed ? 'bg-emerald-500 text-white'
+              : 'bg-muted text-muted-foreground'
             }`}>
-              {isConfirmed ? <Check className="h-3.5 w-3.5" /> : sessionNumber}
+              {hasOutcome ? <Check className="h-3.5 w-3.5" /> : isConfirmed ? <Check className="h-3.5 w-3.5" /> : sessionNumber}
             </div>
             <div className="min-w-0">
               <p className="text-xs font-semibold truncate">{session.title}</p>
@@ -795,51 +787,48 @@ function SessionCard({
                   <CalendarIcon className="h-3 w-3" />
                   {fmt(session.scheduled_at)} · {fmtTime(session.scheduled_at)}
                 </span>
-                {isConfirmed
-                  ? <Badge variant="outline" className="text-[9px] border-emerald-300 text-emerald-700 bg-emerald-50">Confirmed</Badge>
-                  : <Badge variant="outline" className="text-[9px] border-amber-300 text-amber-700 bg-amber-50">Pending confirmation</Badge>}
+                {hasOutcome && outcomeMeta ? (
+                  <Badge variant="outline" className={`text-[9px] ${
+                    session.status === 'interviewed' ? 'border-emerald-300 text-emerald-700 bg-emerald-50'
+                    : session.status === 'no_show'   ? 'border-rose-300 text-rose-700 bg-rose-50'
+                    : 'border-amber-300 text-amber-700 bg-amber-50'
+                  }`}>
+                    {outcomeMeta.label}
+                  </Badge>
+                ) : isConfirmed ? (
+                  <Badge variant="outline" className="text-[9px] border-emerald-300 text-emerald-700 bg-emerald-50">Confirmed</Badge>
+                ) : (
+                  <Badge variant="outline" className="text-[9px] border-amber-300 text-amber-700 bg-amber-50">Pending confirmation</Badge>
+                )}
               </div>
-              {session.description && (
-                <p className="text-[10px] text-muted-foreground mt-1">{session.description}</p>
-              )}
+              {session.description && <p className="text-[10px] text-muted-foreground mt-1">{session.description}</p>}
               {isConfirmed && session.confirmation_note && (
-                <p className="text-[10px] text-emerald-700 mt-1 italic">
-                  "{session.confirmation_note}"
-                </p>
+                <p className="text-[10px] text-emerald-700 mt-1 italic">"{session.confirmation_note}"</p>
+              )}
+              {hasOutcome && session.outcome_note && (
+                <p className="text-[10px] text-muted-foreground mt-1 italic">Note: {session.outcome_note}</p>
               )}
             </div>
           </div>
 
-          {/* action buttons */}
           <div className="flex items-center gap-1 shrink-0">
-            {!isConfirmed && (
-              <Button
-                size="icon" variant="ghost"
-                className="h-7 w-7"
-                onClick={onEdit}
-                title="Edit"
-              >
+            {!isConfirmed && !hasOutcome && (
+              <Button size="icon" variant="ghost" className="h-7 w-7" onClick={onEdit} title="Edit">
                 <Pencil className="h-3.5 w-3.5 text-muted-foreground" />
               </Button>
             )}
             {isConfirmed ? (
-              <Button
-                size="sm" variant="outline"
-                className="h-7 text-xs text-amber-700 border-amber-300 hover:bg-amber-50"
-                onClick={onUnconfirm}
-              >
-                Unconfirm
-              </Button>
+              !hasOutcome && (
+                <Button size="sm" variant="outline" className="h-7 text-xs text-amber-700 border-amber-300 hover:bg-amber-50" onClick={onUnconfirm}>
+                  Unconfirm
+                </Button>
+              )
             ) : (
-              <Button
-                size="sm"
-                className="h-7 text-xs bg-emerald-600 hover:bg-emerald-700"
-                onClick={() => setShowConfirmInput(!showConfirmInput)}
-              >
+              <Button size="sm" className="h-7 text-xs bg-emerald-600 hover:bg-emerald-700" onClick={() => setShowConfirmInput(!showConfirmInput)}>
                 Confirm
               </Button>
             )}
-            {!isConfirmed && (
+            {!isConfirmed && !hasOutcome && (
               <Button
                 size="icon" variant="ghost"
                 className="h-7 w-7 text-rose-500 hover:text-rose-600 hover:bg-rose-50"
@@ -853,7 +842,6 @@ function SessionCard({
           </div>
         </div>
 
-        {/* confirm input — inline below the card row */}
         {showConfirmInput && !isConfirmed && (
           <div className="flex items-center gap-2 pt-2 border-t">
             <Input
@@ -870,16 +858,255 @@ function SessionCard({
               {isConfirming ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Check className="h-3.5 w-3.5 mr-1" />}
               Done
             </Button>
-            <Button
-              size="sm" variant="ghost" className="h-8 text-xs"
-              onClick={() => setShowConfirmInput(false)}
-            >
-              Cancel
-            </Button>
+            <Button size="sm" variant="ghost" className="h-8 text-xs" onClick={() => setShowConfirmInput(false)}>Cancel</Button>
           </div>
         )}
       </CardContent>
     </Card>
+  );
+}
+
+// ─── Conduct section ──────────────────────────────────────────────────────────
+
+function ConductSection({ interviewId, interview, setInterview, setBanner, setError }) {
+  const [sessions, setSessions]         = useState([]);
+  const [loadingSessions, setLoadingSessions] = useState(true);
+  const [recordingId, setRecordingId]   = useState(null);
+  const [clearingId, setClearingId]     = useState(null);
+  const [outcomeNote, setOutcomeNote]   = useState('');
+  const [expandedId, setExpandedId]     = useState(null);
+
+  const loadSessions = useCallback(async () => {
+    setLoadingSessions(true);
+    try {
+      const res = await getSchedules(interviewId);
+      const all = res.data?.schedules || [];
+      // only confirmed sessions are relevant for conduct
+      setSessions(all.filter((s) => s.confirmed));
+    } catch (err) {
+      setError(err.response?.data?.message || err.message || 'Failed to load sessions');
+    } finally {
+      setLoadingSessions(false);
+    }
+  }, [interviewId]);
+
+  useEffect(() => { loadSessions(); }, [loadSessions]);
+
+  const handleRecord = async (sessionId, status) => {
+    setRecordingId(sessionId);
+    setError(null);
+    setBanner(null);
+    try {
+      const res = await recordOutcome(sessionId, { status, outcome_note: outcomeNote || undefined });
+      setSessions((prev) => prev.map((s) => s.id === sessionId ? res.data.schedule : s));
+      setInterview((prev) => ({ ...prev, status }));
+      setBanner({ ok: true, text: `Outcome recorded: ${status.replace('_', ' ')}.` });
+      setOutcomeNote('');
+      setExpandedId(null);
+    } catch (err) {
+      setError(err.response?.data?.message || err.message || 'Failed to record outcome');
+    } finally {
+      setRecordingId(null);
+    }
+  };
+
+  const handleClear = async (sessionId) => {
+    setClearingId(sessionId);
+    setError(null);
+    setBanner(null);
+    try {
+      const res = await clearOutcome(sessionId);
+      setSessions((prev) => prev.map((s) => s.id === sessionId ? res.data.schedule : s));
+      setInterview((prev) => ({ ...prev, status: 'scheduled' }));
+      setBanner({ ok: true, text: 'Outcome cleared.' });
+    } catch (err) {
+      setError(err.response?.data?.message || err.message || 'Failed to clear outcome');
+    } finally {
+      setClearingId(null);
+    }
+  };
+
+  if (loadingSessions) {
+    return (
+      <div className="flex justify-center py-12">
+        <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
+      </div>
+    );
+  }
+
+  if (sessions.length === 0) {
+    return (
+      <Card>
+        <CardContent className="py-14 text-center space-y-2">
+          <div className="h-10 w-10 rounded-full bg-muted flex items-center justify-center mx-auto">
+            <Users className="h-5 w-5 text-muted-foreground" />
+          </div>
+          <p className="text-sm font-semibold text-foreground">No confirmed sessions yet</p>
+          <p className="text-xs text-muted-foreground max-w-xs mx-auto">
+            Confirm at least one session in the Schedule tab before recording a conduct outcome.
+          </p>
+        </CardContent>
+      </Card>
+    );
+  }
+
+  return (
+    <div className="space-y-4">
+      <div>
+        <h2 className="text-sm font-semibold">Conduct</h2>
+        <p className="text-[11px] text-muted-foreground">
+          Record what happened at each confirmed session. Offline only — pack scoring is handled by the batch module.
+        </p>
+      </div>
+
+      <div className="space-y-3">
+        {sessions.map((session, idx) => {
+          const hasOutcome   = !!session.status && session.status !== 'ongoing';
+          const outcomeMeta  = hasOutcome ? OUTCOME_OPTIONS.find((o) => o.value === session.status) : null;
+          const isExpanded   = expandedId === session.id;
+          const isRecording  = recordingId === session.id;
+          const isClearing   = clearingId === session.id;
+
+          return (
+            <Card key={session.id} className={`transition-colors ${
+              session.status === 'interviewed' ? 'border-emerald-200 bg-emerald-50/20'
+              : session.status === 'no_show'   ? 'border-rose-200 bg-rose-50/20'
+              : session.status === 'reschedule'? 'border-amber-200 bg-amber-50/20'
+              : ''
+            }`}>
+              <CardContent className="p-4 space-y-3">
+                {/* session header */}
+                <div className="flex items-start justify-between gap-3">
+                  <div className="flex items-start gap-3 min-w-0 flex-1">
+                    <div className={`h-7 w-7 rounded-full flex items-center justify-center text-[11px] font-bold shrink-0 ${
+                      session.status === 'interviewed' ? 'bg-emerald-500 text-white'
+                      : session.status === 'no_show'   ? 'bg-rose-400 text-white'
+                      : session.status === 'reschedule'? 'bg-amber-400 text-white'
+                      : 'bg-muted text-muted-foreground'
+                    }`}>
+                      {hasOutcome ? <Check className="h-3.5 w-3.5" /> : idx + 1}
+                    </div>
+                    <div className="min-w-0">
+                      <p className="text-xs font-semibold truncate">{session.title}</p>
+                      <div className="flex items-center gap-2 mt-0.5 flex-wrap">
+                        <span className="text-[10px] text-muted-foreground inline-flex items-center gap-1">
+                          <CalendarIcon className="h-3 w-3" />
+                          {fmt(session.scheduled_at)} · {fmtTime(session.scheduled_at)}
+                        </span>
+                        {hasOutcome && outcomeMeta ? (
+                          <Badge variant="outline" className={`text-[9px] ${
+                            session.status === 'interviewed' ? 'border-emerald-300 text-emerald-700 bg-emerald-50'
+                            : session.status === 'no_show'   ? 'border-rose-300 text-rose-700 bg-rose-50'
+                            : 'border-amber-300 text-amber-700 bg-amber-50'
+                          }`}>
+                            {outcomeMeta.label}
+                          </Badge>
+                        ) : (
+                          <Badge variant="outline" className="text-[9px] border-slate-300 text-slate-600">
+                            Awaiting outcome
+                          </Badge>
+                        )}
+                      </div>
+                      {hasOutcome && session.outcome_note && (
+                        <p className="text-[10px] text-muted-foreground mt-1 italic">"{session.outcome_note}"</p>
+                      )}
+                      {hasOutcome && session.outcome_at && (
+                        <p className="text-[10px] text-muted-foreground mt-0.5">Recorded {fmt(session.outcome_at)}</p>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* action buttons */}
+                  <div className="flex items-center gap-1.5 shrink-0">
+                    {hasOutcome ? (
+                      <Button
+                        size="sm" variant="outline"
+                        className="h-7 text-xs text-muted-foreground"
+                        onClick={() => handleClear(session.id)}
+                        disabled={isClearing}
+                      >
+                        {isClearing ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : 'Clear'}
+                      </Button>
+                    ) : (
+                      <Button
+                        size="sm" className="h-7 text-xs"
+                        onClick={() => setExpandedId(isExpanded ? null : session.id)}
+                      >
+                        Record outcome
+                      </Button>
+                    )}
+                  </div>
+                </div>
+
+                {/* outcome picker — inline expanded */}
+                {isExpanded && !hasOutcome && (
+                  <div className="pt-3 border-t space-y-3">
+                    <p className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
+                      What happened in this session?
+                    </p>
+
+                    <div className="grid grid-cols-3 gap-2">
+                      {OUTCOME_OPTIONS.map((opt) => {
+                        const Icon = opt.icon;
+                        return (
+                          <button
+                            key={opt.value}
+                            type="button"
+                            onClick={() => handleRecord(session.id, opt.value)}
+                            disabled={isRecording}
+                            className={`flex flex-col items-center gap-1.5 px-3 py-3 rounded-lg border text-xs font-semibold transition-colors hover:bg-muted/40 ${opt.color} border-current/20`}
+                          >
+                            {isRecording
+                              ? <Loader2 className="h-4 w-4 animate-spin" />
+                              : <Icon className={`h-4 w-4 ${opt.color}`} />}
+                            {opt.label}
+                          </button>
+                        );
+                      })}
+                    </div>
+
+                    <div className="space-y-1.5">
+                      <label className="text-[10px] text-muted-foreground">
+                        Note (optional)
+                      </label>
+                      <div className="flex gap-2">
+                        <Input
+                          value={outcomeNote}
+                          onChange={(e) => setOutcomeNote(e.target.value)}
+                          placeholder="e.g. Candidate arrived on time, ran 45 mins…"
+                          className="text-xs h-8 flex-1"
+                        />
+                        <Button
+                          size="sm" variant="ghost" className="h-8 text-xs"
+                          onClick={() => { setExpandedId(null); setOutcomeNote(''); }}
+                        >
+                          Cancel
+                        </Button>
+                      </div>
+                    </div>
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          );
+        })}
+      </div>
+
+      {/* pack status placeholder — coworker's batch module */}
+      <Card className="border-dashed">
+        <CardContent className="p-4 flex items-center gap-3">
+          <div className="h-8 w-8 rounded-md bg-muted flex items-center justify-center shrink-0">
+            <ClipboardList className="h-4 w-4 text-muted-foreground" />
+          </div>
+          <div>
+            <p className="text-xs font-semibold text-muted-foreground">Interview Pack</p>
+            <p className="text-[10px] text-muted-foreground">
+              Pack link status and scorecard returns will appear here once the batch module is live.
+            </p>
+          </div>
+        </CardContent>
+      </Card>
+    </div>
   );
 }
 
@@ -892,7 +1119,6 @@ function ComingSoonSection({ label }) {
         </div>
         <p className="text-sm font-semibold text-foreground">{label} — coming soon</p>
         <p className="text-xs text-muted-foreground max-w-xs mx-auto">
-          {label === 'Conduct'  && 'The interviewer pack and live scoring session will appear here once built.'}
           {label === 'Evaluate' && 'Scorecard review and competency breakdown will appear here once the pack is returned.'}
           {label === 'Decide'   && 'Advance, hold, or reject this candidate after reviewing the scorecard.'}
         </p>
@@ -933,12 +1159,14 @@ function CandidateCard({ last_position, address, education_text }) {
 }
 
 function StepsNav({ activeSection, onStep, status }) {
-  const isScheduled = status === 'scheduled' || status === 'done';
-  const isDone      = status === 'done';
+  const isScheduled  = ['scheduled', 'interviewed', 'no_show', 'reschedule', 'done'].includes(status);
+  const hasConducted = ['interviewed', 'no_show', 'reschedule', 'done'].includes(status);
+  const isDone       = status === 'done';
 
   const stepState = (key) => {
-    if (key === 'prep')     return isScheduled || isDone ? 'done' : 'active';
-    if (key === 'schedule') return isDone ? 'done' : isScheduled ? 'active' : 'pending';
+    if (key === 'prep')     return isScheduled ? 'done' : 'active';
+    if (key === 'schedule') return hasConducted ? 'done' : isScheduled ? 'active' : 'pending';
+    if (key === 'conduct')  return isDone ? 'done' : hasConducted ? 'active' : 'pending';
     return 'soon';
   };
 
@@ -951,28 +1179,31 @@ function StepsNav({ activeSection, onStep, status }) {
           const state = stepState(s.key);
           const active = s.key === activeSection;
           const soon  = state === 'soon';
+          const pending = state === 'pending';
           return (
             <button
               key={s.key}
               type="button"
-              onClick={() => onStep(s.key)}
+              onClick={() => !soon && onStep(s.key)}
               className={`w-full flex items-center gap-2 px-2 py-1.5 rounded-md text-left transition-colors ${
-                active ? 'bg-primary/10 text-primary'
-                : soon  ? 'opacity-50 cursor-default'
-                :         'hover:bg-muted/50 text-foreground'
+                active   ? 'bg-primary/10 text-primary'
+                : soon   ? 'opacity-40 cursor-default'
+                : pending? 'opacity-60 hover:bg-muted/50 text-muted-foreground'
+                :          'hover:bg-muted/50 text-foreground'
               }`}
             >
               <span className={`flex h-5 w-5 items-center justify-center rounded-full text-[9px] font-semibold shrink-0 ${
-                state === 'done' ? 'bg-emerald-500 text-white'
-                : active         ? 'bg-primary text-primary-foreground'
-                : soon           ? 'bg-muted text-muted-foreground'
-                :                  'border border-border text-muted-foreground'
+                state === 'done'  ? 'bg-emerald-500 text-white'
+                : active          ? 'bg-primary text-primary-foreground'
+                : soon || pending ? 'bg-muted text-muted-foreground'
+                :                   'border border-border text-muted-foreground'
               }`}>
                 {state === 'done' ? <Check className="h-3 w-3" /> : <Icon className="h-3 w-3" />}
               </span>
               <span className="flex-1 min-w-0">
                 <span className={`block text-xs truncate ${active ? 'font-semibold' : 'font-medium'}`}>{s.label}</span>
-                {soon && <span className="block text-[9px] text-muted-foreground">coming soon</span>}
+                {soon    && <span className="block text-[9px] text-muted-foreground">coming soon</span>}
+                {pending && !soon && <span className="block text-[9px] text-muted-foreground">complete previous step</span>}
               </span>
               {!soon && !active && <ChevronRight className="h-3 w-3 text-muted-foreground shrink-0" />}
             </button>

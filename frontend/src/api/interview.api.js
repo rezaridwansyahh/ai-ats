@@ -36,3 +36,7 @@ export const confirmSchedule = (schedule_id, { confirmation_note } = {}) => api.
 export const unconfirmSchedule = (schedule_id) => api.post(`/interview/schedules/${schedule_id}/unconfirm`);
  
 export const deleteSchedule = (schedule_id) => api.delete(`/interview/schedules/${schedule_id}`);
+
+export const recordOutcome = (schedule_id, { status, outcome_note } = {}) => api.post(`/interview/schedules/${schedule_id}/outcome`, { status, outcome_note });
+
+export const clearOutcome = (schedule_id) => api.delete(`/interview/schedules/${schedule_id}/outcome`);

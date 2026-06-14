@@ -26,4 +26,7 @@ router.put( '/job/:job_id/prep/rubric', interviewController.updateRubric);
 router.post('/job/:job_id/prep/rubric/lock', interviewController.lockRubric);
 router.post('/job/:job_id/prep/rubric/unlock', interviewController.unlockRubric);
 
+router.post('/schedules/:schedule_id/outcome', interviewController.recordOutcome);
+router.delete('/schedules/:schedule_id/outcome', interviewController.clearOutcome);
+
 export default router;

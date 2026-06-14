@@ -3,6 +3,7 @@ DROP TABLE IF EXISTS company_budgets CASCADE;
 DROP TABLE IF EXISTS company_usage CASCADE;
 DROP TABLE IF EXISTS candidate_interview CASCADE;
 DROP TABLE IF EXISTS interview_position_prep CASCADE;
+DROP TABLE IF EXISTS interview_schedule CASCADE;
 DROP TABLE IF EXISTS screening_qa CASCADE;
 DROP TABLE IF EXISTS candidate_screening CASCADE;
 DROP TABLE IF EXISTS candidate_job_score CASCADE;
@@ -70,6 +71,7 @@ DROP TYPE IF EXISTS battery_type CASCADE;
 DROP TYPE IF EXISTS status_session_type CASCADE;
 DROP TYPE IF EXISTS assessment_status_type CASCADE;
 DROP TYPE IF EXISTS screening_qa_status_type CASCADE;
+DROP TYPE IF EXISTS interview_status_type CASCADE;
 
 -- Create ENUM type
 CREATE TYPE status_type AS ENUM ('Draft', 'Active', 'Running', 'Expired', 'Failed', 'Blocked');
@@ -93,6 +95,7 @@ CREATE TYPE battery_type AS ENUM ('A', 'B', 'C', 'D', 'I', 'T');
 CREATE TYPE status_session_type AS ENUM ('invited', 'in_progress', 'completed', 'expired', 'revoked');
 CREATE TYPE assessment_status_type AS ENUM ('in_progress', 'completed', 'expired');
 CREATE TYPE screening_qa_status_type AS ENUM ('draft', 'sent', 'responded', 'expired');
+CREATE TYPE interview_status_type AS ENUM ('ongoing', 'interviewed', 'no_show', 'reschedule', 'cancelled', 'done');
 CREATE EXTENSION IF NOT EXISTS pgcrypto;
 CREATE EXTENSION IF NOT EXISTS pg_trgm;
 
@@ -570,6 +573,9 @@ CREATE TABLE interview_schedule (
   confirmed_by INTEGER REFERENCES master_users(id) ON DELETE SET NULL,
   confirmation_note TEXT,
   created_by INTEGER REFERENCES master_users(id) ON DELETE SET NULL,
+  status interview_status_type NOT NULL DEFAULT 'ongoing', -- interviewed | no_show | reschedule
+  outcome_note TEXT,
+  outcome_at TIMESTAMPTZ,
   created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
   updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );

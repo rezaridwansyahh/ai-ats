@@ -111,7 +111,6 @@ class InterviewModel {
     return result.rows[0] || null;
   }
 
-  // Updates the denormalized scheduled_at on candidate_interview (mirrors next upcoming session).
   async syncScheduledAt(interview_id) {
     const result = await getDb().query(
       `UPDATE candidate_interview
@@ -145,10 +144,13 @@ class InterviewModel {
          cj.id      AS job_id,
          cj.job_title,
          cj.status,
-         COUNT(ci.id)                                             AS total,
-         COUNT(*) FILTER (WHERE ci.status = 'ongoing')           AS ongoing,
-         COUNT(*) FILTER (WHERE ci.status = 'scheduled')         AS scheduled,
-         COUNT(*) FILTER (WHERE ci.status = 'done')              AS done
+         COUNT(ci.id)                                                   AS total,
+         COUNT(*) FILTER (WHERE ci.status = 'ongoing')                 AS ongoing,
+         COUNT(*) FILTER (WHERE ci.status = 'scheduled')               AS scheduled,
+         COUNT(*) FILTER (WHERE ci.status = 'interviewed')             AS interviewed,
+         COUNT(*) FILTER (WHERE ci.status = 'no_show')                 AS no_show,
+         COUNT(*) FILTER (WHERE ci.status = 'reschedule')              AS reschedule,
+         COUNT(*) FILTER (WHERE ci.status = 'done')                    AS done
        FROM core_job cj
        LEFT JOIN candidate_interview ci ON ci.job_id = cj.id
        WHERE cj.company_id = $1
@@ -158,23 +160,29 @@ class InterviewModel {
     );
 
     const positions = positionRows.rows.map((r) => ({
-      job_id:    r.job_id,
-      job_title: r.job_title,
-      status:    r.status,
-      total:     Number(r.total),
-      ongoing:   Number(r.ongoing),
-      scheduled: Number(r.scheduled),
-      done:      Number(r.done),
+      job_id:      r.job_id,
+      job_title:   r.job_title,
+      status:      r.status,
+      total:       Number(r.total),
+      ongoing:     Number(r.ongoing),
+      scheduled:   Number(r.scheduled),
+      interviewed: Number(r.interviewed),
+      no_show:     Number(r.no_show),
+      reschedule:  Number(r.reschedule),
+      done:        Number(r.done),
     }));
 
     const counts = positions.reduce(
       (acc, p) => {
-        acc.ongoing   += p.ongoing;
-        acc.scheduled += p.scheduled;
-        acc.done      += p.done;
+        acc.ongoing     += p.ongoing;
+        acc.scheduled   += p.scheduled;
+        acc.interviewed += p.interviewed;
+        acc.no_show     += p.no_show;
+        acc.reschedule  += p.reschedule;
+        acc.done        += p.done;
         return acc;
       },
-      { ongoing: 0, scheduled: 0, done: 0 }
+      { ongoing: 0, scheduled: 0, interviewed: 0, no_show: 0, reschedule: 0, done: 0 }
     );
 
     return { counts, positions };
@@ -190,7 +198,6 @@ class InterviewModel {
     return result.rows;
   }
 
-  // Get a single schedule row by id.
   async getScheduleById(schedule_id) {
     const result = await getDb().query(
       `SELECT * FROM interview_schedule WHERE id = $1`,
@@ -199,7 +206,6 @@ class InterviewModel {
     return result.rows[0] || null;
   }
 
-  // Count existing sessions for an interview 
   async countSchedules(interview_id) {
     const result = await getDb().query(
       `SELECT COUNT(*) FROM interview_schedule WHERE interview_id = $1`,
@@ -216,11 +222,11 @@ class InterviewModel {
        RETURNING *`,
       [
         interview_id,
-        company_id || null,
+        company_id  || null,
         title,
         description || null,
         scheduled_at,
-        created_by || null,
+        created_by  || null,
       ]
     );
     return result.rows[0];
@@ -247,11 +253,11 @@ class InterviewModel {
   async confirmSchedule(schedule_id, { confirmed_by, confirmation_note }) {
     const result = await getDb().query(
       `UPDATE interview_schedule
-          SET confirmed          = true,
-              confirmed_at       = NOW(),
-              confirmed_by       = $2,
-              confirmation_note  = $3,
-              updated_at         = NOW()
+          SET confirmed         = true,
+              confirmed_at      = NOW(),
+              confirmed_by      = $2,
+              confirmation_note = $3,
+              updated_at        = NOW()
         WHERE id = $1
         RETURNING *`,
       [schedule_id, confirmed_by || null, confirmation_note || null]
@@ -259,7 +265,6 @@ class InterviewModel {
     return result.rows[0] || null;
   }
 
-  // Unconfirm — recruiter reverses a confirmation.
   async unconfirmSchedule(schedule_id) {
     const result = await getDb().query(
       `UPDATE interview_schedule
@@ -282,6 +287,36 @@ class InterviewModel {
     );
     return result.rows[0] || null;
   }
+
+  async recordOutcome(schedule_id, { status, outcome_note }) {
+    const result = await getDb().query(
+      `UPDATE interview_schedule
+          SET status       = $2,
+              outcome_note = $3,
+              outcome_at   = NOW(),
+              updated_at   = NOW()
+        WHERE id = $1
+        RETURNING *`,
+      [schedule_id, status, outcome_note || null]
+    );
+    return result.rows[0] || null;
+  }
+
+  // Clears an outcome — recruiter corrects a mistake before it matters downstream.
+  async clearOutcome(schedule_id) {
+    const result = await getDb().query(
+      `UPDATE interview_schedule
+          SET status       = 'ongoing',
+              outcome_note = NULL,
+              outcome_at   = NULL,
+              updated_at   = NOW()
+        WHERE id = $1
+        RETURNING *`,
+      [schedule_id]
+    );
+    return result.rows[0] || null;
+  }
+
 
   async getPrepByJob(job_id) {
     const result = await getDb().query(
@@ -307,7 +342,7 @@ class InterviewModel {
       [
         job_id,
         company_id || null,
-        JSON.stringify(questions || []),
+        JSON.stringify(questions    || []),
         JSON.stringify(rubric_items || []),
         created_by || null,
       ]

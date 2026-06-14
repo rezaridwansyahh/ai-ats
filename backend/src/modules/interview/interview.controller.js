@@ -201,6 +201,33 @@ class InterviewController {
     }
   }
 
+  async recordOutcome(req, res) {
+    try {
+      const schedule_id = Number(req.params.schedule_id);
+      const { status, outcome_note } = req.body || {};
+      const result = await interviewService.recordOutcome(schedule_id, {
+        status,
+        outcome_note,
+        company_id: req.user?.company_id || null,
+      });
+      res.status(200).json({ message: 'Outcome recorded', schedule: result });
+    } catch (err) {
+      res.status(err.status || 500).json({ message: err.message });
+    }
+  }
+
+  async clearOutcome(req, res) {
+    try {
+      const schedule_id = Number(req.params.schedule_id);
+      const result = await interviewService.clearOutcome(schedule_id, {
+        company_id: req.user?.company_id || null,
+      });
+      res.status(200).json({ message: 'Outcome cleared', schedule: result });
+    } catch (err) {
+      res.status(err.status || 500).json({ message: err.message });
+    }
+  }  
+
   async updateRubric(req, res) {
     try {
       const job_id = Number(req.params.job_id);

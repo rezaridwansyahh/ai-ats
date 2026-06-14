@@ -39,7 +39,7 @@ class InterviewService {
 
   async updateStatus(interview_id, { status, company_id = null } = {}) {
     if (!interview_id) throw { status: 400, message: 'interview_id is required' };
-    const valid = ['ongoing', 'scheduled', 'in_batch', 'scored', 'decided', 'done'];
+    const valid = ['ongoing', 'interviewed', 'no_show', 'reschedule', 'cancelled', 'done'];
     if (!valid.includes(status)) {
       throw { status: 400, message: `status must be one of: ${valid.join(', ')}` };
     }
@@ -72,7 +72,6 @@ class InterviewService {
       throw { status: 403, message: 'Cross-tenant access denied' };
     }
 
-    // enforce max 3 sessions per candidate interview
     const count = await interviewModel.countSchedules(interview_id);
     if (count >= 3) {
       throw { status: 400, message: 'Maximum 3 sessions per candidate interview' };
@@ -80,16 +79,14 @@ class InterviewService {
 
     const schedule = await interviewModel.createSchedule({
       interview_id,
-      company_id: company_id || interview.company_id || null,
-      title: title.trim(),
+      company_id:  company_id || interview.company_id || null,
+      title:       title.trim(),
       description: description || null,
       scheduled_at,
       created_by,
     });
 
-    // sync candidate_interview.scheduled_at to next upcoming session
     await interviewModel.syncScheduledAt(interview_id);
-
     return schedule;
   }
 
@@ -99,7 +96,6 @@ class InterviewService {
     const existing = await interviewModel.getScheduleById(schedule_id);
     if (!existing) throw { status: 404, message: 'Schedule not found' };
 
-    // tenant guard via parent interview
     if (company_id) {
       const interview = await interviewModel.getById(existing.interview_id);
       if (interview?.company_id && interview.company_id !== company_id) {
@@ -107,10 +103,9 @@ class InterviewService {
       }
     }
 
-    // only allow updating title, description, scheduled_at
     const allowed = {};
-    if (fields.title       !== undefined) allowed.title        = fields.title.trim();
-    if (fields.description !== undefined) allowed.description  = fields.description || null;
+    if (fields.title        !== undefined) allowed.title        = fields.title.trim();
+    if (fields.description  !== undefined) allowed.description  = fields.description || null;
     if (fields.scheduled_at !== undefined) allowed.scheduled_at = fields.scheduled_at;
 
     if (Object.keys(allowed).length === 0) {
@@ -118,7 +113,6 @@ class InterviewService {
     }
 
     const updated = await interviewModel.updateSchedule(schedule_id, allowed);
-
     await interviewModel.syncScheduledAt(existing.interview_id);
     return updated;
   }
@@ -137,10 +131,7 @@ class InterviewService {
     }
 
     if (existing.confirmed) return existing; 
-    return await interviewModel.confirmSchedule(schedule_id, {
-      confirmed_by,
-      confirmation_note,
-    });
+    return await interviewModel.confirmSchedule(schedule_id, { confirmed_by, confirmation_note });
   }
 
   async unconfirmSchedule(schedule_id, { company_id = null } = {}) {
@@ -157,7 +148,6 @@ class InterviewService {
     }
 
     if (!existing.confirmed) return existing; 
-
     return await interviewModel.unconfirmSchedule(schedule_id);
   }
 
@@ -174,17 +164,63 @@ class InterviewService {
       }
     }
 
-    // block deletion of confirmed sessions — must unconfirm first
     if (existing.confirmed) {
       throw { status: 400, message: 'Cannot delete a confirmed session — unconfirm it first' };
     }
 
     const deleted = await interviewModel.deleteSchedule(schedule_id);
-
-    // re-sync scheduled_at on parent after removal
     await interviewModel.syncScheduledAt(existing.interview_id);
-
     return deleted;
+  }
+
+  async recordOutcome(schedule_id, { status, outcome_note = null, company_id = null } = {}) {
+    if (!schedule_id) throw { status: 400, message: 'schedule_id is required' };
+
+    const validOutcomes = ['interviewed', 'no_show', 'reschedule'];
+    if (!validOutcomes.includes(status)) {
+      throw { status: 400, message: `status must be one of: ${validOutcomes.join(', ')}` };
+    }
+
+    const existing = await interviewModel.getScheduleById(schedule_id);
+    if (!existing) throw { status: 404, message: 'Schedule not found' };
+
+    // only confirmed sessions can have an outcome recorded
+    if (!existing.confirmed) {
+      throw { status: 400, message: 'Session must be confirmed before recording an outcome' };
+    }
+
+    if (company_id) {
+      const interview = await interviewModel.getById(existing.interview_id);
+      if (interview?.company_id && interview.company_id !== company_id) {
+        throw { status: 403, message: 'Cross-tenant access denied' };
+      }
+    }
+
+    const updated = await interviewModel.recordOutcome(schedule_id, { status, outcome_note });
+    await interviewModel.updateInterviewStatus(existing.interview_id, status);
+
+    return updated;
+  }
+
+  async clearOutcome(schedule_id, { company_id = null } = {}) {
+    if (!schedule_id) throw { status: 400, message: 'schedule_id is required' };
+
+    const existing = await interviewModel.getScheduleById(schedule_id);
+    if (!existing) throw { status: 404, message: 'Schedule not found' };
+
+    if (company_id) {
+      const interview = await interviewModel.getById(existing.interview_id);
+      if (interview?.company_id && interview.company_id !== company_id) {
+        throw { status: 403, message: 'Cross-tenant access denied' };
+      }
+    }
+
+    const cleared = await interviewModel.clearOutcome(schedule_id);
+
+    // revert parent status back to scheduled since the session is still confirmed
+    await interviewModel.updateInterviewStatus(existing.interview_id, 'scheduled');
+
+    return cleared;
   }
 
   async getPrep(job_id, { company_id = null } = {}) {
@@ -226,10 +262,10 @@ class InterviewService {
 
     return await interviewModel.upsertPrep({
       job_id,
-      company_id: company_id || job.company_id || null,
+      company_id:  company_id || job.company_id || null,
       questions,
       rubric_items: existingRubric,
-      created_by: context.user_id || null,
+      created_by:  context.user_id || null,
     });
   }
 
@@ -251,11 +287,11 @@ class InterviewService {
     const clean = questions
       .filter((q) => q && typeof q === 'object' && typeof q.text === 'string' && q.text.trim())
       .map((q) => ({
-        id:         q.id ?? null,
+        id:        q.id ?? null,
         competency: typeof q.competency === 'string' ? q.competency.trim() : null,
-        source:     q.source === 'open' ? 'open' : 'jd_generated',
-        text:       q.text.trim(),
-        follow_up:  typeof q.follow_up === 'string' ? q.follow_up.trim() : null,
+        source:    q.source === 'open' ? 'open' : 'jd_generated',
+        text:      q.text.trim(),
+        follow_up: typeof q.follow_up === 'string' ? q.follow_up.trim() : null,
       }));
 
     if (clean.length === 0) throw { status: 400, message: 'No valid questions provided' };
@@ -314,7 +350,6 @@ class InterviewService {
     if (!prep.rubric_locked) return prep;
     return await interviewModel.unlockRubric(job_id);
   }
-
 
   _validateRubricItems(rubric_items) {
     for (const item of rubric_items) {
