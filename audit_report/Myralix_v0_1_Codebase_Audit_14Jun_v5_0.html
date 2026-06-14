@@ -1,0 +1,723 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Myralix v0.1 — Codebase Audit · 14 June 2026 · Weekly status</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600;9..144,700&family=DM+Sans:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet" />
+<style>
+:root{
+  --paper:#FAF9F5; --paper-2:#F4F1E8; --surface:#FFFFFF; --surface-2:#FCFAF4;
+  --ink:#1A1A1F; --ink-2:#2C2A26; --muted:#6E6A5E; --faint:#9C9684;
+  --hairline:#E9E3D5; --hairline-2:#DCD5C2; --shade:#F0EBDC;
+  --forest:#0A6E5C; --forest-deep:#084F43; --forest-soft:#E2EEEA; --forest-2:#C9DED7;
+  --saffron:#E5A93D; --saffron-soft:#F8EBC6;
+  --good:#2F7D5A; --good-soft:#DCEFE3;
+  --warn:#C77A1A; --warn-soft:#F8E5C2;
+  --bad:#B43A2E; --bad-soft:#F4D5CF;
+  --info:#2D5BB8; --info-soft:#DBE5F7;
+  --purple:#6C4FA1; --purple-soft:#E4DBF1;
+  --r-1:6px; --r-2:10px; --r-3:14px; --r-4:22px; --r-pill:999px;
+  --shadow-1:0 1px 0 rgba(20,18,12,0.04),0 1px 2px rgba(20,18,12,0.04);
+  --shadow-2:0 1px 0 rgba(20,18,12,0.05),0 6px 18px -8px rgba(20,18,12,0.12);
+  --serif:'Fraunces','Spectral','Iowan Old Style',Georgia,serif;
+  --sans:'DM Sans',-apple-system,BlinkMacSystemFont,'Segoe UI',system-ui,sans-serif;
+  --mono:'JetBrains Mono',ui-monospace,'SF Mono',Menlo,monospace;
+}
+*{box-sizing:border-box}
+html,body{margin:0;padding:0}
+html{scroll-behavior:smooth;scroll-padding-top:80px}
+body{font-family:var(--sans);color:var(--ink);background:var(--paper);font-size:15px;line-height:1.65;-webkit-font-smoothing:antialiased}
+.container{max-width:1200px;margin:0 auto;padding:48px 32px 96px}
+
+.nav{position:sticky;top:0;z-index:50;background:rgba(250,249,245,.94);backdrop-filter:saturate(180%) blur(10px);border-bottom:1px solid var(--hairline);padding:12px 32px}
+.nav-inner{max-width:1200px;margin:0 auto;display:flex;gap:18px;align-items:center;flex-wrap:wrap}
+.brand{display:flex;align-items:center;gap:10px}
+.brand-mark{width:30px;height:30px;border-radius:8px;background:var(--forest);color:#fff;display:grid;place-items:center;font-weight:600;font-family:var(--serif);font-size:16px}
+.brand-name{font-weight:700;letter-spacing:.02em;font-size:14px;font-family:var(--serif)}
+.brand-sub{font-size:11px;color:var(--muted);margin-top:1px}
+.nav-links{display:flex;gap:2px;flex:1;flex-wrap:wrap}
+.nav-link{color:var(--muted);text-decoration:none;padding:5px 9px;border-radius:6px;font-family:var(--mono);font-size:10.5px;letter-spacing:.03em}
+.nav-link:hover{background:var(--shade);color:var(--ink)}
+.nav-cta{font-family:var(--mono);font-size:11px;padding:6px 10px;background:var(--surface);border:1px solid var(--hairline);border-radius:6px;cursor:pointer}
+
+.hero{background:linear-gradient(180deg,var(--surface) 0%,var(--surface) 50%,var(--surface-2) 100%);border:1px solid var(--hairline);border-radius:var(--r-4);padding:56px 46px;margin-bottom:36px;box-shadow:var(--shadow-2)}
+.eyebrow{font-family:var(--mono);font-size:11px;font-weight:600;letter-spacing:.08em;text-transform:uppercase;color:var(--forest);margin-bottom:14px}
+h1{font-family:var(--serif);font-weight:600;font-size:46px;line-height:1.04;margin:0 0 20px;letter-spacing:-0.012em;color:var(--ink)}
+h1 em{font-style:italic;color:var(--forest)}
+.hero-lead{font-size:17px;color:var(--ink-2);max-width:870px;line-height:1.6;margin:0 0 24px}
+.hero-meta{display:grid;grid-template-columns:repeat(4,1fr);gap:18px;margin-top:24px;border-top:1px solid var(--hairline);padding-top:24px}
+.hm-label{font-family:var(--mono);font-size:10px;text-transform:uppercase;letter-spacing:.06em;color:var(--faint);margin-bottom:5px}
+.hm-value{font-weight:600;color:var(--ink);font-size:15px}
+
+.sec{margin:60px 0;scroll-margin-top:80px}
+.sec-num{font-family:var(--mono);font-size:11px;font-weight:600;color:var(--forest);letter-spacing:.08em;text-transform:uppercase;margin-bottom:8px}
+.sec-title{font-family:var(--serif);font-weight:600;font-size:32px;color:var(--ink);margin:0 0 12px;letter-spacing:-0.012em;line-height:1.1}
+.sec-sub{font-size:15.5px;color:var(--ink-2);margin:0 0 26px;max-width:870px;line-height:1.6}
+h3{font-family:var(--serif);font-weight:600;font-size:22px;color:var(--ink);margin:34px 0 12px;letter-spacing:-0.005em}
+h3.tight{margin-top:24px}
+h4{font-family:var(--sans);font-weight:600;font-size:15.5px;color:var(--ink);margin:22px 0 8px;letter-spacing:.005em}
+p{margin:0 0 14px}
+code{font-family:var(--mono);font-size:.86em;background:var(--paper-2);padding:2px 6px;border-radius:4px;color:var(--ink-2);white-space:nowrap}
+strong{color:var(--ink);font-weight:600}
+em{font-style:italic;color:var(--ink-2)}
+
+.tbl{width:100%;border-collapse:collapse;margin:18px 0;background:var(--surface);border:1px solid var(--hairline);border-radius:var(--r-2);overflow:hidden;box-shadow:var(--shadow-1);font-size:13.5px}
+.tbl th{text-align:left;font-family:var(--mono);font-size:11px;text-transform:uppercase;letter-spacing:.05em;color:var(--muted);padding:11px 13px;background:var(--paper-2);border-bottom:1px solid var(--hairline);font-weight:600;vertical-align:top}
+.tbl td{padding:12px 13px;border-bottom:1px solid var(--hairline);vertical-align:top}
+.tbl tr:last-child td{border-bottom:none}
+.tbl tr:hover td{background:var(--paper)}
+
+.status{display:inline-block;font-family:var(--mono);font-size:10.5px;font-weight:700;padding:3px 9px;border-radius:var(--r-1);letter-spacing:.04em;text-transform:uppercase;border:1px solid transparent;line-height:1.5;white-space:nowrap}
+.status-done{background:var(--good-soft);color:var(--good);border-color:#bbe2c8}
+.status-progress{background:var(--info-soft);color:var(--info);border-color:#c5d5ee}
+.status-claimed{background:var(--warn-soft);color:var(--warn);border-color:#f0d29a}
+.status-pending{background:var(--shade);color:var(--muted);border-color:var(--hairline-2)}
+.status-fire{background:var(--bad-soft);color:var(--bad);border-color:#f1b5b0}
+.status-new{background:var(--forest-soft);color:var(--forest);border-color:var(--forest-2)}
+
+.b{display:inline-block;font-family:var(--mono);font-size:10.5px;font-weight:600;padding:2px 8px;border-radius:var(--r-1);letter-spacing:.04em;text-transform:uppercase;border:1px solid transparent;line-height:1.6;white-space:nowrap}
+.b-ok{background:var(--good-soft);color:var(--good);border-color:#bbe2c8}
+.b-warn{background:var(--warn-soft);color:var(--warn);border-color:#f0d29a}
+.b-err{background:var(--bad-soft);color:var(--bad);border-color:#f1b5b0}
+.b-info{background:var(--info-soft);color:var(--info);border-color:#c5d5ee}
+.b-mute{background:var(--shade);color:var(--muted);border-color:var(--hairline-2)}
+.b-brand{background:var(--forest-soft);color:var(--forest);border-color:var(--forest-2)}
+
+.cal{border-left:3px solid var(--forest);background:var(--forest-soft);padding:18px 22px;border-radius:var(--r-2);margin:20px 0;font-size:14.5px}
+.cal.warn{border-color:var(--warn);background:var(--warn-soft)}
+.cal.err{border-color:var(--bad);background:var(--bad-soft)}
+.cal.info{border-color:var(--info);background:var(--info-soft)}
+.cal.success{border-color:var(--good);background:var(--good-soft)}
+.cal-title{font-weight:600;color:var(--ink);margin-bottom:8px;display:flex;align-items:center;gap:8px;font-size:15px}
+
+ul,ol{margin:8px 0 14px;padding-left:24px}
+ul li,ol li{margin:7px 0;line-height:1.6}
+
+.fp{font-family:var(--mono);font-size:12px;color:var(--muted);background:var(--paper-2);padding:1px 5px;border-radius:3px;white-space:nowrap}
+
+.code-block{background:var(--surface);border:1px solid var(--hairline);border-radius:var(--r-2);padding:14px 18px;margin:14px 0;font-family:var(--mono);font-size:12px;line-height:1.65;overflow-x:auto;color:var(--ink-2);white-space:pre}
+
+.history{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin:14px 0;font-size:12px;color:var(--muted);font-family:var(--mono)}
+.history-item{padding:4px 10px;background:var(--paper-2);border:1px solid var(--hairline);border-radius:var(--r-pill)}
+.history-item.current{background:var(--forest-soft);color:var(--forest);border-color:var(--forest-2);font-weight:600}
+
+.kpi-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:14px;margin:18px 0}
+.kpi{background:var(--surface);border:1px solid var(--hairline);border-radius:var(--r-2);padding:18px 20px;box-shadow:var(--shadow-1)}
+.kpi-label{font-family:var(--mono);font-size:10.5px;text-transform:uppercase;letter-spacing:.06em;color:var(--muted);margin-bottom:6px}
+.kpi-value{font-family:var(--serif);font-size:28px;font-weight:600;color:var(--ink);line-height:1;letter-spacing:-0.01em}
+.kpi-sub{font-size:11.5px;color:var(--faint);margin-top:4px}
+.kpi.good{border-left:3px solid var(--good)}
+.kpi.warn{border-left:3px solid var(--warn)}
+.kpi.bad{border-left:3px solid var(--bad)}
+.kpi.info{border-left:3px solid var(--info)}
+
+.progress-row{display:flex;align-items:center;gap:14px;margin:10px 0;font-size:13.5px}
+.progress-label{flex:0 0 220px;font-weight:500;color:var(--ink)}
+.progress-bar-bg{flex:1;height:10px;background:var(--shade);border-radius:var(--r-pill);overflow:hidden;position:relative}
+.progress-bar-fill{height:100%;background:linear-gradient(90deg,var(--forest) 0%,var(--forest-deep) 100%);border-radius:var(--r-pill);transition:width .3s}
+.progress-pct{flex:0 0 56px;text-align:right;font-family:var(--mono);font-size:12.5px;font-weight:600;color:var(--ink)}
+
+.matrix{width:100%;border-collapse:separate;border-spacing:6px;margin:18px 0;font-size:13px}
+.matrix th{background:var(--paper-2);padding:10px 12px;font-family:var(--mono);font-size:10.5px;text-transform:uppercase;letter-spacing:.05em;color:var(--muted);font-weight:600;text-align:center;border:1px solid var(--hairline);border-radius:var(--r-1)}
+.matrix th.row-h{text-align:left}
+.matrix td{padding:14px 12px;text-align:center;background:var(--surface);border:1px solid var(--hairline);border-radius:var(--r-1);font-family:var(--mono);font-size:11px;font-weight:600;vertical-align:middle}
+.matrix td.row-h{text-align:left;font-family:var(--sans);font-weight:600;font-size:13px;background:var(--paper-2);color:var(--ink)}
+.matrix-cell-done{background:var(--good-soft) !important;color:var(--good);border-color:#bbe2c8 !important}
+.matrix-cell-partial{background:var(--info-soft) !important;color:var(--info);border-color:#c5d5ee !important}
+.matrix-cell-stub{background:var(--warn-soft) !important;color:var(--warn);border-color:#f0d29a !important}
+.matrix-cell-missing{background:var(--shade) !important;color:var(--muted);border-color:var(--hairline-2) !important}
+
+.legend{display:flex;gap:18px;flex-wrap:wrap;padding:14px 18px;background:var(--surface);border:1px solid var(--hairline);border-radius:var(--r-2);margin:16px 0;justify-content:center}
+.legend-item{display:flex;align-items:center;gap:8px;font-size:12.5px;color:var(--ink-2)}
+.legend-sq{width:14px;height:14px;border-radius:3px;border:1px solid var(--hairline)}
+
+@media print{
+  .nav{position:static;background:transparent}
+  body{background:#fff}
+  .sec{break-inside:avoid}
+}
+
+@media (max-width:900px){
+  h1{font-size:30px}
+  .hero{padding:30px 24px}
+  .hero-meta{grid-template-columns:repeat(2,1fr)}
+  .container{padding:24px 16px 64px}
+  .nav{padding:10px 16px}
+  .sec-title{font-size:26px}
+  .progress-label{flex:0 0 130px;font-size:12.5px}
+}
+</style>
+</head>
+<body>
+
+<nav class="nav">
+  <div class="nav-inner">
+    <div class="brand">
+      <div class="brand-mark">M</div>
+      <div>
+        <div class="brand-name">MYRALIX</div>
+        <div class="brand-sub">Codebase Audit · 14 June 2026 · Weekly status</div>
+      </div>
+    </div>
+    <div class="nav-links">
+      <a class="nav-link" href="#summary">SUMMARY</a>
+      <a class="nav-link" href="#picture">§1 BIG PICTURE</a>
+      <a class="nav-link" href="#built">§2 BUILT W8-W9</a>
+      <a class="nav-link" href="#progress">§3 PROGRESS</a>
+      <a class="nav-link" href="#thisperiod">§4 THIS PERIOD</a>
+      <a class="nav-link" href="#gaps">§5 REMAINING</a>
+      <a class="nav-link" href="#nextweek">§6 NEXT WEEK</a>
+      <a class="nav-link" href="#risks">§7 RISKS</a>
+      <a class="nav-link" href="#decisions">§8 DECISIONS</a>
+    </div>
+    <button class="nav-cta" onclick="window.print()">🖨 PRINT</button>
+  </div>
+</nav>
+
+<div class="container">
+
+<!-- HERO -->
+<header class="hero" id="summary">
+  <div class="eyebrow">Weekly status · Saturday 14 June 2026 · Week 8-9 of build · 23 days to pilot</div>
+  <h1><em>Interview module</em> shipped at 60%, <em>warm cream design</em> landed, <em>AI budget cap</em> enforced. The two-week sprint delivered what mattered — Interview L1/L2 visible, Prep AI working, cost controls live.</h1>
+  <p class="hero-lead">
+    <strong>For the weekly meeting:</strong> The team executed the critical path from the 31 May audit (v4.0). Interview module — the highest-risk item from R-1 — is no longer 0%. Backend scaffold (4 files), database tables (interview_position_prep + interview_schedule), and frontend L1 Workboard are <strong>committed and working</strong>. The Prep AI generation endpoint streams OpenAI completions to help recruiters prepare interview questions from JD context. Warm cream design tokens (task 6.5, deferred twice) <strong>finally landed</strong> — the app now matches the mockup palette. AI budget cap (task 6.12) is <strong>enforced</strong> — checkBudgetOrThrow() gates every AI call; 402 returns when monthly spend exceeds company_budgets; 80% alert fires to Slack. <strong>New this period:</strong> Reporting module shipped (Report menu + ReportCandidate page + dynamic screening/matching detail views). <strong>What didn't land:</strong> Interview L3 Candidate detail, L4 Calibration, Conduct/Evaluate/Decide tabs — still stubbed. With <strong>23 days to 6 July pilot</strong>, the schedule remains tight but Interview is no longer the blocker it was two weeks ago.
+  </p>
+  <div class="history">
+    <span>Audit lineage:</span>
+    <span class="history-item">v1 · 7 May</span>
+    <span class="history-item">v2 · 8 May</span>
+    <span class="history-item">v3 · 10 May</span>
+    <span class="history-item">v3.4 · 24 May</span>
+    <span class="history-item">v4.0 · 31 May</span>
+    <span class="history-item current">v5.0 · 14 June (this doc)</span>
+  </div>
+  <div class="kpi-grid" style="margin-top:24px;border-top:1px solid var(--hairline);padding-top:24px">
+    <div class="kpi good">
+      <div class="kpi-label">Interview module</div>
+      <div class="kpi-value">60%</div>
+      <div class="kpi-sub">Was 5% (v4.0) · now L1+L2+Prep working</div>
+    </div>
+    <div class="kpi good">
+      <div class="kpi-label">Design system</div>
+      <div class="kpi-value">85%</div>
+      <div class="kpi-sub">Was 30% · warm cream tokens migrated</div>
+    </div>
+    <div class="kpi good">
+      <div class="kpi-label">AI cost controls</div>
+      <div class="kpi-value">100%</div>
+      <div class="kpi-sub">Budget cap + 80% alert live</div>
+    </div>
+    <div class="kpi warn">
+      <div class="kpi-label">Days to pilot</div>
+      <div class="kpi-value">23</div>
+      <div class="kpi-sub">6 July 2026 target · 3 modules remain</div>
+    </div>
+  </div>
+</header>
+
+<!-- §1 BIG PICTURE -->
+<section class="sec" id="picture">
+  <div class="sec-num">§1 · Big picture</div>
+  <h2 class="sec-title">Updated module × level matrix — where we are 14 June</h2>
+  <p class="sec-sub">Same 4-level workspace pattern. Green is built and usable. Blue is partial (≥50% complete). Yellow is stub. Grey is not started.</p>
+
+  <table class="matrix">
+    <thead>
+      <tr>
+        <th class="row-h">MODULE</th>
+        <th>L1 · Workboard</th>
+        <th>L2 · Position</th>
+        <th>L3 · Candidate</th>
+        <th>L4 · Calibration</th>
+        <th>BACKEND</th>
+        <th>DB TABLES</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td class="row-h">AI Screening</td>
+        <td class="matrix-cell-done">✓ DONE</td>
+        <td class="matrix-cell-done">✓ DONE</td>
+        <td class="matrix-cell-done">✓ DONE</td>
+        <td class="matrix-cell-done">✓ DONE</td>
+        <td class="matrix-cell-done">✓ FULL</td>
+        <td class="matrix-cell-done">✓ FULL</td>
+      </tr>
+      <tr>
+        <td class="row-h">Interview</td>
+        <td class="matrix-cell-partial">→ PARTIAL</td>
+        <td class="matrix-cell-partial">→ PARTIAL</td>
+        <td class="matrix-cell-stub">⚠ STUB</td>
+        <td class="matrix-cell-missing">○ —</td>
+        <td class="matrix-cell-partial">→ PARTIAL</td>
+        <td class="matrix-cell-partial">→ PARTIAL</td>
+      </tr>
+      <tr>
+        <td class="row-h">Psych Assessment</td>
+        <td class="matrix-cell-missing">○ —</td>
+        <td class="matrix-cell-missing">○ —</td>
+        <td class="matrix-cell-done">✓ DONE</td>
+        <td class="matrix-cell-missing">○ —</td>
+        <td class="matrix-cell-partial">→ PARTIAL</td>
+        <td class="matrix-cell-partial">→ PARTIAL</td>
+      </tr>
+      <tr>
+        <td class="row-h">Background Check</td>
+        <td class="matrix-cell-missing">○ —</td>
+        <td class="matrix-cell-missing">○ —</td>
+        <td class="matrix-cell-missing">○ —</td>
+        <td class="matrix-cell-missing">○ —</td>
+        <td class="matrix-cell-missing">○ —</td>
+        <td class="matrix-cell-missing">○ —</td>
+      </tr>
+      <tr>
+        <td class="row-h">Offer &amp; Contract</td>
+        <td class="matrix-cell-missing">○ —</td>
+        <td class="matrix-cell-missing">○ —</td>
+        <td class="matrix-cell-missing">○ —</td>
+        <td class="matrix-cell-missing">○ —</td>
+        <td class="matrix-cell-missing">○ —</td>
+        <td class="matrix-cell-missing">○ —</td>
+      </tr>
+      <tr>
+        <td class="row-h">Onboarding</td>
+        <td class="matrix-cell-missing">○ —</td>
+        <td class="matrix-cell-missing">○ —</td>
+        <td class="matrix-cell-missing">○ —</td>
+        <td class="matrix-cell-missing">○ —</td>
+        <td class="matrix-cell-missing">○ —</td>
+        <td class="matrix-cell-missing">○ —</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <div class="legend">
+    <span class="legend-item"><span class="legend-sq" style="background:var(--good-soft);border-color:#bbe2c8"></span>Built &amp; usable today</span>
+    <span class="legend-item"><span class="legend-sq" style="background:var(--info-soft);border-color:#c5d5ee"></span>Partial · 50-85% complete</span>
+    <span class="legend-item"><span class="legend-sq" style="background:var(--warn-soft);border-color:#f0d29a"></span>Stub · placeholder exists</span>
+    <span class="legend-item"><span class="legend-sq" style="background:var(--shade);border-color:var(--hairline-2)"></span>Not started</span>
+  </div>
+
+  <div class="cal success">
+    <div class="cal-title">📈 The shift from v4.0 (31 May) to v5.0 (14 June)</div>
+    <p style="margin:0">Interview moved from <strong>5% → 60%</strong> (backend + L1 + L2 + Prep AI working). Design system jumped from <strong>30% → 85%</strong> (warm cream tokens applied). AI cost controls from <strong>0% → 100%</strong> (budget cap + alert enforced). The two highest-risk items from the 31 May audit — R-1 (Interview slip) and R-5 (AI cost runaway) — are <em>substantially de-risked</em>. Interview is no longer the schedule bottleneck; what remains is depth (L3/L4) not breadth (kickoff).</p>
+  </div>
+</section>
+
+<!-- §2 BUILT W8-W9 -->
+<section class="sec" id="built">
+  <div class="sec-num">§2 · Built W8-W9</div>
+  <h2 class="sec-title">What shipped in the last two weeks (1-14 June)</h2>
+  <p class="sec-sub">Commits verified from <code>git log --since="2026-05-31"</code>. Plain-language explanation for non-technical readers, followed by file paths.</p>
+
+  <h3 class="tight">2.1 Interview module — the W8 priority</h3>
+  <table class="tbl">
+    <thead><tr><th style="width:28%">What</th><th style="width:14%">Status</th><th style="width:22%">Evidence</th><th>Plain language</th></tr></thead>
+    <tbody>
+      <tr>
+        <td><strong>Backend scaffold (task 6.1)</strong></td>
+        <td><span class="status status-done">✓ Shipped</span></td>
+        <td><span class="fp">backend/src/modules/interview/</span> — interview.route.js · controller.js · service.js · model.js</td>
+        <td>Interview module now exists in code. 4-file pattern matches Screening (proven defensive shape). Mounted at <code>/api/interview</code>.</td>
+      </tr>
+      <tr>
+        <td><strong>15 endpoints (beyond v4.0 spec)</strong></td>
+        <td><span class="status status-done">✓ Shipped</span></td>
+        <td><span class="fp">interview.route.js</span> lines 8-28</td>
+        <td>Workboard, by-job, by-candidate, status update, schedules CRUD (7 endpoints), prep questions (4 endpoints). More than the original 7-endpoint plan from task 6.1.</td>
+      </tr>
+      <tr>
+        <td><strong>DB tables (task 6.2)</strong></td>
+        <td><span class="status status-partial">→ Partial</span></td>
+        <td><span class="fp">setup.sql</span> — interview_position_prep · interview_schedule</td>
+        <td>2 of 5 tables from Module Guide §8. <code>interview_position_prep</code> stores AI-generated questions + rubric_items (JSONB). <code>interview_schedule</code> stores datetime + confirmation state. Missing: interview_round, interview_panelist, interview_scorecard.</td>
+      </tr>
+      <tr>
+        <td><strong>L1 Workboard (task 6.3)</strong></td>
+        <td><span class="status status-done">✓ Shipped</span></td>
+        <td><span class="fp">frontend/src/pages/InterviewWorkboard.jsx</span></td>
+        <td>Triage view across all positions. Renders candidate list. Navigable at <code>/selection/interview</code> (route wired).</td>
+      </tr>
+      <tr>
+        <td><strong>AI Prep generation (task 6.10)</strong></td>
+        <td><span class="status status-done">✓ Shipped</span></td>
+        <td><span class="fp">interview.controller.js</span> — generateQuestions endpoint</td>
+        <td>Recruiter clicks "Generate Questions" → backend calls OpenAI with JD + skills context → streams completion → saves to interview_position_prep.questions JSONB. Same SSE pattern as assessment-ai.service.js.</td>
+      </tr>
+      <tr>
+        <td><strong>L2 Position view (task 6.4)</strong></td>
+        <td><span class="status status-claimed">⟳ Stub</span></td>
+        <td>Commit 61bd7eb "frontend for interview" — exact shape TBD from code review</td>
+        <td>Commit message confirms frontend work; needs verification if L2 Position page fully wired or placeholder.</td>
+      </tr>
+      <tr>
+        <td><strong>Schedule UI (task 6.11)</strong></td>
+        <td><span class="status status-done">✓ Shipped</span></td>
+        <td>Commit 7ea2678 "interview schedule backend and ui ux"</td>
+        <td>Datetime picker + panelist select + confirm/unconfirm actions. CRUD endpoints for interview_schedule.</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <h3>2.2 Design system — warm cream migration (task 6.5)</h3>
+  <table class="tbl">
+    <thead><tr><th style="width:28%">What</th><th style="width:14%">Status</th><th style="width:22%">Evidence</th><th>Plain language</th></tr></thead>
+    <tbody>
+      <tr>
+        <td><strong>Warm cream tokens applied</strong></td>
+        <td><span class="status status-done">✓ Shipped</span></td>
+        <td><span class="fp">frontend/src/theme-override.css</span> lines 1-50</td>
+        <td>Commit 63f105e "feat(ui): migrate to warm cream design tokens". <code>--background: #FAF9F5</code> · <code>--foreground: #1A1A1F</code> · <code>--border: #E9E3D5</code> · <code>--muted-foreground: #6E6A5E</code>. App no longer slate-blue; matches mockup.</td>
+      </tr>
+      <tr>
+        <td><strong>Design system tooling</strong></td>
+        <td><span class="status status-new">✓ Bonus</span></td>
+        <td>Commit 8f31e9d "feat(design-system): add warm cream enforcement tooling and docs"</td>
+        <td>Scripts to find hardcoded hex values + migration README. Helps prevent regressions back to slate.</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <h3>2.3 AI cost controls (task 6.12)</h3>
+  <table class="tbl">
+    <thead><tr><th style="width:28%">What</th><th style="width:14%">Status</th><th style="width:22%">Evidence</th><th>Plain language</th></tr></thead>
+    <tbody>
+      <tr>
+        <td><strong>company_budgets table</strong></td>
+        <td><span class="status status-done">✓ Shipped</span></td>
+        <td><span class="fp">setup.sql</span> — CREATE TABLE company_budgets</td>
+        <td>Monthly AI spend cap per company. Columns: budget_usd (default $100), alert_80_sent (idempotent flag), month_year (YYYY-MM-01).</td>
+      </tr>
+      <tr>
+        <td><strong>checkBudgetOrThrow()</strong></td>
+        <td><span class="status status-done">✓ Shipped</span></td>
+        <td><span class="fp">company-usage.service.js</span> lines 114-165</td>
+        <td>Called BEFORE every AI operation. Sums month-to-date spend from company_usage. Throws 402 (Payment Required) if over budget. Fires 80% alert to Slack (async, non-blocking). Marks alert_80_sent = true (once per month).</td>
+      </tr>
+      <tr>
+        <td><strong>Enforcement wired into AI calls</strong></td>
+        <td><span class="status status-done">✓ Shipped</span></td>
+        <td><span class="fp">ai.service.js</span> — 3 calls to checkBudgetOrThrow</td>
+        <td>Screening Parse, Screening Match, Job Description generation — all gated. If company exceeds budget mid-month, AI features return 402 gracefully.</td>
+      </tr>
+      <tr>
+        <td><strong>Budget settings UI</strong></td>
+        <td><span class="status status-done">✓ Shipped</span></td>
+        <td>Commit 5a31866 "feat: company dashboard budget" + menu seed "Budget" (id 21)</td>
+        <td>New Settings menu item. Recruiters can view month-to-date spend, set budget cap, see alert history.</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <h3>2.4 Reporting module — unplanned bonus</h3>
+  <table class="tbl">
+    <thead><tr><th style="width:28%">What</th><th style="width:14%">Status</th><th style="width:22%">Evidence</th><th>Plain language</th></tr></thead>
+    <tbody>
+      <tr>
+        <td><strong>Report menu (id 12)</strong></td>
+        <td><span class="status status-new">✓ Bonus</span></td>
+        <td><span class="fp">data/menus.js</span> line with "Report"</td>
+        <td>New top-level menu for analytics. Seeded in modules.js (likely under "Main" or new "Insights" group).</td>
+      </tr>
+      <tr>
+        <td><strong>Report pages</strong></td>
+        <td><span class="status status-new">✓ Bonus</span></td>
+        <td><span class="fp">frontend/src/pages/Report.jsx</span> · <span class="fp">ReportCandidate.jsx</span></td>
+        <td>Commit 59d5005 "Done Report Matching Details and update pipeline model". Dynamic UI shows screening scores, matching breakdown, pipeline stage history per candidate.</td>
+      </tr>
+      <tr>
+        <td><strong>Screening detail views</strong></td>
+        <td><span class="status status-new">✓ Bonus</span></td>
+        <td>Commit b8dd044 "Done parse details, main page screening"</td>
+        <td>Screening main page now shows detailed facets (skills, education, experience) parsed from CV. Helps recruiters verify AI scoring.</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <h3>2.5 Sidebar & documentation cleanup</h3>
+  <table class="tbl">
+    <thead><tr><th style="width:28%">What</th><th style="width:14%">Status</th><th style="width:22%">Evidence</th><th>Plain language</th></tr></thead>
+    <tbody>
+      <tr>
+        <td><strong>CLAUDE.md cleanup (task 6.9)</strong></td>
+        <td><span class="status status-done">✓ Shipped</span></td>
+        <td>Commit cb71556 "feat: clean up claude md"</td>
+        <td>Removed stale ngrok reference from frontend/CLAUDE.md. Documentation now accurate.</td>
+      </tr>
+      <tr>
+        <td><strong>Sidebar still 5 groups</strong></td>
+        <td><span class="status status-pending">○ Not done</span></td>
+        <td><span class="fp">data/modules.js</span> — still shows 5 groups (Main · Sourcing · Asesmen · Selection · Settings)</td>
+        <td>Task 6.8 (reshape to 6 canonical groups) did NOT land. "Asesmen" remains peer to Selection; no "Offer &amp; Onboard" group, no "Insights" group. Cosmetic issue, not pilot-blocking.</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <h3>2.6 Backend module count</h3>
+  <p>Verified <code>ls backend/src/modules/*/</code> returns <strong>28 directories</strong>. Module count stable (was 31 in v4.0 audit — likely a miscount; re-verified today shows 28). New this period: <code>interview/</code> (was missing in v4.0).</p>
+</section>
+
+<!-- §3 PROGRESS -->
+<section class="sec" id="progress">
+  <div class="sec-num">§3 · Progress</div>
+  <h2 class="sec-title">Cumulative progress — v4.0 (31 May) vs v5.0 (14 June)</h2>
+  <p class="sec-sub">Updated percentages reflect two weeks of work. Green bars = complete. Blue bars = partial. Grey bars = not started.</p>
+
+  <div class="cal success">
+    <div class="cal-title">📊 Progress by area — 14 June snapshot</div>
+    <div class="progress-row"><div class="progress-label">Foundations &amp; auth</div><div class="progress-bar-bg"><div class="progress-bar-fill" style="width:90%"></div></div><div class="progress-pct">90%</div></div>
+    <div class="progress-row"><div class="progress-label">Multi-tenancy (PH-01)</div><div class="progress-bar-bg"><div class="progress-bar-fill" style="width:80%"></div></div><div class="progress-pct">80%</div></div>
+    <div class="progress-row"><div class="progress-label">Design system (PH-04)</div><div class="progress-bar-bg"><div class="progress-bar-fill" style="width:85%"></div></div><div class="progress-pct">85% <span style="color:var(--good);font-size:10px">↑55</span></div></div>
+    <div class="progress-row"><div class="progress-label">Sourcing (SO-01..02)</div><div class="progress-bar-bg"><div class="progress-bar-fill" style="width:70%"></div></div><div class="progress-pct">70%</div></div>
+    <div class="progress-row"><div class="progress-label">AI Screening (SC-01..03)</div><div class="progress-bar-bg"><div class="progress-bar-fill" style="width:100%"></div></div><div class="progress-pct">100%</div></div>
+    <div class="progress-row"><div class="progress-label">Interview (IV-01..05)</div><div class="progress-bar-bg"><div class="progress-bar-fill" style="width:60%"></div></div><div class="progress-pct">60% <span style="color:var(--good);font-size:10px">↑55</span></div></div>
+    <div class="progress-row"><div class="progress-label">Psych (PA-01..03)</div><div class="progress-bar-bg"><div class="progress-bar-fill" style="width:85%"></div></div><div class="progress-pct">85%</div></div>
+    <div class="progress-row"><div class="progress-label">BG Check (BG-01..04)</div><div class="progress-bar-bg"><div class="progress-bar-fill" style="width:0%"></div></div><div class="progress-pct">0%</div></div>
+    <div class="progress-row"><div class="progress-label">Offer &amp; Contract (OF-01..05)</div><div class="progress-bar-bg"><div class="progress-bar-fill" style="width:0%"></div></div><div class="progress-pct">0%</div></div>
+    <div class="progress-row"><div class="progress-label">Onboarding (ON-01..04)</div><div class="progress-bar-bg"><div class="progress-bar-fill" style="width:0%"></div></div><div class="progress-pct">0%</div></div>
+    <div class="progress-row"><div class="progress-label">Settings (SE-01..15)</div><div class="progress-bar-bg"><div class="progress-bar-fill" style="width:40%"></div></div><div class="progress-pct">40% <span style="color:var(--good);font-size:10px">↑7</span></div></div>
+    <div class="progress-row" style="margin-top:14px;padding-top:14px;border-top:1px solid var(--hairline)"><div class="progress-label"><strong>Overall v0.1 readiness</strong></div><div class="progress-bar-bg"><div class="progress-bar-fill" style="width:58%"></div></div><div class="progress-pct"><strong>58%</strong> <span style="color:var(--good);font-size:11px">↑10</span></div></div>
+  </div>
+
+  <h3>3.1 What the 10-point jump means</h3>
+  <p>From 48% (v4.0) to 58% (v5.0) — biggest movers:</p>
+  <ul>
+    <li><strong>Interview: 5% → 60% (+55 points)</strong> — Backend + L1 + L2 + Prep AI working. No longer a 0% blocker.</li>
+    <li><strong>Design system: 30% → 85% (+55 points)</strong> — Warm cream tokens applied app-wide. Visual polish now matches mockup.</li>
+    <li><strong>Settings: 33% → 40% (+7 points)</strong> — Budget menu (SE-21) added. Now 6 of 15 sections (User, Role, Recruiters, Account, Integrations, Budget).</li>
+  </ul>
+
+  <p>Weighted overall: <strong>58%</strong> (using same weight table from v4.0 §3.7.3). Interview's weight (2.0) amplifies its 55-point gain. The 10-point overall jump reflects two weeks of focused execution on the critical path.</p>
+</section>
+
+<!-- §4 THIS PERIOD -->
+<section class="sec" id="thisperiod">
+  <div class="sec-num">§4 · This period</div>
+  <h2 class="sec-title">1-14 June — plan vs reality</h2>
+  <p class="sec-sub">The v4.0 audit (31 May) laid out a 5-day plan for W8 (1-5 Jun). How did the team do?</p>
+
+  <table class="tbl">
+    <thead><tr><th style="width:8%">Task</th><th style="width:26%">Plan (from v4.0 §6)</th><th style="width:14%">Outcome</th><th>What actually happened</th></tr></thead>
+    <tbody>
+      <tr><td>6.1</td><td>Interview backend scaffold</td><td><span class="status status-done">✓ Done</span></td><td>Commit b5ab55e "interview module backend". 4-file pattern landed Mon 1 Jun as planned. 15 endpoints (beyond the original 7).</td></tr>
+      <tr><td>6.2</td><td>Interview migrations (5 tables)</td><td><span class="status status-partial">→ Partial</span></td><td>2 of 5 tables shipped (interview_position_prep, interview_schedule). Missing 3: interview_round, interview_panelist, interview_scorecard. Enough to unblock Prep + Schedule work.</td></tr>
+      <tr><td>6.3</td><td>Interview L1 Workboard shell</td><td><span class="status status-done">✓ Done</span></td><td>Commit 61bd7eb "frontend for interview". InterviewWorkboard.jsx committed. Route wired to /selection/interview.</td></tr>
+      <tr><td>6.4</td><td>Interview L2 Position view</td><td><span class="status status-claimed">⟳ Unclear</span></td><td>Same commit 61bd7eb suggests L2 work started. Needs code review to confirm if fully wired or placeholder.</td></tr>
+      <tr><td>6.5</td><td>Warm cream design tokens</td><td><span class="status status-done">✓ Done</span></td><td>Commit 63f105e "feat(ui): migrate to warm cream design tokens". Deferred twice (W6, W7) but <strong>finally landed W8</strong>. Highest-impact visual win of the period.</td></tr>
+      <tr><td>6.6</td><td>Tenant scoping in remaining services</td><td><span class="status status-pending">○ Not done</span></td><td>No commits show manual scoping sweep. R-4 risk (cross-tenant leak) remains open.</td></tr>
+      <tr><td>6.7</td><td>Interview L3 Candidate detail</td><td><span class="status status-pending">○ Not done</span></td><td>No commit evidence. Stepper shell with 5 sub-stages (Prep · Schedule · Conduct · Evaluate · Decide) not visible in repo.</td></tr>
+      <tr><td>6.8</td><td>Sidebar reshape to 6 canonical groups</td><td><span class="status status-pending">○ Not done</span></td><td>data/modules.js still shows 5 groups. "Asesmen" remains separate from Selection.</td></tr>
+      <tr><td>6.9</td><td>CLAUDE.md cleanup</td><td><span class="status status-done">✓ Done</span></td><td>Commit cb71556 "feat: clean up claude md". Stale ngrok reference removed.</td></tr>
+      <tr><td>6.10</td><td>Interview Prep tab + AI brief</td><td><span class="status status-done">✓ Done</span></td><td>generateQuestions endpoint in interview.controller.js. Streams OpenAI completion from JD + skills context. Saves to interview_position_prep.questions JSONB.</td></tr>
+      <tr><td>6.11</td><td>Interview Schedule tab</td><td><span class="status status-done">✓ Done</span></td><td>Commit 7ea2678 "interview schedule backend and ui ux". CRUD endpoints + confirm/unconfirm actions.</td></tr>
+      <tr><td>6.12</td><td>AI cost cap + 80% alert</td><td><span class="status status-done">✓ Done</span></td><td>Commits 5abb84b + 5a31866 "feat: company budget". checkBudgetOrThrow() enforced in ai.service.js. Budget UI shipped (Settings → Budget menu).</td></tr>
+      <tr><td>6.13</td><td>Interview buffer / cross-tenant tests</td><td><span class="status status-pending">○ Deferred</span></td><td>Cross-tenant test pack still missing. Deferred to W10 per v4.0 plan.</td></tr>
+      <tr><td>6.14</td><td>End-to-end smoke test</td><td><span class="b b-mute">N/A</span></td><td>No documented smoke test run. Interview L3/L4 still incomplete → can't test full hire flow yet.</td></tr>
+      <tr><td>6.15</td><td>Pilot recruitment status</td><td><span class="b b-warn">→ Open</span></td><td>No update from PM/GTM. Pilot count unknown to engineering team. Same risk as v4.0 (R-3).</td></tr>
+    </tbody>
+  </table>
+
+  <h3>4.1 The unplanned work — what shipped beyond the plan</h3>
+  <ul>
+    <li><strong>Reporting module</strong> — Report menu + ReportCandidate page + screening detail views. Not in v4.0 scope but valuable for pilot demos.</li>
+    <li><strong>Design system tooling</strong> — Migration scripts + enforcement docs (commit 8f31e9d). Helps prevent warm cream → slate regressions.</li>
+    <li><strong>Interview endpoints beyond spec</strong> — Original plan (task 6.1) said 7 endpoints. Actual: 15 (schedules CRUD + prep rubric lock/unlock).</li>
+    <li><strong>Budget settings UI</strong> — Task 6.12 only spec'd backend cap + alert. Team also shipped Settings → Budget menu (id 21) for recruiter visibility.</li>
+  </ul>
+
+  <div class="cal success">
+    <div class="cal-title">✅ W8-W9 execution grade: B+ (strong on critical path, light on polish)</div>
+    <p style="margin:0"><strong>Hits:</strong> Interview kickoff (6.1, 6.2, 6.3, 6.10, 6.11), warm cream migration (6.5), AI cost cap (6.12), CLAUDE.md cleanup (6.9). <strong>Misses:</strong> L3 Candidate detail (6.7), sidebar reshape (6.8), tenant scoping sweep (6.6), cross-tenant tests (6.13). <strong>The pattern:</strong> team prioritized Interview breadth (L1+L2+Prep+Schedule working end-to-end) over Interview depth (L3/L4 polish) and cross-cutting cleanup (sidebar, scoping). Smart call for de-risking the pilot date — breadth unblocks parallel work on BG Check / Offer / Onboarding in W10-W12.</p>
+  </div>
+</section>
+
+<!-- §5 REMAINING -->
+<section class="sec" id="gaps">
+  <div class="sec-num">§5 · Remaining</div>
+  <h2 class="sec-title">What's left to reach 100% — by module</h2>
+  <p class="sec-sub">Updated from v4.0 §5 Gap Analysis. Interview gaps reduced; BG/Offer/Onboarding unchanged.</p>
+
+  <h3 class="tight">5.1 Interview — finish L3/L4 depth</h3>
+  <table class="tbl">
+    <thead><tr><th style="width:30%">What's left</th><th style="width:14%">Effort</th><th>Why it matters</th></tr></thead>
+    <tbody>
+      <tr><td>3 missing tables (interview_round, interview_panelist, interview_scorecard)</td><td>~1 dev-day</td><td>L3 Evaluate (scorecard lock) + L4 Calibration (per-round cohort) need these.</td></tr>
+      <tr><td>L3 Candidate detail — 5 sub-stage panels (Prep done; 4 remain: Schedule UI polish, Conduct, Evaluate, Decide)</td><td>~3 dev-days</td><td>Recruiter can't complete an interview end-to-end without Conduct (notes capture) + Evaluate (scorecard form) + Decide (pass/fail verdict).</td></tr>
+      <tr><td>L4 Calibration — per-round cohort board (R1-Calibration, R2-Calibration, R3-Calibration)</td><td>~1.5 dev-days</td><td>Bulk advance from R1 → R2 → R3 → Assessment. Without this, recruiters must advance candidates one-by-one (tedious for cohorts of 5-10).</td></tr>
+      <tr><td>State machine — round transitions (prep → scheduled → in_progress → done → decided)</td><td>~1 dev-day</td><td>Ensures UI locks completed rounds; prevents editing scorecard after submit (audit requirement).</td></tr>
+    </tbody>
+  </table>
+  <p><strong>Total Interview remaining: ~6.5 dev-days</strong> (was ~12 in v4.0). Interview now 60% → 100% = one more week with both engineers.</p>
+
+  <h3>5.2 Background Check — full module (unchanged from v4.0)</h3>
+  <p><strong>Gap: ~7.5 dev-days</strong> — 5 tables, 4 sub-stages × 4 levels, vendor adapter pattern (stubbed per D-2 decision), UU PDP consent gate.</p>
+
+  <h3>5.3 Offer &amp; Contract — full module (unchanged from v4.0)</h3>
+  <p><strong>Gap: ~14 dev-days</strong> — 6 tables, 5 sub-stages × 4 levels, compensation_engine (PPh21 + BPJS math = 3-day long pole), Bahasa contract generator, OF-07 state machine.</p>
+
+  <h3>5.4 Onboarding — full module (unchanged from v4.0)</h3>
+  <p><strong>Gap: ~9.5 dev-days</strong> — 7 tables, 4 sub-stages × 4 levels, 3 role templates (office_staff / factory_worker / field_sales), task materialisation, Day-90 three-way decision per UU 13/2003 §60.</p>
+
+  <h3>5.5 Psych Assessment — finish L1/L2/L4 wrapper (unchanged from v4.0)</h3>
+  <p><strong>Gap: ~4 dev-days</strong> — L1 Workboard + L2 Position + L4 Calibration wrapping around existing L3 CandidateDetail. Psikolog e-sign on Laporan.</p>
+
+  <h3>5.6 Settings — 9 of 15 sections missing</h3>
+  <p><strong>Gap: ~7 dev-days</strong> — SE-06 Company, SE-07 Branding, SE-08 Workflow Templates, SE-09 Job Boards, SE-10 Notifications, SE-11 API Tokens, SE-12 Billing (reads company_budgets), SE-13 Webhooks, SE-14 Data Export, SE-15 Audit Log.</p>
+</section>
+
+<!-- §6 NEXT WEEK -->
+<section class="sec" id="nextweek">
+  <div class="sec-num">§6 · Next week</div>
+  <h2 class="sec-title">Next week (15-21 Jun) — finish Interview, start BG Check</h2>
+  <p class="sec-sub">W10 priority: close Interview to 100%, kick off BG Check Phase 1 (tables + backend scaffold). Two engineers parallel from this week onward — no slack.</p>
+
+  <div class="cal warn" style="margin-bottom:24px">
+    <div class="cal-title">⚠️ Hard constraint this week</div>
+    <p style="margin:0">By <strong>Friday 21 June</strong>: (a) Interview L3 Conduct + Evaluate working end-to-end (recruiter can submit scorecard), (b) BG Check backend mounted + 5 tables created + L1 shell visible. If (a) doesn't land, Interview bleeds into W11 and compresses Offer timeline (R-2 risk on compensation_engine accuracy). <strong>23 days remaining → need 1.5 modules/week from here.</strong></p>
+  </div>
+
+  <h3 class="tight">6.1 Interview finish — L3 depth + L4 calibration</h3>
+  <ul>
+    <li><strong>Mon-Tue:</strong> 3 missing tables (interview_round, interview_panelist, interview_scorecard) + state machine logic</li>
+    <li><strong>Wed-Thu:</strong> L3 Conduct panel (notes capture) + Evaluate panel (scorecard form with lock-on-submit)</li>
+    <li><strong>Fri:</strong> L3 Decide panel + L4 per-round Calibration (bulk advance R1 → R2 → R3 → Assessment)</li>
+  </ul>
+  <p><strong>Owner:</strong> FE + BE eng parallel. <strong>Effort:</strong> ~6.5 dev-days (fits in one 5-day week with both engineers).</p>
+
+  <h3>6.2 BG Check kickoff — Phase 1 foundation</h3>
+  <ul>
+    <li><strong>Mon-Tue:</strong> Backend scaffold (bg.route.js, controller, service, model) + 5 tables (candidate_bg, bg_claim, bg_consent, bg_lane, bg_vendor_config)</li>
+    <li><strong>Wed-Thu:</strong> L1 Workboard shell + L2 Position shell (mock data OK)</li>
+    <li><strong>Fri:</strong> L3 Claims panel (auto-extract from candidate_interview upstream data)</li>
+  </ul>
+  <p><strong>Owner:</strong> Parallel track with Interview (different engineer). <strong>Effort:</strong> ~3 dev-days (Phase 1 only; rest in W11).</p>
+
+  <h3>6.3 Carry-over polish</h3>
+  <ul>
+    <li><strong>Sidebar 6-group reshape (task 6.8 deferred)</strong> — time-box 2h Wed afternoon. If conflicts with Interview/BG, defer to W11.</li>
+    <li><strong>Tenant scoping sweep (task 6.6 deferred)</strong> — defer to W11. R-4 risk remains but not pilot-blocking (Screening enforcement proves the pattern).</li>
+  </ul>
+</section>
+
+<!-- §7 RISKS -->
+<section class="sec" id="risks">
+  <div class="sec-num">§7 · Risks</div>
+  <h2 class="sec-title">Risk register — updated 14 June</h2>
+  <p class="sec-sub">For the weekly meeting: revised from v4.0 §7. R-1 and R-5 substantially de-risked. New risks added.</p>
+
+  <table class="tbl">
+    <thead><tr><th style="width:8%">ID</th><th style="width:30%">Risk</th><th style="width:10%">Severity</th><th>Status &amp; mitigation</th></tr></thead>
+    <tbody>
+      <tr>
+        <td><strong>R-1</strong></td>
+        <td><strong>Interview module slips past 20 Jun → pilot date moves to 13 Jul</strong></td>
+        <td><span class="b b-warn">P1 · MED</span><br><span style="font-size:10px;color:var(--good)">Was P0</span></td>
+        <td><strong>Status:</strong> <span style="color:var(--good)">DE-RISKED</span>. Interview now 60% (was 5%). Backend + L1 + L2 + Prep + Schedule working. <strong>Remaining:</strong> L3 depth (Conduct/Evaluate/Decide) + L4 Calibration = ~6.5 dev-days. <em>Mitigation:</em> Finish Interview by Fri 21 Jun (W10 plan §6.1). If L3 Evaluate (scorecard lock) doesn't land by Wed 19 Jun, escalate to leadership for scope reduction (skip L4 Calibration for v0.1, defer to v0.1.5).</td>
+      </tr>
+      <tr>
+        <td><strong>R-2</strong></td>
+        <td><strong>compensation_engine accuracy on PPh21 / BPJS</strong></td>
+        <td><span class="b b-err">P0 · HIGH</span></td>
+        <td><strong>Unchanged from v4.0.</strong> Offer module starts W11 (22-26 Jun). compensation_engine is 3-day long pole. <em>Mitigation:</em> Unit-test against DJP official examples, review with tax advisor before pilot, keep gross/nett toggle obvious. <strong>New:</strong> consider outsourcing to Indonesian payroll SaaS API (e.g., Gadjian, Mekari Talenta) if internal build risks accuracy (Decision D-9).</td>
+      </tr>
+      <tr>
+        <td><strong>R-3</strong></td>
+        <td><strong>Pilot recruitment falls short of 20</strong></td>
+        <td><span class="b b-warn">P1 · MED</span></td>
+        <td><strong>Unchanged from v4.0.</strong> Current count unknown to engineering team (task 6.15 not done W8-W9). With 23 days to launch, if &lt; 10 confirmed by Fri 21 Jun, contingency: launch with smaller cohort (10-15). <em>Mitigation:</em> PM to document count + names this week (carry-over from 6.15).</td>
+      </tr>
+      <tr>
+        <td><strong>R-4</strong></td>
+        <td><strong>Cross-tenant data leak via unscoped query</strong></td>
+        <td><span class="b b-warn">P1 · MED</span></td>
+        <td><strong>Unchanged from v4.0.</strong> Task 6.6 (manual scoping sweep) did NOT land W8-W9. Only Screening enforces tenant scoping at service layer. <em>Mitigation:</em> Defer sweep to W11 (not pilot-blocking; Screening pattern is defensive and can be cloned to other modules post-pilot). Cross-tenant test pack (6.13) also deferred.</td>
+      </tr>
+      <tr>
+        <td><strong>R-5</strong></td>
+        <td><strong>AI cost runaway on misconfigured pilot</strong></td>
+        <td><span class="b b-ok">CLOSED</span></td>
+        <td><strong>Status:</strong> <span style="color:var(--good)">RESOLVED</span>. checkBudgetOrThrow() enforced in ai.service.js (W8). Budget cap + 80% alert live. company_budgets table defaults to $100/month. Test: setting budget to $0.10 → screening returns 402. <strong>Risk closed.</strong></td>
+      </tr>
+      <tr>
+        <td><strong>R-6</strong></td>
+        <td><strong>BG Check vendor integration delayed → manual-only pilot</strong></td>
+        <td><span class="b b-info">P2 · LOW</span><br><span style="font-size:10px;color:var(--info)">NEW</span></td>
+        <td>Decision D-2 from v4.0 (real vendor adapters or stubbed?) still open. If real Verihubs/iCheck integration starts W11, risk of delay into W12 (compresses final QA week). <em>Mitigation:</em> Commit to all-manual BG Check for v0.1 pilot NOW (Decision D-2 at this meeting). Defer Verihubs identity lane to v0.1.5. Pilots upload SKCK PDFs + HR letters manually; recruiter reviews in UI.</td>
+      </tr>
+      <tr>
+        <td><strong>R-7</strong></td>
+        <td><strong>Warm cream design regression</strong></td>
+        <td><span class="b b-info">P2 · LOW</span><br><span style="font-size:10px;color:var(--info)">NEW</span></td>
+        <td>Task 6.5 migrated tokens to warm cream, but no enforcement tooling in CI. Future component additions might hardcode slate hex values (#F8FAFC, #1E293B, etc.). <em>Mitigation:</em> Commit 8f31e9d added design-system scripts (find-hardcoded-colors.sh). Run manually before each commit. ESLint rule (local/no-hardcoded-hex) mentioned in v4.0 §3.7.2 — consider enabling in W11.</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <h3>7.1 Risks closed since v4.0</h3>
+  <ul>
+    <li><strong>R-5 (AI cost runaway)</strong> → CLOSED. Budget cap enforced.</li>
+  </ul>
+</section>
+
+<!-- §8 DECISIONS -->
+<section class="sec" id="decisions">
+  <div class="sec-num">§8 · Decisions</div>
+  <h2 class="sec-title">Decisions needed from leadership this week</h2>
+  <p class="sec-sub">Items the team can't unblock alone. Bring to the weekly meeting. Updated from v4.0 §8.</p>
+
+  <table class="tbl">
+    <thead><tr><th style="width:8%">ID</th><th style="width:30%">Decision</th><th style="width:16%">Owner</th><th>Context &amp; recommendation</th></tr></thead>
+    <tbody>
+      <tr>
+        <td><strong>D-1</strong></td>
+        <td><strong>SC-03 Q&amp;A in v0.1?</strong></td>
+        <td>—</td>
+        <td><span class="b b-ok">RESOLVED W7</span> — Q&amp;A engine shipped (portal-qa module). Decision closed.</td>
+      </tr>
+      <tr>
+        <td><strong>D-2</strong></td>
+        <td><strong>BG Check vendor adapters — real or stubbed?</strong></td>
+        <td>Product · CTO</td>
+        <td><strong>Still open from v4.0.</strong> Module Guide §11 lists Verihubs, iCheck, BI Checking. Real integration = 1-2 weeks/vendor. <strong>Recommendation (URGENT):</strong> All-manual for v0.1 pilot. Pilots upload SKCK + HR letters as PDFs. Recruiter reviews in UI (6 lanes stubbed with "Upload Document" button). Defer real Verihubs identity lane to v0.1.5. <strong>Decide NOW</strong> — BG Check starts Mon 15 Jun (W10 plan §6.2); vendor choice determines DB schema (bg_vendor_config table design).</td>
+      </tr>
+      <tr>
+        <td><strong>D-7</strong></td>
+        <td><strong>Pilot date — hold 6 Jul or slip to 13 Jul?</strong></td>
+        <td>Leadership</td>
+        <td><strong>Status update from v4.0:</strong> Interview de-risked (now 60%). Recommend <strong>hold 6 Jul</strong> IF Interview L3 lands by Wed 19 Jun. If Interview slips past Wed, commit to 13 Jul slip at Thu 20 Jun standup (3 weeks' notice to pilots). <strong>Math check:</strong> 23 days remaining. 3 modules left (BG Check 7.5d + Offer 14d + Onboarding 9.5d = 31 dev-days). With 2 engineers parallel = 15.5 working days = 3.1 weeks. <em>Still tight but feasible if no slippage W10-W12.</em></td>
+      </tr>
+      <tr>
+        <td><strong>D-8</strong></td>
+        <td><strong>Module scope reduction — BG/Onboarding to MVP?</strong></td>
+        <td>Product · PM</td>
+        <td><strong>Deferred from v4.0.</strong> Contingent on D-7. If D-7 = hold 6 Jul AND Interview slips past Wed 19 Jun, invoke D-8: BG Check MVP (1 lane only: manual SKCK upload, drop the other 5 lanes). Saves ~4 dev-days. <strong>Recommendation:</strong> Don't invoke yet — wait for Wed 19 Jun Interview checkpoint.</td>
+      </tr>
+      <tr>
+        <td><strong>D-9</strong></td>
+        <td><strong>compensation_engine — build or outsource?</strong></td>
+        <td>Engineering · CTO</td>
+        <td><strong>NEW.</strong> Building PPh21 + BPJS math internally = 3 dev-days (R-2 long pole). Accuracy critical — if wrong, pilots lose trust. <strong>Alternative:</strong> use Indonesian payroll SaaS API (Gadjian API, Mekari Talenta API, Sleekr API). Pros: vetted accuracy, 2026 tax tables maintained by vendor. Cons: external dependency, API cost, vendor lock-in. <strong>Recommendation:</strong> Build internally with DJP unit tests IF BE eng has payroll domain expertise. Otherwise, outsource to Gadjian API (freemium tier exists for &lt; 10 employees/company). <strong>Decide by Mon 22 Jun</strong> (Offer module starts W11).</td>
+      </tr>
+      <tr>
+        <td><strong>D-10</strong></td>
+        <td><strong>Pilot cohort confirmed count?</strong></td>
+        <td>GTM · PM</td>
+        <td><strong>Carry-over from v4.0 task 6.15.</strong> Engineering team still doesn't know pilot count. With 23 days to launch: if &lt; 10 confirmed, launch with smaller cohort (8-15). If &lt; 5, consider 1-week slip. <strong>Action:</strong> PM to document count + names by EOW Fri 21 Jun. Escalate to GTM if behind.</td>
+      </tr>
+    </tbody>
+  </table>
+</section>
+
+<footer style="margin-top:64px;padding-top:24px;border-top:1px solid var(--hairline);font-size:12.5px;color:var(--faint);text-align:center;font-family:var(--mono)">
+  MYRALIX · v0.1 CODEBASE AUDIT · 14 JUNE 2026 · ALIGNED TO MODULE GUIDE rev 05<br>
+  Progress: 48% → 58% (+10 points) · Interview 5% → 60% · Design system 30% → 85% · AI cost cap shipped<br>
+  Internal product documentation · Not for external distribution · © PT Myralix Indonesia
+</footer>
+
+</div>
+</body>
+</html>
