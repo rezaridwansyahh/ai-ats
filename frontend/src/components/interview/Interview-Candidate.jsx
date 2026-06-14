@@ -16,6 +16,14 @@ import {
 } from '@/components/ui/select';
 import { Popover, PopoverTrigger, PopoverContent } from '@/components/ui/popover';
 import { Calendar } from '@/components/ui/calendar';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog';
 
 import {
   getInterview,
@@ -257,6 +265,7 @@ export default function InterviewCandidatePage() {
                 setInterview={setInterview}
                 setBanner={setBanner}
                 setError={setError}
+                prep={prep}
               />
             )}
 
@@ -868,13 +877,19 @@ function SessionCard({ session, sessionNumber, confirmNote, setConfirmNote, conf
 
 // ─── Conduct section ──────────────────────────────────────────────────────────
 
-function ConductSection({ interviewId, interview, setInterview, setBanner, setError }) {
+function ConductSection({ interviewId, interview, setInterview, setBanner, setError, prep }) {
   const [sessions, setSessions]         = useState([]);
   const [loadingSessions, setLoadingSessions] = useState(true);
   const [recordingId, setRecordingId]   = useState(null);
   const [clearingId, setClearingId]     = useState(null);
   const [outcomeNote, setOutcomeNote]   = useState('');
   const [expandedId, setExpandedId]     = useState(null);
+
+  // Dialog for detailed interview notes (when "Interviewed" is selected)
+  const [showNotesDialog, setShowNotesDialog] = useState(false);
+  const [currentSessionId, setCurrentSessionId] = useState(null);
+  const [detailedNotes, setDetailedNotes]       = useState('');
+  const [savingNotes, setSavingNotes]           = useState(false);
 
   const loadSessions = useCallback(async () => {
     setLoadingSessions(true);
@@ -893,6 +908,15 @@ function ConductSection({ interviewId, interview, setInterview, setBanner, setEr
   useEffect(() => { loadSessions(); }, [loadSessions]);
 
   const handleRecord = async (sessionId, status) => {
+    // Special handling for "Interviewed" - show dialog for detailed notes
+    if (status === 'interviewed') {
+      setCurrentSessionId(sessionId);
+      setShowNotesDialog(true);
+      setExpandedId(null);
+      return;
+    }
+
+    // For other outcomes (no_show, reschedule), save directly
     setRecordingId(sessionId);
     setError(null);
     setBanner(null);
@@ -907,6 +931,45 @@ function ConductSection({ interviewId, interview, setInterview, setBanner, setEr
       setError(err.response?.data?.message || err.message || 'Failed to record outcome');
     } finally {
       setRecordingId(null);
+    }
+  };
+
+  const handleSaveInterviewNotes = async () => {
+    if (!currentSessionId) return;
+
+    setSavingNotes(true);
+    setError(null);
+    setBanner(null);
+    try {
+      const res = await recordOutcome(currentSessionId, {
+        status: 'interviewed',
+        outcome_note: detailedNotes || undefined
+      });
+
+      console.log('recordOutcome response:', res);
+
+      // Update sessions list with new data
+      setSessions((prev) => prev.map((s) => s.id === currentSessionId ? res.data.schedule : s));
+
+      // Update parent interview status
+      setInterview((prev) => {
+        if (!prev) return prev;
+        return { ...prev, status: 'interviewed' };
+      });
+
+      setBanner({ ok: true, text: 'Interview completed and notes saved successfully.' });
+
+      // Reset dialog state
+      setShowNotesDialog(false);
+      setCurrentSessionId(null);
+      setDetailedNotes('');
+    } catch (err) {
+      console.error('Error saving interview notes:', err);
+      const errorMsg = err.response?.data?.message || err.message || 'Failed to save interview notes';
+      setError(errorMsg);
+      // Don't close dialog on error so user can retry
+    } finally {
+      setSavingNotes(false);
     }
   };
 
@@ -1106,6 +1169,121 @@ function ConductSection({ interviewId, interview, setInterview, setBanner, setEr
           </div>
         </CardContent>
       </Card>
+
+      {/* Interview Notes Dialog - shown when "Interviewed" is selected */}
+      <Dialog open={showNotesDialog} onOpenChange={setShowNotesDialog}>
+        <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <CheckCircle2 className="h-5 w-5 text-emerald-600" />
+              Interview Completed
+            </DialogTitle>
+            <DialogDescription>
+              Capture detailed notes from the interview session to help with evaluation.
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="space-y-4 py-4">
+            {/* AI Questions Reference Panel */}
+            {prep?.questions && prep.questions.length > 0 && (
+              <Card className="bg-muted/30 border-muted">
+                <CardHeader className="pb-3">
+                  <CardTitle className="text-sm flex items-center gap-2">
+                    <ClipboardList className="h-4 w-4" />
+                    Interview Questions Reference
+                  </CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-2">
+                  {prep.questions.slice(0, 5).map((q, idx) => (
+                    <div key={idx} className="text-xs space-y-1">
+                      <p className="font-medium text-foreground">
+                        {idx + 1}. {q.text || q.question}
+                      </p>
+                      {q.competency && (
+                        <p className="text-[10px] text-muted-foreground">
+                          Competency: {q.competency} ({COMPETENCY_NAMES[q.competency] || q.competency})
+                        </p>
+                      )}
+                    </div>
+                  ))}
+                  {prep.questions.length > 5 && (
+                    <p className="text-[10px] text-muted-foreground italic pt-1">
+                      + {prep.questions.length - 5} more questions in Prep tab
+                    </p>
+                  )}
+                </CardContent>
+              </Card>
+            )}
+
+            {/* Detailed Notes Textarea */}
+            <div className="space-y-2">
+              <label className="text-sm font-medium">
+                Interview Notes
+              </label>
+              <Textarea
+                value={detailedNotes}
+                onChange={(e) => setDetailedNotes(e.target.value)}
+                placeholder={`Capture detailed notes from the interview...
+
+• Technical skills discussed:
+  -
+
+• Cultural fit observations:
+  -
+
+• Strengths demonstrated:
+  -
+
+• Areas of concern:
+  -
+
+• Follow-up questions needed:
+  -
+
+• Overall impression:
+  - `}
+                className="min-h-[400px] font-mono text-sm"
+              />
+              <p className="text-xs text-muted-foreground">
+                {detailedNotes.length} characters
+              </p>
+            </div>
+          </div>
+
+          <DialogFooter>
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => {
+                setShowNotesDialog(false);
+                setDetailedNotes('');
+                setCurrentSessionId(null);
+              }}
+              disabled={savingNotes}
+            >
+              Cancel
+            </Button>
+            <Button
+              type="button"
+              onClick={handleSaveInterviewNotes}
+              disabled={savingNotes}
+              className="bg-emerald-600 hover:bg-emerald-700"
+            >
+              {savingNotes ? (
+                <>
+                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                  Saving...
+                </>
+              ) : (
+                <>
+                  <Check className="h-4 w-4 mr-2" />
+                  Save & Mark as Interviewed
+                </>
+              )}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
