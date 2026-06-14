@@ -131,6 +131,15 @@ class CandidatePipelineService {
 
     return result;
   }
+
+  async getProgress(candidate_id) {
+    const pipeline = await CandidatePipeline.getById(candidate_id);
+    if (!pipeline) throw { status: 404, message: 'Candidate pipeline not found' };
+
+    const result = await CandidatePipeline.getProgress(candidate_id);
+
+    return result;
+  }
 }
 
 export default new CandidatePipelineService();

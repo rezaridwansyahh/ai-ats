@@ -31,6 +31,7 @@ DROP TABLE IF EXISTS global_permissions CASCADE;
 DROP TABLE IF EXISTS mapping_roles_permissions CASCADE;
 DROP TABLE IF EXISTS master_sourcing CASCADE;
 DROP TABLE IF EXISTS master_sourcing_recruite CASCADE;
+DROP TABLE IF EXISTS interview_schedule;
 
 DROP TABLE IF EXISTS master_recruiters CASCADE;
 DROP TABLE IF EXISTS core_job_pipeline_stages CASCADE;

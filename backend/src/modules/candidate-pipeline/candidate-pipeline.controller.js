@@ -99,6 +99,15 @@ class CandidatePipelineController {
       res.status(err.status || 500).json({ message: err.message });
     }
   }
+
+  async getProgress(req, res) {
+    try {
+      const result = await candidatePipelineService.getProgress(req.params.id);
+      res.status(200).json({ message: 'Test email sent', ...result });
+    } catch (err) {
+      res.status(err.status || 500).json({ message: err.message });
+    }
+  }
 }
 
 export default new CandidatePipelineController();

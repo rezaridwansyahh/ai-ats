@@ -9,6 +9,9 @@ export const updateCandidateStatus = (id, status) =>
 export const deleteCandidate = (id) =>
   api.delete(`/candidate/${id}`);
 
+export const getAll = () =>
+  api.get(`/candidate-pipeline/`);
+
 export const downloadCandidateCv = (id) =>
   api.get(`/candidate/${id}/cv`, { responseType: 'blob' });
 
@@ -32,3 +35,6 @@ export const getCandidatesByJobId = (job_id) =>
 // Detail page: single candidate by master_candidate.id.
 export const getCandidateById = (id) =>
   api.get(`/candidate-pipeline/${id}`);
+
+export const getProgress = (id) =>
+  api.get(`/candidate-pipeline/${id}/progress`);

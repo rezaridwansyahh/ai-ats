@@ -821,7 +821,7 @@ export default function JobCreationStep({ jobs, loading, recruiters, onCreateJob
         <div className="flex items-center justify-between gap-3 flex-wrap">
           <div className="flex items-center gap-3">
             <Input
-              placeholder="Search jobs..."
+              placeholder="Search candidates..."
               value={searchQuery}
               onChange={e => setSearchQuery(e.target.value)}
               className="max-w-[250px] text-xs"
