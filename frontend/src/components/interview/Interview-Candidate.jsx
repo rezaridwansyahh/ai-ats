@@ -42,19 +42,19 @@ const COMPETENCY_NAMES = {
 };
 
 const STATUS_META = {
-  ongoing:    { label: 'Ongoing',    color: 'bg-blue-100 text-blue-700'       },
-  scheduled:  { label: 'Scheduled',  color: 'bg-violet-100 text-violet-700'   },
-  interviewed:{ label: 'Interviewed',color: 'bg-emerald-100 text-emerald-700' },
-  no_show:    { label: 'No Show',    color: 'bg-rose-100 text-rose-700'       },
-  reschedule: { label: 'Reschedule', color: 'bg-amber-100 text-amber-700'     },
-  cancelled:  { label: 'Cancelled',  color: 'bg-gray-100 text-gray-600'       },
-  done:       { label: 'Done',       color: 'bg-emerald-100 text-emerald-700' },
+  ongoing:     { label: 'Ongoing',     color: 'bg-blue-100 text-blue-700'       },
+  scheduled:   { label: 'Scheduled',   color: 'bg-violet-100 text-violet-700'   },
+  interviewed: { label: 'Interviewed', color: 'bg-emerald-100 text-emerald-700' },
+  no_show:     { label: 'No Show',     color: 'bg-rose-100 text-rose-700'       },
+  reschedule:  { label: 'Reschedule',  color: 'bg-amber-100 text-amber-700'     },
+  cancelled:   { label: 'Cancelled',   color: 'bg-gray-100 text-gray-600'       },
+  done:        { label: 'Done',        color: 'bg-emerald-100 text-emerald-700' },
 };
 
 const OUTCOME_OPTIONS = [
-  { value: 'interviewed', label: 'Interviewed',  icon: CheckCircle2, color: 'text-emerald-600' },
-  { value: 'no_show',     label: 'No Show',      icon: XCircle,      color: 'text-rose-600'    },
-  { value: 'reschedule',  label: 'Reschedule',   icon: RefreshCw,    color: 'text-amber-600'   },
+  { value: 'interviewed', label: 'Interviewed', icon: CheckCircle2, color: 'text-emerald-600' },
+  { value: 'no_show',     label: 'No Show',     icon: XCircle,      color: 'text-rose-600'    },
+  { value: 'reschedule',  label: 'Reschedule',  icon: RefreshCw,    color: 'text-amber-600'   },
 ];
 
 const SECTIONS = [
@@ -178,9 +178,9 @@ export default function InterviewCandidatePage() {
                     <MapPin className="h-3 w-3" /> {job_location}
                   </span>
                 )}
-                {work_type        && <span>· {work_type}</span>}
-                {seniority_level  && <span>· {seniority_level}</span>}
-                {scheduled_at     && <span>· next session {fmt(scheduled_at)}</span>}
+                {work_type       && <span>· {work_type}</span>}
+                {seniority_level && <span>· {seniority_level}</span>}
+                {scheduled_at    && <span>· next session {fmt(scheduled_at)}</span>}
               </div>
             </div>
             <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] font-semibold ${statusMeta.color}`}>
@@ -237,6 +237,7 @@ export default function InterviewCandidatePage() {
                 setPrep={setPrep}
                 setBanner={setBanner}
                 setError={setError}
+                navigate={navigate}
               />
             )}
 
@@ -286,18 +287,27 @@ export default function InterviewCandidatePage() {
   );
 }
 
-function PrepSection({ jobId, prep, setPrep, setBanner, setError }) {
-  const [questions, setQuestions]   = useState([]);
-  const [saving, setSaving]         = useState(false);
-  const [editingIdx, setEditingIdx] = useState(null);
+function PrepSection({ jobId, prep, setPrep, setBanner, setError, navigate }) {
+  const [questions, setQuestions]     = useState([]);
+  const [saving, setSaving]           = useState(false);
+  const [editingIdx, setEditingIdx]   = useState(null);
+  const [noPrepWarning, setNoPrepWarning] = useState(false);
 
   const isLocked = !!prep?.rubric_locked;
 
   useEffect(() => {
     setQuestions(Array.isArray(prep?.questions) ? prep.questions : []);
+    // reset warning when prep loads
+    if (prep) setNoPrepWarning(false);
   }, [prep]);
 
   const addCustom = () => {
+    // block if no prep exists — questions must be generated from position page first
+    if (!prep) {
+      setNoPrepWarning(true);
+      return;
+    }
+    setNoPrepWarning(false);
     const next = [
       ...questions,
       { id: null, competency: null, source: 'open', text: '', follow_up: null, custom_candidate: true },
@@ -316,7 +326,7 @@ function PrepSection({ jobId, prep, setPrep, setBanner, setError }) {
     setQuestions((qs) => qs.map((q, i) => (i === idx ? { ...q, [field]: val } : q)));
 
   const handleSave = async () => {
-    if (saving) return;
+    if (saving || questions.length === 0) return;
     setSaving(true);
     setError(null);
     setBanner(null);
@@ -336,6 +346,7 @@ function PrepSection({ jobId, prep, setPrep, setBanner, setError }) {
 
   return (
     <div className="space-y-4">
+
       {/* rubric overview */}
       {prep?.rubric_items?.length > 0 && (
         <Card>
@@ -371,7 +382,31 @@ function PrepSection({ jobId, prep, setPrep, setBanner, setError }) {
         </Card>
       )}
 
-      {/* questions */}
+      {/* no-prep warning — shown when recruiter tries to add custom without generating first */}
+      {noPrepWarning && (
+        <div className="flex items-start gap-2 px-3 py-2.5 rounded-lg border border-amber-200 bg-amber-50 text-xs text-amber-700">
+          <AlertTriangle className="h-3.5 w-3.5 shrink-0 mt-0.5" />
+          <div className="flex-1">
+            <p className="font-semibold">No questions generated yet</p>
+            <p className="text-[10px] mt-0.5">
+              Generate position questions first from the{' '}
+              <button
+                type="button"
+                onClick={() => navigate(`/selection/interview/job/${jobId}`)}
+                className="underline font-semibold hover:text-amber-900"
+              >
+                position page → Questions tab
+              </button>
+              , then come back to add custom questions for this candidate.
+            </p>
+          </div>
+          <button type="button" onClick={() => setNoPrepWarning(false)} className="shrink-0">
+            <X className="h-3.5 w-3.5" />
+          </button>
+        </div>
+      )}
+
+      {/* questions card */}
       <Card>
         <CardHeader className="pb-3">
           <div className="flex items-center justify-between gap-2 flex-wrap">
@@ -385,7 +420,12 @@ function PrepSection({ jobId, prep, setPrep, setBanner, setError }) {
               <Button size="sm" variant="outline" className="text-xs" onClick={addCustom}>
                 <Plus className="h-3 w-3 mr-1" /> Add custom
               </Button>
-              <Button size="sm" className="text-xs" onClick={handleSave} disabled={saving}>
+              {/* disabled when no questions to save */}
+              <Button
+                size="sm" className="text-xs"
+                onClick={handleSave}
+                disabled={saving || questions.length === 0}
+              >
                 {saving ? <Loader2 className="h-3.5 w-3.5 mr-1.5 animate-spin" /> : <Check className="h-3.5 w-3.5 mr-1.5" />}
                 Save
               </Button>
@@ -394,15 +434,26 @@ function PrepSection({ jobId, prep, setPrep, setBanner, setError }) {
         </CardHeader>
         <CardContent className="space-y-2">
           {questions.length === 0 && (
-            <div className="py-10 text-center text-xs text-muted-foreground italic">
-              No questions yet. Generate questions from the position page first, or add custom questions for this candidate.
+            <div className="py-10 text-center space-y-2">
+              <p className="text-xs text-muted-foreground italic">
+                No questions yet.
+              </p>
+              <button
+                type="button"
+                onClick={() => navigate(`/selection/interview/job/${jobId}`)}
+                className="text-xs text-primary underline hover:opacity-80"
+              >
+                Go to position page → Questions tab to generate
+              </button>
             </div>
           )}
 
           {/* position questions — read only */}
           {questions.filter((q) => !q.custom_candidate).length > 0 && (
             <div className="space-y-1.5">
-              <p className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground px-1">Position questions</p>
+              <p className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground px-1">
+                Position questions
+              </p>
               {questions.map((q, i) => q.custom_candidate ? null : (
                 <div key={i} className="rounded-lg border bg-muted/10 p-3">
                   <div className="flex items-start gap-2">
@@ -428,7 +479,9 @@ function PrepSection({ jobId, prep, setPrep, setBanner, setError }) {
           {/* custom questions — editable */}
           {questions.filter((q) => q.custom_candidate).length > 0 && (
             <div className="space-y-1.5 mt-3">
-              <p className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground px-1">Custom for this candidate</p>
+              <p className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground px-1">
+                Custom for this candidate
+              </p>
               {questions.map((q, i) => !q.custom_candidate ? null : (
                 <div key={i} className="rounded-lg border border-violet-200 bg-violet-50/30 p-3">
                   {editingIdx === i ? (
@@ -443,7 +496,9 @@ function PrepSection({ jobId, prep, setPrep, setBanner, setError }) {
                         <SelectContent>
                           <SelectItem value="none" className="text-xs">No competency</SelectItem>
                           {COMPETENCY_CODES.map((c) => (
-                            <SelectItem key={c} value={c} className="text-xs">{c} · {COMPETENCY_NAMES[c]}</SelectItem>
+                            <SelectItem key={c} value={c} className="text-xs">
+                              {c} · {COMPETENCY_NAMES[c]}
+                            </SelectItem>
                           ))}
                         </SelectContent>
                       </Select>
@@ -461,14 +516,24 @@ function PrepSection({ jobId, prep, setPrep, setBanner, setError }) {
                         className="text-xs h-8"
                       />
                       <div className="flex items-center justify-between">
-                        <button type="button" onClick={() => removeQuestion(i)} className="text-[11px] text-rose-600 inline-flex items-center gap-1">
+                        <button
+                          type="button"
+                          onClick={() => removeQuestion(i)}
+                          className="text-[11px] text-rose-600 inline-flex items-center gap-1"
+                        >
                           <X className="h-3 w-3" /> Remove
                         </button>
-                        <Button size="sm" variant="ghost" className="text-xs" onClick={() => setEditingIdx(null)}>Done</Button>
+                        <Button size="sm" variant="ghost" className="text-xs" onClick={() => setEditingIdx(null)}>
+                          Done
+                        </Button>
                       </div>
                     </div>
                   ) : (
-                    <button type="button" onClick={() => setEditingIdx(i)} className="w-full text-left group cursor-pointer">
+                    <button
+                      type="button"
+                      onClick={() => setEditingIdx(i)}
+                      className="w-full text-left group cursor-pointer"
+                    >
                       <div className="flex items-start gap-2">
                         <span className="text-[10px] font-mono text-muted-foreground mt-0.5 shrink-0">{i + 1}</span>
                         <div className="flex-1 min-w-0">
@@ -483,7 +548,9 @@ function PrepSection({ jobId, prep, setPrep, setBanner, setError }) {
                           <p className="text-xs leading-relaxed">
                             {q.text || <em className="text-muted-foreground">Click to add question text</em>}
                           </p>
-                          {q.follow_up && <p className="text-[10px] text-muted-foreground mt-0.5 italic">↳ {q.follow_up}</p>}
+                          {q.follow_up && (
+                            <p className="text-[10px] text-muted-foreground mt-0.5 italic">↳ {q.follow_up}</p>
+                          )}
                         </div>
                         <Pencil className="h-3 w-3 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity shrink-0 mt-0.5" />
                       </div>
@@ -500,19 +567,19 @@ function PrepSection({ jobId, prep, setPrep, setBanner, setError }) {
 }
 
 function ScheduleSection({ interviewId, interview, setInterview, setBanner, setError }) {
-  const [sessions, setSessions]             = useState([]);
+  const [sessions, setSessions]               = useState([]);
   const [loadingSessions, setLoadingSessions] = useState(true);
-  const [showForm, setShowForm]             = useState(false);
-  const [editingSession, setEditingSession] = useState(null);
+  const [showForm, setShowForm]               = useState(false);
+  const [editingSession, setEditingSession]   = useState(null);
 
-  const [title, setTitle]           = useState('');
+  const [title, setTitle]             = useState('');
   const [description, setDescription] = useState('');
   const [selectedDate, setSelectedDate] = useState(undefined);
-  const [timeValue, setTimeValue]   = useState('09:00');
-  const [saving, setSaving]         = useState(false);
+  const [timeValue, setTimeValue]     = useState('09:00');
+  const [saving, setSaving]           = useState(false);
   const [confirmNote, setConfirmNote] = useState('');
   const [confirmingId, setConfirmingId] = useState(null);
-  const [deletingId, setDeletingId] = useState(null);
+  const [deletingId, setDeletingId]   = useState(null);
 
   const loadSessions = useCallback(async () => {
     setLoadingSessions(true);
@@ -672,7 +739,10 @@ function ScheduleSection({ interviewId, interview, setInterview, setBanner, setE
                 </label>
                 <Popover>
                   <PopoverTrigger asChild>
-                    <div role="button" tabIndex={0} className="flex items-center gap-2 h-9 px-3 rounded-md border border-input bg-background text-xs cursor-pointer hover:bg-muted/30 transition-colors">
+                    <div
+                      role="button" tabIndex={0}
+                      className="flex items-center gap-2 h-9 px-3 rounded-md border border-input bg-background text-xs cursor-pointer hover:bg-muted/30 transition-colors"
+                    >
                       <CalendarIcon className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
                       <span className={selectedDate ? 'font-medium' : 'text-muted-foreground'}>
                         {selectedDate ? formatLocalDate(selectedDate) : 'Pick date'}
@@ -702,8 +772,14 @@ function ScheduleSection({ interviewId, interview, setInterview, setBanner, setE
               </div>
             </div>
             <div className="flex items-center justify-end gap-2 pt-1 border-t">
-              <Button size="sm" variant="ghost" className="text-xs" onClick={() => setShowForm(false)} disabled={saving}>Cancel</Button>
-              <Button size="sm" className="text-xs" onClick={handleSave} disabled={!title.trim() || !selectedDate || saving}>
+              <Button size="sm" variant="ghost" className="text-xs" onClick={() => setShowForm(false)} disabled={saving}>
+                Cancel
+              </Button>
+              <Button
+                size="sm" className="text-xs"
+                onClick={handleSave}
+                disabled={!title.trim() || !selectedDate || saving}
+              >
                 {saving ? <Loader2 className="h-3.5 w-3.5 mr-1.5 animate-spin" /> : <Check className="h-3.5 w-3.5 mr-1.5" />}
                 {editingSession ? 'Update' : 'Create session'}
               </Button>
@@ -752,14 +828,18 @@ function ScheduleSection({ interviewId, interview, setInterview, setBanner, setE
   );
 }
 
-function SessionCard({ session, sessionNumber, confirmNote, setConfirmNote, confirmingId, deletingId, onEdit, onConfirm, onUnconfirm, onDelete }) {
+function SessionCard({
+  session, sessionNumber,
+  confirmNote, setConfirmNote,
+  confirmingId, deletingId,
+  onEdit, onConfirm, onUnconfirm, onDelete,
+}) {
   const [showConfirmInput, setShowConfirmInput] = useState(false);
   const isConfirmed  = session.confirmed;
   const isConfirming = confirmingId === session.id;
   const isDeleting   = deletingId === session.id;
   const hasOutcome   = !!session.status && session.status !== 'ongoing';
-
-  const outcomeMeta = hasOutcome ? OUTCOME_OPTIONS.find((o) => o.value === session.status) : null;
+  const outcomeMeta  = hasOutcome ? OUTCOME_OPTIONS.find((o) => o.value === session.status) : null;
 
   return (
     <Card className={`transition-colors ${
@@ -778,7 +858,7 @@ function SessionCard({ session, sessionNumber, confirmNote, setConfirmNote, conf
               : isConfirmed ? 'bg-emerald-500 text-white'
               : 'bg-muted text-muted-foreground'
             }`}>
-              {hasOutcome ? <Check className="h-3.5 w-3.5" /> : isConfirmed ? <Check className="h-3.5 w-3.5" /> : sessionNumber}
+              {hasOutcome || isConfirmed ? <Check className="h-3.5 w-3.5" /> : sessionNumber}
             </div>
             <div className="min-w-0">
               <p className="text-xs font-semibold truncate">{session.title}</p>
@@ -801,7 +881,9 @@ function SessionCard({ session, sessionNumber, confirmNote, setConfirmNote, conf
                   <Badge variant="outline" className="text-[9px] border-amber-300 text-amber-700 bg-amber-50">Pending confirmation</Badge>
                 )}
               </div>
-              {session.description && <p className="text-[10px] text-muted-foreground mt-1">{session.description}</p>}
+              {session.description && (
+                <p className="text-[10px] text-muted-foreground mt-1">{session.description}</p>
+              )}
               {isConfirmed && session.confirmation_note && (
                 <p className="text-[10px] text-emerald-700 mt-1 italic">"{session.confirmation_note}"</p>
               )}
@@ -819,12 +901,19 @@ function SessionCard({ session, sessionNumber, confirmNote, setConfirmNote, conf
             )}
             {isConfirmed ? (
               !hasOutcome && (
-                <Button size="sm" variant="outline" className="h-7 text-xs text-amber-700 border-amber-300 hover:bg-amber-50" onClick={onUnconfirm}>
+                <Button
+                  size="sm" variant="outline"
+                  className="h-7 text-xs text-amber-700 border-amber-300 hover:bg-amber-50"
+                  onClick={onUnconfirm}
+                >
                   Unconfirm
                 </Button>
               )
             ) : (
-              <Button size="sm" className="h-7 text-xs bg-emerald-600 hover:bg-emerald-700" onClick={() => setShowConfirmInput(!showConfirmInput)}>
+              <Button
+                size="sm" className="h-7 text-xs bg-emerald-600 hover:bg-emerald-700"
+                onClick={() => setShowConfirmInput(!showConfirmInput)}
+              >
                 Confirm
               </Button>
             )}
@@ -858,7 +947,9 @@ function SessionCard({ session, sessionNumber, confirmNote, setConfirmNote, conf
               {isConfirming ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Check className="h-3.5 w-3.5 mr-1" />}
               Done
             </Button>
-            <Button size="sm" variant="ghost" className="h-8 text-xs" onClick={() => setShowConfirmInput(false)}>Cancel</Button>
+            <Button size="sm" variant="ghost" className="h-8 text-xs" onClick={() => setShowConfirmInput(false)}>
+              Cancel
+            </Button>
           </div>
         )}
       </CardContent>
@@ -866,22 +957,19 @@ function SessionCard({ session, sessionNumber, confirmNote, setConfirmNote, conf
   );
 }
 
-// ─── Conduct section ──────────────────────────────────────────────────────────
-
 function ConductSection({ interviewId, interview, setInterview, setBanner, setError }) {
-  const [sessions, setSessions]         = useState([]);
+  const [sessions, setSessions]               = useState([]);
   const [loadingSessions, setLoadingSessions] = useState(true);
-  const [recordingId, setRecordingId]   = useState(null);
-  const [clearingId, setClearingId]     = useState(null);
-  const [outcomeNote, setOutcomeNote]   = useState('');
-  const [expandedId, setExpandedId]     = useState(null);
+  const [recordingId, setRecordingId]         = useState(null);
+  const [clearingId, setClearingId]           = useState(null);
+  const [outcomeNote, setOutcomeNote]         = useState('');
+  const [expandedId, setExpandedId]           = useState(null);
 
   const loadSessions = useCallback(async () => {
     setLoadingSessions(true);
     try {
       const res = await getSchedules(interviewId);
       const all = res.data?.schedules || [];
-      // only confirmed sessions are relevant for conduct
       setSessions(all.filter((s) => s.confirmed));
     } catch (err) {
       setError(err.response?.data?.message || err.message || 'Failed to load sessions');
@@ -961,11 +1049,11 @@ function ConductSection({ interviewId, interview, setInterview, setBanner, setEr
 
       <div className="space-y-3">
         {sessions.map((session, idx) => {
-          const hasOutcome   = !!session.status && session.status !== 'ongoing';
-          const outcomeMeta  = hasOutcome ? OUTCOME_OPTIONS.find((o) => o.value === session.status) : null;
-          const isExpanded   = expandedId === session.id;
-          const isRecording  = recordingId === session.id;
-          const isClearing   = clearingId === session.id;
+          const hasOutcome  = !!session.status && session.status !== 'ongoing';
+          const outcomeMeta = hasOutcome ? OUTCOME_OPTIONS.find((o) => o.value === session.status) : null;
+          const isExpanded  = expandedId === session.id;
+          const isRecording = recordingId === session.id;
+          const isClearing  = clearingId === session.id;
 
           return (
             <Card key={session.id} className={`transition-colors ${
@@ -975,7 +1063,6 @@ function ConductSection({ interviewId, interview, setInterview, setBanner, setEr
               : ''
             }`}>
               <CardContent className="p-4 space-y-3">
-                {/* session header */}
                 <div className="flex items-start justify-between gap-3">
                   <div className="flex items-start gap-3 min-w-0 flex-1">
                     <div className={`h-7 w-7 rounded-full flex items-center justify-center text-[11px] font-bold shrink-0 ${
@@ -1016,7 +1103,6 @@ function ConductSection({ interviewId, interview, setInterview, setBanner, setEr
                     </div>
                   </div>
 
-                  {/* action buttons */}
                   <div className="flex items-center gap-1.5 shrink-0">
                     {hasOutcome ? (
                       <Button
@@ -1038,13 +1124,11 @@ function ConductSection({ interviewId, interview, setInterview, setBanner, setEr
                   </div>
                 </div>
 
-                {/* outcome picker — inline expanded */}
                 {isExpanded && !hasOutcome && (
                   <div className="pt-3 border-t space-y-3">
                     <p className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
                       What happened in this session?
                     </p>
-
                     <div className="grid grid-cols-3 gap-2">
                       {OUTCOME_OPTIONS.map((opt) => {
                         const Icon = opt.icon;
@@ -1054,7 +1138,7 @@ function ConductSection({ interviewId, interview, setInterview, setBanner, setEr
                             type="button"
                             onClick={() => handleRecord(session.id, opt.value)}
                             disabled={isRecording}
-                            className={`flex flex-col items-center gap-1.5 px-3 py-3 rounded-lg border text-xs font-semibold transition-colors hover:bg-muted/40 ${opt.color} border-current/20`}
+                            className={`flex flex-col items-center gap-1.5 px-3 py-3 rounded-lg border text-xs font-semibold transition-colors hover:bg-muted/40 ${opt.color}`}
                           >
                             {isRecording
                               ? <Loader2 className="h-4 w-4 animate-spin" />
@@ -1064,11 +1148,8 @@ function ConductSection({ interviewId, interview, setInterview, setBanner, setEr
                         );
                       })}
                     </div>
-
                     <div className="space-y-1.5">
-                      <label className="text-[10px] text-muted-foreground">
-                        Note (optional)
-                      </label>
+                      <label className="text-[10px] text-muted-foreground">Note (optional)</label>
                       <div className="flex gap-2">
                         <Input
                           value={outcomeNote}
@@ -1092,7 +1173,7 @@ function ConductSection({ interviewId, interview, setInterview, setBanner, setEr
         })}
       </div>
 
-      {/* pack status placeholder — coworker's batch module */}
+      {/* pack status placeholder */}
       <Card className="border-dashed">
         <CardContent className="p-4 flex items-center gap-3">
           <div className="h-8 w-8 rounded-md bg-muted flex items-center justify-center shrink-0">
@@ -1175,10 +1256,10 @@ function StepsNav({ activeSection, onStep, status }) {
       <CardContent className="p-3 space-y-1">
         <p className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground mb-1.5">Steps</p>
         {SECTIONS.map((s) => {
-          const Icon  = s.icon;
-          const state = stepState(s.key);
-          const active = s.key === activeSection;
-          const soon  = state === 'soon';
+          const Icon    = s.icon;
+          const state   = stepState(s.key);
+          const active  = s.key === activeSection;
+          const soon    = state === 'soon';
           const pending = state === 'pending';
           return (
             <button
