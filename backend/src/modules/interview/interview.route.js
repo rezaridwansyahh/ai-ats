@@ -13,6 +13,9 @@ router.get('/by-candidate/:candidate_id', interviewController.getInterviewByCand
 // Schedule-related routes (must be before /:interview_id)
 router.get( '/:interview_id/schedules', interviewController.getSchedules);
 router.post('/:interview_id/schedules', interviewController.createSchedule);
+router.get( '/:interview_id/scorecard',interviewController.getScorecard);
+router.put( '/:interview_id/scorecard',        interviewController.saveScorecard);
+router.delete('/:interview_id/scorecard', interviewController.deleteScorecard);
 router.put( '/schedules/:schedule_id', interviewController.updateSchedule);
 router.post('/schedules/:schedule_id/confirm', interviewController.confirmSchedule);
 router.post('/schedules/:schedule_id/unconfirm', interviewController.unconfirmSchedule);

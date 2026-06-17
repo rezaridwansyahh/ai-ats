@@ -317,6 +317,94 @@ class InterviewModel {
     return result.rows[0] || null;
   }
 
+  async getScorecardByInterview(interview_id) {
+    const result = await getDb().query(
+      `SELECT * FROM interview_scorecard WHERE interview_id = $1`,
+      [interview_id]
+    );
+    return result.rows[0] || null;
+  }
+
+  async upsertScorecard({
+    interview_id, company_id,
+    competency_scores, competency_comments,
+    recommendation, standout_strengths, concerns,
+    rubric_items, submitted_by, is_draft,
+  }) {
+    let weightedSum  = 0;
+    let totalWeight  = 0;
+    let review_flag  = false;
+
+    if (rubric_items && typeof competency_scores === 'object') {
+      for (const item of rubric_items) {
+        const score  = Number(competency_scores[item.competency_code]);
+        const weight = Number(item.weight) || 1;
+        if (Number.isFinite(score)) {
+          weightedSum += score * weight;
+          totalWeight += weight;
+          if (score <= 2) review_flag = true;
+        }
+      }
+    }
+
+    const weighted_total = totalWeight > 0
+      ? Math.round((weightedSum / totalWeight) * 100) / 100
+      : null;
+
+    const submitted_at = is_draft === false ? 'NOW()' : null;
+
+    const result = await getDb().query(
+      `INSERT INTO interview_scorecard
+        (interview_id, company_id,
+          competency_scores, competency_comments,
+          weighted_total, review_flag,
+          recommendation, standout_strengths, concerns,
+          submitted_by, submitted_at, is_draft)
+      VALUES ($1,$2,$3::jsonb,$4::jsonb,$5,$6,$7,$8,$9,$10,
+              ${submitted_at ? 'NOW()' : 'NULL'},
+              $11)
+      ON CONFLICT (interview_id) DO UPDATE SET
+        competency_scores   = EXCLUDED.competency_scores,
+        competency_comments = EXCLUDED.competency_comments,
+        weighted_total      = EXCLUDED.weighted_total,
+        review_flag         = EXCLUDED.review_flag,
+        recommendation      = EXCLUDED.recommendation,
+        standout_strengths  = EXCLUDED.standout_strengths,
+        concerns            = EXCLUDED.concerns,
+        submitted_by        = EXCLUDED.submitted_by,
+        submitted_at        = CASE
+                                WHEN interview_scorecard.is_draft = true AND $11 = false
+                                THEN NOW()
+                                ELSE interview_scorecard.submitted_at
+                              END,
+        is_draft            = EXCLUDED.is_draft,
+        updated_at          = NOW()
+      RETURNING *`,
+      [
+        interview_id,
+        company_id      || null,
+        JSON.stringify(competency_scores   || {}),
+        JSON.stringify(competency_comments || {}),
+        weighted_total,
+        review_flag,
+        recommendation       || null,
+        standout_strengths   || null,
+        concerns             || null,
+        submitted_by         || null,
+        is_draft !== false,  // default true unless explicitly false
+      ]
+    );
+    return result.rows[0];
+  }
+
+  async deleteScorecard(interview_id) {
+    const result = await getDb().query(
+      `DELETE FROM interview_scorecard WHERE interview_id = $1 RETURNING *`,
+      [interview_id]
+    );
+    return result.rows[0] || null;
+  }  
+
 
   async getPrepByJob(job_id) {
     const result = await getDb().query(

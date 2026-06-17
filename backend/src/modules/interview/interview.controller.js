@@ -228,6 +228,54 @@ class InterviewController {
     }
   }  
 
+  async getScorecard(req, res) {
+    try {
+      const interview_id = Number(req.params.interview_id);
+      const result = await interviewService.getScorecard(interview_id, {
+        company_id: req.user?.company_id || null,
+      });
+      res.status(200).json({ message: 'Scorecard fetched', scorecard: result });
+    } catch (err) {
+      res.status(err.status || 500).json({ message: err.message });
+    }
+  }
+
+  async saveScorecard(req, res) {
+    try {
+      const interview_id = Number(req.params.interview_id);
+      const {
+        competency_scores, competency_comments,
+        recommendation, standout_strengths, concerns,
+        is_draft,
+      } = req.body || {};
+      const result = await interviewService.saveScorecard(interview_id, {
+        competency_scores,
+        competency_comments,
+        recommendation,
+        standout_strengths,
+        concerns,
+        is_draft:     is_draft !== false, // default true
+        company_id:   req.user?.company_id || null,
+        submitted_by: req.user?.user_id    || null,
+      });
+      res.status(200).json({ message: 'Scorecard saved', scorecard: result });
+    } catch (err) {
+      res.status(err.status || 500).json({ message: err.message });
+    }
+  }
+
+  async deleteScorecard(req, res) {
+    try {
+      const interview_id = Number(req.params.interview_id);
+      const result = await interviewService.deleteScorecard(interview_id, {
+        company_id: req.user?.company_id || null,
+      });
+      res.status(200).json({ message: 'Scorecard deleted', scorecard: result });
+    } catch (err) {
+      res.status(err.status || 500).json({ message: err.message });
+    }
+  }  
+
   async updateRubric(req, res) {
     try {
       const job_id = Number(req.params.job_id);

@@ -32,6 +32,7 @@ DROP TABLE IF EXISTS mapping_roles_permissions CASCADE;
 DROP TABLE IF EXISTS master_sourcing CASCADE;
 DROP TABLE IF EXISTS master_sourcing_recruite CASCADE;
 DROP TABLE IF EXISTS interview_schedule;
+DROP TABLE IF EXISTS interview_scorecard;
 
 DROP TABLE IF EXISTS master_recruiters CASCADE;
 DROP TABLE IF EXISTS core_job_pipeline_stages CASCADE;
@@ -73,6 +74,7 @@ DROP TYPE IF EXISTS status_session_type CASCADE;
 DROP TYPE IF EXISTS assessment_status_type CASCADE;
 DROP TYPE IF EXISTS screening_qa_status_type CASCADE;
 DROP TYPE IF EXISTS interview_status_type CASCADE;
+DROP TYPE IF EXISTS interview_recommendation_type CASCADE;
 
 -- Create ENUM type
 CREATE TYPE status_type AS ENUM ('Draft', 'Active', 'Running', 'Expired', 'Failed', 'Blocked');
@@ -97,6 +99,7 @@ CREATE TYPE status_session_type AS ENUM ('invited', 'in_progress', 'completed', 
 CREATE TYPE assessment_status_type AS ENUM ('in_progress', 'completed', 'expired');
 CREATE TYPE screening_qa_status_type AS ENUM ('draft', 'sent', 'responded', 'expired');
 CREATE TYPE interview_status_type AS ENUM ('ongoing', 'interviewed', 'no_show', 'reschedule', 'cancelled', 'done');
+CREATE TYPE interview_recommendation_type  AS ENUM ('strong_no_hire', 'no_hire', 'hire', 'strong_hire');
 CREATE EXTENSION IF NOT EXISTS pgcrypto;
 CREATE EXTENSION IF NOT EXISTS pg_trgm;
 
@@ -577,6 +580,24 @@ CREATE TABLE interview_schedule (
   status interview_status_type NOT NULL DEFAULT 'ongoing', -- interviewed | no_show | reschedule
   outcome_note TEXT,
   outcome_at TIMESTAMPTZ,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+CREATE TABLE interview_scorecard (
+  id SERIAL PRIMARY KEY,
+  interview_id INTEGER NOT NULL UNIQUE REFERENCES candidate_interview(id) ON DELETE CASCADE,
+  company_id INTEGER REFERENCES core_company(id) ON DELETE CASCADE,
+  competency_scores   JSONB NOT NULL DEFAULT '{}',  -- {"HRD-01": 5, "HRD-02": 6, ...}
+  competency_comments JSONB NOT NULL DEFAULT '{}',  -- {"HRD-01": "showed clear thinking..."}
+  weighted_total NUMERIC(4,2),   -- computed on save, stored for Calibration sort
+  review_flag BOOLEAN NOT NULL DEFAULT false,   -- true if any score <= 2
+  recommendation interview_recommendation_type,
+  standout_strengths TEXT,
+  concerns TEXT,
+  submitted_by INTEGER REFERENCES master_users(id) ON DELETE SET NULL,
+  submitted_at TIMESTAMPTZ,
+  is_draft  BOOLEAN NOT NULL DEFAULT true,
   created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
   updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );

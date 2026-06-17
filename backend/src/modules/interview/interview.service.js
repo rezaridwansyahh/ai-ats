@@ -301,6 +301,79 @@ class InterviewService {
     return updated;
   }
 
+  async getScorecard(interview_id, { company_id = null } = {}) {
+    if (!interview_id) throw { status: 400, message: 'interview_id is required' };
+    const interview = await interviewModel.getById(interview_id);
+    if (!interview) throw { status: 404, message: 'Interview not found' };
+    if (company_id && interview.company_id && interview.company_id !== company_id) {
+      throw { status: 403, message: 'Cross-tenant access denied' };
+    }
+    return await interviewModel.getScorecardByInterview(interview_id);
+  }
+
+  async saveScorecard(interview_id, {
+    competency_scores, competency_comments,
+    recommendation, standout_strengths, concerns,
+    is_draft = true, company_id = null, submitted_by = null,
+  } = {}) {
+    if (!interview_id) throw { status: 400, message: 'interview_id is required' };
+    if (!competency_scores || typeof competency_scores !== 'object') {
+      throw { status: 400, message: 'competency_scores is required' };
+    }
+
+    const interview = await interviewModel.getById(interview_id);
+    if (!interview) throw { status: 404, message: 'Interview not found' };
+    if (company_id && interview.company_id && interview.company_id !== company_id) {
+      throw { status: 403, message: 'Cross-tenant access denied' };
+    }
+
+    // validate scores are 1–7
+    const validCodes = ['HRD-01', 'HRD-02', 'HRD-03', 'HRD-04', 'HRD-05', 'HRD-06'];
+    for (const [code, score] of Object.entries(competency_scores)) {
+      if (!validCodes.includes(code)) {
+        throw { status: 400, message: `Unknown competency code: ${code}` };
+      }
+      const n = Number(score);
+      if (!Number.isFinite(n) || n < 1 || n > 7) {
+        throw { status: 400, message: `Score for ${code} must be between 1 and 7` };
+      }
+    }
+
+    // pull rubric_items so the model can compute weighted_total
+    const prep = await interviewModel.getPrepByJob(interview.job_id);
+    const rubric_items = prep?.rubric_items || [];
+
+    const scorecard = await interviewModel.upsertScorecard({
+      interview_id,
+      company_id:          company_id || interview.company_id || null,
+      competency_scores,
+      competency_comments: competency_comments || {},
+      recommendation:      recommendation || null,
+      standout_strengths:  standout_strengths || null,
+      concerns:            concerns || null,
+      rubric_items,
+      submitted_by,
+      is_draft,
+    });
+
+    // when submitted (not draft) flip candidate_interview status to 'done'
+    if (is_draft === false) {
+      await interviewModel.updateInterviewStatus(interview_id, 'done');
+    }
+
+    return scorecard;
+  }
+
+  async deleteScorecard(interview_id, { company_id = null } = {}) {
+    if (!interview_id) throw { status: 400, message: 'interview_id is required' };
+    const interview = await interviewModel.getById(interview_id);
+    if (!interview) throw { status: 404, message: 'Interview not found' };
+    if (company_id && interview.company_id && interview.company_id !== company_id) {
+      throw { status: 403, message: 'Cross-tenant access denied' };
+    }
+    return await interviewModel.deleteScorecard(interview_id);
+  }  
+
   async updateRubric(job_id, rubric_items, { company_id = null } = {}) {
     if (!job_id) throw { status: 400, message: 'job_id is required' };
     if (!Array.isArray(rubric_items) || rubric_items.length === 0) {
