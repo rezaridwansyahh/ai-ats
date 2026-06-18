@@ -1,5 +1,6 @@
 // components/ScoreItem.jsx
 import { Progress } from "@/components/ui/progress";
+import { FaLessThanEqual } from "react-icons/fa6";
 
 export function ScoreItem({ label, score }) {
   const getScoreColor = () => {
@@ -14,7 +15,7 @@ export function ScoreItem({ label, score }) {
         <span className="font-medium">{label}</span>
         <span className={`font-mono ${getScoreColor()}`}>{score}%</span>
       </div>
-      <Progress value={score} className="h-1.5" />
+      <Progress value={typeof score === 'string' ? 0 : score} className="h-1.5" />
     </div>
   );
 }
