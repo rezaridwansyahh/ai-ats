@@ -25,6 +25,18 @@ const chartConfig = {
 }
 
 export function ChartRadarDots({ data }) {
+  console.log(Object.keys(data).length === 0)
+  if(Object.keys(data).length === 0) {
+    return (
+      <div className="w-full h-full flex items-center justify-center">
+        <div className='flex items-center'>
+          <span className="text-muted-foreground italic">No Data</span>
+        </div>
+      </div>
+      
+    )
+  }
+
   const chartData = Object.entries(data)
   .filter(([key]) => key.endsWith('_score') && key !== 'overall_score')
   .map(([key, value]) => ({

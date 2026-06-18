@@ -85,33 +85,41 @@ export default function ReportCandidateDetailPage() {
         <div className="grid grid-cols-1 lg:grid-cols-[minmax(0,1fr)_240px] gap-6">
           <div className="space-y-4 min-w-0">
             <Card className="py-8 gap-3">
-                <CardContent className="flex items-center justify-center">
-                  <Pattern 
-                    candidate={candidate}
-                    stages={stages}
-                    activeStep={activeStep}
-                    onActiveStepChange={setActiveStep}
-                  />
-                </CardContent>
-              </Card>
+              <CardContent className="flex items-center justify-center">
+                <Pattern 
+                  candidate={candidate}
+                  stages={stages}
+                  activeStep={activeStep}
+                  onActiveStepChange={setActiveStep}
+                />
+              </CardContent>
+            </Card>
             
-              { activeStep === 1 &&
-                <>
-                  {/* Engine Tiles */}
-                  <ScreeningMain 
-                    screeningData = {screeningData}
-                    onSubStepClick = {handleClickSubStep}
-                    activeSubStep = {activeSubStep}
-                  />
+            { activeStep === 1 &&
+              <>
+                {/* Engine Tiles */}
+                <ScreeningMain 
+                  screeningData = {screeningData}
+                  onSubStepClick = {handleClickSubStep}
+                  activeSubStep = {activeSubStep}
+                />
 
-                  {/* Dynamic Sub-step Details */}
-                  {activeSubStep === 1 && <ParseDetails data={parsedData} />}
-                  {activeSubStep === 2 && <MatchDetails data={scoredData} />}
-                  {activeSubStep === 3 && <QaDetails data={qaData} />}
-                </>
-              }
+                {/* Dynamic Sub-step Details */}
+                {activeSubStep === 1 && <ParseDetails data={parsedData} />}
+                {activeSubStep === 2 && <MatchDetails data={scoredData} />}
+                {activeSubStep === 3 && <QaDetails data={qaData} />}
+              </>
+            }
             
           </div>
+
+          <aside className="hidden lg:block">
+            <div className="sticky top-[143px] space-y-3">
+              <Card className="py-4 gap-3">
+                
+              </Card>
+            </div>
+          </aside>
         </div>
       </div>
     </>

@@ -37,25 +37,25 @@ export default function MatchDetails({ data }) {
           <div className='flex'>
             <div className='w-1/2'>
               <ChartRadarDots 
-                data={data.score_data}
+                data={data.score_data || {}}
               />
             </div>
             <div className='w-1/2 space-y-3'>
-              <ScoreItem label="Skills" score={data.score_data.skills_score} />
-              <ScoreItem label="Experience" score={data.score_data.experience_score} />
-              <ScoreItem label="Trajectory" score={data.score_data.career_trajectory_score} />
-              <ScoreItem label="Education" score={data.score_data.education_score} />
+              <ScoreItem label="Skills" score={data.score_data?.skills_score || 'No Data '} />
+              <ScoreItem label="Experience" score={data.score_data?.experience_score || 'No Data '} />
+              <ScoreItem label="Trajectory" score={data.score_data?.career_trajectory_score || 'No Data '} />
+              <ScoreItem label="Education" score={data.score_data?.education_score || 'No Data '} />
               
               <div className="pt-2 mt-2 border-t">
                 <div className="flex justify-between items-center">
                   <span className="text-sm font-semibold">Overall Match</span>
                   <div className="text-right">
-                    <span className="text-xl font-bold text-primary">{data.score_data.overall_score}%</span>
+                    <span className="text-xl font-bold text-primary">{data.score_data?.overall_score || 'No Data '}%</span>
                   </div>
                 </div>
               </div>
 
-              {(data.score_data.matched_skills.length > 0 || data.score_data.missing_skills.length > 0) && (
+              {(data.score_data?.matched_skills.length > 0 || data.score_data?.missing_skills.length > 0) && (
                   <Table className="w-full">
                     <TableHeader className="bg-muted/40">
                       <TableRow>
@@ -67,14 +67,14 @@ export default function MatchDetails({ data }) {
                       <TableRow>
                         <TableCell className="align-top">
                           <div className="flex flex-wrap gap-1">
-                            {data.score_data.matched_skills.length === 0 ? <span className="text-[11px] text-muted-foreground italic">—</span> :
+                            {data.score_data?.matched_skills.length === 0 ? <span className="text-[11px] text-muted-foreground italic">—</span> :
                               data.score_data.matched_skills.map((s) => <Badge key={s} variant="secondary" className="text-[10px] bg-emerald-50 text-emerald-700">{s}</Badge>)}
                           </div>
                         </TableCell>
                         <TableCell className="align-top">
                           <div className="flex flex-wrap gap-1">
-                            {data.score_data.missing_skills.length === 0 ? <span className="text-[11px] text-muted-foreground italic">—</span> :
-                              data.score_data.missing_skills.map((s) => <Badge key={s} variant="secondary" className="text-[10px] bg-rose-50 text-rose-700">{s}</Badge>)}
+                            {data.score_data?.missing_skills.length === 0 ? <span className="text-[11px] text-muted-foreground italic">—</span> :
+                              data.score_data?.missing_skills.map((s) => <Badge key={s} variant="secondary" className="text-[10px] bg-rose-50 text-rose-700">{s}</Badge>)}
                           </div>
                         </TableCell>
                       </TableRow>
@@ -92,9 +92,9 @@ export default function MatchDetails({ data }) {
           <CardTitle className="text-sm flex items-center gap-2">
             <Wand2 className="h-4 w-4 text-primary" /> Match — fit breakdown
           </CardTitle>
-          {data.score_data.id && (
+          {data.score_data?.id && (
             <span className="text-[10px] text-muted-foreground">
-              Scored {fmt(data.score_data.scored_at)}{data.score_data.role_profile ? ` · ${data.score_data.role_profile}` : ''}
+              Scored {fmt(data.score_data?.scored_at)}{data.score_data?.role_profile ? ` · ${data.score_data?.role_profile}` : ''}
             </span>
           )}
         </CardHeader>
@@ -114,7 +114,7 @@ export default function MatchDetails({ data }) {
                     type="button"
                     disabled={true}
                     className={`flex-1 text-left px-4 py-3 rounded-lg border ${
-                      data.score_data.role_profile === opt.value ? 'border-primary bg-primary/5' : 'border-border bg-muted/30 cursor-not-allowed'
+                      data.score_data?.role_profile === opt.value ? 'border-primary bg-primary/5' : 'border-border bg-muted/30 cursor-not-allowed'
                     }`}
                   >
                     <div className="text-xs font-semibold">{opt.label}</div>
@@ -128,13 +128,13 @@ export default function MatchDetails({ data }) {
             <div className="pt-3 border-t space-y-2">
               <div className="text-[11px] font-medium text-muted-foreground uppercase">Skills (from job)</div>
               <div className="flex flex-wrap gap-1">
-                {data.additional_info.required_skills.length === 0 && data.additional_info.preferred_skills.length === 0 && (
+                {data.additional_info?.required_skills.length === 0 && data.additional_info?.preferred_skills.length === 0 && (
                   <span className="text-[10px] text-muted-foreground">None set on this job.</span>
                 )}
-                {data.additional_info.required_skills.map((s) => (
+                {data.additional_info?.required_skills.map((s) => (
                   <Badge key={`req-${s}`} className="text-[10px] bg-primary/10 text-primary border-primary/20">{s}</Badge>
                 ))}
-                {data.additional_info.preferred_skills.map((s) => (
+                {data.additional_info?.preferred_skills.map((s) => (
                   <Badge key={`pref-${s}`} variant="secondary" className="text-[10px]">{s}</Badge>
                 ))}
               </div>
@@ -178,10 +178,10 @@ export default function MatchDetails({ data }) {
               {/* Custom criteria */}
               <div className="pt-3 border-t space-y-3">
                 <div className="text-[11px] font-medium text-muted-foreground uppercase">Custom criteria</div>
-                {(data.score_data.rubric_snapshot.custom_criteria || []).length === 0 && (
+                {(data.score_data?.rubric_snapshot.custom_criteria || []).length === 0 && (
                   <div className="text-[10px] text-muted-foreground italic">No custom criteria.</div>
                 )}
-                {(data.score_data.rubric_snapshot.custom_criteria || []).map((c, i) => (
+                {(data.score_data?.rubric_snapshot.custom_criteria || []).map((c, i) => (
                   <div key={i} className="space-y-1.5 p-3 rounded-lg border bg-muted/20">
                     <div className="flex items-center justify-between gap-3">
                       <div className="flex items-center gap-2 flex-1 min-w-0">
