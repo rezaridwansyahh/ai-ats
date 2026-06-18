@@ -844,6 +844,7 @@ function EvaluateSection({ interviewId, interview, setInterview, prep, setBanner
   const [strengths, setStrengths]         = useState('');
   const [concerns, setConcerns]           = useState('');
   const [showComments, setShowComments]   = useState({}); // { "HRD-01": true, ... }
+  const [isEditing, setIsEditing]         = useState(false);
 
   const rubricItems = Array.isArray(prep?.rubric_items) && prep.rubric_items.length > 0
     ? prep.rubric_items
@@ -905,8 +906,9 @@ function EvaluateSection({ interviewId, interview, setInterview, prep, setBanner
         is_draft:            isDraft,
       });
       setScorecard(res.data?.scorecard);
-      setBanner({ ok: true, text: isDraft ? 'Scorecard autosaved.' : 'Scorecard submitted.' });
+      setBanner({ ok: true, text: isDraft ? 'Scorecard autosaved.' : isEditing ? 'Scorecard updated.' : 'Scorecard submitted.' });
       if (!isDraft) setInterview((prev) => ({ ...prev, status: 'done' }));
+      setIsEditing(false);
     } catch (err) { setError(err.response?.data?.message || err.message || 'Save failed'); }
     finally { setSaving(false); }
   };
@@ -915,9 +917,27 @@ function EvaluateSection({ interviewId, interview, setInterview, prep, setBanner
     if (!window.confirm('Delete this scorecard? This cannot be undone.')) return;
     try {
       await deleteScorecard(interviewId);
-      setScorecard(null); setScores({}); setComments({}); setRecommendation(''); setStrengths(''); setConcerns(''); setShowComments({});
+      setScorecard(null); setScores({}); setComments({}); setRecommendation(''); setStrengths(''); setConcerns(''); setShowComments({}); setIsEditing(false);
       setBanner({ ok: true, text: 'Scorecard deleted.' });
     } catch (err) { setError(err.response?.data?.message || err.message || 'Delete failed'); }
+  };
+
+  const handleCancelEdit = () => {
+    if (scorecard) {
+      const restoredComments = scorecard.competency_comments || {};
+      setScores(scorecard.competency_scores || {});
+      setComments(restoredComments);
+      setRecommendation(scorecard.recommendation || '');
+      setStrengths(scorecard.standout_strengths || '');
+      setConcerns(scorecard.concerns || '');
+      const restoredShowComments = {};
+      Object.keys(restoredComments).forEach((code) => {
+        if (restoredComments[code]) restoredShowComments[code] = true;
+      });
+      setShowComments(restoredShowComments);
+    }
+    setError(null);
+    setIsEditing(false);
   };
 
   if (loading) return <div className="flex justify-center py-12"><Loader2 className="h-5 w-5 animate-spin text-muted-foreground" /></div>;
@@ -936,9 +956,14 @@ function EvaluateSection({ interviewId, interview, setInterview, prep, setBanner
         </div>
         <div className="flex items-center gap-2">
           {scorecard && (
-            <Badge variant="outline" className={`text-[9px] ${isSubmitted ? 'border-emerald-300 text-emerald-700 bg-emerald-50' : 'border-amber-300 text-amber-700 bg-amber-50'}`}>
-              {isSubmitted ? 'Submitted' : 'Draft'}
+            <Badge variant="outline" className={`text-[9px] ${isEditing ? 'border-violet-300 text-violet-700 bg-violet-50' : isSubmitted ? 'border-emerald-300 text-emerald-700 bg-emerald-50' : 'border-amber-300 text-amber-700 bg-amber-50'}`}>
+              {isEditing ? 'Editing' : isSubmitted ? 'Submitted' : 'Draft'}
             </Badge>
+          )}
+          {scorecard && isSubmitted && !isEditing && (
+            <Button size="sm" variant="outline" className="h-7 text-xs" onClick={() => setIsEditing(true)}>
+              <Pencil className="h-3.5 w-3.5 mr-1" /> Edit
+            </Button>
           )}
           {scorecard && !isSubmitted && (
             <Button size="sm" variant="ghost" className="h-7 text-xs text-rose-500 hover:text-rose-600" onClick={handleDelete}>
@@ -947,6 +972,13 @@ function EvaluateSection({ interviewId, interview, setInterview, prep, setBanner
           )}
         </div>
       </div>
+
+      {isEditing && (
+        <div className="flex items-center gap-2 px-4 py-3 rounded-lg border border-violet-200 bg-violet-50 text-xs text-violet-700">
+          <Pencil className="h-4 w-4 shrink-0" />
+          Editing a submitted scorecard — changes won't be saved until you click "Save changes".
+        </div>
+      )}
 
       {/* score summary bar — shown once at least one score exists */}
       {weightedTotal !== null && (
@@ -1019,7 +1051,7 @@ function EvaluateSection({ interviewId, interview, setInterview, prep, setBanner
                     <button
                       key={n}
                       type="button"
-                      disabled={isSubmitted}
+                      disabled={isSubmitted && !isEditing}
                       onClick={() => setScores((prev) => ({ ...prev, [item.competency_code]: n }))}
                       className={`h-8 w-8 rounded-md border text-xs font-semibold transition-colors ${
                         Number(score) === n
@@ -1048,7 +1080,7 @@ function EvaluateSection({ interviewId, interview, setInterview, prep, setBanner
                     placeholder={`Comment on ${item.competency_name}…`}
                     rows={2}
                     className="text-xs"
-                    disabled={isSubmitted}
+                    disabled={isSubmitted && !isEditing}
                   />
                 )}
               </div>
@@ -1074,7 +1106,7 @@ function EvaluateSection({ interviewId, interview, setInterview, prep, setBanner
                   <button
                     key={opt.value}
                     type="button"
-                    disabled={isSubmitted}
+                    disabled={isSubmitted && !isEditing}
                     onClick={() => setRecommendation(active ? '' : opt.value)}
                     className={`flex flex-col items-center gap-1 px-3 py-2.5 rounded-lg border text-xs font-semibold transition-colors ${
                       active ? opt.color + ' ring-2 ring-offset-1 ring-current' : 'border-border text-muted-foreground hover:bg-muted/40'
@@ -1090,36 +1122,48 @@ function EvaluateSection({ interviewId, interview, setInterview, prep, setBanner
 
           <div className="space-y-1.5">
             <label className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">Standout Strengths</label>
-            <Textarea value={strengths} onChange={(e) => setStrengths(e.target.value)} placeholder="What stood out positively about this candidate?" rows={2} className="text-xs" disabled={isSubmitted} />
+            <Textarea value={strengths} onChange={(e) => setStrengths(e.target.value)} placeholder="What stood out positively about this candidate?" rows={2} className="text-xs" disabled={isSubmitted && !isEditing} />
           </div>
 
           <div className="space-y-1.5">
             <label className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">Concerns</label>
-            <Textarea value={concerns} onChange={(e) => setConcerns(e.target.value)} placeholder="Any concerns or red flags?" rows={2} className="text-xs" disabled={isSubmitted} />
+            <Textarea value={concerns} onChange={(e) => setConcerns(e.target.value)} placeholder="Any concerns or red flags?" rows={2} className="text-xs" disabled={isSubmitted && !isEditing} />
           </div>
         </CardContent>
       </Card>
 
       {/* action bar */}
-      {!isSubmitted && (
+      {(!isSubmitted || isEditing) && (
         <div className="flex items-center justify-between gap-3 pt-1 border-t">
           <p className="text-[10px] text-muted-foreground">
             {allFilled ? 'All competencies scored — ready to submit.' : `${rubricItems.length - filledCount} competencie${rubricItems.length - filledCount === 1 ? '' : 's'} still need a score.`}
           </p>
           <div className="flex gap-2">
-            <Button size="sm" variant="outline" className="text-xs" onClick={() => handleSave(true)} disabled={saving}>
-              {saving ? <Loader2 className="h-3.5 w-3.5 mr-1.5 animate-spin" /> : null}
-              Save draft
-            </Button>
-            <Button size="sm" className="text-xs" onClick={() => handleSave(false)} disabled={saving || !allFilled}>
-              {saving ? <Loader2 className="h-3.5 w-3.5 mr-1.5 animate-spin" /> : <Check className="h-3.5 w-3.5 mr-1.5" />}
-              Submit scorecard
-            </Button>
+            {isEditing ? (
+              <>
+                <Button size="sm" variant="ghost" className="text-xs" onClick={handleCancelEdit} disabled={saving}>Cancel</Button>
+                <Button size="sm" className="text-xs" onClick={() => handleSave(false)} disabled={saving || !allFilled}>
+                  {saving ? <Loader2 className="h-3.5 w-3.5 mr-1.5 animate-spin" /> : <Check className="h-3.5 w-3.5 mr-1.5" />}
+                  Save changes
+                </Button>
+              </>
+            ) : (
+              <>
+                <Button size="sm" variant="outline" className="text-xs" onClick={() => handleSave(true)} disabled={saving}>
+                  {saving ? <Loader2 className="h-3.5 w-3.5 mr-1.5 animate-spin" /> : null}
+                  Save draft
+                </Button>
+                <Button size="sm" className="text-xs" onClick={() => handleSave(false)} disabled={saving || !allFilled}>
+                  {saving ? <Loader2 className="h-3.5 w-3.5 mr-1.5 animate-spin" /> : <Check className="h-3.5 w-3.5 mr-1.5" />}
+                  Submit scorecard
+                </Button>
+              </>
+            )}
           </div>
         </div>
       )}
 
-      {isSubmitted && (
+      {isSubmitted && !isEditing && (
         <div className="flex items-center gap-2 px-4 py-3 rounded-lg border border-emerald-200 bg-emerald-50 text-xs text-emerald-700">
           <Check className="h-4 w-4 shrink-0" />
           Scorecard submitted {fmt(scorecard.submitted_at)} — read only. Go to Decide to advance or reject this candidate.
