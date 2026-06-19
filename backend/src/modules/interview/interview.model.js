@@ -403,8 +403,58 @@ class InterviewModel {
       [interview_id]
     );
     return result.rows[0] || null;
-  }  
+  }
 
+  // ==================== DECIDE TAB ====================
+
+  async recordDecision(interview_id, { verdict, decision_note, decided_by }) {
+    const result = await getDb().query(
+      `UPDATE candidate_interview
+          SET verdict       = $2,
+              decision_note = $3,
+              decided_by    = $4,
+              decided_at    = NOW(),
+              updated_at    = NOW()
+        WHERE id = $1
+        RETURNING *`,
+      [interview_id, verdict, decision_note || null, decided_by || null]
+    );
+    return result.rows[0] || null;
+  }
+
+  async getDecision(interview_id) {
+    const result = await getDb().query(
+      `SELECT
+         ci.id              AS interview_id,
+         ci.verdict,
+         ci.decision_note,
+         ci.decided_by,
+         ci.decided_at,
+         mu.name            AS decided_by_name
+       FROM candidate_interview ci
+       LEFT JOIN master_users mu ON mu.id = ci.decided_by
+       WHERE ci.id = $1`,
+      [interview_id]
+    );
+    return result.rows[0] || null;
+  }
+
+  async undoDecision(interview_id) {
+    const result = await getDb().query(
+      `UPDATE candidate_interview
+          SET verdict       = NULL,
+              decision_note = NULL,
+              decided_by    = NULL,
+              decided_at    = NULL,
+              updated_at    = NOW()
+        WHERE id = $1
+        RETURNING *`,
+      [interview_id]
+    );
+    return result.rows[0] || null;
+  }
+
+  // ==================== PREP TAB ====================
 
   async getPrepByJob(job_id) {
     const result = await getDb().query(

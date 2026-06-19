@@ -438,6 +438,62 @@ class InterviewService {
       }
     }
   }
+
+  // ==================== DECIDE TAB ====================
+
+  async recordDecision(interview_id, { verdict, decision_note, decided_by, company_id = null } = {}) {
+    if (!interview_id) throw { status: 400, message: 'interview_id is required' };
+
+    const valid = ['advance', 'hold', 'reject'];
+    if (!verdict || !valid.includes(verdict)) {
+      throw { status: 400, message: `verdict must be one of: ${valid.join(', ')}` };
+    }
+
+    const existing = await interviewModel.getById(interview_id);
+    if (!existing) throw { status: 404, message: 'Interview not found' };
+
+    if (company_id && existing.company_id && existing.company_id !== company_id) {
+      throw { status: 403, message: 'Cross-tenant access denied' };
+    }
+
+    // Check if scorecard exists and is submitted
+    const scorecard = await interviewModel.getScorecardByInterview(interview_id);
+    if (!scorecard || scorecard.is_draft) {
+      throw { status: 400, message: 'Cannot decide without a submitted scorecard from Evaluate tab' };
+    }
+
+    return await interviewModel.recordDecision(interview_id, {
+      verdict,
+      decision_note,
+      decided_by,
+    });
+  }
+
+  async getDecision(interview_id, { company_id = null } = {}) {
+    if (!interview_id) throw { status: 400, message: 'interview_id is required' };
+
+    const existing = await interviewModel.getById(interview_id);
+    if (!existing) throw { status: 404, message: 'Interview not found' };
+
+    if (company_id && existing.company_id && existing.company_id !== company_id) {
+      throw { status: 403, message: 'Cross-tenant access denied' };
+    }
+
+    return await interviewModel.getDecision(interview_id);
+  }
+
+  async undoDecision(interview_id, { company_id = null } = {}) {
+    if (!interview_id) throw { status: 400, message: 'interview_id is required' };
+
+    const existing = await interviewModel.getById(interview_id);
+    if (!existing) throw { status: 404, message: 'Interview not found' };
+
+    if (company_id && existing.company_id && existing.company_id !== company_id) {
+      throw { status: 403, message: 'Cross-tenant access denied' };
+    }
+
+    return await interviewModel.undoDecision(interview_id);
+  }
 }
 
 export default new InterviewService();

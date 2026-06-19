@@ -46,3 +46,12 @@ export const getScorecard = (interview_id) => api.get(`/interview/${interview_id
 export const saveScorecard = (interview_id, payload) => api.put(`/interview/${interview_id}/scorecard`, payload);
 
 export const deleteScorecard = (interview_id) => api.delete(`/interview/${interview_id}/scorecard`);
+
+// ==================== DECIDE TAB ====================
+
+export const recordDecision = (interview_id, { verdict, decision_note } = {}) =>
+  api.post(`/interview/${interview_id}/decide`, { verdict, decision_note });
+
+export const getDecision = (interview_id) => api.get(`/interview/${interview_id}/decision`);
+
+export const undoDecision = (interview_id) => api.delete(`/interview/${interview_id}/decision`);

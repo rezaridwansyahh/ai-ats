@@ -28,6 +28,7 @@ import {
   confirmSchedule, unconfirmSchedule, deleteSchedule,
   recordOutcome, clearOutcome,
   getScorecard, saveScorecard, deleteScorecard,
+  recordDecision, getDecision, undoDecision,
 } from '@/api/interview.api';
 
 const COMPETENCY_CODES = ['HRD-01', 'HRD-02', 'HRD-03', 'HRD-04', 'HRD-05', 'HRD-06'];
@@ -229,7 +230,7 @@ export default function InterviewCandidatePage() {
             {activeSection === 'schedule' && <ScheduleSection interviewId={interviewId} interview={interview} setInterview={setInterview} setBanner={setBanner} setError={setError} />}
             {activeSection === 'conduct'  && <ConductSection interviewId={interviewId} interview={interview} setInterview={setInterview} setBanner={setBanner} setError={setError} prep={prep} />}
             {activeSection === 'evaluate' && <EvaluateSection interviewId={interviewId} interview={interview} setInterview={setInterview} prep={prep} setBanner={setBanner} setError={setError} />}
-            {activeSection === 'decide'   && <ComingSoonSection label="Decide" />}
+            {activeSection === 'decide'   && <DecideSection interviewId={interviewId} interview={interview} setInterview={setInterview} prep={prep} setBanner={setBanner} setError={setError} />}
           </div>
 
           <aside>
@@ -1169,6 +1170,267 @@ function EvaluateSection({ interviewId, interview, setInterview, prep, setBanner
           Scorecard submitted {fmt(scorecard.submitted_at)} — read only. Go to Decide to advance or reject this candidate.
         </div>
       )}
+    </div>
+  );
+}
+
+// ==================== DECIDE SECTION ====================
+function DecideSection({ interviewId, interview, setInterview, prep, setBanner, setError }) {
+  const [loading, setLoading]           = useState(true);
+  const [saving, setSaving]             = useState(false);
+  const [scorecard, setScorecard]       = useState(null);
+  const [decision, setDecision]         = useState(null);
+  const [verdict, setVerdict]           = useState('');
+  const [decisionNote, setDecisionNote] = useState('');
+  const [showConfirm, setShowConfirm]   = useState(false);
+
+  const rubricItems = Array.isArray(prep?.rubric_items) && prep.rubric_items.length > 0
+    ? prep.rubric_items
+    : COMPETENCY_CODES.map((c) => ({ competency_code: c, competency_name: COMPETENCY_NAMES[c], weight: 1 }));
+
+  useEffect(() => {
+    if (!interviewId) return;
+    (async () => {
+      setLoading(true);
+      try {
+        const [scRes, decRes] = await Promise.all([
+          getScorecard(interviewId).catch(() => null),
+          getDecision(interviewId).catch(() => null),
+        ]);
+        setScorecard(scRes?.data?.scorecard || null);
+        setDecision(decRes?.data?.decision || null);
+        if (decRes?.data?.decision) {
+          setVerdict(decRes.data.decision.verdict || '');
+          setDecisionNote(decRes.data.decision.decision_note || '');
+        }
+      } catch (err) { setError(err.response?.data?.message || err.message); }
+      finally { setLoading(false); }
+    })();
+  }, [interviewId, setError]);
+
+  const handleSubmit = async () => {
+    if (!verdict) { setError('Please select a verdict.'); return; }
+    setSaving(true); setError(null); setBanner(null);
+    try {
+      const res = await recordDecision(interviewId, { verdict, decision_note: decisionNote });
+      setDecision({ verdict, decision_note: decisionNote, decided_at: new Date().toISOString() });
+      setBanner({ ok: true, text: `Decision recorded: ${verdict}` });
+      setShowConfirm(false);
+      setInterview((prev) => ({ ...prev, verdict, decision_note: decisionNote }));
+    } catch (err) { setError(err.response?.data?.message || err.message || 'Failed to record decision'); }
+    finally { setSaving(false); }
+  };
+
+  const handleUndo = async () => {
+    if (!window.confirm('Undo this decision? This will reset the verdict.')) return;
+    try {
+      await undoDecision(interviewId);
+      setDecision(null); setVerdict(''); setDecisionNote('');
+      setBanner({ ok: true, text: 'Decision cleared' });
+      setInterview((prev) => ({ ...prev, verdict: null, decision_note: null }));
+    } catch (err) { setError(err.response?.data?.message || err.message); }
+  };
+
+  if (loading) return <div className="flex justify-center py-12"><Loader2 className="h-5 w-5 animate-spin text-muted-foreground" /></div>;
+
+  const isSubmitted = scorecard && !scorecard.is_draft;
+  const hasDecision = decision && decision.verdict;
+
+  return (
+    <div className="space-y-4">
+      {/* Header */}
+      <div className="flex items-start justify-between gap-3 flex-wrap">
+        <div>
+          <h2 className="text-sm font-semibold">Decide</h2>
+          <p className="text-[11px] text-muted-foreground">
+            Review the scorecard and make a final decision: advance to next stage, hold, or reject.
+          </p>
+        </div>
+        {hasDecision && (
+          <Badge variant="outline" className="text-[9px] border-emerald-300 text-emerald-700 bg-emerald-50">
+            Decision Made
+          </Badge>
+        )}
+      </div>
+
+      {/* Warning if no scorecard */}
+      {!isSubmitted && (
+        <div className="flex items-center gap-2 px-4 py-3 rounded-lg border border-amber-200 bg-amber-50 text-xs text-amber-700">
+          <AlertTriangle className="h-4 w-4 shrink-0" />
+          Cannot decide without a submitted scorecard from Evaluate tab. Please complete evaluation first.
+        </div>
+      )}
+
+      {/* Scorecard Summary */}
+      {isSubmitted && (
+        <Card>
+          <CardHeader className="pb-3">
+            <CardTitle className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Scorecard Summary</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-3">
+            <div className="flex items-center justify-between">
+              <span className="text-xs text-muted-foreground">Overall Score:</span>
+              <span className={`text-lg font-bold ${scoreColor(scorecard.weighted_total)}`}>
+                {scorecard.weighted_total ? `${scorecard.weighted_total}/7` : '—'}
+              </span>
+            </div>
+            {scorecard.recommendation && (
+              <div className="flex items-center justify-between">
+                <span className="text-xs text-muted-foreground">Recommendation:</span>
+                <Badge variant="outline" className={RECOMMENDATION_OPTIONS.find(r => r.value === scorecard.recommendation)?.color || ''}>
+                  {RECOMMENDATION_OPTIONS.find(r => r.value === scorecard.recommendation)?.label || scorecard.recommendation}
+                </Badge>
+              </div>
+            )}
+            {scorecard.standout_strengths && (
+              <div>
+                <p className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground mb-1">Strengths</p>
+                <p className="text-xs text-foreground">{scorecard.standout_strengths}</p>
+              </div>
+            )}
+            {scorecard.concerns && (
+              <div>
+                <p className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground mb-1">Concerns</p>
+                <p className="text-xs text-foreground">{scorecard.concerns}</p>
+              </div>
+            )}
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Decision Section */}
+      {isSubmitted && !hasDecision && (
+        <Card>
+          <CardHeader className="pb-3">
+            <CardTitle className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Make Decision</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            {/* Verdict Radio Group */}
+            <div className="space-y-2">
+              <label className="text-xs font-medium">Select Verdict</label>
+              <div className="grid grid-cols-1 gap-2">
+                <button
+                  type="button"
+                  onClick={() => setVerdict('advance')}
+                  className={`p-3 rounded-lg border-2 text-left transition-all ${
+                    verdict === 'advance'
+                      ? 'border-emerald-400 bg-emerald-50'
+                      : 'border-border bg-background hover:border-emerald-200'
+                  }`}
+                >
+                  <div className="flex items-center gap-2">
+                    <Check className="h-4 w-4 text-emerald-600" />
+                    <span className="text-sm font-semibold">Advance to Next Stage</span>
+                  </div>
+                  <p className="text-xs text-muted-foreground mt-1 ml-6">Candidate proceeds to Psych Assessment</p>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => setVerdict('hold')}
+                  className={`p-3 rounded-lg border-2 text-left transition-all ${
+                    verdict === 'hold'
+                      ? 'border-amber-400 bg-amber-50'
+                      : 'border-border bg-background hover:border-amber-200'
+                  }`}
+                >
+                  <div className="flex items-center gap-2">
+                    <Minus className="h-4 w-4 text-amber-600" />
+                    <span className="text-sm font-semibold">Hold</span>
+                  </div>
+                  <p className="text-xs text-muted-foreground mt-1 ml-6">Keep in interview pool for further review</p>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => setVerdict('reject')}
+                  className={`p-3 rounded-lg border-2 text-left transition-all ${
+                    verdict === 'reject'
+                      ? 'border-rose-400 bg-rose-50'
+                      : 'border-border bg-background hover:border-rose-200'
+                  }`}
+                >
+                  <div className="flex items-center gap-2">
+                    <X className="h-4 w-4 text-rose-600" />
+                    <span className="text-sm font-semibold">Reject</span>
+                  </div>
+                  <p className="text-xs text-muted-foreground mt-1 ml-6">Candidate does not proceed</p>
+                </button>
+              </div>
+            </div>
+
+            {/* Decision Note */}
+            <div className="space-y-2">
+              <label className="text-xs font-medium">Decision Notes (Optional)</label>
+              <Textarea
+                value={decisionNote}
+                onChange={(e) => setDecisionNote(e.target.value)}
+                placeholder="Reasoning for this decision..."
+                className="text-xs min-h-[80px] resize-none"
+              />
+            </div>
+
+            {/* Submit Button */}
+            <Button
+              onClick={() => setShowConfirm(true)}
+              disabled={!verdict || saving}
+              className="w-full"
+            >
+              {saving ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Check className="h-4 w-4 mr-2" />}
+              {verdict === 'advance' ? 'Advance to Psych Assessment' : verdict === 'hold' ? 'Hold Candidate' : verdict === 'reject' ? 'Reject Candidate' : 'Submit Decision'}
+            </Button>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Decision Already Made */}
+      {hasDecision && (
+        <Card className="border-emerald-200 bg-emerald-50/30">
+          <CardContent className="p-4 space-y-3">
+            <div className="flex items-center gap-2">
+              <Check className="h-5 w-5 text-emerald-600" />
+              <span className="text-sm font-semibold">Decision Recorded: {decision.verdict.toUpperCase()}</span>
+            </div>
+            {decision.decision_note && (
+              <div>
+                <p className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground mb-1">Notes</p>
+                <p className="text-xs">{decision.decision_note}</p>
+              </div>
+            )}
+            {decision.decided_at && (
+              <p className="text-[10px] text-muted-foreground">
+                Decided {fmt(decision.decided_at)}
+                {decision.decided_by_name && ` by ${decision.decided_by_name}`}
+              </p>
+            )}
+            <Button size="sm" variant="outline" onClick={handleUndo} className="h-7 text-xs mt-2">
+              <RefreshCw className="h-3.5 w-3.5 mr-1" /> Undo Decision
+            </Button>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Confirmation Dialog */}
+      <Dialog open={showConfirm} onOpenChange={setShowConfirm}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Confirm Decision</DialogTitle>
+            <DialogDescription>
+              You are about to record a <strong>{verdict}</strong> verdict for this candidate.
+              {verdict === 'advance' && ' They will proceed to the Psych Assessment stage.'}
+              {verdict === 'reject' && ' This candidate will be marked as rejected.'}
+              {verdict === 'hold' && ' This candidate will remain in the interview pool.'}
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setShowConfirm(false)}>Cancel</Button>
+            <Button onClick={handleSubmit} disabled={saving}>
+              {saving ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}
+              Confirm
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

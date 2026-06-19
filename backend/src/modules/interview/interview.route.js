@@ -36,4 +36,9 @@ router.post('/job/:job_id/prep/rubric/unlock', interviewController.unlockRubric)
 router.get('/:interview_id', interviewController.getInterview);
 router.patch('/:interview_id/status', interviewController.updateStatus);
 
+// Decide routes
+router.post('/:interview_id/decide', interviewController.recordDecision);
+router.get('/:interview_id/decision', interviewController.getDecision);
+router.delete('/:interview_id/decision', interviewController.undoDecision);
+
 export default router;
