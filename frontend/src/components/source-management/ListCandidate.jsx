@@ -1,195 +1,227 @@
-import { useState, useEffect, useRef, useMemo, useCallback } from 'react';
+import { useState, useEffect, useMemo, useCallback } from 'react';
+import { Loader2 } from 'lucide-react';
 import {
-  Plus, Loader2, Pencil, Trash2, Upload, Sparkles, X, Star, Check,
-  Bold, Italic, Underline, List, ListOrdered, Link, Bot, Briefcase, MapPin,
-  AlertTriangle
-} from 'lucide-react';
-import {
-  Table,
-  TableBody,
-  TableCaption,
-  TableCell,
-  TableFooter,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table"
+  Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
+} from '@/components/ui/table';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-import { Textarea } from '@/components/ui/textarea';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import {
-  Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter,
-} from '@/components/ui/dialog';
-import { Badge } from '@/components/ui/badge';
 import { Slider } from '@/components/ui/slider';
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from '@/components/ui/select';
+import { JobBanner } from '@/components/source-management/JobBanner';
+import { getAll } from '@/api/applicant.api';
 
-import { getAll } from '@/api/applicant.api.js';
-
-const STATUS_COLORS = {
-  Draft: 'bg-orange-50 text-orange-600 border-orange-200',
-  Active: 'bg-emerald-50 text-emerald-600 border-emerald-200',
-  Running: 'bg-blue-50 text-blue-600 border-blue-200',
-  Expired: 'bg-gray-50 text-gray-500 border-gray-200',
-  Failed: 'bg-red-50 text-red-500 border-red-200',
-  Blocked: 'bg-gray-50 text-gray-500 border-gray-200',
-};
-
+const PLATFORM_OPTIONS = ['linkedin', 'seek', 'internal'];
 const PAGE_SIZE = 10;
-const STATUS_OPTIONS = ['linkedin', 'seek', 'internal'];
 
+// ── Dummy data — shown when API returns empty ──────────────────────
+const DUMMY_APPLICANTS = [
+  { id: 1, name: 'Ayu Pratiwi',    address: 'Jakarta, Indonesia',   last_position: 'Frontend Engineer', education: 'Universitas Indonesia' },
+  { id: 2, name: 'Budi Santoso',   address: 'Bandung, Indonesia',   last_position: 'UI Engineer',        education: 'Institut Teknologi Bandung' },
+  { id: 3, name: 'Citra Lestari',  address: 'Singapore',            last_position: 'Product Designer',  education: 'NUS' },
+  { id: 4, name: 'Dewi Anggraini', address: 'Jakarta, Indonesia',   last_position: 'Frontend Developer', education: 'Universitas Gadjah Mada' },
+  { id: 5, name: 'Eko Nugroho',    address: 'Surabaya, Indonesia',  last_position: 'React Engineer',     education: 'Politeknik Elektronika Negeri Surabaya' },
+];
 
-export default function ListCandidateStep({ selectedJob }) {
+export default function ListCandidate({ selectedJob }) {
   const [applicants, setApplicants] = useState([]);
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState(null);
-  
-  // pagination
-  const [searchQuery, setSearchQuery] = useState('');
-  const [statusFilter, setStatusFilter] = useState('all');
+  const [loading, setLoading]       = useState(false);
+
+  const [searchQuery, setSearchQuery]       = useState('');
   const [platformFilter, setPlatformFilter] = useState('all');
-  const [page, setPage] = useState(1);
+  const [page, setPage]                     = useState(1);
 
-  const filteredApplicants = useMemo(() => {
-    return applicants.filter(applicant => {
-      const matchesSearch = !searchQuery || applicant.name?.toLowerCase().includes(searchQuery.toLowerCase());
-      const matchesStatus = statusFilter === 'all' || applicant.status === statusFilter;
-      const matchesPlatform = platformFilter === 'all' || applicant.platform === platformFilter;
-
-      return matchesSearch && matchesStatus && matchesPlatform;
-    });
-  }, [applicants, searchQuery, statusFilter]);
-
-  const totalPages = Math.ceil(filteredApplicants.length / PAGE_SIZE);
-  const paginatedApplicants = filteredApplicants.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
-
-  // Reset page when filters change
-  useEffect(() => { setPage(1); }, [searchQuery, statusFilter]);
-
-  const fetchApplicant = useCallback(async () => {
+  // ── Fetch ──────────────────────────────────────────────────────
+  const fetchApplicants = useCallback(async () => {
     setLoading(true);
     try {
       const res = await getAll();
-      setApplicants(res.data.applicants || []);
-    } catch (err) {
-      // no-op
+      const data = res.data.applicants || [];
+      // Fall back to dummy data so the UI isn't blank during development
+      setApplicants(data.length > 0 ? data : DUMMY_APPLICANTS);
+    } catch {
+      setApplicants(DUMMY_APPLICANTS);
     } finally {
       setLoading(false);
     }
   }, []);
 
-  useEffect(() => {
-    fetchApplicant()
-  }, [fetchApplicant])
-  
+  useEffect(() => { fetchApplicants(); }, [fetchApplicants]);
+
+  // ── Filter — platformFilter now actually applied ───────────────
+  const filteredApplicants = useMemo(() => {
+    return applicants.filter(applicant => {
+      const matchesSearch =
+        !searchQuery ||
+        applicant.name?.toLowerCase().includes(searchQuery.toLowerCase());
+      const matchesPlatform =
+        platformFilter === 'all' || applicant.platform === platformFilter;
+      return matchesSearch && matchesPlatform;
+    });
+  }, [applicants, searchQuery, platformFilter]);
+
+  const totalPages        = Math.ceil(filteredApplicants.length / PAGE_SIZE);
+  const paginatedApplicants = filteredApplicants.slice(
+    (page - 1) * PAGE_SIZE,
+    page * PAGE_SIZE,
+  );
+
+  // Reset to page 1 when filters change
+  useEffect(() => { setPage(1); }, [searchQuery, platformFilter]);
+
   return (
     <div className="space-y-5">
-      {/* ── Section A: Selected Job Banner ── */}
-      <Card className="border-primary/20 bg-primary/5">
-        <CardContent className="py-4 px-5">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-3">
-              <div className="h-10 w-10 rounded-lg bg-primary/10 flex items-center justify-center">
-                <Briefcase className="h-5 w-5 text-primary" />
-              </div>
-              <div>
-                <div className="flex items-center gap-2">
-                  <h3 className="text-sm font-bold">{selectedJob.job_title}</h3>
-                  <Badge variant="outline" className={`text-[10px] px-2 py-0 ${STATUS_COLORS[selectedJob.status] || ''}`}>
-                    {selectedJob.status}
-                  </Badge>
-                </div>
-                <div className="flex items-center gap-3 mt-0.5 text-xs text-muted-foreground">
-                  {selectedJob.job_location && (
-                    <span className="flex items-center gap-1"><MapPin className="h-3 w-3" />{selectedJob.job_location}</span>
-                  )}
-                  {selectedJob.work_type && <span>{selectedJob.work_type}</span>}
-                  {selectedJob.work_option && <span>{selectedJob.work_option}</span>}
-                </div>
-              </div>
-            </div>
-            <span className="text-[10px] font-bold text-muted-foreground tracking-widest">STEP 4</span>
-          </div>
-        </CardContent>
-      </Card>
 
-      {/* Section B: Selected Threshold */}
+      {/* Job context banner */}
+      <JobBanner job={selectedJob} step={4} />
+
+      {/* Threshold display — read-only, value set in SourceSetup (Step 3) */}
+      {/* TODO: receive threshold range as a prop from SourceManagementPage
+          once Step 3 saves to state/backend */}
       <Card>
-        <CardContent>
-          <div>Threshold Score for AI Screening CV</div>
-          <div className="flex text-center">
-            <div className="min-w-30">
-              Min: 70 
+        <CardHeader className="pb-3 border-b">
+          <CardTitle className="text-sm">Threshold Score</CardTitle>
+        </CardHeader>
+        <CardContent className="pt-4 space-y-3">
+          <p className="text-xs text-muted-foreground">
+            Candidates within this AI screening score range will appear below.
+            Adjust the range in Step 3.
+          </p>
+          <div className="flex items-center gap-4">
+            <div className="flex flex-col items-center gap-1 min-w-[64px]">
+              <span className="text-[10px] text-muted-foreground font-semibold uppercase tracking-wide">Min</span>
+              <span className="text-lg font-bold text-primary">70</span>
             </div>
-            <Slider
-              value={[70, 100]} // still hardcoded
-              min={0}
-              max={100}
-              step={1}
-              disabled
-            />
-            <div className="min-w-30">
-              Max: 100
+            <div className="flex-1">
+              <Slider
+                value={[70, 100]}
+                min={0}
+                max={100}
+                step={1}
+                disabled
+              />
+              <div className="flex justify-between mt-1.5">
+                <span className="text-[9px] text-muted-foreground">0</span>
+                <span className="text-[9px] text-muted-foreground">50</span>
+                <span className="text-[9px] text-muted-foreground">100</span>
+              </div>
+            </div>
+            <div className="flex flex-col items-center gap-1 min-w-[64px]">
+              <span className="text-[10px] text-muted-foreground font-semibold uppercase tracking-wide">Max</span>
+              <span className="text-lg font-bold text-primary">100</span>
             </div>
           </div>
         </CardContent>
       </Card>
 
-      {/* Content */}
-        <Card>
-          <CardHeader className="pb-3 space-y-3">
-            <CardTitle className="text-sm">All Applicant</CardTitle>
+      {/* Applicants table */}
+      <Card>
+        <CardHeader className="pb-3 border-b">
+          <div className="flex items-center justify-between gap-3 flex-wrap">
+            <CardTitle className="text-sm shrink-0">
+              All Applicants
+              {!loading && (
+                <span className="ml-2 text-[11px] font-normal text-muted-foreground">
+                  {filteredApplicants.length} {filteredApplicants.length === 1 ? 'result' : 'results'}
+                </span>
+              )}
+            </CardTitle>
             <div className="flex items-center gap-3">
               <Input
-                placeholder="Search applicant..."
+                placeholder="Search applicants..."
                 value={searchQuery}
                 onChange={e => setSearchQuery(e.target.value)}
                 className="max-w-[250px] text-xs"
               />
-              <Select value={statusFilter} onValueChange={setStatusFilter}>
-                <SelectTrigger className="w-[150px] text-xs"><SelectValue /></SelectTrigger>
+              <Select value={platformFilter} onValueChange={setPlatformFilter}>
+                <SelectTrigger className="w-[150px] text-xs">
+                  <SelectValue />
+                </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="all">All Platform</SelectItem>
-                  {STATUS_OPTIONS.map(s => <SelectItem key={s} value={s}>{s}</SelectItem>)}
+                  <SelectItem value="all">All Platforms</SelectItem>
+                  {PLATFORM_OPTIONS.map(p => (
+                    <SelectItem key={p} value={p}>{p}</SelectItem>
+                  ))}
                 </SelectContent>
               </Select>
             </div>
-          </CardHeader>
-          <CardContent>
+          </div>
+        </CardHeader>
+
+        <CardContent className="p-0">
+          <div className="overflow-x-auto">
             <Table className="table-fixed w-full">
-              <TableCaption>A list of All Applicants.</TableCaption>
-              <TableHeader className="bg-gray-100">
+              <TableHeader className="bg-muted/40">
                 <TableRow>
-                  <TableHead>Name</TableHead>
-                  <TableHead>Address</TableHead>
-                  <TableHead>Last Position</TableHead>
-                  <TableHead>Education</TableHead>
-                  <TableHead className="text-center">Action</TableHead>
+                  <TableHead className="text-[10px] font-bold uppercase pl-6 w-[20%]">Name</TableHead>
+                  <TableHead className="text-[10px] font-bold uppercase w-[20%]">Address</TableHead>
+                  <TableHead className="text-[10px] font-bold uppercase w-[25%]">Last Position</TableHead>
+                  <TableHead className="text-[10px] font-bold uppercase w-[25%]">Education</TableHead>
+                  <TableHead className="text-[10px] font-bold uppercase text-right pr-6 w-[10%]">Action</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {paginatedApplicants.map(applicant => (
-                  <TableRow key={applicant.id}>
-                    <TableCell className="font-medium">{applicant.name}</TableCell>
-                    <TableCell>{applicant.address}</TableCell>
-                    <TableCell>{applicant.last_position}</TableCell>
-                    <TableCell>{applicant.education}</TableCell>
-                    <TableCell className="text-center"><Button variant='outline'>Add to Candidate</Button></TableCell>
+                {loading ? (
+                  <TableRow>
+                    <TableCell colSpan={5} className="text-center py-10">
+                      <Loader2 className="h-4 w-4 animate-spin mx-auto text-muted-foreground" />
+                    </TableCell>
+                  </TableRow>
+                ) : paginatedApplicants.length === 0 ? (
+                  <TableRow>
+                    <TableCell colSpan={5} className="text-center py-10 text-xs text-muted-foreground">
+                      {applicants.length === 0
+                        ? 'No applicants found.'
+                        : 'No applicants match your filters.'}
+                    </TableCell>
+                  </TableRow>
+                ) : paginatedApplicants.map(applicant => (
+                  <TableRow
+                    key={applicant.id}
+                    className="hover:bg-muted/30 transition-colors"
+                  >
+                    <TableCell className="text-xs font-semibold pl-6 truncate">
+                      {applicant.name}
+                    </TableCell>
+                    <TableCell className="text-xs text-muted-foreground truncate">
+                      {applicant.address || '—'}
+                    </TableCell>
+                    <TableCell className="text-xs truncate">
+                      {applicant.last_position || '—'}
+                    </TableCell>
+                    <TableCell className="text-xs text-muted-foreground truncate">
+                      {applicant.education || '—'}
+                    </TableCell>
+                    <TableCell className="text-right pr-6">
+                      {/* TODO: wire up add-to-candidate endpoint */}
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="text-[11px] h-7 px-2.5"
+                        onClick={() => {
+                          // TODO: add applicant to job candidate list
+                        }}
+                      >
+                        Add
+                      </Button>
+                    </TableCell>
                   </TableRow>
                 ))}
               </TableBody>
-              <TableFooter>
-                
-              </TableFooter>
             </Table>
-  
-            <div className="flex flex-col items-center gap-2 pt-3 border-t mt-3">
+          </div>
+
+          {/* Pagination */}
+          {totalPages > 1 && (
+            <div className="flex flex-col items-center gap-2 py-4 border-t">
               <div className="flex items-center gap-1">
-                <Button variant="outline" size="sm" className="h-7 text-xs" disabled={page <= 1} onClick={() => setPage(p => p - 1)}>
+                <Button
+                  variant="outline" size="sm" className="h-7 text-xs"
+                  disabled={page <= 1}
+                  onClick={() => setPage(p => p - 1)}
+                >
                   Previous
                 </Button>
                 {(() => {
@@ -214,21 +246,25 @@ export default function ListCandidateStep({ selectedJob }) {
                       >
                         {p}
                       </Button>
-                    )
+                    ),
                   );
                 })()}
-                <Button variant="outline" size="sm" className="h-7 text-xs" disabled={page >= totalPages} onClick={() => setPage(p => p + 1)}>
+                <Button
+                  variant="outline" size="sm" className="h-7 text-xs"
+                  disabled={page >= totalPages}
+                  onClick={() => setPage(p => p + 1)}
+                >
                   Next
                 </Button>
               </div>
               <span className="text-[10px] text-muted-foreground">
-                {filteredApplicants.length > 0
-                  ? `Showing ${(page - 1) * PAGE_SIZE + 1}\u2013${Math.min(page * PAGE_SIZE, filteredApplicants.length)} of ${filteredApplicants.length}`
-                  : 'No results'}
+                Showing {(page - 1) * PAGE_SIZE + 1}–{Math.min(page * PAGE_SIZE, filteredApplicants.length)} of {filteredApplicants.length}
               </span>
             </div>
-          </CardContent>
-        </Card>
+          )}
+        </CardContent>
+      </Card>
+
     </div>
-  )
+  );
 }

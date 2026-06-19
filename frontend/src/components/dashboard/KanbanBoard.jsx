@@ -1,252 +1,510 @@
-import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
-import { Badge } from '@/components/ui/badge';
-import { Button } from '@/components/ui/button';
+import { useState } from 'react';
 import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select';
-import { AlertTriangle, TrendingUp, TrendingDown, Clock, CheckCircle } from 'lucide-react';
+  MapPin, ChevronDown, ChevronUp, AlertTriangle,
+  MessageCircle, Sparkles, Megaphone, BookmarkCheck,
+} from 'lucide-react';
 
-/* ─── Column definitions ─── */
-const COLUMNS = [
-  { id: 'applied',    label: 'Applied',      color: 'bg-primary',    count: 8 },
-  { id: 'screening',  label: 'AI Screening',  color: 'bg-blue-500',   count: 6 },
-  { id: 'interview',  label: 'Interview',     color: 'bg-purple-500', count: 4 },
-  { id: 'assessment', label: 'Assessment',    color: 'bg-violet-500', count: 2 },
-  { id: 'medical',    label: 'Medical',       color: 'bg-teal-500',   count: 1 },
-  { id: 'bgcheck',    label: 'BG Check',      color: 'bg-sky-500',    count: 2 },
-  { id: 'offering',   label: 'Offering',      color: 'bg-amber-500',  count: 3 },
-  { id: 'hired',      label: 'Hired',         color: 'bg-green-500',  count: 5 },
+/* ─────────────────────────────────────────
+   STAGE DEFINITIONS (fallback)
+   ───────────────────────────────────────── */
+const DEFAULT_STAGES = [
+  { id: 'applied',   label: 'Applied',   color: 'bg-slate-400' },
+  { id: 'screening', label: 'Screening', color: 'bg-blue-400' },
+  { id: 'interview', label: 'Interview', color: 'bg-violet-400' },
+  { id: 'psych',     label: 'Psych',     color: 'bg-purple-400' },
+  { id: 'medical',   label: 'Medical',   color: 'bg-amber-400' },
+  { id: 'bg_check',  label: 'BG Check',  color: 'bg-orange-400' },
+  { id: 'offer',     label: 'Offer',     color: 'bg-teal-400' },
+  { id: 'hired',     label: 'Hired',     color: 'bg-green-500' },
 ];
 
-/* ─── Candidate cards per column ─── */
-const CANDIDATES = {
-  applied: [
-    { initials: 'AN', name: 'Adi Nugroho', role: 'Frontend Dev', exp: '5 yrs', tags: ['React', 'TS'], bg: 'bg-primary' },
-    { initials: 'SW', name: 'Siti Wulandari', role: 'Backend Dev', exp: '3 yrs', tags: ['Node.js', 'Go'], bg: 'bg-amber-500' },
-    { initials: 'RH', name: 'Rizki Hakim', role: 'Data Analyst', exp: '2 yrs', tags: ['Python', 'SQL'], bg: 'bg-blue-500' },
-  ],
-  screening: [
-    { initials: 'DS', name: 'Dewi Sartika', role: 'Sr. Frontend', exp: '6 yrs', tags: ['React', 'Next.js'], bg: 'bg-primary', ai: 'Advance', score: 95 },
-    { initials: 'BP', name: 'Budi Prasetyo', role: 'Full Stack', exp: '4 yrs', tags: ['Vue', 'Python'], bg: 'bg-amber-500', ai: 'Review', score: 78 },
-  ],
-  interview: [
-    { initials: 'MH', name: 'Maya Hartono', role: 'UX Designer', exp: '4 yrs', tags: ['Figma', 'Research'], bg: 'bg-purple-500' },
-    { initials: 'FK', name: 'Fajar Kurniawan', role: 'DevOps', exp: '5 yrs', tags: ['AWS', 'K8s'], bg: 'bg-teal-500', overdue: true },
-  ],
-  assessment: [
-    { initials: 'LS', name: 'Lina Susanti', role: 'Marketing Mgr', exp: '7 yrs', tags: ['Growth', 'SEO'], bg: 'bg-violet-500' },
-  ],
-  medical: [
-    { initials: 'YP', name: 'Yuda Pratama', role: 'Sales Rep', exp: '3 yrs', tags: ['B2B'], bg: 'bg-green-500' },
-  ],
-  bgcheck: [
-    { initials: 'NR', name: 'Nadia Rahmawati', role: 'HR Officer', exp: '4 yrs', tags: ['HRIS'], bg: 'bg-sky-500' },
-  ],
-  offering: [
-    { initials: 'AT', name: 'Aldi Tanjung', role: 'Backend Sr.', exp: '6 yrs', tags: ['Go', 'gRPC'], bg: 'bg-amber-500' },
-  ],
-  hired: [
-    { initials: 'PP', name: 'Putri Permata', role: 'Content Writer', exp: '2 yrs', tags: ['Copywriting'], bg: 'bg-green-600' },
-    { initials: 'TW', name: 'Teguh Widodo', role: 'QA Engineer', exp: '4 yrs', tags: ['Selenium', 'Cypress'], bg: 'bg-primary' },
+/* ─────────────────────────────────────────
+   DUMMY DATA
+   ───────────────────────────────────────── */
+const DUMMY_JOB = {
+  id: 'JOB-2148',
+  title: 'Sr. Frontend Developer',
+  headcount: 10,
+  status: 'Active',
+  deadline: '15 Mar 2026',
+  days_open: 18,
+  cities: [
+    {
+      id: 'jakarta',
+      name: 'Jakarta',
+      coordinator: { initials: 'ST', name: 'Sarah Tan', color: 'bg-teal-500' },
+      hired: 1,
+      quota: 3,
+      behind_quota: false,
+      columns: {
+        applied:   [
+          { id: 'c1', initials: 'RP', name: 'Raka Prasetya',    role: 'Frontend Dev',  exp: '4y', salary: 'Rp 18M', score: 76, tags: ['React', 'TypeScript'], source: 'JobStreet', ago: '1d', color: 'bg-orange-400', overdue: false, comments: 0 },
+        ],
+        screening: [
+          { id: 'c2', initials: 'RF', name: 'Rizky Firmansyah', role: 'Frontend Dev',  exp: '5y', salary: 'Rp 18M', score: 91, tags: ['React', 'TypeScript'], source: 'LinkedIn',  ago: '4d', color: 'bg-blue-500',   overdue: false, comments: 0 },
+        ],
+        interview: [
+          { id: 'c3', initials: 'DS', name: 'Dewi Sartika',     role: 'Sr. Frontend',  exp: '8y', salary: 'Rp 22M', score: 94, tags: ['React', 'TypeScript'], source: 'LinkedIn',  ago: '2d', color: 'bg-green-500',  overdue: false, comments: 2 },
+        ],
+        psych:    [],
+        medical:  [],
+        bg_check: [],
+        offer:    [
+          { id: 'c4', initials: 'PH', name: 'Putri Handayani',  role: 'Frontend Dev',  exp: '4y', salary: 'Rp 17M', score: 78, tags: ['React', 'Next.js'],    source: 'LinkedIn',  ago: '8d', color: 'bg-pink-500',    overdue: false, comments: 5 },
+        ],
+        hired:    [],
+      },
+    },
+    {
+      id: 'bandung',
+      name: 'Bandung',
+      coordinator: { initials: 'MH', name: 'Maya Hartono', color: 'bg-purple-500' },
+      hired: 0,
+      quota: 2,
+      behind_quota: true,
+      columns: {
+        applied:   [
+          { id: 'c5', initials: 'MP', name: 'Maya Pramitasari', role: 'Frontend Dev',  exp: '4y', salary: 'Rp 16M', score: 87, tags: ['React', 'TypeScript'], source: 'Kalibrr',  ago: '1d', color: 'bg-violet-500', overdue: false, comments: 0 },
+          { id: 'c6', initials: 'BK', name: 'Budi Kurniawan',   role: 'Frontend Dev',  exp: '5y', salary: 'Rp 14M', score: 74, tags: ['React', 'JavaScript'], source: 'Kalibrr',  ago: '2d', color: 'bg-blue-400',   overdue: false, comments: 0 },
+        ],
+        screening: [],
+        interview: [],
+        psych:    [],
+        medical:  [],
+        bg_check: [],
+        offer:    [],
+        hired:    [],
+      },
+    },
+    {
+      id: 'surabaya',
+      name: 'Surabaya',
+      coordinator: { initials: 'RF', name: 'Reza Firmansyah', color: 'bg-amber-500' },
+      hired: 0,
+      quota: 2,
+      behind_quota: false,
+      columns: {
+        applied:   [],
+        screening: [
+          { id: 'c7', initials: 'AS', name: 'Agus Setiawan',   role: 'Frontend Dev',  exp: '5y', salary: 'Rp 20M', score: 82, tags: ['React', 'TypeScript'], source: 'JobStreet', ago: '3d', color: 'bg-teal-500',   overdue: false, comments: 1 },
+        ],
+        interview: [
+          { id: 'c8', initials: 'SN', name: 'Siti Nurhaliza',  role: 'Frontend Dev',  exp: '6y', salary: 'Rp 18M', score: 81, tags: ['React', 'TypeScript'], source: 'Referral',  ago: '3d', color: 'bg-orange-500', overdue: false, comments: 2 },
+        ],
+        psych:    [],
+        medical:  [],
+        bg_check: [],
+        offer:    [],
+        hired:    [],
+      },
+    },
   ],
 };
 
-/* ─── Pipeline stats ─── */
-const STATS = [
-  { label: 'Total in Pipeline', value: 32, trend: 'up', change: '+4 this week' },
-  { label: 'Hired This Month',  value: 5,  trend: 'up', change: '+2 vs last month' },
-  { label: 'Avg Stage Duration', value: '3.8d', trend: 'down', change: '-0.4d faster' },
-  { label: 'SLA Breaches',       value: 2,  trend: null, change: 'Needs action', warn: true },
-  { label: 'Pass-through Rate',  value: '87%', trend: null, change: 'Stable' },
-  { label: 'Avg Time-to-Hire',   value: '24d', trend: 'down', change: '-3d vs Q3' },
-];
+/* ─────────────────────────────────────────
+   HELPERS
+   ───────────────────────────────────────── */
+const SOURCE_COLORS = {
+  LinkedIn:  'bg-blue-50 text-blue-700 dark:bg-blue-950 dark:text-blue-300',
+  JobStreet: 'bg-amber-50 text-amber-700 dark:bg-amber-950 dark:text-amber-300',
+  Kalibrr:   'bg-violet-50 text-violet-700 dark:bg-violet-950 dark:text-violet-300',
+  Referral:  'bg-green-50 text-green-700 dark:bg-green-950 dark:text-green-300',
+};
 
-function CandidateCard({ c }) {
+// Group a flat candidates[] (with stage_id + city fields) into the
+// cities[] shape KanbanBoard expects. Used when real API data is passed in.
+function groupCandidatesIntoCities({ candidates = [], stages = [] }) {
+  const cityMap = {};
+
+  for (const c of candidates) {
+    const cityId   = c.city_id   ?? c.city   ?? 'unknown';
+    const cityName = c.city_name ?? c.city   ?? 'Unknown';
+    const stageId  = c.stage_id  ?? c.latest_stage ?? 'applied';
+
+    if (!cityMap[cityId]) {
+      cityMap[cityId] = {
+        id:          cityId,
+        name:        cityName,
+        coordinator: c.coordinator ?? { initials: '?', name: 'Unassigned', color: 'bg-slate-400' },
+        hired:       0,
+        quota:       c.city_quota ?? 0,
+        behind_quota: false,
+        columns:     Object.fromEntries(stages.map((s) => [s.id, []])),
+      };
+    }
+
+    const city = cityMap[cityId];
+    if (!city.columns[stageId]) city.columns[stageId] = [];
+
+    city.columns[stageId].push({
+      id:       c.id ?? c.applicant_id,
+      initials: (c.name ?? c.applicant_name ?? '?').split(' ').map((w) => w[0]).join('').slice(0, 2).toUpperCase(),
+      name:     c.name ?? c.applicant_name ?? `#${c.applicant_id}`,
+      role:     c.role ?? c.position ?? '—',
+      exp:      c.experience ?? c.exp ?? '—',
+      salary:   c.expected_salary ?? c.salary ?? '—',
+      score:    c.overall_score ?? c.score ?? null,
+      tags:     c.skills ?? c.tags ?? [],
+      source:   c.source ?? null,
+      ago:      c.applied_ago ?? c.ago ?? '—',
+      color:    c.avatar_color ?? 'bg-primary',
+      overdue:  c.overdue ?? false,
+      comments: c.comment_count ?? c.comments ?? 0,
+    });
+
+    if (stageId === 'hired') city.hired += 1;
+  }
+
+  return Object.values(cityMap).map((city) => ({
+    ...city,
+    behind_quota: city.hired < city.quota,
+  }));
+}
+
+/* ─────────────────────────────────────────
+   CANDIDATE CARD
+   ───────────────────────────────────────── */
+function CandidateCard({ c, onSelect }) {
+  const scoreColor =
+    c.score >= 90 ? 'bg-green-50 text-green-700 dark:bg-green-950 dark:text-green-300'
+    : c.score >= 75 ? 'bg-blue-50 text-blue-700 dark:bg-blue-950 dark:text-blue-300'
+    : c.score != null ? 'bg-amber-50 text-amber-700 dark:bg-amber-950 dark:text-amber-300'
+    : 'bg-muted text-muted-foreground';
+
   return (
-    <div className="bg-card rounded-lg p-3 border shadow-sm hover:shadow-md hover:border-primary/30 transition-all cursor-default">
-      <div className="flex items-center gap-2 mb-2">
-        <div className={`w-7 h-7 rounded-full ${c.bg} text-white flex items-center justify-center text-[9px] font-bold flex-shrink-0`}>
-          {c.initials}
+    <div
+      className="bg-card rounded-xl p-3 border border-border/60 hover:border-primary/40 hover:shadow-md hover:-translate-y-0.5 transition-all duration-150 cursor-pointer"
+      onClick={() => onSelect?.(c)}
+    >
+      {/* Row 1 — avatar + name + score */}
+      <div className="flex items-start justify-between gap-2 mb-1.5">
+        <div className="flex items-center gap-2 min-w-0">
+          <div className={`w-7 h-7 rounded-full ${c.color} text-white flex items-center justify-center text-[9px] font-bold flex-shrink-0 shadow-sm`}>
+            {c.initials}
+          </div>
+          <div className="min-w-0">
+            <p className="text-[11px] font-semibold truncate leading-tight">{c.name}</p>
+            <p className="text-[10px] text-muted-foreground truncate leading-tight">{c.role}</p>
+            <p className="text-[9px] text-muted-foreground/60 truncate">{c.exp} · {c.salary}</p>
+          </div>
         </div>
-        <div className="min-w-0 flex-1">
-          <p className="text-[11px] font-semibold truncate">{c.name}</p>
-          <p className="text-[9px] text-muted-foreground truncate">{c.role} · {c.exp}</p>
-        </div>
-      </div>
-      <div className="flex gap-1 flex-wrap">
-        {c.tags.map((tag) => (
-          <span
-            key={tag}
-            className="text-[8px] px-1.5 py-0.5 rounded bg-primary/10 text-primary font-semibold"
-          >
-            {tag}
-          </span>
-        ))}
-        {c.score && (
-          <span className="text-[8px] px-1.5 py-0.5 rounded bg-green-50 text-green-700 font-bold ml-auto">
-            {c.score}%
+        {c.score != null && (
+          <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded flex-shrink-0 mt-0.5 ${scoreColor}`}>
+            {c.score}
           </span>
         )}
       </div>
-      {c.ai && (
-        <p className="text-[9px] text-muted-foreground mt-1.5">
-          AI: <span className="font-semibold text-primary">{c.ai}</span>
-        </p>
+
+      {/* Skill tags */}
+      {c.tags?.length > 0 && (
+        <div className="flex gap-1 flex-wrap mb-2">
+          {c.tags.map((tag) => (
+            <span key={tag} className="text-[9px] px-1.5 py-0.5 rounded bg-muted text-muted-foreground font-medium">
+              {tag}
+            </span>
+          ))}
+        </div>
       )}
+
+      {/* Bottom row — time · comments · source */}
+      <div className="flex items-center justify-between gap-1">
+        <div className="flex items-center gap-2">
+          <span className="text-[9px] text-muted-foreground/70">{c.ago} ago</span>
+          {c.comments > 0 && (
+            <span className="text-[9px] text-muted-foreground flex items-center gap-0.5">
+              <MessageCircle className="h-2.5 w-2.5" />
+              {c.comments}
+            </span>
+          )}
+        </div>
+        {c.source && (
+          <span className={`text-[9px] px-1.5 py-0.5 rounded font-semibold ${SOURCE_COLORS[c.source] || 'bg-muted text-muted-foreground'}`}>
+            {c.source}
+          </span>
+        )}
+      </div>
+
       {c.overdue && (
         <div className="flex items-center gap-1 mt-1.5 text-[9px] text-red-600 font-semibold">
           <AlertTriangle className="h-3 w-3" />
-          9d — Overdue
+          Overdue
         </div>
       )}
     </div>
   );
 }
 
-export default function KanbanBoard() {
+/* ─────────────────────────────────────────
+   CITY PIPELINE GROUP
+   ───────────────────────────────────────── */
+function CityPipelineGroup({ city, stages, onSelectCandidate }) {
+  const [collapsed, setCollapsed] = useState(false);
+  const inPipeline = stages.reduce((sum, s) => sum + (city.columns[s.id]?.length || 0), 0);
+  const pct = city.quota > 0 ? Math.min(100, Math.round((city.hired / city.quota) * 100)) : 0;
+
   return (
-    <div className="space-y-4">
-      {/* Job filter */}
-      <div className="flex items-center gap-3 flex-wrap">
-        <span className="text-xs font-semibold text-muted-foreground">Pipeline for:</span>
-        <Select defaultValue="fe">
-          <SelectTrigger className="w-[240px] h-8 text-xs">
-            <SelectValue />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="fe">Sr. Frontend Developer (45)</SelectItem>
-            <SelectItem value="mkt">Marketing Manager (67)</SelectItem>
-            <SelectItem value="da">Data Analyst (31)</SelectItem>
-            <SelectItem value="sales">Sales Representative (92)</SelectItem>
-          </SelectContent>
-        </Select>
-      </div>
+    <div className="rounded-2xl border-2 border-border bg-card shadow-md overflow-hidden">
 
-      {/* Kanban columns */}
-      <div className="flex gap-3 overflow-x-auto pb-3">
-        {COLUMNS.map((col) => (
-          <div
-            key={col.id}
-            className="min-w-[200px] flex-1 bg-muted/40 border rounded-xl"
-          >
-            {/* Column header */}
-            <div className="flex items-center justify-between p-3 border-b">
-              <div className="flex items-center gap-2">
-                <div className={`w-2 h-2 rounded-full ${col.color}`} />
-                <span className="text-[11px] font-bold">{col.label}</span>
-              </div>
-              <span className="text-[10px] font-semibold text-muted-foreground bg-card px-2 py-0.5 rounded border">
-                {col.count}
-              </span>
+      {/* City header */}
+      <div
+        className="flex items-center justify-between px-4 py-3 bg-gradient-to-r from-muted/60 to-muted/15 border-b-2 border-border/60 cursor-pointer hover:from-muted/80 hover:to-muted/25 transition-colors select-none"
+        onClick={() => setCollapsed((v) => !v)}
+      >
+        <div className="flex items-center gap-3">
+          <div className="flex items-center gap-1.5 text-xs font-semibold">
+            <MapPin className="h-3.5 w-3.5 text-muted-foreground" />
+            {city.name}
+          </div>
+          <div className="flex items-center gap-1.5">
+            <div className={`h-5 w-5 rounded-full ${city.coordinator.color} text-white flex items-center justify-center text-[8px] font-bold shadow-sm ring-1 ring-border/40`}>
+              {city.coordinator.initials}
             </div>
+            <span className="text-[11px] text-muted-foreground">{city.coordinator.name}</span>
+          </div>
+          {city.behind_quota && (
+            <span className="text-[9px] font-bold text-amber-600 bg-amber-50 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-800 px-2 py-0.5 rounded-full">
+              {city.name} behind quota
+            </span>
+          )}
+        </div>
 
-            {/* Cards */}
-            <div className="p-2 space-y-2 min-h-[80px]">
-              {(CANDIDATES[col.id] || []).map((c) => (
-                <CandidateCard key={c.name} c={c} />
-              ))}
+        <div className="flex items-center gap-4">
+          <div className="flex flex-col items-end gap-0.5">
+            <div className="flex items-center gap-1">
+              <span className="text-[10px] font-mono font-semibold">{city.hired}/{city.quota}</span>
+              <span className="text-[10px] text-muted-foreground">hired</span>
+            </div>
+            <div className="w-20 h-1.5 rounded-full bg-muted overflow-hidden">
+              <div
+                className={`h-full rounded-full transition-all ${city.hired >= city.quota ? 'bg-green-500' : pct >= 50 ? 'bg-blue-500' : 'bg-amber-400'}`}
+                style={{ width: `${pct}%` }}
+              />
             </div>
           </div>
-        ))}
+          <span className="text-[10px] font-semibold text-muted-foreground bg-muted px-2 py-1 rounded-full">
+            {inPipeline} in pipeline
+          </span>
+          {collapsed
+            ? <ChevronDown className="h-3.5 w-3.5 text-muted-foreground" />
+            : <ChevronUp   className="h-3.5 w-3.5 text-muted-foreground" />
+          }
+        </div>
       </div>
 
-      {/* Pipeline stats */}
-      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3">
-        {STATS.map((s) => (
-          <Card key={s.label} className="py-3">
-            <CardContent className="pt-0 px-4">
-              <p className="text-[10px] font-semibold text-muted-foreground mb-1 truncate">
-                {s.label}
-              </p>
-              <p className={`text-lg font-bold ${s.warn ? 'text-red-600' : ''}`}>
-                {s.value}
-              </p>
-              <p className={`text-[10px] mt-0.5 flex items-center gap-0.5 ${
-                s.trend === 'up' ? 'text-green-600' :
-                s.trend === 'down' ? 'text-green-600' :
-                s.warn ? 'text-red-600' :
-                'text-muted-foreground'
-              }`}>
-                {s.trend === 'up' && <TrendingUp className="h-3 w-3" />}
-                {s.trend === 'down' && <TrendingDown className="h-3 w-3" />}
-                {s.warn && <AlertTriangle className="h-3 w-3" />}
-                {s.change}
-              </p>
-            </CardContent>
-          </Card>
-        ))}
-      </div>
-
-      {/* Stage conversion rates */}
-      <Card>
-        <CardHeader className="pb-2">
-          <CardTitle className="text-sm">Stage Conversion Rates</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            {/* Conversion bars */}
-            <div className="space-y-3">
-              {[
-                { from: 'Applied', to: 'Screening', pct: 65 },
-                { from: 'Screening', to: 'Interview', pct: 54 },
-                { from: 'Interview', to: 'Assessment', pct: 39 },
-                { from: 'Assessment', to: 'Offering', pct: 72 },
-                { from: 'Offering', to: 'Hired', pct: 81 },
-              ].map((item) => (
-                <div key={item.from}>
-                  <div className="flex items-center justify-between mb-1">
-                    <span className="text-[11px] text-muted-foreground">
-                      {item.from} → {item.to}
+      {/* Stage columns */}
+      {!collapsed && (
+        <div className="flex gap-0 overflow-x-auto">
+          {stages.map((stage, i) => {
+            const cards = city.columns[stage.id] || [];
+            return (
+              <div
+                key={stage.id}
+                className={`flex-1 min-w-[160px] ${i < stages.length - 1 ? 'border-r border-border/30' : ''}`}
+              >
+                <div className={`h-1 ${stage.color}`} />
+                <div className="flex items-center justify-between px-3 py-2 border-b border-border/30 bg-muted/10">
+                  <div className="flex items-center gap-1.5">
+                    <div className={`w-1.5 h-1.5 rounded-full ${stage.color}`} />
+                    <span className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wide">
+                      {stage.label}
                     </span>
-                    <span className="text-[11px] font-bold">{item.pct}%</span>
                   </div>
-                  <div className="h-1.5 bg-muted rounded-full overflow-hidden">
-                    <div
-                      className="h-full rounded-full bg-primary"
-                      style={{ width: `${item.pct}%` }}
-                    />
-                  </div>
+                  <span className="text-[10px] font-mono font-semibold text-muted-foreground/60 bg-muted/60 px-1.5 rounded">
+                    {cards.length}
+                  </span>
                 </div>
-              ))}
-            </div>
+                <div className="p-2 space-y-2 min-h-[80px]">
+                  {cards.length === 0 ? (
+                    <div className="flex items-center justify-center h-16 rounded-lg border border-dashed border-border/40">
+                      <span className="text-[9px] text-muted-foreground/30">No candidates</span>
+                    </div>
+                  ) : (
+                    cards.map((c) => (
+                      <CandidateCard key={c.id} c={c} onSelect={onSelectCandidate} />
+                    ))
+                  )}
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      )}
+    </div>
+  );
+}
 
-            {/* Bottleneck alerts */}
-            <div className="space-y-2">
-              <div className="p-3 rounded-lg border border-red-200 bg-red-50/50 border-l-3 border-l-red-500">
-                <p className="text-[11px] font-bold text-red-700 flex items-center gap-1">
-                  <AlertTriangle className="h-3.5 w-3.5" />
-                  Interview → Assessment: 39% conversion
-                </p>
-                <p className="text-[10px] text-red-600 mt-1">
-                  2 candidates stuck &gt;7 days. Consider reassigning assessments.
-                </p>
-              </div>
-              <div className="p-3 rounded-lg border border-amber-200 bg-amber-50/50 border-l-3 border-l-amber-500">
-                <p className="text-[11px] font-bold text-amber-700 flex items-center gap-1">
-                  <Clock className="h-3.5 w-3.5" />
-                  SLA Warning: BG Check stage
-                </p>
-                <p className="text-[10px] text-amber-600 mt-1">
-                  1 candidate at 80% SLA limit. Auto-escalation in 2 days.
-                </p>
-              </div>
-              <div className="p-3 rounded-lg border border-green-200 bg-green-50/50 border-l-3 border-l-green-500">
-                <p className="text-[11px] font-bold text-green-700 flex items-center gap-1">
-                  <CheckCircle className="h-3.5 w-3.5" />
-                  Offering → Hired: 81% acceptance
-                </p>
-                <p className="text-[10px] text-green-600 mt-1">
-                  Above industry average (72%). Strong offer competitiveness.
-                </p>
-              </div>
-            </div>
+/* ─────────────────────────────────────────
+   STAGE SUMMARY PILLS
+   ───────────────────────────────────────── */
+function StageSummaryBar({ cities, stages }) {
+  const totals = {};
+  stages.forEach((s) => {
+    totals[s.id] = cities.reduce((sum, city) => sum + (city.columns[s.id]?.length || 0), 0);
+  });
+
+  return (
+    <div className="flex items-center gap-1 flex-wrap">
+      {stages.map((s) => {
+        const count = totals[s.id];
+        if (!count) return null;
+        return (
+          <span key={s.id} className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-muted text-[10px] font-semibold text-foreground">
+            <span className={`w-1.5 h-1.5 rounded-full ${s.color}`} />
+            <span className="font-mono">{count}</span>
+            {s.label}
+          </span>
+        );
+      })}
+    </div>
+  );
+}
+
+/* ─────────────────────────────────────────
+   FILTER BAR
+   ───────────────────────────────────────── */
+function PipelineFilterBar({ onAddCandidate }) {
+  return (
+    <div className="flex items-center gap-2 flex-wrap">
+      <button className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-border/60 bg-card text-xs font-medium hover:bg-muted/50 hover:border-primary/30 transition-colors text-muted-foreground hover:text-foreground">
+        <Sparkles className="h-3.5 w-3.5 text-primary" />
+        AI filter
+      </button>
+      <button className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-border/60 bg-card text-xs font-medium hover:bg-muted/50 hover:border-primary/30 transition-colors text-muted-foreground hover:text-foreground">
+        <Megaphone className="h-3.5 w-3.5" />
+        Campaign
+      </button>
+      <button className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-border/60 bg-card text-xs font-medium hover:bg-muted/50 hover:border-primary/30 transition-colors text-muted-foreground hover:text-foreground">
+        <BookmarkCheck className="h-3.5 w-3.5" />
+        Reserve
+        <span className="text-[8px] font-bold px-1 py-0.5 rounded bg-primary/10 text-primary leading-none">
+          NEW
+        </span>
+      </button>
+      <button
+        onClick={onAddCandidate}
+        className="ml-auto inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-primary text-primary-foreground text-xs font-semibold hover:bg-primary/90 transition-colors shadow-sm"
+      >
+        + Add candidate
+      </button>
+    </div>
+  );
+}
+
+/* ─────────────────────────────────────────
+   JOB CONTEXT BAR (named export)
+   ───────────────────────────────────────── */
+export function JobContextBar({ job }) {
+  if (!job) return null;
+
+  const statusColor =
+    job.status === 'Active'  ? 'bg-green-50 text-green-700 dark:bg-green-950 dark:text-green-300 border-green-200 dark:border-green-800'
+    : job.status === 'Expired' ? 'bg-red-50 text-red-700 dark:bg-red-950 dark:text-red-300 border-red-200 dark:border-red-800'
+    : 'bg-muted text-muted-foreground border-border';
+
+  const totalHired = job.cities?.reduce((s, c) => s + c.hired, 0) ?? 0;
+
+  return (
+    <div className="flex items-center gap-3 px-1 py-1 flex-wrap text-[11px]">
+      <span className="font-mono font-semibold text-foreground">{job.id}</span>
+      <span className="text-muted-foreground/40">·</span>
+      <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full border font-semibold text-[10px] ${statusColor}`}>
+        <span className="h-1.5 w-1.5 rounded-full bg-current opacity-70" />
+        {job.status}
+      </span>
+      <span className="text-muted-foreground/40">·</span>
+      <span className="font-mono">
+        HIRED <span className="font-bold text-foreground">{totalHired}</span>
+        <span className="text-muted-foreground">/{job.headcount}</span>
+      </span>
+      {job.deadline && (
+        <>
+          <span className="text-muted-foreground/40">·</span>
+          <span className="text-muted-foreground">
+            DEADLINE <span className="font-semibold text-foreground">{job.deadline}</span>
+          </span>
+        </>
+      )}
+      {job.days_open != null && (
+        <>
+          <span className="text-muted-foreground/40">·</span>
+          <span className={`font-semibold ${job.days_open > 30 ? 'text-red-500' : 'text-muted-foreground'}`}>
+            {job.days_open}d open
+          </span>
+        </>
+      )}
+    </div>
+  );
+}
+
+/* ─────────────────────────────────────────
+   MAIN EXPORT
+   Props:
+     job        — job object (falls back to DUMMY_JOB)
+     stages     — stage list from API (falls back to DEFAULT_STAGES)
+     candidates — flat candidates[] from API (optional; if provided,
+                  cities[] is built from them instead of job.cities)
+     onSelectCandidate — called with candidate object on card click
+   ───────────────────────────────────────── */
+export default function KanbanBoard({
+  job = DUMMY_JOB,
+  stages,
+  candidates,
+  onSelectCandidate,
+}) {
+  // Resolve stage list: API stages → DEFAULT_STAGES fallback
+  const resolvedStages = (stages?.length > 0)
+    ? stages.map((s) => ({
+        id:    s.id,
+        label: s.name ?? s.label,
+        color: s.color ?? 'bg-slate-400',
+      }))
+    : DEFAULT_STAGES;
+
+  // Resolve cities: if real candidates passed in, group them; else use job.cities
+  const resolvedCities = (candidates?.length > 0)
+    ? groupCandidatesIntoCities({ candidates, stages: resolvedStages })
+    : (job.cities ?? []);
+
+  const totalHired = resolvedCities.reduce((s, c) => s + c.hired, 0);
+
+  return (
+    <div className="space-y-3">
+
+      {/* Job title + summary */}
+      <div className="space-y-1">
+        <h2 className="text-sm font-bold">{job.title}</h2>
+        <div className="flex items-center gap-2 flex-wrap">
+          <span className="text-[11px] text-muted-foreground">
+            {resolvedCities.length} {resolvedCities.length === 1 ? 'city' : 'cities'} ·{' '}
+            <span className={totalHired >= job.headcount ? 'text-green-600 font-semibold' : ''}>
+              {totalHired}/{job.headcount} hired
+            </span>
+          </span>
+          <StageSummaryBar cities={resolvedCities} stages={resolvedStages} />
+        </div>
+      </div>
+
+      {/* Filter bar */}
+      <PipelineFilterBar />
+
+      {/* City groups */}
+      <div className="space-y-3">
+        {resolvedCities.length === 0 ? (
+          <div className="rounded-xl border border-dashed border-border/60 py-12 text-center">
+            <p className="text-xs text-muted-foreground">No candidates in the pipeline yet.</p>
           </div>
-        </CardContent>
-      </Card>
+        ) : (
+          resolvedCities.map((city) => (
+            <CityPipelineGroup
+              key={city.id}
+              city={city}
+              stages={resolvedStages}
+              onSelectCandidate={onSelectCandidate}
+            />
+          ))
+        )}
+      </div>
+
     </div>
   );
 }

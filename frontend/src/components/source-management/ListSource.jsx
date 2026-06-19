@@ -282,3 +282,309 @@ export default function ListSourceStep({ selectedJob }) {
     </div>
   )
 }
+
+
+
+// import { useState, useEffect, useMemo, useCallback, useRef } from 'react';
+// import { Loader2, AlertTriangle, Upload } from 'lucide-react';
+// import {
+//   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
+// } from '@/components/ui/table';
+// import { Button } from '@/components/ui/button';
+// import { Input } from '@/components/ui/input';
+// import { Label } from '@/components/ui/label';
+// import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+// import {
+//   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
+// } from '@/components/ui/select';
+// import { StatusBadge } from '@/components/common';
+// import { JobBanner } from '@/components/source-management/JobBanner';
+// import { JOB_STATUS_VARIANT } from '@/constants/job-status';
+// import { getSources } from '@/api/job-sourcing.api';
+
+// const PLATFORM_OPTIONS = ['linkedin', 'seek', 'internal'];
+// const PAGE_SIZE = 10;
+
+// export default function ListSource({ selectedJob }) {
+//   const [jobSources, setJobSources]   = useState([]);
+//   const [loading, setLoading]         = useState(false);
+//   const [searchQuery, setSearchQuery] = useState('');
+//   const [platformFilter, setPlatformFilter] = useState('all');
+//   const [page, setPage]               = useState(1);
+
+//   // ── CV Upload state (wiring TODO) ─────────────────────────────
+//   const [uploadedFile, setUploadedFile] = useState(null);
+//   const [cvJobTitle, setCvJobTitle]     = useState('');
+//   const fileInputRef                    = useRef(null);
+
+//   // ── Fetch ──────────────────────────────────────────────────────
+//   const fetchJobSource = useCallback(async () => {
+//     setLoading(true);
+//     try {
+//       const res = await getSources();
+//       setJobSources(res.data.postings || []);
+//     } catch {
+//       // no-op
+//     } finally {
+//       setLoading(false);
+//     }
+//   }, []);
+
+//   useEffect(() => { fetchJobSource(); }, [fetchJobSource]);
+
+//   // ── Filter — platformFilter now actually applied ───────────────
+//   const filteredSources = useMemo(() => {
+//     return jobSources.filter(source => {
+//       const matchesSearch =
+//         !searchQuery ||
+//         source.job_title?.toLowerCase().includes(searchQuery.toLowerCase());
+//       const matchesPlatform =
+//         platformFilter === 'all' || source.platform === platformFilter;
+//       return matchesSearch && matchesPlatform;
+//     });
+//   }, [jobSources, searchQuery, platformFilter]);
+
+//   const totalPages      = Math.ceil(filteredSources.length / PAGE_SIZE);
+//   const paginatedSources = filteredSources.slice(
+//     (page - 1) * PAGE_SIZE,
+//     page * PAGE_SIZE,
+//   );
+
+//   useEffect(() => { setPage(1); }, [searchQuery, platformFilter]);
+
+//   // ── File drop handler ──────────────────────────────────────────
+//   const handleFileDrop = (e) => {
+//     e.preventDefault();
+//     const file = e.dataTransfer?.files?.[0] || e.target?.files?.[0];
+//     if (file) setUploadedFile(file);
+//   };
+
+//   const formatDate = (d) => {
+//     if (!d) return '—';
+//     try { return new Date(d).toLocaleDateString(); } catch { return '—'; }
+//   };
+
+//   return (
+//     <div className="space-y-5">
+
+//       {/* Job context banner */}
+//       <JobBanner job={selectedJob} step={2} />
+
+//       {/* Prerequisite warning */}
+//       <div className="flex items-center gap-2 px-4 py-3 rounded-lg border-l-[3px] border-amber-400 bg-amber-50/60 text-[11px] text-muted-foreground">
+//         <AlertTriangle className="h-4 w-4 text-amber-500 shrink-0" />
+//         <span>
+//           <strong>Prerequisite:</strong> Re-sync job sources under{' '}
+//           <span className="text-primary font-semibold cursor-pointer underline">
+//             Settings → Integrations
+//           </span>{' '}
+//           to get the latest data.
+//         </span>
+//       </div>
+
+//       {/* Sources table */}
+//       <Card>
+//         <CardHeader className="pb-3 border-b">
+//           <div className="flex items-center justify-between gap-3 flex-wrap">
+//             <CardTitle className="text-sm shrink-0">All Sources</CardTitle>
+//             <div className="flex items-center gap-3">
+//               <Input
+//                 placeholder="Search sources..."
+//                 value={searchQuery}
+//                 onChange={e => setSearchQuery(e.target.value)}
+//                 className="max-w-[250px] text-xs"
+//               />
+//               <Select value={platformFilter} onValueChange={setPlatformFilter}>
+//                 <SelectTrigger className="w-[150px] text-xs">
+//                   <SelectValue />
+//                 </SelectTrigger>
+//                 <SelectContent>
+//                   <SelectItem value="all">All Platforms</SelectItem>
+//                   {PLATFORM_OPTIONS.map(p => (
+//                     <SelectItem key={p} value={p}>{p}</SelectItem>
+//                   ))}
+//                 </SelectContent>
+//               </Select>
+//             </div>
+//           </div>
+//         </CardHeader>
+
+//         <CardContent className="p-0">
+//           <div className="overflow-x-auto">
+//             <Table className="table-fixed w-full">
+//               <TableHeader className="bg-muted/40">
+//                 <TableRow>
+//                   <TableHead className="text-[10px] font-bold uppercase pl-6 w-[30%]">Job Title</TableHead>
+//                   <TableHead className="text-[10px] font-bold uppercase w-[15%]">Platform</TableHead>
+//                   <TableHead className="text-[10px] font-bold uppercase w-[15%]">Status</TableHead>
+//                   <TableHead className="text-[10px] font-bold uppercase w-[20%]">Last Sync</TableHead>
+//                   <TableHead className="text-[10px] font-bold uppercase text-right pr-6 w-[20%]">Action</TableHead>
+//                 </TableRow>
+//               </TableHeader>
+//               <TableBody>
+//                 {loading ? (
+//                   <TableRow>
+//                     <TableCell colSpan={5} className="text-center py-10 text-xs text-muted-foreground">
+//                       <Loader2 className="h-4 w-4 animate-spin mx-auto" />
+//                     </TableCell>
+//                   </TableRow>
+//                 ) : paginatedSources.length === 0 ? (
+//                   <TableRow>
+//                     <TableCell colSpan={5} className="text-center py-10 text-xs text-muted-foreground">
+//                       {jobSources.length === 0
+//                         ? 'No sources found. Re-sync under Settings → Integrations.'
+//                         : 'No sources match your filters.'}
+//                     </TableCell>
+//                   </TableRow>
+//                 ) : paginatedSources.map(source => (
+//                   <TableRow key={source.id} className="hover:bg-muted/30 transition-colors">
+//                     <TableCell className="text-xs font-medium pl-6 truncate">
+//                       {source.job_title}
+//                     </TableCell>
+//                     <TableCell className="text-xs capitalize">
+//                       {source.platform || '—'}
+//                     </TableCell>
+//                     <TableCell>
+//                       <StatusBadge
+//                         label={source.status}
+//                         variant={JOB_STATUS_VARIANT[source.status] ?? 'muted'}
+//                         dot
+//                       />
+//                     </TableCell>
+//                     <TableCell className="text-xs text-muted-foreground">
+//                       {formatDate(source.last_sync)}
+//                     </TableCell>
+//                     <TableCell className="text-right pr-6">
+//                       {/* TODO: wire up re-sync endpoint */}
+//                       <Button variant="outline" size="sm" className="text-xs h-7 px-2.5">
+//                         Re-Sync
+//                       </Button>
+//                     </TableCell>
+//                   </TableRow>
+//                 ))}
+//               </TableBody>
+//             </Table>
+//           </div>
+
+//           {/* Pagination */}
+//           {totalPages > 1 && (
+//             <div className="flex flex-col items-center gap-2 py-4 border-t">
+//               <div className="flex items-center gap-1">
+//                 <Button
+//                   variant="outline" size="sm" className="h-7 text-xs"
+//                   disabled={page <= 1}
+//                   onClick={() => setPage(p => p - 1)}
+//                 >
+//                   Previous
+//                 </Button>
+//                 {(() => {
+//                   const pages = [];
+//                   pages.push(1);
+//                   if (page > 3) pages.push('...');
+//                   for (let i = Math.max(2, page - 1); i <= Math.min(totalPages - 1, page + 1); i++) {
+//                     pages.push(i);
+//                   }
+//                   if (page < totalPages - 2) pages.push('...');
+//                   if (totalPages > 1) pages.push(totalPages);
+//                   return pages.map((p, idx) =>
+//                     p === '...' ? (
+//                       <span key={`dots-${idx}`} className="text-xs text-muted-foreground px-1">...</span>
+//                     ) : (
+//                       <Button
+//                         key={p}
+//                         variant={page === p ? 'default' : 'outline'}
+//                         size="sm"
+//                         className="h-7 w-7 text-xs p-0"
+//                         onClick={() => setPage(p)}
+//                       >
+//                         {p}
+//                       </Button>
+//                     ),
+//                   );
+//                 })()}
+//                 <Button
+//                   variant="outline" size="sm" className="h-7 text-xs"
+//                   disabled={page >= totalPages}
+//                   onClick={() => setPage(p => p + 1)}
+//                 >
+//                   Next
+//                 </Button>
+//               </div>
+//               <span className="text-[10px] text-muted-foreground">
+//                 Showing {(page - 1) * PAGE_SIZE + 1}–{Math.min(page * PAGE_SIZE, filteredSources.length)} of {filteredSources.length}
+//               </span>
+//             </div>
+//           )}
+//         </CardContent>
+//       </Card>
+
+//       {/* Manual CV Upload — UI ready, submission TODO */}
+//       <Card>
+//         <CardHeader className="pb-3 border-b">
+//           <CardTitle className="text-sm">Manual CV Upload</CardTitle>
+//         </CardHeader>
+//         <CardContent className="pt-4">
+//           <div className="flex gap-5">
+
+//             {/* Drop zone */}
+//             <div className="w-1/2">
+//               <div
+//                 className="flex flex-col items-center justify-center border-2 border-dashed border-border rounded-lg p-6 bg-muted/30 cursor-pointer hover:border-primary/40 transition-colors min-h-[160px]"
+//                 onClick={() => fileInputRef.current?.click()}
+//                 onDragOver={e => e.preventDefault()}
+//                 onDrop={handleFileDrop}
+//               >
+//                 <Upload className="h-5 w-5 mb-2 text-muted-foreground" />
+//                 <p className="text-xs font-semibold text-center">
+//                   {uploadedFile ? uploadedFile.name : 'Drag file here or click to browse'}
+//                 </p>
+//                 <p className="text-[10px] text-muted-foreground mt-1 text-center">
+//                   PDF, DOCX, TXT — max 10MB
+//                   <br />AI will auto-extract fields from the document
+//                 </p>
+//                 <input
+//                   ref={fileInputRef}
+//                   type="file"
+//                   accept=".pdf,.docx,.txt"
+//                   className="hidden"
+//                   onChange={handleFileDrop}
+//                 />
+//               </div>
+//             </div>
+
+//             {/* Form fields */}
+//             <div className="flex flex-col gap-4 w-1/2">
+//               <div className="flex flex-col gap-1.5">
+//                 <Label className="text-[11px] text-muted-foreground font-semibold">
+//                   Job Title <span className="text-red-500">*</span>
+//                 </Label>
+//                 <Input
+//                   placeholder="e.g. Senior Frontend Developer"
+//                   value={cvJobTitle}
+//                   onChange={e => setCvJobTitle(e.target.value)}
+//                   className="text-xs"
+//                 />
+//               </div>
+
+//               {/* TODO: add remaining fields (candidate name, source, etc.)
+//                   once the upload endpoint spec is confirmed */}
+
+//               <Button
+//                 size="sm"
+//                 className="text-xs w-fit mt-auto"
+//                 disabled={!uploadedFile || !cvJobTitle.trim()}
+//                 onClick={() => {
+//                   // TODO: wire up upload & queue parsing endpoint
+//                 }}
+//               >
+//                 Upload & Queue Parsing
+//               </Button>
+//             </div>
+
+//           </div>
+//         </CardContent>
+//       </Card>
+
+//     </div>
+//   );
+// }

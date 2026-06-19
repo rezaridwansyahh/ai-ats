@@ -18,7 +18,9 @@ import { getByJobId as getJobChannels } from '@/api/job-sourcing.api';
 import { extractSeekCandidates } from '@/api/job-posting-seek.api';
 import { extractLinkedinApplicants } from '@/api/linkedin.api';
 import { getCandidatesByJobId } from '@/api/candidate.api';
-import { formatSalaryBand, formatSinceDate, getStatusPill } from '@/lib/job-display';
+import { formatSalaryBand, formatSinceDate} from '@/lib/job-display';
+
+import { StatusBadge } from '@/components/common';
 
 export default function JobDetailPage() {
   const navigate = useNavigate();
@@ -203,9 +205,15 @@ export default function JobDetailPage() {
         <div>
           <div className="flex items-center gap-3 mb-1.5 flex-wrap">
             <h1 className="text-2xl font-bold tracking-tight">{job.job_title}</h1>
-            <Badge variant="outline" className={`text-[10px] uppercase tracking-wide ${getStatusPill(job.status)}`}>
-              {job.status}
-            </Badge>
+            <StatusBadge
+              label={job.status}
+              variant={
+                job.status === 'Active'  ? 'success' :
+                job.status === 'Expired' ? 'danger'  :
+                job.status === 'Blocked' ? 'danger'  : 'muted'
+              }
+              dot
+            />
           </div>
           <div className="text-xs text-muted-foreground flex flex-wrap items-center gap-x-3 gap-y-1">
             {job.company && <span className="flex items-center gap-1"><Building2 className="h-3 w-3" /> {job.company}</span>}
@@ -402,9 +410,15 @@ export default function JobDetailPage() {
                             <Badge variant="outline" className="text-[10px] uppercase tracking-wide capitalize">
                               {ch.platform}
                             </Badge>
-                            <Badge variant="outline" className={`text-[10px] uppercase tracking-wide ${getStatusPill(ch.status)}`}>
-                              {ch.status}
-                            </Badge>
+                            <StatusBadge
+                              label={ch.status}
+                              variant={
+                                ch.status === 'Active'  ? 'success' :
+                                ch.status === 'Running' ? 'warning' :
+                                ch.status === 'Expired' ? 'danger'  : 'muted'
+                              }
+                              dot
+                            />
                           </div>
                           <p className="text-xs truncate" title={ch.job_title}>{ch.job_title}</p>
                           {ch.sync_state === 'syncing' ? (

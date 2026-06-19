@@ -54,12 +54,12 @@
 
   /* ── Sidebar ── */
   --sidebar: #FFFFFF;
-  --sidebar-foreground: #1A1A1F;
+  --sidebar-foreground: #111827;
   --sidebar-primary: #0A6E5C;
   --sidebar-primary-foreground: #FFFFFF;
-  --sidebar-accent: rgba(10, 110, 92, 0.07);
+  --sidebar-accent: rgba(10, 110, 92, 0.09);
   --sidebar-accent-foreground: #0A6E5C;
-  --sidebar-border: #E9E3D5;
+  --sidebar-border: #E5E7EB;
   --sidebar-ring: #0A6E5C;
 
   /* ── Mockup semantic colors ── */

@@ -21,6 +21,8 @@ import { getJobPipeline } from '@/api/pipeline.api';
 import JobStages from '@/components/job-management/JobStages';
 import JobPosting from '@/components/job-management/JobPosting';
 
+import { StatusBadge } from '@/components/common';
+
 const WORK_OPTIONS = ['On-site', 'Hybrid', 'Remote'];
 const WORK_TYPES = ['Full-time', 'Part-time', 'Contract', 'Casual'];
 const PAY_TYPES = ['Hourly', 'Monthly', 'Annually'];
@@ -350,10 +352,21 @@ export default function JobEditPage() {
           <div className="min-w-0 flex-1">
             <div className="flex items-center gap-2 flex-wrap mb-0.5">
               <h1 className="text-xl font-bold tracking-tight">{titleText}</h1>
-              {job?.status && (
+              {/* {job?.status && (
                 <Badge variant="outline" className="text-[10px] uppercase tracking-wide">
                   {job.status}
                 </Badge>
+              )} */}
+              {job?.status && (
+                <StatusBadge
+                  label={job.status}
+                  variant={
+                    job.status === 'Active'  ? 'success' :
+                    job.status === 'Expired' ? 'danger'  :
+                    job.status === 'Blocked' ? 'danger'  : 'muted'
+                  }
+                  dot
+                />
               )}
             </div>
             <p className="text-xs text-muted-foreground">

@@ -39,7 +39,7 @@ export default function AccountPage() {
   const canEdit   = hasPermission('Settings', 'Account', 'update');
   const canDelete = hasPermission('Settings', 'Account', 'delete');
 
-  // ── Data ──
+  // ── Data ──S
   const [accounts, setAccounts] = useState([]);
   const [loading,  setLoading]  = useState(true);
   const [error,    setError]    = useState(null);

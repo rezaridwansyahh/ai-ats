@@ -167,9 +167,9 @@ const seed = async () => {
     // 11. template stage rows (job_stage with master_id)
     for (const row of templateStageRows) {
       await getDb().query(
-        `INSERT INTO job_stage (master_id, stage_type_id, name, stage_order)
-         VALUES ($1, $2, $3, $4)`,
-        [row.master_id, row.stage_type_id, row.name, row.stage_order]
+        `INSERT INTO job_stage(id, master_id, stage_type_id, name, stage_order)
+         VALUES ($1, $2, $3, $4, $5)`,
+        [row.id, row.master_id, row.stage_type_id, row.name, row.stage_order]
       );
     }
 

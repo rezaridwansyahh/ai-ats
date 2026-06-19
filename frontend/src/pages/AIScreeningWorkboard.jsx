@@ -10,6 +10,8 @@ import { getInitials } from '@/lib/batteries';
 
 import { getWorkboard, getLaneCandidates, getScreeningByCandidate } from '@/api/screening.api';
 
+import { PageHeader } from '@/components/common';
+
 // Sub-stage chip + pill styling. q&a kept for parity (engine not built → always 0).
 const STAGE_META = {
   parse: { label: 'Parse', color: 'bg-blue-100 text-blue-700',     dot: 'bg-blue-500' },
@@ -131,14 +133,19 @@ export default function AIScreeningWorkboard() {
     <div className="space-y-5 p-6">
       {/* Header */}
       <div className="flex items-start justify-between gap-3 flex-wrap">
-        <div>
+        {/* <div>
           <h1 className="text-2xl font-bold tracking-tight flex items-center gap-2">
             <Sparkles className="h-5 w-5 text-primary" /> AI Screening
           </h1>
           <p className="text-sm text-muted-foreground mt-0.5">
             {activePositions} active position{activePositions === 1 ? '' : 's'} · {totalCandidates} candidate{totalCandidates === 1 ? '' : 's'} being screened
           </p>
-        </div>
+        </div> */}
+        <PageHeader
+          title="AI"
+          highlight="Screening"
+          subtitle={`${activePositions} active position${activePositions === 1 ? '' : 's'} · ${totalCandidates} candidate${totalCandidates === 1 ? '' : 's'} being screened`}
+        />
         <Button variant="outline" size="sm" onClick={loadWorkboard} className="text-xs">
           <RotateCw className="h-3.5 w-3.5 mr-1.5" /> Refresh
         </Button>

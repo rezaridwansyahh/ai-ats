@@ -1,14 +1,37 @@
-import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip } from 'recharts';
-import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
+import { Cell, PieChart, Pie, ResponsiveContainer, Tooltip } from 'recharts';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 
-const DATA = [
-  { name: 'Engineering', value: 41, color: 'hsl(220, 70%, 55%)' },
-  { name: 'Design',      value: 15, color: 'hsl(270, 60%, 60%)' },
-  { name: 'Marketing',   value: 25, color: 'hsl(140, 60%, 45%)' },
-  { name: 'Sales',       value: 19, color: 'hsl(30, 90%, 55%)' },
-];
+// TODO: replace with API call keyed by `period`
+const DATA_BY_PERIOD = {
+  '30d': [
+    { name: 'Engineering', value: 41, color: 'hsl(220, 70%, 55%)' },
+    { name: 'Design',      value: 15, color: 'hsl(270, 60%, 60%)' },
+    { name: 'Marketing',   value: 25, color: 'hsl(140, 60%, 45%)' },
+    { name: 'Sales',       value: 19, color: 'hsl(30, 90%, 55%)' },
+  ],
+  '90d': [
+    { name: 'Engineering', value: 38, color: 'hsl(220, 70%, 55%)' },
+    { name: 'Design',      value: 18, color: 'hsl(270, 60%, 60%)' },
+    { name: 'Marketing',   value: 27, color: 'hsl(140, 60%, 45%)' },
+    { name: 'Sales',       value: 17, color: 'hsl(30, 90%, 55%)' },
+  ],
+  'quarter': [
+    { name: 'Engineering', value: 45, color: 'hsl(220, 70%, 55%)' },
+    { name: 'Design',      value: 12, color: 'hsl(270, 60%, 60%)' },
+    { name: 'Marketing',   value: 22, color: 'hsl(140, 60%, 45%)' },
+    { name: 'Sales',       value: 21, color: 'hsl(30, 90%, 55%)' },
+  ],
+  'year': [
+    { name: 'Engineering', value: 40, color: 'hsl(220, 70%, 55%)' },
+    { name: 'Design',      value: 14, color: 'hsl(270, 60%, 60%)' },
+    { name: 'Marketing',   value: 26, color: 'hsl(140, 60%, 45%)' },
+    { name: 'Sales',       value: 20, color: 'hsl(30, 90%, 55%)' },
+  ],
+};
 
-export default function DepartmentChart() {
+export default function DepartmentChart({ period = '30d' }) {  // ← accepts period prop
+  const data = DATA_BY_PERIOD[period] ?? DATA_BY_PERIOD['30d'];
+
   return (
     <Card>
       <CardHeader className="pb-2">
@@ -20,7 +43,7 @@ export default function DepartmentChart() {
             <ResponsiveContainer width="100%" height="100%">
               <PieChart>
                 <Pie
-                  data={DATA}
+                  data={data}
                   cx="50%"
                   cy="50%"
                   innerRadius={50}
@@ -29,7 +52,7 @@ export default function DepartmentChart() {
                   dataKey="value"
                   strokeWidth={0}
                 >
-                  {DATA.map((entry, i) => (
+                  {data.map((entry, i) => (
                     <Cell key={i} fill={entry.color} />
                   ))}
                 </Pie>
@@ -45,7 +68,7 @@ export default function DepartmentChart() {
             </ResponsiveContainer>
           </div>
           <div className="flex flex-col gap-2.5">
-            {DATA.map((item) => (
+            {data.map((item) => (
               <div key={item.name} className="flex items-center gap-2">
                 <div
                   className="w-2.5 h-2.5 rounded-full flex-shrink-0"

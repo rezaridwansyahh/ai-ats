@@ -11,11 +11,10 @@ import { getJobs } from '@/api/job.api';
 import {
   getRoleClass, formatSalaryBand, formatSinceDate, getStatusPill,
 } from '@/lib/job-display';
+import { PageHeader, StatusBadge } from '@/components/common';
 
 const PAGE_SIZE = 5;
 
-// Job list for Candidate Pipeline. Mirrors the Job Management table; clicking a
-// row navigates straight to that job's pipeline detail (no select-then-next step).
 export default function CandidatePipeline() {
   const navigate = useNavigate();
   const [jobs, setJobs] = useState([]);
@@ -40,8 +39,6 @@ export default function CandidatePipeline() {
     return () => { cancelled = true; };
   }, []);
 
-  // Candidate Pipeline only operates on Active jobs — drafts/finished jobs have no
-  // running pipeline to drill into.
   const filteredJobs = useMemo(() => {
     const q = searchQuery.trim().toLowerCase();
     return jobs.filter((job) => {
@@ -56,149 +53,171 @@ export default function CandidatePipeline() {
   useEffect(() => { setPage(1); }, [searchQuery]);
 
   return (
-    <div className="space-y-3">
-      {/* Title + search */}
-      <div className="flex items-center justify-between gap-3 flex-wrap">
-        <div>
-          <h3 className="text-sm font-bold">Select a job</h3>
-          <p className="text-[11px] text-muted-foreground mt-0.5">
-            Only Active jobs are shown. Click a row to open its pipeline.
-          </p>
-        </div>
-        <Input
-          placeholder="Search jobs..."
-          value={searchQuery}
-          onChange={(e) => setSearchQuery(e.target.value)}
-          className="max-w-[250px] text-xs"
-          disabled={jobsLoading}
-        />
-      </div>
+    <div className="space-y-5 animate-fade-in-up">
 
-      {/* Rounded table block */}
-      <div className="rounded-xl border overflow-hidden bg-card">
-        <div className="overflow-x-auto">
-          {jobsLoading ? (
-            <div className="flex items-center justify-center py-10">
-              <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
-            </div>
-          ) : filteredJobs.length === 0 ? (
-            <p className="text-xs text-muted-foreground text-center py-10">
-              {jobs.some((j) => j.status === 'Active')
-                ? 'No active jobs match your search.'
-                : 'No active jobs available.'}
+      {/* ── Page header ── */}
+      <PageHeader
+        title="Candidate"
+        highlight="Pipeline"
+        subtitle="8-stage pipeline across the org. Click a job to view its candidates by stage."
+      />
+
+      {/* ── Job selector ── */}
+      <div className="space-y-3">
+        <div className="flex items-center justify-between gap-3 flex-wrap">
+          <div>
+            <h3 className="text-sm font-bold">Select a job</h3>
+            <p className="text-[11px] text-muted-foreground mt-0.5">
+              Only Active jobs are shown. Click a row to open its pipeline.
             </p>
-          ) : (
-            <Table className="min-w-[1080px] table-fixed">
-              <TableHeader className="bg-muted/40">
-                <TableRow>
-                  <TableHead className="text-[10px] font-bold uppercase w-[280px] pl-6">Job</TableHead>
-                  <TableHead className="text-[10px] font-bold uppercase w-[130px]">Level</TableHead>
-                  <TableHead className="text-[10px] font-bold uppercase w-[160px]">Location</TableHead>
-                  <TableHead className="text-[10px] font-bold uppercase w-[200px]">Salary</TableHead>
-                  <TableHead className="text-[10px] font-bold uppercase w-[110px]">Status</TableHead>
-                  <TableHead className="text-[10px] font-bold uppercase w-[200px]">Activity</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {paginatedJobs.map((job) => {
-                  const role = getRoleClass(job);
-                  const since = formatSinceDate(job.sla_start_date || job.created_at);
-                  const activeCount = job.candidate_count ?? 0;
-                  const statusPill = getStatusPill(job.status);
-
-                  return (
-                    <TableRow
-                      key={job.id}
-                      onClick={() => navigate(`/candidate-pipeline/${job.id}`)}
-                      className="transition-colors cursor-pointer hover:bg-muted/30"
-                    >
-                      <TableCell className="text-xs pl-6">
-                        <div className="font-medium truncate">{job.job_title}</div>
-                        <div className="text-[11px] text-muted-foreground truncate">
-                          {(job.company || '—')}
-                          {job.work_type ? ` · ${job.work_type}` : ''}
-                          {job.work_option ? ` · ${job.work_option}` : ''}
-                        </div>
-                      </TableCell>
-                      <TableCell>
-                        <span
-                          className={`inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full border text-[10px] font-semibold ${role.pill}`}
-                        >
-                          <span className={`h-1.5 w-1.5 rounded-full ${role.dot}`} />
-                          {role.label}
-                        </span>
-                      </TableCell>
-                      <TableCell className="text-xs text-muted-foreground truncate" title={job.job_location || ''}>
-                        {job.job_location || '—'}
-                      </TableCell>
-                      <TableCell className="text-xs font-mono truncate" title={formatSalaryBand(job)}>
-                        {formatSalaryBand(job)}
-                      </TableCell>
-                      <TableCell>
-                        <span className={`inline-flex items-center px-2 py-0.5 rounded-full border text-[10px] font-semibold ${statusPill}`}>
-                          {job.status}
-                        </span>
-                      </TableCell>
-                      <TableCell>
-                        <div className="flex items-center gap-2">
-                          <span className="inline-flex items-center px-2 py-0.5 rounded-full border bg-card text-[10px] font-mono font-semibold">
-                            {activeCount} active
-                          </span>
-                          {since && (
-                            <span className="text-[11px] text-muted-foreground">since {since}</span>
-                          )}
-                        </div>
-                      </TableCell>
-                    </TableRow>
-                  );
-                })}
-              </TableBody>
-            </Table>
-          )}
-        </div>
-      </div>
-
-      {/* Pagination */}
-      {filteredJobs.length > 0 && (
-        <div className="flex flex-col items-center gap-2 pt-1">
-          <div className="flex items-center gap-1">
-            <Button variant="outline" size="sm" className="h-7 text-xs" disabled={page <= 1} onClick={() => setPage((p) => p - 1)}>
-              Previous
-            </Button>
-            {(() => {
-              const pages = [];
-              pages.push(1);
-              if (page > 3) pages.push('...');
-              for (let i = Math.max(2, page - 1); i <= Math.min(totalPages - 1, page + 1); i++) {
-                pages.push(i);
-              }
-              if (page < totalPages - 2) pages.push('...');
-              if (totalPages > 1) pages.push(totalPages);
-              return pages.map((p, idx) =>
-                p === '...' ? (
-                  <span key={`dots-${idx}`} className="text-xs text-muted-foreground px-1">...</span>
-                ) : (
-                  <Button
-                    key={p}
-                    variant={page === p ? 'default' : 'outline'}
-                    size="sm"
-                    className="h-7 w-7 text-xs p-0"
-                    onClick={() => setPage(p)}
-                  >
-                    {p}
-                  </Button>
-                )
-              );
-            })()}
-            <Button variant="outline" size="sm" className="h-7 text-xs" disabled={page >= totalPages} onClick={() => setPage((p) => p + 1)}>
-              Next
-            </Button>
           </div>
-          <span className="text-[10px] text-muted-foreground">
-            Showing {(page - 1) * PAGE_SIZE + 1}–{Math.min(page * PAGE_SIZE, filteredJobs.length)} of {filteredJobs.length}
-          </span>
+          <Input
+            placeholder="Search jobs..."
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            className="max-w-[250px] text-xs"
+            disabled={jobsLoading}
+          />
         </div>
-      )}
+
+        {/* Table */}
+        <div className="rounded-xl border overflow-hidden bg-card">
+          <div className="overflow-x-auto">
+            {jobsLoading ? (
+              <div className="flex items-center justify-center py-10">
+                <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
+              </div>
+            ) : filteredJobs.length === 0 ? (
+              <p className="text-xs text-muted-foreground text-center py-10">
+                {jobs.some((j) => j.status === 'Active')
+                  ? 'No active jobs match your search.'
+                  : 'No active jobs available.'}
+              </p>
+            ) : (
+              <Table className="min-w-[1080px] table-fixed">
+                <TableHeader className="bg-muted/40">
+                  <TableRow>
+                    <TableHead className="text-[10px] font-bold uppercase w-[280px] pl-6">Job</TableHead>
+                    <TableHead className="text-[10px] font-bold uppercase w-[130px]">Level</TableHead>
+                    <TableHead className="text-[10px] font-bold uppercase w-[160px]">Location</TableHead>
+                    <TableHead className="text-[10px] font-bold uppercase w-[200px]">Salary</TableHead>
+                    <TableHead className="text-[10px] font-bold uppercase w-[110px]">Status</TableHead>
+                    <TableHead className="text-[10px] font-bold uppercase w-[200px]">Activity</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {paginatedJobs.map((job) => {
+                    const role        = getRoleClass(job);
+                    const since       = formatSinceDate(job.sla_start_date || job.created_at);
+                    const activeCount = job.candidate_count ?? 0;
+                    const statusPill  = getStatusPill(job.status);
+                    const isEmpty     = activeCount === 0;
+
+                    return (
+                      <TableRow
+                        key={job.id}
+                        onClick={() => navigate(`/candidate-pipeline/${job.id}`)}
+                        className={`transition-colors cursor-pointer hover:bg-muted/30 ${isEmpty ? 'bg-red-50/40' : ''}`}
+                      >
+                        <TableCell className="text-xs pl-6">
+                          <div className="font-medium truncate">{job.job_title}</div>
+                          <div className="text-[11px] text-muted-foreground truncate">
+                            {(job.company || '—')}
+                            {job.work_type  ? ` · ${job.work_type}`  : ''}
+                            {job.work_option ? ` · ${job.work_option}` : ''}
+                          </div>
+                        </TableCell>
+
+                        {/* Level — keep raw since role.pill comes from job-display lib */}
+                        <TableCell>
+                          <span className={`inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full border text-[10px] font-semibold ${role.pill}`}>
+                            <span className={`h-1.5 w-1.5 rounded-full ${role.dot}`} />
+                            {role.label}
+                          </span>
+                        </TableCell>
+
+                        <TableCell className="text-xs text-muted-foreground truncate" title={job.job_location || ''}>
+                          {job.job_location || '—'}
+                        </TableCell>
+
+                        <TableCell className="text-xs font-mono truncate" title={formatSalaryBand(job)}>
+                          {formatSalaryBand(job)}
+                        </TableCell>
+
+                        {/* Status */}
+                        <TableCell>
+                          <StatusBadge
+                            label={job.status}
+                            variant={job.status === 'Active' ? 'success' : 'muted'}
+                            dot
+                          />
+                        </TableCell>
+
+                        {/* Activity */}
+                        <TableCell>
+                          <div className="flex items-center gap-2">
+                            <StatusBadge
+                              label={`${activeCount} active`}
+                              variant={isEmpty ? 'danger' : 'muted'}
+                              dot={isEmpty}
+                              className="font-mono"
+                            />
+                            {since && (
+                              <span className="text-[11px] text-muted-foreground">since {since}</span>
+                            )}
+                          </div>
+                        </TableCell>
+                      </TableRow>
+                    );
+                  })}
+                </TableBody>
+              </Table>
+            )}
+          </div>
+        </div>
+
+        {/* Pagination */}
+        {filteredJobs.length > 0 && (
+          <div className="flex flex-col items-center gap-2 pt-1">
+            <div className="flex items-center gap-1">
+              <Button variant="outline" size="sm" className="h-7 text-xs" disabled={page <= 1} onClick={() => setPage((p) => p - 1)}>
+                Previous
+              </Button>
+              {(() => {
+                const pages = [];
+                pages.push(1);
+                if (page > 3) pages.push('...');
+                for (let i = Math.max(2, page - 1); i <= Math.min(totalPages - 1, page + 1); i++) {
+                  pages.push(i);
+                }
+                if (page < totalPages - 2) pages.push('...');
+                if (totalPages > 1) pages.push(totalPages);
+                return pages.map((p, idx) =>
+                  p === '...' ? (
+                    <span key={`dots-${idx}`} className="text-xs text-muted-foreground px-1">...</span>
+                  ) : (
+                    <Button
+                      key={p}
+                      variant={page === p ? 'default' : 'outline'}
+                      size="sm"
+                      className="h-7 w-7 text-xs p-0"
+                      onClick={() => setPage(p)}
+                    >
+                      {p}
+                    </Button>
+                  )
+                );
+              })()}
+              <Button variant="outline" size="sm" className="h-7 text-xs" disabled={page >= totalPages} onClick={() => setPage((p) => p + 1)}>
+                Next
+              </Button>
+            </div>
+            <span className="text-[10px] text-muted-foreground">
+              Showing {(page - 1) * PAGE_SIZE + 1}–{Math.min(page * PAGE_SIZE, filteredJobs.length)} of {filteredJobs.length}
+            </span>
+          </div>
+        )}
+      </div>
     </div>
   );
 }

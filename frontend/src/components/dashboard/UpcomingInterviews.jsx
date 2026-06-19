@@ -1,7 +1,7 @@
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
-import { Badge } from '@/components/ui/badge';
 import { Video, Monitor, Phone } from 'lucide-react';
 
+// TODO: replace with API call
 const INTERVIEWS = [
   {
     initials: 'DS',
@@ -47,7 +47,7 @@ export default function UpcomingInterviews() {
           return (
             <div
               key={item.name}
-              className="flex items-center gap-3 p-3 rounded-lg bg-muted/50 border-l-3 border-primary"
+              className="flex items-center gap-3 p-3 rounded-lg bg-muted/50 border-l-4 border-primary" // ← border-l-3 → border-l-4
             >
               <div
                 className={`w-9 h-9 rounded-full ${item.bg} text-white flex items-center justify-center text-[10px] font-bold flex-shrink-0`}
@@ -56,9 +56,7 @@ export default function UpcomingInterviews() {
               </div>
               <div className="flex-1 min-w-0">
                 <p className="text-sm font-semibold truncate">{item.name}</p>
-                <p className="text-[11px] text-muted-foreground truncate">
-                  {item.role}
-                </p>
+                <p className="text-[11px] text-muted-foreground truncate">{item.role}</p>
               </div>
               <div className="text-right flex-shrink-0">
                 <div className="flex items-center gap-1 text-[11px] text-muted-foreground">
