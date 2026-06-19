@@ -55,3 +55,10 @@ export const recordDecision = (interview_id, { verdict, decision_note } = {}) =>
 export const getDecision = (interview_id) => api.get(`/interview/${interview_id}/decision`);
 
 export const undoDecision = (interview_id) => api.delete(`/interview/${interview_id}/decision`);
+
+// ==================== L4 CALIBRATION ====================
+
+export const getCalibration = (job_id) => api.get(`/interview/calibration/${job_id}`);
+
+export const batchDecide = (job_id, decisions) =>
+  api.post(`/interview/calibration/${job_id}/batch`, { decisions });

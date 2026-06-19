@@ -142,9 +142,19 @@ export default function InterviewJobPage() {
             {job?.work_type    ? ` · ${job.work_type}`    : ''}
           </p>
         </div>
-        <Button variant="outline" size="sm" className="text-xs" onClick={load}>
-          <RotateCw className="h-3.5 w-3.5 mr-1.5" /> Refresh
-        </Button>
+        <div className="flex items-center gap-2">
+          <Button
+            variant="default"
+            size="sm"
+            className="text-xs"
+            onClick={() => navigate(`/selection/interview/calibration/${jobId}`)}
+          >
+            <Users className="h-3.5 w-3.5 mr-1.5" /> Calibration
+          </Button>
+          <Button variant="outline" size="sm" className="text-xs" onClick={load}>
+            <RotateCw className="h-3.5 w-3.5 mr-1.5" /> Refresh
+          </Button>
+        </div>
       </div>
 
       {error && (

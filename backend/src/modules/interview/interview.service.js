@@ -494,6 +494,72 @@ class InterviewService {
 
     return await interviewModel.undoDecision(interview_id);
   }
+
+  // ==================== L4 CALIBRATION ====================
+
+  async getCalibration(job_id, { company_id = null } = {}) {
+    if (!job_id) throw { status: 400, message: 'job_id is required' };
+    if (!company_id) throw { status: 400, message: 'company_id is required' };
+
+    const job = await jobModel.getById(job_id);
+    if (!job) throw { status: 404, message: 'Job not found' };
+
+    if (company_id && job.company_id && job.company_id !== company_id) {
+      throw { status: 403, message: 'Cross-tenant access denied' };
+    }
+
+    const candidates = await interviewModel.getCalibrationData(job_id, company_id);
+
+    return {
+      job: {
+        job_id: job.id,
+        job_title: job.job_title,
+        job_location: job.job_location,
+        seniority_level: job.seniority_level,
+      },
+      candidates,
+    };
+  }
+
+  async batchDecide(job_id, { decisions, company_id = null, decided_by = null } = {}) {
+    if (!job_id) throw { status: 400, message: 'job_id is required' };
+    if (!company_id) throw { status: 400, message: 'company_id is required' };
+    if (!Array.isArray(decisions) || decisions.length === 0) {
+      throw { status: 400, message: 'decisions must be a non-empty array' };
+    }
+
+    const job = await jobModel.getById(job_id);
+    if (!job) throw { status: 404, message: 'Job not found' };
+
+    if (company_id && job.company_id && job.company_id !== company_id) {
+      throw { status: 403, message: 'Cross-tenant access denied' };
+    }
+
+    // Validate all decisions
+    const valid = ['advance', 'hold', 'reject'];
+    for (const dec of decisions) {
+      if (!dec.interview_id) {
+        throw { status: 400, message: 'Each decision must have interview_id' };
+      }
+      if (!dec.verdict || !valid.includes(dec.verdict)) {
+        throw { status: 400, message: `verdict must be one of: ${valid.join(', ')}` };
+      }
+
+      // Check scorecard exists and is submitted
+      const scorecard = await interviewModel.getScorecardByInterview(dec.interview_id);
+      if (!scorecard || scorecard.is_draft) {
+        throw { status: 400, message: `Interview ${dec.interview_id} has no submitted scorecard` };
+      }
+    }
+
+    // Add decided_by to all decisions
+    const decisionsWithUser = decisions.map((d) => ({
+      ...d,
+      decided_by: decided_by || null,
+    }));
+
+    return await interviewModel.batchRecordDecisions(decisionsWithUser, company_id);
+  }
 }
 
 export default new InterviewService();
