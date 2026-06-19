@@ -356,6 +356,77 @@ class InterviewController {
       res.status(err.status || 500).json({ message: err.message });
     }
   }
+
+  // ==================== DECIDE TAB ====================
+
+  async recordDecision(req, res) {
+    try {
+      const interview_id = Number(req.params.interview_id);
+      const { verdict, decision_note } = req.body;
+      const result = await interviewService.recordDecision(interview_id, {
+        verdict,
+        decision_note,
+        decided_by: req.user?.user_id || null,
+        company_id: req.user?.company_id || null,
+      });
+      res.status(200).json({ message: 'Decision recorded', interview: result });
+    } catch (err) {
+      res.status(err.status || 500).json({ message: err.message });
+    }
+  }
+
+  async getDecision(req, res) {
+    try {
+      const interview_id = Number(req.params.interview_id);
+      const result = await interviewService.getDecision(interview_id, {
+        company_id: req.user?.company_id || null,
+      });
+      res.status(200).json({ message: 'Decision fetched', decision: result });
+    } catch (err) {
+      res.status(err.status || 500).json({ message: err.message });
+    }
+  }
+
+  async undoDecision(req, res) {
+    try {
+      const interview_id = Number(req.params.interview_id);
+      const result = await interviewService.undoDecision(interview_id, {
+        company_id: req.user?.company_id || null,
+      });
+      res.status(200).json({ message: 'Decision cleared', interview: result });
+    } catch (err) {
+      res.status(err.status || 500).json({ message: err.message });
+    }
+  }
+
+  // ==================== L4 CALIBRATION ====================
+
+  async getCalibration(req, res) {
+    try {
+      const job_id = Number(req.params.job_id);
+      const result = await interviewService.getCalibration(job_id, {
+        company_id: req.user?.company_id || null,
+      });
+      res.status(200).json({ message: 'Calibration data fetched', ...result });
+    } catch (err) {
+      res.status(err.status || 500).json({ message: err.message });
+    }
+  }
+
+  async batchDecide(req, res) {
+    try {
+      const job_id = Number(req.params.job_id);
+      const { decisions } = req.body;
+      const result = await interviewService.batchDecide(job_id, {
+        decisions,
+        decided_by: req.user?.user_id || null,
+        company_id: req.user?.company_id || null,
+      });
+      res.status(200).json({ message: `${result.length} decisions recorded`, results: result });
+    } catch (err) {
+      res.status(err.status || 500).json({ message: err.message });
+    }
+  }
 }
 
 export default new InterviewController();

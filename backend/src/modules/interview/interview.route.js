@@ -39,4 +39,13 @@ router.delete('/job/:job_id/decide/:interview_id', interviewController.resetDeci
 router.get('/:interview_id', interviewController.getInterview);
 router.patch('/:interview_id/status', interviewController.updateStatus);
 
+// Decide routes
+router.post('/:interview_id/decide', interviewController.recordDecision);
+router.get('/:interview_id/decision', interviewController.getDecision);
+router.delete('/:interview_id/decision', interviewController.undoDecision);
+
+// Calibration routes
+router.get('/calibration/:job_id', interviewController.getCalibration);
+router.post('/calibration/:job_id/batch', interviewController.batchDecide);
+
 export default router;

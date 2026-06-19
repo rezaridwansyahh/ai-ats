@@ -403,7 +403,7 @@ class InterviewModel {
       [interview_id]
     );
     return result.rows[0] || null;
-  }  
+  }
 
   async getDecideByJob(job_id) {
     const result = await getDb().query(
@@ -612,6 +612,73 @@ class InterviewModel {
       [job_id]
     );
     return result.rows[0] || null;
+  }
+
+  // ==================== L4 CALIBRATION ====================
+
+  async getCalibrationData(job_id, company_id) {
+    const result = await getDb().query(
+      `SELECT
+         ci.id              AS interview_id,
+         ci.candidate_id,
+         ci.job_id,
+         ci.verdict,
+         ci.decision_note,
+         ci.decided_at,
+
+         mc.name            AS candidate_name,
+         mc.last_position,
+         mc.address,
+         mc.education       AS education_text,
+
+         sc.weighted_total  AS overall_score,
+         sc.recommendation,
+         sc.standout_strengths,
+         sc.concerns,
+         sc.submitted_at,
+         sc.is_draft
+
+       FROM candidate_interview ci
+       JOIN master_candidate mc ON mc.id = ci.candidate_id
+       LEFT JOIN interview_scorecard sc ON sc.interview_id = ci.id
+       WHERE ci.job_id = $1
+         AND ci.company_id = $2
+       ORDER BY sc.weighted_total DESC NULLS LAST, mc.name ASC`,
+      [job_id, company_id]
+    );
+    return result.rows;
+  }
+
+  async batchRecordDecisions(decisions, company_id) {
+    // decisions: [{ interview_id, verdict, decision_note, decided_by }, ...]
+    const results = [];
+
+    for (const dec of decisions) {
+      const result = await getDb().query(
+        `UPDATE candidate_interview
+            SET verdict       = $2,
+                decision_note = $3,
+                decided_by    = $4,
+                decided_at    = NOW(),
+                updated_at    = NOW()
+          WHERE id = $1
+            AND company_id = $5
+          RETURNING *`,
+        [
+          dec.interview_id,
+          dec.verdict,
+          dec.decision_note || null,
+          dec.decided_by || null,
+          company_id,
+        ]
+      );
+
+      if (result.rows[0]) {
+        results.push(result.rows[0]);
+      }
+    }
+
+    return results;
   }
 }
 

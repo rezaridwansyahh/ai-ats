@@ -35,6 +35,7 @@ import ThomasKilmannAssessmentPage from "./pages/ThomasKilmannAssessment"
 import InterviewWorkboard from "./pages/InterviewWorkboard"
 import InterviewJobPage from "./components/interview/Interview-Job"
 import InterviewCandidatePage from "./components/interview/Interview-Candidate"
+import InterviewCalibration from "./pages/InterviewCalibration"
 import BudgetSettingsPage from "./pages/BudgetSettings"
 
 function App() {
@@ -74,6 +75,7 @@ function App() {
         <Route path="/selection/interview" element={<InterviewWorkboard />} />
         <Route path="/selection/interview/job/:jobId" element={<InterviewJobPage/>} />
         <Route path="/selection/interview/candidate/:interviewId" element={<InterviewCandidatePage />} />
+        <Route path="/selection/interview/calibration/:jobId" element={<InterviewCalibration />} />
 
         <Route path="/asesmen/assessment-a" element={<AssessmentAPage />} />
         <Route path="/asesmen/assessment-b" element={<AssessmentBPage />} />
