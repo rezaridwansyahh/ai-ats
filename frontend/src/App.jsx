@@ -17,6 +17,8 @@ import RecruitersPage from "./pages/Recruiters"
 import ComingSoonPage from "./pages/ComingSoon"
 import AssessmentAPage from "./pages/AssessmentA"
 import ReportPage from "./pages/Report"
+import ReportCandidatePage from "./pages/ReportCandidate"
+import ReportCandidateDetailPage from "./pages/ReportCandidateDetail"
 import CandidateDetailPage from "./pages/CandidateDetail"
 import AssessmentPlacementPage from "./pages/portal/AssessmentPlacement"
 import QAFollowUpPage from "./pages/portal/QAFollowUp"
@@ -30,6 +32,12 @@ import AssessmentCPage from "./pages/AssessmentC"
 import AssessmentDPage from "./pages/AssessmentD"
 import InsightsDiscoveryAssessmentPage from "./pages/InsightsDiscoveryAssessment"
 import ThomasKilmannAssessmentPage from "./pages/ThomasKilmannAssessment"
+import InterviewWorkboard from "./pages/InterviewWorkboard"
+import InterviewJobPage from "./components/interview/Interview-Job"
+import InterviewCandidatePage from "./components/interview/Interview-Candidate"
+import BudgetSettingsPage from "./pages/BudgetSettings"
+
+//PUNYA BAYU MASIH DUMMY
 import InterviewPage from "./pages/Interview"
 import BackgroundCheckPage from "./pages/BackgroundCheck"
 import SettingsPage from "./pages/Settings"
@@ -69,7 +77,12 @@ function App() {
 
         <Route path="/selection/report" element={<ReportPage />} />
         <Route path="/selection/report/:jobId/:participantId" element={<CandidateDetailPage />} />
-        <Route path="/selection/interview" element={<InterviewPage />} />
+        <Route path="/selection/interview" element={<InterviewWorkboard />} />
+        <Route path="/selection/interview/job/:jobId" element={<InterviewJobPage/>} />
+        <Route path="/selection/interview/candidate/:interviewId" element={<InterviewCandidatePage />} />
+
+        //punya bayu
+        {/* <Route path="/selection/interview" element={<InterviewPage />} />  */}
         <Route path="/selection/background-check" element={<BackgroundCheckPage />} />
         <Route path="/asesmen/assessment-a" element={<AssessmentAPage />} />
         <Route path="/asesmen/assessment-b" element={<AssessmentBPage />} />
@@ -83,7 +96,11 @@ function App() {
         <Route path="/settings/role-management" element={<RoleManagementPage />} />
         <Route path="/settings/integrations" element={<IntegrationsPage />} />
         <Route path="/settings/account" element={<AccountPage />} />
+        <Route path="/settings/budget" element={<BudgetSettingsPage />} />
         <Route path="/settings/recruiters" element={<RecruitersPage />} />
+
+        <Route path="/report-candidate" element={<ReportCandidatePage />} />
+        <Route path="/report-candidate/:candidateId" element={<ReportCandidateDetailPage />} />
 
         {/* Catch-all: any unregistered path shows Coming Soon */}
         <Route path="*" element={<ComingSoonPage />} />

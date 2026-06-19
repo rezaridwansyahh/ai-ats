@@ -33,7 +33,7 @@ export default function JobDetailPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [syncing, setSyncing] = useState(false);
-
+  
   const CANDIDATES_PAGE_SIZE = 6;
 
   const fetchJob = useCallback(async () => {
@@ -230,129 +230,129 @@ export default function JobDetailPage() {
         <div className="grid grid-cols-1 lg:grid-cols-[minmax(0,1fr)_300px] gap-6">
           {/* MAIN COLUMN */}
           <div className="space-y-4 min-w-0">
-        {/* Overview / summary stats — placeholder */}
-        <Card className="py-4 gap-3">
-          <CardHeader>
-            <CardTitle className="text-sm flex items-center gap-2">
-              <Briefcase className="h-4 w-4 text-primary" /> Overview
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-              <StatTile label="Candidates" value={job.candidate_count ?? '—'} />
-              <StatTile label="Salary band" value={formatSalaryBand(job)} mono />
-              <StatTile label="SLA start" value={formatSinceDate(job.sla_start_date) || '—'} mono />
-              <StatTile label="SLA end" value={formatSinceDate(job.sla_end_date) || '—'} mono />
-            </div>
-          </CardContent>
-        </Card>
-
-        {/* JD */}
-        <Card className="py-4 gap-3">
-          <CardHeader>
-            <CardTitle className="text-sm flex items-center gap-2">
-              <FileText className="h-4 w-4 text-primary" /> Job description
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-3 text-sm">
-            {job.job_desc ? (
-              <div className="whitespace-pre-wrap leading-relaxed">{job.job_desc}</div>
-            ) : (
-              <p className="text-xs text-muted-foreground italic">No description set.</p>
-            )}
-            {job.qualifications && (
-              <div>
-                <div className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground mb-1">
-                  Responsibilities & qualifications
+            {/* Overview / summary stats — placeholder */}
+            <Card className="py-4 gap-3">
+              <CardHeader>
+                <CardTitle className="text-sm flex items-center gap-2">
+                  <Briefcase className="h-4 w-4 text-primary" /> Overview
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                  <StatTile label="Candidates" value={job.candidate_count ?? '—'} />
+                  <StatTile label="Salary band" value={formatSalaryBand(job)} mono />
+                  <StatTile label="SLA start" value={formatSinceDate(job.sla_start_date) || '—'} mono />
+                  <StatTile label="SLA end" value={formatSinceDate(job.sla_end_date) || '—'} mono />
                 </div>
-                <div className="whitespace-pre-wrap text-xs leading-relaxed">{job.qualifications}</div>
-              </div>
-            )}
-            {(required.length > 0 || preferred.length > 0) && (
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-2 border-t">
-                <SkillRow label="Required" skills={required} tone="primary" />
-                <SkillRow label="Preferred" skills={preferred} tone="muted" />
-              </div>
-            )}
-          </CardContent>
-        </Card>
+              </CardContent>
+            </Card>
 
-        {/* Candidates — searchable, paginated table (counts/funnel live in Candidate Pipeline) */}
-        <Card className="py-4 gap-3">
-          <CardHeader>
-            <CardTitle className="text-sm flex items-center justify-between gap-3 flex-wrap">
-              <span className="flex items-center gap-2">
-                <Users className="h-4 w-4 text-primary" /> Candidates
-                <span className="text-[10px] font-normal text-muted-foreground">{candidates.length}</span>
-              </span>
-              <Input
-                placeholder="Search candidates..."
-                value={candidateSearch}
-                onChange={(e) => setCandidateSearch(e.target.value)}
-                className="max-w-[220px] h-8 text-xs font-normal"
-              />
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="p-0">
-            {candidates.length === 0 ? (
-              <p className="py-8 text-xs text-muted-foreground text-center italic">
-                No candidates yet.
-              </p>
-            ) : filteredCandidates.length === 0 ? (
-              <p className="py-8 text-xs text-muted-foreground text-center italic">
-                No candidates match your search.
-              </p>
-            ) : (
-              <>
-                <Table>
-                  <TableHeader className="bg-muted/40">
-                    <TableRow>
-                      <TableHead className="text-[10px] font-bold uppercase pl-6">Candidate</TableHead>
-                      <TableHead className="text-[10px] font-bold uppercase w-[180px]">Position</TableHead>
-                      <TableHead className="text-[10px] font-bold uppercase w-[170px]">Stage</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {pagedCandidates.map((c) => (
-                      <TableRow key={c.id} className="hover:bg-muted/30">
-                        <TableCell className="text-xs font-medium pl-6 truncate" title={c.candidate_name}>
-                          {c.candidate_name}
-                        </TableCell>
-                        <TableCell className="text-xs text-muted-foreground truncate" title={c.last_position || ''}>
-                          {c.last_position || '—'}
-                        </TableCell>
-                        <TableCell>
-                          <Badge variant="outline" className="text-[10px]">
-                            {c.latest_stage_name || 'Not started'}
-                          </Badge>
-                        </TableCell>
-                      </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
-
-                {/* Pagination */}
-                <div className="flex items-center justify-between gap-2 px-6 py-3 border-t">
-                  <span className="text-[10px] text-muted-foreground">
-                    {(candidatePage - 1) * CANDIDATES_PAGE_SIZE + 1}–
-                    {Math.min(candidatePage * CANDIDATES_PAGE_SIZE, filteredCandidates.length)} of {filteredCandidates.length}
-                  </span>
-                  <div className="flex items-center gap-1">
-                    <Button variant="outline" size="sm" className="h-7 text-xs" disabled={candidatePage <= 1} onClick={() => setCandidatePage((p) => p - 1)}>
-                      Previous
-                    </Button>
-                    <span className="text-[11px] text-muted-foreground px-1">
-                      {candidatePage} / {candidateTotalPages}
-                    </span>
-                    <Button variant="outline" size="sm" className="h-7 text-xs" disabled={candidatePage >= candidateTotalPages} onClick={() => setCandidatePage((p) => p + 1)}>
-                      Next
-                    </Button>
+            {/* JD */}
+            <Card className="py-4 gap-3">
+              <CardHeader>
+                <CardTitle className="text-sm flex items-center gap-2">
+                  <FileText className="h-4 w-4 text-primary" /> Job description
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-3 text-sm">
+                {job.job_desc ? (
+                  <div className="whitespace-pre-wrap leading-relaxed">{job.job_desc}</div>
+                ) : (
+                  <p className="text-xs text-muted-foreground italic">No description set.</p>
+                )}
+                {job.qualifications && (
+                  <div>
+                    <div className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground mb-1">
+                      Responsibilities & qualifications
+                    </div>
+                    <div className="whitespace-pre-wrap text-xs leading-relaxed">{job.qualifications}</div>
                   </div>
-                </div>
-              </>
-            )}
-          </CardContent>
-        </Card>
+                )}
+                {(required.length > 0 || preferred.length > 0) && (
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-2 border-t">
+                    <SkillRow label="Required" skills={required} tone="primary" />
+                    <SkillRow label="Preferred" skills={preferred} tone="muted" />
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+
+            {/* Candidates — searchable, paginated table (counts/funnel live in Candidate Pipeline) */}
+            <Card className="py-4 gap-3">
+              <CardHeader>
+                <CardTitle className="text-sm flex items-center justify-between gap-3 flex-wrap">
+                  <span className="flex items-center gap-2">
+                    <Users className="h-4 w-4 text-primary" /> Candidates
+                    <span className="text-[10px] font-normal text-muted-foreground">{candidates.length}</span>
+                  </span>
+                  <Input
+                    placeholder="Search candidates..."
+                    value={candidateSearch}
+                    onChange={(e) => setCandidateSearch(e.target.value)}
+                    className="max-w-[220px] h-8 text-xs font-normal"
+                  />
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="p-0">
+                {candidates.length === 0 ? (
+                  <p className="py-8 text-xs text-muted-foreground text-center italic">
+                    No candidates yet.
+                  </p>
+                ) : filteredCandidates.length === 0 ? (
+                  <p className="py-8 text-xs text-muted-foreground text-center italic">
+                    No candidates match your search.
+                  </p>
+                ) : (
+                  <>
+                    <Table>
+                      <TableHeader className="bg-muted/40">
+                        <TableRow>
+                          <TableHead className="text-[10px] font-bold uppercase pl-6">Candidate</TableHead>
+                          <TableHead className="text-[10px] font-bold uppercase w-[180px]">Position</TableHead>
+                          <TableHead className="text-[10px] font-bold uppercase w-[170px]">Stage</TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {pagedCandidates.map((c) => (
+                          <TableRow key={c.id} className="hover:bg-muted/30">
+                            <TableCell className="text-xs font-medium pl-6 truncate" title={c.candidate_name}>
+                              {c.candidate_name}
+                            </TableCell>
+                            <TableCell className="text-xs text-muted-foreground truncate" title={c.last_position || ''}>
+                              {c.last_position || '—'}
+                            </TableCell>
+                            <TableCell>
+                              <Badge variant="outline" className="text-[10px]">
+                                {c.latest_stage_name || 'Not started'}
+                              </Badge>
+                            </TableCell>
+                          </TableRow>
+                        ))}
+                      </TableBody>
+                    </Table>
+
+                    {/* Pagination */}
+                    <div className="flex items-center justify-between gap-2 px-6 py-3 border-t">
+                      <span className="text-[10px] text-muted-foreground">
+                        {(candidatePage - 1) * CANDIDATES_PAGE_SIZE + 1}–
+                        {Math.min(candidatePage * CANDIDATES_PAGE_SIZE, filteredCandidates.length)} of {filteredCandidates.length}
+                      </span>
+                      <div className="flex items-center gap-1">
+                        <Button variant="outline" size="sm" className="h-7 text-xs" disabled={candidatePage <= 1} onClick={() => setCandidatePage((p) => p - 1)}>
+                          Previous
+                        </Button>
+                        <span className="text-[11px] text-muted-foreground px-1">
+                          {candidatePage} / {candidateTotalPages}
+                        </span>
+                        <Button variant="outline" size="sm" className="h-7 text-xs" disabled={candidatePage >= candidateTotalPages} onClick={() => setCandidatePage((p) => p + 1)}>
+                          Next
+                        </Button>
+                      </div>
+                    </div>
+                  </>
+                )}
+              </CardContent>
+            </Card>
           </div>
 
           {/* ASIDE — sticky posting panel (mirrors JobEdit's aside).

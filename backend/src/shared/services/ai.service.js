@@ -496,6 +496,105 @@ Return STRICT JSON:
     return { questions };
   }
 
+
+  async generateInterviewQuestions(job, { numQuestions, language } = {}, context = {}) {
+    if (!job || typeof job !== 'object') throw new Error('generateInterviewQuestions: job is required');
+ 
+    await companyUsageService.checkBudgetOrThrow(context.company_id);
+ 
+    const count = Math.max(3, Math.min(15, Number(numQuestions) || 8));
+ 
+    const langMap = {
+      en:      'English only.',
+      id:      'Bahasa Indonesia only.',
+      'id-en': 'Mixed Bahasa Indonesia and English — write each question in Bahasa Indonesia but keep technical terms in English.',
+    };
+    const langGuidance = langMap[language] || langMap['id'];
+ 
+    const jobPayload = {
+      job_title:        job.job_title        || '',
+      job_desc:         typeof job.job_desc === 'string'       ? job.job_desc.slice(0, 4000)       : '',
+      qualifications:   typeof job.qualifications === 'string' ? job.qualifications.slice(0, 2000) : '',
+      required_skills:  Array.isArray(job.required_skills)     ? job.required_skills               : [],
+      preferred_skills: Array.isArray(job.preferred_skills)    ? job.preferred_skills              : [],
+      seniority_level:  job.seniority_level  || '',
+      work_type:        job.work_type        || '',
+    };
+ 
+    const prompt = `You are an expert recruiter writing structured interview questions for a position. Return STRICT JSON only.
+ 
+NUMBER OF QUESTIONS: exactly ${count}
+LANGUAGE: ${langGuidance}
+ 
+JOB:
+${JSON.stringify(jobPayload, null, 2)}
+ 
+Write ${count} sharp, specific interview questions tailored to this role. Each question must:
+- Map to one of the standard competency codes: HRD-01 (Leadership), HRD-02 (Planning & Organizing), HRD-03 (Problem Solving & Decision Making), HRD-04 (Value for Best Quality), HRD-05 (Creativity), HRD-06 (Teamwork).
+- Be behavioural (STAR-method friendly) where possible — ask about past experience, not hypotheticals.
+- Include an optional follow-up probe to dig deeper.
+ 
+Return STRICT JSON:
+{
+  "questions": [
+    {
+      "competency": "<competency_code e.g. HRD-01>",
+      "source": "jd_generated",
+      "text": "<the interview question>",
+      "follow_up": "<one short follow-up probe, or null>"
+    }
+  ]
+}`;
+ 
+    const response = await openai.chat.completions.create({
+      model: SCORING_MODEL,
+      messages: [{ role: 'user', content: prompt }],
+      response_format: { type: 'json_object' },
+      temperature: 0.4,
+    });
+ 
+    await this._logUsage({
+      context,
+      model:      SCORING_MODEL,
+      operation:  'generate_interview_questions',
+      usage:      response.usage,
+      request_id: response.id,
+      metadata: {
+        job_title:     job.job_title || null,
+        num_questions: count,
+        ...(context.metadata || {}),
+      },
+    });
+ 
+    const raw = response.choices[0]?.message?.content || '{}';
+    let parsed;
+    try {
+      parsed = JSON.parse(raw);
+    } catch {
+      throw new Error('generateInterviewQuestions: model returned non-JSON');
+    }
+ 
+    const validCompetencies = ['HRD-01', 'HRD-02', 'HRD-03', 'HRD-04', 'HRD-05', 'HRD-06'];
+ 
+    const questions = Array.isArray(parsed.questions)
+      ? parsed.questions
+          .filter((q) => q && typeof q === 'object' && typeof q.text === 'string' && q.text.trim())
+          .map((q, i) => ({
+            id:        i + 1,
+            competency: validCompetencies.includes(q.competency) ? q.competency : null,
+            source:    'jd_generated',
+            text:      q.text.trim(),
+            follow_up: typeof q.follow_up === 'string' && q.follow_up.trim() ? q.follow_up.trim() : null,
+          }))
+          .slice(0, count)
+      : [];
+ 
+    if (questions.length === 0) throw new Error('generateInterviewQuestions: model returned no questions');
+ 
+    return { questions };
+  }
+
+
 }
 
 export default new AIService();

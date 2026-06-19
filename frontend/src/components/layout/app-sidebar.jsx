@@ -4,9 +4,11 @@ import {
   Sidebar,
   SidebarContent,
   SidebarGroup,
+  SidebarGroupLabel,
   SidebarGroupContent,
   SidebarMenu,
   SidebarMenuItem,
+  SidebarMenuButton,
   SidebarHeader,
   SidebarFooter,
 } from '@/components/ui/sidebar';
@@ -14,7 +16,7 @@ import {
   Home, Settings, Package, Briefcase, ClipboardList,
   FileText, Search, Stethoscope, FileSignature, UserCheck,
   BarChart3, Brain, ShieldCheck, Megaphone, Users, Bell,
-  ChevronDown, Sparkles, Mail, GitBranch, Activity,
+  ChevronDown, Sparkles, Mail, GitBranch, Activity, Workflow,
 } from 'lucide-react';
 import { hasPermission } from '@/utils/permissions';
 import { getCompanyById } from '@/api/company.api';
@@ -71,98 +73,63 @@ const DISPLAY_NAME_MAP = {
 const routeMap = {
   'Dashboard':          '/dashboard',
   'Candidate Pipeline': '/candidate-pipeline',
-  'User Management':    '/settings/user-management',
-  'Role Management':    '/settings/role-management',
-  'Recruiters':         '/settings/recruiters',
-  'Account':            '/settings/account',
-  'Integrations':       '/settings/integrations',
-  'Job Management':     '/sourcing/job-management',
-  'Source Management':  '/sourcing/source-management',
-  'Talent Pool':        '/sourcing/talent-pool',
-  'Source Candidate':   '/sourcing/source-candidate',
-  'Search & Outreach':  '/sourcing/source-candidate',
-  'AI Screening':       '/selection/ai-screening',
-  'AI Screen':          '/selection/ai-screening',
-  'Interview':          '/selection/interview',
-  'Background Check':   '/selection/background-check',
-  'Report':             '/selection/report',
-  'Reports':            '/selection/report',
-  'Offer & Contract':   '/offer-onboard/offer-contract',
-  'Onboarding':         '/offer-onboard/onboarding',
+  'Report Candidate':  '/report-candidate',
+  'User Management':   '/settings/user-management',
+  'Role Management':   '/settings/role-management',
+  'Recruiters':        '/settings/recruiters',
+  'Account':           '/settings/account',
+  'Budget':            '/settings/budget',
+  'Integrations':      '/settings/integrations',
+  'Job Management':    '/sourcing/job-management',
+  'Source Management': '/sourcing/source-management',
+  'Talent Pool':       '/sourcing/talent-pool',
+  'Source Candidate':  '/sourcing/source-candidate',
+  'AI Screening':      '/selection/ai-screening',
+  'AI Matching':       '/selection/ai-screening',
+  'Report':            '/selection/report',
+  'Assessment A':      '/asesmen/assessment-a',
+  'Assessment B':      '/asesmen/assessment-b',
+  'Assessment C':      '/asesmen/assessment-c',
+  'Assessment D':      '/asesmen/assessment-d',
+  'Insights Discovery Assessment': '/asesmen/insights-discovery-assessment',
+  'Thomas Kilmann Assessment':     '/asesmen/thomas-kilmann-assessment',
+  'Interview': '/selection/interview',
 };
 
-const SOON_ITEMS = new Set([
-  'Manager Inbox',
-  'Campaigns',
-  'Psych Assessment',
-  'Medical Assessment',
-  'Medical (MCU)',
-  'Reports',
-]);
+// Maps a raw "module" name (as it appears in permissions data) to the
+// human-facing section label shown in the sidebar. Extend as new modules
+// are added on the backend.
+const SECTION_LABEL_MAP = {
+  'Sourcing':        'Sourcing',
+  'Selection':       'Selection',
+  'Offer & Onboard': 'Offer & Onboard',
+  'Onboarding':      'Offer & Onboard',
+  'Insights':        'Insights',
+  'Settings':        'Settings',
+};
 
-const HIDDEN_ITEMS = new Set([
-  'Assessment A',
-  'Assessment B',
-  'Assessment C',
-  'Assessment D',
-  'Insights Discovery Assessment',
-  'Thomas Kilmann Assessment',
-  'AI Matching',
-  'Report',
-  'Reports',
-]);
+// Menu names that should never be shown in the sidebar, even if the user
+// has permission for them.
+const HIDDEN_ITEMS = new Set();
 
+// Menu names that are visible but not yet clickable ("SOON" pill).
+const SOON_ITEMS = new Set();
+
+// Explicit ordering for items inside the "Selection" section.
 const SELECTION_MENU_ORDER = [
   'AI Screening',
-  'Background Check',
-  'Interview',
-  'Medical Assessment',
-  'Medical (MCU)',
   'Psych Assessment',
+  'Medical Assessment',
+  'Interview',
+  'Background Check',
 ];
 
-const SECTION_ORDER = [
-  'Sourcing',
-  'Selection',
-  'Offer & Onboard',
-  'Insights',
-  'Settings',
-];
+// Explicit ordering for top-level sections.
+const SECTION_ORDER = ['Sourcing', 'Selection', 'Offer & Onboard', 'Insights', 'Settings'];
 
-const SECTION_LABEL_MAP = {
-  'Sourcing':  'Sourcing',
-  'Selection': 'Selection',
-  'Asesmen':   'Selection',
-  'Offer':     'Offer & Onboard',
-  'Onboard':   'Offer & Onboard',
-  'Insights':  'Insights',
-  'Settings':  'Settings',
-};
+// Fallback nav shown before permissions have loaded from localStorage.
+const STATIC_NAV = [];
 
-// Static fallback nav — shown when permissions haven't loaded from the API yet.
-// Matches the mockup structure exactly.
-const STATIC_NAV = [
-  {
-    sectionLabel: 'Sourcing',
-    menus: ['Job Management', 'Candidate Pipeline', 'Talent Pool', 'Search & Outreach', 'Source Management'],
-  },
-  {
-    sectionLabel: 'Selection',
-    menus: ['AI Screening', 'Interview', 'Psych Assessment', 'Medical Assessment', 'Background Check'],
-  },
-  {
-    sectionLabel: 'Offer & Onboard',
-    menus: ['Offer & Contract', 'Onboarding'],
-  },
-  {
-    sectionLabel: 'Settings',
-    menus: ['User Management', 'Role Management', 'Recruiters', 'Integrations'],
-  },
-];
-
-// ─────────────────────────────────────────────
-// Hook — build sidebar structure from permissions
-// ─────────────────────────────────────────────
 const useSidebarStructure = (permissions) => {
   return useMemo(() => {
     if (!permissions || permissions.length === 0) return [];
@@ -422,14 +389,23 @@ export function AppSidebar() {
     navigate('/login');
   };
 
-  const isRouteActive = (menuName) => {
+  const isRouteActive = useCallback((menuName) => {
     const route = routeMap[menuName];
     if (!route) return false;
     return location.pathname === route || location.pathname.startsWith(route + '/');
-  };
+  }, [location.pathname]);
 
-  const isDashboardActive = location.pathname === '/dashboard';
-  const canSeeDashboard   = hasPermission('Main', 'Dashboard', 'read');
+  const userInitials = user?.email
+    ? user.email.split('@')[0].slice(0, 2).toUpperCase()
+    : 'U';
+
+  const isDashboardActive         = location.pathname === '/dashboard';
+  const isCandidatePipelineActive = location.pathname === '/candidate-pipeline';
+  const isReportCandidateActive   = location.pathname === '/report-candidate';
+  const canSeeDashboard           = hasPermission('Main', 'Dashboard', 'read');
+  const canSeeCandidatePipeline   = hasPermission('Main', 'Candidate Pipeline', 'read');
+  const canSeeReportCandidate     = hasPermission('Main', 'Report Candidate', 'read');
+  const canSeeMain                = canSeeDashboard || canSeeCandidatePipeline || canSeeReportCandidate;
 
   return (
     <Sidebar>
@@ -442,40 +418,91 @@ export function AppSidebar() {
       {/* ── Content ── */}
       <SidebarContent className="px-2 py-3 gap-0 overflow-y-auto">
 
-        {/* Top flat items */}
-        <div className="mb-2 space-y-0.5">
-          {canSeeDashboard && (
-            <FlatNavItem
-              label="Dashboard"
-              icon={Home}
-              active={isDashboardActive}
-              onClick={() => navigate('/dashboard')}
-            />
-          )}
-          <FlatNavItem
-            label="Manager Inbox"
-            icon={Bell}
-            newBadge
-            soon
-          />
-        </div>
+        {/* Main group — Dashboard + Candidate Pipeline as flat top-level rows */}
+        {canSeeMain && (
+          <SidebarGroup className="p-0 mb-1">
+            <SidebarGroupLabel className="text-[9px] uppercase tracking-[0.12em] text-muted-foreground/50 font-bold px-2 mb-1 h-5">
+              Main
+            </SidebarGroupLabel>
+            <SidebarGroupContent>
+              <SidebarMenu>
+                {canSeeDashboard && (
+                  <SidebarMenuItem>
+                    <SidebarMenuButton
+                      className={`cursor-pointer transition-all duration-200 rounded-lg h-8 ${
+                        isDashboardActive
+                          ? 'bg-primary text-primary-foreground font-semibold shadow-sm'
+                          : 'text-muted-foreground hover:bg-accent/80 hover:text-foreground'
+                      }`}
+                      onClick={() => navigate('/dashboard')}
+                    >
+                      <div className={`h-5 w-5 rounded-md flex items-center justify-center flex-shrink-0 transition-all duration-200 ${
+                        isDashboardActive ? 'bg-white/20' : 'bg-primary/10'
+                      }`}>
+                        <Home className={`h-3 w-3 ${isDashboardActive ? 'text-white' : 'text-primary'}`} />
+                      </div>
+                      <span className="text-sm">Dashboard</span>
+                    </SidebarMenuButton>
+                  </SidebarMenuItem>
+                )}
+                {canSeeCandidatePipeline && (
+                  <SidebarMenuItem>
+                    <SidebarMenuButton
+                      className={`cursor-pointer transition-all duration-200 rounded-lg h-8 ${
+                        isCandidatePipelineActive
+                          ? 'bg-primary text-primary-foreground font-semibold shadow-sm'
+                          : 'text-muted-foreground hover:bg-accent/80 hover:text-foreground'
+                      }`}
+                      onClick={() => navigate('/candidate-pipeline')}
+                    >
+                      <div className={`h-5 w-5 rounded-md flex items-center justify-center flex-shrink-0 transition-all duration-200 ${
+                        isCandidatePipelineActive ? 'bg-white/20' : 'bg-primary/10'
+                      }`}>
+                        <Workflow className={`h-3 w-3 ${isCandidatePipelineActive ? 'text-white' : 'text-primary'}`} />
+                      </div>
+                      <span className="text-sm">Candidate Pipeline</span>
+                    </SidebarMenuButton>
+                  </SidebarMenuItem>
+                )}
+                {canSeeReportCandidate && (
+                  <SidebarMenuItem>
+                    <SidebarMenuButton
+                      className={`cursor-pointer transition-all duration-200 rounded-lg h-8 ${
+                        isReportCandidateActive
+                          ? 'bg-primary text-primary-foreground font-semibold shadow-sm'
+                          : 'text-muted-foreground hover:bg-accent/80 hover:text-foreground'
+                      }`}
+                      onClick={() => navigate('/report-candidate')}
+                    >
+                      <div className={`h-5 w-5 rounded-md flex items-center justify-center flex-shrink-0 transition-all duration-200 ${
+                        isReportCandidateActive ? 'bg-white/20' : 'bg-primary/10'
+                      }`}>
+                        <Workflow className={`h-3 w-3 ${isReportCandidateActive ? 'text-white' : 'text-primary'}`} />
+                      </div>
+                      <span className="text-sm">Report Candidate</span>
+                    </SidebarMenuButton>
+                  </SidebarMenuItem>
+                )}
+              </SidebarMenu>
+            </SidebarGroupContent>
+          </SidebarGroup>
+        )}
 
-        {/* Divider */}
-        <div className="mx-1 mb-2 border-t border-sidebar-border/50" />
+        {/* Permission-driven section groups (Main rendered above as flat rows) */}
+        <div>
+          {sidebarItems.map(({ sectionLabel, menus }) => {
+            const SectionIcon    = sectionIconMap[sectionLabel] ?? Package;
+            const isOpen         = !!openSections[sectionLabel];
+            const hasActiveChild = menus.some((m) => isRouteActive(m));
 
-        {/* Collapsible sections from permissions (falls back to STATIC_NAV) */}
-        <div className="space-y-0.5">
-          {navItems.map(({ sectionLabel, menus }) => {
             if (menus.length === 0) return null;
-            const isOpen      = !!openSections[sectionLabel];
-            const SectionIcon = sectionIconMap[sectionLabel];
 
             return (
               <SidebarGroup key={sectionLabel} className="p-0">
                 <SectionHeader
                   label={sectionLabel}
                   icon={SectionIcon}
-                  isOpen={isOpen}
+                  isOpen={isOpen || hasActiveChild}
                   onClick={() => {
                     if (sectionLabel === 'Settings') {
                       navigate('/settings');
@@ -485,7 +512,7 @@ export function AppSidebar() {
                     }
                   }}
                 />
-                {isOpen && (
+                {(isOpen || hasActiveChild) && (
                   <SidebarGroupContent className="mt-0.5 mb-1">
                     {/* ml-4 lines the border up with the section icon's center */}
                     <div className="ml-4 pl-4 border-l border-sidebar-border">

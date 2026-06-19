@@ -27,6 +27,7 @@ import {
   INSIGHTS_COMPLETED_AT,
 } from '../data/dummy_insights.js';
 import companyBudgetsData, { createCompanyBudget } from '../data/company_budgets.js';
+import candidateInterviewData from '../data/candidate_interview.js';
 
 const seed = async () => {
   await getDb().query('BEGIN');
@@ -339,6 +340,18 @@ const seed = async () => {
     }
 
     console.log(`Seeded ${applicantScores.length} scores and ${candidateScreenings.length} screenings`);
+
+    // 21b. candidate_interview — candidates advanced from screening
+    for (const ci of candidateInterviewData) {
+      await getDb().query(
+        `INSERT INTO candidate_interview
+          (id, candidate_id, job_id, screening_id, company_id, status, scheduled_at)
+        VALUES ($1, $2, $3, $4, $5, $6, $7)
+        ON CONFLICT (candidate_id, job_id) DO NOTHING`,
+        [ci.id, ci.candidate_id, ci.job_id, ci.screening_id,
+        ci.company_id, ci.status, ci.scheduled_at]
+      );
+    }
 
     // 22. participants — Insights Discovery test takers. Emails MUST mirror seeded
     //     master_applicant emails so getResultFromCandidate's candidate→applicant→email

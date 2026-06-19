@@ -47,7 +47,25 @@ const CANDIDATE_PIPELINE_SELECT = `
 class CandidatePipeline {
   static async getAll() {
     const result = await getDb().query(`
-      ${CANDIDATE_PIPELINE_SELECT}
+      SELECT c.id,
+         c.job_id,
+         cj.job_title,  
+         c.name AS candidate_name,
+         c.last_position,
+         c.address,
+         c.education,
+         c.information,
+         c.date,
+         c.attachment,
+         c.latest_stage,
+         c.created_at,
+         c.updated_at,
+         a.email AS candidate_email,
+         COALESCE(js.name, 'Not Started') AS latest_stage_name
+      FROM master_candidate c
+      LEFT JOIN job_stage js       ON js.id = c.latest_stage
+      LEFT JOIN master_applicant a ON a.id  = c.applicant_id
+      LEFT JOIN core_job cj ON cj.id = c.job_id
       ORDER BY c.created_at DESC
     `);
     return result.rows;
@@ -214,6 +232,81 @@ class CandidatePipeline {
     } finally {
       client.release();
     }
+  }
+
+  static async getProgress(candidate_id) {
+    const result = await getDb().query(`
+      WITH candidate_data AS (
+          SELECT 
+              mc.*,  -- This includes mc.applicant_id
+              cs.decision as screening_decision,
+              cs.decision_reason,
+              cs.decided_at
+          FROM master_candidate mc
+          LEFT JOIN candidate_screening cs ON cs.candidate_id = mc.id
+          WHERE mc.id = $1
+      ),
+      job_stages AS (
+          SELECT
+              rs.id AS stage_id,
+              rs.stage_order,
+              rs.name AS stage_name,
+              rs.stage_type_id,
+              rsc.name AS category,
+              cjt.template_stage_id,
+              mts.name AS template_name,
+              CASE 
+                  WHEN cjt.template_stage_id IS NOT NULL THEN 'from_template'
+                  ELSE 'custom'
+              END AS stage_source,
+              cst.id AS candidate_stage_id,
+              cst.decision AS stage_decision,
+              CASE
+                  WHEN rsc.name = 'Screening & Matching' THEN
+                      jsonb_build_object(
+                          'parse', jsonb_build_object('result', ma.information),
+                          'match', jsonb_build_object('result', jsonb_build_object(
+                            'score_data', row_to_json(cjs),
+                            'additional_info', jsonb_build_object(
+                                'required_skills', cj.required_skills,
+                                'preferred_skills', cj.preferred_skills
+                            ))),
+                          'qa', jsonb_build_object('result', row_to_json(sq))
+                      )
+                  ELSE
+                      jsonb_build_object('process', NULL)
+              END AS process,
+              CASE 
+                  WHEN cst.id IS NULL THEN 'locked'
+                  WHEN cst.decision->>'status' = 'passed' THEN 'completed'
+                  WHEN cst.decision->>'status' = 'in_progress' THEN 'current'
+                  WHEN cst.decision->>'status' = 'failed' THEN 'rejected'
+                  ELSE 'pending'
+              END AS stage_status
+          FROM candidate_data cd
+          LEFT JOIN core_job_template cjt ON cjt.job_id = cd.job_id 
+	        LEFT JOIN master_template_stage mts ON mts.id = cjt.template_stage_id
+          LEFT JOIN job_stage rs ON (
+              CASE
+                  WHEN cjt.template_stage_id IS NOT NULL THEN rs.master_id = cjt.template_stage_id
+                  ELSE rs.job_id = cd.job_id
+              END
+          )
+          LEFT JOIN recruitment_stage_category rsc ON rsc.id = rs.stage_type_id
+          LEFT JOIN core_job cj ON cj.id = cd.job_id
+          LEFT JOIN candidate_stages cst ON cst.job_stage_id = rs.id AND cst.candidate_id = cd.id
+          LEFT JOIN master_applicant ma ON ma.id = cd.applicant_id
+          LEFT JOIN candidate_screening csr ON csr.candidate_id = cd.id
+          LEFT JOIN screening_qa sq ON sq.screening_id = csr.id 
+          LEFT JOIN candidate_job_score cjs ON cjs.applicant_id = cd.applicant_id
+      )
+      SELECT 
+          row_to_json(candidate_data) as candidate,
+          COALESCE((SELECT json_agg(job_stages ORDER BY stage_order) FROM job_stages), '[]'::json) as stages
+      FROM candidate_data;
+    `, [candidate_id]);
+
+    return result.rows[0];
   }
 }
 

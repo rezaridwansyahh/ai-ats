@@ -171,6 +171,20 @@ export default [
     information: { years_experience: 2, skills: ['Node.js', 'Express'] },
     date: '2026-03-19 12:50:00', attachment: null, latest_stage: 7,
   },
+  {
+    id: 15, job_id: 2, applicant_id: 15, name: 'candra', last_position: 'Full Stack Developer',
+    address: 'Indonesia', education: "Bachelor's in Information Technology",
+    information: {
+      job_position: { current: 'Full-Stack Engineer', category: 'Full Stack' },
+      skills: ['Node.js', 'React', 'MongoDB', 'Express', 'JavaScript'],
+      education: [{ school: 'Binus University', degree: "Bachelor's in Information Systems", year: 2022, tier: 'mid' }],
+      experience: { years_total: 3, positions: [
+        { title: 'Full-Stack Engineer', company: 'Kredivo', years: 2 },
+        { title: 'Backend Intern', company: 'DANA', years: 1 },
+      ] },
+    },
+    date: '2026-03-19 12:50:00', attachment: null, latest_stage: 7,
+  },
 
   // ============================================================
   // Job 3 — Product Designer (Active, Myralix) — 1
