@@ -5,7 +5,7 @@ import {
   Plus, X, Pencil, Briefcase, MapPin, Lock, CalendarCheck,
   ClipboardList, Clock, Users, Trash2, Calendar as CalendarIcon,
   MessageSquare, CheckCircle2, XCircle, RefreshCw, Star,
-  ThumbsUp, ThumbsDown, Minus,
+  ThumbsUp, ThumbsDown,
 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -28,6 +28,7 @@ import {
   confirmSchedule, unconfirmSchedule, deleteSchedule,
   recordOutcome, clearOutcome,
   getScorecard, saveScorecard, deleteScorecard,
+  getDecideByJob, bulkDecide, resetDecision,
 } from '@/api/interview.api';
 
 const COMPETENCY_CODES = ['HRD-01', 'HRD-02', 'HRD-03', 'HRD-04', 'HRD-05', 'HRD-06'];
@@ -57,10 +58,33 @@ const OUTCOME_OPTIONS = [
 ];
 
 const RECOMMENDATION_OPTIONS = [
-  { value: 'strong_hire',    label: 'Strong Hire',    icon: ThumbsUp,   color: 'border-emerald-400 text-emerald-700 bg-emerald-50'  },
+  { value: 'strong_hire',    label: 'Strong Hire',    icon: ThumbsUp,   color: 'border-emerald-400 text-emerald-700 bg-emerald-50'    },
   { value: 'hire',           label: 'Hire',           icon: ThumbsUp,   color: 'border-emerald-300 text-emerald-600 bg-emerald-50/50' },
-  { value: 'no_hire',        label: 'No Hire',        icon: ThumbsDown, color: 'border-rose-300 text-rose-600 bg-rose-50/50'         },
-  { value: 'strong_no_hire', label: 'Strong No Hire', icon: ThumbsDown, color: 'border-rose-400 text-rose-700 bg-rose-50'            },
+  { value: 'no_hire',        label: 'No Hire',        icon: ThumbsDown, color: 'border-rose-300 text-rose-600 bg-rose-50/50'          },
+  { value: 'strong_no_hire', label: 'Strong No Hire', icon: ThumbsDown, color: 'border-rose-400 text-rose-700 bg-rose-50'             },
+];
+
+const RECOMMENDATION_COLOR = {
+  strong_hire:    'border-emerald-400 text-emerald-700 bg-emerald-50',
+  hire:           'border-emerald-300 text-emerald-600 bg-emerald-50/50',
+  no_hire:        'border-rose-300 text-rose-600 bg-rose-50/50',
+  strong_no_hire: 'border-rose-400 text-rose-700 bg-rose-50',
+};
+
+const RECOMMENDATION_LABEL = {
+  strong_hire:    'Strong Hire',
+  hire:           'Hire',
+  no_hire:        'No Hire',
+  strong_no_hire: 'Strong No Hire',
+};
+
+const REJECT_REASONS = [
+  { value: 'skill_gap_core_competency',   label: 'Skill gap in core competency'  },
+  { value: 'below_score_band_rubric',     label: 'Below score band on rubric'    },
+  { value: 'stronger_candidate_selected', label: 'Stronger candidate selected'   },
+  { value: 'communication_culture_fit',   label: 'Communication / culture fit'   },
+  { value: 'withdrew_counter_offer',      label: 'Withdrew / counter-offer'      },
+  { value: 'other',                       label: 'Other (free text)'             },
 ];
 
 const SECTIONS = [
@@ -167,6 +191,7 @@ export default function InterviewCandidatePage() {
 
   return (
     <>
+      {/* sticky header */}
       <div className="sticky top-[52px] z-10 bg-background/95 backdrop-blur-sm -mt-5 -mx-5 px-5 pt-5 pb-4 border-b border-border/60">
         <div className="space-y-3">
           <Button variant="ghost" size="sm" className="text-xs -ml-2 w-fit" onClick={() => navigate(`/selection/interview/job/${job_id}`)}>
@@ -211,6 +236,7 @@ export default function InterviewCandidatePage() {
 
         <div className="grid grid-cols-1 lg:grid-cols-[minmax(0,1fr)_240px] gap-6">
           <div className="space-y-4 min-w-0">
+            {/* section tabs */}
             <div className="flex gap-1 border-b border-border/60 overflow-x-auto">
               {SECTIONS.map(({ key, label, icon: Icon }) => (
                 <button
@@ -225,17 +251,17 @@ export default function InterviewCandidatePage() {
               ))}
             </div>
 
-            {activeSection === 'prep'     && <PrepSection jobId={job_id} prep={prep} setPrep={setPrep} setBanner={setBanner} setError={setError} navigate={navigate} />}
+            {activeSection === 'prep'     && <PrepSection     jobId={job_id} prep={prep} setPrep={setPrep} setBanner={setBanner} setError={setError} navigate={navigate} />}
             {activeSection === 'schedule' && <ScheduleSection interviewId={interviewId} interview={interview} setInterview={setInterview} setBanner={setBanner} setError={setError} />}
-            {activeSection === 'conduct'  && <ConductSection interviewId={interviewId} interview={interview} setInterview={setInterview} setBanner={setBanner} setError={setError} prep={prep} />}
+            {activeSection === 'conduct'  && <ConductSection  interviewId={interviewId} interview={interview} setInterview={setInterview} setBanner={setBanner} setError={setError} prep={prep} />}
             {activeSection === 'evaluate' && <EvaluateSection interviewId={interviewId} interview={interview} setInterview={setInterview} prep={prep} setBanner={setBanner} setError={setError} />}
-            {activeSection === 'decide'   && <ComingSoonSection label="Decide" />}
+            {activeSection === 'decide'   && <DecideSection   interviewId={interviewId} interview={interview} setInterview={setInterview} setBanner={setBanner} setError={setError} />}
           </div>
 
           <aside>
             <div className="sticky top-[184px] space-y-3">
               <CandidateCard last_position={last_position} address={address} education_text={education_text} />
-              <StepsNav activeSection={activeSection} onStep={setActiveSection} status={status} />
+              <StepsNav activeSection={activeSection} onStep={setActiveSection} status={status} interview={interview} />
             </div>
           </aside>
         </div>
@@ -567,7 +593,19 @@ function ScheduleSection({ interviewId, interview, setInterview, setBanner, setE
       ) : (
         <div className="space-y-3">
           {sessions.map((session, idx) => (
-            <SessionCard key={session.id} session={session} sessionNumber={idx + 1} confirmNote={confirmNote} setConfirmNote={setConfirmNote} confirmingId={confirmingId} deletingId={deletingId} onEdit={() => openEditForm(session)} onConfirm={() => handleConfirm(session)} onUnconfirm={() => handleUnconfirm(session.id)} onDelete={() => handleDelete(session.id)} />
+            <SessionCard
+              key={session.id}
+              session={session}
+              sessionNumber={idx + 1}
+              confirmNote={confirmNote}
+              setConfirmNote={setConfirmNote}
+              confirmingId={confirmingId}
+              deletingId={deletingId}
+              onEdit={() => openEditForm(session)}
+              onConfirm={() => handleConfirm(session)}
+              onUnconfirm={() => handleUnconfirm(session.id)}
+              onDelete={() => handleDelete(session.id)}
+            />
           ))}
         </div>
       )}
@@ -580,6 +618,8 @@ function ScheduleSection({ interviewId, interview, setInterview, setBanner, setE
     </div>
   );
 }
+
+// ─── SessionCard ─────────────────────────────────────────────────────────────
 
 function SessionCard({ session, sessionNumber, confirmNote, setConfirmNote, confirmingId, deletingId, onEdit, onConfirm, onUnconfirm, onDelete }) {
   const [showConfirmInput, setShowConfirmInput] = useState(false);
@@ -610,7 +650,9 @@ function SessionCard({ session, sessionNumber, confirmNote, setConfirmNote, conf
             <div className="min-w-0">
               <p className="text-xs font-semibold truncate">{session.title}</p>
               <div className="flex items-center gap-2 mt-0.5 flex-wrap">
-                <span className="text-[10px] text-muted-foreground inline-flex items-center gap-1"><CalendarIcon className="h-3 w-3" />{fmt(session.scheduled_at)} · {fmtTime(session.scheduled_at)}</span>
+                <span className="text-[10px] text-muted-foreground inline-flex items-center gap-1">
+                  <CalendarIcon className="h-3 w-3" />{fmt(session.scheduled_at)} · {fmtTime(session.scheduled_at)}
+                </span>
                 {hasOutcome && outcomeMeta ? (
                   <Badge variant="outline" className={`text-[9px] ${session.status === 'interviewed' ? 'border-emerald-300 text-emerald-700 bg-emerald-50' : session.status === 'no_show' ? 'border-rose-300 text-rose-700 bg-rose-50' : 'border-amber-300 text-amber-700 bg-amber-50'}`}>{outcomeMeta.label}</Badge>
                 ) : isConfirmed ? (
@@ -626,7 +668,8 @@ function SessionCard({ session, sessionNumber, confirmNote, setConfirmNote, conf
           </div>
           <div className="flex items-center gap-1 shrink-0">
             {!isConfirmed && !hasOutcome && <Button size="icon" variant="ghost" className="h-7 w-7" onClick={onEdit} title="Edit"><Pencil className="h-3.5 w-3.5 text-muted-foreground" /></Button>}
-            {isConfirmed ? (!hasOutcome && <Button size="sm" variant="outline" className="h-7 text-xs text-amber-700 border-amber-300 hover:bg-amber-50" onClick={onUnconfirm}>Unconfirm</Button>)
+            {isConfirmed
+              ? (!hasOutcome && <Button size="sm" variant="outline" className="h-7 text-xs text-amber-700 border-amber-300 hover:bg-amber-50" onClick={onUnconfirm}>Unconfirm</Button>)
               : <Button size="sm" className="h-7 text-xs bg-emerald-600 hover:bg-emerald-700" onClick={() => setShowConfirmInput(!showConfirmInput)}>Confirm</Button>}
             {!isConfirmed && !hasOutcome && (
               <Button size="icon" variant="ghost" className="h-7 w-7 text-rose-500 hover:text-rose-600 hover:bg-rose-50" onClick={onDelete} disabled={isDeleting} title="Delete">
@@ -833,24 +876,21 @@ function ConductSection({ interviewId, interview, setInterview, setBanner, setEr
 }
 
 function EvaluateSection({ interviewId, interview, setInterview, prep, setBanner, setError }) {
-  const [scorecard, setScorecard]         = useState(null);
-  const [loading, setLoading]             = useState(true);
-  const [saving, setSaving]               = useState(false);
-
-  // editable fields
-  const [scores, setScores]               = useState({});   // { "HRD-01": 5, ... }
-  const [comments, setComments]           = useState({});   // { "HRD-01": "text..." }
+  const [scorecard, setScorecard]           = useState(null);
+  const [loading, setLoading]               = useState(true);
+  const [saving, setSaving]                 = useState(false);
+  const [scores, setScores]                 = useState({});
+  const [comments, setComments]             = useState({});
   const [recommendation, setRecommendation] = useState('');
-  const [strengths, setStrengths]         = useState('');
-  const [concerns, setConcerns]           = useState('');
-  const [showComments, setShowComments]   = useState({}); // { "HRD-01": true, ... }
-  const [isEditing, setIsEditing]         = useState(false);
+  const [strengths, setStrengths]           = useState('');
+  const [concerns, setConcerns]             = useState('');
+  const [showComments, setShowComments]     = useState({});
+  const [isEditing, setIsEditing]           = useState(false);
 
   const rubricItems = Array.isArray(prep?.rubric_items) && prep.rubric_items.length > 0
     ? prep.rubric_items
     : COMPETENCY_CODES.map((c) => ({ competency_code: c, competency_name: COMPETENCY_NAMES[c], weight: 1 }));
 
-  // load existing scorecard
   useEffect(() => {
     if (!interviewId) return;
     (async () => {
@@ -863,17 +903,16 @@ function EvaluateSection({ interviewId, interview, setInterview, prep, setBanner
           const loadedComments = sc.competency_comments || {};
           setScores(sc.competency_scores || {});
           setComments(loadedComments);
-          setRecommendation(sc.recommendation  || '');
-          setStrengths(sc.standout_strengths   || '');
-          setConcerns(sc.concerns              || '');
-          // pre-expand the comment box for any competency that already has a comment
+          setRecommendation(sc.recommendation     || '');
+          setStrengths(sc.standout_strengths      || '');
+          setConcerns(sc.concerns                 || '');
           const initialShowComments = {};
           Object.keys(loadedComments).forEach((code) => {
             if (loadedComments[code]) initialShowComments[code] = true;
           });
           setShowComments(initialShowComments);
         }
-      } catch { /* no scorecard yet — that's fine */ }
+      } catch { /* no scorecard yet */ }
       finally { setLoading(false); }
     })();
   }, [interviewId]);
@@ -888,10 +927,10 @@ function EvaluateSection({ interviewId, interview, setInterview, prep, setBanner
     return totalWeight > 0 ? Math.round((sum / totalWeight) * 100) / 100 : null;
   };
 
-  const filledCount    = rubricItems.filter((i) => Number(scores[i.competency_code]) >= 1).length;
-  const allFilled      = filledCount === rubricItems.length;
-  const weightedTotal  = computeWeightedTotal();
-  const reviewFlag     = Object.values(scores).some((s) => Number(s) <= 2);
+  const filledCount   = rubricItems.filter((i) => Number(scores[i.competency_code]) >= 1).length;
+  const allFilled     = filledCount === rubricItems.length;
+  const weightedTotal = computeWeightedTotal();
+  const reviewFlag    = Object.values(scores).some((s) => Number(s) <= 2);
 
   const handleSave = async (isDraft) => {
     if (!allFilled && !isDraft) { setError('Please score all competencies before submitting.'); return; }
@@ -946,13 +985,10 @@ function EvaluateSection({ interviewId, interview, setInterview, prep, setBanner
 
   return (
     <div className="space-y-4">
-      {/* header */}
       <div className="flex items-start justify-between gap-3 flex-wrap">
         <div>
           <h2 className="text-sm font-semibold">Evaluate</h2>
-          <p className="text-[11px] text-muted-foreground">
-            Score each competency 1–7 using the rubric anchors. Weighted total is computed automatically.
-          </p>
+          <p className="text-[11px] text-muted-foreground">Score each competency 1–7 using the rubric anchors. Weighted total is computed automatically.</p>
         </div>
         <div className="flex items-center gap-2">
           {scorecard && (
@@ -980,7 +1016,6 @@ function EvaluateSection({ interviewId, interview, setInterview, prep, setBanner
         </div>
       )}
 
-      {/* score summary bar — shown once at least one score exists */}
       {weightedTotal !== null && (
         <Card className={`${reviewFlag ? 'border-amber-200 bg-amber-50/30' : 'border-emerald-200 bg-emerald-50/30'}`}>
           <CardContent className="p-4 flex items-center gap-4 flex-wrap">
@@ -1001,7 +1036,6 @@ function EvaluateSection({ interviewId, interview, setInterview, prep, setBanner
         </Card>
       )}
 
-      {/* competency scoring rows */}
       <Card>
         <CardHeader className="pb-3">
           <CardTitle className="text-sm flex items-center gap-2">
@@ -1011,16 +1045,12 @@ function EvaluateSection({ interviewId, interview, setInterview, prep, setBanner
         </CardHeader>
         <CardContent className="space-y-4">
           {rubricItems.map((item) => {
-            const score        = scores[item.competency_code];
-            const comment      = comments[item.competency_code] || '';
-            const isLow        = Number(score) <= 2 && Number(score) >= 1;
-            // FIX: read from the lifted showComments map instead of calling
-            // useState() here — this is a plain derived value, not a hook.
-            const showComment  = !!showComments[item.competency_code];
-
+            const score       = scores[item.competency_code];
+            const comment     = comments[item.competency_code] || '';
+            const isLow       = Number(score) <= 2 && Number(score) >= 1;
+            const showComment = !!showComments[item.competency_code];
             return (
               <div key={item.competency_code} className={`rounded-lg border p-3 space-y-3 ${isLow ? 'border-amber-200 bg-amber-50/20' : ''}`}>
-                {/* competency header */}
                 <div className="flex items-start justify-between gap-3">
                   <div className="min-w-0 flex-1">
                     <div className="flex items-center gap-1.5 flex-wrap">
@@ -1029,7 +1059,6 @@ function EvaluateSection({ interviewId, interview, setInterview, prep, setBanner
                       <span className="text-[9px] font-mono text-muted-foreground">×{item.weight}</span>
                       {isLow && <Badge variant="outline" className="text-[9px] border-amber-300 text-amber-700 bg-amber-50">Low score — review</Badge>}
                     </div>
-                    {/* anchor hints */}
                     {(item.anchor_1 || item.anchor_7) && (
                       <div className="flex items-center gap-4 mt-1">
                         {item.anchor_1 && <span className="text-[9px] text-muted-foreground">1: {item.anchor_1.slice(0, 50)}{item.anchor_1.length > 50 ? '…' : ''}</span>}
@@ -1037,20 +1066,16 @@ function EvaluateSection({ interviewId, interview, setInterview, prep, setBanner
                       </div>
                     )}
                   </div>
-                  {/* score badge */}
                   {score && (
                     <span className={`inline-flex items-center justify-center h-7 w-7 rounded-full text-xs font-bold border shrink-0 ${scoreBg(Number(score))}`}>
                       {score}
                     </span>
                   )}
                 </div>
-
-                {/* 1–7 score buttons */}
                 <div className="flex items-center gap-1.5 flex-wrap">
                   {[1, 2, 3, 4, 5, 6, 7].map((n) => (
                     <button
-                      key={n}
-                      type="button"
+                      key={n} type="button"
                       disabled={isSubmitted && !isEditing}
                       onClick={() => setScores((prev) => ({ ...prev, [item.competency_code]: n }))}
                       className={`h-8 w-8 rounded-md border text-xs font-semibold transition-colors ${
@@ -1072,7 +1097,6 @@ function EvaluateSection({ interviewId, interview, setInterview, prep, setBanner
                     {showComment ? 'Hide comment' : 'Add comment'}
                   </button>
                 </div>
-
                 {showComment && (
                   <Textarea
                     value={comment}
@@ -1089,42 +1113,34 @@ function EvaluateSection({ interviewId, interview, setInterview, prep, setBanner
         </CardContent>
       </Card>
 
-      {/* recommendation + overall notes */}
       <Card>
-        <CardHeader className="pb-3">
-          <CardTitle className="text-sm">Overall Assessment</CardTitle>
-        </CardHeader>
+        <CardHeader className="pb-3"><CardTitle className="text-sm">Overall Assessment</CardTitle></CardHeader>
         <CardContent className="space-y-4">
-          {/* recommendation picker */}
           <div className="space-y-2">
             <label className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">Recommendation</label>
             <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
               {RECOMMENDATION_OPTIONS.map((opt) => {
-                const Icon    = opt.icon;
-                const active  = recommendation === opt.value;
+                const Icon   = opt.icon;
+                const active = recommendation === opt.value;
                 return (
                   <button
-                    key={opt.value}
-                    type="button"
+                    key={opt.value} type="button"
                     disabled={isSubmitted && !isEditing}
                     onClick={() => setRecommendation(active ? '' : opt.value)}
                     className={`flex flex-col items-center gap-1 px-3 py-2.5 rounded-lg border text-xs font-semibold transition-colors ${
                       active ? opt.color + ' ring-2 ring-offset-1 ring-current' : 'border-border text-muted-foreground hover:bg-muted/40'
                     }`}
                   >
-                    <Icon className="h-4 w-4" />
-                    {opt.label}
+                    <Icon className="h-4 w-4" /> {opt.label}
                   </button>
                 );
               })}
             </div>
           </div>
-
           <div className="space-y-1.5">
             <label className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">Standout Strengths</label>
             <Textarea value={strengths} onChange={(e) => setStrengths(e.target.value)} placeholder="What stood out positively about this candidate?" rows={2} className="text-xs" disabled={isSubmitted && !isEditing} />
           </div>
-
           <div className="space-y-1.5">
             <label className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">Concerns</label>
             <Textarea value={concerns} onChange={(e) => setConcerns(e.target.value)} placeholder="Any concerns or red flags?" rows={2} className="text-xs" disabled={isSubmitted && !isEditing} />
@@ -1132,7 +1148,6 @@ function EvaluateSection({ interviewId, interview, setInterview, prep, setBanner
         </CardContent>
       </Card>
 
-      {/* action bar */}
       {(!isSubmitted || isEditing) && (
         <div className="flex items-center justify-between gap-3 pt-1 border-t">
           <p className="text-[10px] text-muted-foreground">
@@ -1143,19 +1158,16 @@ function EvaluateSection({ interviewId, interview, setInterview, prep, setBanner
               <>
                 <Button size="sm" variant="ghost" className="text-xs" onClick={handleCancelEdit} disabled={saving}>Cancel</Button>
                 <Button size="sm" className="text-xs" onClick={() => handleSave(false)} disabled={saving || !allFilled}>
-                  {saving ? <Loader2 className="h-3.5 w-3.5 mr-1.5 animate-spin" /> : <Check className="h-3.5 w-3.5 mr-1.5" />}
-                  Save changes
+                  {saving ? <Loader2 className="h-3.5 w-3.5 mr-1.5 animate-spin" /> : <Check className="h-3.5 w-3.5 mr-1.5" />} Save changes
                 </Button>
               </>
             ) : (
               <>
                 <Button size="sm" variant="outline" className="text-xs" onClick={() => handleSave(true)} disabled={saving}>
-                  {saving ? <Loader2 className="h-3.5 w-3.5 mr-1.5 animate-spin" /> : null}
-                  Save draft
+                  {saving ? <Loader2 className="h-3.5 w-3.5 mr-1.5 animate-spin" /> : null} Save draft
                 </Button>
                 <Button size="sm" className="text-xs" onClick={() => handleSave(false)} disabled={saving || !allFilled}>
-                  {saving ? <Loader2 className="h-3.5 w-3.5 mr-1.5 animate-spin" /> : <Check className="h-3.5 w-3.5 mr-1.5" />}
-                  Submit scorecard
+                  {saving ? <Loader2 className="h-3.5 w-3.5 mr-1.5 animate-spin" /> : <Check className="h-3.5 w-3.5 mr-1.5" />} Submit scorecard
                 </Button>
               </>
             )}
@@ -1173,17 +1185,644 @@ function EvaluateSection({ interviewId, interview, setInterview, prep, setBanner
   );
 }
 
-function ComingSoonSection({ label }) {
+const VERDICT_OPTIONS = [
+  {
+    value:       'advanced',
+    label:       'Advance to Next Stage',
+    description: 'Candidate proceeds to the next step',
+    icon:        Check,
+    color:       'border-emerald-300 bg-emerald-50/60 text-emerald-700',
+    activeColor: 'border-emerald-500 bg-emerald-50 text-emerald-700 ring-2 ring-emerald-300',
+    iconColor:   'text-emerald-600',
+  },
+  {
+    value:       'hold',
+    label:       'Hold',
+    description: 'Keep in interview pool for further review',
+    icon:        Clock,
+    color:       'border-amber-300 bg-amber-50/60 text-amber-700',
+    activeColor: 'border-amber-500 bg-amber-50 text-amber-700 ring-2 ring-amber-300',
+    iconColor:   'text-amber-500',
+  },
+  {
+    value:       'rejected',
+    label:       'Reject',
+    description: 'Candidate does not proceed',
+    icon:        X,
+    color:       'border-rose-300 bg-rose-50/60 text-rose-700',
+    activeColor: 'border-rose-500 bg-rose-50 text-rose-700 ring-2 ring-rose-300',
+    iconColor:   'text-rose-600',
+  },
+];
+
+function DecideSection({ interviewId, interview, setInterview, setBanner, setError }) {
+  const [scorecard, setScorecard]   = useState(null);
+  const [loading, setLoading]       = useState(true);
+  const [submitting, setSubmitting] = useState(false);
+
+  // verdict selector: null | 'advanced' | 'hold' | 'rejected'
+  const [selectedVerdict, setSelectedVerdict] = useState(null);
+
+  // advance modal
+  const [showAdvanceModal, setShowAdvanceModal] = useState(false);
+
+  // hold modal steps: null | 'reason' | 'confirm'
+  const [holdStep, setHoldStep]     = useState(null);
+  const [holdReason, setHoldReason] = useState('');
+
+  // reject modal steps: null | 'reason' | 'confirm'
+  const [rejectStep, setRejectStep]     = useState(null);
+  const [rejectReason, setRejectReason] = useState('');
+  const [rejectNote, setRejectNote]     = useState('');
+
+  const decision       = interview?.decision;
+  const alreadyDecided = decision && decision !== 'pending';
+
+  useEffect(() => {
+    if (!interviewId) return;
+    (async () => {
+      setLoading(true);
+      try {
+        const res = await getScorecard(interviewId);
+        setScorecard(res.data?.scorecard || null);
+      } catch { setScorecard(null); }
+      finally { setLoading(false); }
+    })();
+  }, [interviewId]);
+
+  // ── weighted total: Postgres NUMERIC comes back as string, cast it ──
+  const rawTotal      = scorecard?.weighted_total ?? null;
+  const weightedTotal = rawTotal !== null ? Number(rawTotal) : null;
+  const recommendation  = scorecard?.recommendation ?? null;
+  const reviewFlag      = scorecard?.review_flag    ?? false;
+  const isSubmitted     = scorecard && !scorecard.is_draft;
+  const competencyScores = scorecard?.competency_scores || {};
+
+  const wtColor = weightedTotal === null ? 'text-muted-foreground'
+    : weightedTotal >= 5 ? 'text-emerald-700'
+    : weightedTotal >= 3.5 ? 'text-amber-700'
+    : 'text-rose-700';
+
+  const wtBarColor = weightedTotal === null ? 'bg-muted'
+    : weightedTotal >= 5 ? 'bg-emerald-500'
+    : weightedTotal >= 3.5 ? 'bg-amber-500'
+    : 'bg-rose-500';
+
+  // ── Handlers ──
+  const handleSubmitVerdict = () => {
+    if (!selectedVerdict) return;
+    if (selectedVerdict === 'advanced')  { setShowAdvanceModal(true); return; }
+    if (selectedVerdict === 'hold')      { setHoldStep('reason');     return; }
+    if (selectedVerdict === 'rejected')  { setRejectStep('reason');   return; }
+  };
+
+  const handleAdvance = async () => {
+    setSubmitting(true); setError(null); setBanner(null);
+    try {
+      await bulkDecide(interview.job_id, [
+        { candidateInterviewId: interviewId, decision: 'advanced' },
+      ]);
+      setInterview((prev) => ({ ...prev, decision: 'advanced' }));
+      setBanner({ ok: true, text: 'Candidate advanced.' });
+      setShowAdvanceModal(false);
+    } catch (err) {
+      setError(err.response?.data?.message || err.message || 'Failed to advance candidate');
+    } finally { setSubmitting(false); }
+  };
+
+  const handleHold = async () => {
+    setSubmitting(true); setError(null); setBanner(null);
+    try {
+      await bulkDecide(interview.job_id, [
+        {
+          candidateInterviewId: interviewId,
+          decision:    'hold',
+          reject_note: holdReason || null,
+        },
+      ]);
+      setInterview((prev) => ({ ...prev, decision: 'hold' }));
+      setBanner({ ok: true, text: 'Candidate placed on hold.' });
+      setHoldStep(null);
+      setHoldReason('');
+    } catch (err) {
+      setError(err.response?.data?.message || err.message || 'Failed to hold candidate');
+    } finally { setSubmitting(false); }
+  };
+
+  const handleReject = async () => {
+    setSubmitting(true); setError(null); setBanner(null);
+    try {
+      await bulkDecide(interview.job_id, [
+        {
+          candidateInterviewId: interviewId,
+          decision:      'rejected',
+          reject_reason: rejectReason,
+          reject_note:   rejectNote || null,
+        },
+      ]);
+      setInterview((prev) => ({ ...prev, decision: 'rejected' }));
+      setBanner({ ok: true, text: 'Candidate rejected.' });
+      setRejectStep(null);
+      setRejectReason('');
+      setRejectNote('');
+    } catch (err) {
+      setError(err.response?.data?.message || err.message || 'Failed to reject candidate');
+    } finally { setSubmitting(false); }
+  };
+
+  const closeHoldModal   = () => { setHoldStep(null);   setHoldReason('');   };
+  const closeRejectModal = () => { setRejectStep(null);  setRejectReason(''); setRejectNote(''); };
+
+  const handleResetDecision = async () => {
+    setSubmitting(true); setError(null); setBanner(null);
+    try {
+      await resetDecision(interview.job_id, interviewId);
+      setInterview((prev) => ({ ...prev, decision: 'pending', reject_reason: null, reject_note: null }));
+      setSelectedVerdict(null);
+      setBanner({ ok: true, text: 'Decision cleared — you can now resubmit.' });
+    } catch (err) {
+      setError(err.response?.data?.message || err.message || 'Failed to reset decision');
+    } finally { setSubmitting(false); }
+  };
+
+  const buildRejectAuditString = () => {
+    const reasonLabel = REJECT_REASONS.find((r) => r.value === rejectReason)?.label || rejectReason;
+    return `${new Date().toISOString()} · ${interview?.candidate_name || 'Candidate'} · REJECT · reason="${reasonLabel}"${rejectNote ? ` · note="${rejectNote}"` : ''}`;
+  };
+
+  const buildHoldAuditString = () =>
+    `${new Date().toISOString()} · ${interview?.candidate_name || 'Candidate'} · HOLD${holdReason ? ` · reason="${holdReason}"` : ''}`;
+
+  // ── Decided state label ──
+  const decidedMeta = {
+    advanced: { label: 'This candidate has been advanced.',        color: 'border-emerald-200 bg-emerald-50 text-emerald-700', icon: Check  },
+    hold:     { label: 'This candidate is on hold.',               color: 'border-amber-200 bg-amber-50 text-amber-700',       icon: Clock  },
+    rejected: { label: 'This candidate has been rejected.',        color: 'border-rose-200 bg-rose-50 text-rose-700',         icon: X      },
+  };
+
+  if (loading) {
+    return (
+      <div className="flex justify-center py-12">
+        <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
+      </div>
+    );
+  }
+
   return (
-    <Card>
-      <CardContent className="py-16 text-center space-y-2">
-        <div className="h-10 w-10 rounded-full bg-muted flex items-center justify-center mx-auto"><Clock className="h-5 w-5 text-muted-foreground" /></div>
-        <p className="text-sm font-semibold">{label} — coming soon</p>
-        <p className="text-xs text-muted-foreground max-w-xs mx-auto">
-          {label === 'Decide' && 'Advance, hold, or reject this candidate after reviewing the scorecard.'}
+    <div className="space-y-4">
+      <div>
+        <h2 className="text-sm font-semibold">Decide</h2>
+        <p className="text-[11px] text-muted-foreground">
+          Review this candidate's scorecard summary and make a decision.
         </p>
-      </CardContent>
-    </Card>
+      </div>
+
+      {/* already decided banner — stays visible with undo */}
+      {alreadyDecided && (() => {
+        const meta = decidedMeta[decision];
+        const Icon = meta?.icon || Check;
+        return (
+          <div className={`flex items-center gap-2 px-4 py-3 rounded-lg border text-xs font-semibold ${meta?.color || ''}`}>
+            <Icon className="h-4 w-4 shrink-0" />
+            <span className="flex-1">
+              {meta?.label}
+              {decision === 'rejected' && interview?.reject_reason && (
+                <span className="font-normal ml-1">· {REJECT_REASONS.find((r) => r.value === interview.reject_reason)?.label}</span>
+              )}
+            </span>
+            <Button
+              size="sm"
+              variant="ghost"
+              className="h-6 text-[10px] px-2 opacity-70 hover:opacity-100"
+              onClick={handleResetDecision}
+              disabled={submitting}
+            >
+              {submitting ? <Loader2 className="h-3 w-3 animate-spin" /> : 'Undo'}
+            </Button>
+          </div>
+        );
+      })()}
+
+      {/* scorecard not submitted warning */}
+      {!isSubmitted && !alreadyDecided && (
+        <div className="flex items-center gap-2 px-4 py-3 rounded-lg border border-amber-200 bg-amber-50 text-xs text-amber-700">
+          <AlertTriangle className="h-4 w-4 shrink-0" />
+          Scorecard hasn't been submitted yet — submit it from the Evaluate tab before deciding.
+        </div>
+      )}
+
+      {/* scorecard summary */}
+      {scorecard ? (
+        <Card>
+          <CardHeader className="pb-3">
+            <CardTitle className="text-sm flex items-center gap-2">
+              <Star className="h-4 w-4 text-primary" /> Scorecard Summary
+              {isSubmitted
+                ? <Badge variant="outline" className="ml-auto text-[9px] border-emerald-300 text-emerald-700 bg-emerald-50">Submitted</Badge>
+                : <Badge variant="outline" className="ml-auto text-[9px] border-amber-300 text-amber-700 bg-amber-50">Draft</Badge>}
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            {/* total + bar + recommendation */}
+            <div className="flex items-center gap-4 flex-wrap">
+              <div className="text-center min-w-[72px]">
+                <p className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">Weighted Total</p>
+                <p className={`text-3xl font-bold font-mono ${wtColor}`}>
+                  {weightedTotal !== null ? weightedTotal : '—'}
+                  <span className="text-sm text-muted-foreground font-normal">/7</span>
+                </p>
+              </div>
+              <div className="flex-1 min-w-[140px]">
+                <div className="h-2.5 rounded-full bg-muted overflow-hidden">
+                  <div
+                    className={`h-full rounded-full transition-all ${wtBarColor}`}
+                    style={{ width: `${weightedTotal !== null ? (weightedTotal / 7) * 100 : 0}%` }}
+                  />
+                </div>
+                <div className="flex items-center gap-2 mt-1.5 flex-wrap">
+                  {reviewFlag && (
+                    <Badge variant="outline" className="text-[9px] border-amber-300 text-amber-700 bg-amber-50">⚠ Review flag</Badge>
+                  )}
+                  {recommendation && (
+                    <Badge variant="outline" className={`text-[9px] ${RECOMMENDATION_COLOR[recommendation] || 'border-border text-muted-foreground'}`}>
+                      {RECOMMENDATION_LABEL[recommendation] || recommendation}
+                    </Badge>
+                  )}
+                </div>
+              </div>
+            </div>
+
+            {/* per-competency grid */}
+            <div className="grid grid-cols-2 md:grid-cols-3 gap-1.5">
+              {Object.entries(competencyScores).map(([code, score]) => (
+                <div key={code} className={`rounded-md border px-2.5 py-2 flex items-center justify-between gap-2 ${scoreBg(Number(score))}`}>
+                  <div className="min-w-0">
+                    <Badge variant="outline" className="text-[9px] border-blue-200 text-blue-700 font-mono">{code}</Badge>
+                    <p className="text-[10px] truncate mt-0.5">{COMPETENCY_NAMES[code] || code}</p>
+                  </div>
+                  <span className={`text-sm font-bold font-mono shrink-0 ${scoreColor(Number(score))}`}>{score}</span>
+                </div>
+              ))}
+            </div>
+
+            {/* strengths & concerns */}
+            {(scorecard.standout_strengths || scorecard.concerns) && (
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-3 pt-2 border-t">
+                {scorecard.standout_strengths && (
+                  <div>
+                    <p className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground mb-1">Strengths</p>
+                    <p className="text-xs text-emerald-700 bg-emerald-50 border border-emerald-200 rounded-md px-2.5 py-2">
+                      {scorecard.standout_strengths}
+                    </p>
+                  </div>
+                )}
+                {scorecard.concerns && (
+                  <div>
+                    <p className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground mb-1">Concerns</p>
+                    <p className="text-xs text-rose-700 bg-rose-50 border border-rose-200 rounded-md px-2.5 py-2">
+                      {scorecard.concerns}
+                    </p>
+                  </div>
+                )}
+              </div>
+            )}
+          </CardContent>
+        </Card>
+      ) : (
+        <Card>
+          <CardContent className="py-12 text-center space-y-2">
+            <div className="h-10 w-10 rounded-full bg-muted flex items-center justify-center mx-auto">
+              <Star className="h-5 w-5 text-muted-foreground" />
+            </div>
+            <p className="text-sm font-semibold">No scorecard yet</p>
+            <p className="text-xs text-muted-foreground max-w-xs mx-auto">
+              Complete the Evaluate tab first, then come back to decide.
+            </p>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* verdict selector — shown whenever scorecard is submitted, decided or not */}
+      {isSubmitted && (
+        <Card>
+          <CardContent className="p-4 space-y-3">
+            <p className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">Make Decision</p>
+            <p className="text-xs text-muted-foreground">Select Verdict</p>
+            <div className="space-y-2">
+              {VERDICT_OPTIONS.map((opt) => {
+                const Icon     = opt.icon;
+                const isActive = selectedVerdict === opt.value;
+                return (
+                  <button
+                    key={opt.value}
+                    type="button"
+                    onClick={() => setSelectedVerdict(isActive ? null : opt.value)}
+                    className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg border text-left transition-all ${
+                      isActive ? opt.activeColor : `${opt.color} hover:brightness-95`
+                    }`}
+                  >
+                    <Icon className={`h-4 w-4 shrink-0 ${isActive ? opt.iconColor : opt.iconColor}`} />
+                    <div className="min-w-0 flex-1">
+                      <p className="text-xs font-semibold">{opt.label}</p>
+                      <p className="text-[10px] opacity-80">{opt.description}</p>
+                    </div>
+                    {isActive && <Check className="h-3.5 w-3.5 shrink-0 opacity-70" />}
+                  </button>
+                );
+              })}
+            </div>
+            <div className="pt-1 border-t flex justify-end">
+              <Button
+                size="sm"
+                className="text-xs"
+                disabled={!selectedVerdict}
+                onClick={handleSubmitVerdict}
+              >
+                <Check className="h-3.5 w-3.5 mr-1.5" /> Submit Decision
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* ── Advance confirmation modal ── */}
+      <Dialog open={showAdvanceModal} onOpenChange={setShowAdvanceModal}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Check className="h-5 w-5 text-emerald-600" /> Advance Candidate
+            </DialogTitle>
+            <DialogDescription>
+              You're advancing <span className="font-semibold">{interview?.candidate_name}</span> to the next stage. This action will be logged.
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="rounded-lg border bg-muted/30 px-4 py-3 space-y-2 text-xs">
+            <div className="flex justify-between gap-2">
+              <span className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">Candidate</span>
+              <span className="font-medium">{interview?.candidate_name}</span>
+            </div>
+            <div className="flex justify-between gap-2">
+              <span className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">Weighted Total</span>
+              <span className={`font-bold font-mono ${wtColor}`}>{weightedTotal !== null ? weightedTotal : '—'}/7</span>
+            </div>
+            {recommendation && (
+              <div className="flex justify-between gap-2">
+                <span className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">Recommendation</span>
+                <Badge variant="outline" className={`text-[9px] ${RECOMMENDATION_COLOR[recommendation]}`}>
+                  {RECOMMENDATION_LABEL[recommendation]}
+                </Badge>
+              </div>
+            )}
+          </div>
+
+          <DialogFooter>
+            <Button variant="outline" size="sm" onClick={() => setShowAdvanceModal(false)} disabled={submitting}>Cancel</Button>
+            <Button size="sm" className="bg-emerald-600 hover:bg-emerald-700" onClick={handleAdvance} disabled={submitting}>
+              {submitting
+                ? <><Loader2 className="h-3.5 w-3.5 mr-1.5 animate-spin" /> Advancing…</>
+                : <><Check className="h-3.5 w-3.5 mr-1.5" /> Confirm Advance</>}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* ── Hold modal step 1: reason ── */}
+      <Dialog open={holdStep === 'reason'} onOpenChange={(open) => { if (!open) closeHoldModal(); }}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Clock className="h-5 w-5 text-amber-500" /> Hold Candidate
+            </DialogTitle>
+            <DialogDescription>
+              <span className="font-semibold">{interview?.candidate_name}</span> will be kept in the interview pool for further review.
+            </DialogDescription>
+          </DialogHeader>
+
+          {/* step indicator */}
+          <div className="flex items-center gap-1.5 text-[10px] font-semibold">
+            <span className="h-5 w-5 rounded-full bg-primary text-primary-foreground flex items-center justify-center text-[9px]">1</span>
+            <span className="text-primary">Hold reason</span>
+            <ChevronRight className="h-3 w-3 text-muted-foreground" />
+            <span className="h-5 w-5 rounded-full bg-muted text-muted-foreground flex items-center justify-center text-[9px]">2</span>
+            <span className="text-muted-foreground">Confirmation</span>
+          </div>
+
+          <div className="space-y-3">
+            <p className="text-xs text-muted-foreground">
+              Optionally add a reason for the hold — visible to recruiters only.
+            </p>
+            <Textarea
+              value={holdReason}
+              onChange={(e) => setHoldReason(e.target.value)}
+              placeholder="e.g. Waiting for another candidate to complete assessment…"
+              rows={3}
+              className="text-xs"
+            />
+          </div>
+
+          <DialogFooter>
+            <Button variant="outline" size="sm" onClick={closeHoldModal}>Cancel</Button>
+            <Button size="sm" onClick={() => setHoldStep('confirm')}>
+              Continue <ChevronRight className="h-3.5 w-3.5 ml-1" />
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* ── Hold modal step 2: confirmation ── */}
+      <Dialog open={holdStep === 'confirm'} onOpenChange={(open) => { if (!open) closeHoldModal(); }}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Clock className="h-5 w-5 text-amber-500" /> Hold Candidate
+            </DialogTitle>
+          </DialogHeader>
+
+          {/* step indicator */}
+          <div className="flex items-center gap-1.5 text-[10px] font-semibold">
+            <span className="h-5 w-5 rounded-full bg-emerald-500 text-white flex items-center justify-center text-[9px]">
+              <Check className="h-2.5 w-2.5" />
+            </span>
+            <span className="text-muted-foreground">Hold reason</span>
+            <ChevronRight className="h-3 w-3 text-muted-foreground" />
+            <span className="h-5 w-5 rounded-full bg-primary text-primary-foreground flex items-center justify-center text-[9px]">2</span>
+            <span className="text-primary">Confirmation</span>
+          </div>
+
+          <p className="text-xs text-muted-foreground">Review — confirming commits the audit entry.</p>
+
+          <div className="rounded-lg border divide-y text-xs">
+            <div className="flex items-center justify-between px-3 py-2.5 gap-3">
+              <span className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">Candidate</span>
+              <span className="font-medium">{interview?.candidate_name}</span>
+            </div>
+            <div className="flex items-center justify-between px-3 py-2.5 gap-3">
+              <span className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">Decision</span>
+              <Badge variant="outline" className="text-[9px] border-amber-300 text-amber-700 bg-amber-50">Hold</Badge>
+            </div>
+            {holdReason && (
+              <div className="flex items-start justify-between px-3 py-2.5 gap-3">
+                <span className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground shrink-0">Reason</span>
+                <span className="text-right text-muted-foreground italic">{holdReason}</span>
+              </div>
+            )}
+          </div>
+
+          <div className="space-y-1.5">
+            <p className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">Audit log entry</p>
+            <div className="rounded-md bg-muted/40 border px-3 py-2 font-mono text-[10px] text-muted-foreground break-all">
+              {buildHoldAuditString()}
+            </div>
+          </div>
+
+          <DialogFooter>
+            <Button variant="outline" size="sm" onClick={() => setHoldStep('reason')} disabled={submitting}>← Back</Button>
+            <Button size="sm" className="bg-amber-500 hover:bg-amber-600 text-white" onClick={handleHold} disabled={submitting}>
+              {submitting
+                ? <><Loader2 className="h-3.5 w-3.5 mr-1.5 animate-spin" /> Saving…</>
+                : <><Check className="h-3.5 w-3.5 mr-1.5" /> Confirm Hold</>}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* ── Reject modal step 1: reason ── */}
+      <Dialog open={rejectStep === 'reason'} onOpenChange={(open) => { if (!open) closeRejectModal(); }}>
+        <DialogContent className="max-w-lg">
+          <DialogHeader>
+            <div className="flex items-center gap-2 text-xs text-muted-foreground mb-1">
+              <Badge variant="outline" className="text-[9px] border-rose-300 text-rose-600">REJECT</Badge>
+              INTERVIEW + RECOVERY
+            </div>
+            <DialogTitle>What's next for this requisition?</DialogTitle>
+            <DialogDescription>
+              Rejecting <span className="font-semibold">{interview?.candidate_name}</span>. The requisition stays open — rejection keeps the pipeline moving instead of dead-ending.
+            </DialogDescription>
+          </DialogHeader>
+
+          {/* step indicator */}
+          <div className="flex items-center gap-1.5 text-[10px] font-semibold">
+            <span className="h-5 w-5 rounded-full bg-primary text-primary-foreground flex items-center justify-center text-[9px]">1</span>
+            <span className="text-primary">Reject reason</span>
+            <ChevronRight className="h-3 w-3 text-muted-foreground" />
+            <span className="h-5 w-5 rounded-full bg-muted text-muted-foreground flex items-center justify-center text-[9px]">2</span>
+            <span className="text-muted-foreground">Confirmation</span>
+          </div>
+
+          <div className="space-y-3">
+            <p className="text-xs text-muted-foreground">
+              Pick the primary reason — required for the audit log and talent-pool segmentation.
+            </p>
+            <div className="grid grid-cols-2 gap-2">
+              {REJECT_REASONS.map((r) => (
+                <button
+                  key={r.value}
+                  type="button"
+                  onClick={() => setRejectReason(r.value)}
+                  className={`flex items-center gap-2 px-3 py-2.5 rounded-lg border text-xs text-left transition-colors ${
+                    rejectReason === r.value
+                      ? 'border-primary bg-primary/5 text-primary font-semibold'
+                      : 'border-border hover:bg-muted/40 text-foreground'
+                  }`}
+                >
+                  <div className={`h-3.5 w-3.5 rounded-full border-2 shrink-0 flex items-center justify-center ${rejectReason === r.value ? 'border-primary' : 'border-muted-foreground'}`}>
+                    {rejectReason === r.value && <div className="h-1.5 w-1.5 rounded-full bg-primary" />}
+                  </div>
+                  {r.label}
+                </button>
+              ))}
+            </div>
+
+            <div className="space-y-1.5">
+              <label className="text-[10px] text-muted-foreground">Optional context for the audit log (visible to recruiters only)…</label>
+              <Textarea
+                value={rejectNote}
+                onChange={(e) => setRejectNote(e.target.value)}
+                placeholder="Optional context…"
+                rows={2}
+                className="text-xs"
+              />
+            </div>
+
+            <div className="rounded-lg border border-blue-200 bg-blue-50 px-3 py-2.5 space-y-1">
+              <p className="text-[10px] font-semibold uppercase tracking-wide text-blue-700">What happens to the candidate</p>
+              <p className="text-[10px] text-blue-700">
+                A rejection notice is queued for the recruiter to send offline. The candidate is marked as rejected in the system.
+              </p>
+            </div>
+          </div>
+
+          <DialogFooter>
+            <Button variant="outline" size="sm" onClick={closeRejectModal}>Cancel</Button>
+            <Button size="sm" disabled={!rejectReason} onClick={() => setRejectStep('confirm')}>
+              Continue <ChevronRight className="h-3.5 w-3.5 ml-1" />
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* ── Reject modal step 2: confirmation ── */}
+      <Dialog open={rejectStep === 'confirm'} onOpenChange={(open) => { if (!open) closeRejectModal(); }}>
+        <DialogContent className="max-w-lg">
+          <DialogHeader>
+            <div className="flex items-center gap-2 text-xs text-muted-foreground mb-1">
+              <Badge variant="outline" className="text-[9px] border-rose-300 text-rose-600">REJECT</Badge>
+              INTERVIEW + RECOVERY
+            </div>
+            <DialogTitle>What's next for this requisition?</DialogTitle>
+          </DialogHeader>
+
+          {/* step indicator */}
+          <div className="flex items-center gap-1.5 text-[10px] font-semibold">
+            <span className="h-5 w-5 rounded-full bg-emerald-500 text-white flex items-center justify-center text-[9px]">
+              <Check className="h-2.5 w-2.5" />
+            </span>
+            <span className="text-muted-foreground">Reject reason</span>
+            <ChevronRight className="h-3 w-3 text-muted-foreground" />
+            <span className="h-5 w-5 rounded-full bg-primary text-primary-foreground flex items-center justify-center text-[9px]">2</span>
+            <span className="text-primary">Confirmation</span>
+          </div>
+
+          <p className="text-xs text-muted-foreground">
+            Review — confirming commits the audit entry and notifies the recruiter.
+          </p>
+
+          <div className="rounded-lg border divide-y text-xs">
+            <div className="flex items-center justify-between px-3 py-2.5 gap-3">
+              <span className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">Candidate</span>
+              <span className="font-medium">{interview?.candidate_name}</span>
+            </div>
+            <div className="flex items-center justify-between px-3 py-2.5 gap-3">
+              <span className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">Reject Reason</span>
+              <span className="font-medium">{REJECT_REASONS.find((r) => r.value === rejectReason)?.label}</span>
+            </div>
+            {rejectNote && (
+              <div className="flex items-start justify-between px-3 py-2.5 gap-3">
+                <span className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground shrink-0">Note</span>
+                <span className="text-right text-muted-foreground italic">{rejectNote}</span>
+              </div>
+            )}
+          </div>
+
+          <div className="space-y-1.5">
+            <p className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">Audit log entry</p>
+            <div className="rounded-md bg-muted/40 border px-3 py-2 font-mono text-[10px] text-muted-foreground break-all">
+              {buildRejectAuditString()}
+            </div>
+          </div>
+
+          <DialogFooter>
+            <Button variant="outline" size="sm" onClick={() => setRejectStep('reason')} disabled={submitting}>← Back</Button>
+            <Button size="sm" variant="destructive" onClick={handleReject} disabled={submitting}>
+              {submitting
+                ? <><Loader2 className="h-3.5 w-3.5 mr-1.5 animate-spin" /> Committing…</>
+                : <><Check className="h-3.5 w-3.5 mr-1.5" /> Commit & notify</>}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+    </div>
   );
 }
 
@@ -1192,8 +1831,8 @@ function CandidateCard({ last_position, address, education_text }) {
     <Card>
       <CardContent className="p-3 space-y-2">
         <p className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">Candidate</p>
-        {last_position && <div className="flex items-start gap-1.5 text-xs"><Briefcase className="h-3.5 w-3.5 text-muted-foreground shrink-0 mt-0.5" /><span>{last_position}</span></div>}
-        {address      && <div className="flex items-start gap-1.5 text-xs"><MapPin className="h-3.5 w-3.5 text-muted-foreground shrink-0 mt-0.5" /><span>{address}</span></div>}
+        {last_position  && <div className="flex items-start gap-1.5 text-xs"><Briefcase className="h-3.5 w-3.5 text-muted-foreground shrink-0 mt-0.5" /><span>{last_position}</span></div>}
+        {address        && <div className="flex items-start gap-1.5 text-xs"><MapPin className="h-3.5 w-3.5 text-muted-foreground shrink-0 mt-0.5" /><span>{address}</span></div>}
         {education_text && <div className="flex items-start gap-1.5 text-xs"><ClipboardList className="h-3.5 w-3.5 text-muted-foreground shrink-0 mt-0.5" /><span>{education_text}</span></div>}
         {!last_position && !address && !education_text && <p className="text-[10px] text-muted-foreground italic">No profile data.</p>}
       </CardContent>
@@ -1201,18 +1840,19 @@ function CandidateCard({ last_position, address, education_text }) {
   );
 }
 
-function StepsNav({ activeSection, onStep, status }) {
+function StepsNav({ activeSection, onStep, status, interview }) {
   const isScheduled  = ['scheduled', 'interviewed', 'no_show', 'reschedule', 'done'].includes(status);
   const hasConducted = ['interviewed', 'no_show', 'reschedule', 'done'].includes(status);
   const hasEvaluated = status === 'done';
-  const isDone       = status === 'done';
+  const isDecidable  = status === 'done';
+  const hasDecided   = interview?.decision && interview.decision !== 'pending';
 
   const stepState = (key) => {
-    if (key === 'prep')     return isScheduled  ? 'done' : 'active';
-    if (key === 'schedule') return hasConducted ? 'done' : isScheduled  ? 'active' : 'pending';
-    if (key === 'conduct')  return hasEvaluated ? 'done' : hasConducted ? 'active' : 'pending';
-    if (key === 'evaluate') return isDone       ? 'done' : hasConducted ? 'active' : 'pending';
-    if (key === 'decide')   return isDone       ? 'active' : 'soon';
+    if (key === 'prep')     return isScheduled  ? 'done'   : 'active';
+    if (key === 'schedule') return hasConducted ? 'done'   : isScheduled  ? 'active' : 'pending';
+    if (key === 'conduct')  return hasEvaluated ? 'done'   : hasConducted ? 'active' : 'pending';
+    if (key === 'evaluate') return hasDecided   ? 'done'   : hasConducted ? 'active' : 'pending';
+    if (key === 'decide')   return isDecidable ? 'active' : 'soon';
     return 'soon';
   };
 
@@ -1221,22 +1861,45 @@ function StepsNav({ activeSection, onStep, status }) {
       <CardContent className="p-3 space-y-1">
         <p className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground mb-1.5">Steps</p>
         {SECTIONS.map((s) => {
-          const Icon    = s.icon;
-          const state   = stepState(s.key);
-          const active  = s.key === activeSection;
-          const soon    = state === 'soon';
+          const Icon   = s.icon;
+          const state  = stepState(s.key);
+          const active = s.key === activeSection;
+          const soon   = state === 'soon';
           const pending = state === 'pending';
           return (
-            <button key={s.key} type="button" onClick={() => !soon && onStep(s.key)}
-              className={`w-full flex items-center gap-2 px-2 py-1.5 rounded-md text-left transition-colors ${active ? 'bg-primary/10 text-primary' : soon ? 'opacity-40 cursor-default' : pending ? 'opacity-60 hover:bg-muted/50 text-muted-foreground' : 'hover:bg-muted/50 text-foreground'}`}
+            <button
+              key={s.key}
+              type="button"
+              onClick={() => !soon && onStep(s.key)}
+              className={`w-full flex items-center gap-2 px-2 py-1.5 rounded-md text-left transition-colors ${
+                active   ? 'bg-primary/10 text-primary'
+                : soon   ? 'opacity-40 cursor-default'
+                : pending? 'opacity-60 hover:bg-muted/50 text-muted-foreground'
+                         : 'hover:bg-muted/50 text-foreground'
+              }`}
             >
-              <span className={`flex h-5 w-5 items-center justify-center rounded-full text-[9px] font-semibold shrink-0 ${state === 'done' ? 'bg-emerald-500 text-white' : active ? 'bg-primary text-primary-foreground' : soon || pending ? 'bg-muted text-muted-foreground' : 'border border-border text-muted-foreground'}`}>
+              <span className={`flex h-5 w-5 items-center justify-center rounded-full text-[9px] font-semibold shrink-0 ${
+                state === 'done' ? 'bg-emerald-500 text-white'
+                : active        ? 'bg-primary text-primary-foreground'
+                                : 'bg-muted text-muted-foreground'
+              }`}>
                 {state === 'done' ? <Check className="h-3 w-3" /> : <Icon className="h-3 w-3" />}
               </span>
               <span className="flex-1 min-w-0">
                 <span className={`block text-xs truncate ${active ? 'font-semibold' : 'font-medium'}`}>{s.label}</span>
-                {soon    && <span className="block text-[9px] text-muted-foreground">coming soon</span>}
+                {soon    && <span className="block text-[9px] text-muted-foreground">complete previous step</span>}
                 {pending && !soon && <span className="block text-[9px] text-muted-foreground">complete previous step</span>}
+                {state === 'done' && s.key === 'decide' && (
+                  <span className={`block text-[9px] font-semibold ${
+                    interview?.decision === 'advanced' ? 'text-emerald-600'
+                    : interview?.decision === 'hold' ? 'text-amber-600'
+                    : 'text-rose-600'
+                  }`}>
+                    {interview?.decision === 'advanced' ? 'Advanced'
+                      : interview?.decision === 'hold' ? 'On Hold'
+                      : 'Rejected'}
+                  </span>
+                )}
               </span>
               {!soon && !active && <ChevronRight className="h-3 w-3 text-muted-foreground shrink-0" />}
             </button>

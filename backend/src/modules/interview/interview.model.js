@@ -405,6 +405,99 @@ class InterviewModel {
     return result.rows[0] || null;
   }  
 
+  async getDecideByJob(job_id) {
+    const result = await getDb().query(
+      `SELECT
+        ci.id AS interview_id,
+        ci.candidate_id,
+        ci.job_id,
+        ci.status,
+        ci.decision,
+        ci.reject_reason,
+        ci.reject_note,
+        ci.decided_at,
+        ci.decided_by,
+        mc.name AS candidate_name,
+        mc.last_position,
+        mc.education,
+        isc.weighted_total,
+        isc.competency_scores,
+        isc.review_flag,
+        isc.recommendation,
+        isc.standout_strengths,
+        isc.concerns,
+        isc.is_draft,
+        ipp.rubric_items
+      FROM candidate_interview ci
+      JOIN master_candidate mc    ON mc.id  = ci.candidate_id
+      LEFT JOIN interview_scorecard isc ON isc.interview_id = ci.id
+      LEFT JOIN interview_position_prep ipp ON ipp.job_id   = ci.job_id
+      WHERE ci.job_id = $1
+      ORDER BY isc.weighted_total DESC NULLS LAST`,
+      [job_id]
+    );
+    return result.rows;
+  }
+
+  async bulkDecide(job_id, decisions, decided_by) {
+    const db     = getDb();
+    const client = await db.connect();
+
+    try {
+      await client.query('BEGIN');
+
+      const decidedAt = new Date();
+
+      for (const d of decisions) {
+        await client.query(
+          `UPDATE candidate_interview
+              SET decision      = $1,
+                  reject_reason = $2,
+                  reject_note   = $3,
+                  decided_at    = $4,
+                  decided_by    = $5,
+                  updated_at    = NOW()
+            WHERE id     = $6
+              AND job_id = $7`,
+          [
+            d.decision,
+            d.reject_reason ?? null,
+            d.reject_note   ?? null,
+            decidedAt,
+            decided_by,
+            d.candidateInterviewId,
+            job_id,
+          ]
+        );
+      }
+
+      await client.query('COMMIT');
+      return { updated: decisions.length };
+
+    } catch (err) {
+      await client.query('ROLLBACK');
+      throw err;
+    } finally {
+      client.release();
+    }
+  }
+
+  async resetDecision(job_id, candidateInterviewId) {
+    const result = await getDb().query(
+      `UPDATE candidate_interview
+          SET decision      = 'pending',
+              reject_reason = NULL,
+              reject_note   = NULL,
+              decided_at    = NULL,
+              decided_by    = NULL,
+              updated_at    = NOW()
+        WHERE id     = $1
+          AND job_id = $2
+        RETURNING *`,
+      [candidateInterviewId, job_id]
+    );
+    return result.rows[0] || null;
+  }  
 
   async getPrepByJob(job_id) {
     const result = await getDb().query(

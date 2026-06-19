@@ -276,6 +276,47 @@ class InterviewController {
     }
   }  
 
+  async getDecideByJob(req, res) {
+    try {
+      const job_id = Number(req.params.job_id);
+      const result = await interviewService.getDecideByJob(job_id, {
+        company_id: req.user?.company_id || null,
+      });
+      res.status(200).json({ message: 'Decide data fetched', candidates: result });
+    } catch (err) {
+      res.status(err.status || 500).json({ message: err.message });
+    }
+  }
+
+  async bulkDecide(req, res) {
+    try {
+      const job_id = Number(req.params.job_id);
+      const { decisions } = req.body || {};
+      const result = await interviewService.bulkDecide(job_id, {
+        decisions,
+        company_id: req.user?.company_id || null,
+        decided_by: req.user?.user_id    || null,
+      });
+      res.status(200).json({ message: 'Decisions committed', ...result });
+    } catch (err) {
+      res.status(err.status || 500).json({ message: err.message });
+    }
+  }
+
+  async resetDecision(req, res) {
+    try {
+      const job_id               = Number(req.params.job_id);
+      const candidateInterviewId = Number(req.params.interview_id);
+      const result = await interviewService.resetDecision(job_id, candidateInterviewId, {
+        company_id: req.user?.company_id || null,
+      });
+      res.status(200).json({ message: 'Decision reset', interview: result });
+    } catch (err) {
+      res.status(err.status || 500).json({ message: err.message });
+    }
+  }  
+
+
   async updateRubric(req, res) {
     try {
       const job_id = Number(req.params.job_id);

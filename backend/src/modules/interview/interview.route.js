@@ -26,11 +26,14 @@ router.delete('/schedules/:schedule_id/outcome', interviewController.clearOutcom
 // Job/Prep routes (must be before /:interview_id)
 router.get('/job/:job_id', interviewController.getInterviewsByJob);
 router.get('/job/:job_id/prep', interviewController.getPrep);
+router.get( '/job/:job_id/decide', interviewController.getDecideByJob);
+router.post('/job/:job_id/decide', interviewController.bulkDecide);
 router.post('/job/:job_id/prep/questions/generate', interviewController.generateQuestions);
 router.put( '/job/:job_id/prep/questions', interviewController.updateQuestions);
 router.put( '/job/:job_id/prep/rubric', interviewController.updateRubric);
 router.post('/job/:job_id/prep/rubric/lock', interviewController.lockRubric);
 router.post('/job/:job_id/prep/rubric/unlock', interviewController.unlockRubric);
+router.delete('/job/:job_id/decide/:interview_id', interviewController.resetDecision);
 
 // Generic interview routes (LAST to avoid catching specific routes)
 router.get('/:interview_id', interviewController.getInterview);

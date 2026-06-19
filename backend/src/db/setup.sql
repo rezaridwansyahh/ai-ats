@@ -545,6 +545,11 @@ CREATE TABLE candidate_interview (
   scheduled_at TIMESTAMPTZ,
   created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
   updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  decision VARCHAR(20) NOT NULL DEFAULT 'pending',
+  reject_reason VARCHAR(100),
+  reject_note TEXT,
+  decided_at TIMESTAMPTZ,
+  decided_by INTEGER REFERENCES master_users(id) ON DELETE SET NULL,
   UNIQUE (candidate_id, job_id)
 );
 CREATE INDEX idx_ci_job     ON candidate_interview (job_id);
