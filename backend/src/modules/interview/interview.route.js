@@ -23,6 +23,10 @@ router.delete('/schedules/:schedule_id', interviewController.deleteSchedule);
 router.post('/schedules/:schedule_id/outcome', interviewController.recordOutcome);
 router.delete('/schedules/:schedule_id/outcome', interviewController.clearOutcome);
 
+// Calibration routes
+router.get( '/calibration/:job_id', interviewController.getCalibration);
+router.post('/calibration/:job_id/batch', interviewController.batchDecide);
+
 // Job/Prep routes (must be before /:interview_id)
 router.get('/job/:job_id', interviewController.getInterviewsByJob);
 router.get('/job/:job_id/prep', interviewController.getPrep);
@@ -43,9 +47,5 @@ router.patch('/:interview_id/status', interviewController.updateStatus);
 router.post('/:interview_id/decide', interviewController.recordDecision);
 router.get('/:interview_id/decision', interviewController.getDecision);
 router.delete('/:interview_id/decision', interviewController.undoDecision);
-
-// Calibration routes
-router.get('/calibration/:job_id', interviewController.getCalibration);
-router.post('/calibration/:job_id/batch', interviewController.batchDecide);
 
 export default router;

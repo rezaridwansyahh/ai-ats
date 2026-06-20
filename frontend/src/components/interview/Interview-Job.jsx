@@ -514,7 +514,10 @@ function QuestionsSection({ jobId, job, prep, setPrep, setBanner, setError }) {
                 ) : (
                   <button
                     type="button"
-                    onClick={() => !isLocked && setEditingIdx(i)}
+                    onClick={() => {
+                      if (isLocked) return;
+                      setEditingIdx((prev) => (prev === i ? null : i));
+                    }}
                     className={`w-full text-left group ${isLocked ? 'cursor-default' : 'cursor-pointer'}`}
                   >
                     <div className="flex items-start gap-2">
@@ -729,7 +732,12 @@ function RubricSection({ jobId, prep, setPrep, setBanner, setError }) {
                     />
                   </div>
                   <div className="flex justify-end">
-                    <Button size="sm" variant="ghost" className="text-xs" onClick={() => setEditingIdx(null)}>
+                    <Button
+                      size="sm"
+                      variant="ghost"
+                      className="text-xs"
+                      onClick={(e) => { e.stopPropagation(); setEditingIdx(null); }}
+                    >
                       Done
                     </Button>
                   </div>
@@ -737,7 +745,7 @@ function RubricSection({ jobId, prep, setPrep, setBanner, setError }) {
               ) : (
                 <button
                   type="button"
-                  onClick={() => !isLocked && setEditingIdx(i)}
+                  onClick={() => !isLocked && setEditingIdx((prev) => (prev === i ? null : i))}
                   className={`w-full text-left group ${isLocked ? 'cursor-default' : 'cursor-pointer'}`}
                 >
                   <div className="flex items-start justify-between gap-3">

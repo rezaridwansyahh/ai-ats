@@ -381,13 +381,11 @@ class InterviewService {
 
   async getDecideByJob(job_id, { company_id = null } = {}) {
     if (!job_id) throw { status: 400, message: 'job_id is required' };
-
     const job = await jobModel.getById(job_id);
     if (!job) throw { status: 404, message: 'Job not found' };
     if (company_id && job.company_id && job.company_id !== company_id) {
       throw { status: 403, message: 'Cross-tenant access denied' };
     }
-
     return await interviewModel.getDecideByJob(job_id);
   }
 
@@ -396,56 +394,92 @@ class InterviewService {
     if (!Array.isArray(decisions) || decisions.length === 0) {
       throw { status: 400, message: 'decisions[] is required' };
     }
-
     const job = await jobModel.getById(job_id);
     if (!job) throw { status: 404, message: 'Job not found' };
     if (company_id && job.company_id && job.company_id !== company_id) {
       throw { status: 403, message: 'Cross-tenant access denied' };
     }
-
-    const validDecisions = ['advanced', 'rejected', 'hold'];
+    const validDecisions    = ['advanced', 'rejected', 'hold'];
     const validRejectReasons = [
-      'skill_gap_core_competency',
-      'below_score_band_rubric',
-      'stronger_candidate_selected',
-      'communication_culture_fit',
-      'withdrew_counter_offer',
-      'other',
+      'skill_gap_core_competency', 'below_score_band_rubric',
+      'stronger_candidate_selected', 'communication_culture_fit',
+      'withdrew_counter_offer', 'other',
     ];
-
     for (const d of decisions) {
-      if (!d.candidateInterviewId) {
-        throw { status: 400, message: 'each decision needs a candidateInterviewId' };
-      }
-      if (!validDecisions.includes(d.decision)) {
-        throw { status: 400, message: `decision must be one of: ${validDecisions.join(', ')}` };
-      }
+      if (!d.candidateInterviewId) throw { status: 400, message: 'each decision needs a candidateInterviewId' };
+      if (!validDecisions.includes(d.decision)) throw { status: 400, message: `decision must be one of: ${validDecisions.join(', ')}` };
       if (d.decision === 'rejected') {
-        if (!d.reject_reason) {
-          throw { status: 400, message: 'reject_reason is required for rejected candidates' };
-        }
-        if (!validRejectReasons.includes(d.reject_reason)) {
-          throw { status: 400, message: `invalid reject_reason: ${d.reject_reason}` };
-        }
+        if (!d.reject_reason) throw { status: 400, message: 'reject_reason is required for rejected candidates' };
+        if (!validRejectReasons.includes(d.reject_reason)) throw { status: 400, message: `invalid reject_reason: ${d.reject_reason}` };
       }
     }
-
     return await interviewModel.bulkDecide(job_id, decisions, decided_by);
   }
 
   async resetDecision(job_id, candidateInterviewId, { company_id = null } = {}) {
     if (!job_id) throw { status: 400, message: 'job_id is required' };
     if (!candidateInterviewId) throw { status: 400, message: 'candidateInterviewId is required' };
+    const job = await jobModel.getById(job_id);
+    if (!job) throw { status: 404, message: 'Job not found' };
+    if (company_id && job.company_id && job.company_id !== company_id) {
+      throw { status: 403, message: 'Cross-tenant access denied' };
+    }
+    const result = await interviewModel.resetDecision(job_id, candidateInterviewId);
+    if (!result) throw { status: 404, message: 'Candidate interview not found' };
+    return result;
+  }
 
+  async getCalibration(job_id, { company_id = null } = {}) {
+    if (!job_id) throw { status: 400, message: 'job_id is required' };
+    if (!company_id) throw { status: 400, message: 'company_id is required' };
+    const job = await jobModel.getById(job_id);
+    if (!job) throw { status: 404, message: 'Job not found' };
+    if (company_id && job.company_id && job.company_id !== company_id) {
+      throw { status: 403, message: 'Cross-tenant access denied' };
+    }
+    const candidates = await interviewModel.getCalibrationData(job_id, company_id);
+    return {
+      job: { job_id: job.id, job_title: job.job_title, job_location: job.job_location, seniority_level: job.seniority_level },
+      candidates,
+    };
+  }
+
+  async batchDecide(job_id, { decisions, company_id = null, decided_by = null } = {}) {
+    if (!job_id) throw { status: 400, message: 'job_id is required' };
+    if (!company_id) throw { status: 400, message: 'company_id is required' };
+    if (!Array.isArray(decisions) || decisions.length === 0) {
+      throw { status: 400, message: 'decisions must be a non-empty array' };
+    }
     const job = await jobModel.getById(job_id);
     if (!job) throw { status: 404, message: 'Job not found' };
     if (company_id && job.company_id && job.company_id !== company_id) {
       throw { status: 403, message: 'Cross-tenant access denied' };
     }
 
-    const result = await interviewModel.resetDecision(job_id, candidateInterviewId);
-    if (!result) throw { status: 404, message: 'Candidate interview not found' };
-    return result;
+    // map colleague's verdict values to our decision values
+    const verdictMap = { advance: 'advanced', hold: 'hold', reject: 'rejected' };
+    const validVerdicts = Object.keys(verdictMap);
+
+    for (const dec of decisions) {
+      if (!dec.interview_id) throw { status: 400, message: 'Each decision must have interview_id' };
+      if (!dec.verdict || !validVerdicts.includes(dec.verdict)) {
+        throw { status: 400, message: `verdict must be one of: ${validVerdicts.join(', ')}` };
+      }
+      const scorecard = await interviewModel.getScorecardByInterview(dec.interview_id);
+      if (!scorecard || scorecard.is_draft) {
+        throw { status: 400, message: `Interview ${dec.interview_id} has no submitted scorecard` };
+      }
+    }
+
+    const mapped = decisions.map((d) => ({
+      interview_id:  d.interview_id,
+      decision:      verdictMap[d.verdict],
+      reject_reason: d.verdict === 'reject' ? (d.reject_reason || null) : null,
+      reject_note:   d.decision_note || null,
+      decided_by:    decided_by || null,
+    }));
+
+    return await interviewModel.batchRecordDecisions(mapped, company_id);
   }
 
   async updateRubric(job_id, rubric_items, { company_id = null } = {}) {

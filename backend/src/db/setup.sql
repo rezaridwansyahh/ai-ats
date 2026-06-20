@@ -75,7 +75,6 @@ DROP TYPE IF EXISTS assessment_status_type CASCADE;
 DROP TYPE IF EXISTS screening_qa_status_type CASCADE;
 DROP TYPE IF EXISTS interview_status_type CASCADE;
 DROP TYPE IF EXISTS interview_recommendation_type CASCADE;
-DROP TYPE IF EXISTS interview_verdict_type CASCADE;
 
 -- Create ENUM type
 CREATE TYPE status_type AS ENUM ('Draft', 'Active', 'Running', 'Expired', 'Failed', 'Blocked');
@@ -101,7 +100,6 @@ CREATE TYPE assessment_status_type AS ENUM ('in_progress', 'completed', 'expired
 CREATE TYPE screening_qa_status_type AS ENUM ('draft', 'sent', 'responded', 'expired');
 CREATE TYPE interview_status_type AS ENUM ('ongoing', 'interviewed', 'no_show', 'reschedule', 'cancelled', 'done');
 CREATE TYPE interview_recommendation_type  AS ENUM ('strong_no_hire', 'no_hire', 'hire', 'strong_hire');
-CREATE TYPE interview_verdict_type AS ENUM ('advance', 'hold', 'reject');
 CREATE EXTENSION IF NOT EXISTS pgcrypto;
 CREATE EXTENSION IF NOT EXISTS pg_trgm;
 
@@ -536,26 +534,20 @@ CREATE TABLE screening_qa (
   created_at  TIMESTAMPTZ NOT NULL DEFAULT NOW(),
   updated_at  TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
-
 CREATE TABLE candidate_interview (
   id SERIAL PRIMARY KEY,
   candidate_id INTEGER NOT NULL REFERENCES master_candidate(id) ON DELETE CASCADE,
-  job_id INTEGER NOT NULL REFERENCES core_job(id) ON DELETE CASCADE,
-  screening_id INTEGER REFERENCES candidate_screening(id) ON DELETE SET NULL,
-  company_id INTEGER REFERENCES core_company(id) ON DELETE CASCADE,
-  status VARCHAR(20) NOT NULL DEFAULT 'ongoing',  -- ongoing | scheduled | done | cancelled
+  job_id INTEGER NOT NULL REFERENCES core_job(id)         ON DELETE CASCADE,
+  company_id INTEGER REFERENCES core_company(id)              ON DELETE CASCADE,
+  status VARCHAR(20) NOT NULL DEFAULT 'ongoing',  -- ongoing | scheduled | interviewed | no_show | reschedule | done | cancelled
   scheduled_at TIMESTAMPTZ,
-  verdict interview_verdict_type,               -- advance | hold | reject (from Decide tab)
-  decision_note TEXT,                            -- reasoning for the verdict
+  decision VARCHAR(20) NOT NULL DEFAULT 'pending',  -- pending | advanced | hold | rejected
+  reject_reason VARCHAR(100),
+  reject_note TEXT,
   decided_by INTEGER REFERENCES master_users(id) ON DELETE SET NULL,
   decided_at TIMESTAMPTZ,
   created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
   updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-  decision VARCHAR(20) NOT NULL DEFAULT 'pending',
-  reject_reason VARCHAR(100),
-  reject_note TEXT,
-  decided_at TIMESTAMPTZ,
-  decided_by INTEGER REFERENCES master_users(id) ON DELETE SET NULL,
   UNIQUE (candidate_id, job_id)
 );
 CREATE INDEX idx_ci_job     ON candidate_interview (job_id);
