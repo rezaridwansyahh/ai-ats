@@ -455,13 +455,13 @@ class InterviewService {
     if (company_id && job.company_id && job.company_id !== company_id) {
       throw { status: 403, message: 'Cross-tenant access denied' };
     }
-
-    // map colleague's verdict values to our decision values
     const verdictMap = { advance: 'advanced', hold: 'hold', reject: 'rejected' };
     const validVerdicts = Object.keys(verdictMap);
-
+    
     for (const dec of decisions) {
-      if (!dec.interview_id) throw { status: 400, message: 'Each decision must have interview_id' };
+      if (!dec.interview_id) {
+        throw { status: 400, message: 'Each decision must have interview_id' };
+      }
       if (!dec.verdict || !validVerdicts.includes(dec.verdict)) {
         throw { status: 400, message: `verdict must be one of: ${validVerdicts.join(', ')}` };
       }
@@ -471,17 +471,20 @@ class InterviewService {
       }
     }
 
-    const mapped = decisions.map((d) => ({
-      interview_id:  d.interview_id,
-      decision:      verdictMap[d.verdict],
-      reject_reason: d.verdict === 'reject' ? (d.reject_reason || null) : null,
-      reject_note:   d.decision_note || null,
-      decided_by:    decided_by || null,
-    }));
+    const mapped = decisions.map((d) => {
+      const decision = verdictMap[d.verdict];
+      if (!decision) throw { status: 400, message: `Unknown verdict: ${d.verdict}` };
+      return {
+        interview_id:  d.interview_id,
+        decision,
+        reject_reason: d.verdict === 'reject' ? (d.reject_reason || null) : null,
+        reject_note:   d.decision_note || null,
+        decided_by:    decided_by || null,
+      };
+    });
 
     return await interviewModel.batchRecordDecisions(mapped, company_id);
   }
-
   async updateRubric(job_id, rubric_items, { company_id = null } = {}) {
     if (!job_id) throw { status: 400, message: 'job_id is required' };
     if (!Array.isArray(rubric_items) || rubric_items.length === 0) {
@@ -629,45 +632,6 @@ class InterviewService {
     };
   }
 
-  async batchDecide(job_id, { decisions, company_id = null, decided_by = null } = {}) {
-    if (!job_id) throw { status: 400, message: 'job_id is required' };
-    if (!company_id) throw { status: 400, message: 'company_id is required' };
-    if (!Array.isArray(decisions) || decisions.length === 0) {
-      throw { status: 400, message: 'decisions must be a non-empty array' };
-    }
-
-    const job = await jobModel.getById(job_id);
-    if (!job) throw { status: 404, message: 'Job not found' };
-
-    if (company_id && job.company_id && job.company_id !== company_id) {
-      throw { status: 403, message: 'Cross-tenant access denied' };
-    }
-
-    // Validate all decisions
-    const valid = ['advance', 'hold', 'reject'];
-    for (const dec of decisions) {
-      if (!dec.interview_id) {
-        throw { status: 400, message: 'Each decision must have interview_id' };
-      }
-      if (!dec.verdict || !valid.includes(dec.verdict)) {
-        throw { status: 400, message: `verdict must be one of: ${valid.join(', ')}` };
-      }
-
-      // Check scorecard exists and is submitted
-      const scorecard = await interviewModel.getScorecardByInterview(dec.interview_id);
-      if (!scorecard || scorecard.is_draft) {
-        throw { status: 400, message: `Interview ${dec.interview_id} has no submitted scorecard` };
-      }
-    }
-
-    // Add decided_by to all decisions
-    const decisionsWithUser = decisions.map((d) => ({
-      ...d,
-      decided_by: decided_by || null,
-    }));
-
-    return await interviewModel.batchRecordDecisions(decisionsWithUser, company_id);
-  }
 }
 
 export default new InterviewService();
