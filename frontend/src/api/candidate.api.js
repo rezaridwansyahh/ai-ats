@@ -25,12 +25,22 @@ export const sendCandidateEmail = (candidate_id, body = {}) =>
   api.post(`/candidate-pipeline/${candidate_id}/email`, body);
 
 // Report page: per-job candidate counts for the left rail.
-export const getCandidatePipelineSummary = () =>
-  api.get('/candidate-pipeline/summary');
+export const getCandidatePipelineSummary = (category = null) => {
+  let url = '/candidate-pipeline/summary'
+
+  if(category) url += `?category=${category}`;
+
+  return api.get(url);
+}
 
 // Report page: candidates attached to a job.
-export const getCandidatesByJobId = (job_id) =>
-  api.get(`/candidate-pipeline/job/${job_id}`);
+export const getCandidatesByJobId = (job_id, category = null) => {
+  let url = `/candidate-pipeline/job/${job_id}`;
+
+  if(category) url += `?category=${category}`;
+
+  return api.get(url);
+}
 
 // Detail page: single candidate by master_candidate.id.
 export const getCandidateById = (id) =>

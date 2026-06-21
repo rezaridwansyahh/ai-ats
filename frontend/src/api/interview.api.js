@@ -52,3 +52,7 @@ export const getDecideByJob = (jobId) => api.get(`/interview/job/${jobId}/decide
 export const bulkDecide = (jobId, decisions) => api.post(`/interview/job/${jobId}/decide`, { decisions });
 
 export const resetDecision = (jobId, interviewId) => api.delete(`/interview/job/${jobId}/decide/${interviewId}`);
+
+export const getCalibration = (job_id) => api.get(`/interview/calibration/${job_id}`);
+
+export const batchDecide = (job_id, decisions) => api.post(`/interview/calibration/${job_id}/batch`, { decisions });

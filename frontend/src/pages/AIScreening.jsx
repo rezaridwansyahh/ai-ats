@@ -105,6 +105,7 @@ export default function AIScreeningPage() {
       setError(null);
       try {
         const [jobRes, calRes, parseRes, matchRes] = await Promise.all([
+          // Category for AI Screening
           getJobById(jobId),
           getCalibration(jobId),
           getLaneCandidates(jobId, 'parse'),

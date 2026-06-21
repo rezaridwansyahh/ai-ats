@@ -44,6 +44,7 @@ export default function AIScreeningWorkboard() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
+  const [activeJob, setActiveJob] = useState('');
   const [activeStage, setActiveStage] = useState(null); // null = all stages
   const [search, setSearch] = useState('');
   const [page, setPage] = useState(1);
@@ -76,6 +77,11 @@ export default function AIScreeningWorkboard() {
     }
   };
 
+  const displayCandidates = useMemo(() => {
+    if (activeJob === '') return candidates;
+    return candidates.filter(c => c.job_id === activeJob.job_id);
+  }, [candidates, activeJob]);
+
   useEffect(() => { loadWorkboard(); }, []);
 
   // Stage counts derived from the candidate list so chips match the filter exactly.
@@ -86,7 +92,7 @@ export default function AIScreeningWorkboard() {
   }, [candidates]);
 
   const filtered = useMemo(() => {
-    let list = candidates;
+    let list = displayCandidates;
     if (activeStage) list = list.filter((c) => c.engine === activeStage);
     const q = search.trim().toLowerCase();
     if (q) {
@@ -97,7 +103,7 @@ export default function AIScreeningWorkboard() {
       );
     }
     return list;
-  }, [candidates, activeStage, search]);
+  }, [displayCandidates , activeStage, search]);
 
   const totalPages = Math.max(1, Math.ceil(filtered.length / pageSize));
   const pageClamped = Math.min(page, totalPages);
@@ -113,7 +119,7 @@ export default function AIScreeningWorkboard() {
     setPage(1);
   };
 
-  const resetView = () => { setActiveStage(null); setSearch(''); setPage(1); };
+  const resetView = () => { setActiveStage(null); setSearch(''); setPage(1); setActiveJob(''); };
 
   const openCandidate = async (c) => {
     try {
@@ -128,6 +134,8 @@ export default function AIScreeningWorkboard() {
       setError(err.response?.data?.message || err.message || 'Failed to open candidate');
     }
   };
+
+  const handleChangeJob = (position) => setActiveJob(position)
 
   return (
     <div className="space-y-5 p-6">
@@ -169,24 +177,19 @@ export default function AIScreeningWorkboard() {
               const meta = STAGE_META[stage];
               const count = stageCounts[stage] || 0;
               const active = activeStage === stage;
-              const disabled = stage === 'qa';
               return (
                 <button
                   key={stage}
                   type="button"
-                  onClick={() => !disabled && toggleStage(stage)}
-                  disabled={disabled}
+                  onClick={() => toggleStage(stage)}
                   className={`inline-flex items-center gap-2 px-3 py-1.5 rounded-full border text-xs font-semibold transition-colors ${
                     active
                       ? 'bg-primary text-primary-foreground border-primary'
-                      : disabled
-                        ? 'bg-muted text-muted-foreground border-border cursor-not-allowed opacity-60'
-                        : `${meta.color} border-transparent hover:brightness-95 cursor-pointer`
+                      : `${meta.color} border-transparent hover:brightness-95 cursor-pointer`
                   }`}
                 >
                   <span className="font-mono">{count}</span>
                   <span>{meta.label}</span>
-                  {disabled && <span className="text-[9px] uppercase tracking-wider ml-0.5 opacity-70">soon</span>}
                 </button>
               );
             })}
@@ -220,7 +223,12 @@ export default function AIScreeningWorkboard() {
                 <button
                   type="button"
                   onClick={resetView}
-                  className="w-full flex items-center justify-between px-3 py-2 rounded-md text-xs bg-primary/10 text-primary font-semibold"
+                  className={[
+                    "w-full flex items-center justify-between px-3 py-2 rounded-md text-xs font-semibold",
+                    (activeJob === "")
+                      ? 'bg-primary/10 text-primary'
+                      : 'text-muted-foreground hover:bg-muted/60 text-foreground'
+                  ].join(" ")}
                 >
                   <span>All positions</span>
                   <span className="font-mono text-[10px]">{totalCandidates}</span>
@@ -230,9 +238,13 @@ export default function AIScreeningWorkboard() {
                     <button
                       key={p.job_id}
                       type="button"
-                      onClick={() => navigate(`/selection/ai-screening/job/${p.job_id}`)}
-                      className="w-full flex items-center justify-between gap-2 px-3 py-2 rounded-md text-xs hover:bg-muted/50 text-foreground transition-colors"
-                      title="Open position dashboard"
+                      onClick={() => handleChangeJob(p)}
+                      className={[
+                        "w-full flex items-center justify-between gap-2 px-3 py-2 rounded-md text-xs",
+                        (activeJob.job_id === p.job_id)
+                          ? 'bg-primary/10 text-primary'
+                          : 'text-muted-foreground hover:bg-muted/60 text-foreground',
+                      ].join(" ")}
                     >
                       <span className="truncate text-left flex items-center gap-1.5 min-w-0">
                         <span className="truncate">{p.job_title}</span>
@@ -254,11 +266,17 @@ export default function AIScreeningWorkboard() {
         {/* Candidates panel */}
         <Card>
           <CardHeader className="pb-3 space-y-3">
-            <CardTitle className="text-sm">
-              All candidates
+            <CardTitle className="text-sm gap-3 flex items-center h-[40px]">
+              
+              {activeJob === '' ? "All candidates" : `${activeJob.job_title}`}
               <span className="ml-2 text-[11px] font-normal text-muted-foreground">
                 {filtered.length} {activeStage ? `at ${STAGE_META[activeStage].label}` : 'total'}
               </span>
+              {activeJob !== '' && (
+                <Button variant="outline" size="sm" onClick={() => navigate(`/selection/ai-screening/job/${activeJob.job_id}`)}>
+                  Open Detail
+                </Button>
+              )}
             </CardTitle>
             <div className="relative max-w-sm">
               <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />

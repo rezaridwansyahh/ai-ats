@@ -7,20 +7,19 @@ class PortalAssessment {
       SELECT s.id,
              s.token,
              s.battery,
-             s.participant_id,
+             s.candidate_id,
              s.job_id,
              s.status,
              s.expired_at,
              s.submitted_at,
-             p.email      AS participant_email,
-             p.name       AS participant_name,
-             p.position   AS participant_position,
-             p.department AS participant_department,
-             p.education  AS participant_education,
-             p.date_birth AS participant_date_birth,
+             ma.email      AS candidate_email,
+             mc.name       AS participant_name,
+             ma.last_position    AS participant_position,
+             mc.education  AS participant_education,
              j.job_title
       FROM assessment_sessions s
-      LEFT JOIN participants p ON p.id = s.participant_id
+      LEFT JOIN master_candidate mc ON mc.id = s.candidate_id
+      left join master_applicant ma on ma.id = mc.applicant_id 
       LEFT JOIN core_job      j ON j.id = s.job_id
       WHERE s.token::text = $1
          OR REPLACE(s.token::text, '-', '') = $1

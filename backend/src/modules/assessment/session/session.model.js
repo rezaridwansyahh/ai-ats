@@ -42,33 +42,33 @@ class Session {
       WHERE job_id = $1
     `, [job_id]);
     return result.rows;
-  }  
+  }
 
   // All non-expired sessions for (participant, job). Includes 'completed' so the
   // recruiter UI can surface past submissions, not just live invitations.
-  static async getActiveByParticipantJob(participant_id, job_id) {
+  static async getActiveByParticipantJob(candidate_id, job_id) {
     const result = await getDb().query(`
       SELECT *
       FROM assessment_sessions
-      WHERE participant_id = $1
+      WHERE candidate_id = $1
         AND job_id IS NOT DISTINCT FROM $2
         AND status NOT IN ('expired', 'revoked')
       ORDER BY created_at DESC
-    `, [participant_id, job_id]);
+    `, [candidate_id, job_id]);
     return result.rows;
   }
 
-  static async getByParticipantJobBattery(participant_id, job_id, battery) {
+  static async getByParticipantJobBattery(candidate_id, job_id, battery) {
     const result = await getDb().query(`
       SELECT *
       FROM assessment_sessions
-      WHERE participant_id = $1
+      WHERE candidate_id = $1
         AND job_id IS NOT DISTINCT FROM $2
         AND battery = $3
         AND status IN ('invited', 'in_progress')
       ORDER BY created_at DESC
       LIMIT 1
-    `, [participant_id, job_id, battery]);
+    `, [candidate_id, job_id, battery]);
     return result.rows[0];
   }
 
@@ -101,13 +101,13 @@ class Session {
     return result.rows[0];
   }
 
-  static async create({ battery, participant_id, job_id, created_by, expired_at, notes }) {
+  static async create({ battery, candidate_id, job_id, created_by, expired_at, notes }) {
     const result = await getDb().query(`
       INSERT INTO assessment_sessions
-        (battery, participant_id, job_id, created_by, expired_at, notes)
+        (battery, candidate_id, job_id, created_by, expired_at, notes)
       VALUES ($1, $2, $3, $4, $5, $6)
       RETURNING *
-    `, [battery, participant_id || null, job_id || null, created_by, expired_at, notes || null]);
+    `, [battery, candidate_id || null, job_id || null, created_by, expired_at, notes || null]);
     return result.rows[0];
   }
 

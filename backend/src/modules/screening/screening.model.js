@@ -147,7 +147,6 @@ class ScreeningModel {
         cs.decided_at,
         cs.decided_by,
         cs.created_at          AS screening_created_at,
-
         mc.applicant_id,
         mc.name                AS candidate_name,
         mc.last_position,
@@ -156,7 +155,6 @@ class ScreeningModel {
         mc.date                AS applied_at,
         mc.attachment,
         mc.latest_stage,
-
         cj.job_title,
         cj.job_location,
         cj.work_type,
@@ -166,9 +164,7 @@ class ScreeningModel {
         cj.preferred_skills,
         cj.rubric,
         cj.status              AS job_status,
-
         ma.information         AS facets,
-
         s.id                       AS score_id,
         s.overall_score,
         s.skills_score,
@@ -182,15 +178,12 @@ class ScreeningModel {
         s.role_profile,
         s.summary              AS score_summary,
         s.scored_at,
-
         CASE
           WHEN ma.information IS NULL THEN 'parse'
           WHEN s.id IS NULL          THEN 'match'
           ELSE                            'done'
         END AS engine,
-
         (cj.rubric IS NOT NULL AND s.rubric_snapshot IS NOT NULL AND s.rubric_snapshot IS DISTINCT FROM cj.rubric) AS rubric_is_stale
-
       FROM candidate_screening cs
       JOIN master_candidate mc ON mc.id = cs.candidate_id
       JOIN core_job cj          ON cj.id = cs.job_id
@@ -354,18 +347,21 @@ class ScreeningModel {
         SELECT
           mc.job_id,
           mc.applicant_id,
+          mc.latest_stage,
           CASE
             WHEN ma.information IS NULL THEN 'parse'
             WHEN s.id IS NULL          THEN 'match'
+            WHEN sq is null then 'qa'
             ELSE 'ready'
           END AS engine
         FROM master_candidate mc
-        JOIN core_job cj            ON cj.id = mc.job_id
+        JOIN core_job cj ON cj.id = mc.job_id
         LEFT JOIN master_applicant ma ON ma.id = mc.applicant_id
         LEFT JOIN candidate_job_score s
           ON s.applicant_id = mc.applicant_id AND s.job_id = mc.job_id
+        LEFT JOIN screening_qa sq ON sq.id = cj.company_id
         WHERE cj.company_id = $1 AND mc.applicant_id IS NOT NULL
-      )
+      ) 
       SELECT
         cj.id                                   AS job_id,
         cj.job_title,
@@ -373,11 +369,13 @@ class ScreeningModel {
         COUNT(ce.applicant_id)                  AS total,
         COUNT(*) FILTER (WHERE ce.engine='parse') AS parse,
         COUNT(*) FILTER (WHERE ce.engine='match') AS match,
-        0::int                                  AS qa,
+        COUNT(*) FILTER (WHERE ce.engine='qa') AS qa,
         COUNT(*) FILTER (WHERE ce.engine='ready') AS ready
       FROM core_job cj
       LEFT JOIN candidate_engine ce ON ce.job_id = cj.id
-      WHERE cj.company_id = $1
+      left join job_stage js on js.id = ce.latest_stage
+      left join recruitment_stage_category rsc on rsc.id = js.stage_type_id
+      WHERE cj.company_id = $1 and rsc.name = 'Screening & Matching'
       GROUP BY cj.id, cj.job_title, cj.status
       ORDER BY cj.status = 'Active' DESC, cj.id ASC
       `,
@@ -460,6 +458,7 @@ class ScreeningModel {
         CASE
           WHEN a.information IS NULL THEN 'parse'
           WHEN s.id IS NULL          THEN 'match'
+          WHEN sq is null then 'qa'
           ELSE                            'ready'
         END AS engine
       FROM master_candidate mc
@@ -467,7 +466,10 @@ class ScreeningModel {
       LEFT JOIN candidate_job_score s
         ON s.applicant_id = mc.applicant_id AND s.job_id = mc.job_id
       LEFT JOIN candidate_screening cs ON cs.candidate_id = mc.id
-      WHERE mc.job_id = $1 AND mc.applicant_id IS NOT NULL
+      LEFT JOIN screening_qa sq ON sq.screening_id = cs.id
+      left join job_stage js on js.id = mc.latest_stage
+      left join recruitment_stage_category rsc on rsc.id = js.stage_type_id
+      WHERE mc.job_id = $1 AND mc.applicant_id IS NOT NULL AND rsc.name = 'Screening & Matching'
       ORDER BY mc.created_at DESC
       `,
       [job_id]

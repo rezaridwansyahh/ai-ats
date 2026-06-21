@@ -24,23 +24,13 @@
 
 const TS = '2026-06-07 10:00:00';
 
-export const insightsParticipants = [
-  { id: 1, name: 'Ayu Pratiwi',     email: 'ayu.pratiwi@example.com',     position: 'Frontend Engineer',       department: 'Engineering',  education: "Bachelor's in Computer Science",  date_birth: '1998-04-12' },
-  { id: 2, name: 'Budi Santoso',    email: 'budi.santoso@example.com',    position: 'UI Engineer',             department: 'Engineering',  education: "Bachelor's in Informatics",       date_birth: '1999-06-21' },
-  { id: 3, name: 'Citra Lestari',   email: 'citra.lestari@example.com',   position: 'Senior Product Designer', department: 'Design',       education: "Bachelor's in Design",            date_birth: '1995-11-03' },
-  { id: 4, name: 'Dewi Anggraini',  email: 'dewi.anggraini@example.com',  position: 'Frontend Developer',      department: 'Engineering',  education: "Bachelor's in Computer Science",  date_birth: '1997-02-18' },
-  { id: 5, name: 'Gilang Ramadhan', email: 'gilang.ramadhan@example.com', position: 'Backend Engineer',        department: 'Engineering',  education: "Bachelor's in Software Engineering", date_birth: '1996-09-09' },
-  { id: 6, name: 'Hana Putri',      email: 'hana.putri@example.com',      position: 'Full-Stack Engineer',     department: 'Engineering',  education: "Bachelor's in Computer Science",  date_birth: '1998-12-30' },
-  { id: 7, name: 'Kevin Wijaya',    email: 'kevin.wijaya@example.com',    position: 'Senior Backend Engineer', department: 'Engineering',  education: "Master's in Computer Science",    date_birth: '1993-07-25' },
-];
-
 // One row per participant. assessment_id = 5 (Insights, per assessments.js seed).
 export const insightsResults = [
   // ── BLU_S Analis · pass ──  (high I, high T, mild S)
   // E=10, I=14, T=16, F=8, S=14, N=10  →  Epct=42, Tpct=67, Spct=58
   // RED=55, YEL=38, GRN=46, BLU=63  →  dominant=BLU(63), composite=9
   {
-    participant_id: 1, assessment_id: 5,
+    candidate_id: 1, assessment_id: 5,
     raw:     { E:10, I:14, T:16, F:8,  S:14, N:10, Epct:42, Ipct:58, Tpct:67, Fpct:33, Spct:58, Npct:42 },
     colors:  { RED:55, YEL:38, GRN:46, BLU:63 },
     profile: { dominantColor:'BLU', variant:'S', profileId:'BLU_S', profile_name:'Analis', composite:9, verdictV:'pass' },
@@ -60,7 +50,7 @@ export const insightsResults = [
   // E=14, I=10, T=10, F=14, S=10, N=14  →  Epct=58, Tpct=42, Spct=42
   // RED=50, YEL=58, GRN=50, BLU=42  →  dominant=YEL(58), composite=7
   {
-    participant_id: 2, assessment_id: 5,
+    candidate_id: 2, assessment_id: 5,
     raw:     { E:14, I:10, T:10, F:14, S:10, N:14, Epct:58, Ipct:42, Tpct:42, Fpct:58, Spct:42, Npct:58 },
     colors:  { RED:50, YEL:58, GRN:50, BLU:42 },
     profile: { dominantColor:'YEL', variant:'N', profileId:'YEL_N', profile_name:'Pemotivasi', composite:7, verdictV:'pass' },
@@ -80,7 +70,7 @@ export const insightsResults = [
   // E=10, I=14, T=16, F=8, S=10, N=14  →  Epct=42, Tpct=67, Spct=42
   // RED=55, YEL=38, GRN=46, BLU=63  →  dominant=BLU(63), composite=9
   {
-    participant_id: 3, assessment_id: 5,
+    candidate_id: 3, assessment_id: 5,
     raw:     { E:10, I:14, T:16, F:8,  S:10, N:14, Epct:42, Ipct:58, Tpct:67, Fpct:33, Spct:42, Npct:58 },
     colors:  { RED:55, YEL:38, GRN:46, BLU:63 },
     profile: { dominantColor:'BLU', variant:'N', profileId:'BLU_N', profile_name:'Ahli Strategi', composite:9, verdictV:'pass' },
@@ -100,7 +90,7 @@ export const insightsResults = [
   // E=10, I=14, T=8, F=16, S=14, N=10  →  Epct=42, Tpct=33, Spct=58
   // RED=38, YEL=55, GRN=63, BLU=46  →  dominant=GRN(63), composite=9
   {
-    participant_id: 4, assessment_id: 5,
+    candidate_id: 4, assessment_id: 5,
     raw:     { E:10, I:14, T:8,  F:16, S:14, N:10, Epct:42, Ipct:58, Tpct:33, Fpct:67, Spct:58, Npct:42 },
     colors:  { RED:38, YEL:55, GRN:63, BLU:46 },
     profile: { dominantColor:'GRN', variant:'S', profileId:'GRN_S', profile_name:'Pendukung', composite:9, verdictV:'pass' },
@@ -120,7 +110,7 @@ export const insightsResults = [
   // E=14, I=10, T=16, F=8, S=14, N=10  →  Epct=58, Tpct=67, Spct=58
   // RED=63, YEL=46, GRN=38, BLU=55  →  dominant=RED(63), composite=9
   {
-    participant_id: 5, assessment_id: 5,
+    candidate_id: 5, assessment_id: 5,
     raw:     { E:14, I:10, T:16, F:8,  S:14, N:10, Epct:58, Ipct:42, Tpct:67, Fpct:33, Spct:58, Npct:42 },
     colors:  { RED:63, YEL:46, GRN:38, BLU:55 },
     profile: { dominantColor:'RED', variant:'S', profileId:'RED_S', profile_name:'Pengarah', composite:9, verdictV:'pass' },
@@ -140,7 +130,7 @@ export const insightsResults = [
   // E=14, I=10, T=14, F=10, S=10, N=14  →  Epct=58, Tpct=58, Spct=42
   // RED=58, YEL=50, GRN=42, BLU=50  →  dominant=RED(58), composite=7
   {
-    participant_id: 6, assessment_id: 5,
+    candidate_id: 6, assessment_id: 5,
     raw:     { E:14, I:10, T:14, F:10, S:10, N:14, Epct:58, Ipct:42, Tpct:58, Fpct:42, Spct:42, Npct:58 },
     colors:  { RED:58, YEL:50, GRN:42, BLU:50 },
     profile: { dominantColor:'RED', variant:'N', profileId:'RED_N', profile_name:'Penggerak', composite:7, verdictV:'pass' },
@@ -160,7 +150,7 @@ export const insightsResults = [
   // E=12, I=12, T=13, F=11, S=12, N=12  →  Epct=50, Tpct=54, Spct=50
   // RED=52, YEL=48, GRN=48, BLU=52  →  dominant=RED(52, tied with BLU; RED wins via insertion order), composite=5
   {
-    participant_id: 7, assessment_id: 5,
+    candidate_id: 7, assessment_id: 5,
     raw:     { E:12, I:12, T:13, F:11, S:12, N:12, Epct:50, Ipct:50, Tpct:54, Fpct:46, Spct:50, Npct:50 },
     colors:  { RED:52, YEL:48, GRN:48, BLU:52 },
     profile: { dominantColor:'RED', variant:'S', profileId:'RED_S', profile_name:'Pengarah', composite:5, verdictV:'warn' },

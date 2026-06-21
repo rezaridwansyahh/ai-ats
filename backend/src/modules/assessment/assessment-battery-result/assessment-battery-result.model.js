@@ -2,7 +2,7 @@ import getDb from "../../../config/postgres.js"
 
 const RESULT_SELECT = `
   SELECT caa.id,
-         caa.participant_id,
+         caa.candidate_id,
          caa.assessment_id,
          caa.status,
          caa.results,
@@ -21,16 +21,14 @@ const RESULT_SELECT = `
          caa.assessment_date,
          caa.created_at,
          caa.updated_at,
-         p.name        AS participant_name,
-         p.email       AS participant_email,
-         p.position    AS participant_position,
-         p.department  AS participant_department,
-         p.education   AS participant_education,
-         p.date_birth  AS participant_date_birth,
+         mc.name        AS candidate_name,
+         map.email       AS candidate_email,
+         mc.education   AS candidate_education,
          ma.assessment_code,
-         ma.name AS assessment_name
+         map.name AS assessment_name
   FROM core_applicant_assessment caa
-  JOIN participants p          ON p.id  = caa.participant_id
+  JOIN master_candidate mc ON mc.id = caa.candidate_id
+  JOIN master_applicant map ON map.id = mc.id
   LEFT JOIN master_assessment ma ON ma.id = caa.assessment_id
 `;
 
@@ -51,64 +49,64 @@ class AssessmentBatteryResult {
     return result.rows[0];
   }
 
-  static async getByParticipantId(participant_id) {
+  static async getByParticipantId(candidate_id) {
     const result = await getDb().query(`
       ${RESULT_SELECT}
-      WHERE caa.participant_id = $1
+      WHERE caa.candidate_id = $1
       ORDER BY caa.assessment_date DESC, caa.created_at DESC
-    `, [participant_id]);
+    `, [candidate_id]);
     return result.rows;
   }
 
-  static async getByParticipantAndAssessment(participant_id, assessment_id) {
+  static async getByParticipantAndAssessment(candidate_id, assessment_id) {
     const result = await getDb().query(`
       ${RESULT_SELECT}
-      WHERE caa.participant_id = $1
+      WHERE caa.candidate_id = $1
         AND caa.assessment_id  = $2
       ORDER BY caa.assessment_date DESC
       LIMIT 1
-    `, [participant_id, assessment_id]);
+    `, [candidate_id, assessment_id]);
     return result.rows[0];
   }
 
-  static async getLatestByParticipantAssessment(participant_id, assessment_id) {
+  static async getLatestByParticipantAssessment(candidate_id, assessment_id) {
     const result = await getDb().query(`
       ${RESULT_SELECT}
-      WHERE caa.participant_id = $1
+      WHERE caa.candidate_id = $1
         AND caa.assessment_id  = $2
       ORDER BY caa.created_at DESC
       LIMIT 1
-    `, [participant_id, assessment_id]);
+    `, [candidate_id, assessment_id]);
     return result.rows[0];
   }
 
-  static async getActiveByParticipantAssessment(participant_id, assessment_id) {
+  static async getActiveByParticipantAssessment(candidate_id, assessment_id) {
     const result = await getDb().query(`
       ${RESULT_SELECT}
-      WHERE caa.participant_id = $1
+      WHERE caa.candidate_id = $1
         AND caa.assessment_id  = $2
       LIMIT 1
-    `, [participant_id, assessment_id]);
+    `, [candidate_id, assessment_id]);
     return result.rows[0];
   }
 
-  static async getForUpdate(client, participant_id, assessment_id) {
+  static async getForUpdate(client, candidate_id, assessment_id) {
     const res = await client.query(`
       SELECT * FROM core_applicant_assessment
-      WHERE participant_id = $1 AND assessment_id = $2
+      WHERE candidate_id = $1 AND assessment_id = $2
       FOR UPDATE
-    `, [participant_id, assessment_id]);
+    `, [candidate_id, assessment_id]);
     return res.rows[0];
   }
 
-  static async create(client, { participant_id, assessment_id, status, results, summary, started_at, completed_at }) {
+  static async create(client, { candidate_id, assessment_id, status, results, summary, started_at, completed_at }) {
     const res = await client.query(`
       INSERT INTO core_applicant_assessment
-        (participant_id, assessment_id, status, results, summary, started_at, completed_at)
+        (candidate_id, assessment_id, status, results, summary, started_at, completed_at)
       VALUES ($1, $2, $3, $4::jsonb, $5::jsonb, $6, $7)
       RETURNING *
     `, [
-      participant_id,
+      candidate_id,
       assessment_id,
       status,
       JSON.stringify(results),

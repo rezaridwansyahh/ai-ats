@@ -49,7 +49,7 @@ DROP TABLE IF EXISTS candidate_job_score CASCADE;
 DROP TABLE IF EXISTS assessment_sessions CASCADE;
 DROP TABLE IF EXISTS core_applicant_assessment CASCADE;
 DROP TABLE IF EXISTS master_assessment CASCADE;
-DROP TABLE IF EXISTS participants CASCADE;
+DROP TABLE IF EXISTS participants CASCADE; -- For cleanup only
 
 -- Drop enums after all tables are gone
 DROP TYPE IF EXISTS recruiter_status_type CASCADE;
@@ -534,22 +534,20 @@ CREATE TABLE screening_qa (
   created_at  TIMESTAMPTZ NOT NULL DEFAULT NOW(),
   updated_at  TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
-
 CREATE TABLE candidate_interview (
   id SERIAL PRIMARY KEY,
   candidate_id INTEGER NOT NULL REFERENCES master_candidate(id) ON DELETE CASCADE,
-  job_id INTEGER NOT NULL REFERENCES core_job(id) ON DELETE CASCADE,
-  screening_id INTEGER REFERENCES candidate_screening(id) ON DELETE SET NULL,
-  company_id INTEGER REFERENCES core_company(id) ON DELETE CASCADE,
-  status VARCHAR(20) NOT NULL DEFAULT 'ongoing',  -- ongoing | scheduled | done | cancelled
+  job_id INTEGER NOT NULL REFERENCES core_job(id)         ON DELETE CASCADE,
+  company_id INTEGER REFERENCES core_company(id)              ON DELETE CASCADE,
+  status VARCHAR(20) NOT NULL DEFAULT 'ongoing',  -- ongoing | scheduled | interviewed | no_show | reschedule | done | cancelled
   scheduled_at TIMESTAMPTZ,
-  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-  updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-  decision VARCHAR(20) NOT NULL DEFAULT 'pending',
+  decision VARCHAR(20) NOT NULL DEFAULT 'pending',  -- pending | advanced | hold | rejected
   reject_reason VARCHAR(100),
   reject_note TEXT,
-  decided_at TIMESTAMPTZ,
   decided_by INTEGER REFERENCES master_users(id) ON DELETE SET NULL,
+  decided_at TIMESTAMPTZ,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
   UNIQUE (candidate_id, job_id)
 );
 CREATE INDEX idx_ci_job     ON candidate_interview (job_id);
@@ -632,18 +630,6 @@ CREATE TABLE candidate_stages(
   decision JSONB NOT NULL
 );
 
-CREATE TABLE participants(
-  id SERIAL PRIMARY KEY,
-  name VARCHAR(255) NOT NULL,
-  email VARCHAR(255) NOT NULL UNIQUE,
-  position VARCHAR(255) NOT NULL,
-  department VARCHAR(255) NOT NULL,
-  education VARCHAR(255) NOT NULL,
-  date_birth DATE NOT NULL,
-  created_at TIMESTAMP NOT NULL DEFAULT NOW(),
-  updated_at TIMESTAMP NOT NULL DEFAULT NOW()
-);
-
 CREATE TABLE master_assessment(
   id SERIAL PRIMARY KEY,
   assessment_code VARCHAR(50) UNIQUE NOT NULL, -- 'myralix_battery_a', 'disc', 'bigfive'
@@ -658,7 +644,7 @@ CREATE TABLE master_assessment(
 
 CREATE TABLE core_applicant_assessment(
   id SERIAL PRIMARY KEY,
-  participant_id INTEGER NOT NULL REFERENCES participants(id) ON DELETE CASCADE,
+  candidate_id  INTEGER NOT NULL REFERENCES master_candidate(id) ON DELETE CASCADE,
   assessment_id INT REFERENCES master_assessment(id),
   status assessment_status_type NOT NULL DEFAULT 'in_progress',
   results JSONB NOT NULL, -- HASIL LENGKAP (raw data + detail scoring)
@@ -675,12 +661,12 @@ CREATE TABLE core_applicant_assessment(
 
   started_at TIMESTAMP,
   completed_at TIMESTAMPTZ,
-  assessment_date DATE NOT NULL DEFAULT CURRENT_DATE,
+  assessment_date DATE NOT NULL DEFAULT   CURRENT_DATE,
   created_at TIMESTAMP NOT NULL DEFAULT NOW(),
   updated_at TIMESTAMP NOT NULL DEFAULT NOW(),
-  UNIQUE (participant_id, assessment_id)
+  UNIQUE (candidate_id, assessment_id)
 );
-CREATE INDEX idx_applicant_assessment ON core_applicant_assessment(participant_id);
+CREATE INDEX idx_applicant_assessment ON core_applicant_assessment(candidate_id);
 CREATE INDEX idx_assessment_date      ON core_applicant_assessment(assessment_date);
 CREATE INDEX idx_assessment_type      ON core_applicant_assessment(assessment_id);
 
@@ -688,7 +674,7 @@ CREATE TABLE assessment_sessions(
   id SERIAL PRIMARY KEY,
   token UUID NOT NULL UNIQUE DEFAULT gen_random_uuid(),
   battery battery_type NOT NULL,
-  participant_id INTEGER REFERENCES participants(id) ON DELETE SET NULL,
+  candidate_id  INTEGER REFERENCES master_candidate(id) ON DELETE SET NULL,
   job_id INTEGER REFERENCES core_job(id) ON DELETE SET NULL,
   created_by INTEGER REFERENCES master_users(id) ON DELETE SET NULL,
   status status_session_type NOT NULL DEFAULT 'invited',

@@ -20,8 +20,9 @@ class CandidatePipelineController {
   }
 
   async getSummary(req, res) {
+    const query = req.query
     try {
-      const summary = await candidatePipelineService.getSummary();
+      const summary = await candidatePipelineService.getSummary(query);
       res.status(200).json({ message: 'Candidate pipeline summary', summary });
     } catch (err) {
       res.status(err.status || 500).json({ message: err.message });
@@ -29,8 +30,9 @@ class CandidatePipelineController {
   }
 
   async getByJobId(req, res) {
+    const query = req.query
     try {
-      const pipelines = await candidatePipelineService.getByJobId(req.params.job_id);
+      const pipelines = await candidatePipelineService.getByJobId(req.params.job_id, query);
       res.status(200).json({ message: 'Candidate pipelines for job', pipelines });
     } catch (err) {
       res.status(err.status || 500).json({ message: err.message });

@@ -29,17 +29,5 @@ export async function resolveParticipantByCandidate(candidate_id, { createIfMiss
     return { participant: null, candidateJobId: row.candidate_job_id ?? null };
   }
 
-  let participant = await Participant.getByEmail(email);
-  if (!participant && createIfMissing) {
-    // Required fields we can't derive get safe placeholders; recruiter can edit later.
-    participant = await Participant.create({
-      name:       row.applicant_name     || row.candidate_name     || 'Unknown',
-      email,
-      position:   row.applicant_position || row.candidate_position || '—',
-      department: '—',
-      education:  row.applicant_education || row.candidate_education || '—',
-      date_birth: '1900-01-01',
-    });
-  }
-  return { participant: participant || null, candidateJobId: row.candidate_job_id ?? null };
+  return { participant: row || null, candidateJobId: row.candidate_job_id ?? null };
 }

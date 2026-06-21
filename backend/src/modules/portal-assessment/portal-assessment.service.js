@@ -72,7 +72,7 @@ class PortalAssessmentService {
       throw { status: 410, message: 'This invitation has been revoked by the recruiter.', code: 'revoked' };
     }
 
-    const expected = (session.participant_email || '').trim().toLowerCase();
+    const expected = (session.candidate_email || '').trim().toLowerCase();
     const given    = email.trim().toLowerCase();
     if (!expected || expected !== given) {
       throw { status: 401, message: "Email doesn't match this invitation." };
@@ -90,13 +90,11 @@ class PortalAssessmentService {
         battery:                session.battery,
         job_title:              session.job_title,
         status:                 session.status,
-        participant_name:       session.participant_name,
-        participant_email:      session.participant_email,
-        participant_id:         session.participant_id,
-        participant_position:   session.participant_position,
-        participant_department: session.participant_department,
-        participant_education:  session.participant_education,
-        participant_date_birth: session.participant_date_birth,
+        candidate_name:       session.candidate_name,
+        candidate_email:      session.candidate_email,
+        candidate_id:         session.candidate_id,
+        candidate_position:   session.candidate_position,
+        candidate_education:  session.candidate_education,
       },
     };
   }
