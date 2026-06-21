@@ -41,6 +41,7 @@ import BudgetSettingsPage from "./pages/BudgetSettings"
 import InterviewPage from "./pages/Interview"
 import BackgroundCheckPage from "./pages/BackgroundCheck"
 import SettingsPage from "./pages/Settings"
+import OfferContractPage from "./pages/OfferContract"
 
 function App() {
   return (
@@ -101,6 +102,8 @@ function App() {
 
         <Route path="/report-candidate" element={<ReportCandidatePage />} />
         <Route path="/report-candidate/:candidateId" element={<ReportCandidateDetailPage />} />
+
+        <Route path="/selection/offer-contract" element={<OfferContractPage />} />
 
         {/* Catch-all: any unregistered path shows Coming Soon */}
         <Route path="*" element={<ComingSoonPage />} />

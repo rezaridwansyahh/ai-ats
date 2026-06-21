@@ -94,6 +94,8 @@ const routeMap = {
   'Insights Discovery Assessment': '/asesmen/insights-discovery-assessment',
   'Thomas Kilmann Assessment':     '/asesmen/thomas-kilmann-assessment',
   'Interview': '/selection/interview',
+  'Background Check': '/selection/background-check',
+  'Offer & Contract': '/selection/offer-contract',
 };
 
 // Maps a raw "module" name (as it appears in permissions data) to the
@@ -108,19 +110,34 @@ const SECTION_LABEL_MAP = {
   'Settings':        'Settings',
 };
 
+
 // Menu names that should never be shown in the sidebar, even if the user
 // has permission for them.
-const HIDDEN_ITEMS = new Set();
+const HIDDEN_ITEMS = new Set([
+  'Assessment A',
+  'Assessment B',
+  'Assessment C',
+  'Assessment D',
+  'Insights Discovery Assessment',
+  'Thomas Kilmann Assessment',
+  'Report',
+]);
 
 // Menu names that are visible but not yet clickable ("SOON" pill).
-const SOON_ITEMS = new Set();
+const SOON_ITEMS = new Set([
+  'Medical Assessment',
+  'Psych Assessment', // displays as "Psychological Ass." via DISPLAY_NAME_MAP
+]);
 
+
+
+// Explicit ordering for items inside the "Selection" section.
 // Explicit ordering for items inside the "Selection" section.
 const SELECTION_MENU_ORDER = [
   'AI Screening',
+  'Interview',
   'Psych Assessment',
   'Medical Assessment',
-  'Interview',
   'Background Check',
 ];
 
@@ -490,7 +507,9 @@ export function AppSidebar() {
 
         {/* Permission-driven section groups (Main rendered above as flat rows) */}
         <div>
-          {sidebarItems.map(({ sectionLabel, menus }) => {
+        {sidebarItems
+          .filter(({ sectionLabel }) => sectionLabel !== 'Settings')
+          .map(({ sectionLabel, menus }) => {
             const SectionIcon    = sectionIconMap[sectionLabel] ?? Package;
             const isOpen         = !!openSections[sectionLabel];
             const hasActiveChild = menus.some((m) => isRouteActive(m));
@@ -503,14 +522,7 @@ export function AppSidebar() {
                   label={sectionLabel}
                   icon={SectionIcon}
                   isOpen={isOpen || hasActiveChild}
-                  onClick={() => {
-                    if (sectionLabel === 'Settings') {
-                      navigate('/settings');
-                      setOpenSections(prev => ({ ...prev, Settings: true }));
-                    } else {
-                      toggleSection(sectionLabel);
-                    }
-                  }}
+                  onClick={() => toggleSection(sectionLabel)}
                 />
                 {(isOpen || hasActiveChild) && (
                   <SidebarGroupContent className="mt-0.5 mb-1">
@@ -534,18 +546,23 @@ export function AppSidebar() {
               </SidebarGroup>
             );
           })}
-        </div>
+      </div>
 
-        {/* Bottom flat items: Reports */}
-        <div className="mt-auto pt-3 mx-1 border-t border-sidebar-border/50 space-y-0.5">
-          <FlatNavItem
-            label="Reports"
-            icon={BarChart3}
-            active={location.pathname.startsWith('/selection/report')}
-            soon
-          />
-        </div>
-
+      {/* Bottom flat items: Reports, Settings */}
+      <div className="mt-auto pt-3 mx-1 border-t border-sidebar-border/50 space-y-0.5">
+        <FlatNavItem
+          label="Reports"
+          icon={BarChart3}
+          active={location.pathname.startsWith('/selection/report')}
+          soon
+        />
+        <FlatNavItem
+          label="Settings"
+          icon={Settings}
+          active={location.pathname.startsWith('/settings')}
+          onClick={() => navigate('/settings')}
+        />
+      </div>
       </SidebarContent>
 
       {/* ── Footer: user card ── */}
