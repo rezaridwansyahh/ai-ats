@@ -30,7 +30,8 @@ export default function ReportPage() {
       setJobsLoading(true);
       setJobsError(null);
       try {
-        const res  = await getCandidatePipelineSummary();
+        // Added filter 
+        const res  = await getCandidatePipelineSummary('Assessment');
         const list = res.data?.summary || [];
         if (cancelled) return;
         setJobs(list);
@@ -57,7 +58,8 @@ export default function ReportPage() {
       setCandidatesLoading(true);
       setCandidatesError(null);
       try {
-        const res = await getCandidatesByJobId(selectedJobId);
+        // In here categorized assesment so only assesment is shown
+        const res = await getCandidatesByJobId(selectedJobId, 'Assessment');
         if (!cancelled) setCandidates(res.data?.pipelines || []);
       } catch (err) {
         if (!cancelled) {

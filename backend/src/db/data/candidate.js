@@ -183,7 +183,7 @@ export default [
         { title: 'Backend Intern', company: 'DANA', years: 1 },
       ] },
     },
-    date: '2026-03-19 12:50:00', attachment: null, latest_stage: 7,
+    date: '2026-03-19 12:50:00', attachment: null, latest_stage: 6,
   },
 
   // ============================================================

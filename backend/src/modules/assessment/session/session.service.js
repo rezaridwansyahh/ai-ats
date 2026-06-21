@@ -78,7 +78,7 @@ class SessionService {
     // One-battery-per-(candidate, job). Completed and live sessions both lock;
     // recruiter must revoke before switching. Revoked/expired are excluded by
     // getActiveByParticipantJob.
-    const active = await Session.getActiveByParticipantJob(participant.id, effectiveJobId);
+    const active = await Session.getActiveByParticipantJob(participant.candidate_id, effectiveJobId);
     const lockedBattery = active[0]?.battery ?? null;
     if (lockedBattery && lockedBattery !== battery) {
       throw {
@@ -90,7 +90,7 @@ class SessionService {
     }
 
     // Idempotency: return live session if one already exists for this triple.
-    const existing = await Session.getByParticipantJobBattery(participant.id, effectiveJobId, battery);
+    const existing = await Session.getByParticipantJobBattery(participant.candidate_id, effectiveJobId, battery);
     if (existing) {
       return { session: existing, participant, created: false };
     }
@@ -100,7 +100,7 @@ class SessionService {
 
     const session = await Session.create({
       battery,
-      participant_id: participant.id,
+      candidate_id: participant.candidate_id,
       job_id:         effectiveJobId,
       created_by:     created_by ?? null,
       expired_at:     expiry,
@@ -112,12 +112,8 @@ class SessionService {
   async getActiveByCandidateJob({ candidate_id, job_id }) {
     if (!candidate_id) throw { status: 400, message: 'candidate_id is required' };
 
-    const { participant, candidateJobId } =
-      await resolveParticipantByCandidate(candidate_id, { createIfMissing: false });
-    if (!participant) return [];
-
     const effectiveJobId = job_id ?? candidateJobId ?? null;
-    return await Session.getActiveByParticipantJob(participant.id, effectiveJobId);
+    return await Session.getActiveByParticipantJob(candidate_id, effectiveJobId);
   }
 
   async update(id, fields) {

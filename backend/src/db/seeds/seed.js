@@ -20,7 +20,6 @@ import jobTemplatesData from '../data/job_templates.js';
 import recruitersData from '../data/recruiters.js';
 import { applicantScores, candidateScreenings } from '../data/applicant_scores.js';
 import {
-  insightsParticipants,
   insightsResults,
   buildResultsJSON,
   buildSummaryJSON,
@@ -40,7 +39,6 @@ const seed = async () => {
     await getDb().query('DELETE FROM candidate_job_score');
     await getDb().query('DELETE FROM master_skill_alias');
     await getDb().query('DELETE FROM core_applicant_assessment');
-    await getDb().query('DELETE FROM participants');
     await getDb().query('DELETE FROM master_assessment');
     await getDb().query('DELETE FROM master_candidate');
     await getDb().query('DELETE FROM master_applicant');
@@ -353,17 +351,6 @@ const seed = async () => {
       );
     }
 
-    // 22. participants — Insights Discovery test takers. Emails MUST mirror seeded
-    //     master_applicant emails so getResultFromCandidate's candidate→applicant→email
-    //     →participant resolver finds the row in the Recruiter Score & Decide flow.
-    for (const p of insightsParticipants) {
-      await getDb().query(
-        `INSERT INTO participants (id, name, email, position, department, education, date_birth)
-         VALUES ($1, $2, $3, $4, $5, $6, $7)`,
-        [p.id, p.name, p.email, p.position, p.department, p.education, p.date_birth]
-      );
-    }
-
     // 23. core_applicant_assessment — Insights results (assessment_id = 5). Status = 'completed'
     //     so the rows show up directly in Score & Decide. assessor JSONB pre-populates HR notes.
     //     started_at is TIMESTAMP (no TZ) and completed_at is TIMESTAMPTZ — pass the value to
@@ -371,12 +358,12 @@ const seed = async () => {
     for (const r of insightsResults) {
       await getDb().query(
         `INSERT INTO core_applicant_assessment (
-           participant_id, assessment_id, status,
+           candidate_id, assessment_id, status,
            results, summary, started_at, completed_at, assessment_date
          )
          VALUES ($1, $2, 'completed', $3, $4, $5::timestamp, $6::timestamptz, CURRENT_DATE)`,
         [
-          r.participant_id, r.assessment_id,
+          r.candidate_id, r.assessment_id,
           JSON.stringify(buildResultsJSON(r)),
           JSON.stringify(buildSummaryJSON(r)),
           INSIGHTS_COMPLETED_AT,
@@ -384,7 +371,7 @@ const seed = async () => {
         ]
       );
     }
-    console.log(`Seeded ${insightsParticipants.length} Insights participants and ${insightsResults.length} Insights results`);
+    console.log(`Seeded Insights participants and ${insightsResults.length} Insights results`);
 
     // 24. company_budgets — monthly AI budget caps (Task 6.12: AI cost cap)
     //     Seed budgets for current month for all companies in companiesData.

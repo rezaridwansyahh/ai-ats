@@ -1,5 +1,6 @@
 import screeningModel from './screening.model.js';
 import jobModel from '../job/job.model.js';
+import CandidatePipelineService from '../candidate-pipeline/candidate-pipeline.service.js';
 import automationModel from '../automation-setting/automation.model.js';
 import aiService from '../../shared/services/ai.service.js';
 import { parseFileToText } from '../../shared/utils/file-parser.js';
@@ -313,13 +314,17 @@ class ScreeningService {
       throw { status: 400, message: `decision must be one of: ${valid.join(', ')}` };
     }
     const existing = await screeningModel.getScreeningById(screening_id);
+    
     if (!existing) throw { status: 404, message: 'Screening not found' };
     if (company_id && existing.company_id && existing.company_id !== company_id) {
       throw { status: 403, message: 'Cross-tenant access denied' };
     }
-    return await screeningModel.setScreeningDecision({
+
+    const updateStage = await CandidatePipelineService.addStage(existing.candidate_id, existing.latest_stage, decision);
+    const updateDecision = await screeningModel.setScreeningDecision({
       screening_id, decision, decision_reason, decided_by,
     });
+    return {updateStage, updateDecision}
   }
 
   // L1 Workboard — cross-position triage for the caller's company.
@@ -331,7 +336,7 @@ class ScreeningService {
   // List candidates in a job's lane (parse | match | ready).
   async getLaneCandidates(job_id, engine) {
     if (!job_id) throw { status: 400, message: 'job_id is required' };
-    const validEngines = ['parse', 'match', 'ready'];
+    const validEngines = ['parse', 'match', 'qa', 'ready'];
     if (engine && !validEngines.includes(engine)) {
       throw { status: 400, message: `engine must be one of: ${validEngines.join(', ')}` };
     }

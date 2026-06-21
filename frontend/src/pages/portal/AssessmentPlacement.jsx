@@ -262,13 +262,11 @@ function BatteryRunner({ session, hash, onSubmit }) {
   };
 
   const prefilledProfile = {
-    name:       clean(session.participant_name),
-    email:      session.participant_email || '', // verified gate key — kept as-is
-    position:   clean(session.participant_position),
-    department: clean(session.participant_department),
-    education:  clean(session.participant_education),
-    date_birth: cleanDOB(session.participant_date_birth),
-    participant_id: session.participant_id ?? null,
+    name:       clean(session.candidate_name),
+    email:      session.candidate_email || '', // verified gate key — kept as-is
+    position:   clean(session.candidate_position),
+    education:  clean(session.candidate_education),
+    candidate_id: session.candidate_id ?? null,
   };
   const commonProps = {
     mode: 'portal',

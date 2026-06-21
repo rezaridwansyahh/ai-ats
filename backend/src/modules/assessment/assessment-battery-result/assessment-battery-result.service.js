@@ -262,10 +262,7 @@ class AssessmentBatteryResultService {
       throw { status: 400, message: `Unknown battery: ${battery}` };
     }
 
-    const { participant } = await resolveParticipantByCandidate(candidate_id, { createIfMissing: false });
-    if (!participant) return null;
-
-    const row = await AssessmentBatteryResult.getLatestByParticipantAssessment(participant.id, assessmentId);
+    const row = await AssessmentBatteryResult.getLatestByParticipantAssessment(candidate_id, assessmentId);
     return row ? withResolvedAiStatus(row) : null;
   }
 

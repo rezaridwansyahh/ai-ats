@@ -21,5 +21,4 @@ SELECT setval('master_applicant_id_seq',          (SELECT MAX(id) FROM master_ap
 SELECT setval('master_candidate_id_seq',          COALESCE((SELECT MAX(id) FROM master_candidate), 1));
 SELECT setval('master_assessment_id_seq',         (SELECT MAX(id) FROM master_assessment));
 SELECT setval('candidate_job_score_id_seq',       COALESCE((SELECT MAX(id) FROM candidate_job_score), 1));
-SELECT setval('participants_id_seq',              COALESCE((SELECT MAX(id) FROM participants), 1));
 SELECT setval('core_applicant_assessment_id_seq', COALESCE((SELECT MAX(id) FROM core_applicant_assessment), 1));

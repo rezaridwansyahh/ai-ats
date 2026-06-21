@@ -22,6 +22,7 @@ const CANDIDATE_PIPELINE_SELECT = `
          c.updated_at,
          a.email AS candidate_email,
          COALESCE(js.name, 'Not Started') AS latest_stage_name,
+         COALESCE(rsc.name, 'Not Started') AS latest_stage_category,
          CASE
            WHEN latest_active.status = 'completed'         THEN 'decide'
            WHEN latest_active.status IS NOT NULL           THEN 'take'
@@ -29,12 +30,12 @@ const CANDIDATE_PIPELINE_SELECT = `
          END AS current_step
   FROM master_candidate c
   LEFT JOIN job_stage js       ON js.id = c.latest_stage
+  LEFT JOIN recruitment_stage_category rsc ON rsc.id = js.stage_type_id
   LEFT JOIN master_applicant a ON a.id  = c.applicant_id
   LEFT JOIN LATERAL (
     SELECT s.status
     FROM assessment_sessions s
-    JOIN participants p ON p.id = s.participant_id
-    WHERE LOWER(TRIM(p.email)) = LOWER(TRIM(a.email))
+    WHERE s.candidate_id = c.id
       AND s.job_id = c.job_id
       AND s.status IN ('invited', 'in_progress', 'completed')
     ORDER BY
@@ -92,12 +93,38 @@ class CandidatePipeline {
     return result.rows;
   }
 
+  static async getSummaryFiltered(category) {
+    const result = await getDb().query(`
+      SELECT j.id AS job_id,
+             j.job_title,
+             COUNT(c.id)::int AS total
+      FROM core_job j
+      LEFT JOIN master_candidate c ON c.job_id = j.id
+      LEFT JOIN job_stage js ON js.id = c.latest_stage
+      LEFT JOIN recruitment_stage_category rsc ON rsc.id = js.stage_type_id
+      WHERE rsc.name = $1
+      GROUP BY j.id, j.job_title
+      ORDER BY j.id ASC
+    `, [category]);
+    
+    return result.rows;
+  }
+
   static async getByJobId(job_id) {
     const result = await getDb().query(`
       ${CANDIDATE_PIPELINE_SELECT}
       WHERE c.job_id = $1
       ORDER BY c.created_at DESC
     `, [job_id]);
+    return result.rows;
+  }
+
+  static async getByJobIdCategory(job_id, category) {
+    const result = await getDb().query(`
+      ${CANDIDATE_PIPELINE_SELECT}
+      WHERE c.job_id = $1 AND rsc.name = $2
+      ORDER BY c.created_at DESC
+    `, [job_id, category]);
     return result.rows;
   }
 
@@ -188,7 +215,36 @@ class CandidatePipeline {
     return result.rows[0];
   }
 
-  static async getStages(candidate_id) {
+  static async getListStages(candidate_id) {
+    const result = await getDb().query(`
+      WITH candidate_job AS (
+        SELECT job_id FROM master_candidate WHERE id = $1
+      )
+      SELECT 
+        js.id,
+        js.name,
+        js.stage_order,
+        CASE 
+          WHEN js.master_id IS NOT NULL THEN 'From Template'
+          ELSE 'Custom'
+        END as stage_type,
+        js.master_id,
+        js.job_id
+      FROM job_stage js
+      WHERE 
+        -- Use the job_id from the candidate
+        js.job_id = (SELECT job_id FROM candidate_job)
+        OR js.master_id IN (
+          SELECT cjt.template_stage_id
+          FROM core_job_template cjt
+          WHERE cjt.job_id = (SELECT job_id FROM candidate_job)
+        )
+      ORDER BY js.stage_order ASC
+    `, [candidate_id]);
+    return result.rows;
+  }
+
+  static async getCurrentStages(candidate_id) {
     const result = await getDb().query(`
       SELECT s.id,
              s.candidate_id,
@@ -206,8 +262,9 @@ class CandidatePipeline {
     return result.rows;
   }
 
-  static async addStage({ candidate_id, job_stage_id, decision }) {
+  static async addStage(candidate_id, job_stage_id, decision) {
     const client = await getDb().connect();
+    const decisionJson = JSON.stringify({decision: decision});
     try {
       await client.query('BEGIN');
 
@@ -215,7 +272,7 @@ class CandidatePipeline {
         INSERT INTO candidate_stages (candidate_id, job_stage_id, decision)
         VALUES ($1, $2, $3)
         RETURNING *
-      `, [candidate_id, job_stage_id, decision]);
+      `, [candidate_id, job_stage_id, decisionJson]);
 
       const candidateUpdate = await client.query(`
         UPDATE master_candidate

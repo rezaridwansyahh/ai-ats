@@ -13,12 +13,17 @@ class CandidatePipelineService {
     return pipeline;
   }
 
-  async getSummary() {
+  async getSummary(query) {
+    const { category } = query
+    if(category) return await CandidatePipeline.getSummaryFiltered(category);
     return await CandidatePipeline.getSummary();
   }
 
-  async getByJobId(job_id) {
+  async getByJobId(job_id, query) {
+    const { category } = query
     if (!job_id) throw { status: 400, message: 'job_id is required' };
+
+    if(category) return await CandidatePipeline.getByJobIdCategory(job_id, category);
     return await CandidatePipeline.getByJobId(job_id);
   }
 
@@ -111,25 +116,19 @@ class CandidatePipelineService {
     };
   }
 
-  async addStage(pipeline_id, { job_stage_id, decision }) {
-    const pipeline = await CandidatePipeline.getById(pipeline_id);
-    if (!pipeline) throw { status: 404, message: 'Candidate pipeline not found' };
-
+  async addStage(candidate_id, job_stage_id, decision) {
     if (!job_stage_id) throw { status: 400, message: 'job_stage_id is required' };
-    if (!decision || typeof decision !== 'object' || Array.isArray(decision)) {
-      throw { status: 400, message: 'decision must be a non-empty object' };
-    }
-    if (Object.keys(decision).length === 0) {
-      throw { status: 400, message: 'decision must be a non-empty object' };
-    }
+    
+    const listStages = await CandidatePipeline.getListStages(candidate_id);
+    const currentStagesIndex = listStages.findIndex(s => s.id === job_stage_id)
+    
+    return await CandidatePipeline.addStage(candidate_id, listStages[currentStagesIndex + 1]?.id ? listStages[currentStagesIndex + 1]?.id : listStages[currentStagesIndex].id, decision)
+    
+    // gatau apaan ini -candra
+    // this.ScreeningEmail(pipeline_id, decision).catch((err) =>
+    //   console.error("Failed to send candidate email:", err.message)
+    // );
 
-    const result = await CandidatePipeline.addStage({ candidate_id: pipeline_id, job_stage_id, decision });
-
-    this.ScreeningEmail(pipeline_id, decision).catch((err) =>
-      console.error("Failed to send candidate email:", err.message)
-    );
-
-    return result;
   }
 
   async getProgress(candidate_id) {
