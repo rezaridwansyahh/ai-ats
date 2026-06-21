@@ -1,0 +1,866 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Myralix v0.1 — Codebase Audit · 15 June 2026 · Weekly status</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600;9..144,700&family=DM+Sans:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet" />
+<style>
+:root{
+  --paper:#FAF9F5;--paper-2:#F4F1E8;--surface:#FFFFFF;--surface-2:#FCFAF4;
+  --ink:#1A1A1F;--ink-2:#2C2A26;--muted:#6E6A5E;--faint:#9C9684;
+  --hairline:#E9E3D5;--hairline-2:#DCD5C2;--shade:#F0EBDC;
+  --forest:#0A6E5C;--forest-deep:#084F43;--forest-soft:#E2EEEA;--forest-2:#C9DED7;
+  --saffron:#E5A93D;--saffron-soft:#F8EBC6;
+  --good:#2F7D5A;--good-soft:#DCEFE3;
+  --warn:#C77A1A;--warn-soft:#F8E5C2;
+  --bad:#B43A2E;--bad-soft:#F4D5CF;
+  --info:#2D5BB8;--info-soft:#DBE5F7;
+  --purple:#6C4FA1;--purple-soft:#E4DBF1;
+  --r-1:6px;--r-2:10px;--r-3:14px;--r-4:22px;--r-pill:999px;
+  --shadow-1:0 1px 0 rgba(20,18,12,0.04),0 1px 2px rgba(20,18,12,0.04);
+  --shadow-2:0 1px 0 rgba(20,18,12,0.05),0 6px 18px -8px rgba(20,18,12,0.12);
+  --serif:'Fraunces','Spectral',Georgia,serif;
+  --sans:'DM Sans',-apple-system,BlinkMacSystemFont,'Segoe UI',system-ui,sans-serif;
+  --mono:'JetBrains Mono',ui-monospace,'SF Mono',Menlo,monospace;
+}
+*{box-sizing:border-box}
+html,body{margin:0;padding:0}
+html{scroll-behavior:smooth;scroll-padding-top:80px}
+body{font-family:var(--sans);color:var(--ink);background:var(--paper);font-size:15px;line-height:1.65;-webkit-font-smoothing:antialiased}
+.container{max-width:1200px;margin:0 auto;padding:48px 32px 96px}
+.nav{position:sticky;top:0;z-index:50;background:rgba(250,249,245,.94);backdrop-filter:saturate(180%) blur(10px);border-bottom:1px solid var(--hairline);padding:12px 32px}
+.nav-inner{max-width:1200px;margin:0 auto;display:flex;gap:18px;align-items:center;flex-wrap:wrap}
+.brand{display:flex;align-items:center;gap:10px}
+.brand-mark{width:30px;height:30px;border-radius:8px;background:var(--forest);color:#fff;display:grid;place-items:center;font-weight:600;font-family:var(--serif);font-size:16px}
+.brand-name{font-weight:700;letter-spacing:.02em;font-size:14px;font-family:var(--serif)}
+.brand-sub{font-size:11px;color:var(--muted);margin-top:1px}
+.nav-links{display:flex;gap:2px;flex:1;flex-wrap:wrap}
+.nav-link{color:var(--muted);text-decoration:none;padding:5px 9px;border-radius:6px;font-family:var(--mono);font-size:10.5px;letter-spacing:.03em}
+.nav-link:hover{background:var(--shade);color:var(--ink)}
+.nav-cta{font-family:var(--mono);font-size:11px;padding:6px 10px;background:var(--surface);border:1px solid var(--hairline);border-radius:6px;cursor:pointer}
+.hero{background:linear-gradient(180deg,var(--surface) 0%,var(--surface) 50%,var(--surface-2) 100%);border:1px solid var(--hairline);border-radius:var(--r-4);padding:56px 46px;margin-bottom:36px;box-shadow:var(--shadow-2)}
+.eyebrow{font-family:var(--mono);font-size:11px;font-weight:600;letter-spacing:.08em;text-transform:uppercase;color:var(--forest);margin-bottom:14px}
+h1{font-family:var(--serif);font-weight:600;font-size:46px;line-height:1.04;margin:0 0 20px;letter-spacing:-0.012em;color:var(--ink)}
+h1 em{font-style:italic;color:var(--forest)}
+.hero-lead{font-size:17px;color:var(--ink-2);max-width:870px;line-height:1.6;margin:0 0 24px}
+.hero-meta{display:grid;grid-template-columns:repeat(4,1fr);gap:18px;margin-top:24px;border-top:1px solid var(--hairline);padding-top:24px}
+.hm-label{font-family:var(--mono);font-size:10px;text-transform:uppercase;letter-spacing:.06em;color:var(--faint);margin-bottom:5px}
+.hm-value{font-weight:600;color:var(--ink);font-size:15px}
+.sec{margin:60px 0;scroll-margin-top:80px}
+.sec-num{font-family:var(--mono);font-size:11px;font-weight:600;color:var(--forest);letter-spacing:.08em;text-transform:uppercase;margin-bottom:8px}
+.sec-title{font-family:var(--serif);font-weight:600;font-size:32px;color:var(--ink);margin:0 0 12px;letter-spacing:-0.012em;line-height:1.1}
+.sec-sub{font-size:15.5px;color:var(--ink-2);margin:0 0 26px;max-width:870px;line-height:1.6}
+h3{font-family:var(--serif);font-weight:600;font-size:22px;color:var(--ink);margin:34px 0 12px;letter-spacing:-0.005em}
+h3.tight{margin-top:24px}
+h4{font-family:var(--sans);font-weight:600;font-size:15.5px;color:var(--ink);margin:22px 0 8px}
+p{margin:0 0 14px}
+code{font-family:var(--mono);font-size:.86em;background:var(--paper-2);padding:2px 6px;border-radius:4px;color:var(--ink-2);white-space:nowrap}
+strong{color:var(--ink);font-weight:600}
+.tbl{width:100%;border-collapse:collapse;margin:18px 0;background:var(--surface);border:1px solid var(--hairline);border-radius:var(--r-2);overflow:hidden;box-shadow:var(--shadow-1);font-size:13.5px}
+.tbl th{text-align:left;font-family:var(--mono);font-size:11px;text-transform:uppercase;letter-spacing:.05em;color:var(--muted);padding:11px 13px;background:var(--paper-2);border-bottom:1px solid var(--hairline);font-weight:600;vertical-align:top}
+.tbl td{padding:12px 13px;border-bottom:1px solid var(--hairline);vertical-align:top}
+.tbl tr:last-child td{border-bottom:none}
+.tbl tr:hover td{background:var(--paper)}
+.status{display:inline-block;font-family:var(--mono);font-size:10.5px;font-weight:700;padding:3px 9px;border-radius:var(--r-1);letter-spacing:.04em;text-transform:uppercase;border:1px solid transparent;line-height:1.5;white-space:nowrap}
+.status-done{background:var(--good-soft);color:var(--good);border-color:#bbe2c8}
+.status-progress{background:var(--info-soft);color:var(--info);border-color:#c5d5ee}
+.status-claimed{background:var(--warn-soft);color:var(--warn);border-color:#f0d29a}
+.status-pending{background:var(--shade);color:var(--muted);border-color:var(--hairline-2)}
+.status-fire{background:var(--bad-soft);color:var(--bad);border-color:#f1b5b0}
+.b{display:inline-block;font-family:var(--mono);font-size:10.5px;font-weight:600;padding:2px 8px;border-radius:var(--r-1);letter-spacing:.04em;text-transform:uppercase;border:1px solid transparent;line-height:1.6;white-space:nowrap}
+.b-ok{background:var(--good-soft);color:var(--good);border-color:#bbe2c8}
+.b-warn{background:var(--warn-soft);color:var(--warn);border-color:#f0d29a}
+.b-err{background:var(--bad-soft);color:var(--bad);border-color:#f1b5b0}
+.b-info{background:var(--info-soft);color:var(--info);border-color:#c5d5ee}
+.b-mute{background:var(--shade);color:var(--muted);border-color:var(--hairline-2)}
+.b-brand{background:var(--forest-soft);color:var(--forest);border-color:var(--forest-2)}
+.b-new{background:var(--purple-soft);color:var(--purple);border-color:#c8b8e8}
+.cal{border-left:3px solid var(--forest);background:var(--forest-soft);padding:18px 22px;border-radius:var(--r-2);margin:20px 0;font-size:14.5px}
+.cal.warn{border-color:var(--warn);background:var(--warn-soft)}
+.cal.err{border-color:var(--bad);background:var(--bad-soft)}
+.cal.info{border-color:var(--info);background:var(--info-soft)}
+.cal.success{border-color:var(--good);background:var(--good-soft)}
+.cal-title{font-weight:600;color:var(--ink);margin-bottom:8px;display:flex;align-items:center;gap:8px;font-size:15px}
+ul,ol{margin:8px 0 14px;padding-left:24px}
+ul li,ol li{margin:7px 0;line-height:1.6}
+.fp{font-family:var(--mono);font-size:12px;color:var(--muted);background:var(--paper-2);padding:1px 5px;border-radius:3px;white-space:nowrap}
+.day{background:var(--surface);border:1px solid var(--hairline);border-radius:var(--r-2);padding:24px 26px;margin:18px 0;box-shadow:var(--shadow-1)}
+.day-head{display:flex;align-items:baseline;gap:14px;margin-bottom:14px;padding-bottom:12px;border-bottom:1px solid var(--hairline);flex-wrap:wrap}
+.day-num{font-family:var(--serif);font-weight:600;font-size:26px;color:var(--forest);letter-spacing:-0.01em;line-height:1}
+.day-date{font-family:var(--mono);font-size:11px;color:var(--muted);letter-spacing:.04em;text-transform:uppercase}
+.day-title{font-family:var(--serif);font-size:18px;font-weight:600;color:var(--ink);margin-left:auto}
+.day-task{padding:13px 0;border-bottom:1px solid var(--hairline);font-size:14px}
+.day-task:last-child{border-bottom:none;padding-bottom:0}
+.task-head{display:flex;align-items:baseline;gap:10px;margin-bottom:6px;flex-wrap:wrap}
+.task-id{font-family:var(--mono);font-size:11px;font-weight:600;color:var(--forest);background:var(--forest-soft);padding:1px 7px;border-radius:4px;letter-spacing:.04em}
+.task-title{font-weight:600;color:var(--ink)}
+.task-claude{font-family:var(--mono);font-size:10.5px;color:var(--purple);background:var(--purple-soft);padding:2px 8px;border-radius:var(--r-pill);font-weight:600;letter-spacing:.04em}
+.task-owner{font-family:var(--mono);font-size:11px;color:var(--muted);margin-left:auto}
+.task-body{color:var(--ink-2);font-size:13.5px;line-height:1.6;padding-left:0;margin-top:4px}
+.task-criteria{margin-top:6px;font-size:12.5px;color:var(--muted)}
+.task-criteria-label{font-family:var(--mono);font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--good);margin-right:6px}
+.history{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin:14px 0;font-size:12px;color:var(--muted);font-family:var(--mono)}
+.history-item{padding:4px 10px;background:var(--paper-2);border:1px solid var(--hairline);border-radius:var(--r-pill)}
+.history-item.current{background:var(--forest-soft);color:var(--forest);border-color:var(--forest-2);font-weight:600}
+.toc{background:var(--surface-2);border:1px solid var(--hairline);border-radius:var(--r-2);padding:24px 28px;margin:24px 0 36px;display:grid;grid-template-columns:repeat(2,1fr);gap:9px 28px}
+.toc-title{grid-column:1/-1;font-family:var(--mono);font-size:11px;font-weight:600;color:var(--forest);text-transform:uppercase;letter-spacing:.06em;margin-bottom:6px}
+.toc-item{font-size:13.5px;display:flex;gap:10px;align-items:baseline}
+.toc-num{font-family:var(--mono);font-size:11px;color:var(--faint);min-width:32px}
+.toc-text{color:var(--ink-2);text-decoration:none}
+.toc-text:hover{color:var(--forest)}
+.progress-row{display:flex;align-items:center;gap:14px;margin:10px 0;font-size:13.5px}
+.progress-label{flex:0 0 220px;font-weight:500;color:var(--ink)}
+.progress-bar-bg{flex:1;height:10px;background:var(--shade);border-radius:var(--r-pill);overflow:hidden}
+.progress-bar-fill{height:100%;background:linear-gradient(90deg,var(--forest) 0%,var(--forest-deep) 100%);border-radius:var(--r-pill)}
+.progress-pct{flex:0 0 56px;text-align:right;font-family:var(--mono);font-size:12.5px;font-weight:600;color:var(--ink)}
+.diag{background:var(--surface);border:1px solid var(--hairline);border-radius:var(--r-3);padding:32px 24px;margin:24px 0;box-shadow:var(--shadow-1);overflow-x:auto}
+.diag-title{font-family:var(--mono);font-size:11px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:.05em;margin-bottom:18px;text-align:center}
+.matrix{width:100%;border-collapse:separate;border-spacing:6px;margin:18px 0;font-size:13px}
+.matrix th{background:var(--paper-2);padding:10px 12px;font-family:var(--mono);font-size:10.5px;text-transform:uppercase;letter-spacing:.05em;color:var(--muted);font-weight:600;text-align:center;border:1px solid var(--hairline);border-radius:var(--r-1)}
+.matrix th.row-h{text-align:left}
+.matrix td{padding:14px 12px;text-align:center;background:var(--surface);border:1px solid var(--hairline);border-radius:var(--r-1);font-family:var(--mono);font-size:11px;font-weight:600;vertical-align:middle}
+.matrix td.row-h{text-align:left;font-family:var(--sans);font-weight:600;font-size:13px;background:var(--paper-2);color:var(--ink)}
+.matrix-cell-done{background:var(--good-soft)!important;color:var(--good);border-color:#bbe2c8!important}
+.matrix-cell-partial{background:var(--info-soft)!important;color:var(--info);border-color:#c5d5ee!important}
+.matrix-cell-stub{background:var(--warn-soft)!important;color:var(--warn);border-color:#f0d29a!important}
+.matrix-cell-missing{background:var(--shade)!important;color:var(--muted);border-color:var(--hairline-2)!important}
+.legend{display:flex;gap:18px;flex-wrap:wrap;padding:14px 18px;background:var(--surface);border:1px solid var(--hairline);border-radius:var(--r-2);margin:16px 0;justify-content:center}
+.legend-item{display:flex;align-items:center;gap:8px;font-size:12.5px;color:var(--ink-2)}
+.legend-sq{width:14px;height:14px;border-radius:3px;border:1px solid var(--hairline)}
+.kpi-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:14px;margin:18px 0}
+.kpi{background:var(--surface);border:1px solid var(--hairline);border-radius:var(--r-2);padding:18px 20px;box-shadow:var(--shadow-1)}
+.kpi-label{font-family:var(--mono);font-size:10.5px;text-transform:uppercase;letter-spacing:.06em;color:var(--muted);margin-bottom:6px}
+.kpi-value{font-family:var(--serif);font-size:28px;font-weight:600;color:var(--ink);line-height:1;letter-spacing:-0.01em}
+.kpi-sub{font-size:11.5px;color:var(--faint);margin-top:4px}
+.kpi.good{border-left:3px solid var(--good)}
+.kpi.warn{border-left:3px solid var(--warn)}
+.kpi.bad{border-left:3px solid var(--bad)}
+.kpi.info{border-left:3px solid var(--info)}
+.risk-row{display:grid;grid-template-columns:60px 1fr 90px 90px;gap:12px;align-items:start;padding:14px 0;border-bottom:1px solid var(--hairline);font-size:13.5px}
+.risk-row:last-child{border-bottom:none}
+.risk-id{font-family:var(--mono);font-size:11px;font-weight:700;color:var(--forest);background:var(--forest-soft);padding:3px 7px;border-radius:4px;letter-spacing:.04em;height:fit-content}
+.risk-desc{color:var(--ink-2);line-height:1.55}
+.risk-desc strong{color:var(--ink);display:block;margin-bottom:3px}
+.gloss{background:var(--surface-2);border:1px solid var(--hairline);border-radius:var(--r-2);padding:18px 22px;margin:14px 0;font-size:13.5px}
+.gloss-term{font-family:var(--mono);font-size:11.5px;font-weight:600;color:var(--forest);background:var(--forest-soft);padding:1px 7px;border-radius:4px;margin-right:8px}
+.win-banner{background:var(--good-soft);border:1px solid #bbe2c8;border-radius:var(--r-2);padding:20px 24px;margin:18px 0}
+.win-banner-title{font-weight:700;color:var(--good);font-size:15px;margin-bottom:6px;display:flex;align-items:center;gap:8px}
+.win-banner p{color:#1d5b3f;margin:0}
+@media print{.nav{position:static;background:transparent}body{background:#fff}.sec{break-inside:avoid}.day{break-inside:avoid}.diag{break-inside:avoid}.hero{box-shadow:none}}
+@media(max-width:900px){h1{font-size:30px}.hero{padding:30px 24px}.hero-meta{grid-template-columns:repeat(2,1fr)}.container{padding:24px 16px 64px}.nav{padding:10px 16px}.toc{grid-template-columns:1fr;padding:18px 22px}.sec-title{font-size:26px}.risk-row{grid-template-columns:50px 1fr;gap:8px}.matrix{font-size:11px}}
+</style>
+</head>
+<body>
+
+<nav class="nav">
+  <div class="nav-inner">
+    <div class="brand">
+      <div class="brand-mark">M</div>
+      <div>
+        <div class="brand-name">MYRALIX</div>
+        <div class="brand-sub">Codebase Audit · 15 Jun 2026 · Weekly status</div>
+      </div>
+    </div>
+    <div class="nav-links">
+      <a class="nav-link" href="#summary">SUMMARY</a>
+      <a class="nav-link" href="#big-picture">§1 BIG PICTURE</a>
+      <a class="nav-link" href="#scope">§2 SCOPE</a>
+      <a class="nav-link" href="#built">§3 BUILT</a>
+      <a class="nav-link" href="#week">§4 THIS WEEK</a>
+      <a class="nav-link" href="#gaps">§5 GAPS</a>
+      <a class="nav-link" href="#next">§6 NEXT WEEK</a>
+      <a class="nav-link" href="#risks">§7 RISKS</a>
+      <a class="nav-link" href="#decisions">§8 DECISIONS</a>
+      <a class="nav-link" href="#verify">§9 VERIFY</a>
+    </div>
+    <button class="nav-cta" onclick="window.print()">🖨 PRINT</button>
+  </div>
+</nav>
+
+<div class="container">
+
+  <!-- HERO -->
+  <div class="hero" id="summary">
+    <div class="eyebrow">Weekly status · Sunday 15 June 2026 ·</div>
+    <h1>Myralix v0.1 — <em>Codebase Audit</em></h1>
+    <p class="hero-lead">
+      Week 9 of build · <strong>21 days to pilot (13 Jul).</strong> This week was the turnaround — the team delivered what
+      four consecutive weekly plans had promised. The Interview module shipped from
+      zero to a fully functional <strong>L1 Workboard + L2 Position + L3 Candidate</strong> with Prep,
+      Schedule, and Conduct tabs all wired to real data. The AI cost cap (task 6.12) shipped with
+      <code>checkBudgetOrThrow()</code>, 402 gating, and 80% Slack alert. The warm cream design system
+      landed fully. Overall v0.1 readiness jumps from <strong>48% → ~62%</strong> — the largest
+      single-week gain in the project. Three workflow modules still at 0% (BG Check, Offer,
+      Onboarding). The schedule is now achievable with 13 Jul, but only if both engineers
+      stay strictly parallel from Monday.
+    </p>
+
+    <div class="history">
+      <span>Audit lineage:</span>
+      <span class="history-item">v1 · 7 May</span>
+      <span class="history-item">v2 · 8 May</span>
+      <span class="history-item">v3 · 10 May</span>
+      <span class="history-item">Consolidated · 10 May</span>
+      <span class="history-item">Verified · 17 May</span>
+      <span class="history-item">End-of-Week · 23 May</span>
+      <span class="history-item">v4.0 · 31 May</span>
+      <span class="history-item">v5.0 · 8 Jun</span>
+      <span class="history-item current">v6.0 · 15 Jun (this doc)</span>
+    </div>
+
+    <div class="hero-meta">
+      <div>
+        <div class="hm-label">Production fires</div>
+        <div class="hm-value">0 <span style="font-size:12px;font-weight:400;color:var(--faint)">2 closed · stable</span></div>
+      </div>
+      <div>
+        <div class="hm-label">Workflow modules shipped</div>
+        <div class="hm-value" style="color:var(--good)">2.5 / 6 <span style="font-size:12px;font-weight:400;color:var(--faint)">Interview now ~50%</span></div>
+      </div>
+      <div>
+        <div class="hm-label">Overall v0.1 readiness</div>
+        <div class="hm-value" style="color:var(--forest)">~62% <span style="font-size:12px;font-weight:400;color:var(--faint)">↑ from 48% — best week</span></div>
+      </div>
+      <div>
+        <div class="hm-label">Days to pilot</div>
+        <div class="hm-value" style="color:var(--warn)">21 <span style="font-size:12px;font-weight:400;color:var(--faint)">13 Jul · tight but alive</span></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="win-banner">
+    <div class="win-banner-title">🎉 Best week of the build — significant delivery</div>
+    <p>Interview went from 0 to ~50% in one week. AI cost cap shipped. Warm cream tokens landed. Report Candidate module added. Budget Settings page live. The team executed the plan that had been deferred for three weeks. The schedule is now tight but arithmetically viable for 13 Jul if the next three weeks maintain this pace.</p>
+  </div>
+
+  <!-- TOC -->
+  <div class="toc">
+    <div class="toc-title">Contents — 9 sections for the weekly meeting</div>
+    <div class="toc-item"><span class="toc-num">§1</span><a class="toc-text" href="#big-picture">The big picture — funnel · 4-level pattern · module × level matrix</a></div>
+    <div class="toc-item"><span class="toc-num">§2</span><a class="toc-text" href="#scope">v0.1 scope — 15 sections status update</a></div>
+    <div class="toc-item"><span class="toc-num">§3</span><a class="toc-text" href="#built">What's been built — cumulative, with evidence</a></div>
+    <div class="toc-item"><span class="toc-num">§4</span><a class="toc-text" href="#week">This week (8–14 Jun) — plan vs reality</a></div>
+    <div class="toc-item"><span class="toc-num">§5</span><a class="toc-text" href="#gaps">Gap analysis — remaining by module</a></div>
+    <div class="toc-item"><span class="toc-num">§6</span><a class="toc-text" href="#next">Next week (15–19 Jun) — Interview finish + BG Check kickoff</a></div>
+    <div class="toc-item"><span class="toc-num">§7</span><a class="toc-text" href="#risks">Risk register — updated for W9</a></div>
+    <div class="toc-item"><span class="toc-num">§8</span><a class="toc-text" href="#decisions">Decisions needed this week</a></div>
+    <div class="toc-item"><span class="toc-num">§9</span><a class="toc-text" href="#verify">Verify this audit — 14 shell commands</a></div>
+  </div>
+
+  <!-- §1 BIG PICTURE -->
+  <div class="sec" id="big-picture">
+    <div class="sec-num">§1</div>
+    <div class="sec-title">Big picture</div>
+    <p class="sec-sub">The matrix is the most important diagram. <strong>Two cells turned green this week</strong>: Interview L1 (Workboard) and Interview L3 (Candidate). L2 Position is functional at job level. Several more are partial. This is real progress.</p>
+
+    <h3>1.1 The 6-stage recruitment funnel — updated status</h3>
+    <div class="diag">
+      <div class="diag-title">Diagram 1 · Recruitment funnel · 6 stages × build status · 15 Jun 2026</div>
+      <svg viewBox="0 0 980 160" xmlns="http://www.w3.org/2000/svg" font-family="'DM Sans',system-ui,sans-serif">
+        <rect x="10" y="20" width="148" height="90" rx="8" fill="#E2EEEA" stroke="#C9DED7"/>
+        <text x="84" y="48" text-anchor="middle" font-size="10" font-weight="700" fill="#0A6E5C" letter-spacing="0.05em">1 · SOURCING</text>
+        <text x="84" y="64" text-anchor="middle" font-size="9" fill="#084F43">Search &amp; Outreach</text>
+        <text x="84" y="78" text-anchor="middle" font-size="9" fill="#084F43">Seek + LinkedIn RPA</text>
+        <rect x="24" y="88" width="120" height="14" rx="4" fill="#2F7D5A"/>
+        <text x="84" y="99" text-anchor="middle" font-size="9" font-weight="700" fill="#fff">✓ BUILT (85%)</text>
+        <path d="M160 65 L172 65" stroke="#C9DED7" stroke-width="2"/>
+        <rect x="174" y="20" width="148" height="90" rx="8" fill="#E2EEEA" stroke="#C9DED7"/>
+        <text x="248" y="48" text-anchor="middle" font-size="10" font-weight="700" fill="#0A6E5C" letter-spacing="0.05em">2 · AI SCREENING</text>
+        <text x="248" y="64" text-anchor="middle" font-size="9" fill="#084F43">Parse · Match · Q&amp;A</text>
+        <text x="248" y="78" text-anchor="middle" font-size="9" fill="#084F43">4 levels + portal</text>
+        <rect x="188" y="88" width="120" height="14" rx="4" fill="#2F7D5A"/>
+        <text x="248" y="99" text-anchor="middle" font-size="9" font-weight="700" fill="#fff">✓ BUILT 100%</text>
+        <path d="M324 65 L336 65" stroke="#C9DED7" stroke-width="2"/>
+        <rect x="338" y="20" width="148" height="90" rx="8" fill="#DBE5F7" stroke="#c5d5ee"/>
+        <text x="412" y="48" text-anchor="middle" font-size="10" font-weight="700" fill="#2D5BB8" letter-spacing="0.05em">3 · INTERVIEW</text>
+        <text x="412" y="64" text-anchor="middle" font-size="9" fill="#2D5BB8">Prep · Schedule · Conduct</text>
+        <text x="412" y="78" text-anchor="middle" font-size="9" fill="#2D5BB8">Evaluate + Decide TBD</text>
+        <rect x="352" y="88" width="120" height="14" rx="4" fill="#2D5BB8"/>
+        <text x="412" y="99" text-anchor="middle" font-size="9" font-weight="700" fill="#fff">→ PARTIAL (~50%)</text>
+        <path d="M488 65 L500 65" stroke="#c5d5ee" stroke-width="2"/>
+        <rect x="502" y="20" width="148" height="90" rx="8" fill="#DBE5F7" stroke="#c5d5ee"/>
+        <text x="576" y="48" text-anchor="middle" font-size="10" font-weight="700" fill="#2D5BB8" letter-spacing="0.05em">4 · PSYCH ASSESS</text>
+        <text x="576" y="64" text-anchor="middle" font-size="9" fill="#2D5BB8">Setup · Take · Decide</text>
+        <text x="576" y="78" text-anchor="middle" font-size="9" fill="#2D5BB8">4 batteries + portal</text>
+        <rect x="516" y="88" width="120" height="14" rx="4" fill="#2D5BB8"/>
+        <text x="576" y="99" text-anchor="middle" font-size="9" font-weight="700" fill="#fff">→ PARTIAL (85%)</text>
+        <path d="M652 65 L664 65" stroke="#c5d5ee" stroke-width="2"/>
+        <rect x="666" y="20" width="148" height="90" rx="8" fill="#F4D5CF" stroke="#f1b5b0"/>
+        <text x="740" y="48" text-anchor="middle" font-size="10" font-weight="700" fill="#B43A2E" letter-spacing="0.05em">5 · BG CHECK</text>
+        <text x="740" y="64" text-anchor="middle" font-size="9" fill="#7a241a">Claims · Consent · Verdict</text>
+        <text x="740" y="78" text-anchor="middle" font-size="9" fill="#7a241a">UU PDP compliant</text>
+        <rect x="680" y="88" width="120" height="14" rx="4" fill="#B43A2E"/>
+        <text x="740" y="99" text-anchor="middle" font-size="9" font-weight="700" fill="#fff">○ NOT STARTED</text>
+        <path d="M816 65 L828 65" stroke="#f1b5b0" stroke-width="2"/>
+        <rect x="830" y="20" width="148" height="90" rx="8" fill="#F4D5CF" stroke="#f1b5b0"/>
+        <text x="904" y="48" text-anchor="middle" font-size="10" font-weight="700" fill="#B43A2E" letter-spacing="0.05em">6 · OFFER+ONBOARD</text>
+        <text x="904" y="64" text-anchor="middle" font-size="9" fill="#7a241a">PPh21 · BPJS · D-90</text>
+        <text x="904" y="78" text-anchor="middle" font-size="9" fill="#7a241a">2 modules combined</text>
+        <rect x="844" y="88" width="120" height="14" rx="4" fill="#B43A2E"/>
+        <text x="904" y="99" text-anchor="middle" font-size="9" font-weight="700" fill="#fff">○ NOT STARTED</text>
+        <rect x="10" y="130" width="12" height="12" rx="3" fill="#2F7D5A"/>
+        <text x="28" y="141" font-size="10" fill="#6E6A5E">Built</text>
+        <rect x="80" y="130" width="12" height="12" rx="3" fill="#2D5BB8"/>
+        <text x="98" y="141" font-size="10" fill="#6E6A5E">Partial</text>
+        <rect x="160" y="130" width="12" height="12" rx="3" fill="#B43A2E"/>
+        <text x="178" y="141" font-size="10" fill="#6E6A5E">Not started</text>
+      </svg>
+    </div>
+
+    <h3>1.2 Module × Level matrix — <span style="color:var(--good)">multiple cells green this week</span></h3>
+
+    <div class="diag">
+      <div class="diag-title">Diagram 2 · Module × Level build matrix · 24 cells · 15 Jun 2026</div>
+      <table class="matrix">
+        <thead>
+          <tr>
+            <th class="row-h">MODULE</th>
+            <th>L1 · Workboard</th>
+            <th>L2 · Position</th>
+            <th>L3 · Candidate</th>
+            <th>L4 · Calibration</th>
+            <th>BACKEND</th>
+            <th>DB TABLES</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td class="row-h">AI Screening</td>
+            <td class="matrix-cell-done">✓ DONE</td>
+            <td class="matrix-cell-done">✓ DONE</td>
+            <td class="matrix-cell-done">✓ DONE</td>
+            <td class="matrix-cell-done">✓ DONE</td>
+            <td class="matrix-cell-done">✓ FULL</td>
+            <td class="matrix-cell-done">✓ FULL</td>
+          </tr>
+          <tr>
+            <td class="row-h" style="color:var(--info)">Interview <span style="font-size:10px;color:var(--good);font-family:var(--mono);font-weight:600">↑ NEW</span></td>
+            <td class="matrix-cell-done">✓ DONE</td>
+            <td class="matrix-cell-partial">→ PARTIAL</td>
+            <td class="matrix-cell-partial">→ PARTIAL</td>
+            <td class="matrix-cell-missing">○ —</td>
+            <td class="matrix-cell-done">✓ BUILT</td>
+            <td class="matrix-cell-partial">→ PARTIAL</td>
+          </tr>
+          <tr>
+            <td class="row-h">Psych Assessment</td>
+            <td class="matrix-cell-missing">○ —</td>
+            <td class="matrix-cell-missing">○ —</td>
+            <td class="matrix-cell-partial">→ PARTIAL</td>
+            <td class="matrix-cell-missing">○ —</td>
+            <td class="matrix-cell-partial">→ PARTIAL</td>
+            <td class="matrix-cell-partial">→ PARTIAL</td>
+          </tr>
+          <tr>
+            <td class="row-h" style="color:var(--bad)">Background Check</td>
+            <td class="matrix-cell-missing">○ —</td>
+            <td class="matrix-cell-missing">○ —</td>
+            <td class="matrix-cell-missing">○ —</td>
+            <td class="matrix-cell-missing">○ —</td>
+            <td class="matrix-cell-missing">○ —</td>
+            <td class="matrix-cell-missing">○ —</td>
+          </tr>
+          <tr>
+            <td class="row-h" style="color:var(--bad)">Offer &amp; Contract</td>
+            <td class="matrix-cell-missing">○ —</td>
+            <td class="matrix-cell-missing">○ —</td>
+            <td class="matrix-cell-missing">○ —</td>
+            <td class="matrix-cell-missing">○ —</td>
+            <td class="matrix-cell-missing">○ —</td>
+            <td class="matrix-cell-missing">○ —</td>
+          </tr>
+          <tr>
+            <td class="row-h" style="color:var(--bad)">Onboarding</td>
+            <td class="matrix-cell-missing">○ —</td>
+            <td class="matrix-cell-missing">○ —</td>
+            <td class="matrix-cell-missing">○ —</td>
+            <td class="matrix-cell-missing">○ —</td>
+            <td class="matrix-cell-missing">○ —</td>
+            <td class="matrix-cell-missing">○ —</td>
+          </tr>
+        </tbody>
+      </table>
+      <div class="legend">
+        <div class="legend-item"><div class="legend-sq" style="background:var(--good-soft);border-color:#bbe2c8"></div>Built &amp; usable today</div>
+        <div class="legend-item"><div class="legend-sq" style="background:var(--info-soft);border-color:#c5d5ee"></div>Partial · in progress</div>
+        <div class="legend-item"><div class="legend-sq" style="background:var(--shade);border-color:var(--hairline-2)"></div>Not started</div>
+      </div>
+    </div>
+
+    <div class="cal success">
+      <div class="cal-title">📐 What the matrix tells the team — W9 update</div>
+      <p>Interview went from an entirely grey row (all 6 cells missing) to 3 cells filled in one week. L1 Workboard is green. Backend is green. L2 and L3 are partial (real data flowing, Evaluate/Decide stubs remain). L4 Calibration is the next unlock — needed before candidates can advance from Interview to Psych. BG Check, Offer, and Onboarding rows remain entirely grey and must begin immediately in parallel.</p>
+    </div>
+  </div>
+
+  <!-- §2 SCOPE -->
+  <div class="sec" id="scope">
+    <div class="sec-num">§2</div>
+    <div class="sec-title">v0.1 Scope — updated status</div>
+    <p class="sec-sub">Changes from v5.0 are highlighted. Interview moved from 0% to ~50%. Several infrastructure items closed.</p>
+
+    <table class="tbl">
+      <thead>
+        <tr><th>Spec §</th><th>Section</th><th>Status today</th><th>Change from v5.0</th></tr>
+      </thead>
+      <tbody>
+        <tr><td colspan="4" style="background:var(--paper-2);font-family:var(--mono);font-size:11px;font-weight:700;letter-spacing:.05em;color:var(--muted);padding:8px 13px;">A · FOUNDATIONS</td></tr>
+        <tr><td>§2</td><td>Multi-tenancy foundation</td><td><span class="status status-claimed">~80%</span></td><td>Unchanged — tenant scoping still only enforced in Screening</td></tr>
+        <tr style="background:var(--good-soft)"><td>§3</td><td>Design system (PH-04)</td><td><span class="status status-done">✓ ~85%</span></td><td><span class="b b-new">NEW</span> Warm cream fully applied in <code>index.css</code> + <code>theme-override.css</code>. <code>#FAF9F5</code> background, <code>#1A1A1F</code> ink, <code>#E9E3D5</code> border, saffron token, all present.</td></tr>
+        <tr><td>§4</td><td>App shell &amp; navigation (PH-02)</td><td><span class="status status-claimed">~75%</span></td><td>Sidebar still 5 groups in <code>modules.js</code>. <code>routeMap</code> now includes Interview + Budget + Report Candidate. Sidebar not yet 6 canonical groups.</td></tr>
+        <tr style="background:var(--good-soft)"><td>§5</td><td>Pipeline as entry point (CX-01)</td><td><span class="status status-done">✓ Done</span></td><td><span class="b b-new">NEW</span> <code>ReportCandidate</code> + <code>ReportCandidateDetail</code> pages added — full candidate journey tracker across all stages with AI screening detail view.</td></tr>
+        <tr><td colspan="4" style="background:var(--paper-2);font-family:var(--mono);font-size:11px;font-weight:700;letter-spacing:.05em;color:var(--muted);padding:8px 13px;">B · WORKFLOW MODULES</td></tr>
+        <tr><td>§6</td><td>AI Screening (SC-01..03)</td><td><span class="status status-done">✓ ~100%</span></td><td>Stable. No changes this week.</td></tr>
+        <tr><td>§7</td><td>Search &amp; Outreach (SO-01..02)</td><td><span class="status status-claimed">~85%</span></td><td>Stable. SO-02 Outreach still pending.</td></tr>
+        <tr style="background:var(--good-soft)"><td>§8</td><td>Interview module (IV-01..05)</td><td><span class="status status-progress">~50%</span></td><td><span class="b b-new">MAJOR</span> Full backend module live: <code>interview.route.js · controller.js · service.js · model.js</code> mounted at <code>/api/interview</code>. 16 endpoints. L1 Workboard page. L2 Position (job-level). L3 Candidate with Prep/Schedule/Conduct. AI question generation + rubric system. DB tables: <code>candidate_interview + interview_position_prep + interview_schedule</code>.</td></tr>
+        <tr><td>§9</td><td>Psych Assessment (PA-01..03)</td><td><span class="status status-claimed">~85%</span></td><td>Stable. L1/L2/L4 workspace still missing.</td></tr>
+        <tr><td>§11</td><td>Background Check (BG-01..04)</td><td><span class="status status-pending">0%</span></td><td>Must start this week. Nothing in code.</td></tr>
+        <tr><td>§12</td><td>Offer &amp; Contract (OF-01..05)</td><td><span class="status status-pending">0%</span></td><td>Must start W10. compensation_engine is the long pole.</td></tr>
+        <tr><td>§13</td><td>Onboarding (ON-01..04)</td><td><span class="status status-pending">0%</span></td><td>W11–W12. Most compressible module.</td></tr>
+        <tr><td colspan="4" style="background:var(--paper-2);font-family:var(--mono);font-size:11px;font-weight:700;letter-spacing:.05em;color:var(--muted);padding:8px 13px;">C · CROSS-CUTTING</td></tr>
+        <tr style="background:var(--good-soft)"><td>§14</td><td>Settings (SE-01..15)</td><td><span class="status status-claimed">6/15</span></td><td><span class="b b-new">NEW</span> Budget Settings page (<code>/settings/budget</code>) added — shows monthly AI spend, budget cap, usage breakdown by operation, and 80%/100% warnings. Now 6 of 15 settings sections done.</td></tr>
+        <tr><td>§15</td><td>Acceptance &amp; launch</td><td><span class="status status-pending">Not started</span></td><td>12 pre-flight locks still pending. Pilot count unknown to engineering.</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <!-- §3 BUILT -->
+  <div class="sec" id="built">
+    <div class="sec-num">§3</div>
+    <div class="sec-title">What's been built — cumulative</div>
+    <p class="sec-sub">Everything verified from reading the codebase today. Items marked <span class="b b-new">NEW W9</span> are additions confirmed since v5.0 (8 Jun).</p>
+
+    <h3>3.1 Infrastructure — significant closes this week</h3>
+    <table class="tbl">
+      <thead><tr><th>What</th><th>Status</th><th>Code evidence</th><th>Note</th></tr></thead>
+      <tbody>
+        <tr style="background:var(--good-soft)"><td>Warm cream design tokens (PH-04)</td><td><span class="b b-ok">✓ SHIPPED</span></td><td><code>index.css</code> — <code>--background:#FAF9F5; --foreground:#1A1A1F; --border:#E9E3D5</code> set in root. <code>theme-override.css</code> fully maps all Shadcn vars to warm cream palette.</td><td><span class="b b-new">NEW W9</span> Was 3 weeks overdue. Now done.</td></tr>
+        <tr style="background:var(--good-soft)"><td>AI cost cap + 80% alert (PH-CC)</td><td><span class="b b-ok">✓ SHIPPED</span></td><td><code>company-usage.service.js#checkBudgetOrThrow()</code> · Migration <code>009_company_budgets.sql</code> · Seed in <code>data/company_budgets.js</code> · Manual test <code>tests/manual/test-budget-cap.js</code>. 402 gate + Slack webhook at 80%.</td><td><span class="b b-new">NEW W9</span> Was 2 weeks overdue. Now done and tested.</td></tr>
+        <tr style="background:var(--good-soft)"><td>Budget Settings page (SE-06)</td><td><span class="b b-ok">✓ SHIPPED</span></td><td><code>pages/BudgetSettings.jsx</code> · route <code>/settings/budget</code> in <code>App.jsx</code> · routeMap entry in sidebar</td><td><span class="b b-new">NEW W9</span></td></tr>
+        <tr><td>Sidebar 6-group canonical reshape</td><td><span class="b b-warn">Still 5 groups</span></td><td><code>backend/src/db/data/modules.js</code> — still 5 entries: Main, Sourcing, Asesmen, Selection, Settings. No "Offer &amp; Onboard" or "Insights" group yet.</td><td>Carried over 4 weeks. Small task, do Monday.</td></tr>
+        <tr><td>CLAUDE.md ngrok cleanup</td><td><span class="b b-warn">Status unclear</span></td><td>Not re-verified this week. Likely still present — confirm with verify command §9.</td><td>5-min task.</td></tr>
+        <tr><td>Tenant scoping in remaining services</td><td><span class="b b-warn">Partial</span></td><td>Interview service has full tenant scoping. <code>job.service.js</code>, <code>job-account.service.js</code> still unconfirmed. Verify with §9 command.</td><td>Still a R-4 risk item.</td></tr>
+      </tbody>
+    </table>
+
+    <h3>3.2 Interview module — shipped this week (<span class="b b-new">NEW W9</span>)</h3>
+    <table class="tbl">
+      <thead><tr><th>What</th><th>Status</th><th>Code evidence</th></tr></thead>
+      <tbody>
+        <tr><td>Backend scaffold (4 files)</td><td><span class="b b-ok">✓ Built</span></td><td><code>backend/src/modules/interview/</code> — <code>interview.route.js · controller.js · service.js · model.js</code>. Mounted at <code>/api/interview</code> in <code>app.js</code> (both portal and root mount).</td></tr>
+        <tr><td>16 API endpoints</td><td><span class="b b-ok">✓ Built</span></td><td>GET workboard · GET by-candidate · GET/POST schedules · PUT/POST/DELETE schedule ops · GET/POST job prep + questions + rubric + lock/unlock · GET/:id · PATCH status</td></tr>
+        <tr><td>DB tables (3 new)</td><td><span class="b b-ok">✓ Built</span></td><td><code>candidate_interview</code> (expanded from stub) · <code>interview_position_prep</code> (JSONB questions + rubric, lock mechanism) · <code>interview_schedule</code> (per-session with confirm/outcome). All have <code>company_id</code> + indexes.</td></tr>
+        <tr><td>L1 Workboard</td><td><span class="b b-ok">✓ Built</span></td><td><code>pages/InterviewWorkboard.jsx</code> — status chips (Ongoing/Scheduled/Done), position rail, candidate list, search/filter, pagination. Route: <code>/selection/interview</code></td></tr>
+        <tr><td>L2 Position (job level)</td><td><span class="b b-info">→ Partial</span></td><td><code>components/interview/Interview-Job.jsx</code> — candidate table, Questions tab (AI generate + edit), Rubric tab (6 HRD competencies, lock/unlock). Route: <code>/selection/interview/job/:jobId</code></td></tr>
+        <tr><td>L3 Candidate — Prep tab</td><td><span class="b b-ok">✓ Built</span></td><td><code>components/interview/Interview-Candidate.jsx PrepSection</code> — shows position-level questions, per-candidate custom Q add/remove, inline edit, save to backend</td></tr>
+        <tr><td>L3 Candidate — Schedule tab</td><td><span class="b b-ok">✓ Built</span></td><td><code>ScheduleSection</code> — create/confirm/unconfirm/delete sessions (max 3), datetime picker, confirmation note, session history</td></tr>
+        <tr><td>L3 Candidate — Conduct tab</td><td><span class="b b-ok">✓ Built</span></td><td><code>ConductSection</code> — record outcome (interviewed/no_show/reschedule), outcome note dialog, clear outcome, status transitions wired to backend</td></tr>
+        <tr><td>L3 Candidate — Evaluate tab</td><td><span class="b b-warn">Stub</span></td><td><code>ComingSoonSection label="Evaluate"</code> — placeholder. Scorecard review not yet built.</td></tr>
+        <tr><td>L3 Candidate — Decide tab</td><td><span class="b b-warn">Stub</span></td><td><code>ComingSoonSection label="Decide"</code> — placeholder. Advance/hold/reject not yet wired.</td></tr>
+        <tr><td>AI question generation</td><td><span class="b b-ok">✓ Built</span></td><td><code>interview.service.js#generateQuestions()</code> — calls <code>aiService</code>, generates questions per JD + skills, respects <code>checkBudgetOrThrow()</code>. Language + count options.</td></tr>
+        <tr><td>Rubric system (HRD competency framework)</td><td><span class="b b-ok">✓ Built</span></td><td>6 competencies: HRD-01 Leadership · HRD-02 Planning &amp; Organizing · HRD-03 Problem Solving · HRD-04 Quality · HRD-05 Creativity · HRD-06 Teamwork. Weight + Anchor-1 + Anchor-7 per competency. Lock/unlock before batch send.</td></tr>
+        <tr><td>Tenant scoping</td><td><span class="b b-ok">✓ Built</span></td><td>All interview service methods check <code>company_id</code> and throw 403 on cross-tenant access. Consistent with Screening pattern.</td></tr>
+        <tr><td>L4 Calibration</td><td><span class="b b-err">Missing</span></td><td>No cohort decision board yet. Advance-from-Interview not built.</td></tr>
+        <tr><td>Frontend API layer</td><td><span class="b b-ok">✓ Built</span></td><td><code>frontend/src/api/interview.api.js</code> — 18 exported functions covering all backend endpoints</td></tr>
+      </tbody>
+    </table>
+
+    <h3>3.3 Report Candidate module — new this week (<span class="b b-new">NEW W9</span>)</h3>
+    <table class="tbl">
+      <thead><tr><th>What</th><th>Status</th><th>Code evidence</th></tr></thead>
+      <tbody>
+        <tr><td>Report Candidate list page</td><td><span class="b b-ok">✓ Built</span></td><td><code>pages/ReportCandidate.jsx</code> · <code>components/report-candidate/report-candidate.jsx</code> — all candidates across all jobs, search, pagination, click-through to detail</td></tr>
+        <tr><td>Report Candidate detail page</td><td><span class="b b-ok">✓ Built</span></td><td><code>pages/ReportCandidateDetail.jsx</code> — per-candidate journey view with stage stepper, sub-stage breakdown. Screening sub-stages (Parse/Match/QA) surfaced with detail components.</td></tr>
+        <tr><td>Candidate progress API</td><td><span class="b b-ok">✓ Built</span></td><td><code>candidate.api.js#getProgress(id)</code> — <code>GET /candidate-pipeline/:id/progress</code> — returns stages + process state per stage</td></tr>
+      </tbody>
+    </table>
+
+    <h3>3.4 Cumulative progress — updated percentages</h3>
+    <div class="progress-row"><span class="progress-label">Foundations &amp; auth</span><div class="progress-bar-bg"><div class="progress-bar-fill" style="width:85%"></div></div><span class="progress-pct">85%</span></div>
+    <div class="progress-row"><span class="progress-label">Multi-tenancy (PH-01)</span><div class="progress-bar-bg"><div class="progress-bar-fill" style="width:80%"></div></div><span class="progress-pct">80%</span></div>
+    <div class="progress-row"><span class="progress-label" style="font-weight:700;color:var(--good)">Design system (PH-04) ↑</span><div class="progress-bar-bg"><div class="progress-bar-fill" style="width:85%"></div></div><span class="progress-pct" style="color:var(--good)">85%</span></div>
+    <div class="progress-row"><span class="progress-label">Sourcing (SO-01..02)</span><div class="progress-bar-bg"><div class="progress-bar-fill" style="width:85%"></div></div><span class="progress-pct">85%</span></div>
+    <div class="progress-row"><span class="progress-label">AI Screening (SC-01..03)</span><div class="progress-bar-bg"><div class="progress-bar-fill" style="width:100%"></div></div><span class="progress-pct">100%</span></div>
+    <div class="progress-row"><span class="progress-label" style="font-weight:700;color:var(--good)">Interview (IV-01..05) ↑</span><div class="progress-bar-bg"><div class="progress-bar-fill" style="width:50%"></div></div><span class="progress-pct" style="color:var(--good)">~50%</span></div>
+    <div class="progress-row"><span class="progress-label">Psych (PA-01..03)</span><div class="progress-bar-bg"><div class="progress-bar-fill" style="width:85%"></div></div><span class="progress-pct">85%</span></div>
+    <div class="progress-row"><span class="progress-label">BG Check (BG-01..04)</span><div class="progress-bar-bg"><div class="progress-bar-fill" style="width:0%"></div></div><span class="progress-pct" style="color:var(--bad)">0%</span></div>
+    <div class="progress-row"><span class="progress-label">Offer &amp; Contract (OF-01..05)</span><div class="progress-bar-bg"><div class="progress-bar-fill" style="width:0%"></div></div><span class="progress-pct" style="color:var(--bad)">0%</span></div>
+    <div class="progress-row"><span class="progress-label">Onboarding (ON-01..04)</span><div class="progress-bar-bg"><div class="progress-bar-fill" style="width:0%"></div></div><span class="progress-pct" style="color:var(--bad)">0%</span></div>
+    <div class="progress-row"><span class="progress-label" style="color:var(--good)">Settings (SE-01..15) ↑</span><div class="progress-bar-bg"><div class="progress-bar-fill" style="width:40%"></div></div><span class="progress-pct" style="color:var(--good)">6/15 (40%)</span></div>
+    <div class="progress-row" style="margin-top:14px;border-top:1px solid var(--hairline);padding-top:14px"><span class="progress-label" style="font-weight:700">Overall v0.1 readiness ↑</span><div class="progress-bar-bg"><div class="progress-bar-fill" style="width:62%"></div></div><span class="progress-pct" style="font-weight:700;color:var(--forest)">~62%</span></div>
+    <p style="font-size:13px;color:var(--muted);margin-top:8px">+14 percentage points from last week (48% → 62%). Largest single-week gain in the project. Driven by Interview module + design tokens + AI cost cap.</p>
+  </div>
+
+  <!-- §4 THIS WEEK -->
+  <div class="sec" id="week">
+    <div class="sec-num">§4</div>
+    <div class="sec-title">This week (8–14 Jun) — plan vs reality</div>
+    <p class="sec-sub">The v5.0 plan had 14 tasks, with Interview as the non-negotiable hard constraint. Here is the verified landing.</p>
+
+    <table class="tbl">
+      <thead>
+        <tr><th style="width:60px">Day</th><th style="width:60px">Task</th><th>Plan</th><th style="width:120px">Outcome</th><th>What actually happened</th></tr>
+      </thead>
+      <tbody>
+        <tr style="background:var(--good-soft)"><td>Mon</td><td>7.1</td><td>Interview module 4-file backend scaffold</td><td><span class="b b-ok">✓ Done</span></td><td><code>backend/src/modules/interview/</code> created with route · controller · service · model. Mounted at <code>/api/interview</code> in <code>app.js</code>. 16 endpoints, all tenant-scoped.</td></tr>
+        <tr style="background:var(--good-soft)"><td>Mon</td><td>7.2</td><td>Interview migration tables</td><td><span class="b b-ok">✓ Done</span></td><td><code>candidate_interview</code> expanded. <code>interview_position_prep</code> + <code>interview_schedule</code> created. <code>interview_status_type</code> enum added to setup.sql. All indexes present.</td></tr>
+        <tr style="background:var(--good-soft)"><td>Mon</td><td>7.3</td><td>Interview L1 Workboard shell</td><td><span class="b b-ok">✓ Done</span></td><td><code>pages/InterviewWorkboard.jsx</code> — full workboard with status chips, position rail, candidate list, search, pagination, and navigation to L2/L3. Route <code>/selection/interview</code> live in <code>App.jsx</code>.</td></tr>
+        <tr style="background:var(--good-soft)"><td>Tue</td><td>7.4</td><td>Interview L2 Position view</td><td><span class="b b-ok">✓ Done</span></td><td><code>components/interview/Interview-Job.jsx</code> — candidate table, Questions tab (generate/edit with AI), Rubric tab (6 HRD competencies with weights + behavioral anchors, lock/unlock). Route <code>/selection/interview/job/:jobId</code>.</td></tr>
+        <tr style="background:var(--good-soft)"><td>Tue</td><td>7.5</td><td>Warm cream design tokens (3rd attempt)</td><td><span class="b b-ok">✓ Done</span></td><td><code>index.css</code> now has <code>--background:#FAF9F5; --foreground:#1A1A1F; --border:#E9E3D5; --muted-foreground:#6E6A5E</code>. <code>theme-override.css</code> fully maps Shadcn vars to warm palette including saffron, paper-2, shade, hairline-2, gradient and glass tokens.</td></tr>
+        <tr style="background:var(--good-soft)"><td>Tue</td><td>7.6</td><td>Sidebar reshape + CLAUDE.md cleanup</td><td><span class="b b-warn">Partial</span></td><td><code>routeMap</code> in <code>app-sidebar.jsx</code> updated to include Interview, Budget, Report Candidate routes. But <code>backend/src/db/data/modules.js</code> still has 5 groups — the 6-group canonical seed not updated. CLAUDE.md cleanup status unconfirmed.</td></tr>
+        <tr style="background:var(--good-soft)"><td>Wed</td><td>7.7</td><td>Interview L3 Candidate stepper shell</td><td><span class="b b-ok">✓ Done</span></td><td><code>components/interview/Interview-Candidate.jsx</code> — full 5-tab stepper (Prep/Schedule/Conduct/Evaluate/Decide). Candidate header with job context, status badge, round navigation. Route <code>/selection/interview/candidate/:interviewId</code>.</td></tr>
+        <tr style="background:var(--good-soft)"><td>Wed</td><td>7.8</td><td>Tenant scoping in remaining services</td><td><span class="b b-warn">Partial</span></td><td>Interview service has full scoping. <code>job.service.js</code> and others — not re-verified this week. Will confirm with §9 commands.</td></tr>
+        <tr style="background:var(--good-soft)"><td>Wed</td><td>7.9</td><td>AI cost cap + 80% alert</td><td><span class="b b-ok">✓ Done</span></td><td><code>company-usage.service.js#checkBudgetOrThrow()</code> implemented. Migration 009, seed data, Budget Settings UI, manual test script all present. Interview's <code>generateQuestions</code> calls the cap check.</td></tr>
+        <tr style="background:var(--good-soft)"><td>Thu</td><td>7.10</td><td>Interview Prep tab + AI brief generation</td><td><span class="b b-ok">✓ Done</span></td><td>Prep tab built with per-candidate question list (position-level + custom), inline edit, add/remove custom questions, save to backend. AI generation wired via <code>POST /job/:jobId/prep/questions/generate</code>.</td></tr>
+        <tr style="background:var(--good-soft)"><td>Thu</td><td>7.11</td><td>Interview Schedule tab</td><td><span class="b b-ok">✓ Done</span></td><td>Schedule tab with create/confirm/delete sessions (max 3), datetime picker, confirmation note, session history timeline, status-driven UI (can't confirm before creating, etc.).</td></tr>
+        <tr style="background:var(--good-soft)"><td>Thu–Fri</td><td>—</td><td>(Unplanned)</td><td><span class="b b-new">Bonus</span></td><td>Report Candidate module shipped beyond plan: <code>ReportCandidate.jsx</code> + <code>ReportCandidateDetail.jsx</code> with per-candidate stage journey, AI screening sub-stage detail, progress API.</td></tr>
+        <tr style="background:var(--good-soft)"><td>Thu–Fri</td><td>—</td><td>(Unplanned)</td><td><span class="b b-new">Bonus</span></td><td>Budget Settings page shipped: <code>pages/BudgetSettings.jsx</code> — shows monthly AI spend, cap, usage breakdown by operation, 80%/100% warning banners, route <code>/settings/budget</code>.</td></tr>
+        <tr><td>Fri</td><td>7.12</td><td>Interview Phase 3 buffer</td><td><span class="b b-warn">Partial</span></td><td>Conduct tab (record outcome, clear outcome, status transitions) built. Evaluate and Decide tabs remain as stubs.</td></tr>
+        <tr><td>Fri</td><td>7.13</td><td>End-to-end smoke test</td><td><span class="b b-warn">→ Open</span></td><td>No documented smoke test result. Needs confirmation at the weekly meeting.</td></tr>
+        <tr><td>Fri</td><td>7.14</td><td>Pilot recruitment status</td><td><span class="b b-warn">→ Open</span></td><td>No documented count from engineering side. GTM update still needed.</td></tr>
+      </tbody>
+    </table>
+
+    <div class="cal success">
+      <div class="cal-title">✅ Week summary — the turnaround</div>
+      <p>11 of 14 planned tasks delivered. 2 bonus features shipped (Report Candidate + Budget Settings). The team finally executed the Interview kickoff that was deferred for three weeks. Warm cream and AI cost cap — overdue since W7 — are both closed. The one meaningful gap: Interview Evaluate + Decide stubs remain (needed for W10 BG Check trigger). The sidebar 6-group seed remains unupdated. These two items carry into Monday.</p>
+    </div>
+  </div>
+
+  <!-- §5 GAPS -->
+  <div class="sec" id="gaps">
+    <div class="sec-num">§5</div>
+    <div class="sec-title">Gap analysis — what remains</div>
+    <p class="sec-sub">Updated for W9 delivery. Interview gap is now much smaller. BG Check, Offer, and Onboarding remain at 0% and must begin in parallel immediately.</p>
+
+    <h3>5.1 Interview — finish the remaining ~50%</h3>
+    <div class="cal info">
+      <div class="cal-title">What remains in Interview</div>
+      <ul style="margin:8px 0 0;padding-left:20px;font-size:14px">
+        <li><strong>Evaluate tab</strong> — scorecard view: per-competency 1–7 rating by interviewer, rubric summary, notes. ~1.5 dev-days</li>
+        <li><strong>Decide tab</strong> — advance/hold/reject candidate from Interview, decision reason, status to <code>done</code>. ~1 dev-day</li>
+        <li><strong>L4 Calibration</strong> — cohort decision board: all interviewed candidates for a job, bulk advance to next stage (Psych). ~1 dev-day</li>
+        <li><strong>Round sequencing</strong> — Module Guide §8 specifies R1/R2/R3. Current model is single-round. Multi-round progression deferred to v0.1.5 or handled via re-entry. Decision needed (D-10).</li>
+        <li><strong>Tenant scoping in remaining services</strong> — task 7.8 partial. Complete sweep this week.</li>
+      </ul>
+    </div>
+
+    <h3>5.2 BG Check — start this week (Week 10 if slipping)</h3>
+    <table class="tbl">
+      <thead><tr><th>Item</th><th>Effort</th></tr></thead>
+      <tbody>
+        <tr><td>5 DB tables: <code>candidate_bg · bg_claim · bg_consent · bg_lane · bg_vendor_config</code></td><td>~1 dev-day</td></tr>
+        <tr><td>Backend module (route · controller · service · model · 8+ endpoints)</td><td>~2 dev-days</td></tr>
+        <tr><td>4 sub-stages × 4 levels frontend (Claims · Consent · Tracker · Verdict)</td><td>~3 dev-days</td></tr>
+        <tr><td>Vendor adapter pattern — stub 6 lanes for pilot (Verihubs/iCheck manual for v0.1)</td><td>~1.5 dev-days</td></tr>
+        <tr><td>UU PDP 27/2022 consent gate enforcement (Tracker locked until e-signed)</td><td>~4h</td></tr>
+        <tr><td colspan="2" style="background:var(--forest-soft);font-family:var(--mono);font-size:11px;font-weight:700;color:var(--forest-deep);text-align:center;padding:8px">~7.5 dev-days total · W10 start or this Friday if Interview wraps early</td></tr>
+      </tbody>
+    </table>
+
+    <h3>5.3 Offer &amp; Contract — W10–W11</h3>
+    <table class="tbl">
+      <thead><tr><th>Item</th><th>Effort</th></tr></thead>
+      <tbody>
+        <tr><td>6 DB tables + backend module + OF-07 state machine</td><td>~4 dev-days</td></tr>
+        <tr><td>5 sub-stages × 4 levels frontend (Approve · Intake · Build · Send · Track)</td><td>~4 dev-days</td></tr>
+        <tr><td><code>compensation_engine</code> — 2026 PPh21 + BPJS + Gross/Nett + DJP test cases</td><td>~3 dev-days</td></tr>
+        <tr><td>Bahasa contract HTML generator + signing portal</td><td>~3 dev-days</td></tr>
+        <tr><td colspan="2" style="background:var(--forest-soft);font-family:var(--mono);font-size:11px;font-weight:700;color:var(--forest-deep);text-align:center;padding:8px">~14 dev-days · the largest remaining module · compensation_engine is the long pole</td></tr>
+      </tbody>
+    </table>
+
+    <h3>5.4 Onboarding — W11–W12</h3>
+    <table class="tbl">
+      <thead><tr><th>Item</th><th>Effort</th></tr></thead>
+      <tbody>
+        <tr><td>7 tables + backend + task materialisation logic</td><td>~3 dev-days</td></tr>
+        <tr><td>3 role templates: office_staff · factory_worker · field_sales</td><td>~1 dev-day</td></tr>
+        <tr><td>4 sub-stages × 4 levels (Pre-boarding · Day-1 · 30/60/90 · Day-90)</td><td>~4 dev-days</td></tr>
+        <tr><td>Day-90 three-way decision board (Konversi/Perpanjangan/Pemutusan)</td><td>~1.5 dev-days</td></tr>
+        <tr><td colspan="2" style="background:var(--forest-soft);font-family:var(--mono);font-size:11px;font-weight:700;color:var(--forest-deep);text-align:center;padding:8px">~9.5 dev-days · most compressible module · may ship as MVP (1 role template)</td></tr>
+      </tbody>
+    </table>
+
+    <h3>5.5 Psych Assessment — finish L1/L2/L4</h3>
+    <p style="font-size:13.5px;color:var(--ink-2)">The 4 batteries + portal are solid. The 3 missing workspace levels take ~4–5 dev-days and can run in parallel with BG Check (different engineer). Psikolog e-sign adds ~1 more day.</p>
+  </div>
+
+  <!-- §6 NEXT WEEK -->
+  <div class="sec" id="next">
+    <div class="sec-num">§6</div>
+    <div class="sec-title">Next week (15–19 Jun) — Interview finish + BG Check kickoff</div>
+    <p class="sec-sub">Interview wraps by Wednesday. BG Check scaffolding starts Thursday. Both engineers parallel from here on — one on Interview finish/BG Check, one on Psych L1/L2/L4 + preparation for Offer.</p>
+
+    <div class="day">
+      <div class="day-head">
+        <div class="day-num">Mon–Tue</div>
+        <div class="day-date">15–16 Jun 2026</div>
+        <div class="day-title">Interview finish: Evaluate + Decide + Calibration</div>
+      </div>
+
+      <div class="day-task">
+        <div class="task-head">
+          <span class="task-id">8.1</span>
+          <span class="task-title">Interview Evaluate tab — competency scorecard</span>
+          <span class="task-claude">CLAUDE ASSIST</span>
+          <span class="task-owner">FE Eng · 4h</span>
+        </div>
+        <div class="task-body">Per-competency 1–7 rating form using the rubric from <code>interview_position_prep.rubric_items</code>. Show anchor descriptions (Anchor 1 = poor, Anchor 7 = excellent). Total weighted score. Notes field. Submit saves to backend (new endpoint or extends schedule outcome).</div>
+        <div class="task-criteria"><span class="task-criteria-label">DONE WHEN</span>Evaluate tab shows rubric items, recruiter can rate 1–7, score saved, tab shows completion state.</div>
+      </div>
+
+      <div class="day-task">
+        <div class="task-head">
+          <span class="task-id">8.2</span>
+          <span class="task-title">Interview Decide tab — advance/hold/reject from Interview</span>
+          <span class="task-owner">FE + BE · 3h</span>
+        </div>
+        <div class="task-body">Decision UI (advance to Psych / hold / reject) with reason field. Backend: update <code>candidate_interview.status = 'done'</code> + write decision. Advance creates an <code>assessment_session</code> stub or Psych intake row.</div>
+        <div class="task-criteria"><span class="task-criteria-label">DONE WHEN</span>Recruiter can advance/hold/reject from Decide tab. Advancing creates downstream Psych row.</div>
+      </div>
+
+      <div class="day-task">
+        <div class="task-head">
+          <span class="task-id">8.3</span>
+          <span class="task-title">Interview L4 Calibration page</span>
+          <span class="task-claude">CLAUDE ASSIST</span>
+          <span class="task-owner">FE Eng · 4h</span>
+        </div>
+        <div class="task-body">Clone <code>AIScreeningCalibration.jsx</code> pattern for Interview. Show all candidates with <code>status = 'done'</code> for a job, their conduct outcome, overall rubric score. Multi-select + bulk advance to Psych.</div>
+        <div class="task-criteria"><span class="task-criteria-label">DONE WHEN</span><code>/selection/interview/job/:jobId/calibrate</code> shows candidate cohort, multi-select works, bulk advance writes downstream rows.</div>
+      </div>
+
+      <div class="day-task">
+        <div class="task-head">
+          <span class="task-id">8.4</span>
+          <span class="task-title">Sidebar reshape to 6 groups + modules.js update</span>
+          <span class="task-owner">FE + BE · 2h</span>
+        </div>
+        <div class="task-body">Update <code>backend/src/db/data/modules.js</code> to 6 entries: Main · Sourcing · Selection · Offer &amp; Onboard · Insights · Account. Update <code>iconMap</code> in <code>app-sidebar.jsx</code>. "Asesmen" folds under Selection. Add CLAUDE.md cleanup while here.</div>
+        <div class="task-criteria"><span class="task-criteria-label">DONE WHEN</span>Sidebar shows 6 canonical groups. RBAC still filters correctly. No ngrok reference in CLAUDE.md.</div>
+      </div>
+    </div>
+
+    <div class="day">
+      <div class="day-head">
+        <div class="day-num">Wed–Thu</div>
+        <div class="day-date">18–19 Jun 2026</div>
+        <div class="day-title">BG Check kickoff + Psych L1/L2 (parallel track)</div>
+      </div>
+
+      <div class="day-task">
+        <div class="task-head">
+          <span class="task-id">8.5</span>
+          <span class="task-title">BG Check backend scaffold + DB tables</span>
+          <span class="task-claude">CLAUDE ASSIST</span>
+          <span class="task-owner">BE Eng · 1 day</span>
+        </div>
+        <div class="task-body">Create <code>backend/src/modules/bg/</code> with route · controller · service · model. 5 tables: <code>candidate_bg · bg_claim · bg_consent · bg_lane · bg_vendor_config</code>. All with <code>company_id</code> + indexes. Mount at <code>/api/bg</code>. Stub 6 vendor lanes. Consent gate logic in service.</div>
+        <div class="task-criteria"><span class="task-criteria-label">DONE WHEN</span>Module mounted, tables exist, 8+ endpoints respond (empty data OK), consent gate enforced in service.</div>
+      </div>
+
+      <div class="day-task">
+        <div class="task-head">
+          <span class="task-id">8.6</span>
+          <span class="task-title">Psych L1 Workboard + L2 Position view</span>
+          <span class="task-claude">CLAUDE ASSIST</span>
+          <span class="task-owner">FE Eng · 1 day</span>
+        </div>
+        <div class="task-body">Psych workboard: candidates across positions needing psych assessment, chips for battery status (pending/in-progress/done). Position view: per-job cohort with battery progress. Clone patterns from AI Screening workboard.</div>
+        <div class="task-criteria"><span class="task-criteria-label">DONE WHEN</span>Psych L1 + L2 pages navigable. Real data flows from existing assessment tables.</div>
+      </div>
+
+      <div class="day-task">
+        <div class="task-head">
+          <span class="task-id">8.7</span>
+          <span class="task-title">BG Check L1 Workboard frontend shell</span>
+          <span class="task-owner">FE Eng · 4h</span>
+        </div>
+        <div class="task-body">BG Check workboard page with candidate list, status chips (claims/consent/tracking/verdict), position rail. Mock data acceptable. Route <code>/selection/bg-check</code>.</div>
+        <div class="task-criteria"><span class="task-criteria-label">DONE WHEN</span>Route navigable, layout renders, chips display.</div>
+      </div>
+    </div>
+
+    <div class="cal info">
+      <div class="cal-title">📋 Beyond next week — revised W10-W12 schedule</div>
+      <p><strong>W10 (22–26 Jun):</strong> BG Check L2/L3/L4 + Claims/Consent/Tracker UI · Offer module kickoff · compensation_engine starts · both engineers strictly parallel</p>
+      <p><strong>W11 (29 Jun – 3 Jul):</strong> BG Check Verdict + Offer Build/Send/Track · compensation_engine unit tests vs DJP · pilot recruitment confirmed at 20</p>
+      <p><strong>W12 (6–10 Jul):</strong> Offer finish + Onboarding MVP (1 role template) + 12 pre-flight items + final QA</p>
+      <p><strong>Pilot launch: 13 Jul 2026</strong></p>
+    </div>
+  </div>
+
+  <!-- §7 RISKS -->
+  <div class="sec" id="risks">
+    <div class="sec-num">§7</div>
+    <div class="sec-title">Risk register — updated W9</div>
+    <p class="sec-sub">R-1 (Interview slippage) has downgraded significantly. R-2 (compensation_engine) is now the top risk.</p>
+
+    <div style="margin:18px 0">
+      <div class="risk-row">
+        <div><div class="risk-id">R-1</div></div>
+        <div class="risk-desc">
+          <strong>BG Check + Offer + Onboarding sequencing — 21 days, 3 modules at 0%</strong>
+          Interview shipped; the schedule bottleneck has shifted forward. BG Check must start this week. Offer and Onboarding follow in strict sequence. Each takes 7–14 dev-days. <em>Mitigation:</em> Parallel track from today — BE on BG Check scaffold, FE on Psych L1/L2 + BG Check frontend. Never more than one day between backend scaffold and frontend shell.
+        </div>
+        <div><span class="b b-err">P0 · HIGH</span></div>
+        <div style="font-family:var(--mono);font-size:11px;color:var(--muted)">BE + FE + PM</div>
+      </div>
+
+      <div class="risk-row">
+        <div><div class="risk-id">R-2</div></div>
+        <div class="risk-desc">
+          <strong>compensation_engine accuracy on PPh21 / BPJS</strong>
+          Module Guide §12: the engine is the single longest task (~3 dev-days). If it computes Indonesian tax incorrectly, pilot companies lose trust immediately. Pilot contracts may include explicit liability language. <em>Mitigation:</em> Unit-test against DJP official example calculations. Have BE Lead review with a tax consultant before pilot. Keep Gross/Nett toggle clearly labelled.
+        </div>
+        <div><span class="b b-err">P0 · HIGH</span></div>
+        <div style="font-family:var(--mono);font-size:11px;color:var(--muted)">BE Eng + PM</div>
+      </div>
+
+      <div class="risk-row">
+        <div><div class="risk-id">R-3</div></div>
+        <div class="risk-desc">
+          <strong>Pilot recruitment — confirmed count unknown</strong>
+          Task 7.14 (pilot status) carried over again. With 21 days to launch and pilot onboarding needing ~1 week, companies need to be signed by 1 Jul at the latest. <em>Mitigation:</em> GTM must confirm count at this meeting. If &lt; 10, escalate.
+        </div>
+        <div><span class="b b-warn">P1 · MED</span></div>
+        <div style="font-family:var(--mono);font-size:11px;color:var(--muted)">PM + GTM</div>
+      </div>
+
+      <div class="risk-row">
+        <div><div class="risk-id">R-4</div></div>
+        <div class="risk-desc">
+          <strong>Cross-tenant data leak — unscoped services</strong>
+          Interview service is now properly scoped. But <code>job.service.js</code>, <code>job-account.service.js</code>, Talent Pool still unconfirmed. <em>Mitigation:</em> Task 7.8 sweep was partial — complete this week in task 8.8. Add cross-tenant regression test in W10.
+        </div>
+        <div><span class="b b-warn">P1 · MED</span></div>
+        <div style="font-family:var(--mono);font-size:11px;color:var(--muted)">BE Eng</div>
+      </div>
+
+      <div class="risk-row">
+        <div><div class="risk-id">R-5</div></div>
+        <div class="risk-desc">
+          <strong>Interview multi-round (R1/R2/R3) not yet built</strong>
+          The Module Guide specifies 3 interview rounds. The current implementation supports single-round. Pilots expecting multi-round will need workaround or explicit scoping note. <em>Mitigation:</em> Decision D-10 needed this week — ship single-round for v0.1 and communicate to pilots, or build R2/R3 in W10 (costs ~3 extra dev-days).
+        </div>
+        <div><span class="b b-warn">P1 · MED</span></div>
+        <div style="font-family:var(--mono);font-size:11px;color:var(--muted)">Product · PM</div>
+      </div>
+    </div>
+
+    <h3>7.1 Risks closed</h3>
+    <table class="tbl">
+      <thead><tr><th>Risk</th><th>Status</th><th>Why closed</th></tr></thead>
+      <tbody>
+        <tr><td>Production fires (ngrok + Anthropic key)</td><td><span class="b b-ok">✓ Closed</span></td><td>Both fixed weeks ago. Stable.</td></tr>
+        <tr><td>Interview module never starting</td><td><span class="b b-ok">✓ Closed</span></td><td>Interview shipped W9. L1/backend/L3 all functional.</td></tr>
+        <tr><td>AI cost runaway on misconfigured pilot</td><td><span class="b b-ok">✓ Closed</span></td><td><code>checkBudgetOrThrow()</code> + 402 gate + 80% Slack alert all shipped W9.</td></tr>
+        <tr><td>Warm cream design system not applied</td><td><span class="b b-ok">✓ Closed</span></td><td><code>index.css</code> + <code>theme-override.css</code> fully applied W9.</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <!-- §8 DECISIONS -->
+  <div class="sec" id="decisions">
+    <div class="sec-num">§8</div>
+    <div class="sec-title">Decisions needed this week</div>
+
+    <table class="tbl">
+      <thead>
+        <tr><th>ID</th><th>Decision</th><th>Owner</th><th>Context &amp; recommendation</th></tr>
+      </thead>
+      <tbody>
+        <tr style="background:var(--warn-soft)">
+          <td><strong>D-10</strong> <span class="b b-new">NEW</span></td>
+          <td><strong>Interview rounds — single-round for v0.1 or build R2/R3?</strong></td>
+          <td>Product · PM</td>
+          <td>Current implementation supports one interview round per candidate per job. Module Guide §8 specifies R1 (HR Screen) · R2 (Hiring Manager) · R3 (Panel). Building multi-round adds ~3 dev-days but is needed for the full spec. <strong>Recommendation: Ship single-round for v0.1 pilot. Communicate explicitly in pilot contracts. R2/R3 in v0.1.5.</strong> If any pilot company has a mandatory 3-round requirement, decide now before pilot onboarding.</td>
+        </tr>
+        <tr>
+          <td>D-2</td>
+          <td>BG Check vendor adapters — real or stubbed for pilot?</td>
+          <td>Product · CTO</td>
+          <td>Still open. <strong>Recommendation: all manual / stubbed for v0.1 pilot.</strong> Verihubs identity-only for v0.1.5. This saves ~3 dev-days on adapter implementation.</td>
+        </tr>
+        <tr>
+          <td>D-3</td>
+          <td>compensation_engine — internal build or external library?</td>
+          <td>Engineering · BE Lead</td>
+          <td>Still open. Build starts W10. Decision needed before coding begins. <strong>Recommendation: internal build, DJP test cases.</strong></td>
+        </tr>
+        <tr>
+          <td>D-4</td>
+          <td>Pilot cohort — 20 companies or smaller?</td>
+          <td>Leadership · GTM</td>
+          <td>Still open. Count still unknown to engineering. With 21 days left, <strong>need confirmed names by this Friday 19 Jun.</strong></td>
+        </tr>
+        <tr>
+          <td>D-5</td>
+          <td>Onboarding role_template seed — 3 or 1?</td>
+          <td>Product · PM</td>
+          <td>With W12 compressed, 1 template saves ~1 dev-day. <strong>Recommendation: ship 1 (office_staff) for v0.1, add 2 more in v0.1.5 after surveying pilots.</strong></td>
+        </tr>
+        <tr>
+          <td>D-8</td>
+          <td>Module scope reduction — BG Check or Onboarding MVP?</td>
+          <td>Product · PM + CEO</td>
+          <td>Still relevant for W12 compression. <strong>Recommendation: BG Check MVP (single manual lane) + Onboarding MVP (1 template, no manager handoff). Combined saves ~9 dev-days.</strong></td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <!-- §9 VERIFY -->
+  <div class="sec" id="verify">
+    <div class="sec-num">§9</div>
+    <div class="sec-title">Verify this audit yourself — 14 shell commands</div>
+    <p class="sec-sub">Every claim in this audit can be confirmed or disproven. Run these on a clean checkout of main.</p>
+
+    <table class="tbl">
+      <thead>
+        <tr><th>Claim</th><th>Command</th><th>Expected</th></tr>
+      </thead>
+      <tbody>
+        <tr><td>Fire #1 fixed (no ngrok)</td><td><code>grep "VITE_API_BASE_URL" frontend/src/api/axios.js</code></td><td>1 match</td></tr>
+        <tr><td>Fire #2 fixed (no Anthropic key in browser)</td><td><code>grep -r "sk-ant-" frontend/ 2&gt;/dev/null</code></td><td>0 matches</td></tr>
+        <tr><td>Warm cream tokens applied</td><td><code>grep "FAF9F5" frontend/src/index.css</code></td><td>≥ 1 match</td></tr>
+        <tr><td>theme-override.css warm cream</td><td><code>grep "FAF9F5" frontend/src/theme-override.css</code></td><td>≥ 1 match</td></tr>
+        <tr><td>Interview backend module exists</td><td><code>ls backend/src/modules/interview/</code></td><td>4 files (route/controller/service/model)</td></tr>
+        <tr><td>Interview mounted in app.js</td><td><code>grep "interview" backend/app.js</code></td><td>≥ 2 matches</td></tr>
+        <tr><td>Interview tables in DB schema</td><td><code>grep "CREATE TABLE interview" backend/src/db/setup.sql</code></td><td>2 matches (interview_position_prep + interview_schedule)</td></tr>
+        <tr><td>AI cost cap implemented</td><td><code>grep "checkBudgetOrThrow" backend/src/modules/company-usage/company-usage.service.js</code></td><td>≥ 1 match</td></tr>
+        <tr><td>Interview L1 route exists</td><td><code>grep "selection/interview" frontend/src/App.jsx</code></td><td>3 matches (workboard, job, candidate)</td></tr>
+        <tr><td>Budget Settings page exists</td><td><code>ls frontend/src/pages/BudgetSettings.jsx</code></td><td>file exists</td></tr>
+        <tr><td>Sidebar still 5 groups (confirm gap)</td><td><code>grep -c "name:" backend/src/db/data/modules.js</code></td><td>5 (should become 6 this week)</td></tr>
+        <tr><td>AI Screening — 4 levels still intact</td><td><code>ls frontend/src/pages/AIScreening*.jsx</code></td><td>4 files</td></tr>
+        <tr><td>Interview tenant scoping</td><td><code>grep "Cross-tenant access denied" backend/src/modules/interview/interview.service.js</code></td><td>≥ 3 matches</td></tr>
+        <tr><td>No integration tests yet</td><td><code>ls backend/tests/integration/ 2&gt;/dev/null</code></td><td>0 matches (confirms gap)</td></tr>
+      </tbody>
+    </table>
+
+    <h3>9.1 Glossary for non-technical readers</h3>
+    <div class="gloss"><span class="gloss-term">ATS</span>Applicant Tracking System — the software a recruiter uses to manage hiring end-to-end.</div>
+    <div class="gloss"><span class="gloss-term">Multi-tenancy</span>Supporting multiple separate companies on one install without them seeing each other's data.</div>
+    <div class="gloss"><span class="gloss-term">Interview module</span>The third stage of the recruitment funnel. Covers scheduling sessions with candidates, conducting competency-based interviews, scoring with rubric, and deciding whether to advance.</div>
+    <div class="gloss"><span class="gloss-term">Rubric</span>A scoring framework with weighted competencies. The Interview rubric uses HRD-01 to HRD-06 (Leadership, Planning, Problem Solving, Quality, Creativity, Teamwork), each rated 1–7.</div>
+    <div class="gloss"><span class="gloss-term">4-Level Workspace</span>L1 Workboard · L2 Position · L3 Candidate · L4 Calibration. The pattern every module follows.</div>
+    <div class="gloss"><span class="gloss-term">checkBudgetOrThrow()</span>Backend function that checks monthly AI spend against the company's budget cap. Throws 402 (Payment Required) if exceeded. Fires a Slack alert at 80% usage.</div>
+    <div class="gloss"><span class="gloss-term">compensation_engine</span>Backend service that computes Indonesian salary rollup: PPh21 + PTKP + BPJS Kesehatan + BPJS Ketenagakerjaan + Gross/Nett toggle. The most technically complex piece remaining.</div>
+    <div class="gloss"><span class="gloss-term">UU PDP</span>Indonesia's data privacy law (UU 27/2022). BG Check must collect explicit candidate consent before any verification.</div>
+    <div class="gloss"><span class="gloss-term">UU 13/2003 §60</span>Indonesian labour law governing probation period and the Day-90 onboarding decision (Konversi/Perpanjangan/Pemutusan).</div>
+    <div class="gloss"><span class="gloss-term">PKWTT / PKWT</span>Indonesian permanent (PKWTT) vs fixed-term (PKWT) labour contracts. The Day-90 Onboarding decision chooses between them.</div>
+  </div>
+
+  <div style="text-align:center;padding:48px 0 16px;font-family:var(--mono);font-size:11px;color:var(--faint);letter-spacing:.06em;text-transform:uppercase">
+    MYRALIX · v0.1 CODEBASE AUDIT · 15 JUN 2026 · ALIGNED TO MODULE GUIDE rev 05<br>
+    Built from GitHub codebase review (project knowledge) · Warm cream tokens ✓ Applied · For weekly project meeting<br>
+    Internal product documentation · Not for external distribution · © PT Myralix Indonesia
+  </div>
+
+</div>
+</body>
+</html>

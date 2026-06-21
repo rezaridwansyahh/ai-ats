@@ -228,6 +228,94 @@ class InterviewController {
     }
   }  
 
+  async getScorecard(req, res) {
+    try {
+      const interview_id = Number(req.params.interview_id);
+      const result = await interviewService.getScorecard(interview_id, {
+        company_id: req.user?.company_id || null,
+      });
+      res.status(200).json({ message: 'Scorecard fetched', scorecard: result });
+    } catch (err) {
+      res.status(err.status || 500).json({ message: err.message });
+    }
+  }
+
+  async saveScorecard(req, res) {
+    try {
+      const interview_id = Number(req.params.interview_id);
+      const {
+        competency_scores, competency_comments,
+        recommendation, standout_strengths, concerns,
+        is_draft,
+      } = req.body || {};
+      const result = await interviewService.saveScorecard(interview_id, {
+        competency_scores,
+        competency_comments,
+        recommendation,
+        standout_strengths,
+        concerns,
+        is_draft:     is_draft !== false, // default true
+        company_id:   req.user?.company_id || null,
+        submitted_by: req.user?.user_id    || null,
+      });
+      res.status(200).json({ message: 'Scorecard saved', scorecard: result });
+    } catch (err) {
+      res.status(err.status || 500).json({ message: err.message });
+    }
+  }
+
+  async deleteScorecard(req, res) {
+    try {
+      const interview_id = Number(req.params.interview_id);
+      const result = await interviewService.deleteScorecard(interview_id, {
+        company_id: req.user?.company_id || null,
+      });
+      res.status(200).json({ message: 'Scorecard deleted', scorecard: result });
+    } catch (err) {
+      res.status(err.status || 500).json({ message: err.message });
+    }
+  }  
+
+  async getDecideByJob(req, res) {
+    try {
+      const job_id = Number(req.params.job_id);
+      const result = await interviewService.getDecideByJob(job_id, {
+        company_id: req.user?.company_id || null,
+      });
+      res.status(200).json({ message: 'Decide data fetched', candidates: result });
+    } catch (err) {
+      res.status(err.status || 500).json({ message: err.message });
+    }
+  }
+
+  async bulkDecide(req, res) {
+    try {
+      const job_id = Number(req.params.job_id);
+      const { decisions } = req.body || {};
+      const result = await interviewService.bulkDecide(job_id, {
+        decisions,
+        company_id: req.user?.company_id || null,
+        decided_by: req.user?.user_id    || null,
+      });
+      res.status(200).json({ message: 'Decisions committed', ...result });
+    } catch (err) {
+      res.status(err.status || 500).json({ message: err.message });
+    }
+  }
+
+  async resetDecision(req, res) {
+    try {
+      const job_id               = Number(req.params.job_id);
+      const candidateInterviewId = Number(req.params.interview_id);
+      const result = await interviewService.resetDecision(job_id, candidateInterviewId, {
+        company_id: req.user?.company_id || null,
+      });
+      res.status(200).json({ message: 'Decision reset', interview: result });
+    } catch (err) {
+      res.status(err.status || 500).json({ message: err.message });
+    }
+  }
+
   async updateRubric(req, res) {
     try {
       const job_id = Number(req.params.job_id);
@@ -263,6 +351,77 @@ class InterviewController {
         company_id: req.user?.company_id || null,
       });
       res.status(200).json({ message: 'Rubric unlocked', prep: result });
+    } catch (err) {
+      res.status(err.status || 500).json({ message: err.message });
+    }
+  }
+
+  // ==================== DECIDE TAB ====================
+
+  async recordDecision(req, res) {
+    try {
+      const interview_id = Number(req.params.interview_id);
+      const { verdict, decision_note } = req.body;
+      const result = await interviewService.recordDecision(interview_id, {
+        verdict,
+        decision_note,
+        decided_by: req.user?.user_id || null,
+        company_id: req.user?.company_id || null,
+      });
+      res.status(200).json({ message: 'Decision recorded', interview: result });
+    } catch (err) {
+      res.status(err.status || 500).json({ message: err.message });
+    }
+  }
+
+  async getDecision(req, res) {
+    try {
+      const interview_id = Number(req.params.interview_id);
+      const result = await interviewService.getDecision(interview_id, {
+        company_id: req.user?.company_id || null,
+      });
+      res.status(200).json({ message: 'Decision fetched', decision: result });
+    } catch (err) {
+      res.status(err.status || 500).json({ message: err.message });
+    }
+  }
+
+  async undoDecision(req, res) {
+    try {
+      const interview_id = Number(req.params.interview_id);
+      const result = await interviewService.undoDecision(interview_id, {
+        company_id: req.user?.company_id || null,
+      });
+      res.status(200).json({ message: 'Decision cleared', interview: result });
+    } catch (err) {
+      res.status(err.status || 500).json({ message: err.message });
+    }
+  }
+
+  // ==================== L4 CALIBRATION ====================
+
+  async getCalibration(req, res) {
+    try {
+      const job_id = Number(req.params.job_id);
+      const result = await interviewService.getCalibration(job_id, {
+        company_id: req.user?.company_id || null,
+      });
+      res.status(200).json({ message: 'Calibration data fetched', ...result });
+    } catch (err) {
+      res.status(err.status || 500).json({ message: err.message });
+    }
+  }
+
+  async batchDecide(req, res) {
+    try {
+      const job_id = Number(req.params.job_id);
+      const { decisions } = req.body;
+      const result = await interviewService.batchDecide(job_id, {
+        decisions,
+        decided_by: req.user?.user_id || null,
+        company_id: req.user?.company_id || null,
+      });
+      res.status(200).json({ message: `${result.length} decisions recorded`, results: result });
     } catch (err) {
       res.status(err.status || 500).json({ message: err.message });
     }

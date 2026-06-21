@@ -40,3 +40,19 @@ export const deleteSchedule = (schedule_id) => api.delete(`/interview/schedules/
 export const recordOutcome = (schedule_id, { status, outcome_note } = {}) => api.post(`/interview/schedules/${schedule_id}/outcome`, { status, outcome_note });
 
 export const clearOutcome = (schedule_id) => api.delete(`/interview/schedules/${schedule_id}/outcome`);
+
+export const getScorecard = (interview_id) => api.get(`/interview/${interview_id}/scorecard`);
+
+export const saveScorecard = (interview_id, payload) => api.put(`/interview/${interview_id}/scorecard`, payload);
+
+export const deleteScorecard = (interview_id) => api.delete(`/interview/${interview_id}/scorecard`);
+
+export const getDecideByJob = (jobId) => api.get(`/interview/job/${jobId}/decide`);
+
+export const bulkDecide = (jobId, decisions) => api.post(`/interview/job/${jobId}/decide`, { decisions });
+
+export const resetDecision = (jobId, interviewId) => api.delete(`/interview/job/${jobId}/decide/${interviewId}`);
+
+export const getCalibration = (job_id) => api.get(`/interview/calibration/${job_id}`);
+
+export const batchDecide = (job_id, decisions) => api.post(`/interview/calibration/${job_id}/batch`, { decisions });

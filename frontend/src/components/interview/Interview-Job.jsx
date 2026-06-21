@@ -142,9 +142,19 @@ export default function InterviewJobPage() {
             {job?.work_type    ? ` · ${job.work_type}`    : ''}
           </p>
         </div>
-        <Button variant="outline" size="sm" className="text-xs" onClick={load}>
-          <RotateCw className="h-3.5 w-3.5 mr-1.5" /> Refresh
-        </Button>
+        <div className="flex items-center gap-2">
+          <Button
+            variant="default"
+            size="sm"
+            className="text-xs"
+            onClick={() => navigate(`/selection/interview/calibration/${jobId}`)}
+          >
+            <Users className="h-3.5 w-3.5 mr-1.5" /> Calibration
+          </Button>
+          <Button variant="outline" size="sm" className="text-xs" onClick={load}>
+            <RotateCw className="h-3.5 w-3.5 mr-1.5" /> Refresh
+          </Button>
+        </div>
       </div>
 
       {error && (
@@ -504,7 +514,10 @@ function QuestionsSection({ jobId, job, prep, setPrep, setBanner, setError }) {
                 ) : (
                   <button
                     type="button"
-                    onClick={() => !isLocked && setEditingIdx(i)}
+                    onClick={() => {
+                      if (isLocked) return;
+                      setEditingIdx((prev) => (prev === i ? null : i));
+                    }}
                     className={`w-full text-left group ${isLocked ? 'cursor-default' : 'cursor-pointer'}`}
                   >
                     <div className="flex items-start gap-2">
@@ -719,7 +732,12 @@ function RubricSection({ jobId, prep, setPrep, setBanner, setError }) {
                     />
                   </div>
                   <div className="flex justify-end">
-                    <Button size="sm" variant="ghost" className="text-xs" onClick={() => setEditingIdx(null)}>
+                    <Button
+                      size="sm"
+                      variant="ghost"
+                      className="text-xs"
+                      onClick={(e) => { e.stopPropagation(); setEditingIdx(null); }}
+                    >
                       Done
                     </Button>
                   </div>
@@ -727,7 +745,7 @@ function RubricSection({ jobId, prep, setPrep, setBanner, setError }) {
               ) : (
                 <button
                   type="button"
-                  onClick={() => !isLocked && setEditingIdx(i)}
+                  onClick={() => !isLocked && setEditingIdx((prev) => (prev === i ? null : i))}
                   className={`w-full text-left group ${isLocked ? 'cursor-default' : 'cursor-pointer'}`}
                 >
                   <div className="flex items-start justify-between gap-3">

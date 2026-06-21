@@ -13,6 +13,9 @@ router.get('/by-candidate/:candidate_id', interviewController.getInterviewByCand
 // Schedule-related routes (must be before /:interview_id)
 router.get( '/:interview_id/schedules', interviewController.getSchedules);
 router.post('/:interview_id/schedules', interviewController.createSchedule);
+router.get( '/:interview_id/scorecard',interviewController.getScorecard);
+router.put( '/:interview_id/scorecard',        interviewController.saveScorecard);
+router.delete('/:interview_id/scorecard', interviewController.deleteScorecard);
 router.put( '/schedules/:schedule_id', interviewController.updateSchedule);
 router.post('/schedules/:schedule_id/confirm', interviewController.confirmSchedule);
 router.post('/schedules/:schedule_id/unconfirm', interviewController.unconfirmSchedule);
@@ -20,17 +23,29 @@ router.delete('/schedules/:schedule_id', interviewController.deleteSchedule);
 router.post('/schedules/:schedule_id/outcome', interviewController.recordOutcome);
 router.delete('/schedules/:schedule_id/outcome', interviewController.clearOutcome);
 
+// Calibration routes
+router.get( '/calibration/:job_id', interviewController.getCalibration);
+router.post('/calibration/:job_id/batch', interviewController.batchDecide);
+
 // Job/Prep routes (must be before /:interview_id)
 router.get('/job/:job_id', interviewController.getInterviewsByJob);
 router.get('/job/:job_id/prep', interviewController.getPrep);
+router.get( '/job/:job_id/decide', interviewController.getDecideByJob);
+router.post('/job/:job_id/decide', interviewController.bulkDecide);
 router.post('/job/:job_id/prep/questions/generate', interviewController.generateQuestions);
 router.put( '/job/:job_id/prep/questions', interviewController.updateQuestions);
 router.put( '/job/:job_id/prep/rubric', interviewController.updateRubric);
 router.post('/job/:job_id/prep/rubric/lock', interviewController.lockRubric);
 router.post('/job/:job_id/prep/rubric/unlock', interviewController.unlockRubric);
+router.delete('/job/:job_id/decide/:interview_id', interviewController.resetDecision);
 
 // Generic interview routes (LAST to avoid catching specific routes)
 router.get('/:interview_id', interviewController.getInterview);
 router.patch('/:interview_id/status', interviewController.updateStatus);
+
+// Decide routes
+router.post('/:interview_id/decide', interviewController.recordDecision);
+router.get('/:interview_id/decision', interviewController.getDecision);
+router.delete('/:interview_id/decision', interviewController.undoDecision);
 
 export default router;
