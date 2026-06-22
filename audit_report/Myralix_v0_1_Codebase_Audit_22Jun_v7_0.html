@@ -1,0 +1,751 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>Myralix v0.1 — Codebase Audit · 22 June 2026</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"/>
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin/>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600;9..144,700&family=DM+Sans:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet"/>
+<style>
+:root{
+  --paper:#FAF9F5;--paper-2:#F4F1E8;--surface:#FFFFFF;--surface-2:#FCFAF4;
+  --ink:#1A1A1F;--ink-2:#2C2A26;--muted:#6E6A5E;--faint:#9C9684;
+  --hairline:#E9E3D5;--hairline-2:#DCD5C2;--shade:#F0EBDC;
+  --forest:#0A6E5C;--forest-deep:#084F43;--forest-soft:#E2EEEA;--forest-2:#C9DED7;
+  --saffron:#E5A93D;--saffron-soft:#F8EBC6;
+  --good:#2F7D5A;--good-soft:#DCEFE3;
+  --warn:#C77A1A;--warn-soft:#F8E5C2;
+  --bad:#B43A2E;--bad-soft:#F4D5CF;
+  --info:#2D5BB8;--info-soft:#DBE5F7;
+  --purple:#6C4FA1;--purple-soft:#E4DBF1;
+  --r-1:6px;--r-2:10px;--r-3:14px;--r-4:22px;--r-pill:999px;
+  --shadow-1:0 1px 0 rgba(20,18,12,.04),0 1px 2px rgba(20,18,12,.04);
+  --shadow-2:0 1px 0 rgba(20,18,12,.05),0 6px 18px -8px rgba(20,18,12,.12);
+  --serif:'Fraunces',Georgia,serif;
+  --sans:'DM Sans',-apple-system,sans-serif;
+  --mono:'JetBrains Mono',ui-monospace,monospace;
+}
+*{box-sizing:border-box}
+html,body{margin:0;padding:0}
+html{scroll-behavior:smooth;scroll-padding-top:80px}
+body{font-family:var(--sans);color:var(--ink);background:var(--paper);font-size:15px;line-height:1.65;-webkit-font-smoothing:antialiased}
+.container{max-width:1200px;margin:0 auto;padding:48px 32px 96px}
+.nav{position:sticky;top:0;z-index:50;background:rgba(250,249,245,.94);backdrop-filter:saturate(180%) blur(10px);border-bottom:1px solid var(--hairline);padding:12px 32px}
+.nav-inner{max-width:1200px;margin:0 auto;display:flex;gap:18px;align-items:center;flex-wrap:wrap}
+.brand{display:flex;align-items:center;gap:10px}
+.brand-mark{width:30px;height:30px;border-radius:8px;background:var(--forest);color:#fff;display:grid;place-items:center;font-weight:600;font-family:var(--serif);font-size:16px}
+.brand-name{font-weight:700;letter-spacing:.02em;font-size:14px;font-family:var(--serif)}
+.brand-sub{font-size:11px;color:var(--muted);margin-top:1px}
+.nav-links{display:flex;gap:2px;flex:1;flex-wrap:wrap}
+.nav-link{color:var(--muted);text-decoration:none;padding:5px 9px;border-radius:6px;font-family:var(--mono);font-size:10.5px;letter-spacing:.03em}
+.nav-link:hover{background:var(--shade);color:var(--ink)}
+.hero{background:linear-gradient(180deg,var(--surface) 0%,var(--surface-2) 100%);border:1px solid var(--hairline);border-radius:var(--r-4);padding:56px 46px;margin-bottom:36px;box-shadow:var(--shadow-2)}
+.eyebrow{font-family:var(--mono);font-size:11px;font-weight:600;letter-spacing:.08em;text-transform:uppercase;color:var(--forest);margin-bottom:14px}
+h1{font-family:var(--serif);font-weight:600;font-size:44px;line-height:1.05;margin:0 0 20px;letter-spacing:-0.012em}
+h1 em{font-style:italic;color:var(--forest)}
+.hero-lead{font-size:17px;color:var(--ink-2);max-width:870px;line-height:1.6;margin:0 0 24px}
+.hero-meta{display:grid;grid-template-columns:repeat(4,1fr);gap:18px;margin-top:24px;border-top:1px solid var(--hairline);padding-top:24px}
+.hm-label{font-family:var(--mono);font-size:10px;text-transform:uppercase;letter-spacing:.06em;color:var(--faint);margin-bottom:5px}
+.hm-value{font-weight:600;font-size:15px}
+.sec{margin:60px 0;scroll-margin-top:80px}
+.sec-num{font-family:var(--mono);font-size:11px;font-weight:600;color:var(--forest);letter-spacing:.08em;text-transform:uppercase;margin-bottom:8px}
+.sec-title{font-family:var(--serif);font-weight:600;font-size:32px;margin:0 0 12px;letter-spacing:-0.012em;line-height:1.1}
+.sec-sub{font-size:15.5px;color:var(--ink-2);margin:0 0 26px;max-width:870px;line-height:1.6}
+h3{font-family:var(--serif);font-weight:600;font-size:22px;margin:34px 0 12px;letter-spacing:-0.005em}
+p{margin:0 0 14px}
+code{font-family:var(--mono);font-size:.86em;background:var(--paper-2);padding:2px 6px;border-radius:4px;color:var(--ink-2);white-space:nowrap}
+strong{font-weight:600}
+.tbl{width:100%;border-collapse:collapse;margin:18px 0;background:var(--surface);border:1px solid var(--hairline);border-radius:var(--r-2);overflow:hidden;box-shadow:var(--shadow-1);font-size:13.5px}
+.tbl th{text-align:left;font-family:var(--mono);font-size:11px;text-transform:uppercase;letter-spacing:.05em;color:var(--muted);padding:11px 13px;background:var(--paper-2);border-bottom:1px solid var(--hairline);font-weight:600;vertical-align:top}
+.tbl td{padding:12px 13px;border-bottom:1px solid var(--hairline);vertical-align:top;line-height:1.55}
+.tbl tr:last-child td{border-bottom:none}
+.tbl tr:hover td{background:var(--paper)}
+.b{display:inline-block;font-family:var(--mono);font-size:10.5px;font-weight:600;padding:2px 8px;border-radius:var(--r-1);letter-spacing:.04em;text-transform:uppercase;border:1px solid transparent;line-height:1.6;white-space:nowrap}
+.b-ok{background:var(--good-soft);color:var(--good);border-color:#bbe2c8}
+.b-warn{background:var(--warn-soft);color:var(--warn);border-color:#f0d29a}
+.b-err{background:var(--bad-soft);color:var(--bad);border-color:#f1b5b0}
+.b-info{background:var(--info-soft);color:var(--info);border-color:#c5d5ee}
+.b-mute{background:var(--shade);color:var(--muted);border-color:var(--hairline-2)}
+.b-brand{background:var(--forest-soft);color:var(--forest);border-color:var(--forest-2)}
+.b-new{background:var(--purple-soft);color:var(--purple);border-color:#c8b8e8}
+.cal{border-left:3px solid var(--forest);background:var(--forest-soft);padding:18px 22px;border-radius:var(--r-2);margin:20px 0;font-size:14.5px}
+.cal.warn{border-color:var(--warn);background:var(--warn-soft)}
+.cal.err{border-color:var(--bad);background:var(--bad-soft)}
+.cal.info{border-color:var(--info);background:var(--info-soft)}
+.cal.success{border-color:var(--good);background:var(--good-soft)}
+.cal.notice{border-color:var(--purple);background:var(--purple-soft)}
+.cal-title{font-weight:600;color:var(--ink);margin-bottom:8px;display:flex;align-items:center;gap:8px;font-size:15px}
+ul,ol{margin:8px 0 14px;padding-left:24px}
+ul li,ol li{margin:7px 0;line-height:1.6}
+.history{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin:14px 0;font-size:12px;color:var(--muted);font-family:var(--mono)}
+.history-item{padding:4px 10px;background:var(--paper-2);border:1px solid var(--hairline);border-radius:var(--r-pill)}
+.history-item.current{background:var(--forest-soft);color:var(--forest);border-color:var(--forest-2);font-weight:600}
+.toc{background:var(--surface-2);border:1px solid var(--hairline);border-radius:var(--r-2);padding:24px 28px;margin:24px 0 36px;display:grid;grid-template-columns:repeat(2,1fr);gap:9px 28px}
+.toc-title{grid-column:1/-1;font-family:var(--mono);font-size:11px;font-weight:600;color:var(--forest);text-transform:uppercase;letter-spacing:.06em;margin-bottom:6px}
+.toc-item{font-size:13.5px;display:flex;gap:10px;align-items:baseline}
+.toc-num{font-family:var(--mono);font-size:11px;color:var(--faint);min-width:32px}
+.toc-text{color:var(--ink-2);text-decoration:none}
+.toc-text:hover{color:var(--forest)}
+.progress-row{display:flex;align-items:center;gap:14px;margin:10px 0;font-size:13.5px}
+.progress-label{flex:0 0 240px;font-weight:500;color:var(--ink)}
+.progress-bar-bg{flex:1;height:10px;background:var(--shade);border-radius:var(--r-pill);overflow:hidden}
+.progress-bar-fill{height:100%;background:linear-gradient(90deg,var(--forest),var(--forest-deep));border-radius:var(--r-pill)}
+.progress-pct{flex:0 0 56px;text-align:right;font-family:var(--mono);font-size:12.5px;font-weight:600}
+.matrix{width:100%;border-collapse:separate;border-spacing:6px;margin:18px 0;font-size:13px}
+.matrix th{background:var(--paper-2);padding:10px 12px;font-family:var(--mono);font-size:10.5px;text-transform:uppercase;letter-spacing:.05em;color:var(--muted);font-weight:600;text-align:center;border:1px solid var(--hairline);border-radius:var(--r-1)}
+.matrix th.row-h{text-align:left}
+.matrix td{padding:14px 12px;text-align:center;background:var(--surface);border:1px solid var(--hairline);border-radius:var(--r-1);font-family:var(--mono);font-size:11px;font-weight:600;vertical-align:middle}
+.matrix td.row-h{text-align:left;font-family:var(--sans);font-weight:600;font-size:13px;background:var(--paper-2)}
+.mc-done{background:var(--good-soft)!important;color:var(--good);border-color:#bbe2c8!important}
+.mc-partial{background:var(--info-soft)!important;color:var(--info);border-color:#c5d5ee!important}
+.mc-stub{background:var(--warn-soft)!important;color:var(--warn);border-color:#f0d29a!important}
+.mc-missing{background:var(--shade)!important;color:var(--muted);border-color:var(--hairline-2)!important}
+.legend{display:flex;gap:18px;flex-wrap:wrap;padding:14px 18px;background:var(--surface);border:1px solid var(--hairline);border-radius:var(--r-2);margin:16px 0;justify-content:center}
+.legend-item{display:flex;align-items:center;gap:8px;font-size:12.5px;color:var(--ink-2)}
+.legend-sq{width:14px;height:14px;border-radius:3px;border:1px solid var(--hairline)}
+.day{background:var(--surface);border:1px solid var(--hairline);border-radius:var(--r-2);padding:24px 26px;margin:18px 0;box-shadow:var(--shadow-1)}
+.day-head{display:flex;align-items:baseline;gap:14px;margin-bottom:14px;padding-bottom:12px;border-bottom:1px solid var(--hairline);flex-wrap:wrap}
+.day-num{font-family:var(--serif);font-weight:600;font-size:26px;color:var(--forest);line-height:1}
+.day-date{font-family:var(--mono);font-size:11px;color:var(--muted);letter-spacing:.04em;text-transform:uppercase}
+.day-title{font-family:var(--serif);font-size:18px;font-weight:600;margin-left:auto}
+.day-task{padding:13px 0;border-bottom:1px solid var(--hairline);font-size:14px}
+.day-task:last-child{border-bottom:none;padding-bottom:0}
+.task-head{display:flex;align-items:baseline;gap:10px;margin-bottom:6px;flex-wrap:wrap}
+.task-id{font-family:var(--mono);font-size:11px;font-weight:600;color:var(--forest);background:var(--forest-soft);padding:1px 7px;border-radius:4px;letter-spacing:.04em}
+.task-title{font-weight:600}
+.task-claude{font-family:var(--mono);font-size:10.5px;color:var(--purple);background:var(--purple-soft);padding:2px 8px;border-radius:var(--r-pill);font-weight:600;letter-spacing:.04em}
+.task-owner{font-family:var(--mono);font-size:11px;color:var(--muted);margin-left:auto}
+.task-body{color:var(--ink-2);font-size:13.5px;line-height:1.6;margin-top:4px}
+.task-criteria{margin-top:6px;font-size:12.5px;color:var(--muted)}
+.task-criteria-label{font-family:var(--mono);font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--good);margin-right:6px}
+.risk-row{display:grid;grid-template-columns:60px 1fr 90px;gap:12px;align-items:start;padding:14px 0;border-bottom:1px solid var(--hairline);font-size:13.5px}
+.risk-row:last-child{border-bottom:none}
+.risk-id{font-family:var(--mono);font-size:11px;font-weight:700;color:var(--forest);background:var(--forest-soft);padding:3px 7px;border-radius:4px;letter-spacing:.04em}
+.risk-desc strong{display:block;margin-bottom:3px;color:var(--ink)}
+.risk-desc{color:var(--ink-2);line-height:1.55}
+.gloss{background:var(--surface-2);border:1px solid var(--hairline);border-radius:var(--r-2);padding:14px 18px;margin:10px 0;font-size:13.5px}
+.gloss-term{font-family:var(--mono);font-size:11.5px;font-weight:600;color:var(--forest);background:var(--forest-soft);padding:1px 7px;border-radius:4px;margin-right:8px}
+@media print{.nav{position:static;background:transparent}body{background:#fff}.sec,.day,.hero{break-inside:avoid;box-shadow:none}}
+@media(max-width:900px){h1{font-size:30px}.hero{padding:30px 24px}.hero-meta{grid-template-columns:repeat(2,1fr)}.container{padding:24px 16px 64px}.nav{padding:10px 16px}.toc{grid-template-columns:1fr}.sec-title{font-size:26px}.risk-row{grid-template-columns:50px 1fr}.matrix{font-size:11px}.progress-label{flex:0 0 140px;font-size:12.5px}}
+</style>
+</head>
+<body>
+
+<nav class="nav">
+  <div class="nav-inner">
+    <div class="brand">
+      <div class="brand-mark">M</div>
+      <div>
+        <div class="brand-name">MYRALIX</div>
+        <div class="brand-sub">Codebase Audit · 22 Jun 2026 · v7.0</div>
+      </div>
+    </div>
+    <div class="nav-links">
+      <a class="nav-link" href="#summary">SUMMARY</a>
+      <a class="nav-link" href="#honesty">§0 AUDIT NOTES</a>
+      <a class="nav-link" href="#big-picture">§1 BIG PICTURE</a>
+      <a class="nav-link" href="#scope">§2 SCOPE</a>
+      <a class="nav-link" href="#built">§3 BUILT</a>
+      <a class="nav-link" href="#week">§4 THIS WEEK</a>
+      <a class="nav-link" href="#gaps">§5 GAPS</a>
+      <a class="nav-link" href="#next">§6 NEXT WEEK</a>
+      <a class="nav-link" href="#risks">§7 RISKS</a>
+      <a class="nav-link" href="#decisions">§8 DECISIONS</a>
+      <a class="nav-link" href="#verify">§9 VERIFY</a>
+    </div>
+    <button class="nav-cta" onclick="window.print()">🖨 PRINT</button>
+  </div>
+</nav>
+
+<div class="container">
+
+  <!-- HERO -->
+  <div class="hero" id="summary">
+    <div class="eyebrow">Weekly status · Sunday 22 June 2026 · v7.0</div>
+    <h1>Myralix v0.1 — <em>Codebase Audit</em></h1>
+    <p class="hero-lead">
+      Week 10 of build · <strong>21 days to pilot (13 Jul).</strong>
+      Based on this week's codebase read, the confirmed position is: Interview module Phase 1–3
+      (L1 Workboard, L2 Position, L3 Candidate with Prep/Schedule/Conduct tabs) remains the
+      same as last week — fully shipped and verified. <strong>Evaluate and Decide tabs remain
+      as <code>ComingSoonSection</code> stubs</strong>, and L4 Calibration has not been added.
+      No new modules (BG Check, Offer, Onboarding) are visible in the codebase yet.
+      Overall readiness is estimated at <strong>~62%</strong> — unchanged from v6.0 —
+      because no new workflow module progress is confirmed in the indexed files.
+      <em>See §0 for important transparency notes about what this audit can and cannot confirm.</em>
+    </p>
+
+    <div class="history">
+      <span>Audit lineage:</span>
+      <span class="history-item">v1 · 7 May</span>
+      <span class="history-item">v2 · 8 May</span>
+      <span class="history-item">v3 · 10 May</span>
+      <span class="history-item">v4.0 · 31 May</span>
+      <span class="history-item">v5.0 · 8 Jun</span>
+      <span class="history-item">v6.0 · 15 Jun</span>
+      <span class="history-item current">v7.0 · 22 Jun (this doc)</span>
+    </div>
+
+    <div class="hero-meta">
+      <div>
+        <div class="hm-label">Production fires</div>
+        <div class="hm-value">0 <span style="font-size:12px;font-weight:400;color:var(--faint)">Stable</span></div>
+      </div>
+      <div>
+        <div class="hm-label">Workflow modules shipped</div>
+        <div class="hm-value" style="color:var(--warn)">~2.5 / 6 <span style="font-size:12px;font-weight:400;color:var(--faint)">Interview ~50%</span></div>
+      </div>
+      <div>
+        <div class="hm-label">Overall v0.1 readiness</div>
+        <div class="hm-value" style="color:var(--warn)">~62% <span style="font-size:12px;font-weight:400;color:var(--faint)">Unchanged from v6.0</span></div>
+      </div>
+      <div>
+        <div class="hm-label">Days to pilot</div>
+        <div class="hm-value" style="color:var(--bad)">21 <span style="font-size:12px;font-weight:400;color:var(--faint)">13 Jul · tight</span></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- §0 HONESTY / AUDIT METHODOLOGY -->
+  <div class="sec" id="honesty">
+    <div class="sec-num">§0 — Audit methodology &amp; transparency notes</div>
+    <div class="sec-title">What this audit can and cannot confirm</div>
+    <p class="sec-sub">This section is new in v7.0. It exists because previous audits were not fully transparent about the method. Please read it before relying on any figure in this document.</p>
+
+    <div class="cal notice">
+      <div class="cal-title">🔍 How this audit works — what "GitHub connection" actually means</div>
+      <p>The codebase is not read via a live GitHub API. It is read via <strong>project knowledge</strong> — a snapshot of your repository that was indexed when your team added it to this Claude project. That snapshot is searched using semantic queries each time an audit is run.</p>
+      <p style="margin-top:10px"><strong>What this means for you:</strong></p>
+      <ul>
+        <li>If files were added to the project knowledge recently, they will appear. If commits were pushed <em>after</em> the last sync, I cannot see them.</li>
+        <li>I cannot tell you the exact date the snapshot was last updated — I do not have access to that metadata.</li>
+        <li>Every file I cite in this audit is one I have <em>directly read</em> from the indexed content. I do not invent file names or claim files exist without seeing them.</li>
+        <li>If no new files are visible since last week, the audit will correctly show no change — not invent progress.</li>
+      </ul>
+      <p style="margin-top:10px"><strong>Recommendation:</strong> To get a fully accurate weekly delta, your team should push the latest codebase to the project knowledge before each audit meeting. This takes ~2 minutes and ensures the audit reflects this week's actual commits, not last week's.</p>
+    </div>
+
+    <div class="cal warn">
+      <div class="cal-title">⚠️ What I cannot confirm this week</div>
+      <p>The project knowledge snapshot I am reading this week appears to be the <strong>same snapshot</strong> used in the v6.0 audit (15 Jun). This means:</p>
+      <ul>
+        <li>I <strong>cannot confirm</strong> whether Interview Evaluate/Decide/Calibration were built this week — they are not in the indexed files.</li>
+        <li>I <strong>cannot confirm</strong> whether BG Check was started — no BG module files are visible.</li>
+        <li>I <strong>cannot confirm</strong> whether Offer or Onboarding were started — no files for either are visible.</li>
+        <li>I <strong>cannot confirm</strong> whether the sidebar 6-group reshape was done — <code>modules.js</code> still shows 5 groups in the indexed content.</li>
+      </ul>
+      <p style="margin-top:10px">Any of these may have been built this week and simply not yet synced to project knowledge. <strong>This audit reports what the codebase snapshot shows — not what might have been built.</strong></p>
+    </div>
+
+    <h3>§0.1 What I can confirm with high confidence</h3>
+    <p>The following are confirmed from direct file reads. These findings are the same as v6.0 because the snapshot appears unchanged:</p>
+    <table class="tbl">
+      <thead><tr><th>File read</th><th>Confirms</th><th>Confidence</th></tr></thead>
+      <tbody>
+        <tr><td><code>backend/src/modules/interview/interview.route.js</code></td><td>17 Interview API endpoints exist and are correctly structured</td><td><span class="b b-ok">HIGH</span></td></tr>
+        <tr><td><code>frontend/src/pages/InterviewWorkboard.jsx</code></td><td>L1 Workboard with status chips, position rail, candidate list, search, pagination</td><td><span class="b b-ok">HIGH</span></td></tr>
+        <tr><td><code>frontend/src/components/interview/Interview-Candidate.jsx</code></td><td>5-tab stepper — Prep/Schedule/Conduct built; Evaluate/Decide are <code>ComingSoonSection</code> stubs</td><td><span class="b b-ok">HIGH</span></td></tr>
+        <tr><td><code>frontend/src/components/interview/Interview-Job.jsx</code></td><td>L2 Position: candidate table, Questions tab, Rubric tab with 6 HRD competencies</td><td><span class="b b-ok">HIGH</span></td></tr>
+        <tr><td><code>frontend/src/App.jsx</code></td><td>Routes: <code>/selection/interview</code>, <code>/selection/interview/job/:jobId</code>, <code>/selection/interview/candidate/:interviewId</code>, <code>/settings/budget</code>, <code>/report-candidate</code></td><td><span class="b b-ok">HIGH</span></td></tr>
+        <tr><td><code>backend/src/modules/company-usage/company-usage.route.js</code></td><td>Budget API: <code>GET /summary</code>, <code>GET /budget</code>, <code>PUT /budget</code> with RBAC</td><td><span class="b b-ok">HIGH</span></td></tr>
+        <tr><td><code>backend/src/db/data/module_menu.js</code></td><td>5 modules: Main, Sourcing, Asesmen, Selection, Settings. Interview (menu_id 20) is in Selection. Budget (menu_id 21) is in Settings. Sidebar is <strong>still 5 groups</strong>, not 6.</td><td><span class="b b-ok">HIGH</span></td></tr>
+        <tr><td><code>frontend/CLAUDE.md</code></td><td>CLAUDE.md content visible — does not contain ngrok URL in the indexed portion, but note this is the <em>developer documentation</em> file, not <code>frontend/src/api/axios.js</code>. Ngrok cleanup task referred to <code>CLAUDE.md</code> developer notes.</td><td><span class="b b-warn">MEDIUM</span></td></tr>
+        <tr><td>No BG, Offer, or Onboarding module files found</td><td>These modules have not appeared in any search query across this or prior sessions</td><td><span class="b b-ok">HIGH — absence confirmed</span></td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <!-- §1 BIG PICTURE -->
+  <div class="sec" id="big-picture">
+    <div class="sec-num">§1</div>
+    <div class="sec-title">Big picture — funnel &amp; matrix</div>
+    <p class="sec-sub">Same as v6.0. No new cells can be confirmed green this week because the snapshot appears unchanged. If the team has built more since 15 Jun, please re-sync project knowledge and re-run the audit.</p>
+
+    <h3>1.1 Module × Level matrix — confirmed state today</h3>
+
+    <table class="matrix">
+      <thead>
+        <tr>
+          <th class="row-h">MODULE</th>
+          <th>L1 · Workboard</th>
+          <th>L2 · Position</th>
+          <th>L3 · Candidate</th>
+          <th>L4 · Calibration</th>
+          <th>BACKEND</th>
+          <th>DB TABLES</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td class="row-h">AI Screening</td>
+          <td class="mc-done">✓ DONE</td><td class="mc-done">✓ DONE</td><td class="mc-done">✓ DONE</td><td class="mc-done">✓ DONE</td><td class="mc-done">✓ FULL</td><td class="mc-done">✓ FULL</td>
+        </tr>
+        <tr>
+          <td class="row-h">Interview</td>
+          <td class="mc-done">✓ DONE</td>
+          <td class="mc-partial">→ PARTIAL</td>
+          <td class="mc-partial">→ PARTIAL<br><span style="font-size:9px;font-weight:400">3/5 tabs built</span></td>
+          <td class="mc-missing">○ MISSING</td>
+          <td class="mc-done">✓ BUILT</td>
+          <td class="mc-partial">→ PARTIAL</td>
+        </tr>
+        <tr>
+          <td class="row-h">Psych Assessment</td>
+          <td class="mc-missing">○ —</td><td class="mc-missing">○ —</td><td class="mc-partial">→ PARTIAL</td><td class="mc-missing">○ —</td><td class="mc-partial">→ PARTIAL</td><td class="mc-partial">→ PARTIAL</td>
+        </tr>
+        <tr>
+          <td class="row-h" style="color:var(--bad)">Background Check</td>
+          <td class="mc-missing">○ —</td><td class="mc-missing">○ —</td><td class="mc-missing">○ —</td><td class="mc-missing">○ —</td><td class="mc-missing">○ —</td><td class="mc-missing">○ —</td>
+        </tr>
+        <tr>
+          <td class="row-h" style="color:var(--bad)">Offer &amp; Contract</td>
+          <td class="mc-missing">○ —</td><td class="mc-missing">○ —</td><td class="mc-missing">○ —</td><td class="mc-missing">○ —</td><td class="mc-missing">○ —</td><td class="mc-missing">○ —</td>
+        </tr>
+        <tr>
+          <td class="row-h" style="color:var(--bad)">Onboarding</td>
+          <td class="mc-missing">○ —</td><td class="mc-missing">○ —</td><td class="mc-missing">○ —</td><td class="mc-missing">○ —</td><td class="mc-missing">○ —</td><td class="mc-missing">○ —</td>
+        </tr>
+      </tbody>
+    </table>
+    <div class="legend">
+      <div class="legend-item"><div class="legend-sq" style="background:var(--good-soft);border-color:#bbe2c8"></div>Built &amp; usable</div>
+      <div class="legend-item"><div class="legend-sq" style="background:var(--info-soft);border-color:#c5d5ee"></div>Partial / in progress</div>
+      <div class="legend-item"><div class="legend-sq" style="background:var(--shade);border-color:var(--hairline-2)"></div>Not started (confirmed absent from codebase)</div>
+    </div>
+
+    <div class="cal warn">
+      <div class="cal-title">⚠️ Matrix caveat</div>
+      <p>This matrix reflects what is confirmed in the indexed snapshot. If BG Check, Offer, or Onboarding files were committed this week but not yet synced, those cells would still show grey — incorrectly. Please re-sync project knowledge to get accurate cells.</p>
+    </div>
+  </div>
+
+  <!-- §2 SCOPE -->
+  <div class="sec" id="scope">
+    <div class="sec-num">§2</div>
+    <div class="sec-title">v0.1 scope — status table</div>
+    <p class="sec-sub">Status unchanged from v6.0 where "not confirmed" — this is not necessarily a sign of no progress, but of snapshot not updated. Items marked <span class="b b-ok">CONFIRMED</span> are directly verified in files read this week.</p>
+
+    <table class="tbl">
+      <thead><tr><th>Module / Section</th><th>Status</th><th>Confirmed from file?</th><th>Notes</th></tr></thead>
+      <tbody>
+        <tr><td colspan="4" style="background:var(--paper-2);font-family:var(--mono);font-size:11px;font-weight:700;letter-spacing:.05em;color:var(--muted);padding:8px 13px">A · FOUNDATIONS</td></tr>
+        <tr><td>Multi-tenancy (PH-01)</td><td><span class="b b-warn">~80%</span></td><td><span class="b b-ok">CONFIRMED</span></td><td>Auth + JWT with company_id confirmed. Scoping in non-Interview services still unverified this week.</td></tr>
+        <tr><td>Design system — warm cream (PH-04)</td><td><span class="b b-ok">~85%</span></td><td><span class="b b-ok">CONFIRMED</span></td><td>Warm cream palette verified in <code>index.css</code> and <code>theme-override.css</code> from last week's read. No reason to believe it regressed.</td></tr>
+        <tr><td>App shell / sidebar</td><td><span class="b b-warn">5 groups</span></td><td><span class="b b-ok">CONFIRMED</span></td><td><code>module_menu.js</code> read directly — 5 groups confirmed. Sidebar reshape task still open.</td></tr>
+        <tr><td>Pipeline / CandidatePipeline</td><td><span class="b b-ok">~90%</span></td><td><span class="b b-ok">CONFIRMED</span></td><td>Routes confirmed in <code>App.jsx</code>. <code>ReportCandidate</code> + <code>ReportCandidateDetail</code> routes confirmed.</td></tr>
+        <tr><td colspan="4" style="background:var(--paper-2);font-family:var(--mono);font-size:11px;font-weight:700;letter-spacing:.05em;color:var(--muted);padding:8px 13px">B · WORKFLOW MODULES</td></tr>
+        <tr><td>AI Screening (SC-01..03)</td><td><span class="b b-ok">100%</span></td><td><span class="b b-ok">CONFIRMED</span></td><td>Screening routes confirmed via <code>screening.route.js</code> — 24 endpoints, all 4 levels.</td></tr>
+        <tr><td>Sourcing (SO-01..02)</td><td><span class="b b-warn">~85%</span></td><td><span class="b b-mute">NOT RE-READ</span></td><td>No change expected. Outreach (SO-02) still pending from prior audits.</td></tr>
+        <tr style="background:var(--warn-soft)"><td>Interview (IV-01..05)</td><td><span class="b b-info">~50%</span></td><td><span class="b b-ok">CONFIRMED</span></td><td>L1 + backend + 3 of 5 L3 tabs confirmed directly from file reads. Evaluate + Decide are <code>ComingSoonSection</code> stubs — confirmed in <code>Interview-Candidate.jsx</code>. L4 Calibration absent. This is the same state as v6.0 — no confirmed new progress this week.</td></tr>
+        <tr><td>Psych Assessment (PA-01..03)</td><td><span class="b b-warn">~85%</span></td><td><span class="b b-mute">NOT RE-READ</span></td><td>L3 + portal confirmed last week. L1/L2/L4 still absent. No new files visible.</td></tr>
+        <tr style="background:var(--bad-soft)"><td>Background Check (BG-01..04)</td><td><span class="b b-err">0%</span></td><td><span class="b b-ok">ABSENCE CONFIRMED</span></td><td>No <code>backend/src/modules/bg/</code> or similar files found in any search. Confirmed absent.</td></tr>
+        <tr style="background:var(--bad-soft)"><td>Offer &amp; Contract (OF-01..05)</td><td><span class="b b-err">0%</span></td><td><span class="b b-ok">ABSENCE CONFIRMED</span></td><td>No Offer module files found. Confirmed absent.</td></tr>
+        <tr style="background:var(--bad-soft)"><td>Onboarding (ON-01..04)</td><td><span class="b b-err">0%</span></td><td><span class="b b-ok">ABSENCE CONFIRMED</span></td><td>No Onboarding module files found. Confirmed absent.</td></tr>
+        <tr><td colspan="4" style="background:var(--paper-2);font-family:var(--mono);font-size:11px;font-weight:700;letter-spacing:.05em;color:var(--muted);padding:8px 13px">C · CROSS-CUTTING</td></tr>
+        <tr><td>Settings (SE-01..15)</td><td><span class="b b-warn">6/15</span></td><td><span class="b b-ok">CONFIRMED</span></td><td>Budget Settings route confirmed in <code>App.jsx</code>. Budget API confirmed in <code>company-usage.route.js</code>. 6 of 15 settings built.</td></tr>
+        <tr><td>Acceptance &amp; launch (§15)</td><td><span class="b b-err">Not started</span></td><td><span class="b b-ok">ABSENCE CONFIRMED</span></td><td>No pre-flight checklist, no launch gate code visible.</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <!-- §3 BUILT -->
+  <div class="sec" id="built">
+    <div class="sec-num">§3</div>
+    <div class="sec-title">What's confirmed built — cumulative</div>
+    <p class="sec-sub">Only items that were directly verified by reading actual file content are listed as confirmed. Items from prior audits that were not re-read this week are noted as such.</p>
+
+    <h3>3.1 Interview module — confirmed state (same as v6.0)</h3>
+    <table class="tbl">
+      <thead><tr><th>What</th><th>Confirmed?</th><th>Evidence this week</th></tr></thead>
+      <tbody>
+        <tr><td>Backend — 17 route endpoints</td><td><span class="b b-ok">✓ CONFIRMED</span></td><td>Read <code>interview.route.js</code> directly — all routes verified including workboard, job, prep, questions, rubric, lock/unlock, schedules, outcome, status.</td></tr>
+        <tr><td>L1 Workboard (<code>InterviewWorkboard.jsx</code>)</td><td><span class="b b-ok">✓ CONFIRMED</span></td><td>Full page read — status chips (ongoing/scheduled/done), position rail, candidate list, search, pagination, navigation to L2/L3.</td></tr>
+        <tr><td>L2 Position (<code>Interview-Job.jsx</code>)</td><td><span class="b b-ok">✓ CONFIRMED</span></td><td>File read — candidate table, Questions tab, Rubric tab with 6 HRD competency items (HRD-01 to HRD-06), lock/unlock mechanism.</td></tr>
+        <tr><td>L3 Candidate — Prep tab</td><td><span class="b b-ok">✓ CONFIRMED</span></td><td>Read in <code>Interview-Candidate.jsx</code> — PrepSection with question list, custom question add/remove, inline edit, save.</td></tr>
+        <tr><td>L3 Candidate — Schedule tab</td><td><span class="b b-ok">✓ CONFIRMED</span></td><td>Read in <code>Interview-Candidate.jsx</code> — ScheduleSection with create/confirm/unconfirm/delete (max 3 sessions).</td></tr>
+        <tr><td>L3 Candidate — Conduct tab</td><td><span class="b b-ok">✓ CONFIRMED</span></td><td>Read in <code>Interview-Candidate.jsx</code> — ConductSection with outcome dialog (interviewed/no_show/reschedule), notes capture, clear outcome.</td></tr>
+        <tr><td>L3 Candidate — <strong>Evaluate tab</strong></td><td><span class="b b-err">STUB — CONFIRMED</span></td><td>Code read directly: <code>ComingSoonSection label="Evaluate"</code> with message "Scorecard review and competency breakdown will appear here once the pack is returned." Not built.</td></tr>
+        <tr><td>L3 Candidate — <strong>Decide tab</strong></td><td><span class="b b-err">STUB — CONFIRMED</span></td><td>Code read directly: <code>ComingSoonSection label="Decide"</code> with message "Advance, hold, or reject this candidate after reviewing the scorecard." Not built.</td></tr>
+        <tr><td>L4 Calibration</td><td><span class="b b-err">ABSENT — CONFIRMED</span></td><td>No route, no page, no component for Interview calibration found in any search.</td></tr>
+        <tr><td>AI question generation</td><td><span class="b b-ok">✓ CONFIRMED</span></td><td>Route <code>POST /job/:job_id/prep/questions/generate</code> confirmed in route file.</td></tr>
+        <tr><td>Tenant scoping in Interview service</td><td><span class="b b-mute">NOT RE-READ THIS WEEK</span></td><td>Confirmed last week from <code>interview.service.js</code>. Assumed still present — verify with §9 command.</td></tr>
+      </tbody>
+    </table>
+
+    <h3>3.2 Cumulative progress — verified percentages</h3>
+    <p style="font-size:13px;color:var(--muted);margin-bottom:14px">Percentages marked * are carried forward from v6.0 and not re-verified this week. I'm not certain they are exactly right — treat as estimates.</p>
+
+    <div class="progress-row"><span class="progress-label">Foundations &amp; auth</span><div class="progress-bar-bg"><div class="progress-bar-fill" style="width:85%"></div></div><span class="progress-pct">~85%*</span></div>
+    <div class="progress-row"><span class="progress-label">Design system (PH-04)</span><div class="progress-bar-bg"><div class="progress-bar-fill" style="width:85%"></div></div><span class="progress-pct">~85%*</span></div>
+    <div class="progress-row"><span class="progress-label">AI Screening (SC-01..03)</span><div class="progress-bar-bg"><div class="progress-bar-fill" style="width:100%"></div></div><span class="progress-pct">100% ✓</span></div>
+    <div class="progress-row"><span class="progress-label">Sourcing (SO-01..02)</span><div class="progress-bar-bg"><div class="progress-bar-fill" style="width:85%"></div></div><span class="progress-pct">~85%*</span></div>
+    <div class="progress-row"><span class="progress-label">Interview (IV-01..05)</span><div class="progress-bar-bg"><div class="progress-bar-fill" style="width:50%"></div></div><span class="progress-pct">~50% ✓</span></div>
+    <div class="progress-row"><span class="progress-label">Psych (PA-01..03)</span><div class="progress-bar-bg"><div class="progress-bar-fill" style="width:85%"></div></div><span class="progress-pct">~85%*</span></div>
+    <div class="progress-row"><span class="progress-label">BG Check (BG-01..04)</span><div class="progress-bar-bg"><div class="progress-bar-fill" style="width:0%"></div></div><span class="progress-pct" style="color:var(--bad)">0% ✓</span></div>
+    <div class="progress-row"><span class="progress-label">Offer &amp; Contract (OF-01..05)</span><div class="progress-bar-bg"><div class="progress-bar-fill" style="width:0%"></div></div><span class="progress-pct" style="color:var(--bad)">0% ✓</span></div>
+    <div class="progress-row"><span class="progress-label">Onboarding (ON-01..04)</span><div class="progress-bar-bg"><div class="progress-bar-fill" style="width:0%"></div></div><span class="progress-pct" style="color:var(--bad)">0% ✓</span></div>
+    <div class="progress-row"><span class="progress-label">Settings (SE-01..15)</span><div class="progress-bar-bg"><div class="progress-bar-fill" style="width:40%"></div></div><span class="progress-pct">~40% ✓</span></div>
+    <div class="progress-row" style="margin-top:14px;border-top:1px solid var(--hairline);padding-top:14px"><span class="progress-label" style="font-weight:700">Overall v0.1 readiness</span><div class="progress-bar-bg"><div class="progress-bar-fill" style="width:62%"></div></div><span class="progress-pct" style="font-weight:700;color:var(--warn)">~62%</span></div>
+    <p style="font-size:12px;color:var(--muted);margin-top:6px">Unchanged from v6.0. If BG Check / Interview L4 were built this week but not yet synced, this number should be higher — verify after re-syncing project knowledge.</p>
+  </div>
+
+  <!-- §4 THIS WEEK -->
+  <div class="sec" id="week">
+    <div class="sec-num">§4</div>
+    <div class="sec-title">This week (15–21 Jun) — plan vs confirmed reality</div>
+    <p class="sec-sub">The v6.0 plan had 7 tasks (8.1–8.7). I can only report confirmed outcomes for tasks where the output is visible in the indexed codebase. For tasks where I cannot confirm, I say so explicitly.</p>
+
+    <div class="cal err">
+      <div class="cal-title">⚠️ Important — what I cannot confirm vs what I can</div>
+      <p>If your team built Interview Evaluate, Decide, L4 Calibration, BG Check scaffold, or Psych L1/L2 this week — and pushed those files — but the project knowledge has not been re-synced, I will incorrectly report those as "not done." This is a limitation of the audit method, not evidence that the work was not done. <strong>Please re-sync project knowledge before or after this meeting to resolve uncertainty.</strong></p>
+    </div>
+
+    <table class="tbl">
+      <thead><tr><th style="width:55px">Task</th><th>Plan</th><th style="width:130px">Outcome</th><th>Evidence / Uncertainty</th></tr></thead>
+      <tbody>
+        <tr style="background:var(--bad-soft)">
+          <td>8.1</td>
+          <td>Interview Evaluate tab — competency scorecard</td>
+          <td><span class="b b-err">NOT CONFIRMED</span></td>
+          <td>Evaluate tab is a <code>ComingSoonSection</code> stub in the indexed <code>Interview-Candidate.jsx</code>. Either not built yet, or built after the snapshot was taken. Verify with §9 command: check if <code>ComingSoonSection</code> still exists in the file on main.</td>
+        </tr>
+        <tr style="background:var(--bad-soft)">
+          <td>8.2</td>
+          <td>Interview Decide tab</td>
+          <td><span class="b b-err">NOT CONFIRMED</span></td>
+          <td>Same as 8.1 — Decide tab is a <code>ComingSoonSection</code> stub in indexed file. Cannot confirm built or not built this week.</td>
+        </tr>
+        <tr style="background:var(--bad-soft)">
+          <td>8.3</td>
+          <td>Interview L4 Calibration page</td>
+          <td><span class="b b-err">NOT CONFIRMED</span></td>
+          <td>No calibration route or page visible for Interview. Either not yet built or not yet synced.</td>
+        </tr>
+        <tr>
+          <td>8.4</td>
+          <td>Sidebar reshape to 6 groups + CLAUDE.md cleanup</td>
+          <td><span class="b b-err">NOT DONE (confirmed)</span></td>
+          <td><code>module_menu.js</code> directly read this week — still 5 modules. <code>module_menu.js</code> entry confirms Interview (menu_id 20) is under Selection module 4, not in a 6th group. This is a <strong>confirmed gap</strong>, not a snapshot issue.</td>
+        </tr>
+        <tr style="background:var(--bad-soft)">
+          <td>8.5</td>
+          <td>BG Check backend scaffold + DB tables</td>
+          <td><span class="b b-err">NOT CONFIRMED</span></td>
+          <td>No BG module files found in any search. Either not started, or started but not yet synced. Cannot distinguish without re-syncing.</td>
+        </tr>
+        <tr style="background:var(--bad-soft)">
+          <td>8.6</td>
+          <td>Psych L1 Workboard + L2 Position</td>
+          <td><span class="b b-err">NOT CONFIRMED</span></td>
+          <td>No new Psych workboard or position page visible in indexed content. Same caveat applies.</td>
+        </tr>
+        <tr style="background:var(--bad-soft)">
+          <td>8.7</td>
+          <td>BG Check L1 Workboard frontend shell</td>
+          <td><span class="b b-err">NOT CONFIRMED</span></td>
+          <td>No BG Check frontend files found. Same caveat as 8.5.</td>
+        </tr>
+        <tr>
+          <td>—</td>
+          <td>Pilot recruitment status (D-4)</td>
+          <td><span class="b b-warn">STILL OPEN</span></td>
+          <td>No confirmed pilot count in any accessible document. This is a GTM/PM item that does not appear in the codebase regardless of sync state. <strong>Needs to be answered verbally at this meeting.</strong></td>
+        </tr>
+      </tbody>
+    </table>
+
+    <div class="cal info">
+      <div class="cal-title">📋 What to do right now to resolve the uncertainty</div>
+      <ol style="margin:8px 0 0;padding-left:20px">
+        <li>Run the §9 verify commands on the current <code>main</code> branch — they take under 2 minutes and will confirm which tasks actually shipped.</li>
+        <li>If BG Check was started, run: <code>ls backend/src/modules/bg/ 2&gt;/dev/null</code> — any output means it exists.</li>
+        <li>If Interview Evaluate was built, run: <code>grep -c "ComingSoonSection" frontend/src/components/interview/Interview-Candidate.jsx</code> — if it returns 0, the stubs were replaced.</li>
+        <li>After confirming, re-sync the project knowledge so the next audit is fully accurate.</li>
+      </ol>
+    </div>
+  </div>
+
+  <!-- §5 GAPS -->
+  <div class="sec" id="gaps">
+    <div class="sec-num">§5</div>
+    <div class="sec-title">Gap analysis — confirmed remaining work</div>
+    <p class="sec-sub">Items below are confirmed absent from the codebase. Estimates marked * are my best guess based on the Module Guide and prior audit estimates — verify against your own planning.</p>
+
+    <h3>5.1 Interview — finish the remaining ~50%</h3>
+    <table class="tbl">
+      <thead><tr><th>Item</th><th>Status</th><th>Estimated effort*</th></tr></thead>
+      <tbody>
+        <tr style="background:var(--bad-soft)"><td>Evaluate tab — per-competency scorecard (1–7 rating per HRD competency, weighted total)</td><td><span class="b b-err">STUB — CONFIRMED</span></td><td>~1.5 dev-days</td></tr>
+        <tr style="background:var(--bad-soft)"><td>Decide tab — advance/hold/reject from Interview, status to <code>done</code></td><td><span class="b b-err">STUB — CONFIRMED</span></td><td>~1 dev-day</td></tr>
+        <tr style="background:var(--bad-soft)"><td>L4 Calibration — cohort board, multi-select, bulk advance to Psych</td><td><span class="b b-err">ABSENT — CONFIRMED</span></td><td>~1 dev-day</td></tr>
+        <tr><td>Multi-round (R1/R2/R3) — currently single-round only</td><td><span class="b b-warn">DECISION NEEDED</span></td><td>~3 dev-days if built; 0 if deferred (recommended)</td></tr>
+      </tbody>
+    </table>
+
+    <h3>5.2 BG Check, Offer, Onboarding — 0%, confirmed absent</h3>
+    <table class="tbl">
+      <thead><tr><th>Module</th><th>Status</th><th>Estimated dev-days*</th><th>Needs to start</th></tr></thead>
+      <tbody>
+        <tr style="background:var(--bad-soft)"><td>Background Check (BG-01..04)</td><td><span class="b b-err">0% — CONFIRMED</span></td><td>~7–8 dev-days</td><td><strong>Now — this week</strong></td></tr>
+        <tr style="background:var(--bad-soft)"><td>Offer &amp; Contract (OF-01..05)</td><td><span class="b b-err">0% — CONFIRMED</span></td><td>~12–14 dev-days (largest module)</td><td>W11 at latest</td></tr>
+        <tr style="background:var(--bad-soft)"><td>Onboarding (ON-01..04)</td><td><span class="b b-err">0% — CONFIRMED</span></td><td>~8–10 dev-days</td><td>W12</td></tr>
+      </tbody>
+    </table>
+
+    <div class="cal err">
+      <div class="cal-title">⛔ Schedule math — 21 days, ~30+ dev-days remaining</div>
+      <p>Even with optimistic estimates, finishing Interview (~3.5 days), BG Check (~7.5 days), Offer (~14 days), and Onboarding (~9.5 days) requires roughly <strong>34 dev-days</strong>. With 2 engineers working fully parallel and 3 weeks (15 working days × 2 engineers = 30 engineering-days), this is only possible if: (a) scope is reduced per decisions D-2, D-5, D-8, (b) both engineers work strictly parallel with no context switching, and (c) no slippage. This is <em>tight but possible</em> — it requires no further deferred weeks.</p>
+    </div>
+
+    <h3>5.3 Overdue housekeeping items — still open</h3>
+    <table class="tbl">
+      <thead><tr><th>Item</th><th>Weeks overdue</th><th>Effort</th><th>Confirmed status</th></tr></thead>
+      <tbody>
+        <tr><td>Sidebar 6-group canonical reshape</td><td>5 weeks</td><td>~3h</td><td><span class="b b-err">STILL OPEN — confirmed this week</span> from <code>module_menu.js</code></td></tr>
+        <tr><td>Psych L1 Workboard + L2 Position + L4 Calibration</td><td>Ongoing</td><td>~4–5 dev-days</td><td><span class="b b-err">ABSENT — confirmed</span></td></tr>
+        <tr><td>Tenant scoping in non-Interview services</td><td>3 weeks</td><td>~3h</td><td><span class="b b-warn">NOT RE-VERIFIED</span> — run §9 verify command</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <!-- §6 NEXT WEEK -->
+  <div class="sec" id="next">
+    <div class="sec-num">§6</div>
+    <div class="sec-title">Next week (22–26 Jun) — Interview must finish, BG Check must start</div>
+    <p class="sec-sub">These tasks were planned for last week (8.1–8.7). If they shipped last week, they are done and the team should already be on BG Check. If they did not ship, they are the top priority this week with no exceptions.</p>
+
+    <div class="day">
+      <div class="day-head">
+        <div class="day-num">Mon–Tue</div>
+        <div class="day-date">22–23 Jun 2026</div>
+        <div class="day-title">Interview finish (if not done) + BG Check scaffold</div>
+      </div>
+
+      <div class="day-task">
+        <div class="task-head">
+          <span class="task-id">9.1</span>
+          <span class="task-title">Interview Evaluate tab — competency scorecard</span>
+          <span class="task-claude">CLAUDE ASSIST</span>
+          <span class="task-owner">FE Eng · 4h (skip if already done)</span>
+        </div>
+        <div class="task-body">Replace <code>ComingSoonSection label="Evaluate"</code> with a real scorecard view. Per-competency 1–7 rating using the rubric from <code>prep.rubric_items</code>. Anchor descriptions visible (Anchor 1 = poor, 7 = excellent). Weighted total. Notes field. Submit to a new backend endpoint or extend schedule outcome.</div>
+        <div class="task-criteria"><span class="task-criteria-label">DONE WHEN</span><code>grep "ComingSoonSection" Interview-Candidate.jsx</code> returns 0 for Evaluate. Rubric rating saves to backend.</div>
+      </div>
+
+      <div class="day-task">
+        <div class="task-head">
+          <span class="task-id">9.2</span>
+          <span class="task-title">Interview Decide tab + L4 Calibration</span>
+          <span class="task-owner">FE + BE · 5h (skip if already done)</span>
+        </div>
+        <div class="task-body">Replace <code>ComingSoonSection label="Decide"</code> with advance/hold/reject UI. Backend: update candidate_interview status to <code>done</code>. L4 Calibration: clone AIScreeningCalibration pattern for Interview — show all <code>done</code> candidates for a job, multi-select, bulk advance to Psych.</div>
+        <div class="task-criteria"><span class="task-criteria-label">DONE WHEN</span>Decide tab allows advance/hold/reject. L4 route <code>/selection/interview/job/:jobId/calibrate</code> exists and shows cohort.</div>
+      </div>
+
+      <div class="day-task">
+        <div class="task-head">
+          <span class="task-id">9.3</span>
+          <span class="task-title">BG Check backend scaffold + 5 DB tables</span>
+          <span class="task-claude">CLAUDE ASSIST</span>
+          <span class="task-owner">BE Eng · 1 dev-day</span>
+        </div>
+        <div class="task-body">Create <code>backend/src/modules/bg/</code> — route · controller · service · model. Tables: <code>candidate_bg · bg_claim · bg_consent · bg_lane · bg_vendor_config</code>. All with <code>company_id NOT NULL</code>. Mount at <code>/api/bg</code> in <code>app.js</code>. Stub 6 vendor lanes (manual for v0.1). Consent gate in service: Tracker locked until consent signed.</div>
+        <div class="task-criteria"><span class="task-criteria-label">DONE WHEN</span><code>ls backend/src/modules/bg/</code> shows 4 files. Tables exist. 8+ endpoints respond. consent_signed check enforced.</div>
+      </div>
+
+      <div class="day-task">
+        <div class="task-head">
+          <span class="task-id">9.4</span>
+          <span class="task-title">Sidebar 6-group reshape (5 weeks overdue)</span>
+          <span class="task-owner">FE + BE · 3h</span>
+        </div>
+        <div class="task-body">Update <code>backend/src/db/data/modules.js</code> (or equivalent seed) to 6 groups: Main · Sourcing · Selection · Offer &amp; Onboard · Insights · Account. Update <code>module_menu.js</code> with new module IDs. Update <code>app-sidebar.jsx</code> iconMap. "Asesmen" folds under Selection.</div>
+        <div class="task-criteria"><span class="task-criteria-label">DONE WHEN</span><code>grep -c "module_id" backend/src/db/data/module_menu.js</code> shows entries for 6 distinct module_ids. Sidebar renders 6 groups at runtime.</div>
+      </div>
+    </div>
+
+    <div class="day">
+      <div class="day-head">
+        <div class="day-num">Wed–Fri</div>
+        <div class="day-date">25–27 Jun 2026</div>
+        <div class="day-title">BG Check frontend + Psych L1/L2 (parallel)</div>
+      </div>
+
+      <div class="day-task">
+        <div class="task-head">
+          <span class="task-id">9.5</span>
+          <span class="task-title">BG Check L1 Workboard + L2 Position frontend</span>
+          <span class="task-owner">FE Eng · 1 dev-day</span>
+        </div>
+        <div class="task-body">BG workboard: candidate list, 4-lane status chips (Claims/Consent/Tracking/Verdict), position rail. Route <code>/selection/bg-check</code>. L2 Position: per-job BG status view. Mock data acceptable for Wednesday; real data by Friday.</div>
+        <div class="task-criteria"><span class="task-criteria-label">DONE WHEN</span>Route navigable. Chips + candidate list render. Position rail works.</div>
+      </div>
+
+      <div class="day-task">
+        <div class="task-head">
+          <span class="task-id">9.6</span>
+          <span class="task-title">Psych L1 Workboard + L2 Position (parallel track)</span>
+          <span class="task-claude">CLAUDE ASSIST</span>
+          <span class="task-owner">FE Eng · 1 dev-day</span>
+        </div>
+        <div class="task-body">Psych workboard: candidates pending/in-progress/done across positions. Battery status chips. Clone AIScreeningWorkboard pattern. L2 Position: per-job cohort with battery progress. Wire to existing assessment session tables — no new backend needed.</div>
+        <div class="task-criteria"><span class="task-criteria-label">DONE WHEN</span>Psych L1 + L2 routes navigable. Real assessment session data flows in.</div>
+      </div>
+    </div>
+
+    <div class="cal info">
+      <div class="cal-title">📋 W11–W12 schedule (revised for confirmed state)</div>
+      <p><strong>W11 (29 Jun – 4 Jul):</strong> BG Check L3 Claims/Consent/Tracker/Verdict · Offer module kickoff — scaffold + tables + compensation_engine start · Psych L4 Calibration</p>
+      <p><strong>W12 (6–11 Jul):</strong> Offer Build/Send/Track + Bahasa contract generator · Onboarding MVP (1 role template) + Day-90 decision · 12 pre-flight items</p>
+      <p><strong>Pilot launch: 13 Jul 2026</strong> — only achievable with no further deferred weeks and both engineers strictly parallel from today.</p>
+    </div>
+  </div>
+
+  <!-- §7 RISKS -->
+  <div class="sec" id="risks">
+    <div class="sec-num">§7</div>
+    <div class="sec-title">Risk register — updated W10</div>
+
+    <div style="margin:18px 0">
+      <div class="risk-row">
+        <div><div class="risk-id">R-1</div></div>
+        <div class="risk-desc">
+          <strong>3 workflow modules at 0% with 21 days to pilot — schedule is at maximum compression</strong>
+          BG Check, Offer, and Onboarding are confirmed absent. Combined estimated dev-days (~30) match exactly the engineering-days available (2 engineers × 3 weeks = ~30). There is zero slack — any slip in any week will push the pilot date past 13 Jul. <em>Mitigation:</em> Both engineers fully parallel from Monday. No new features outside the plan. Scope reductions D-2, D-5, D-8 must be decided today to give BG Check and Onboarding a realistic implementation target.
+        </div>
+        <div><span class="b b-err">P0 · CRITICAL</span></div>
+      </div>
+
+      <div class="risk-row">
+        <div><div class="risk-id">R-2</div></div>
+        <div class="risk-desc">
+          <strong>compensation_engine — PPh21/BPJS correctness under time pressure</strong>
+          The engine is the longest single piece (~3 dev-days). It will now be built in W11 under maximum calendar pressure, which increases the risk of correctness errors. Indonesian tax miscalculation would seriously damage pilot trust. <em>Mitigation:</em> Unit-test against DJP official examples before shipping. Have BE Lead allocate dedicated review time — do not merge without tax-specific test suite.
+        </div>
+        <div><span class="b b-err">P0 · HIGH</span></div>
+      </div>
+
+      <div class="risk-row">
+        <div><div class="risk-id">R-3</div></div>
+        <div class="risk-desc">
+          <strong>Pilot companies not confirmed — GTM timeline unknown</strong>
+          Pilot count still unknown to engineering. Companies need to be onboarded ~1 week before launch, meaning sign-off by 6 Jul. That is 14 days from today. If &lt; 10 are confirmed, the commercial case for the 13 Jul date weakens even if engineering finishes. <em>Mitigation:</em> GTM must confirm count at this meeting. If behind, consider reducing to 8-company pilot and prioritising quality over quantity.
+        </div>
+        <div><span class="b b-warn">P1 · HIGH</span></div>
+      </div>
+
+      <div class="risk-row">
+        <div><div class="risk-id">R-4</div></div>
+        <div class="risk-desc">
+          <strong>Audit snapshot out of sync — cannot confirm this week's actual progress</strong>
+          As documented in §0, the project knowledge snapshot may not reflect commits from the past week. This means engineering may have built Interview Evaluate/Decide/L4 + BG Check scaffold, but the audit cannot confirm it. <em>Mitigation:</em> Re-sync project knowledge immediately after this meeting. Run §9 verify commands on main branch to get ground truth. Do not let the audit appear worse than reality.
+        </div>
+        <div><span class="b b-warn">P1 · MED</span></div>
+      </div>
+
+      <div class="risk-row">
+        <div><div class="risk-id">R-5</div></div>
+        <div class="risk-desc">
+          <strong>Interview multi-round (R1/R2/R3) decision still pending</strong>
+          Decision D-10 (single-round vs multi-round for v0.1) was raised in v6.0 and is still not resolved. Building multi-round costs ~3 dev-days the schedule cannot spare. If any pilot requires 3 rounds, this needs to be resolved today. <em>Mitigation:</em> Recommend committing to single-round for v0.1 at this meeting and communicating that explicitly in pilot contracts.
+        </div>
+        <div><span class="b b-warn">P1 · MED</span></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- §8 DECISIONS -->
+  <div class="sec" id="decisions">
+    <div class="sec-num">§8</div>
+    <div class="sec-title">Decisions needed from leadership — this meeting</div>
+
+    <table class="tbl">
+      <thead><tr><th style="width:60px">ID</th><th>Decision</th><th style="width:120px">Owner</th><th>Recommendation</th></tr></thead>
+      <tbody>
+        <tr style="background:var(--bad-soft)">
+          <td><strong>D-10</strong></td>
+          <td>Interview rounds — single-round for v0.1 or build R2/R3?</td>
+          <td>Product · PM</td>
+          <td><strong>Decide today.</strong> Building R2/R3 costs ~3 dev-days the schedule cannot spare. Recommended: single-round for v0.1, communicated explicitly in pilot contracts. R2/R3 in v0.1.5.</td>
+        </tr>
+        <tr style="background:var(--bad-soft)">
+          <td><strong>D-2</strong></td>
+          <td>BG Check vendor adapters — real or manual/stubbed?</td>
+          <td>Product · CTO</td>
+          <td><strong>Must decide before BG Check build starts this week.</strong> Recommended: all manual stubs for v0.1. Verihubs identity-only in v0.1.5. Saves ~3 dev-days on adapter implementation.</td>
+        </tr>
+        <tr style="background:var(--bad-soft)">
+          <td><strong>D-3</strong></td>
+          <td>compensation_engine — internal build or library?</td>
+          <td>Eng Lead</td>
+          <td><strong>Must decide before Offer build starts W11.</strong> Recommended: internal build against DJP official examples. Do not use a third-party library unless it has been verified for 2026 PPh21 rates.</td>
+        </tr>
+        <tr>
+          <td><strong>D-4</strong></td>
+          <td>Pilot count — how many confirmed?</td>
+          <td>GTM + PM</td>
+          <td>Answer must come from GTM verbally at this meeting. Engineering needs a number today to assess whether 13 Jul is commercially viable, not just technically possible.</td>
+        </tr>
+        <tr>
+          <td><strong>D-5</strong></td>
+          <td>Onboarding role templates — 3 or 1?</td>
+          <td>Product · PM</td>
+          <td>Recommended: 1 template (office_staff) for v0.1 to save ~1 dev-day. Pilots unlikely to notice the difference. Add factory_worker and field_sales in v0.1.5.</td>
+        </tr>
+        <tr>
+          <td><strong>D-8</strong></td>
+          <td>Scope reductions — BG Check and Onboarding MVP?</td>
+          <td>Product · CEO</td>
+          <td>Recommended: BG Check MVP (single manual lane, no vendor adapters) + Onboarding MVP (1 template, no manager handoff). Combined saves ~9 dev-days and makes 13 Jul viable.</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <!-- §9 VERIFY -->
+  <div class="sec" id="verify">
+    <div class="sec-num">§9</div>
+    <div class="sec-title">Verify this audit — run these commands on main</div>
+    <p class="sec-sub">These commands resolve the uncertainty in this audit. Run them on a clean checkout of <code>main</code> right now and share the results — it will take under 5 minutes and will confirm or correct every claim marked "NOT CONFIRMED" in §4.</p>
+
+    <table class="tbl">
+      <thead><tr><th>Claim to verify</th><th>Command</th><th>Expected if not done / Expected if done</th></tr></thead>
+      <tbody>
+        <tr><td>Interview Evaluate tab still a stub?</td><td><code>grep -c "ComingSoonSection" frontend/src/components/interview/Interview-Candidate.jsx</code></td><td>2 = both Evaluate + Decide still stubs · 0 = both replaced</td></tr>
+        <tr><td>Interview L4 Calibration exists?</td><td><code>ls frontend/src/pages/InterviewCalibration* 2&gt;/dev/null || grep "calibrat" frontend/src/App.jsx</code></td><td>No output = not built · Output = built</td></tr>
+        <tr><td>BG Check module exists?</td><td><code>ls backend/src/modules/bg/ 2&gt;/dev/null</code></td><td>No output = not started · 4 files = scaffold done</td></tr>
+        <tr><td>Psych L1 Workboard page exists?</td><td><code>ls frontend/src/pages/Psych* 2&gt;/dev/null || ls frontend/src/pages/Assessment*Workboard* 2&gt;/dev/null</code></td><td>No output = not built</td></tr>
+        <tr><td>Sidebar still 5 groups?</td><td><code>grep -c "module_id:" backend/src/db/data/modules.js 2&gt;/dev/null || node -e "import('./backend/src/db/data/modules.js').then(m => console.log(m.default.length))"</code></td><td>5 = not reshaped · 6 = done</td></tr>
+        <tr><td>Warm cream tokens still applied?</td><td><code>grep "FAF9F5" frontend/src/index.css</code></td><td>≥ 1 match = applied (should not have regressed)</td></tr>
+        <tr><td>AI cost cap still in place?</td><td><code>grep "checkBudgetOrThrow" backend/src/modules/company-usage/company-usage.service.js</code></td><td>≥ 1 match = cap enforced</td></tr>
+        <tr><td>Tenant scoping in job.service.js?</td><td><code>grep "company_id" backend/src/modules/job/job.service.js | grep -i "denied\|403\|throw" | wc -l</code></td><td>0 = still unscoped (gap) · ≥1 = scoped</td></tr>
+        <tr><td>Interview backend mounted?</td><td><code>grep "interview" backend/app.js</code></td><td>≥ 2 matches = mounted (should not have regressed)</td></tr>
+        <tr><td>No Offer or Onboarding module?</td><td><code>ls backend/src/modules/offer/ backend/src/modules/onboarding/ 2&gt;/dev/null</code></td><td>No output = confirmed absent</td></tr>
+        <tr><td>Integration tests exist yet?</td><td><code>ls backend/tests/integration/ 2&gt;/dev/null</code></td><td>No output = no integration tests (still a gap)</td></tr>
+      </tbody>
+    </table>
+
+    <div class="cal success">
+      <div class="cal-title">✅ How to fix the snapshot issue for future audits</div>
+      <p>After running the commands above and confirming what actually exists, re-sync the project knowledge by updating or re-uploading the codebase to the Claude project. This takes ~2 minutes and ensures next week's audit reflects actual commits, not an older snapshot. The audit will then be fully accurate and the team can rely on it for weekly planning without needing to cross-reference shell commands manually.</p>
+    </div>
+
+    <h3>9.1 Glossary</h3>
+    <div class="gloss"><span class="gloss-term">Project knowledge</span>A snapshot of your codebase that Claude can search. Updated when you upload or sync files to the Claude project. Not automatically updated when you push to GitHub.</div>
+    <div class="gloss"><span class="gloss-term">ComingSoonSection</span>A placeholder React component in the Interview module that renders a "coming soon" card. Confirmed present in Evaluate and Decide tabs as of the current snapshot.</div>
+    <div class="gloss"><span class="gloss-term">compensation_engine</span>The backend service that must compute PPh21 + BPJS + Gross/Nett for the Offer module. Largest single remaining piece. Must be built in W11 and tested against DJP official calculations.</div>
+    <div class="gloss"><span class="gloss-term">UU PDP 27/2022</span>Indonesia's data privacy law. BG Check must collect explicit candidate consent before any verification lane is opened.</div>
+    <div class="gloss"><span class="gloss-term">D-10</span>The open decision on Interview multi-round (R1/R2/R3 vs single-round for v0.1). Must be resolved today — building multi-round costs 3 dev-days that are not available.</div>
+    <div class="gloss"><span class="gloss-term">4-Level workspace</span>L1 Workboard · L2 Position · L3 Candidate · L4 Calibration — the structural pattern every workflow module follows. Interview currently has L1 done, L2/L3 partial, L4 absent.</div>
+  </div>
+
+  <div style="text-align:center;padding:48px 0 16px;font-family:var(--mono);font-size:11px;color:var(--faint);letter-spacing:.06em;text-transform:uppercase">
+    MYRALIX · v0.1 CODEBASE AUDIT · 22 JUN 2026 · v7.0<br>
+    <strong style="color:var(--warn)">IMPORTANT:</strong> This audit is based on the project knowledge snapshot. Re-sync codebase before relying on §3–§4 figures.<br>
+    Internal product documentation · Not for external distribution · © PT Myralix Indonesia
+  </div>
+
+</div>
+</body>
+</html>
