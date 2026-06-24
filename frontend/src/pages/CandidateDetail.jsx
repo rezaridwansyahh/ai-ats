@@ -124,7 +124,7 @@ export default function CandidateDetailPage() {
   if (loading) {
     return (
       <div className="space-y-4">
-        <BackButton onBack={() => navigate('/selection/report')} />
+        <BackButton onBack={() => navigate('/selection/assessment')} />
         <Card><CardContent className="py-12 text-center text-xs text-muted-foreground">
           <Loader2 className="h-4 w-4 animate-spin inline mr-1.5" />Loading candidate…
         </CardContent></Card>
@@ -135,7 +135,7 @@ export default function CandidateDetailPage() {
   if (error || !candidate) {
     return (
       <div className="space-y-4">
-        <BackButton onBack={() => navigate('/selection/report')} />
+        <BackButton onBack={() => navigate('/selection/assessment')} />
         <Card><CardContent className="py-12 text-center text-xs text-muted-foreground">
           {error || 'Candidate not found.'}
         </CardContent></Card>
@@ -164,7 +164,7 @@ export default function CandidateDetailPage() {
 
   return (
     <div className="space-y-4">
-      <BackButton onBack={() => navigate('/selection/report')} />
+      <BackButton onBack={() => navigate('/selection/assessment')} />
 
       <CandidateHeader candidate={candidateView} battery={battery} jobId={jobId} />
 

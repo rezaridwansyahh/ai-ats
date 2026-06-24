@@ -45,7 +45,7 @@ const iconMap = {
   'Background Check':   ShieldCheck,
   'Offer & Contract':   FileSignature,
   'Onboarding':         FileText,
-  'Report':             BarChart3,
+  'Psych Assessment':   BarChart3,
   'Reports':            BarChart3,
   'User Management':    Users,
   'Role Management':    ShieldCheck,
@@ -86,7 +86,7 @@ const routeMap = {
   'Source Candidate':  '/sourcing/source-candidate',
   'AI Screening':      '/selection/ai-screening',
   'AI Matching':       '/selection/ai-screening',
-  'Report':            '/selection/report',
+  'Psych Assessment':  '/selection/assessment',
   'Assessment A':      '/asesmen/assessment-a',
   'Assessment B':      '/asesmen/assessment-b',
   'Assessment C':      '/asesmen/assessment-c',
@@ -110,7 +110,6 @@ const SECTION_LABEL_MAP = {
   'Settings':        'Settings',
 };
 
-
 // Menu names that should never be shown in the sidebar, even if the user
 // has permission for them.
 const HIDDEN_ITEMS = new Set([
@@ -120,16 +119,13 @@ const HIDDEN_ITEMS = new Set([
   'Assessment D',
   'Insights Discovery Assessment',
   'Thomas Kilmann Assessment',
-  'Report',
 ]);
 
 // Menu names that are visible but not yet clickable ("SOON" pill).
 const SOON_ITEMS = new Set([
-  'Medical Assessment',
-  'Psych Assessment', // displays as "Psychological Ass." via DISPLAY_NAME_MAP
+  'Medical Assessmen',
+  'Psych Assessmen', // displays as "Psychological Ass." via DISPLAY_NAME_MAP
 ]);
-
-
 
 // Explicit ordering for items inside the "Selection" section.
 // Explicit ordering for items inside the "Selection" section.
@@ -550,12 +546,13 @@ export function AppSidebar() {
 
       {/* Bottom flat items: Reports, Settings */}
       <div className="mt-auto pt-3 mx-1 border-t border-sidebar-border/50 space-y-0.5">
-        <FlatNavItem
+        {/* Ini nanti dulu - candra */}
+        {/* <FlatNavItem
           label="Reports"
           icon={BarChart3}
           active={location.pathname.startsWith('/selection/report')}
           soon
-        />
+        /> */}
         <FlatNavItem
           label="Settings"
           icon={Settings}

@@ -16,7 +16,7 @@ import SourceCandidatePage from "./pages/SourceCandidate"
 import RecruitersPage from "./pages/Recruiters"
 import ComingSoonPage from "./pages/ComingSoon"
 import AssessmentAPage from "./pages/AssessmentA"
-import ReportPage from "./pages/Report"
+import PsychAssesmentPage from "./pages/PsychAssessment"
 import ReportCandidatePage from "./pages/ReportCandidate"
 import ReportCandidateDetailPage from "./pages/ReportCandidateDetail"
 import CandidateDetailPage from "./pages/CandidateDetail"
@@ -79,8 +79,9 @@ function App() {
         <Route path="/selection/ai-screening/job/:jobId" element={<AIScreeningPage />} />
         <Route path="/selection/ai-screening/candidate/:screeningId" element={<AIScreeningCandidatePage />} />
 
-        <Route path="/selection/report" element={<ReportPage />} />
-        <Route path="/selection/report/:jobId/:participantId" element={<CandidateDetailPage />} />
+        <Route path="/selection/assessment" element={<PsychAssesmentPage />} />
+        <Route path="/selection/assessment/:jobId/:participantId" element={<CandidateDetailPage />} />
+
         <Route path="/selection/interview" element={<InterviewWorkboard />} />
         <Route path="/selection/interview/job/:jobId" element={<InterviewJobPage/>} />
         <Route path="/selection/interview/candidate/:interviewId" element={<InterviewCandidatePage />} />

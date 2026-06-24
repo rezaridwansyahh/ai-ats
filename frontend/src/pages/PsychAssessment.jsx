@@ -8,7 +8,7 @@ import { getCandidatePipelineSummary, getCandidatesByJobId } from '@/api/candida
 // Real-data Report page.
 // - Left rail: GET /candidate-pipeline/summary → [{ job_id, job_title, total }]
 // - Right panel: GET /candidate-pipeline/job/:job_id → candidate rows for the selected job
-export default function ReportPage() {
+export default function PsychAssesmentPage() {
   const navigate = useNavigate();
   const [jobs, setJobs] = useState([]);
   const [jobsLoading, setJobsLoading] = useState(true);
@@ -97,13 +97,13 @@ export default function ReportPage() {
   useEffect(() => { setActiveStep(null); }, [selectedJobId]);
 
   const handleSelectCandidate = (candidate) => {
-    navigate(`/selection/report/${candidate.job_id}/${candidate.id}`);
+    navigate(`/selection/assessment/${candidate.job_id}/${candidate.id}`);
   };
 
   return (
     <div className="space-y-4">
       <div>
-        <h1 className="text-lg font-bold tracking-tight">Report</h1>
+        <h1 className="text-lg font-bold tracking-tight">Psych Assessment</h1>
         <p className="text-xs text-muted-foreground mt-0.5">
           Pick a position to review its candidates and assessment status.
         </p>
