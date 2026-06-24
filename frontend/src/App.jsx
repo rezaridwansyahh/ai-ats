@@ -37,10 +37,12 @@ import InterviewJobPage from "./components/interview/Interview-Job"
 import InterviewCandidatePage from "./components/interview/Interview-Candidate"
 import InterviewCalibration from "./pages/InterviewCalibration"
 import BudgetSettingsPage from "./pages/BudgetSettings"
+import BackgroundCheckPage from "./pages/BackgroundCheck"
+import BackgroundCheckCandidatePage from "./components/background-check/BackgroundCheck-Candidate"
+import BackgroundCheckJobPage from "./components/background-check/BackgroundCheck-Job"
 
 //PUNYA BAYU MASIH DUMMY
 import InterviewPage from "./pages/Interview"
-import BackgroundCheckPage from "./pages/BackgroundCheck"
 import SettingsPage from "./pages/Settings"
 import OfferContractPage from "./pages/OfferContract"
 
@@ -84,9 +86,10 @@ function App() {
         <Route path="/selection/interview/candidate/:interviewId" element={<InterviewCandidatePage />} />
         <Route path="/selection/interview/calibration/:jobId" element={<InterviewCalibration />} />
 
-        //punya bayu
         {/* <Route path="/selection/interview" element={<InterviewPage />} />  */}
         <Route path="/selection/background-check" element={<BackgroundCheckPage />} />
+        <Route path="/selection/background-check/job/:jobId" element={<BackgroundCheckJobPage />} />
+        <Route path="/selection/background-check/candidate/:bgId" element={<BackgroundCheckCandidatePage />} />
         <Route path="/asesmen/assessment-a" element={<AssessmentAPage />} />
         <Route path="/asesmen/assessment-b" element={<AssessmentBPage />} />
         <Route path="/asesmen/assessment-c" element={<AssessmentCPage />} />

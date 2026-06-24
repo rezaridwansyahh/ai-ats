@@ -33,6 +33,7 @@ DROP TABLE IF EXISTS master_sourcing CASCADE;
 DROP TABLE IF EXISTS master_sourcing_recruite CASCADE;
 DROP TABLE IF EXISTS interview_schedule;
 DROP TABLE IF EXISTS interview_scorecard;
+DROP TABLE IF EXISTS candidate_bg;
 
 DROP TABLE IF EXISTS master_recruiters CASCADE;
 DROP TABLE IF EXISTS core_job_pipeline_stages CASCADE;
@@ -603,6 +604,23 @@ CREATE TABLE interview_scorecard (
   is_draft  BOOLEAN NOT NULL DEFAULT true,
   created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
   updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+CREATE TABLE candidate_bg (
+  id SERIAL PRIMARY KEY,
+  candidate_id INTEGER NOT NULL REFERENCES master_candidate(id) ON DELETE CASCADE,
+  job_id INTEGER NOT NULL REFERENCES core_job(id) ON DELETE CASCADE,
+  company_id INTEGER REFERENCES core_company(id) ON DELETE CASCADE,
+  status VARCHAR(20) NOT NULL DEFAULT 'claims',  -- claims | consent | tracker | verdict | done | archived
+  status_changed_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  verdict VARCHAR(30),                            -- pass | pass_with_concerns | fail
+  verdict_note JSONB,                                 
+  decided_at TIMESTAMPTZ,
+  decided_by INTEGER REFERENCES master_users(id) ON DELETE SET NULL,
+  archived_reason VARCHAR(30),                            -- no_consent | consent_timeout | verdict_fail | calibration_advance
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  UNIQUE (candidate_id, job_id)
 );
 
 CREATE INDEX idx_applicant_information_gin

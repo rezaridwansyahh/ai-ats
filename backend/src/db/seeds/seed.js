@@ -27,6 +27,7 @@ import {
 } from '../data/dummy_insights.js';
 import companyBudgetsData, { createCompanyBudget } from '../data/company_budgets.js';
 import candidateInterviewData from '../data/candidate_interview.js';
+import candidateBgData from '../data/candidate_bg.js';
 
 const seed = async () => {
   await getDb().query('BEGIN');
@@ -59,6 +60,7 @@ const seed = async () => {
     await getDb().query('DELETE FROM master_roles');
     await getDb().query('DELETE FROM master_users');
     await getDb().query('DELETE FROM core_company');
+    await getDb().query('DELETE FROM candidate_bg');
 
     // 0. companies (must be inserted before users — users reference company_id)
     for (const c of companiesData) {
@@ -348,6 +350,26 @@ const seed = async () => {
         ON CONFLICT (candidate_id, job_id) DO NOTHING`,
         [ci.id, ci.candidate_id, ci.job_id,
         ci.company_id, ci.status, ci.scheduled_at]
+      );
+    }
+
+    // 21c. candidate_bg — candidates advanced from Interview into Background Check
+    for (const bg of candidateBgData) {
+      await getDb().query(
+        `INSERT INTO candidate_bg
+          (id, candidate_id, job_id, company_id, status, verdict, verdict_note, archived_reason)
+        VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+        ON CONFLICT (candidate_id, job_id) DO NOTHING`,
+        [
+          bg.id,
+          bg.candidate_id,
+          bg.job_id,
+          bg.company_id,
+          bg.status,
+          bg.verdict         ?? null,
+          bg.verdict_note    ? JSON.stringify(bg.verdict_note) : null,
+          bg.archived_reason ?? null,
+        ]
       );
     }
 

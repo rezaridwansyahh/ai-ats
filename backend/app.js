@@ -43,6 +43,7 @@ import companyUsage from "./src/modules/company-usage/company-usage.route.js"
 import portalAssessment from "./src/modules/portal-assessment/portal-assessment.route.js"
 import portalQa from "./src/modules/portal-qa/portal-qa.route.js"
 import interview from "./src/modules/interview/interview.route.js"
+import backgroundCheck from "./src/modules/background-check/background-check.route.js"
 
 app.use(express.json());
 app.use(cors({
@@ -82,6 +83,7 @@ portal.use("/api/assessment-ai", assessmentAI);
 portal.use("/api/portal-assessment", portalAssessment);
 portal.use("/api/portal-qa", portalQa);
 portal.use("/api/interview", interview);
+portal.use("/api/background-check", backgroundCheck);
 app.use("/portal", portal);
 app.use("/api/auth", auth);
 app.use("/api/cookies", cookies);
@@ -114,6 +116,7 @@ app.use("/api/company-usage", companyUsage);
 app.use("/api/portal-assessment", portalAssessment);
 app.use("/api/portal-qa", portalQa);
 app.use("/api/interview", interview);
+app.use("/api/background-check", backgroundCheck);
 
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => {
