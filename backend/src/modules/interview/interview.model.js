@@ -51,13 +51,11 @@ class InterviewModel {
          ci.decided_at,
          ci.created_at,
          ci.updated_at,
-
          mc.name            AS candidate_name,
          mc.last_position,
          mc.address,
          mc.education       AS education_text,
          mc.attachment,
-
          cj.job_title,
          cj.job_location,
          cj.work_type,
@@ -65,12 +63,10 @@ class InterviewModel {
          cj.seniority_level,
          cj.required_skills,
          cj.preferred_skills,
-
          ipp.id             AS prep_id,
          ipp.questions,
          ipp.rubric_items,
          ipp.rubric_locked
-
        FROM candidate_interview ci
        JOIN master_candidate mc ON mc.id = ci.candidate_id
        JOIN core_job cj          ON cj.id = ci.job_id
@@ -79,6 +75,31 @@ class InterviewModel {
       [interview_id]
     );
     return result.rows[0] || null;
+  }
+
+  async getCandidateByJob(job_id) {
+    const result = await getDb().query(
+      `
+      SELECT
+        mc.id          AS candidate_id,
+        mc.applicant_id,
+        mc.job_id,
+        mc.name        AS candidate_name,
+        mc.last_position,
+        mc.address,
+        mc.date         AS applied_at,
+        ci.id         AS interview_id,
+        ci.decision
+      FROM master_candidate mc
+      LEFT JOIN candidate_interview ci ON ci.candidate_id = mc.id
+      left join job_stage js on js.id = mc.latest_stage
+      left join recruitment_stage_category rsc on rsc.id = js.stage_type_id
+      WHERE mc.job_id = $1 AND mc.applicant_id IS NOT NULL AND rsc.name = 'Interview'
+      ORDER BY mc.created_at DESC
+      `, [job_id]
+    );
+
+    return result.rows || null;
   }
 
   async getByJob(job_id) {
@@ -156,7 +177,10 @@ class InterviewModel {
          COUNT(*) FILTER (WHERE ci.status = 'done')                    AS done
        FROM core_job cj
        LEFT JOIN candidate_interview ci ON ci.job_id = cj.id
-       WHERE cj.company_id = $1
+       left join master_candidate mc on mc.id = ci.candidate_id
+       left join job_stage js on js.id = mc.latest_stage
+       left join recruitment_stage_category rsc on rsc.id = js.stage_type_id
+       WHERE cj.company_id = $1 and rsc.name = 'Interview'
        GROUP BY cj.id, cj.job_title, cj.status
        ORDER BY cj.status = 'Active' DESC, cj.id ASC`,
       [company_id]

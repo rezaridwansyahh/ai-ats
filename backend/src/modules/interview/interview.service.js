@@ -34,7 +34,7 @@ class InterviewService {
     if (company_id && job.company_id && job.company_id !== company_id) {
       throw { status: 403, message: 'Cross-tenant access denied' };
     }
-    return await interviewModel.getByJob(job_id);
+    return await interviewModel.getCandidateByJob(job_id);
   }
 
   async updateStatus(interview_id, { status, company_id = null } = {}) {

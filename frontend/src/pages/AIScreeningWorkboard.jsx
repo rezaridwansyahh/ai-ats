@@ -267,7 +267,6 @@ export default function AIScreeningWorkboard() {
         <Card>
           <CardHeader className="pb-3 space-y-3">
             <CardTitle className="text-sm gap-3 flex items-center h-[40px]">
-              
               {activeJob === '' ? "All candidates" : `${activeJob.job_title}`}
               <span className="ml-2 text-[11px] font-normal text-muted-foreground">
                 {filtered.length} {activeStage ? `at ${STAGE_META[activeStage].label}` : 'total'}
