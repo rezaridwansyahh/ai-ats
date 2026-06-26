@@ -594,6 +594,97 @@ Return STRICT JSON:
     return { questions };
   }
 
+  async extractBgClaims(information, job_title, context = {}) {
+    if (!information || typeof information !== 'object') {
+      throw new Error('extractBgClaims: information is required');
+    }
+
+    await companyUsageService.checkBudgetOrThrow(context.company_id);
+
+    const prompt = `You are an HR background check specialist. Extract verifiable claims from a candidate's parsed CV data. Return STRICT JSON only.
+
+  JOB TITLE: ${job_title || 'Not specified'}
+
+  CANDIDATE CV DATA:
+  ${JSON.stringify(information, null, 2)}
+
+  Extract every verifiable statement and classify each into a lane. Return STRICT JSON:
+  {
+    "claims": [
+      {
+        "claim_text": "<primary label, concise — e.g. 'Universitas Indonesia · S1 Ilmu Komputer · 2018'>",
+        "claim_detail": "<optional secondary detail — e.g. 'IPK 3.62' or 'ref: Bu Lestari (manager)' or null>",
+        "lane_type": "<identity|edu|emp|cert|crim|cred|salary>"
+      }
+    ]
+  }
+
+  Lane classification rules:
+  - identity  → KTP, NIK, passport, full legal name verification
+  - edu       → each education entry (school, degree, graduation year)
+  - emp       → each employment position (company, title, tenure)
+  - cert      → professional certifications, licenses
+  - crim      → criminal record (only if explicitly mentioned)
+  - cred      → credit / financial history (only if relevant to role)
+  - salary    → last drawn salary, compensation claims
+
+  Rules:
+  - Create one claim per verifiable item — do NOT bundle multiple positions into one claim
+  - claim_text should be short and scannable (max ~80 chars)
+  - claim_detail is optional extra context the recruiter needs to verify
+  - If a field is not present in the CV data, skip that lane entirely
+  - Do NOT invent claims — only extract what is explicitly in the data
+  - Order: identity first, then edu, then emp (most recent first), then cert`;
+
+    const response = await openai.chat.completions.create({
+      model: SCORING_MODEL,
+      messages: [{ role: 'user', content: prompt }],
+      response_format: { type: 'json_object' },
+      temperature: 0.1,
+    });
+
+    await this._logUsage({
+      context,
+      model: SCORING_MODEL,
+      operation: 'extract_bg_claims',
+      usage: response.usage,
+      request_id: response.id,
+      metadata: {
+        job_title: job_title || null,
+        ...(context.metadata || {}),
+      },
+    });
+
+    const raw = response.choices[0]?.message?.content || '{}';
+    let parsed;
+    try {
+      parsed = JSON.parse(raw);
+    } catch {
+      throw new Error('extractBgClaims: model returned non-JSON');
+    }
+
+    const validLanes = ['identity', 'edu', 'emp', 'cert', 'crim', 'cred', 'salary'];
+
+    const claims = Array.isArray(parsed.claims)
+      ? parsed.claims
+          .filter((c) => c && typeof c === 'object' &&
+            typeof c.claim_text === 'string' && c.claim_text.trim() &&
+            validLanes.includes(c.lane_type))
+          .map((c) => ({
+            claim_text:   c.claim_text.trim(),
+            claim_detail: typeof c.claim_detail === 'string' && c.claim_detail.trim()
+              ? c.claim_detail.trim()
+              : null,
+            lane_type: c.lane_type,
+          }))
+      : [];
+
+    if (claims.length === 0) {
+      throw new Error('extractBgClaims: model returned no valid claims');
+    }
+
+    return { claims };
+  }
 
 }
 

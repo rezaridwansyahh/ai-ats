@@ -35,6 +35,8 @@ const seed = async () => {
   try {
     await getDb().query('DELETE FROM company_budgets');
     await getDb().query('DELETE FROM company_usage');
+    await getDb().query('DELETE FROM bg_claim');       
+    await getDb().query('DELETE FROM candidate_bg'); 
     await getDb().query('DELETE FROM candidate_interview');
     await getDb().query('DELETE FROM candidate_screening');
     await getDb().query('DELETE FROM candidate_job_score');
@@ -60,7 +62,6 @@ const seed = async () => {
     await getDb().query('DELETE FROM master_roles');
     await getDb().query('DELETE FROM master_users');
     await getDb().query('DELETE FROM core_company');
-    await getDb().query('DELETE FROM candidate_bg');
 
     // 0. companies (must be inserted before users — users reference company_id)
     for (const c of companiesData) {
@@ -353,7 +354,7 @@ const seed = async () => {
       );
     }
 
-    // 21c. candidate_bg — candidates advanced from Interview into Background Check
+    // 21c. candidate_bg
     for (const bg of candidateBgData) {
       await getDb().query(
         `INSERT INTO candidate_bg
@@ -361,17 +362,17 @@ const seed = async () => {
         VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
         ON CONFLICT (candidate_id, job_id) DO NOTHING`,
         [
-          bg.id,
-          bg.candidate_id,
-          bg.job_id,
-          bg.company_id,
-          bg.status,
-          bg.verdict         ?? null,
-          bg.verdict_note    ? JSON.stringify(bg.verdict_note) : null,
+          bg.id, bg.candidate_id, bg.job_id, bg.company_id,
+          bg.status, bg.verdict ?? null,
+          bg.verdict_note ? JSON.stringify(bg.verdict_note) : null,
           bg.archived_reason ?? null,
         ]
       );
     }
+    await getDb().query(`
+      SELECT setval('candidate_bg_id_seq', (SELECT MAX(id) FROM candidate_bg))
+    `);
+    console.log(`Seeded ${candidateBgData.length} candidate_bg rows`);
 
     // 23. core_applicant_assessment — Insights results (assessment_id = 5). Status = 'completed'
     //     so the rows show up directly in Score & Decide. assessor JSONB pre-populates HR notes.

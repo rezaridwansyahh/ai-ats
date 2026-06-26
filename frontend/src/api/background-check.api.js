@@ -13,3 +13,17 @@ export const updateBgStatus = (bg_id, status) => api.patch(`/background-check/${
 export const saveVerdict = (bg_id, { verdict, verdict_note }) => api.post(`/background-check/${bg_id}/verdict`, { verdict, verdict_note });
 
 export const archiveBgCheck = (bg_id, archived_reason) => api.patch(`/background-check/${bg_id}/archive`, { archived_reason });
+
+export const getClaims = (bg_id) => api.get(`/background-check/${bg_id}/claims`);
+
+export const extractClaims = (bg_id) => api.post(`/background-check/${bg_id}/claims/extract`);
+
+export const confirmClaims = (bg_id) => api.post(`/background-check/${bg_id}/claims/confirm`);
+
+export const addClaim = (bg_id, { claim_text, claim_detail, lane_type }) => api.post(`/background-check/${bg_id}/claims`, { claim_text, claim_detail, lane_type });
+
+export const updateClaim = (claim_id, { claim_text, claim_detail, lane_type }) => api.put(`/background-check/claims/${claim_id}`, { claim_text, claim_detail, lane_type });
+
+export const toggleClaim = (claim_id, selected) => api.patch(`/background-check/claims/${claim_id}/selected`, { selected });
+
+export const deleteClaim = (claim_id) => api.delete(`/background-check/claims/${claim_id}`);

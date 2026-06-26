@@ -93,6 +93,106 @@ class BackgroundCheckController {
     }
   }
 
+  async getClaims(req, res) {
+    try {
+      const bg_id = Number(req.params.bg_id);
+      const rows = await backgroundCheckService.getClaims(bg_id, {
+        company_id: req.user?.company_id || null,
+      });
+      res.status(200).json({ message: 'Claims fetched', claims: rows });
+    } catch (err) {
+      res.status(err.status || 500).json({ message: err.message });
+    }
+  }
+
+  async extractClaims(req, res) {
+    try {
+      const bg_id = Number(req.params.bg_id);
+      const rows = await backgroundCheckService.extractClaims(
+        bg_id,
+        { company_id: req.user?.company_id || null },
+        { company_id: req.user?.company_id || null, user_id: req.user?.user_id || null }
+      );
+      res.status(200).json({ message: 'Claims extracted', claims: rows });
+    } catch (err) {
+      if (err.status === 422) {
+        return res.status(422).json({ message: err.message, manual_required: true });
+      }
+      res.status(err.status || 500).json({ message: err.message });
+    }
+  }
+
+  async addClaim(req, res) {
+    try {
+      const bg_id = Number(req.params.bg_id);
+      const { claim_text, claim_detail, lane_type } = req.body || {};
+      const result = await backgroundCheckService.addClaim(bg_id, {
+        claim_text,
+        claim_detail,
+        lane_type,
+        company_id: req.user?.company_id || null,
+      });
+      res.status(201).json({ message: 'Claim added', claim: result });
+    } catch (err) {
+      res.status(err.status || 500).json({ message: err.message });
+    }
+  }
+
+  async updateClaim(req, res) {
+    try {
+      const claim_id = Number(req.params.claim_id);
+      const { claim_text, claim_detail, lane_type } = req.body || {};
+      const result = await backgroundCheckService.updateClaim(claim_id, {
+        claim_text,
+        claim_detail,
+        lane_type,
+        company_id: req.user?.company_id || null,
+        edited_by:  req.user?.user_id    || null,
+      });
+      res.status(200).json({ message: 'Claim updated', claim: result });
+    } catch (err) {
+      res.status(err.status || 500).json({ message: err.message });
+    }
+  }
+
+  async toggleClaim(req, res) {
+    try {
+      const claim_id = Number(req.params.claim_id);
+      const { selected } = req.body || {};
+      const result = await backgroundCheckService.toggleClaim(claim_id, {
+        selected,
+        company_id: req.user?.company_id || null,
+      });
+      res.status(200).json({ message: 'Claim updated', claim: result });
+    } catch (err) {
+      res.status(err.status || 500).json({ message: err.message });
+    }
+  }
+
+  async deleteClaim(req, res) {
+    try {
+      const claim_id = Number(req.params.claim_id);
+      const result = await backgroundCheckService.deleteClaim(claim_id, {
+        company_id: req.user?.company_id || null,
+      });
+      res.status(200).json({ message: 'Claim deleted', claim: result });
+    } catch (err) {
+      res.status(err.status || 500).json({ message: err.message });
+    }
+  }
+
+  async confirmClaims(req, res) {
+    try {
+      const bg_id = Number(req.params.bg_id);
+      const result = await backgroundCheckService.confirmClaims(bg_id, {
+        company_id: req.user?.company_id || null,
+      });
+      res.status(200).json({ message: 'Claims confirmed — advanced to consent', bg_check: result });
+    } catch (err) {
+      res.status(err.status || 500).json({ message: err.message });
+    }
+  }
+
 }
 
 export default new BackgroundCheckController();

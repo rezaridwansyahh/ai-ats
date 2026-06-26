@@ -1,6 +1,7 @@
 import getDb from '../../config/postgres.js';
 
 class BackgroundCheckModel {
+
   async getByCandidateId(candidate_id) {
     const db = getDb();
 
@@ -36,7 +37,7 @@ class BackgroundCheckModel {
     return inserted.rows[0];
   }
 
-  async getById(bg_id) {
+  async getBgById(bg_id) {
     const result = await getDb().query(`
       SELECT
         cb.id             AS bg_id,
@@ -191,6 +192,129 @@ class BackgroundCheckModel {
     `, [bg_id, archived_reason]);
 
     return result.rows[0] || null;
+  }
+
+  async getByBgId(candidate_bg_id) {
+    const result = await getDb().query(`
+      SELECT
+        bc.id,
+        bc.candidate_bg_id,
+        bc.claim_text,
+        bc.claim_detail,
+        bc.lane_type,
+        bc.selected,
+        bc.edited_by,
+        bc.edited_at,
+        bc.created_at,
+        bc.updated_at
+      FROM bg_claim bc
+      WHERE bc.candidate_bg_id = $1
+      ORDER BY bc.id ASC
+    `, [candidate_bg_id]);
+
+    return result.rows;
+  }
+
+  async getClaimById(claim_id) {
+    const result = await getDb().query(`
+      SELECT * FROM bg_claim WHERE id = $1
+    `, [claim_id]);
+
+    return result.rows[0] || null;
+  }
+
+  async replaceAiClaims(candidate_bg_id, claims) {
+    const db     = getDb();
+    const client = await db.connect();
+
+    try {
+      await client.query('BEGIN');
+      await client.query(`
+        DELETE FROM bg_claim WHERE candidate_bg_id = $1
+      `, [candidate_bg_id]);
+
+      for (const c of claims) {
+        await client.query(`
+          INSERT INTO bg_claim
+            (candidate_bg_id, claim_text, claim_detail, lane_type, selected)
+          VALUES ($1, $2, $3, $4, true)
+        `, [candidate_bg_id, c.claim_text, c.claim_detail || null, c.lane_type]);
+      }
+
+      await client.query('COMMIT');
+    } catch (err) {
+      await client.query('ROLLBACK');
+      throw err;
+    } finally {
+      client.release();
+    }
+  }
+
+  async create({ candidate_bg_id, claim_text, claim_detail, lane_type }) {
+    const result = await getDb().query(`
+      INSERT INTO bg_claim
+        (candidate_bg_id, claim_text, claim_detail, lane_type, selected)
+      VALUES ($1, $2, $3, $4, true)
+      RETURNING *
+    `, [candidate_bg_id, claim_text, claim_detail || null, lane_type]);
+
+    return result.rows[0];
+  }
+
+  async updateSelected(claim_id, selected) {
+    const result = await getDb().query(`
+      UPDATE bg_claim
+      SET selected = $2, updated_at = NOW()
+      WHERE id = $1
+      RETURNING *
+    `, [claim_id, selected]);
+
+    return result.rows[0] || null;
+  }
+
+  async update(claim_id, { claim_text, claim_detail, lane_type, edited_by }) {
+    const result = await getDb().query(`
+      UPDATE bg_claim
+      SET
+        claim_text   = $2,
+        claim_detail = $3,
+        lane_type    = $4,
+        edited_by    = $5,
+        edited_at    = NOW(),
+        updated_at   = NOW()
+      WHERE id = $1
+      RETURNING *
+    `, [claim_id, claim_text, claim_detail || null, lane_type, edited_by || null]);
+
+    return result.rows[0] || null;
+  }
+
+  async delete(claim_id) {
+    const result = await getDb().query(`
+      DELETE FROM bg_claim WHERE id = $1 RETURNING *
+    `, [claim_id]);
+
+    return result.rows[0] || null;
+  }
+
+  async countSelected(candidate_bg_id) {
+    const result = await getDb().query(`
+      SELECT COUNT(*) FROM bg_claim
+      WHERE candidate_bg_id = $1 AND selected = true
+    `, [candidate_bg_id]);
+
+    return Number(result.rows[0].count);
+  }
+
+  async getSelectedLaneTypes(candidate_bg_id) {
+    const result = await getDb().query(`
+      SELECT DISTINCT lane_type
+      FROM bg_claim
+      WHERE candidate_bg_id = $1 AND selected = true
+      ORDER BY lane_type ASC
+    `, [candidate_bg_id]);
+
+    return result.rows.map((r) => r.lane_type);
   }
 
 }

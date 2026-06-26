@@ -33,6 +33,7 @@ DROP TABLE IF EXISTS master_sourcing CASCADE;
 DROP TABLE IF EXISTS master_sourcing_recruite CASCADE;
 DROP TABLE IF EXISTS interview_schedule;
 DROP TABLE IF EXISTS interview_scorecard;
+DROP TABLE IF EXISTS bg_claim;
 DROP TABLE IF EXISTS candidate_bg;
 
 DROP TABLE IF EXISTS master_recruiters CASCADE;
@@ -535,6 +536,7 @@ CREATE TABLE screening_qa (
   created_at  TIMESTAMPTZ NOT NULL DEFAULT NOW(),
   updated_at  TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
+
 CREATE TABLE candidate_interview (
   id SERIAL PRIMARY KEY,
   candidate_id INTEGER NOT NULL REFERENCES master_candidate(id) ON DELETE CASCADE,
@@ -621,6 +623,19 @@ CREATE TABLE candidate_bg (
   created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
   updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
   UNIQUE (candidate_id, job_id)
+);
+
+CREATE TABLE bg_claim (
+  id               SERIAL PRIMARY KEY,
+  candidate_bg_id  INTEGER NOT NULL REFERENCES candidate_bg(id) ON DELETE CASCADE,
+  claim_text       TEXT NOT NULL,
+  claim_detail     TEXT,
+  lane_type        VARCHAR(20) NOT NULL,  -- identity | edu | emp | cert | crim | cred | salary
+  selected         BOOLEAN NOT NULL DEFAULT true,
+  edited_by        INTEGER REFERENCES master_users(id) ON DELETE SET NULL,
+  edited_at        TIMESTAMPTZ,
+  created_at       TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  updated_at       TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
 CREATE INDEX idx_applicant_information_gin
