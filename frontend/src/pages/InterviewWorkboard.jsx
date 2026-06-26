@@ -40,6 +40,7 @@ export default function InterviewWorkboard() {
   const [loading, setLoading]       = useState(true);
   const [error, setError]           = useState(null);
 
+  const [activeJob, setActiveJob] = useState('');
   const [activeStatus, setActiveStatus] = useState(null);
   const [search, setSearch]             = useState('');
   const [page, setPage]                 = useState(1);
@@ -108,7 +109,7 @@ export default function InterviewWorkboard() {
     setPage(1);
   };
 
-  const resetView = () => { setActiveStatus(null); setSearch(''); setPage(1); };
+  const resetView = () => { setActiveStatus(null); setSearch(''); setPage(1); setActiveJob('');};
 
   const openInterview = async (i) => {
     try {
@@ -123,6 +124,8 @@ export default function InterviewWorkboard() {
       setError(err.response?.data?.message || err.message || 'Failed to open interview');
     }
   };
+
+  const handleChangeJob = (position) => setActiveJob(position)
 
   return (
     <div className="space-y-5 p-6">
@@ -206,7 +209,12 @@ export default function InterviewWorkboard() {
                 <button
                   type="button"
                   onClick={resetView}
-                  className="w-full flex items-center justify-between px-3 py-2 rounded-md text-xs bg-primary/10 text-primary font-semibold"
+                  className={[
+                    "w-full flex items-center justify-between px-3 py-2 rounded-md text-xs font-semibold",
+                    (activeJob === "")
+                      ? 'bg-primary/10 text-primary'
+                      : 'text-muted-foreground hover:bg-muted/60 text-foreground'
+                  ].join(" ")}
                 >
                   <span>All positions</span>
                   <span className="font-mono text-[10px]">{totalInterviews}</span>
@@ -216,8 +224,13 @@ export default function InterviewWorkboard() {
                     <button
                       key={p.job_id}
                       type="button"
-                      onClick={() => navigate(`/selection/interview/job/${p.job_id}`)}
-                      className="w-full flex items-center justify-between gap-2 px-3 py-2 rounded-md text-xs hover:bg-muted/50 text-foreground transition-colors"
+                      onClick={() => handleChangeJob(p)}
+                      className={[
+                        "w-full flex items-center justify-between gap-2 px-3 py-2 rounded-md text-xs",
+                        (activeJob.job_id === p.job_id)
+                          ? 'bg-primary/10 text-primary'
+                          : 'text-muted-foreground hover:bg-muted/60 text-foreground',
+                      ].join(" ")}
                     >
                       <span className="truncate text-left flex items-center gap-1.5 min-w-0">
                         <span className="truncate">{p.job_title}</span>
@@ -242,11 +255,16 @@ export default function InterviewWorkboard() {
         {/* Interviews panel */}
         <Card>
           <CardHeader className="pb-3 space-y-3">
-            <CardTitle className="text-sm">
-              All candidates
+            <CardTitle className="text-sm gap-3 flex items-center h-[40px]">
+              {activeJob === '' ? "All candidates" : `${activeJob.job_title}`}
               <span className="ml-2 text-[11px] font-normal text-muted-foreground">
-                {filtered.length} {activeStatus ? `at ${STATUS_META[activeStatus]?.label}` : 'total'}
+                {filtered.length} {activeStatus ? `at ${STAGE_META[activeStatus].label}` : 'total'}
               </span>
+              {activeJob !== '' && (
+                <Button variant="outline" size="sm" onClick={() => navigate(`/selection/interview/job/${activeJob.job_id}`)}>
+                  Open Detail
+                </Button>
+              )}
             </CardTitle>
             <div className="relative max-w-sm">
               <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
