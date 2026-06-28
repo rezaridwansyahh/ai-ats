@@ -147,7 +147,7 @@ class CandidatePipeline {
         education, information, date, attachment
       )
       SELECT 
-        $1, 
+        $1 as job_id, 
         a.id, 
         a.name, 
         a.last_position, 
@@ -161,23 +161,19 @@ class CandidatePipeline {
             -- Case 1: If custom stages exist in job_stages
             (
               SELECT js.id
-              FROM core_job_template cjt
-              LEFT JOIN core_job_template cjt ON cjt.job_id = $1
-              WHERE js.job_id = $1 
-              AND js.template_id IS NULL  -- custom stages
-              ORDER BY js.stage_order ASC
-              LIMIT 1
+              FROM job_stage js
+              WHERE js.job_id = $1
+              order by js.stage_order ASC 
+              limit 1
             ),
             -- Case 2: If using template-based stages
             (
-              SELECT s.id
+              SELECT js.id
               FROM job_stage js
-              JOIN master_template mt ON mt.id = js.template_id
-              JOIN stages s ON s.template_id = mt.id
-              WHERE js.job_id = $1 
-              AND js.template_id IS NOT NULL
-              ORDER BY s.stage_order ASC  -- or whatever order column
-              LIMIT 1
+              LEFT JOIN core_job_template cjt on cjt.job_id = $1
+              WHERE js.master_id = cjt.template_stage_id
+              order by js.stage_order ASC 
+              limit 1
             )
           )
         ) as latest_stage
