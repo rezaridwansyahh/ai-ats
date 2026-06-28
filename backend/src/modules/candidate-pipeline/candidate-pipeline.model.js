@@ -140,14 +140,47 @@ class CandidatePipeline {
     return result.rows;
   }
 
-  static async createFromApplicant(applicant_id, job_id) {
+  static async createFromApplicant(applicant_id, job_id, latest_stage) {
     const result = await getDb().query(`
       INSERT INTO master_candidate (
         job_id, applicant_id, name, last_position, address,
         education, information, date, attachment
       )
-      SELECT $1, a.id, a.name, a.last_position, a.address,
-             a.education, a.information, a.date, a.attachment
+      SELECT 
+        $1, 
+        a.id, 
+        a.name, 
+        a.last_position, 
+        a.address,
+        a.education, 
+        a.information, 
+        a.date, 
+        a.attachment,
+        (
+          SELECT COALESCE(
+            -- Case 1: If custom stages exist in job_stages
+            (
+              SELECT js.id
+              FROM core_job_template cjt
+              LEFT JOIN core_job_template cjt ON cjt.job_id = $1
+              WHERE js.job_id = $1 
+              AND js.template_id IS NULL  -- custom stages
+              ORDER BY js.stage_order ASC
+              LIMIT 1
+            ),
+            -- Case 2: If using template-based stages
+            (
+              SELECT s.id
+              FROM job_stage js
+              JOIN master_template mt ON mt.id = js.template_id
+              JOIN stages s ON s.template_id = mt.id
+              WHERE js.job_id = $1 
+              AND js.template_id IS NOT NULL
+              ORDER BY s.stage_order ASC  -- or whatever order column
+              LIMIT 1
+            )
+          )
+        ) as latest_stage
       FROM master_applicant a
       WHERE a.id = $2
       RETURNING *
