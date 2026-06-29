@@ -304,7 +304,7 @@ export default function AIScreeningWorkboard() {
                     const meta = STAGE_META[c.engine] || { label: c.engine, color: 'bg-muted text-muted-foreground' };
                     return (
                       <div
-                        key={`${c.job_id}-${c.applicant_id}`}
+                        key={c.screening_id ?? `${c.job_id}-${c.candidate_id}`}
                         onClick={() => openCandidate(c)}
                         className="flex items-center justify-between gap-3 p-3 border rounded-lg transition-colors hover:bg-muted/30 cursor-pointer"
                       >

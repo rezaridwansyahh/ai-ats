@@ -140,11 +140,11 @@ class CandidatePipeline {
     return result.rows;
   }
 
-  static async createFromApplicant(applicant_id, job_id, latest_stage) {
+  static async createFromApplicant(applicant_id, job_id) {
     const result = await getDb().query(`
       INSERT INTO master_candidate (
         job_id, applicant_id, name, last_position, address,
-        education, information, date, attachment
+        education, information, date, attachment, latest_stage
       )
       SELECT 
         $1 as job_id, 
