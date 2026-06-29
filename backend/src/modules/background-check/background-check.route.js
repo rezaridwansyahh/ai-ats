@@ -15,6 +15,9 @@ router.patch( '/claims/:claim_id/selected', backgroundCheckController.toggleClai
 router.delete('/claims/:claim_id', backgroundCheckController.deleteClaim);
 
 router.get( '/:bg_id/claims', backgroundCheckController.getClaims);
+router.get( '/:bg_id/consent',               backgroundCheckController.getConsent);
+router.post('/:bg_id/consent/generate-link', backgroundCheckController.generateConsentLink);
+router.post('/:bg_id/consent/revoke',        backgroundCheckController.revokeConsent);
 router.post('/:bg_id/claims/extract', backgroundCheckController.extractClaims);
 router.post('/:bg_id/claims/confirm', backgroundCheckController.confirmClaims);
 router.post('/:bg_id/claims', backgroundCheckController.addClaim);

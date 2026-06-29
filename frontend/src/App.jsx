@@ -40,6 +40,7 @@ import BudgetSettingsPage from "./pages/BudgetSettings"
 import BackgroundCheckPage from "./pages/BackgroundCheck"
 import BackgroundCheckCandidatePage from "./components/background-check/BackgroundCheck-Candidate"
 import BackgroundCheckJobPage from "./components/background-check/BackgroundCheck-Job"
+import BackgroundCheckConsentPage from "./pages/portal/BgConsent"
 
 //PUNYA BAYU MASIH DUMMY
 import InterviewPage from "./pages/Interview"
@@ -56,6 +57,7 @@ function App() {
       {/* Public candidate-facing portal */}
       <Route path="/assessment-placement/:hash" element={<AssessmentPlacementPage />} />
       <Route path="/qa/:token" element={<QAFollowUpPage />} />
+      <Route path="/bg/consent/:token" element={<BackgroundCheckConsentPage />} />
 
       {/* All authenticated routes share DashboardLayout */}
       <Route element={<DashboardLayout />}>
