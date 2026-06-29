@@ -37,7 +37,8 @@ class CandidatePipelineService {
     if (!job_id) throw { status: 400, message: 'job_id is required' };
 
     try {
-      const candidate = await CandidatePipeline.createFromApplicant(applicant_id, job_id);
+      const latest_stage = await JobStage
+      const candidate = await CandidatePipeline.createFromApplicant(applicant_id, job_id, latest_stage);
       if (!candidate) {
         throw { status: 404, message: 'Applicant not found' };
       }
