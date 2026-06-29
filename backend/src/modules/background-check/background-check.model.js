@@ -317,6 +317,89 @@ class BackgroundCheckModel {
     return result.rows.map((r) => r.lane_type);
   }
 
+  async ensureConsent(candidate_bg_id) {
+    const db = getDb();
+
+    const existing = await db.query(`
+      SELECT * FROM bg_consent
+      WHERE candidate_bg_id = $1
+    `, [candidate_bg_id]);
+
+    if (existing.rows[0]) return existing.rows[0];
+
+    const inserted = await db.query(`
+      INSERT INTO bg_consent (candidate_bg_id)
+      VALUES ($1)
+      RETURNING *
+    `, [candidate_bg_id]);
+
+    return inserted.rows[0];
+  }
+
+  async getConsentByBgId(candidate_bg_id) {
+    const result = await getDb().query(`
+      SELECT * FROM bg_consent
+      WHERE candidate_bg_id = $1
+    `, [candidate_bg_id]);
+
+    return result.rows[0] || null;
+  }
+
+  async sendConsent(candidate_bg_id, { document, sent_by }) {
+    const result = await getDb().query(`
+      UPDATE bg_consent
+      SET
+        document         = $2::jsonb,
+        sent_at          = NOW(),
+        sent_by          = $3,
+        token_expires_at = NOW() + INTERVAL '7 days',
+        status           = 'sent',
+        updated_at       = NOW()
+      WHERE candidate_bg_id = $1
+      RETURNING *
+    `, [candidate_bg_id, JSON.stringify(document), sent_by || null]);
+
+    return result.rows[0] || null;
+  }
+
+  async resendConsent(candidate_bg_id, { document, sent_by }) {
+    const result = await getDb().query(`
+      UPDATE bg_consent
+      SET
+        token             = gen_random_uuid(),
+        document          = $2::jsonb,
+        sent_at           = NOW(),
+        sent_by           = $3,
+        token_expires_at  = NOW() + INTERVAL '7 days',
+        signed_at         = NULL,
+        revoked_at        = NULL,
+        revoked_by        = NULL,
+        revocation_reason = NULL,
+        status            = 'sent',
+        updated_at        = NOW()
+      WHERE candidate_bg_id = $1
+      RETURNING *
+    `, [candidate_bg_id, JSON.stringify(document), sent_by || null]);
+
+    return result.rows[0] || null;
+  }
+
+  async revokeConsent(candidate_bg_id, { revoked_by, revocation_reason }) {
+    const result = await getDb().query(`
+      UPDATE bg_consent
+      SET
+        revoked_at        = NOW(),
+        revoked_by        = $2,
+        revocation_reason = $3,
+        status            = 'revoked',
+        updated_at        = NOW()
+      WHERE candidate_bg_id = $1
+      RETURNING *
+    `, [candidate_bg_id, revoked_by || null, revocation_reason || null]);
+
+    return result.rows[0] || null;
+  }  
+
 }
 
 export default new BackgroundCheckModel();

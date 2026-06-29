@@ -193,6 +193,46 @@ class BackgroundCheckController {
     }
   }
 
+ async getConsent(req, res) {
+  try {
+    const bg_id = Number(req.params.bg_id);
+    const result = await backgroundCheckService.getConsent(bg_id, {
+      company_id: req.user?.company_id || null,
+    });
+    res.status(200).json({ message: 'Consent fetched', consent: result });
+  } catch (err) {
+    res.status(err.status || 500).json({ message: err.message });
+  }
+}
+
+async generateConsentLink(req, res) {
+  try {
+    const bg_id = Number(req.params.bg_id);
+    const result = await backgroundCheckService.generateConsentLink(bg_id, {
+      company_id: req.user?.company_id || null,
+      sent_by:    req.user?.user_id    || null,
+    });
+    res.status(200).json({ message: 'Consent link generated', consent: result });
+  } catch (err) {
+    res.status(err.status || 500).json({ message: err.message });
+  }
+}
+
+async revokeConsent(req, res) {
+  try {
+    const bg_id = Number(req.params.bg_id);
+    const { revocation_reason } = req.body || {};
+    const result = await backgroundCheckService.revokeConsent(bg_id, {
+      revocation_reason,
+      company_id: req.user?.company_id || null,
+      revoked_by: req.user?.user_id    || null,
+    });
+    res.status(200).json({ message: 'Consent revoked', consent: result });
+  } catch (err) {
+    res.status(err.status || 500).json({ message: err.message });
+  }
+}
+
 }
 
 export default new BackgroundCheckController();

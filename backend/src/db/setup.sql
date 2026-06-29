@@ -34,6 +34,7 @@ DROP TABLE IF EXISTS master_sourcing_recruite CASCADE;
 DROP TABLE IF EXISTS interview_schedule;
 DROP TABLE IF EXISTS interview_scorecard;
 DROP TABLE IF EXISTS bg_claim;
+DROP TABLE IF EXISTS bg_consent;
 DROP TABLE IF EXISTS candidate_bg;
 
 DROP TABLE IF EXISTS master_recruiters CASCADE;
@@ -636,6 +637,23 @@ CREATE TABLE bg_claim (
   edited_at        TIMESTAMPTZ,
   created_at       TIMESTAMPTZ NOT NULL DEFAULT NOW(),
   updated_at       TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+CREATE TABLE bg_consent (
+  id SERIAL PRIMARY KEY,
+  candidate_bg_id INTEGER NOT NULL UNIQUE REFERENCES candidate_bg(id) ON DELETE CASCADE,
+  token UUID NOT NULL UNIQUE DEFAULT gen_random_uuid(),
+  token_expires_at TIMESTAMPTZ,
+  document JSONB,
+  sent_at TIMESTAMPTZ,
+  sent_by INTEGER REFERENCES master_users(id) ON DELETE SET NULL,
+  signed_at TIMESTAMPTZ,
+  revoked_at TIMESTAMPTZ,
+  revoked_by INTEGER REFERENCES master_users(id) ON DELETE SET NULL,
+  revocation_reason TEXT,
+  status VARCHAR(20) NOT NULL DEFAULT 'draft',
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
 CREATE INDEX idx_applicant_information_gin
