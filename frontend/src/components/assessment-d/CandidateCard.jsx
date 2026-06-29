@@ -2,7 +2,6 @@ import { useEffect, useState, useCallback, useRef } from 'react';
 import { loadCardData, saveCardData, clearCardData, SKEY } from './utils/storage';
 import { fmtDateID } from './utils/scoring';
 import { calc3Pillar } from './report/report-utils';
-import { createParticipantByEmail } from '@/api/participant.api';
 import { updatePortalParticipant } from '@/api/portal-assessment.api';
 import { submitAssessment } from '@/api/assessment-battery-result.api';
 import Setup from './candidate/Setup';
@@ -115,16 +114,7 @@ export default function CandidateCard({
       goTo('briefing');
       return;
     }
-    const { data } = await createParticipantByEmail({
-      name: newProfile.name,
-      email: newProfile.email,
-      position: newProfile.position,
-      department: newProfile.department,
-      education: newProfile.education,
-      date_birth: newProfile.date_birth,
-    });
-    const merged = { ...newProfile, participant_id: data?.participant?.id ?? null };
-    setProfile(merged);
+    setProfile({ ...newProfile });
     goTo('briefing');
   }, [goTo, isPortal, portalHash, prefilledProfile]);
 
@@ -143,11 +133,6 @@ export default function CandidateCard({
   // Battery D scoring lives entirely on the client (TK weighted composite, SJT 6 competencies → 5 senior profiles,
   // 16PF 16 sten factors, MSDT 8 styles + TO/RO/E, PAPI-L 20 dim Role+Need).
   const submitResults = useCallback(async () => {
-    if (!isPortal && !profile?.participant_id) {
-      setSubmitStatus('error');
-      setSubmitError('Participant ID belum tersedia. Silakan ulangi pengisian data peserta dari awal.');
-      return;
-    }
     setSubmitStatus('submitting');
     setSubmitError(null);
     try {
@@ -180,7 +165,6 @@ export default function CandidateCard({
         await onPortalSubmit(payload);
       } else {
         await submitAssessment({
-          participant_id: profile.participant_id,
           assessment_id: ASSESSMENT_ID_BATTERY_D,
           ...payload,
         });
@@ -194,7 +178,7 @@ export default function CandidateCard({
       setSubmitStatus('error');
       setSubmitError(e?.response?.data?.message || e?.message || 'Gagal mengirim hasil ke server.');
     }
-  }, [profile?.participant_id, results, isPortal, onPortalSubmit]);
+  }, [profile, results, isPortal, onPortalSubmit]);
 
   useEffect(() => {
     if (screen === 'complete' && !submitOnceRef.current && submitStatus === 'idle') {
