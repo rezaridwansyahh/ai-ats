@@ -95,7 +95,7 @@ const routeMap = {
   'Thomas Kilmann Assessment':     '/asesmen/thomas-kilmann-assessment',
   'Interview': '/selection/interview',
   'Background Check': '/selection/background-check',
-  'Offer & Contract': '/selection/offer-contract',
+  'Offer & Contract': '/selection/offer',
 };
 
 // Maps a raw "module" name (as it appears in permissions data) to the
