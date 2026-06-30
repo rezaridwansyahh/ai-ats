@@ -71,6 +71,13 @@ function fmt(d) {
   try { return new Date(d).toISOString().slice(0, 10); } catch { return '—'; }
 }
 
+function scoreRecommendation(score) {
+  if (score == null) return null;
+  if (score >= 70) return { label: 'Recommended',     badge: 'bg-emerald-100 text-emerald-700' };
+  if (score >= 50) return { label: 'Consider',        badge: 'bg-amber-100 text-amber-700' };
+  return              { label: 'Not Recommended', badge: 'bg-rose-100 text-rose-700' };
+}
+
 /* ─── Follow-up Q&A config ─── */
 const QA_FOCUS_OPTIONS = [
   'Technical depth + culture',
@@ -391,6 +398,15 @@ export default function AIScreeningCandidatePage() {
 
   const initials = (candidate_name || '?').split(/\s+/).map((s) => s[0]).join('').slice(0, 2).toUpperCase();
   const scored = engine === 'done';
+  
+  const decisionLocked = qa.status !== 'responded';
+  const decisionLockReason = !scored
+    ? 'Run AI Matching first to score this candidate.'
+    : qa.status === 'sent'
+      ? 'Waiting for the candidate\'s Q&A response.'
+      : qa.status === 'expired'
+        ? 'Q&A window expired without a response — decision remains locked.'
+        : 'Send the Q&A to the candidate and wait for their response.';
 
   // Switch engine step + scroll to top (mirrors JobEdit's step navigation).
   const goToStep = (key) => { setActiveEngine(key); window.scrollTo({ top: 0, behavior: 'smooth' }); };
@@ -475,13 +491,15 @@ export default function AIScreeningCandidatePage() {
                 qa={qa}
                 scored={scored}
                 parsed={!!facets}
+                overall_score={data.overall_score} 
                 onStep={goToStep}
                 candidateName={candidate_name}
               />
               <DecisionCard
                 decision={decision}
                 existingReason={existingReason}
-                scored={scored}
+                locked={decisionLocked}              
+                lockReason={decisionLockReason}      
                 onPick={setDecisionDraft}
               />
               <StepsNav
@@ -509,7 +527,7 @@ export default function AIScreeningCandidatePage() {
 }
 
 /* ─────────── Sidebar: contextual primary action ─────────── */
-function SidebarAction({ activeEngine, match, qa, scored, parsed, onStep, candidateName }) {
+function SidebarAction({ activeEngine, match, qa, scored, parsed, overall_score, onStep, candidateName }) {
   if (activeEngine === 'parse') {
     return (
       <Card className="animate-scale-in">
@@ -540,14 +558,23 @@ function SidebarAction({ activeEngine, match, qa, scored, parsed, onStep, candid
   if (activeEngine === 'match') {
     return (
       <Card className="animate-scale-in">
-        <CardContent className="p-3 space-y-2.5">
+        <CardContent className="p-3 space-y-2">
           <div className="flex items-center justify-between">
             <p className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
               {scored ? 'Matching done' : 'Run matching'}
             </p>
-            <Badge className={`text-[10px] ${match.totalIs100 ? 'bg-emerald-100 text-emerald-700' : 'bg-rose-100 text-rose-700'}`}>
-              {Math.round(match.total)}%
-            </Badge>
+            {scored ? (() => {
+              const rec = scoreRecommendation(overall_score);
+              return rec ? (
+                <Badge className={`text-[10px] ${rec.badge}`}>
+                  {overall_score}% · {rec.label}
+                </Badge>
+              ) : null;
+            })() : (
+              <Badge className={`text-[10px] ${match.totalIs100 ? 'bg-emerald-100 text-emerald-700' : 'bg-rose-100 text-rose-700'}`}>
+                {Math.round(match.total)}%
+              </Badge>
+            )}
           </div>
 
           {/* Primary action changes once scored */}
@@ -594,15 +621,36 @@ function SidebarAction({ activeEngine, match, qa, scored, parsed, onStep, candid
   return (
     <Card className="animate-scale-in">
       <CardContent className="p-3 space-y-2">
-        <p className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">Send Q&A</p>
+        <div className="flex items-center justify-between">
+          <p className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">Send Q&A</p>
+          {scored ? (() => {
+            const rec = scoreRecommendation(overall_score);
+            return rec ? (
+              <Badge className={`text-[10px] ${rec.badge}`}>
+                {overall_score}% · {rec.label}
+              </Badge>
+            ) : null;
+          })() : (
+            <Badge className={`text-[10px] ${match.totalIs100 ? 'bg-emerald-100 text-emerald-700' : 'bg-rose-100 text-rose-700'}`}>
+              {Math.round(match.total)}%
+            </Badge>
+          )}
+        </div>
+        
         {!scored ? (
           <p className="text-[10px] text-muted-foreground leading-snug">
             Run AI Matching first — follow-up Q&A unlocks once this candidate has a fit score.
           </p>
         ) : (
           <>
-            <Button className="w-full text-xs" onClick={qa.handleSend} disabled={qa.sending || qa.questions.length === 0}>
-              {qa.sending ? <Loader2 className="h-3.5 w-3.5 mr-1.5 animate-spin" /> : <Send className="h-3.5 w-3.5 mr-1.5" />}
+            <Button
+              className="w-full text-xs"
+              onClick={qa.handleSend}
+              disabled={qa.sending || qa.questions.length === 0}
+            >
+              {qa.sending
+                ? <Loader2 className="h-3.5 w-3.5 mr-1.5 animate-spin" />
+                : <Send className="h-3.5 w-3.5 mr-1.5" />}
               Send to candidate
             </Button>
             <p className="text-[10px] text-muted-foreground leading-snug">
@@ -623,7 +671,7 @@ const DECISION_META = {
 };
 
 /* ─────────── Sidebar: decision trigger card ─────────── */
-function DecisionCard({ decision, existingReason, scored, onPick }) {
+function DecisionCard({ decision, existingReason, locked, lockReason, onPick }) {
   return (
     <Card className="animate-scale-in">
       <CardContent className="p-3 space-y-2">
@@ -638,9 +686,9 @@ function DecisionCard({ decision, existingReason, scored, onPick }) {
           )}
         </div>
 
-        {!scored ? (
+        {locked ? (
           <p className="text-[10px] text-muted-foreground leading-snug italic">
-            Decision unlocks after Q&A is complete.
+            {lockReason}
           </p>
         ) : (
           <>
