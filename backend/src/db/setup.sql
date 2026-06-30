@@ -35,6 +35,7 @@ DROP TABLE IF EXISTS interview_schedule;
 DROP TABLE IF EXISTS interview_scorecard;
 DROP TABLE IF EXISTS bg_claim;
 DROP TABLE IF EXISTS bg_consent;
+DROP TABLE IF EXISTS bg_lane CASCADE;
 DROP TABLE IF EXISTS candidate_bg;
 
 DROP TABLE IF EXISTS master_recruiters CASCADE;
