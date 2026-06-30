@@ -329,11 +329,29 @@ export default function AIScreeningPage() {
       {/* Stage detail */}
       <Card>
         <CardContent className="px-0 pb-0">
-          {activeStage === 'parse' && <LaneTable rows={parseRows} onOpen={openCandidate} />}
+          {activeStage === 'parse' && (
+            <TwoPane
+              left={{ label: 'Pending parse', rows: parseRows }}
+              right={{ label: 'Parsed ✓', rows: [...matchRows, ...qaRows, ...cohortRows] }}
+              onOpen={openCandidate}
+            />
+          )}
 
-          {activeStage === 'match' && <LaneTable rows={matchRows} onOpen={openCandidate} />}
+          {activeStage === 'match' && (
+            <TwoPane
+              left={{ label: 'Awaiting score', rows: matchRows }}
+              right={{ label: 'Scored ✓', rows: [...qaRows, ...cohortRows] }}
+              onOpen={openCandidate}
+            />
+          )}
 
-          {activeStage === 'qa' && <LaneTable rows={qaRows} onOpen={openCandidate} />}
+          {activeStage === 'qa' && (
+            <TwoPane
+              left={{ label: 'Q&A sent · awaiting reply', rows: qaRows }}
+              right={{ label: 'Responded ✓', rows: cohortRows }}
+              onOpen={openCandidate}
+            />
+          )}
 
           {activeStage === 'ready' && (
             cohortRows.length === 0 ? (
@@ -448,30 +466,66 @@ function StageSection({ id, num, title, count, subtitle, open, onToggle, childre
   );
 }
 
-function LaneTable({ rows, onOpen }) {
+function TwoPane({ left, right, onOpen }) {
+  return (
+    <div className="grid grid-cols-2 divide-x min-h-[200px]">
+      <div>
+        <div className="px-4 py-2 border-b bg-muted/30 flex items-center gap-2">
+          <span className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
+            {left.label}
+          </span>
+          <span className="text-[10px] font-mono bg-muted px-1.5 py-0.5 rounded-full text-muted-foreground">
+            {left.rows.length}
+          </span>
+        </div>
+        <LaneTable rows={left.rows} onOpen={onOpen} />
+      </div>
+      <div>
+        <div className="px-4 py-2 border-b bg-emerald-50 flex items-center gap-2">
+          <span className="text-[10px] font-semibold uppercase tracking-wide text-emerald-700">
+            {right.label}
+          </span>
+          <span className="text-[10px] font-mono bg-emerald-100 text-emerald-700 px-1.5 py-0.5 rounded-full">
+            {right.rows.length}
+          </span>
+        </div>
+        <LaneTable rows={right.rows} onOpen={onOpen} muted />
+      </div>
+    </div>
+  );
+}
+
+
+function LaneTable({ rows, onOpen, muted = false }) {
   if (!rows || rows.length === 0) {
-    return <p className="py-8 text-center text-xs text-muted-foreground italic">No candidates in this stage.</p>;
+    return (
+      <p className={`py-8 text-center text-xs italic ${muted ? 'text-muted-foreground/50' : 'text-muted-foreground'}`}>
+        No candidates in this stage.
+      </p>
+    );
   }
   return (
     <Table className="w-full">
-      <TableHeader className="bg-muted/40">
+      <TableHeader className={muted ? 'bg-muted/20' : 'bg-muted/40'}>
         <TableRow>
           <TableHead className="text-[10px] font-bold uppercase pl-4">Candidate</TableHead>
           <TableHead className="text-[10px] font-bold uppercase">Last position</TableHead>
           <TableHead className="text-[10px] font-bold uppercase">Location</TableHead>
-          <TableHead className="text-[10px] font-bold uppercase text-right pr-4">Score</TableHead>
         </TableRow>
       </TableHeader>
       <TableBody>
         {rows.map((r) => (
-          <TableRow key={r.applicant_id} className="cursor-pointer hover:bg-muted/30 transition-colors" onClick={() => onOpen(r)}>
+          <TableRow
+            key={r.screening_id ?? r.applicant_id}
+            className={`cursor-pointer transition-colors ${muted ? 'opacity-60 hover:opacity-100 hover:bg-muted/20' : 'hover:bg-muted/30'}`}
+            onClick={() => onOpen(r)}
+          >
             <TableCell className="text-xs pl-4">
               <div className="font-medium truncate">{r.applicant_name || `#${r.applicant_id}`}</div>
               <div className="text-[10px] text-muted-foreground">#{r.applicant_id}</div>
             </TableCell>
             <TableCell className="text-xs text-muted-foreground">{r.last_position || '—'}</TableCell>
             <TableCell className="text-xs text-muted-foreground">{r.address || '—'}</TableCell>
-            <TableCell className="text-right text-xs font-mono pr-4">{r.overall_score ?? '—'}</TableCell>
           </TableRow>
         ))}
       </TableBody>
