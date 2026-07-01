@@ -193,45 +193,97 @@ class BackgroundCheckController {
     }
   }
 
- async getConsent(req, res) {
-  try {
-    const bg_id = Number(req.params.bg_id);
-    const result = await backgroundCheckService.getConsent(bg_id, {
-      company_id: req.user?.company_id || null,
-    });
-    res.status(200).json({ message: 'Consent fetched', consent: result });
-  } catch (err) {
-    res.status(err.status || 500).json({ message: err.message });
+  async getConsent(req, res) {
+    try {
+      const bg_id = Number(req.params.bg_id);
+      const result = await backgroundCheckService.getConsent(bg_id, {
+        company_id: req.user?.company_id || null,
+      });
+      res.status(200).json({ message: 'Consent fetched', consent: result });
+    } catch (err) {
+      res.status(err.status || 500).json({ message: err.message });
+    }
   }
-}
 
-async generateConsentLink(req, res) {
-  try {
-    const bg_id = Number(req.params.bg_id);
-    const result = await backgroundCheckService.generateConsentLink(bg_id, {
-      company_id: req.user?.company_id || null,
-      sent_by:    req.user?.user_id    || null,
-    });
-    res.status(200).json({ message: 'Consent link generated', consent: result });
-  } catch (err) {
-    res.status(err.status || 500).json({ message: err.message });
+  async generateConsentLink(req, res) {
+    try {
+      const bg_id = Number(req.params.bg_id);
+      const result = await backgroundCheckService.generateConsentLink(bg_id, {
+        company_id: req.user?.company_id || null,
+        sent_by:    req.user?.user_id    || null,
+      });
+      res.status(200).json({ message: 'Consent link generated', consent: result });
+    } catch (err) {
+      res.status(err.status || 500).json({ message: err.message });
+    }
   }
-}
 
-async revokeConsent(req, res) {
-  try {
-    const bg_id = Number(req.params.bg_id);
-    const { revocation_reason } = req.body || {};
-    const result = await backgroundCheckService.revokeConsent(bg_id, {
-      revocation_reason,
-      company_id: req.user?.company_id || null,
-      revoked_by: req.user?.user_id    || null,
-    });
-    res.status(200).json({ message: 'Consent revoked', consent: result });
-  } catch (err) {
-    res.status(err.status || 500).json({ message: err.message });
+  async revokeConsent(req, res) {
+    try {
+      const bg_id = Number(req.params.bg_id);
+      const { revocation_reason } = req.body || {};
+      const result = await backgroundCheckService.revokeConsent(bg_id, {
+        revocation_reason,
+        company_id: req.user?.company_id || null,
+        revoked_by: req.user?.user_id    || null,
+      });
+      res.status(200).json({ message: 'Consent revoked', consent: result });
+    } catch (err) {
+      res.status(err.status || 500).json({ message: err.message });
+    }
   }
-}
+
+  async getLanes(req, res) {
+    try {
+      const bg_id = Number(req.params.bg_id);
+      const rows = await backgroundCheckService.getLanes(bg_id, {
+        company_id: req.user?.company_id || null,
+      });
+      res.status(200).json({ message: 'Lanes fetched', lanes: rows });
+    } catch (err) {
+      res.status(err.status || 500).json({ message: err.message });
+    }
+  }
+
+  async createFromClaims(req, res) {
+    try {
+      const bg_id = Number(req.params.bg_id);
+      const rows = await backgroundCheckService.createFromClaims(bg_id, {
+        company_id: req.user?.company_id || null,
+      });
+      res.status(200).json({ message: 'Lanes created', lanes: rows });
+    } catch (err) {
+      res.status(err.status || 500).json({ message: err.message });
+    }
+  }
+
+  async updateTracker(req, res) {
+    try {
+      const lane_id = Number(req.params.lane_id);
+      const { note, status } = req.body || {};
+      const result = await backgroundCheckService.updateTracker(lane_id, {
+        note,
+        status,
+        resolved_by: req.user?.user_id    || null,
+        company_id:  req.user?.company_id || null,
+      });
+      res.status(200).json({ message: 'Lane updated', lane: result });
+    } catch (err) {
+      res.status(err.status || 500).json({ message: err.message });
+    }
+  }
+
+  async getLaneCounts(req, res) {
+    try {
+      const bg_id = Number(req.params.bg_id);
+      const counts = await backgroundCheckService.getLaneCounts(bg_id, {
+        company_id: req.user?.company_id || null,
+      });
+      res.status(200).json({ message: 'Counts fetched', counts });
+    } catch (err) {
+      res.status(err.status || 500).json({ message: err.message });
+    }
+  }
 
 }
 

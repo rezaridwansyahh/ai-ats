@@ -33,6 +33,7 @@ DROP TABLE IF EXISTS master_sourcing CASCADE;
 DROP TABLE IF EXISTS master_sourcing_recruite CASCADE;
 DROP TABLE IF EXISTS interview_schedule;
 DROP TABLE IF EXISTS interview_scorecard;
+DROP TABLE IF EXISTS bg_lane;
 DROP TABLE IF EXISTS bg_claim;
 DROP TABLE IF EXISTS bg_consent;
 DROP TABLE IF EXISTS candidate_bg;
@@ -654,6 +655,20 @@ CREATE TABLE bg_consent (
   status VARCHAR(20) NOT NULL DEFAULT 'draft',
   created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
   updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+CREATE TABLE bg_lane (
+  id SERIAL PRIMARY KEY,
+  candidate_bg_id INTEGER NOT NULL REFERENCES candidate_bg(id) ON DELETE CASCADE,
+  bg_claim_id INTEGER NOT NULL REFERENCES bg_claim(id) ON DELETE CASCADE,
+  lane_type VARCHAR(20) NOT NULL,
+  note TEXT,
+  status VARCHAR(30) NOT NULL DEFAULT 'pending',
+  resolved_at TIMESTAMPTZ,
+  resolved_by INTEGER REFERENCES master_users(id) ON DELETE SET NULL,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  UNIQUE (bg_claim_id)
 );
 
 CREATE INDEX idx_applicant_information_gin
