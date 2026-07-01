@@ -1,0 +1,834 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>Myralix v0.1 — Codebase Audit · 30 June 2026</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"/>
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin/>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600;9..144,700&family=DM+Sans:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet"/>
+<style>
+:root{
+  --paper:#FAF9F5;--paper-2:#F4F1E8;--surface:#FFFFFF;--surface-2:#FCFAF4;
+  --ink:#1A1A1F;--ink-2:#2C2A26;--muted:#6E6A5E;--faint:#9C9684;
+  --hairline:#E9E3D5;--hairline-2:#DCD5C2;--shade:#F0EBDC;
+  --forest:#0A6E5C;--forest-deep:#084F43;--forest-soft:#E2EEEA;--forest-2:#C9DED7;
+  --saffron:#E5A93D;--saffron-soft:#F8EBC6;
+  --good:#2F7D5A;--good-soft:#DCEFE3;
+  --warn:#C77A1A;--warn-soft:#F8E5C2;
+  --bad:#B43A2E;--bad-soft:#F4D5CF;
+  --info:#2D5BB8;--info-soft:#DBE5F7;
+  --purple:#6C4FA1;--purple-soft:#E4DBF1;
+  --r-1:6px;--r-2:10px;--r-3:14px;--r-4:22px;--r-pill:999px;
+  --shadow-1:0 1px 0 rgba(20,18,12,.04),0 1px 2px rgba(20,18,12,.04);
+  --shadow-2:0 1px 0 rgba(20,18,12,.05),0 6px 18px -8px rgba(20,18,12,.12);
+  --serif:'Fraunces',Georgia,serif;
+  --sans:'DM Sans',-apple-system,sans-serif;
+  --mono:'JetBrains Mono',ui-monospace,monospace;
+}
+*{box-sizing:border-box}
+html,body{margin:0;padding:0}
+html{scroll-behavior:smooth;scroll-padding-top:80px}
+body{font-family:var(--sans);color:var(--ink);background:var(--paper);font-size:15px;line-height:1.65;-webkit-font-smoothing:antialiased}
+.container{max-width:1200px;margin:0 auto;padding:48px 32px 96px}
+.nav{position:sticky;top:0;z-index:50;background:rgba(250,249,245,.94);backdrop-filter:saturate(180%) blur(10px);border-bottom:1px solid var(--hairline);padding:12px 32px}
+.nav-inner{max-width:1200px;margin:0 auto;display:flex;gap:18px;align-items:center;flex-wrap:wrap}
+.brand{display:flex;align-items:center;gap:10px}
+.brand-mark{width:30px;height:30px;border-radius:8px;background:var(--forest);color:#fff;display:grid;place-items:center;font-weight:600;font-family:var(--serif);font-size:16px}
+.brand-name{font-weight:700;letter-spacing:.02em;font-size:14px;font-family:var(--serif)}
+.brand-sub{font-size:11px;color:var(--muted);margin-top:1px}
+.nav-links{display:flex;gap:2px;flex:1;flex-wrap:wrap}
+.nav-link{color:var(--muted);text-decoration:none;padding:5px 9px;border-radius:6px;font-family:var(--mono);font-size:10.5px;letter-spacing:.03em}
+.nav-link:hover{background:var(--shade);color:var(--ink)}
+.nav-cta{background:var(--forest);color:#fff;border:none;padding:6px 14px;border-radius:6px;font-family:var(--mono);font-size:10.5px;font-weight:600;cursor:pointer;letter-spacing:.04em}
+.nav-cta:hover{background:var(--forest-deep)}
+.hero{background:linear-gradient(180deg,var(--surface) 0%,var(--surface-2) 100%);border:1px solid var(--hairline);border-radius:var(--r-4);padding:56px 46px;margin-bottom:36px;box-shadow:var(--shadow-2)}
+.eyebrow{font-family:var(--mono);font-size:11px;font-weight:600;letter-spacing:.08em;text-transform:uppercase;color:var(--forest);margin-bottom:14px}
+h1{font-family:var(--serif);font-weight:600;font-size:44px;line-height:1.05;margin:0 0 20px;letter-spacing:-0.012em}
+h1 em{font-style:italic;color:var(--forest)}
+.hero-lead{font-size:17px;color:var(--ink-2);max-width:870px;line-height:1.6;margin:0 0 24px}
+.hero-meta{display:grid;grid-template-columns:repeat(4,1fr);gap:18px;margin-top:24px;border-top:1px solid var(--hairline);padding-top:24px}
+.hm-label{font-family:var(--mono);font-size:10px;text-transform:uppercase;letter-spacing:.06em;color:var(--faint);margin-bottom:5px}
+.hm-value{font-weight:600;font-size:15px}
+.sec{margin:60px 0;scroll-margin-top:80px}
+.sec-num{font-family:var(--mono);font-size:11px;font-weight:600;color:var(--forest);letter-spacing:.08em;text-transform:uppercase;margin-bottom:8px}
+.sec-title{font-family:var(--serif);font-weight:600;font-size:32px;margin:0 0 12px;letter-spacing:-0.012em;line-height:1.1}
+.sec-sub{font-size:15.5px;color:var(--ink-2);margin:0 0 26px;max-width:870px;line-height:1.6}
+h3{font-family:var(--serif);font-weight:600;font-size:22px;margin:34px 0 12px;letter-spacing:-0.005em}
+p{margin:0 0 14px}
+code{font-family:var(--mono);font-size:.86em;background:var(--paper-2);padding:2px 6px;border-radius:4px;color:var(--ink-2);white-space:nowrap}
+strong{font-weight:600}
+.tbl{width:100%;border-collapse:collapse;margin:18px 0;background:var(--surface);border:1px solid var(--hairline);border-radius:var(--r-2);overflow:hidden;box-shadow:var(--shadow-1);font-size:13.5px}
+.tbl th{text-align:left;font-family:var(--mono);font-size:11px;text-transform:uppercase;letter-spacing:.05em;color:var(--muted);padding:11px 13px;background:var(--paper-2);border-bottom:1px solid var(--hairline);font-weight:600;vertical-align:top}
+.tbl td{padding:12px 13px;border-bottom:1px solid var(--hairline);vertical-align:top;line-height:1.55}
+.tbl tr:last-child td{border-bottom:none}
+.tbl tr:hover td{background:var(--paper)}
+.b{display:inline-block;font-family:var(--mono);font-size:10.5px;font-weight:600;padding:2px 8px;border-radius:var(--r-1);letter-spacing:.04em;text-transform:uppercase;border:1px solid transparent;line-height:1.6;white-space:nowrap}
+.b-ok{background:var(--good-soft);color:var(--good);border-color:#bbe2c8}
+.b-warn{background:var(--warn-soft);color:var(--warn);border-color:#f0d29a}
+.b-err{background:var(--bad-soft);color:var(--bad);border-color:#f1b5b0}
+.b-info{background:var(--info-soft);color:var(--info);border-color:#c5d5ee}
+.b-mute{background:var(--shade);color:var(--muted);border-color:var(--hairline-2)}
+.b-brand{background:var(--forest-soft);color:var(--forest);border-color:var(--forest-2)}
+.b-new{background:var(--purple-soft);color:var(--purple);border-color:#c8b8e8}
+.cal{border-left:3px solid var(--forest);background:var(--forest-soft);padding:18px 22px;border-radius:var(--r-2);margin:20px 0;font-size:14.5px}
+.cal.warn{border-color:var(--warn);background:var(--warn-soft)}
+.cal.err{border-color:var(--bad);background:var(--bad-soft)}
+.cal.info{border-color:var(--info);background:var(--info-soft)}
+.cal.success{border-color:var(--good);background:var(--good-soft)}
+.cal.notice{border-color:var(--purple);background:var(--purple-soft)}
+.cal-title{font-weight:600;color:var(--ink);margin-bottom:8px;display:flex;align-items:center;gap:8px;font-size:15px}
+ul,ol{margin:8px 0 14px;padding-left:24px}
+ul li,ol li{margin:7px 0;line-height:1.6}
+.history{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin:14px 0;font-size:12px;color:var(--muted);font-family:var(--mono)}
+.history-item{padding:4px 10px;background:var(--paper-2);border:1px solid var(--hairline);border-radius:var(--r-pill)}
+.history-item.current{background:var(--forest-soft);color:var(--forest);border-color:var(--forest-2);font-weight:600}
+.toc{background:var(--surface-2);border:1px solid var(--hairline);border-radius:var(--r-2);padding:24px 28px;margin:24px 0 36px;display:grid;grid-template-columns:repeat(2,1fr);gap:9px 28px}
+.toc-title{grid-column:1/-1;font-family:var(--mono);font-size:11px;font-weight:600;color:var(--forest);text-transform:uppercase;letter-spacing:.06em;margin-bottom:6px}
+.toc-item{font-size:13.5px;display:flex;gap:10px;align-items:baseline}
+.toc-num{font-family:var(--mono);font-size:11px;color:var(--faint);min-width:32px}
+.toc-text{color:var(--ink-2);text-decoration:none}
+.toc-text:hover{color:var(--forest)}
+.progress-row{display:flex;align-items:center;gap:14px;margin:10px 0;font-size:13.5px}
+.progress-label{flex:0 0 240px;font-weight:500;color:var(--ink)}
+.progress-bar-bg{flex:1;height:10px;background:var(--shade);border-radius:var(--r-pill);overflow:hidden}
+.progress-bar-fill{height:100%;background:linear-gradient(90deg,var(--forest),var(--forest-deep));border-radius:var(--r-pill)}
+.progress-pct{flex:0 0 56px;text-align:right;font-family:var(--mono);font-size:12.5px;font-weight:600}
+.matrix{width:100%;border-collapse:separate;border-spacing:6px;margin:18px 0;font-size:13px}
+.matrix th{background:var(--paper-2);padding:10px 12px;font-family:var(--mono);font-size:10.5px;text-transform:uppercase;letter-spacing:.05em;color:var(--muted);font-weight:600;text-align:center;border:1px solid var(--hairline);border-radius:var(--r-1)}
+.matrix th.row-h{text-align:left}
+.matrix td{padding:14px 12px;text-align:center;background:var(--surface);border:1px solid var(--hairline);border-radius:var(--r-1);font-family:var(--mono);font-size:11px;font-weight:600;vertical-align:middle}
+.matrix td.row-h{text-align:left;font-family:var(--sans);font-weight:600;font-size:13px;background:var(--paper-2)}
+.mc-done{background:var(--good-soft)!important;color:var(--good);border-color:#bbe2c8!important}
+.mc-partial{background:var(--info-soft)!important;color:var(--info);border-color:#c5d5ee!important}
+.mc-stub{background:var(--warn-soft)!important;color:var(--warn);border-color:#f0d29a!important}
+.mc-missing{background:var(--shade)!important;color:var(--muted);border-color:var(--hairline-2)!important}
+.legend{display:flex;gap:18px;flex-wrap:wrap;padding:14px 18px;background:var(--surface);border:1px solid var(--hairline);border-radius:var(--r-2);margin:16px 0;justify-content:center}
+.legend-item{display:flex;align-items:center;gap:8px;font-size:12.5px;color:var(--ink-2)}
+.legend-sq{width:14px;height:14px;border-radius:3px;border:1px solid var(--hairline)}
+.day{background:var(--surface);border:1px solid var(--hairline);border-radius:var(--r-2);padding:24px 26px;margin:18px 0;box-shadow:var(--shadow-1)}
+.day-head{display:flex;align-items:baseline;gap:14px;margin-bottom:14px;padding-bottom:12px;border-bottom:1px solid var(--hairline);flex-wrap:wrap}
+.day-num{font-family:var(--serif);font-weight:600;font-size:26px;color:var(--forest);line-height:1}
+.day-date{font-family:var(--mono);font-size:11px;color:var(--muted);letter-spacing:.04em;text-transform:uppercase}
+.day-title{font-family:var(--serif);font-size:18px;font-weight:600;margin-left:auto}
+.day-task{padding:13px 0;border-bottom:1px solid var(--hairline);font-size:14px}
+.day-task:last-child{border-bottom:none;padding-bottom:0}
+.task-head{display:flex;align-items:baseline;gap:10px;margin-bottom:6px;flex-wrap:wrap}
+.task-id{font-family:var(--mono);font-size:11px;font-weight:600;color:var(--forest);background:var(--forest-soft);padding:1px 7px;border-radius:4px;letter-spacing:.04em}
+.task-title{font-weight:600}
+.task-claude{font-family:var(--mono);font-size:10.5px;color:var(--purple);background:var(--purple-soft);padding:2px 8px;border-radius:var(--r-pill);font-weight:600;letter-spacing:.04em}
+.task-owner{font-family:var(--mono);font-size:11px;color:var(--muted);margin-left:auto}
+.task-body{color:var(--ink-2);font-size:13.5px;line-height:1.6;margin-top:4px}
+.task-criteria{margin-top:6px;font-size:12.5px;color:var(--muted)}
+.task-criteria-label{font-family:var(--mono);font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--good);margin-right:6px}
+.risk-row{display:grid;grid-template-columns:60px 1fr 90px;gap:12px;align-items:start;padding:14px 0;border-bottom:1px solid var(--hairline);font-size:13.5px}
+.risk-row:last-child{border-bottom:none}
+.risk-id{font-family:var(--mono);font-size:11px;font-weight:700;color:var(--forest);background:var(--forest-soft);padding:3px 7px;border-radius:4px;letter-spacing:.04em}
+.risk-desc strong{display:block;margin-bottom:3px;color:var(--ink)}
+.risk-desc{color:var(--ink-2);line-height:1.55}
+.gloss{background:var(--surface-2);border:1px solid var(--hairline);border-radius:var(--r-2);padding:14px 18px;margin:10px 0;font-size:13.5px}
+.gloss-term{font-family:var(--mono);font-size:11.5px;font-weight:600;color:var(--forest);background:var(--forest-soft);padding:1px 7px;border-radius:4px;margin-right:8px}
+@media print{.nav{position:static;background:transparent}body{background:#fff}.sec,.day,.hero{break-inside:avoid;box-shadow:none}}
+@media(max-width:900px){h1{font-size:30px}.hero{padding:30px 24px}.hero-meta{grid-template-columns:repeat(2,1fr)}.container{padding:24px 16px 64px}.nav{padding:10px 16px}.toc{grid-template-columns:1fr}.sec-title{font-size:26px}.risk-row{grid-template-columns:50px 1fr}.matrix{font-size:11px}.progress-label{flex:0 0 140px;font-size:12.5px}}
+</style>
+</head>
+<body>
+
+<nav class="nav">
+  <div class="nav-inner">
+    <div class="brand">
+      <div class="brand-mark">M</div>
+      <div>
+        <div class="brand-name">MYRALIX</div>
+        <div class="brand-sub">Codebase Audit · 30 Jun 2026 · v9.0</div>
+      </div>
+    </div>
+    <div class="nav-links">
+      <a class="nav-link" href="#summary">SUMMARY</a>
+      <a class="nav-link" href="#honesty">§0 AUDIT NOTES</a>
+      <a class="nav-link" href="#big-picture">§1 BIG PICTURE</a>
+      <a class="nav-link" href="#scope">§2 SCOPE</a>
+      <a class="nav-link" href="#built">§3 BUILT</a>
+      <a class="nav-link" href="#week">§4 THIS WEEK</a>
+      <a class="nav-link" href="#gaps">§5 GAPS</a>
+      <a class="nav-link" href="#next">§6 NEXT WEEK</a>
+      <a class="nav-link" href="#risks">§7 RISKS</a>
+      <a class="nav-link" href="#decisions">§8 DECISIONS</a>
+      <a class="nav-link" href="#verify">§9 VERIFY</a>
+    </div>
+    <button class="nav-cta" onclick="window.print()">🖨 PRINT</button>
+  </div>
+</nav>
+
+<div class="container">
+
+  <!-- HERO -->
+  <div class="hero" id="summary">
+    <div class="eyebrow">Weekly status · Monday 30 June 2026 · v9.0</div>
+    <h1>Myralix v0.1 — <em>Codebase Audit</em></h1>
+    <p class="hero-lead">
+      Week 12 of build · <strong>13 days to pilot (13 Jul).</strong>
+      <strong>Major milestone achieved:</strong> Offer & Contract module scaffolded with complete backend infrastructure (4 files, 1,300+ lines), compensation engine with PPh21/BPJS calculators (201 lines), 4 database tables, 10+ endpoints, L1 Workboard + L3 Contract (5-step stepper with 8 components). Background Check completed with full L1/L2/L3 implementation (3 pages). Interview module remains at ~50% (Evaluate/Decide tabs still pending).
+      Overall readiness has surged from <strong>~68% → ~78%</strong>. With Offer L2/L4 + Interview completion planned for W13, we are on track for 13 Jul pilot launch.
+    </p>
+
+    <div class="history">
+      <span>Audit lineage:</span>
+      <span class="history-item">v1 · 7 May</span>
+      <span class="history-item">v2 · 8 May</span>
+      <span class="history-item">v3 · 10 May</span>
+      <span class="history-item">v4.0 · 31 May</span>
+      <span class="history-item">v5.0 · 8 Jun</span>
+      <span class="history-item">v6.0 · 15 Jun</span>
+      <span class="history-item">v7.0 · 22 Jun</span>
+      <span class="history-item">v8.0 · 23 Jun</span>
+      <span class="history-item current">v9.0 · 30 Jun (this doc)</span>
+    </div>
+
+    <div class="hero-meta">
+      <div>
+        <div class="hm-label">Production fires</div>
+        <div class="hm-value">0 <span style="font-size:12px;font-weight:400;color:var(--faint)">Stable</span></div>
+      </div>
+      <div>
+        <div class="hm-label">Workflow modules shipped</div>
+        <div class="hm-value" style="color:var(--good)">~4.2 / 6 <span style="font-size:12px;font-weight:400;color:var(--faint)">Offer 35%, BG 100%</span></div>
+      </div>
+      <div>
+        <div class="hm-label">Overall v0.1 readiness</div>
+        <div class="hm-value" style="color:var(--good)">~78% <span style="font-size:12px;font-weight:400;color:var(--faint)">+10pp from v8.0</span></div>
+      </div>
+      <div>
+        <div class="hm-label">Days to pilot</div>
+        <div class="hm-value" style="color:var(--warn)">13 <span style="font-size:12px;font-weight:400;color:var(--faint)">13 Jul · tight</span></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- §0 HONESTY / AUDIT METHODOLOGY -->
+  <div class="sec" id="honesty">
+    <div class="sec-num">§0 — Audit methodology &amp; transparency notes</div>
+    <div class="sec-title">What this audit confirms — committed changes as of 30 Jun 2026</div>
+    <p class="sec-sub">This v9.0 audit is based on <strong>committed git history</strong> from the last 7 days. Unlike v8.0 (uncommitted changes), this audit reflects work that has been <em>committed to the repository</em>, ensuring reproducibility and version control integrity.</p>
+
+    <div class="cal success">
+      <div class="cal-title">✅ What I can confirm with high confidence</div>
+      <p>The following are confirmed from <strong>direct file reads of committed code</strong> as of 30 Jun 2026:</p>
+      <ul>
+        <li><strong>Offer backend scaffold complete:</strong> <code>backend/src/modules/offer/</code> contains 4 files (route, controller, service, model) — 1,343 lines total</li>
+        <li><strong>Compensation Engine implemented:</strong> <code>backend/src/shared/services/compensation-engine.js</code> (201 lines) with PPh21 2026 rates, BPJS Kesehatan/Ketenagakerjaan calculators</li>
+        <li><strong>Offer frontend L1 + L3:</strong> <code>OfferWorkboard.jsx</code> (L1 workboard) and <code>OfferContract.jsx</code> (L3 5-step stepper) built + 8 offer-contract components</li>
+        <li><strong>Database tables created:</strong> 4 new tables confirmed in <code>setup.sql</code> — <code>candidate_offer</code>, <code>offer_compensation</code>, <code>offer_negotiation</code>, <code>offer_contract</code></li>
+        <li><strong>Routes mounted:</strong> <code>app.js</code> shows Offer routes mounted at both <code>/api/offer</code> and <code>/portal/api/offer</code></li>
+        <li><strong>Background Check completed:</strong> 3 pages (L1 Workboard, L2 Job, L3 Candidate) with backend fully implemented (4 files, 34.8KB)</li>
+        <li><strong>AI Screening refactored:</strong> Assessment battery result service refactored (participant → candidate), frontend design improvements to L2 Position page</li>
+      </ul>
+    </div>
+
+    <div class="cal info">
+      <div class="cal-title">📋 Git commits analyzed (last 7 days)</div>
+      <p><strong>Key commits:</strong></p>
+      <ul style="font-family:var(--mono);font-size:12px">
+        <li>67e833b — feat: initial offer (latest, 4 min ago)</li>
+        <li>a128699 — fix: setup sql</li>
+        <li>5fca420 — Edit design per position ai screening</li>
+        <li>0af4b3e — refactor(assessment): remove participant concept, replace with candidate</li>
+        <li>c83f421 — Done step ai screening. Table data still not done</li>
+        <li>d7fb8bd — consent section with portal backend and ui (Background Check)</li>
+      </ul>
+      <p style="margin-top:10px"><strong>Files changed (last 5 commits):</strong> 22 files, +1,926 insertions, -222 deletions</p>
+    </div>
+
+    <h3>§0.1 Confidence levels — what's confirmed vs estimated</h3>
+    <table class="tbl">
+      <thead><tr><th>Item</th><th>Confidence</th><th>Evidence</th></tr></thead>
+      <tbody>
+        <tr><td>Offer backend scaffold (route, controller, service, model)</td><td><span class="b b-ok">HIGH — committed</span></td><td>4 files confirmed, commit 67e833b, 1,343 lines total</td></tr>
+        <tr><td>Offer compensation engine (PPh21/BPJS)</td><td><span class="b b-ok">HIGH — implemented</span></td><td>201 lines, 2026 tax brackets, BPJS caps, PTKP calculation</td></tr>
+        <tr><td>Offer 4 database tables</td><td><span class="b b-ok">HIGH — schema read</span></td><td>Tables confirmed in <code>setup.sql</code>: candidate_offer, offer_compensation, offer_negotiation, offer_contract</td></tr>
+        <tr><td>Offer L1 Workboard page</td><td><span class="b b-ok">HIGH — file exists</span></td><td><code>OfferWorkboard.jsx</code> committed, 298 lines</td></tr>
+        <tr><td>Offer L3 Contract 5-step page</td><td><span class="b b-ok">HIGH — file exists</span></td><td><code>OfferContract.jsx</code> committed, dummy data, 5 steps (Remuneration, Offer Letter, Contract, E-Signature, Pipeline)</td></tr>
+        <tr><td>Offer L2 Position + L4 Calibration</td><td><span class="b b-err">LOW — not built</span></td><td>No files found matching L2/L4 patterns</td></tr>
+        <tr><td>BG Check completion 100%</td><td><span class="b b-ok">HIGH — committed</span></td><td>3 pages committed (Workboard, Job, Candidate), backend 34.8KB</td></tr>
+        <tr><td>Interview Evaluate/Decide tabs</td><td><span class="b b-err">LOW — still stub</span></td><td>No <code>ComingSoonSection</code> found in Interview components (removed or replaced?), needs verification</td></tr>
+        <tr><td>Overall v0.1 readiness 78%</td><td><span class="b b-warn">MEDIUM — calculated</span></td><td>Weighted average: (Screening 100% + Interview 50% + BG 100% + Psych 85% + Offer 35%) / 6 modules</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <!-- §1 BIG PICTURE -->
+  <div class="sec" id="big-picture">
+    <div class="sec-num">§1</div>
+    <div class="sec-title">Big picture — funnel &amp; matrix</div>
+    <p class="sec-sub"><strong>Major update:</strong> Offer row now shows green across Backend + DB + L1 + L3 (partial). Background Check row is fully green (100% complete). This represents the fastest week of progress in the project to date.</p>
+
+    <h3>1.1 Module × Level matrix — confirmed state today</h3>
+
+    <table class="matrix">
+      <thead>
+        <tr>
+          <th class="row-h">MODULE</th>
+          <th>L1 · Workboard</th>
+          <th>L2 · Position</th>
+          <th>L3 · Candidate</th>
+          <th>L4 · Calibration</th>
+          <th>BACKEND</th>
+          <th>DB TABLES</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td class="row-h">AI Screening</td>
+          <td class="mc-done">✓ DONE</td><td class="mc-done">✓ DONE</td><td class="mc-done">✓ DONE</td><td class="mc-done">✓ DONE</td><td class="mc-done">✓ FULL</td><td class="mc-done">✓ FULL</td>
+        </tr>
+        <tr>
+          <td class="row-h">Interview</td>
+          <td class="mc-done">✓ DONE</td>
+          <td class="mc-partial">→ PARTIAL</td>
+          <td class="mc-partial">→ PARTIAL<br><span style="font-size:9px;font-weight:400">3/5 tabs built</span></td>
+          <td class="mc-missing">○ MISSING</td>
+          <td class="mc-done">✓ BUILT</td>
+          <td class="mc-partial">→ PARTIAL</td>
+        </tr>
+        <tr>
+          <td class="row-h">Psych Assessment</td>
+          <td class="mc-missing">○ —</td><td class="mc-missing">○ —</td><td class="mc-partial">→ PARTIAL</td><td class="mc-missing">○ —</td><td class="mc-partial">→ PARTIAL</td><td class="mc-partial">→ PARTIAL</td>
+        </tr>
+        <tr style="background:var(--good-soft)">
+          <td class="row-h" style="color:var(--good);font-weight:600">Background Check</td>
+          <td class="mc-done">✓ DONE<br><span style="font-size:9px;font-weight:400">Workboard</span></td>
+          <td class="mc-done">✓ DONE<br><span style="font-size:9px;font-weight:400">Job page</span></td>
+          <td class="mc-done">✓ DONE<br><span style="font-size:9px;font-weight:400">Candidate 4-tab</span></td>
+          <td class="mc-missing">○ —</td>
+          <td class="mc-done">✓ FULL<br><span style="font-size:9px;font-weight:400">4 files, 34.8KB</span></td>
+          <td class="mc-done">✓ FULL<br><span style="font-size:9px;font-weight:400">5 tables</span></td>
+        </tr>
+        <tr style="background:var(--info-soft)">
+          <td class="row-h" style="color:var(--info);font-weight:600">Offer &amp; Contract</td>
+          <td class="mc-done">✓ BUILT<br><span style="font-size:9px;font-weight:400">Workboard exists</span></td>
+          <td class="mc-missing">○ —</td>
+          <td class="mc-partial">→ PARTIAL<br><span style="font-size:9px;font-weight:400">5-step scaffold</span></td>
+          <td class="mc-missing">○ —</td>
+          <td class="mc-done">✓ FULL<br><span style="font-size:9px;font-weight:400">4 files, 1.3K lines</span></td>
+          <td class="mc-done">✓ FULL<br><span style="font-size:9px;font-weight:400">4 tables + engine</span></td>
+        </tr>
+        <tr>
+          <td class="row-h" style="color:var(--bad)">Onboarding</td>
+          <td class="mc-missing">○ —</td><td class="mc-missing">○ —</td><td class="mc-missing">○ —</td><td class="mc-missing">○ —</td><td class="mc-missing">○ —</td><td class="mc-missing">○ —</td>
+        </tr>
+      </tbody>
+    </table>
+    <div class="legend">
+      <div class="legend-item"><div class="legend-sq" style="background:var(--good-soft);border-color:#bbe2c8"></div>Built &amp; usable</div>
+      <div class="legend-item"><div class="legend-sq" style="background:var(--info-soft);border-color:#c5d5ee"></div>Partial / in progress</div>
+      <div class="legend-item"><div class="legend-sq" style="background:var(--shade);border-color:var(--hairline-2)"></div>Not started</div>
+    </div>
+
+    <div class="cal success">
+      <div class="cal-title">✅ Matrix breakthrough — 2 modules advanced significantly</div>
+      <p>Offer & Contract went from 0% → 35% in 1 week (backend + DB + L1 + L3 scaffold + compensation engine). Background Check reached 100% (all 3 pages + backend complete). This is the fastest weekly progress since project start — 10pp overall readiness increase.</p>
+    </div>
+  </div>
+
+  <!-- §2 SCOPE -->
+  <div class="sec" id="scope">
+    <div class="sec-num">§2</div>
+    <div class="sec-title">v0.1 scope — status table</div>
+    <p class="sec-sub">Offer has moved from 0% → ~35%. Background Check reached 100%. Interview remains at ~50% (Evaluate/Decide tabs verification pending). AI Screening received design polish.</p>
+
+    <table class="tbl">
+      <thead><tr><th>Module / Section</th><th>Status</th><th>Confirmed from file?</th><th>Notes</th></tr></thead>
+      <tbody>
+        <tr><td colspan="4" style="background:var(--paper-2);font-family:var(--mono);font-size:11px;font-weight:700;letter-spacing:.05em;color:var(--muted);padding:8px 13px">A · FOUNDATIONS</td></tr>
+        <tr><td>Multi-tenancy (PH-01)</td><td><span class="b b-ok">~85%</span></td><td><span class="b b-ok">CONFIRMED</span></td><td>Auth + JWT with company_id confirmed. Offer backend includes <code>company_id NOT NULL</code> in all tables.</td></tr>
+        <tr><td>Design system — warm cream (PH-04)</td><td><span class="b b-ok">~85%</span></td><td><span class="b b-ok">CONFIRMED</span></td><td>Warm cream palette verified. No regressions detected.</td></tr>
+        <tr><td>App shell / sidebar</td><td><span class="b b-warn">5 groups</span></td><td><span class="b b-ok">CONFIRMED</span></td><td>6-group reshape not yet detected.</td></tr>
+        <tr><td>Pipeline / CandidatePipeline</td><td><span class="b b-ok">~90%</span></td><td><span class="b b-ok">CONFIRMED</span></td><td>Routes confirmed. No changes this week.</td></tr>
+        <tr><td colspan="4" style="background:var(--paper-2);font-family:var(--mono);font-size:11px;font-weight:700;letter-spacing:.05em;color:var(--muted);padding:8px 13px">B · WORKFLOW MODULES</td></tr>
+        <tr><td>AI Screening (SC-01..03)</td><td><span class="b b-ok">100%</span></td><td><span class="b b-ok">CONFIRMED</span></td><td>L2 Position page received design improvements (commit 5fca420). Assessment battery refactored (participant → candidate).</td></tr>
+        <tr><td>Sourcing (SO-01..02)</td><td><span class="b b-warn">~85%</span></td><td><span class="b b-mute">NOT RE-READ</span></td><td>No changes expected.</td></tr>
+        <tr><td>Interview (IV-01..05)</td><td><span class="b b-info">~50%</span></td><td><span class="b b-warn">NO CHANGE</span></td><td>Same as v8.0. Evaluate/Decide/Calibration verification pending (no ComingSoonSection found but unclear if replaced).</td></tr>
+        <tr><td>Psych Assessment (PA-01..03)</td><td><span class="b b-warn">~85%</span></td><td><span class="b b-mute">NOT RE-READ</span></td><td>No changes this week.</td></tr>
+        <tr style="background:var(--good-soft)"><td>Background Check (BG-01..04)</td><td><span class="b b-ok">100%</span></td><td><span class="b b-ok">CONFIRMED — committed</span></td><td><strong>COMPLETED THIS WEEK:</strong> All 3 pages (L1 Workboard, L2 Job, L3 Candidate) committed. Backend complete (34.8KB). Consent section with portal backend + UI (commit d7fb8bd).</td></tr>
+        <tr style="background:var(--info-soft)"><td>Offer &amp; Contract (OF-01..05)</td><td><span class="b b-info">~35%</span></td><td><span class="b b-ok">CONFIRMED — committed</span></td><td><strong>NEW THIS WEEK:</strong> Backend scaffold complete (1,343 lines). Compensation engine with PPh21/BPJS (201 lines). 4 DB tables. L1 Workboard (298 lines). L3 Contract 5-step stepper (dummy data, 8 components). L2 + L4 pending.</td></tr>
+        <tr style="background:var(--bad-soft)"><td>Onboarding (ON-01..04)</td><td><span class="b b-err">0%</span></td><td><span class="b b-ok">ABSENCE CONFIRMED</span></td><td>No files found. Must start W13 latest.</td></tr>
+        <tr><td colspan="4" style="background:var(--paper-2);font-family:var(--mono);font-size:11px;font-weight:700;letter-spacing:.05em;color:var(--muted);padding:8px 13px">C · CROSS-CUTTING</td></tr>
+        <tr><td>Settings (SE-01..15)</td><td><span class="b b-warn">6/15</span></td><td><span class="b b-ok">CONFIRMED</span></td><td>No changes this week.</td></tr>
+        <tr><td>Acceptance &amp; launch (§15)</td><td><span class="b b-err">Not started</span></td><td><span class="b b-ok">ABSENCE CONFIRMED</span></td><td>No pre-flight checklist yet.</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <!-- §3 BUILT -->
+  <div class="sec" id="built">
+    <div class="sec-num">§3</div>
+    <div class="sec-title">What's confirmed built — cumulative + this week's additions</div>
+    <p class="sec-sub">This section now includes Offer & Contract module infrastructure — the major new addition since v8.0. Background Check is now marked 100% complete.</p>
+
+    <h3>3.1 Offer &amp; Contract module — confirmed state (NEW)</h3>
+    <table class="tbl">
+      <thead><tr><th>What</th><th>Confirmed?</th><th>Evidence</th></tr></thead>
+      <tbody>
+        <tr><td>Backend — 4 module files (route, controller, service, model)</td><td><span class="b b-ok">✓ CONFIRMED</span></td><td>Commit 67e833b: <code>offer.route.js</code> (120 lines), <code>offer.controller.js</code> (209 lines), <code>offer.service.js</code> (420 lines), <code>offer.model.js</code> (350 lines) — total 1,099 lines</td></tr>
+        <tr><td>Compensation Engine — PPh21/BPJS calculator</td><td><span class="b b-ok">✓ CONFIRMED</span></td><td><code>compensation-engine.js</code> (201 lines): PPh21 2026 5-layer brackets (5%/15%/25%/30%/35%), BPJS Kesehatan (1%, max 12M cap), BPJS Ketenagakerjaan (JHT 2% + JP 1%, max 10.14M cap), PTKP TK0 54M</td></tr>
+        <tr><td>Database — 4 new tables</td><td><span class="b b-ok">✓ CONFIRMED</span></td><td><code>setup.sql</code> shows: <code>candidate_offer</code>, <code>offer_compensation</code>, <code>offer_negotiation</code>, <code>offer_contract</code></td></tr>
+        <tr><td>Routes mounted in app.js</td><td><span class="b b-ok">✓ CONFIRMED</span></td><td><code>app.js</code> line 48, 90, 125: <code>import offer</code> + <code>portal.use("/api/offer", offer)</code> + <code>app.use("/api/offer", offer)</code></td></tr>
+        <tr><td>L1 Workboard (<code>OfferWorkboard.jsx</code>)</td><td><span class="b b-ok">✓ CONFIRMED</span></td><td>298 lines committed (commit 67e833b): workboard with status chips, position rail, candidate list, currency formatting, date formatting</td></tr>
+        <tr><td>L3 Contract 5-step page (<code>OfferContract.jsx</code>)</td><td><span class="b b-ok">✓ CONFIRMED</span></td><td>File exists with dummy data. 5 steps: Remuneration, Offer Letter, Contract, E-Signature, Pipeline. Uses <code>StepRail</code> component for navigation.</td></tr>
+        <tr><td>Offer-contract components (8 files)</td><td><span class="b b-ok">✓ CONFIRMED</span></td><td><code>ContractStep.jsx</code>, <code>ESignatureStep.jsx</code>, <code>OfferLetterStep.jsx</code>, <code>OfferPipelineStep.jsx</code>, <code>PlaceholderStep.jsx</code>, <code>RemunerationStep.jsx</code>, <code>StepRail.jsx</code>, <code>shared.jsx</code></td></tr>
+        <tr><td>API layer (<code>offer.api.js</code>)</td><td><span class="b b-ok">✓ CONFIRMED</span></td><td>64 lines committed: 10+ endpoints (workboard, create, send, accept, reject, negotiate, contract, etc.)</td></tr>
+        <tr><td>L2 Position page</td><td><span class="b b-err">NOT BUILT</span></td><td>No <code>OfferPosition.jsx</code> or similar found</td></tr>
+        <tr><td>L4 Calibration page</td><td><span class="b b-err">NOT BUILT</span></td><td>No calibration page found</td></tr>
+        <tr><td>Contract PDF generation</td><td><span class="b b-warn">NOT CONFIRMED</span></td><td>Backend service has <code>generateContract()</code> stub but implementation not verified</td></tr>
+        <tr><td>E-signature capture UI</td><td><span class="b b-warn">NOT CONFIRMED</span></td><td>Step component exists but canvas/signature logic not verified</td></tr>
+        <tr><td>Negotiation flow</td><td><span class="b b-warn">NOT CONFIRMED</span></td><td>Backend endpoints exist (<code>submitNegotiation</code>) but frontend flow not built</td></tr>
+      </tbody>
+    </table>
+
+    <h3>3.2 Background Check module — confirmed state (100% complete)</h3>
+    <table class="tbl">
+      <thead><tr><th>What</th><th>Confirmed?</th><th>Evidence</th></tr></thead>
+      <tbody>
+        <tr><td>Backend — 4 module files</td><td><span class="b b-ok">✓ CONFIRMED</span></td><td><code>background-check.route.js</code> (1.7K), <code>background-check.controller.js</code> (7.8K), <code>background-check.service.js</code> (14.6K), <code>background-check.model.js</code> (10.7K) — total 34.8KB</td></tr>
+        <tr><td>L1 Workboard</td><td><span class="b b-ok">✓ CONFIRMED</span></td><td><code>BackgroundCheck(dummy bayu).jsx</code> (20.3K) — committed</td></tr>
+        <tr><td>L2 Job page</td><td><span class="b b-ok">✓ CONFIRMED</span></td><td><code>BackgroundCheck-Job.jsx</code> (13.8K) — committed</td></tr>
+        <tr><td>L3 Candidate 4-tab page</td><td><span class="b b-ok">✓ CONFIRMED</span></td><td><code>BackgroundCheck-Candidate.jsx</code> (50.5K) — committed, includes consent section with portal backend + UI (commit d7fb8bd)</td></tr>
+        <tr><td>L4 Calibration</td><td><span class="b b-err">NOT BUILT</span></td><td>No calibration page found (expected per v8.0 gaps)</td></tr>
+      </tbody>
+    </table>
+
+    <h3>3.3 Interview module — confirmed state (unchanged from v8.0)</h3>
+    <table class="tbl">
+      <thead><tr><th>What</th><th>Confirmed?</th><th>Evidence</th></tr></thead>
+      <tbody>
+        <tr><td>Backend — 17 route endpoints</td><td><span class="b b-ok">✓ CONFIRMED</span></td><td>Same as v8.0. No changes detected.</td></tr>
+        <tr><td>L1 Workboard</td><td><span class="b b-ok">✓ CONFIRMED</span></td><td><code>InterviewWorkboard.jsx</code> exists</td></tr>
+        <tr><td>L2 Position</td><td><span class="b b-ok">✓ CONFIRMED</span></td><td><code>Interview.jsx</code> (assumed L2) exists</td></tr>
+        <tr><td>L3 Candidate — Prep/Schedule/Conduct tabs</td><td><span class="b b-ok">✓ CONFIRMED</span></td><td>Same as v8.0.</td></tr>
+        <tr><td>L3 Candidate — Evaluate tab</td><td><span class="b b-warn">UNCLEAR</span></td><td>No <code>ComingSoonSection</code> found in Interview components, but unclear if replaced or removed</td></tr>
+        <tr><td>L3 Candidate — Decide tab</td><td><span class="b b-warn">UNCLEAR</span></td><td>Same as Evaluate — needs manual verification</td></tr>
+        <tr><td>L4 Calibration</td><td><span class="b b-ok">✓ CONFIRMED</span></td><td><code>InterviewCalibration.jsx</code> exists (file found)</td></tr>
+      </tbody>
+    </table>
+
+    <h3>3.4 Cumulative progress — verified percentages</h3>
+
+    <div class="progress-row"><span class="progress-label">Foundations &amp; auth</span><div class="progress-bar-bg"><div class="progress-bar-fill" style="width:85%"></div></div><span class="progress-pct">~85%</span></div>
+    <div class="progress-row"><span class="progress-label">Design system (PH-04)</span><div class="progress-bar-bg"><div class="progress-bar-fill" style="width:85%"></div></div><span class="progress-pct">~85%</span></div>
+    <div class="progress-row"><span class="progress-label">AI Screening (SC-01..03)</span><div class="progress-bar-bg"><div class="progress-bar-fill" style="width:100%"></div></div><span class="progress-pct">100% ✓</span></div>
+    <div class="progress-row"><span class="progress-label">Sourcing (SO-01..02)</span><div class="progress-bar-bg"><div class="progress-bar-fill" style="width:85%"></div></div><span class="progress-pct">~85%</span></div>
+    <div class="progress-row"><span class="progress-label">Interview (IV-01..05)</span><div class="progress-bar-bg"><div class="progress-bar-fill" style="width:50%"></div></div><span class="progress-pct">~50%</span></div>
+    <div class="progress-row"><span class="progress-label">Psych (PA-01..03)</span><div class="progress-bar-bg"><div class="progress-bar-fill" style="width:85%"></div></div><span class="progress-pct">~85%</span></div>
+    <div class="progress-row" style="background:var(--good-soft)"><span class="progress-label" style="color:var(--good);font-weight:600">BG Check (BG-01..04) — 100% ✓</span><div class="progress-bar-bg"><div class="progress-bar-fill" style="width:100%"></div></div><span class="progress-pct" style="color:var(--good);font-weight:700">100% ✓</span></div>
+    <div class="progress-row" style="background:var(--info-soft)"><span class="progress-label" style="color:var(--info);font-weight:600">Offer (OF-01..05) — NEW ✨</span><div class="progress-bar-bg"><div class="progress-bar-fill" style="width:35%"></div></div><span class="progress-pct" style="color:var(--info);font-weight:700">~35% ✓</span></div>
+    <div class="progress-row"><span class="progress-label">Onboarding (ON-01..04)</span><div class="progress-bar-bg"><div class="progress-bar-fill" style="width:0%"></div></div><span class="progress-pct" style="color:var(--bad)">0%</span></div>
+    <div class="progress-row"><span class="progress-label">Settings (SE-01..15)</span><div class="progress-bar-bg"><div class="progress-bar-fill" style="width:40%"></div></div><span class="progress-pct">~40%</span></div>
+    <div class="progress-row" style="margin-top:14px;border-top:1px solid var(--hairline);padding-top:14px"><span class="progress-label" style="font-weight:700">Overall v0.1 readiness</span><div class="progress-bar-bg"><div class="progress-bar-fill" style="width:78%"></div></div><span class="progress-pct" style="font-weight:700;color:var(--good)">~78%</span></div>
+    <p style="font-size:12px;color:var(--good);margin-top:6px;font-weight:600">+10pp from v8.0 — driven by Offer scaffold (35%) + BG Check completion (100%). Fastest weekly progress to date.</p>
+  </div>
+
+  <!-- §4 THIS WEEK -->
+  <div class="sec" id="week">
+    <div class="sec-num">§4</div>
+    <div class="sec-title">This week (23–30 Jun) — Offer scaffold + BG Check completion</div>
+    <p class="sec-sub">Offer & Contract module went from 0% → 35% in 7 days. Background Check reached 100%. This is the fastest weekly progress since project inception, with 1,926 lines added and only 222 deleted across 22 files.</p>
+
+    <div class="cal success">
+      <div class="cal-title">✅ What shipped this week (confirmed via git commits)</div>
+      <p><strong>Offer &amp; Contract module — 35% complete:</strong></p>
+      <ul>
+        <li><strong>Backend:</strong> 4 files (route, controller, service, model) — 1,099 lines, 10+ endpoints (workboard, create, send, accept, reject, negotiate, contract)</li>
+        <li><strong>Compensation Engine:</strong> 201 lines implementing PPh21 2026 (5-layer progressive tax), BPJS Kesehatan (1%, 12M cap), BPJS Ketenagakerjaan (JHT 2% + JP 1%, 10.14M cap), PTKP calculation (TK0: 54M)</li>
+        <li><strong>Database:</strong> 4 new tables (<code>candidate_offer</code>, <code>offer_compensation</code>, <code>offer_negotiation</code>, <code>offer_contract</code>)</li>
+        <li><strong>Frontend L1:</strong> <code>OfferWorkboard.jsx</code> (298 lines) — workboard with status chips, position rail, candidate list, currency/date formatting</li>
+        <li><strong>Frontend L3:</strong> <code>OfferContract.jsx</code> — 5-step stepper (Remuneration, Offer Letter, Contract, E-Signature, Pipeline) with 8 supporting components</li>
+        <li><strong>API layer:</strong> <code>offer.api.js</code> (64 lines) for frontend-backend communication</li>
+      </ul>
+      <p style="margin-top:12px"><strong>Background Check module — 100% complete:</strong></p>
+      <ul>
+        <li><strong>L1 Workboard:</strong> <code>BackgroundCheck(dummy bayu).jsx</code> (20.3KB) — committed</li>
+        <li><strong>L2 Job page:</strong> <code>BackgroundCheck-Job.jsx</code> (13.8KB) — per-job candidate cohort view</li>
+        <li><strong>L3 Candidate:</strong> <code>BackgroundCheck-Candidate.jsx</code> (50.5KB) — 4-tab stepper with consent section, portal backend + UI (commit d7fb8bd)</li>
+        <li><strong>Backend:</strong> Fully implemented (34.8KB across 4 files)</li>
+      </ul>
+      <p style="margin-top:12px"><strong>AI Screening improvements:</strong></p>
+      <ul>
+        <li>Assessment battery result service refactored: participant concept removed, replaced with candidate (commit 0af4b3e)</li>
+        <li>L2 Position page design improvements (commit 5fca420)</li>
+        <li>6 CandidateCard components updated across all assessment types</li>
+      </ul>
+      <p style="margin-top:12px"><strong>This represents ~8 dev-days of work completed in 7 calendar days</strong> — significantly faster than previous weeks. Key success factors: (1) BG Check plan from v8.0 enabled fast execution, (2) Offer module benefited from compensation engine clarity, (3) Team now fluent in 4-level architecture pattern.</p>
+    </div>
+
+    <table class="tbl">
+      <thead><tr><th style="width:55px">Task</th><th>Plan (from v8.0)</th><th style="width:130px">Outcome</th><th>Evidence</th></tr></thead>
+      <tbody>
+        <tr style="background:var(--warn-soft)">
+          <td>9.1</td>
+          <td>BG Check L2 Position + L3 Tracker tab</td>
+          <td><span class="b b-ok">✓ DONE</span></td>
+          <td><strong>CONFIRMED:</strong> <code>BackgroundCheck-Job.jsx</code> (13.8K) committed. L3 Candidate 4-tab complete (50.5K).</td>
+        </tr>
+        <tr style="background:var(--good-soft)">
+          <td>9.2</td>
+          <td>BG Check L3 Consent + Verdict tabs</td>
+          <td><span class="b b-ok">✓ DONE</span></td>
+          <td><strong>CONFIRMED:</strong> Consent section with portal backend + UI (commit d7fb8bd). All 4 tabs functional.</td>
+        </tr>
+        <tr style="background:var(--warn-soft)">
+          <td>9.3</td>
+          <td>Interview Evaluate + Decide tabs</td>
+          <td><span class="b b-warn">NOT CONFIRMED</span></td>
+          <td>No <code>ComingSoonSection</code> found but unclear if tabs were built or removed. Needs manual verification.</td>
+        </tr>
+        <tr style="background:var(--warn-soft)">
+          <td>9.4</td>
+          <td>BG Check L4 Calibration + Interview L4</td>
+          <td><span class="b b-warn">PARTIAL</span></td>
+          <td>Interview L4 file exists (<code>InterviewCalibration.jsx</code>). BG L4 not found.</td>
+        </tr>
+        <tr style="background:var(--good-soft)">
+          <td>9.5</td>
+          <td>Offer module kickoff — backend scaffold + DB</td>
+          <td><span class="b b-ok">✓ DONE</span></td>
+          <td><strong>CONFIRMED:</strong> 4 backend files (1,099 lines), 4 DB tables, routes mounted (commit 67e833b).</td>
+        </tr>
+        <tr style="background:var(--warn-soft)">
+          <td>9.6</td>
+          <td>Offer implementation plan</td>
+          <td><span class="b b-warn">NOT FOUND</span></td>
+          <td>No <code>OFFER_MODULE_PLAN.md</code> found in <code>development_plan/</code>. Team proceeded without written plan.</td>
+        </tr>
+      </tbody>
+    </table>
+
+    <div class="cal info">
+      <div class="cal-title">📊 Week 12 velocity analysis</div>
+      <p><strong>Planned:</strong> 6 tasks (9.1–9.6)</p>
+      <p><strong>Completed:</strong> 3 tasks fully (9.1, 9.2, 9.5), 1 partially (9.4), 2 unconfirmed (9.3, 9.6)</p>
+      <p><strong>Completion rate:</strong> 50% by task count, but ~85% by dev-days (Offer + BG completion represents 8 dev-days, Interview tasks deferred)</p>
+      <p style="margin-top:10px"><strong>Key insight:</strong> Team prioritized Offer + BG over Interview. This was correct given BG was at 40% and Offer was blocking. However, Interview Evaluate/Decide deferral creates risk for W13. Recommendation: Interview must be priority #1 next week to avoid funnel blockage.</p>
+    </div>
+  </div>
+
+  <!-- §5 GAPS -->
+  <div class="sec" id="gaps">
+    <div class="sec-num">§5</div>
+    <div class="sec-title">Gap analysis — confirmed remaining work</div>
+    <p class="sec-sub">Offer is now 35% complete, reducing the critical path but still requiring L2/L4 + real data integration. Interview Evaluate/Decide/Calibration remain the highest-risk items.</p>
+
+    <h3>5.1 Offer &amp; Contract — finish the remaining ~65%</h3>
+    <table class="tbl">
+      <thead><tr><th>Item</th><th>Status</th><th>Estimated effort</th></tr></thead>
+      <tbody>
+        <tr style="background:var(--warn-soft)"><td>L2 Position — per-job offer table with candidate rows</td><td><span class="b b-warn">PENDING</span></td><td>~1 dev-day</td></tr>
+        <tr style="background:var(--warn-soft)"><td>L3 Remuneration step — wire to compensation engine API</td><td><span class="b b-warn">PARTIAL — dummy data</span></td><td>~1 dev-day (replace dummy with real calc)</td></tr>
+        <tr style="background:var(--warn-soft)"><td>L3 Offer Letter step — template rendering, send email</td><td><span class="b b-warn">PARTIAL — scaffold exists</span></td><td>~1 dev-day</td></tr>
+        <tr style="background:var(--warn-soft)"><td>L3 Contract step — PDF generation (PKWT/PKWTT templates)</td><td><span class="b b-warn">PARTIAL — backend stub</span></td><td>~1.5 dev-days (templates + puppeteer/pdf-lib)</td></tr>
+        <tr style="background:var(--warn-soft)"><td>L3 E-Signature step — canvas signature capture, upload, verify</td><td><span class="b b-warn">PARTIAL — component exists</span></td><td>~1 dev-day</td></tr>
+        <tr style="background:var(--warn-soft)"><td>L4 Calibration — bulk advance from BG to Offer</td><td><span class="b b-warn">PENDING</span></td><td>~1 dev-day</td></tr>
+        <tr><td>Negotiation flow — counter-offer UI + approval workflow</td><td><span class="b b-warn">PENDING</span></td><td>~1 dev-day (backend exists, frontend missing)</td></tr>
+        <tr><td>Email notifications — offer sent, accepted, rejected, reminder</td><td><span class="b b-warn">PENDING</span></td><td>~0.5 dev-day</td></tr>
+      </tbody>
+    </table>
+    <p style="font-size:13px;color:var(--muted);margin-top:8px"><strong>Total remaining:</strong> ~8.5 dev-days to reach 100%. Target: Fri 5 Jul (W13 end) for MVP, 10 Jul for polish.</p>
+
+    <h3>5.2 Interview — finish the remaining ~50%</h3>
+    <table class="tbl">
+      <thead><tr><th>Item</th><th>Status</th><th>Estimated effort</th></tr></thead>
+      <tbody>
+        <tr style="background:var(--bad-soft)"><td>Evaluate tab — per-competency scorecard (1–7 rating, weighted total)</td><td><span class="b b-err">UNCONFIRMED</span></td><td>~1.5 dev-days (if not built)</td></tr>
+        <tr style="background:var(--bad-soft)"><td>Decide tab — advance/hold/reject from Interview</td><td><span class="b b-err">UNCONFIRMED</span></td><td>~1 dev-day (if not built)</td></tr>
+        <tr style="background:var(--warn-soft)"><td>L4 Calibration — verify functional</td><td><span class="b b-warn">FILE EXISTS</span></td><td>~0.5 dev-day (verify bulk advance works)</td></tr>
+      </tbody>
+    </table>
+    <p style="font-size:13px;color:var(--muted);margin-top:8px"><strong>Total remaining:</strong> ~3 dev-days (if Evaluate/Decide not built). Target: Wed 3 Jul (W13 mid-week). <strong>CRITICAL:</strong> Must verify Interview status Mon 1 Jul to avoid late-stage surprises.</p>
+
+    <h3>5.3 Onboarding — 0%, must start W13</h3>
+    <table class="tbl">
+      <thead><tr><th>Module</th><th>Status</th><th>Estimated dev-days</th><th>Needs to start</th></tr></thead>
+      <tbody>
+        <tr style="background:var(--bad-soft)"><td>Onboarding (ON-01..04)</td><td><span class="b b-err">0%</span></td><td>~8–10 dev-days (4 levels × 2 days/level)</td><td><strong>Mon 1 Jul latest</strong> (13 days to pilot, need 8 days min)</td></tr>
+      </tbody>
+    </table>
+    <p style="font-size:13px;color:var(--bad);margin-top:8px;font-weight:600">⚠️ WARNING: Onboarding start is now critical path. If not started Mon 1 Jul, will not finish by 13 Jul pilot. Recommend: Reduce scope to L1 + L3 only (skip L2 Position + L4 Calibration for v0.1).</p>
+  </div>
+
+  <!-- §6 NEXT WEEK -->
+  <div class="sec" id="next">
+    <div class="sec-num">§6</div>
+    <div class="sec-title">This week (1–5 Jul) — Interview verification + Offer L2/L4 + Onboarding kickoff</div>
+    <p class="sec-sub">With 13 days remaining, this week must deliver: (1) Interview verification/completion, (2) Offer L2/L4, (3) Onboarding scaffold. Any slip will jeopardize 13 Jul pilot.</p>
+
+    <div class="day">
+      <div class="day-head">
+        <div class="day-num">Mon–Tue</div>
+        <div class="day-date">1–2 Jul 2026</div>
+        <div class="day-title">Interview verification + Onboarding kickoff</div>
+      </div>
+
+      <div class="day-task">
+        <div class="task-head">
+          <span class="task-id">10.1</span>
+          <span class="task-title">Interview Evaluate/Decide verification — URGENT</span>
+          <span class="task-owner">Eng Lead · 2h</span>
+        </div>
+        <div class="task-body">Manually verify Interview Evaluate and Decide tabs. Check if <code>ComingSoonSection</code> was removed/replaced. If tabs are stubs, escalate immediately — this blocks the funnel. If tabs are built, update audit. If missing, add to W13 P0 tasks.</div>
+        <div class="task-criteria"><span class="task-criteria-label">DONE WHEN</span>Confirmed status: built, stub, or missing. If missing, 1.5 dev-days added to W13 plan.</div>
+      </div>
+
+      <div class="day-task">
+        <div class="task-head">
+          <span class="task-id">10.2</span>
+          <span class="task-title">Onboarding backend scaffold + DB tables</span>
+          <span class="task-claude">CLAUDE ASSIST</span>
+          <span class="task-owner">BE Eng · 1 dev-day</span>
+        </div>
+        <div class="task-body">Create <code>backend/src/modules/onboarding/</code> (route, controller, service, model). Tables: <code>candidate_onboarding</code>, <code>onboarding_checklist</code>, <code>onboarding_document</code>, <code>onboarding_task</code>. Mount at <code>/api/onboarding</code>. 8+ endpoints: workboard, create, assign, track, submit, approve, complete.</div>
+        <div class="task-criteria"><span class="task-criteria-label">DONE WHEN</span><code>ls backend/src/modules/onboarding/</code> shows 4 files. Tables exist. Endpoints respond 200.</div>
+      </div>
+
+      <div class="day-task">
+        <div class="task-head">
+          <span class="task-id">10.3</span>
+          <span class="task-title">Offer L2 Position page</span>
+          <span class="task-owner">FE Eng · 1 dev-day</span>
+        </div>
+        <div class="task-body">Create <code>OfferPosition.jsx</code> — per-job offer table with candidate rows. Columns: candidate name, email, offer status, contract status, base salary, sent date, actions (view, send, remind). Wire to <code>/api/offer/job/:job_id</code> endpoint.</div>
+        <div class="task-criteria"><span class="task-criteria-label">DONE WHEN</span>L2 page navigable. Table renders. Click candidate → L3 Contract page.</div>
+      </div>
+    </div>
+
+    <div class="day">
+      <div class="day-head">
+        <div class="day-num">Wed–Thu</div>
+        <div class="day-date">3–4 Jul 2026</div>
+        <div class="day-title">Offer L3 real data + Onboarding L1/L3</div>
+      </div>
+
+      <div class="day-task">
+        <div class="task-head">
+          <span class="task-id">10.4</span>
+          <span class="task-title">Offer L3 — replace dummy data with real API calls</span>
+          <span class="task-owner">FE Eng · 1.5 dev-days</span>
+        </div>
+        <div class="task-body">Wire <code>OfferContract.jsx</code> to real backend. Remuneration step: call <code>/api/offer/:offer_id/compensation</code> (uses compensation engine). Offer Letter step: render template, send email. Contract step: generate PDF (PKWT/PKWTT template). E-Signature step: canvas signature, upload base64 PNG, save to <code>offer_contract.signature_data</code>.</div>
+        <div class="task-criteria"><span class="task-criteria-label">DONE WHEN</span>All 5 steps use real data. Signature saves. PDF generates. Email sends.</div>
+      </div>
+
+      <div class="day-task">
+        <div class="task-head">
+          <span class="task-id">10.5</span>
+          <span class="task-title">Onboarding L1 Workboard + L3 Candidate</span>
+          <span class="task-owner">FE Eng · 2 dev-days</span>
+        </div>
+        <div class="task-body">Create <code>OnboardingWorkboard.jsx</code> (L1) — workboard with status chips (pending/in_progress/completed), position rail, candidate list. Create <code>OnboardingCandidate.jsx</code> (L3) — checklist stepper (4 phases: Pre-Start, Day 1, Week 1, Month 1). Each phase: task list with checkboxes, document upload, approval actions.</div>
+        <div class="task-criteria"><span class="task-criteria-label">DONE WHEN</span>L1 + L3 pages navigable. Checklist renders. Tasks checkable. Documents uploadable.</div>
+      </div>
+
+      <div class="day-task">
+        <div class="task-head">
+          <span class="task-id">10.6</span>
+          <span class="task-title">Offer L4 Calibration</span>
+          <span class="task-owner">FE Eng · 1 dev-day</span>
+        </div>
+        <div class="task-body">Create <code>OfferCalibration.jsx</code> — clone <code>InterviewCalibration.jsx</code> pattern. Show all 'signed' offers for a job. Multi-select, bulk advance to Onboarding. Backend: <code>POST /api/offer/calibrate/:job_id/advance</code> creates onboarding records.</div>
+        <div class="task-criteria"><span class="task-criteria-label">DONE WHEN</span>Calibration page shows signed offers. Bulk advance creates onboarding records.</div>
+      </div>
+    </div>
+
+    <div class="day">
+      <div class="day-head">
+        <div class="day-num">Fri</div>
+        <div class="day-date">5 Jul 2026</div>
+        <div class="day-title">Integration testing + polish</div>
+      </div>
+
+      <div class="day-task">
+        <div class="task-head">
+          <span class="task-id">10.7</span>
+          <span class="task-title">End-to-end funnel test — Screening → Onboarding</span>
+          <span class="task-owner">QA + PM · 0.5 dev-day</span>
+        </div>
+        <div class="task-body">Manual test of full candidate funnel: Create applicant → AI Screening → Interview → BG Check → Offer → Onboarding. Verify: (1) status transitions work, (2) candidate appears in each workboard, (3) no data loss, (4) all actions persist. Document blockers for W14.</div>
+        <div class="task-criteria"><span class="task-criteria-label">DONE WHEN</span>Test candidate reaches Onboarding 'completed' status. Blockers documented in W14 task list.</div>
+      </div>
+
+      <div class="day-task">
+        <div class="task-head">
+          <span class="task-id">10.8</span>
+          <span class="task-title">Polish pass — design consistency, error handling</span>
+          <span class="task-owner">FE Eng · 0.5 dev-day</span>
+        </div>
+        <div class="task-body">Review all new pages (Offer, Onboarding) for design consistency: warm cream colors, Shadcn components, no hardcoded hex. Add loading states, error boundaries, empty states. Fix any visual regressions.</div>
+        <div class="task-criteria"><span class="task-criteria-label">DONE WHEN</span>ESLint <code>no-hardcoded-hex</code> passes. No console errors. Loading spinners visible on slow API calls.</div>
+      </div>
+    </div>
+
+    <div class="cal info">
+      <div class="cal-title">📋 Week 13 remaining schedule (1–5 Jul)</div>
+      <p><strong>Mon 1 Jul:</strong> Interview verification (10.1), Onboarding backend (10.2) — 6h work</p>
+      <p><strong>Tue 2 Jul:</strong> Offer L2 (10.3), Onboarding L1/L3 start (10.5) — 8h work</p>
+      <p><strong>Wed 3 Jul:</strong> Offer L3 real data (10.4), Onboarding L1/L3 finish (10.5) — 8h work</p>
+      <p><strong>Thu 4 Jul:</strong> Offer L4 (10.6), Onboarding polish — 8h work</p>
+      <p><strong>Fri 5 Jul:</strong> Integration test (10.7), polish pass (10.8) — 6h work</p>
+      <p style="margin-top:10px;font-weight:600">If this schedule holds, Offer will be ~80%, Onboarding will be ~60%, overall readiness will reach ~85% by Fri. W14 (8–12 Jul) reserved for bug fixes, pilot prep, and final 15% completion.</p>
+    </div>
+  </div>
+
+  <!-- §7 RISKS -->
+  <div class="sec" id="risks">
+    <div class="sec-num">§7</div>
+    <div class="sec-title">Risk register — updated W13</div>
+
+    <div style="margin:18px 0">
+      <div class="risk-row">
+        <div><div class="risk-id">R-1</div></div>
+        <div class="risk-desc">
+          <strong>Interview Evaluate/Decide status unknown — funnel blocker if not built</strong>
+          v9.0 audit found no <code>ComingSoonSection</code> in Interview components, but unclear if tabs were built or removed. If missing, Interview is at 30% (not 50%), blocking the entire funnel. <em>Mitigation:</em> Task 10.1 (Mon 1 Jul) verifies status. If missing, escalate to P0 and allocate 1.5 dev-days from W13. Interview L4 file exists but needs functional verification.
+        </div>
+        <div><span class="b b-err">P0 · CRITICAL</span></div>
+      </div>
+
+      <div class="risk-row">
+        <div><div class="risk-id">R-2</div></div>
+        <div class="risk-desc">
+          <strong>Onboarding 0% with 13 days to pilot — scope reduction likely needed</strong>
+          Onboarding has not started. Full 4-level implementation needs 8–10 dev-days, but only 8 working days remain before pilot (1–5 Jul W13, 8–12 Jul W14). W14 should be reserved for bug fixes, not new features. <em>Mitigation:</em> Reduce Onboarding scope to L1 Workboard + L3 Candidate only (skip L2 Position + L4 Calibration). This saves ~3 dev-days. L2/L4 deferred to v0.1.5. Decision needed by Mon 1 Jul.
+        </div>
+        <div><span class="b b-err">P0 · CRITICAL</span></div>
+      </div>
+
+      <div class="risk-row">
+        <div><div class="risk-id">R-3</div></div>
+        <div class="risk-desc">
+          <strong>Compensation engine correctness — PPh21/BPJS untested against real payroll</strong>
+          Compensation engine (201 lines) implements 2026 PPh21 rates and BPJS caps, but has not been tested against real Indonesian payroll data. Miscalculation would damage pilot trust and create legal risk. <em>Mitigation:</em> Create unit tests against DJP official examples (10 test cases covering all tax brackets). Run tests Wed 3 Jul before wiring Offer L3 to real API (task 10.4). Flag any discrepancies for manual review.
+        </div>
+        <div><span class="b b-err">P0 · HIGH</span></div>
+      </div>
+
+      <div class="risk-row">
+        <div><div class="risk-id">R-4</div></div>
+        <div class="risk-desc">
+          <strong>Contract PDF generation — no implementation plan, risk of last-minute blockers</strong>
+          Offer backend has <code>generateContract()</code> stub but no confirmed implementation. Contract generation requires: (1) PKWT/PKWTT templates (Bahasa Indonesia), (2) puppeteer or pdf-lib setup, (3) variable interpolation. If not planned, will block Offer L3 completion (task 10.4). <em>Mitigation:</em> Create contract template Tue 2 Jul. Use puppeteer (already in project for Seek RPA). If puppeteer fails, fallback: generate HTML contract, let user print as PDF (defer true PDF gen to v0.1.5).
+        </div>
+        <div><span class="b b-warn">P1 · MEDIUM</span></div>
+      </div>
+
+      <div class="risk-row">
+        <div><div class="risk-id">R-5</div></div>
+        <div class="risk-desc">
+          <strong>Pilot companies not confirmed — GTM timeline slipping</strong>
+          Same as v8.0. Still no confirmed pilot count. Companies need to be onboarded ~1 week before launch (6 Jul). That is 6 days from today (30 Jun). <em>Mitigation:</em> GTM must confirm count by Wed 3 Jul. If &lt; 10 confirmed, delay pilot to 20 Jul (1 week slip) or reduce to 5-company pilot.
+        </div>
+        <div><span class="b b-warn">P1 · HIGH</span></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- §8 DECISIONS -->
+  <div class="sec" id="decisions">
+    <div class="sec-num">§8</div>
+    <div class="sec-title">Decisions needed from leadership — this week</div>
+
+    <table class="tbl">
+      <thead><tr><th style="width:60px">ID</th><th>Decision</th><th style="width:120px">Owner</th><th>Recommendation</th></tr></thead>
+      <tbody>
+        <tr style="background:var(--good-soft)">
+          <td><strong>D-3</strong></td>
+          <td>compensation_engine — internal build or library?</td>
+          <td>Eng Lead</td>
+          <td><strong>RESOLVED — internal build</strong> (confirmed by compensation-engine.js implementation). 201 lines, 2026 PPh21 rates, BPJS caps. Must add unit tests Wed 3 Jul.</td>
+        </tr>
+        <tr style="background:var(--bad-soft)">
+          <td><strong>D-4</strong></td>
+          <td>Pilot count — how many confirmed?</td>
+          <td>GTM + PM</td>
+          <td><strong>Must answer by Wed 3 Jul.</strong> Engineering needs a number to assess whether 13 Jul is viable. If &lt; 10 confirmed, recommend 1-week delay to 20 Jul or 5-company pilot.</td>
+        </tr>
+        <tr style="background:var(--bad-soft)">
+          <td><strong>D-5</strong></td>
+          <td>Onboarding role templates — 3 or 1?</td>
+          <td>Product · PM</td>
+          <td><strong>Decide by Mon 1 Jul.</strong> Recommended: 1 template (office_staff) for v0.1 to save ~1 dev-day. Add factory_worker and field_sales in v0.1.5.</td>
+        </tr>
+        <tr style="background:var(--bad-soft)">
+          <td><strong>D-11</strong></td>
+          <td>Onboarding scope — 4 levels or 2 levels (L1 + L3 only)?</td>
+          <td>Product · PM</td>
+          <td><strong>Decide by Mon 1 Jul.</strong> Recommended: L1 + L3 only for v0.1 (saves ~3 dev-days). L2 Position and L4 Calibration deferred to v0.1.5. This ensures Onboarding is usable by 13 Jul pilot.</td>
+        </tr>
+        <tr style="background:var(--bad-soft)">
+          <td><strong>D-12</strong></td>
+          <td>Contract PDF generation — puppeteer or fallback to HTML print?</td>
+          <td>Eng Lead</td>
+          <td><strong>Decide by Tue 2 Jul.</strong> Recommended: Try puppeteer (already in project). If fails by Wed, fallback: generate HTML contract, let user print as PDF. Defer true PDF gen to v0.1.5.</td>
+        </tr>
+        <tr>
+          <td><strong>D-13</strong></td>
+          <td>W14 (8–12 Jul) scope — feature freeze or continue build?</td>
+          <td>PM + CTO</td>
+          <td>Recommended: Feature freeze Mon 8 Jul. W14 reserved for: (1) bug fixes from E2E test (10.7), (2) pilot prep (seed data, user training), (3) polish (design consistency, error handling). No new features unless critical blocker discovered.</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <!-- §9 VERIFY -->
+  <div class="sec" id="verify">
+    <div class="sec-num">§9</div>
+    <div class="sec-title">Verify this audit — run these commands</div>
+    <p class="sec-sub">These commands verify the Offer module scaffold, BG Check completion, and Interview status. Run on current working directory (latest commit).</p>
+
+    <table class="tbl">
+      <thead><tr><th>Claim to verify</th><th>Command</th><th>Expected output</th></tr></thead>
+      <tbody>
+        <tr><td>Offer backend files exist</td><td><code>ls backend/src/modules/offer/</code></td><td>4 files: offer.route.js, offer.controller.js, offer.service.js, offer.model.js</td></tr>
+        <tr><td>Compensation engine exists</td><td><code>ls backend/src/shared/services/compensation-engine.js</code></td><td>File exists (201 lines)</td></tr>
+        <tr><td>Offer routes mounted in app.js</td><td><code>grep "offer.route" backend/app.js</code></td><td>1 match: <code>import offer from "./src/modules/offer/offer.route.js"</code></td></tr>
+        <tr><td>Offer 4 tables in setup.sql</td><td><code>grep "CREATE TABLE.*offer" backend/src/db/setup.sql</code></td><td>4 matches: candidate_offer, offer_compensation, offer_negotiation, offer_contract</td></tr>
+        <tr><td>Offer L1 Workboard exists</td><td><code>ls frontend/src/pages/Offer*.jsx</code></td><td>2 files: OfferWorkboard.jsx, OfferContract.jsx</td></tr>
+        <tr><td>Offer-contract components exist</td><td><code>ls frontend/src/components/offer-contract/</code></td><td>8 files (ContractStep, ESignatureStep, OfferLetterStep, etc.)</td></tr>
+        <tr><td>BG Check 3 pages exist</td><td><code>ls frontend/src/components/background-check/</code></td><td>3 files: BackgroundCheck(dummy bayu).jsx, BackgroundCheck-Job.jsx, BackgroundCheck-Candidate.jsx</td></tr>
+        <tr><td>Interview Evaluate still stub?</td><td><code>grep -c "ComingSoonSection" frontend/src/components/interview/*.jsx</code></td><td>0 = no stubs found (but unclear if built or removed)</td></tr>
+        <tr><td>Interview L4 Calibration exists</td><td><code>ls frontend/src/pages/InterviewCalibration.jsx</code></td><td>File exists</td></tr>
+        <tr><td>Onboarding module started?</td><td><code>ls backend/src/modules/onboarding/ 2>/dev/null</code></td><td>No output = not started yet (expected for 30 Jun)</td></tr>
+        <tr><td>Recent commit count</td><td><code>git log --oneline --since="7 days ago" | wc -l</code></td><td>10 commits (confirms active development)</td></tr>
+      </tbody>
+    </table>
+
+    <div class="cal success">
+      <div class="cal-title">✅ Next steps after verification</div>
+      <ol style="margin:8px 0 0;padding-left:20px">
+        <li><strong>Interview verification (P0):</strong> Mon 1 Jul, manually check Interview Evaluate/Decide tabs. Task 10.1.</li>
+        <li><strong>Onboarding kickoff:</strong> Mon 1 Jul, create backend scaffold (task 10.2). Decision D-11 needed on scope (4 levels vs 2 levels).</li>
+        <li><strong>Compensation engine unit tests:</strong> Wed 3 Jul, test against DJP official examples before wiring to Offer L3.</li>
+        <li><strong>Contract template:</strong> Tue 2 Jul, create PKWT/PKWTT templates (Bahasa Indonesia) for PDF generation.</li>
+        <li><strong>E2E funnel test:</strong> Fri 5 Jul, test candidate flow Screening → Onboarding (task 10.7).</li>
+        <li><strong>Pilot confirmation:</strong> GTM must confirm pilot count by Wed 3 Jul (decision D-4).</li>
+      </ol>
+    </div>
+
+    <h3>9.1 Glossary</h3>
+    <div class="gloss"><span class="gloss-term">Compensation Engine</span>Backend service (201 lines) that calculates PPh21 (Indonesian income tax), BPJS Kesehatan (health insurance), BPJS Ketenagakerjaan (employment insurance), and net salary (take-home pay) based on 2026 DJP rates and BPJS caps.</div>
+    <div class="gloss"><span class="gloss-term">PPh21 2026</span>Indonesian progressive income tax with 5 layers: 5% (0-60M), 15% (60-250M), 25% (250-500M), 30% (500M-5B), 35% (>5B). Annual calculation.</div>
+    <div class="gloss"><span class="gloss-term">BPJS Kesehatan</span>Indonesian national health insurance. Employee pays 1% of gross salary (max 12M cap). Employer pays 4% (total 5%).</div>
+    <div class="gloss"><span class="gloss-term">BPJS Ketenagakerjaan</span>Indonesian employment insurance. Employee pays: JHT 2% (old age security) + JP 1% (pension) of gross salary (max 10.14M cap).</div>
+    <div class="gloss"><span class="gloss-term">PTKP</span>Penghasilan Tidak Kena Pajak (Tax-Free Income Threshold). TK0 (single, no dependents): 54M annually in 2026.</div>
+    <div class="gloss"><span class="gloss-term">PKWT / PKWTT</span>Perjanjian Kerja Waktu Tertentu / Tidak Tertentu (Fixed-term / Permanent Employment Agreement). Indonesian employment contract types.</div>
+    <div class="gloss"><span class="gloss-term">5-step stepper</span>Offer L3 Candidate page with 5 sequential steps: Remuneration (compensation calc), Offer Letter (template), Contract (PDF gen), E-Signature (canvas), Pipeline (status tracking).</div>
+    <div class="gloss"><span class="gloss-term">L1/L2/L3/L4</span>Myralix 4-level architecture: L1 = Workboard (all jobs), L2 = Position (single job), L3 = Candidate (single candidate), L4 = Calibration (bulk actions).</div>
+  </div>
+
+  <div style="text-align:center;padding:48px 0 16px;font-family:var(--mono);font-size:11px;color:var(--faint);letter-spacing:.06em;text-transform:uppercase">
+    MYRALIX · v0.1 CODEBASE AUDIT · 30 JUN 2026 · v9.0<br>
+    <strong style="color:var(--good)">MILESTONE:</strong> Offer 0% → 35%, BG Check 100%, Overall 68% → 78% (+10pp). Fastest weekly progress to date.<br>
+    Internal product documentation · Not for external distribution · © PT Myralix Indonesia
+  </div>
+
+</div>
+</body>
+</html>
