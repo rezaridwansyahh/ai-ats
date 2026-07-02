@@ -8,8 +8,8 @@ router.use(authToken);
 
 router.get('/', assessmentBatteryResultController.getAll);
 router.get('/from-candidate', assessmentBatteryResultController.getByCandidateBattery);
-router.get('/participant/:participant_id/active', assessmentBatteryResultController.getActiveProgress);
-router.get('/participant/:participant_id', assessmentBatteryResultController.getByParticipantId);
+router.get('/candidate/:candidate_id/active', assessmentBatteryResultController.getActiveProgress);
+router.get('/candidate/:candidate_id', assessmentBatteryResultController.getByCandidateId);
 router.get('/:id', assessmentBatteryResultController.getById);
 
 router.post('/', assessmentBatteryResultController.submit);

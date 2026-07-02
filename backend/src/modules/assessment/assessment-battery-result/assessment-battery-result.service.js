@@ -247,9 +247,9 @@ class AssessmentBatteryResultService {
     return withResolvedAiStatus(row);
   }
 
-  async getByParticipantId(participant_id) {
-    if (!participant_id) throw { status: 400, message: 'participant_id is required' };
-    return withResolvedAiStatus(await AssessmentBatteryResult.getByParticipantId(participant_id));
+  async getByCandidateId(candidate_id) {
+    if (!candidate_id) throw { status: 400, message: 'candidate_id is required' };
+    return withResolvedAiStatus(await AssessmentBatteryResult.getByParticipantId(candidate_id));
   }
 
   // Latest result for (candidate, battery). Returns null when the chain can't be resolved
@@ -266,8 +266,8 @@ class AssessmentBatteryResultService {
     return row ? withResolvedAiStatus(row) : null;
   }
 
-  async submit({ participant_id, assessment_id, answers, started_at, results: bodyResults, summary: bodySummary }) {
-    if (!participant_id) throw { status: 400, message: 'participant_id is required' };
+  async submit({ candidate_id, assessment_id, answers, started_at, results: bodyResults, summary: bodySummary }) {
+    if (!candidate_id) throw { status: 400, message: 'candidate_id is required' };
     if (!assessment_id || !Number.isInteger(Number(assessment_id))) {
       throw { status: 400, message: 'integer assessment_id is required' };
     }
@@ -277,7 +277,7 @@ class AssessmentBatteryResultService {
       throw { status: 400, message: 'answers must be a non-empty array (or pre-computed results+summary)' };
     }
 
-    const pid = Number(participant_id);
+    const pid = Number(candidate_id);
     const aid = Number(assessment_id);
 
     const assessmentRow = await getDb().query(
@@ -347,7 +347,7 @@ class AssessmentBatteryResultService {
             completed_at,
           })
         : await AssessmentBatteryResult.create(client, {
-            participant_id: pid,
+            candidate_id: pid,
             assessment_id:  aid,
             status,
             results: mergedResults,
@@ -403,11 +403,11 @@ class AssessmentBatteryResultService {
     return withResolvedAiStatus(pending);
   }
 
-  async getActiveProgress(participant_id, assessment_id) {
-    if (!participant_id) throw { status: 400, message: 'participant_id is required' };
+  async getActiveProgress(candidate_id, assessment_id) {
+    if (!candidate_id) throw { status: 400, message: 'candidate_id is required' };
     if (!assessment_id)  throw { status: 400, message: 'assessment_id is required' };
     const row = await AssessmentBatteryResult.getActiveByParticipantAssessment(
-      Number(participant_id),
+      Number(candidate_id),
       Number(assessment_id),
     );
     if (!row) {

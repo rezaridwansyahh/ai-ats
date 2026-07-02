@@ -69,8 +69,9 @@ export default function AIScreeningPage() {
 
   // Stage data
   const [cohortRows, setCohortRows] = useState([]);
-  const [parseRows, setParseRows] = useState([]);
-  const [matchRows, setMatchRows] = useState([]);
+  const [parseRows, setParseRows]   = useState([]);
+  const [matchRows, setMatchRows]   = useState([]);
+  const [qaRows, setQaRows]         = useState([]);
 
   // Ready-cohort interaction
   const [selected, setSelected] = useState(new Set());
@@ -80,19 +81,21 @@ export default function AIScreeningPage() {
   const [advancing, setAdvancing] = useState(false);
 
   // Accordion open state — Ready open by default
-  const [sectionOpen, setSectionOpen] = useState({ ready: true, match: false, parse: false, qa: false });
+  const [activeStage, setActiveStage] = useState('parse');
 
   // Refresh just the stage tables (after run / advance)
   const loadStages = useCallback(async () => {
     if (!jobId) return;
-    const [calRes, parseRes, matchRes] = await Promise.all([
+    const [calRes, parseRes, matchRes, qaRes] = await Promise.all([
       getCalibration(jobId),
       getLaneCandidates(jobId, 'parse'),
       getLaneCandidates(jobId, 'match'),
+      getLaneCandidates(jobId, 'qa'),
     ]);
-    setCohortRows(Array.isArray(calRes.data?.rows) ? calRes.data.rows : []);
-    setParseRows(Array.isArray(parseRes.data?.candidates) ? parseRes.data.candidates : []);
-    setMatchRows(Array.isArray(matchRes.data?.candidates) ? matchRes.data.candidates : []);
+    setCohortRows(Array.isArray(calRes.data?.rows)           ? calRes.data.rows           : []);
+    setParseRows(Array.isArray(parseRes.data?.candidates)   ? parseRes.data.candidates   : []);
+    setMatchRows(Array.isArray(matchRes.data?.candidates)   ? matchRes.data.candidates   : []);
+    setQaRows(Array.isArray(qaRes.data?.candidates)         ? qaRes.data.candidates      : []);
     setSelected(new Set());
   }, [jobId]);
 
@@ -104,20 +107,21 @@ export default function AIScreeningPage() {
       setLoading(true);
       setError(null);
       try {
-        const [jobRes, calRes, parseRes, matchRes] = await Promise.all([
-          // Category for AI Screening
+        const [jobRes, calRes, parseRes, matchRes, qaRes] = await Promise.all([
           getJobById(jobId),
           getCalibration(jobId),
           getLaneCandidates(jobId, 'parse'),
           getLaneCandidates(jobId, 'match'),
+          getLaneCandidates(jobId, 'qa'),
         ]);
         if (cancelled) return;
 
         setJob(jobRes.data?.job || jobRes.data || null);
 
-        setCohortRows(Array.isArray(calRes.data?.rows) ? calRes.data.rows : []);
-        setParseRows(Array.isArray(parseRes.data?.candidates) ? parseRes.data.candidates : []);
-        setMatchRows(Array.isArray(matchRes.data?.candidates) ? matchRes.data.candidates : []);
+        setCohortRows(Array.isArray(calRes.data?.rows)         ? calRes.data.rows         : []);
+        setParseRows(Array.isArray(parseRes.data?.candidates)  ? parseRes.data.candidates : []);
+        setMatchRows(Array.isArray(matchRes.data?.candidates)  ? matchRes.data.candidates : []);
+        setQaRows(Array.isArray(qaRes.data?.candidates)        ? qaRes.data.candidates    : []);
         setSelected(new Set());
       } catch (err) {
         if (!cancelled) setError(err.response?.data?.message || err.message || 'Failed to load screening');
@@ -194,16 +198,10 @@ export default function AIScreeningPage() {
     }
   };
 
-  const toggleSection = (key) => setSectionOpen((s) => ({ ...s, [key]: !s[key] }));
-  const jumpToSection = (key) => {
-    setSectionOpen((s) => ({ ...s, [key]: true }));
-    setTimeout(() => document.getElementById(`section-${key}`)?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 60);
-  };
-
-  const total_candidates = parseRows.length + matchRows.length + cohortRows.length;
-  // Cumulative funnel: everyone past 'parse' has been parsed; everyone in 'ready' has been scored.
-  const parsedDone = matchRows.length + cohortRows.length;
-  const scoredDone = cohortRows.length;
+  const total_candidates = parseRows.length + matchRows.length + qaRows.length + cohortRows.length;
+  const parsedDone = matchRows.length + qaRows.length + cohortRows.length;
+  const scoredDone = qaRows.length + cohortRows.length;
+  const qaDone     = cohortRows.length;
   const pctOf = (n) => (total_candidates > 0 ? Math.round((n / total_candidates) * 100) : 0);
 
   const engineTiles = [
@@ -219,7 +217,13 @@ export default function AIScreeningPage() {
     },
     {
       key: 'qa', num: 3, label: 'Follow-up Q&A', icon: MessageSquare,
-      soon: true, pct: 0,
+      done: qaDone, word: 'responded', pct: pctOf(qaDone),
+      footer: `${qaDone} responded · ${qaRows.length} in progress`,
+    },
+    {
+      key: 'ready', num: 4, label: 'Ready to Advance', icon: Check,
+      done: cohortRows.length, word: 'ready', pct: pctOf(cohortRows.length),
+      footer: `${cohortRows.length} awaiting decision`,
     },
   ];
 
@@ -282,18 +286,22 @@ export default function AIScreeningPage() {
           <CardTitle className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
             Engine progress
           </CardTitle>
-          <span className="text-[11px] text-muted-foreground">{total_candidates} total · Parse → Match → Q&A</span>
+          <span className="text-[11px] text-muted-foreground">{total_candidates} total · Parse → Match → Q&A → Advance</span>
         </CardHeader>
         <CardContent className="pt-0">
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
             {engineTiles.map((t) => {
               const Icon = t.icon;
               return (
                 <button
                   key={t.key}
                   type="button"
-                  onClick={() => jumpToSection(t.key)}
-                  className="text-left p-3 rounded-lg border bg-muted/20 hover:bg-muted/40 transition-colors"
+                  onClick={() => setActiveStage(t.key)}
+                  className={`text-left p-3 rounded-lg border transition-colors ${
+                    activeStage === t.key
+                      ? 'bg-primary/5 border-primary/40 ring-1 ring-primary/30'
+                      : 'bg-muted/20 hover:bg-muted/40'
+                  }`}
                 >
                   <div className="flex items-center justify-between gap-2">
                     <span className="text-xs font-semibold flex items-center gap-1.5">
@@ -317,21 +325,36 @@ export default function AIScreeningPage() {
           </div>
         </CardContent>
       </Card>
+      
+      {/* Stage detail */}
+      <Card>
+        <CardContent className="px-0 pb-0">
+          {activeStage === 'parse' && (
+            <TwoPane
+              left={{ label: 'Pending parse', rows: parseRows }}
+              right={{ label: 'Parsed ✓', rows: [...matchRows, ...qaRows, ...cohortRows] }}
+              onOpen={openCandidate}
+            />
+          )}
 
-      {/* Ready to advance */}
-      <Card id="section-ready">
-        <CardHeader className="pb-3 cursor-pointer" onClick={() => toggleSection('ready')}>
-          <CardTitle className="text-sm flex items-center gap-2">
-            <ChevronRight className={`h-4 w-4 transition-transform ${sectionOpen.ready ? 'rotate-90' : ''}`} />
-            Ready to advance
-            <span className="text-[11px] font-normal text-muted-foreground">
-              · {cohortRows.length} candidate{cohortRows.length === 1 ? '' : 's'} · select top performers to advance to Interview
-            </span>
-          </CardTitle>
-        </CardHeader>
-        {sectionOpen.ready && (
-          <CardContent className="px-0 pb-0">
-            {cohortRows.length === 0 ? (
+          {activeStage === 'match' && (
+            <TwoPane
+              left={{ label: 'Awaiting score', rows: matchRows }}
+              right={{ label: 'Scored ✓', rows: [...qaRows, ...cohortRows] }}
+              onOpen={openCandidate}
+            />
+          )}
+
+          {activeStage === 'qa' && (
+            <TwoPane
+              left={{ label: 'Q&A sent · awaiting reply', rows: qaRows }}
+              right={{ label: 'Responded ✓', rows: cohortRows }}
+              onOpen={openCandidate}
+            />
+          )}
+
+          {activeStage === 'ready' && (
+            cohortRows.length === 0 ? (
               <p className="py-10 text-center text-xs text-muted-foreground italic">
                 No candidates ready yet. Open a candidate and run AI Matching from their Match panel.
               </p>
@@ -416,56 +439,25 @@ export default function AIScreeningPage() {
                   />
                 </div>
               </>
-            )}
-          </CardContent>
-        )}
+            )
+          )}
+        </CardContent>
       </Card>
-
-      {/* AI Matching lane */}
-      <StageSection
-        id="section-match"
-        title="AI Matching"
-        subtitle={`${matchRows.length} parsed · awaiting score`}
-        open={sectionOpen.match}
-        onToggle={() => toggleSection('match')}
-      >
-        <LaneTable rows={matchRows} onOpen={openCandidate} />
-      </StageSection>
-
-      {/* Resume Parsing lane */}
-      <StageSection
-        id="section-parse"
-        title="Resume Parsing"
-        subtitle={`${parseRows.length} in queue`}
-        open={sectionOpen.parse}
-        onToggle={() => toggleSection('parse')}
-      >
-        <LaneTable rows={parseRows} onOpen={openCandidate} />
-      </StageSection>
-
-      {/* Follow-up Q&A (engine not built) */}
-      <StageSection
-        id="section-qa"
-        title="Follow-up Q&A"
-        subtitle="coming soon"
-        open={sectionOpen.qa}
-        onToggle={() => toggleSection('qa')}
-      >
-        <p className="py-8 text-center text-xs text-muted-foreground italic">
-          Q&A engine arrives in a future release. Borderline candidates (60–82 fit) will receive 3–5 follow-up questions here.
-        </p>
-      </StageSection>
     </div>
   );
 }
 
-function StageSection({ id, title, subtitle, open, onToggle, children }) {
+function StageSection({ id, num, title, count, subtitle, open, onToggle, children }) {
   return (
     <Card id={id}>
       <CardHeader className="pb-3 cursor-pointer" onClick={onToggle}>
         <CardTitle className="text-sm flex items-center gap-2">
           <ChevronRight className={`h-4 w-4 transition-transform ${open ? 'rotate-90' : ''}`} />
+          <span className="text-[10px] font-bold text-muted-foreground bg-muted rounded px-1.5 py-0.5">{num}</span>
           {title}
+          {count != null && (
+            <Badge variant="secondary" className="text-[10px] font-mono">{count}</Badge>
+          )}
           {subtitle && <span className="text-[11px] font-normal text-muted-foreground">· {subtitle}</span>}
         </CardTitle>
       </CardHeader>
@@ -474,30 +466,66 @@ function StageSection({ id, title, subtitle, open, onToggle, children }) {
   );
 }
 
-function LaneTable({ rows, onOpen }) {
+function TwoPane({ left, right, onOpen }) {
+  return (
+    <div className="grid grid-cols-2 divide-x min-h-[200px]">
+      <div>
+        <div className="px-4 py-2 border-b bg-muted/30 flex items-center gap-2">
+          <span className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
+            {left.label}
+          </span>
+          <span className="text-[10px] font-mono bg-muted px-1.5 py-0.5 rounded-full text-muted-foreground">
+            {left.rows.length}
+          </span>
+        </div>
+        <LaneTable rows={left.rows} onOpen={onOpen} />
+      </div>
+      <div>
+        <div className="px-4 py-2 border-b bg-emerald-50 flex items-center gap-2">
+          <span className="text-[10px] font-semibold uppercase tracking-wide text-emerald-700">
+            {right.label}
+          </span>
+          <span className="text-[10px] font-mono bg-emerald-100 text-emerald-700 px-1.5 py-0.5 rounded-full">
+            {right.rows.length}
+          </span>
+        </div>
+        <LaneTable rows={right.rows} onOpen={onOpen} muted />
+      </div>
+    </div>
+  );
+}
+
+
+function LaneTable({ rows, onOpen, muted = false }) {
   if (!rows || rows.length === 0) {
-    return <p className="py-8 text-center text-xs text-muted-foreground italic">No candidates in this stage.</p>;
+    return (
+      <p className={`py-8 text-center text-xs italic ${muted ? 'text-muted-foreground/50' : 'text-muted-foreground'}`}>
+        No candidates in this stage.
+      </p>
+    );
   }
   return (
     <Table className="w-full">
-      <TableHeader className="bg-muted/40">
+      <TableHeader className={muted ? 'bg-muted/20' : 'bg-muted/40'}>
         <TableRow>
           <TableHead className="text-[10px] font-bold uppercase pl-4">Candidate</TableHead>
           <TableHead className="text-[10px] font-bold uppercase">Last position</TableHead>
           <TableHead className="text-[10px] font-bold uppercase">Location</TableHead>
-          <TableHead className="text-[10px] font-bold uppercase text-right pr-4">Score</TableHead>
         </TableRow>
       </TableHeader>
       <TableBody>
         {rows.map((r) => (
-          <TableRow key={r.applicant_id} className="cursor-pointer hover:bg-muted/30 transition-colors" onClick={() => onOpen(r)}>
+          <TableRow
+            key={r.screening_id ?? r.applicant_id}
+            className={`cursor-pointer transition-colors ${muted ? 'opacity-60 hover:opacity-100 hover:bg-muted/20' : 'hover:bg-muted/30'}`}
+            onClick={() => onOpen(r)}
+          >
             <TableCell className="text-xs pl-4">
               <div className="font-medium truncate">{r.applicant_name || `#${r.applicant_id}`}</div>
               <div className="text-[10px] text-muted-foreground">#{r.applicant_id}</div>
             </TableCell>
             <TableCell className="text-xs text-muted-foreground">{r.last_position || '—'}</TableCell>
             <TableCell className="text-xs text-muted-foreground">{r.address || '—'}</TableCell>
-            <TableCell className="text-right text-xs font-mono pr-4">{r.overall_score ?? '—'}</TableCell>
           </TableRow>
         ))}
       </TableBody>
