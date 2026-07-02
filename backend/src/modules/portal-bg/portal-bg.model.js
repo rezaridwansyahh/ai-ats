@@ -15,6 +15,7 @@ class PortalBgConsentModel {
         bc.token_expires_at,
         bc.status,
         mc.name           AS candidate_name,
+        ma.email          AS candidate_email,
         cj.job_title,
         cc.name           AS company_name
       FROM bg_consent bc
@@ -22,6 +23,7 @@ class PortalBgConsentModel {
       JOIN master_candidate mc   ON mc.id  = cb.candidate_id
       JOIN core_job cj           ON cj.id  = cb.job_id
       JOIN core_company cc       ON cc.id  = cb.company_id
+      LEFT JOIN master_applicant ma ON ma.id = mc.applicant_id
       WHERE bc.token::text = $1
          OR REPLACE(bc.token::text, '-', '') = $1
       LIMIT 1

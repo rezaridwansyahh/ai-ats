@@ -302,8 +302,15 @@ class BackgroundCheckService {
       throw { status: 403, message: 'Cross-tenant access denied' };
     }
 
-    return await backgroundCheckModel.ensureConsent(bg_id);
-  }  
+    const consent = await backgroundCheckModel.ensureConsent(bg_id);
+
+    const baseUrl = process.env.FRONTEND_URL || 'http://localhost:5173';
+    if (consent.token && consent.status === 'sent') {
+      consent.portal_url = `${baseUrl}/portal/bg/consent/${consent.token}`;
+    }
+
+    return consent;
+  }
 
   async generateConsentLink(bg_id, { company_id = null, sent_by = null } = {}) {
     if (!bg_id) throw { status: 400, message: 'bg_id is required' };
@@ -382,15 +389,18 @@ class BackgroundCheckService {
     const consent = await backgroundCheckModel.getConsentByBgId(bg_id);
     if (!consent) throw { status: 404, message: 'No consent record found' };
 
+    if (consent.status === 'signed') {
+      throw { status: 400, message: 'Consent has been signed and cannot be revoked.' };
+    }
     if (consent.status === 'revoked') {
-      throw { status: 400, message: 'Consent is already revoked' };
+      throw { status: 400, message: 'Consent is already revoked.' };
     }
     if (consent.status === 'draft') {
-      throw { status: 400, message: 'Cannot revoke a draft consent — generate a link first' };
+      throw { status: 400, message: 'Cannot revoke a draft consent — generate a link first.' };
     }
 
     return await backgroundCheckModel.revokeConsent(bg_id, { revoked_by, revocation_reason });
-  }  
+  }
 
   async getLanes(bg_id, { company_id = null } = {}) {
     if (!bg_id) throw { status: 400, message: 'bg_id is required' };

@@ -49,12 +49,12 @@ const LANE_LABELS_ID = {
 };
 
 const TRACKER_STATUSES = [
-  { value: 'pending',            label: 'Pending',            color: 'border-border text-muted-foreground bg-muted/40'       },
-  { value: 'in_progress',        label: 'In progress',        color: 'border-blue-200 text-blue-700 bg-blue-50'             },
-  { value: 'pass',               label: 'Pass',               color: 'border-emerald-200 text-emerald-700 bg-emerald-50'    },
-  { value: 'pass_with_concerns', label: 'Pass · note',        color: 'border-amber-200 text-amber-700 bg-amber-50'         },
-  { value: 'fail',               label: 'Fail',               color: 'border-rose-200 text-rose-700 bg-rose-50'            },
-  { value: 'stalled',            label: 'Stalled',            color: 'border-orange-200 text-orange-700 bg-orange-50'      },
+  { value: 'pending',            label: 'Pending',       color: 'border-border text-muted-foreground bg-muted/40'     },
+  { value: 'in_progress',        label: 'In progress',   color: 'border-blue-200 text-blue-700 bg-blue-50'           },
+  { value: 'pass',               label: 'Pass',          color: 'border-emerald-200 text-emerald-700 bg-emerald-50'  },
+  { value: 'pass_with_concerns', label: 'Pass · note',   color: 'border-amber-200 text-amber-700 bg-amber-50'       },
+  { value: 'fail',               label: 'Fail',          color: 'border-rose-200 text-rose-700 bg-rose-50'          },
+  { value: 'stalled',            label: 'Stalled',       color: 'border-orange-200 text-orange-700 bg-orange-50'    },
 ];
 
 const SUBSTAGES = [
@@ -204,7 +204,9 @@ function GenerateLinkRow({ onGenerate, generating, label = 'Generate link' }) {
   return (
     <div className="rounded-lg border border-dashed bg-muted/20 p-3 flex items-center justify-between gap-3 flex-wrap">
       <div className="min-w-0">
-        <p className="text-[10px] font-bold tracking-widest uppercase text-muted-foreground">Portal link</p>
+        <p className="text-[10px] font-bold tracking-widest uppercase text-muted-foreground">
+          Portal link
+        </p>
         <p className="text-[11px] text-muted-foreground mt-0.5">
           Generate a 7-day portal link for the candidate to review and e-sign.
         </p>
@@ -244,18 +246,22 @@ function PortalLinkRow({ url, expiresAt, sentAt, onRegenerate, onRevoke, generat
         <Button size="sm" variant="outline" className="h-7 text-xs shrink-0" onClick={handleCopy}>
           {copied ? <><Check className="h-3 w-3 mr-1" /> Copied</> : <><Copy className="h-3 w-3 mr-1" /> Copy</>}
         </Button>
-        <Button size="sm" variant="outline" className="h-7 text-xs shrink-0"
-          onClick={onRegenerate} disabled={generating} title="Regenerate">
+        <Button
+          size="sm" variant="outline" className="h-7 text-xs shrink-0"
+          onClick={onRegenerate} disabled={generating} title="Regenerate link"
+        >
           <RefreshCw className="h-3 w-3" />
         </Button>
-        <Button size="sm" variant="outline"
+        <Button
+          size="sm" variant="outline"
           className="h-7 text-xs shrink-0 text-rose-600 hover:text-rose-700 hover:bg-rose-50 border-rose-200"
-          onClick={onRevoke}>
+          onClick={onRevoke}
+        >
           <Ban className="h-3 w-3 mr-1" /> Revoke
         </Button>
       </div>
       <p className="text-[10px] text-muted-foreground">
-        Share via WhatsApp, email, or any channel · sent {fmtDate(sentAt)}
+        sent {fmtDate(sentAt)}
       </p>
     </div>
   );
@@ -376,6 +382,7 @@ function ClaimsSection({ bg, claims, setClaims, setBanner, setError, onAdvance }
 
   return (
     <div className="space-y-4">
+
       <div className="grid grid-cols-3 gap-3">
         <Card><CardContent className="p-3 text-center">
           <p className="text-[10px] text-muted-foreground">Total items</p>
@@ -392,12 +399,14 @@ function ClaimsSection({ bg, claims, setClaims, setBanner, setError, onAdvance }
       </div>
 
       <div className="flex items-center gap-2 flex-wrap">
-        <Button size="sm" variant="outline" className="text-xs" onClick={handleExtract} disabled={extracting}>
+        <Button size="sm" variant="outline" className="text-xs"
+          onClick={handleExtract} disabled={extracting}>
           {extracting
             ? <><Loader2 className="h-3.5 w-3.5 mr-1.5 animate-spin" /> Extracting…</>
             : <><Wand2 className="h-3.5 w-3.5 mr-1.5" />{claims.length ? 'Re-extract from CV' : 'Extract from CV'}</>}
         </Button>
-        <Button size="sm" variant="outline" className="text-xs" onClick={() => setShowAddForm((v) => !v)}>
+        <Button size="sm" variant="outline" className="text-xs"
+          onClick={() => setShowAddForm((v) => !v)}>
           <Plus className="h-3.5 w-3.5 mr-1.5" /> Add manually
         </Button>
         <p className="text-[10px] text-muted-foreground ml-auto">~Rp 6 / extract</p>
@@ -415,12 +424,17 @@ function ClaimsSection({ bg, claims, setClaims, setBanner, setError, onAdvance }
               className="text-xs h-8" />
             <div className="flex items-center gap-2 flex-wrap">
               <Select value={addLane} onValueChange={setAddLane}>
-                <SelectTrigger className="h-8 text-xs w-36"><SelectValue placeholder="Lane type" /></SelectTrigger>
+                <SelectTrigger className="h-8 text-xs w-36">
+                  <SelectValue placeholder="Lane type" />
+                </SelectTrigger>
                 <SelectContent>
-                  {VALID_LANES.map((l) => <SelectItem key={l} value={l} className="text-xs">{l}</SelectItem>)}
+                  {VALID_LANES.map((l) => (
+                    <SelectItem key={l} value={l} className="text-xs">{l}</SelectItem>
+                  ))}
                 </SelectContent>
               </Select>
-              <Button size="sm" className="text-xs h-8" onClick={handleAdd} disabled={!addText.trim() || !addLane}>
+              <Button size="sm" className="text-xs h-8"
+                onClick={handleAdd} disabled={!addText.trim() || !addLane}>
                 <Check className="h-3.5 w-3.5 mr-1" /> Add
               </Button>
               <Button size="sm" variant="ghost" className="text-xs h-8"
@@ -437,7 +451,9 @@ function ClaimsSection({ bg, claims, setClaims, setBanner, setError, onAdvance }
           <CardTitle className="text-sm flex items-center gap-2">
             <ClipboardList className="h-4 w-4 text-primary" />
             Claim items
-            <span className="text-[11px] font-normal text-muted-foreground ml-1">· checkbox to include · pencil to edit</span>
+            <span className="text-[11px] font-normal text-muted-foreground ml-1">
+              · checkbox to include · pencil to edit
+            </span>
           </CardTitle>
         </CardHeader>
         <CardContent className="p-0">
@@ -448,7 +464,8 @@ function ClaimsSection({ bg, claims, setClaims, setBanner, setError, onAdvance }
           ) : (
             <div className="divide-y">
               {claims.map((claim) => (
-                <div key={claim.id} className={`px-4 py-3 transition-colors ${!claim.selected ? 'opacity-50' : ''}`}>
+                <div key={claim.id}
+                  className={`px-4 py-3 transition-colors ${!claim.selected ? 'opacity-50' : ''}`}>
                   {editingId === claim.id ? (
                     <div className="space-y-2">
                       <Input value={editText} onChange={(e) => setEditText(e.target.value)}
@@ -459,14 +476,18 @@ function ClaimsSection({ bg, claims, setClaims, setBanner, setError, onAdvance }
                         <Select value={editLane} onValueChange={setEditLane}>
                           <SelectTrigger className="h-8 text-xs w-36"><SelectValue /></SelectTrigger>
                           <SelectContent>
-                            {VALID_LANES.map((l) => <SelectItem key={l} value={l} className="text-xs">{l}</SelectItem>)}
+                            {VALID_LANES.map((l) => (
+                              <SelectItem key={l} value={l} className="text-xs">{l}</SelectItem>
+                            ))}
                           </SelectContent>
                         </Select>
                         <Button size="sm" className="text-xs h-8"
-                          onClick={() => handleUpdate(claim.id)} disabled={!editText.trim() || !editLane}>
+                          onClick={() => handleUpdate(claim.id)}
+                          disabled={!editText.trim() || !editLane}>
                           <Check className="h-3.5 w-3.5 mr-1" /> Save
                         </Button>
-                        <Button size="sm" variant="ghost" className="text-xs h-8" onClick={() => setEditingId(null)}>
+                        <Button size="sm" variant="ghost" className="text-xs h-8"
+                          onClick={() => setEditingId(null)}>
                           Cancel
                         </Button>
                         <button type="button" onClick={() => handleDelete(claim.id)}
@@ -477,18 +498,23 @@ function ClaimsSection({ bg, claims, setClaims, setBanner, setError, onAdvance }
                     </div>
                   ) : (
                     <div className="flex items-start gap-3">
-                      <input type="checkbox" checked={claim.selected} onChange={() => handleToggle(claim)}
+                      <input type="checkbox" checked={claim.selected}
+                        onChange={() => handleToggle(claim)}
                         className="mt-1 shrink-0 cursor-pointer" />
                       <div className="flex-1 min-w-0">
                         <div className="flex items-center gap-2 flex-wrap">
                           <span className="text-xs font-semibold">{claim.claim_text}</span>
                           <LanePill lane_type={claim.lane_type} />
                           {claim.edited_at && (
-                            <Badge variant="outline" className="text-[8px] border-violet-200 text-violet-600">edited</Badge>
+                            <Badge variant="outline" className="text-[8px] border-violet-200 text-violet-600">
+                              edited
+                            </Badge>
                           )}
                         </div>
                         {claim.claim_detail && (
-                          <p className="text-[10px] text-muted-foreground mt-0.5">{claim.claim_detail}</p>
+                          <p className="text-[10px] text-muted-foreground mt-0.5">
+                            {claim.claim_detail}
+                          </p>
                         )}
                       </div>
                       <button type="button" onClick={() => openEdit(claim)}
@@ -506,9 +532,12 @@ function ClaimsSection({ bg, claims, setClaims, setBanner, setError, onAdvance }
           <div className="px-4 py-3 border-t bg-muted/20 flex items-center justify-between gap-3 flex-wrap">
             <p className="text-[10px] text-muted-foreground">
               <span className="font-semibold">{selectedCount} of {claims.length} selected</span>
-              {laneTypes.length > 0 && <> · {laneTypes.length} lane{laneTypes.length === 1 ? '' : 's'}: {laneTypes.join(' · ')}</>}
+              {laneTypes.length > 0 && (
+                <> · {laneTypes.length} lane{laneTypes.length === 1 ? '' : 's'}: {laneTypes.join(' · ')}</>
+              )}
             </p>
-            <Button size="sm" variant="outline" className="text-xs h-7" onClick={handleExtract} disabled={extracting}>
+            <Button size="sm" variant="outline" className="text-xs h-7"
+              onClick={handleExtract} disabled={extracting}>
               <RotateCw className="h-3 w-3 mr-1" /> Re-extract
             </Button>
           </div>
@@ -521,12 +550,15 @@ function ClaimsSection({ bg, claims, setClaims, setBanner, setError, onAdvance }
             ? 'Confirm selection to advance to Consent stage'
             : 'Already advanced — edit claims above then save'}
         </p>
-        <Button size="sm" className="text-xs" onClick={handleConfirm} disabled={confirming || selectedCount === 0}>
+        <Button size="sm" className="text-xs"
+          onClick={handleConfirm} disabled={confirming || selectedCount === 0}>
           {confirming
             ? <><Loader2 className="h-3.5 w-3.5 mr-1.5 animate-spin" /> Saving…</>
-            : <><Check className="h-3.5 w-3.5 mr-1.5" />{bg.status === 'claims' ? 'Lock & request consent' : 'Save claim changes'}</>}
+            : <><Check className="h-3.5 w-3.5 mr-1.5" />
+                {bg.status === 'claims' ? 'Lock & request consent' : 'Save claim changes'}</>}
         </Button>
       </div>
+
     </div>
   );
 }
@@ -567,6 +599,11 @@ function ConsentSection({ bg, setBg, claims, setBanner, setError, onAdvance }) {
   };
 
   const handleRevoke = async () => {
+    if (consent?.status === 'signed') {
+      setError('Consent has been signed and cannot be revoked.');
+      setShowRevoke(false);
+      return;
+    }
     setRevoking(true);
     setError(null);
     try {
@@ -603,7 +640,11 @@ function ConsentSection({ bg, setBg, claims, setBanner, setError, onAdvance }) {
   const isRevoked      = consent?.status === 'revoked';
 
   if (loading) {
-    return <div className="flex justify-center py-12"><Loader2 className="h-5 w-5 animate-spin text-muted-foreground" /></div>;
+    return (
+      <div className="flex justify-center py-12">
+        <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
+      </div>
+    );
   }
 
   return (
@@ -614,15 +655,21 @@ function ConsentSection({ bg, setBg, claims, setBanner, setError, onAdvance }) {
             <FileText className="h-4 w-4 text-primary shrink-0" />
             <div className="min-w-0 flex-1">
               <CardTitle className="text-sm">Consent · UU PDP 27/2022 compliant</CardTitle>
-              <p className="text-[10px] text-muted-foreground mt-0.5">candidate e-signed via portal · revocable until Verdict</p>
+              <p className="text-[10px] text-muted-foreground mt-0.5">
+                candidate e-signed via portal
+                {isSigned ? ' ' : ' · revocable until signed'}
+              </p>
             </div>
             {consent?.status && (
-              <Badge variant="outline" className={`text-[9px] shrink-0 ${
-                isSigned ? 'border-emerald-300 text-emerald-700 bg-emerald-50'
-                : isRevoked ? 'border-rose-300 text-rose-700 bg-rose-50'
-                : consent.status === 'sent' ? 'border-blue-300 text-blue-700 bg-blue-50'
-                : 'border-border text-muted-foreground'
-              }`}>
+              <Badge
+                variant="outline"
+                className={`text-[9px] shrink-0 ${
+                  isSigned   ? 'border-emerald-300 text-emerald-700 bg-emerald-50'
+                  : isRevoked ? 'border-rose-300 text-rose-700 bg-rose-50'
+                  : consent.status === 'sent' ? 'border-blue-300 text-blue-700 bg-blue-50'
+                  : 'border-border text-muted-foreground'
+                }`}
+              >
                 {consent.status}
               </Badge>
             )}
@@ -632,17 +679,28 @@ function ConsentSection({ bg, setBg, claims, setBanner, setError, onAdvance }) {
           {isSigned && (
             <div className="flex items-center gap-2 px-3 py-2 rounded-lg border border-emerald-200 bg-emerald-50 text-xs text-emerald-700">
               <Check className="h-4 w-4 shrink-0" />
-              Consent signed {fmtDate(consent.signed_at)} · revocable until Verdict
+              Consent signed {fmtDate(consent.signed_at)} 
             </div>
           )}
           {isRevoked && (
             <div className="flex items-center gap-2 px-3 py-2 rounded-lg border border-rose-200 bg-rose-50 text-xs text-rose-700">
               <XCircle className="h-4 w-4 shrink-0" />
               Consent revoked {fmtDate(consent.revoked_at)}
-              {consent.revocation_reason && <span className="italic"> — "{consent.revocation_reason}"</span>}
+              {consent.revocation_reason && (
+                <span className="italic"> — "{consent.revocation_reason}"</span>
+              )}
             </div>
           )}
-          {consent?.status === 'sent' && consent.portal_url ? (
+
+          {/* Portal link row */}
+          {isSigned ? (
+            <div className="rounded-lg border border-dashed bg-emerald-50/50 border-emerald-200 p-3 text-center space-y-0.5">
+              <p className="text-[11px] text-emerald-700 font-semibold flex items-center justify-center gap-1.5">
+                <Check className="h-3.5 w-3.5" /> Signed {fmtDate(consent.signed_at)}
+              </p>
+            </div>
+          ) : consent?.status === 'sent' && consent.portal_url ? (
+            /* Sent — show the link with revoke option */
             <PortalLinkRow
               url={consent.portal_url}
               expiresAt={consent.token_expires_at}
@@ -651,30 +709,32 @@ function ConsentSection({ bg, setBg, claims, setBanner, setError, onAdvance }) {
               onRevoke={() => { setShowRevoke(true); setRevokeReason(''); }}
               generating={generating}
             />
-          ) : isSigned ? (
-            <div className="rounded-lg border border-dashed bg-muted/10 p-3 text-center">
-              <p className="text-[11px] text-muted-foreground">Consent already signed — no new link needed.</p>
-              <button type="button" onClick={() => { setShowRevoke(true); setRevokeReason(''); }}
-                className="text-[11px] text-rose-600 hover:underline mt-1">
-                Revoke to re-send
-              </button>
-            </div>
           ) : (
+            /* Draft or revoked — show generate button */
             <GenerateLinkRow
               onGenerate={handleGenerate}
               generating={generating}
               label={isRevoked ? 'Regenerate link' : 'Generate link'}
             />
           )}
-          {showRevoke && (
+
+          {showRevoke && !isSigned && (
             <div className="space-y-2 p-3 rounded-lg border border-rose-200 bg-rose-50/30">
-              <p className="text-[10px] font-semibold text-rose-700 uppercase tracking-wide">Revoke consent</p>
-              <Input value={revokeReason} onChange={(e) => setRevokeReason(e.target.value)}
-                placeholder="Reason (optional) — e.g. candidate withdrew" className="text-xs h-8" />
+              <p className="text-[10px] font-semibold text-rose-700 uppercase tracking-wide">
+                Revoke consent
+              </p>
+              <Input
+                value={revokeReason}
+                onChange={(e) => setRevokeReason(e.target.value)}
+                placeholder="Reason (optional) — e.g. candidate withdrew"
+                className="text-xs h-8"
+              />
               <div className="flex gap-2">
                 <Button size="sm" variant="destructive" className="text-xs h-8"
                   onClick={handleRevoke} disabled={revoking}>
-                  {revoking ? <><Loader2 className="h-3.5 w-3.5 mr-1.5 animate-spin" /> Revoking…</> : 'Confirm revoke'}
+                  {revoking
+                    ? <><Loader2 className="h-3.5 w-3.5 mr-1.5 animate-spin" /> Revoking…</>
+                    : 'Confirm revoke'}
                 </Button>
                 <Button size="sm" variant="ghost" className="text-xs h-8"
                   onClick={() => { setShowRevoke(false); setRevokeReason(''); }}>
@@ -683,13 +743,14 @@ function ConsentSection({ bg, setBg, claims, setBanner, setError, onAdvance }) {
               </div>
             </div>
           )}
+
         </CardContent>
       </Card>
 
       <Card>
         <CardHeader className="pb-2">
           <CardTitle className="text-[10px] uppercase tracking-wide text-muted-foreground">
-            Consent document · Bahasa Indonesia · {uniqueLanes.length} lane{uniqueLanes.length === 1 ? '' : 's'} enumerated
+            Consent document · {uniqueLanes.length} lane{uniqueLanes.length === 1 ? '' : 's'} enumerated
           </CardTitle>
         </CardHeader>
         <CardContent className="p-0">
@@ -704,10 +765,12 @@ function ConsentSection({ bg, setBg, claims, setBanner, setError, onAdvance }) {
             </div>
             <div className="px-5 py-4 space-y-3 text-[11px] leading-relaxed text-foreground">
               <p>
-                Saya yang bertanda tangan di bawah ini, <strong>{bg.candidate_name}</strong>,
-                dengan ini memberikan persetujuan tertulis kepada <strong>perusahaan</strong> untuk
-                melakukan pemeriksaan latar belakang ("BG Check") sehubungan dengan proses rekrutmen
-                saya untuk posisi <strong>{bg.job_title}</strong>.
+                Saya yang bertanda tangan di bawah ini,{' '}
+                <strong>{bg.candidate_name}</strong>,
+                dengan ini memberikan persetujuan tertulis kepada{' '}
+                <strong>perusahaan</strong> untuk melakukan pemeriksaan latar belakang
+                ("BG Check") sehubungan dengan proses rekrutmen saya untuk posisi{' '}
+                <strong>{bg.job_title}</strong>.
               </p>
               {uniqueLanes.length > 0 ? (
                 <>
@@ -719,7 +782,9 @@ function ConsentSection({ bg, setBg, claims, setBanner, setError, onAdvance }) {
                         <li key={i}>
                           <strong>{LANE_LABELS_ID[lt] || lt}</strong>
                           {claimsForLane.length > 0 && (
-                            <span className="text-muted-foreground"> · {claimsForLane.map((c) => c.claim_text).join(', ')}</span>
+                            <span className="text-muted-foreground">
+                              {' '}· {claimsForLane.map((c) => c.claim_text).join(', ')}
+                            </span>
                           )}
                         </li>
                       );
@@ -733,8 +798,8 @@ function ConsentSection({ bg, setBg, claims, setBanner, setError, onAdvance }) {
               )}
               <p className="text-muted-foreground">
                 Data yang terkumpul akan disimpan paling lama 24 bulan setelah keputusan akhir,
-                dan saya berhak mencabut persetujuan ini kapan saja sebelum keputusan akhir (Verdict)
-                ditetapkan, sesuai Pasal 9 UU 27/2022.
+                dan saya berhak mencabut persetujuan ini kapan saja sebelum keputusan akhir
+                (Verdict) ditetapkan, sesuai Pasal 9 UU 27/2022.
               </p>
               {isSigned && (
                 <p className="text-emerald-700 font-medium">
@@ -746,7 +811,9 @@ function ConsentSection({ bg, setBg, claims, setBanner, setError, onAdvance }) {
           {isSigned && (
             <div className="grid grid-cols-2 gap-3 px-4 pb-4">
               <div className="rounded-lg border bg-muted/10 p-3 space-y-1.5">
-                <p className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">Signature record</p>
+                <p className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
+                  Signature record
+                </p>
                 <div className="text-[11px] text-foreground leading-relaxed space-y-0.5">
                   <p>Method: agreed checkbox · portal</p>
                   <p>Audit ref: <span className="font-mono text-[10px]">consent#{consent.id}</span></p>
@@ -754,14 +821,18 @@ function ConsentSection({ bg, setBg, claims, setBanner, setError, onAdvance }) {
                 </div>
               </div>
               <div className="rounded-lg border bg-muted/10 p-3 space-y-1.5">
-                <p className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">Revocation</p>
+                <p className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
+                  Revocation
+                </p>
                 <div className="text-[11px] text-foreground leading-relaxed space-y-0.5">
-                  <p>Status: <Badge variant="outline" className="text-[9px] border-emerald-200 text-emerald-700 bg-emerald-50">active</Badge></p>
-                  <p className="text-muted-foreground">Candidate may revoke until Verdict is logged.</p>
+                  <Badge variant="outline" className="text-[9px] border-rose-200 text-rose-700 bg-rose-50">
+                    permanently locked
+                  </Badge>
                 </div>
               </div>
             </div>
           )}
+
         </CardContent>
       </Card>
 
@@ -771,12 +842,14 @@ function ConsentSection({ bg, setBg, claims, setBanner, setError, onAdvance }) {
             ? 'Consent signed — open Tracker to begin lane verification'
             : 'Once the candidate signs via the portal link, advance to Tracker'}
         </p>
-        <Button size="sm" className="text-xs" onClick={handleAdvanceToTracker} disabled={advancing}>
+        <Button size="sm" className="text-xs"
+          onClick={handleAdvanceToTracker} disabled={advancing}>
           {advancing
             ? <><Loader2 className="h-3.5 w-3.5 mr-1.5 animate-spin" /> Advancing…</>
             : <><ChevronRight className="h-3.5 w-3.5 mr-1" /> Open Tracker</>}
         </Button>
       </div>
+
     </div>
   );
 }
@@ -812,7 +885,7 @@ function TrackerSection({ bg, setBg, setBanner, setError, onAdvance }) {
     try {
       const res = await createLanes(bg.bg_id);
       setLanes(res.data?.lanes || []);
-      setBanner({ ok: true, text: `${res.data?.lanes?.length || 0} verification lanes created from selected claims.` });
+      setBanner({ ok: true, text: `${res.data?.lanes?.length || 0} verification lanes created.` });
     } catch (err) {
       setError(err.response?.data?.message || err.message || 'Failed to create lanes');
     } finally {
@@ -857,21 +930,24 @@ function TrackerSection({ bg, setBg, setBanner, setError, onAdvance }) {
     }
   };
 
-  // Derived counts for stat tiles
   const counts = {
-    pass:               lanes.filter((l) => ['pass', 'pass_with_concerns'].includes(l.status)).length,
-    in_progress:        lanes.filter((l) => l.status === 'in_progress').length,
-    stalled:            lanes.filter((l) => l.status === 'stalled').length,
-    fail:               lanes.filter((l) => l.status === 'fail').length,
-    pending:            lanes.filter((l) => l.status === 'pending').length,
+    pass:        lanes.filter((l) => ['pass', 'pass_with_concerns'].includes(l.status)).length,
+    in_progress: lanes.filter((l) => l.status === 'in_progress').length,
+    stalled:     lanes.filter((l) => l.status === 'stalled').length,
+    fail:        lanes.filter((l) => l.status === 'fail').length,
+    pending:     lanes.filter((l) => l.status === 'pending').length,
   };
 
-  const passLaneTypes   = lanes.filter((l) => ['pass', 'pass_with_concerns'].includes(l.status)).map((l) => l.lane_type);
-  const stalledTypes    = lanes.filter((l) => l.status === 'stalled').map((l) => l.lane_type);
-  const inProgressTypes = lanes.filter((l) => l.status === 'in_progress').map((l) => l.lane_type);
+  const passLaneTypes    = lanes.filter((l) => ['pass', 'pass_with_concerns'].includes(l.status)).map((l) => l.lane_type);
+  const stalledTypes     = lanes.filter((l) => l.status === 'stalled').map((l) => l.lane_type);
+  const inProgressTypes  = lanes.filter((l) => l.status === 'in_progress').map((l) => l.lane_type);
 
   if (loading) {
-    return <div className="flex justify-center py-12"><Loader2 className="h-5 w-5 animate-spin text-muted-foreground" /></div>;
+    return (
+      <div className="flex justify-center py-12">
+        <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
+      </div>
+    );
   }
 
   return (
@@ -883,7 +959,9 @@ function TrackerSection({ bg, setBg, setBanner, setError, onAdvance }) {
           <div className="flex items-center gap-2">
             <Activity className="h-4 w-4 text-primary shrink-0" />
             <div className="min-w-0 flex-1">
-              <CardTitle className="text-sm">Tracker · {lanes.length} verification lane{lanes.length === 1 ? '' : 's'}</CardTitle>
+              <CardTitle className="text-sm">
+                Tracker · {lanes.length} verification lane{lanes.length === 1 ? '' : 's'}
+              </CardTitle>
               <p className="text-[10px] text-muted-foreground mt-0.5">
                 {counts.pass}/{lanes.length} pass · {counts.stalled} stalled · {counts.in_progress} in progress
               </p>
@@ -892,7 +970,8 @@ function TrackerSection({ bg, setBg, setBanner, setError, onAdvance }) {
               onClick={handleSpawn} disabled={spawning}>
               {spawning
                 ? <><Loader2 className="h-3.5 w-3.5 animate-spin mr-1.5" /> Creating…</>
-                : <><GitBranch className="h-3.5 w-3.5 mr-1.5" />{lanes.length ? 'Re-sync lanes' : 'Create lanes'}</>}
+                : <><GitBranch className="h-3.5 w-3.5 mr-1.5" />
+                    {lanes.length ? 'Re-sync lanes' : 'Create lanes'}</>}
             </Button>
           </div>
         </CardHeader>
@@ -939,7 +1018,9 @@ function TrackerSection({ bg, setBg, setBanner, setError, onAdvance }) {
               <p className={`text-2xl font-bold font-mono ${counts.fail > 0 ? 'text-rose-600' : 'text-muted-foreground'}`}>
                 {counts.fail}
               </p>
-              <p className="text-[9px] text-muted-foreground mt-0.5">{counts.fail === 0 ? 'none' : 'needs attention'}</p>
+              <p className="text-[9px] text-muted-foreground mt-0.5">
+                {counts.fail === 0 ? 'none' : 'needs attention'}
+              </p>
             </CardContent></Card>
           </div>
 
@@ -962,9 +1043,7 @@ function TrackerSection({ bg, setBg, setBanner, setError, onAdvance }) {
                       {/* Lane header row */}
                       <div
                         className="flex items-center gap-3 cursor-pointer"
-                        onClick={() => {
-                          if (!isEditing) setExpandedId(isExp ? null : lane.id);
-                        }}
+                        onClick={() => { if (!isEditing) setExpandedId(isExp ? null : lane.id); }}
                       >
                         <LanePill lane_type={lane.lane_type} />
                         <div className="flex-1 min-w-0">
@@ -972,14 +1051,18 @@ function TrackerSection({ bg, setBg, setBanner, setError, onAdvance }) {
                             <span className="text-xs font-semibold">{lane.claim_text}</span>
                           </div>
                           {lane.note && !isExp && (
-                            <p className="text-[10px] text-muted-foreground mt-0.5 truncate">{lane.note}</p>
+                            <p className="text-[10px] text-muted-foreground mt-0.5 truncate">
+                              {lane.note}
+                            </p>
                           )}
                         </div>
                         <Badge variant="outline" className={`text-[9px] shrink-0 ${meta.color}`}>
                           {meta.label}
                         </Badge>
                         <button type="button" className="text-muted-foreground shrink-0">
-                          {isExp ? <ChevronUp className="h-3.5 w-3.5" /> : <ChevronDown className="h-3.5 w-3.5" />}
+                          {isExp
+                            ? <ChevronUp className="h-3.5 w-3.5" />
+                            : <ChevronDown className="h-3.5 w-3.5" />}
                         </button>
                       </div>
 
@@ -1027,7 +1110,8 @@ function TrackerSection({ bg, setBg, setBanner, setError, onAdvance }) {
                               </div>
                               <div className="flex gap-2">
                                 <Button size="sm" className="text-xs h-8"
-                                  onClick={() => handleSaveLane(lane.id)} disabled={saving || !editStatus}>
+                                  onClick={() => handleSaveLane(lane.id)}
+                                  disabled={saving || !editStatus}>
                                   {saving
                                     ? <><Loader2 className="h-3.5 w-3.5 animate-spin mr-1" /> Saving…</>
                                     : <><Check className="h-3.5 w-3.5 mr-1" /> Save</>}
@@ -1041,7 +1125,9 @@ function TrackerSection({ bg, setBg, setBanner, setError, onAdvance }) {
                           ) : (
                             <div className="space-y-2">
                               {lane.note && (
-                                <p className="text-[11px] text-foreground leading-relaxed">{lane.note}</p>
+                                <p className="text-[11px] text-foreground leading-relaxed">
+                                  {lane.note}
+                                </p>
                               )}
                               {lane.resolved_at && (
                                 <p className="text-[10px] text-muted-foreground">
@@ -1074,7 +1160,8 @@ function TrackerSection({ bg, setBg, setBanner, setError, onAdvance }) {
               ? `${counts.in_progress} lane${counts.in_progress === 1 ? '' : 's'} still in progress`
               : 'All lanes resolved — open Verdict when ready'}
         </p>
-        <Button size="sm" className="text-xs" onClick={handleAdvanceToVerdict} disabled={advancing}>
+        <Button size="sm" className="text-xs"
+          onClick={handleAdvanceToVerdict} disabled={advancing}>
           {advancing
             ? <><Loader2 className="h-3.5 w-3.5 mr-1.5 animate-spin" /> Advancing…</>
             : <><ChevronRight className="h-3.5 w-3.5 mr-1" /> Open Verdict</>}
@@ -1112,6 +1199,7 @@ function VerdictSection({ bg, setBg, setBanner, setError }) {
 
   return (
     <div className="space-y-4">
+
       {bg.verdict && (
         <div className={`flex items-center gap-2 px-4 py-3 rounded-lg border text-xs font-semibold ${
           bg.verdict === 'pass'
@@ -1139,7 +1227,8 @@ function VerdictSection({ bg, setBg, setBanner, setError }) {
                 onClick={() => setSelected(isActive ? null : opt.value)}
                 className={`w-full flex items-start gap-3 px-4 py-3 rounded-lg border text-left transition-all cursor-pointer ${
                   isActive ? opt.activeColor : `${opt.color} hover:brightness-95`
-                }`}>
+                }`}
+              >
                 <div className={`h-5 w-5 rounded-full border-2 shrink-0 mt-0.5 flex items-center justify-center ${
                   isActive ? 'border-current' : 'border-muted-foreground'
                 }`}>
@@ -1162,17 +1251,23 @@ function VerdictSection({ bg, setBg, setBanner, setError }) {
           </CardHeader>
           <CardContent className="space-y-3">
             <div className="space-y-1">
-              <label className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">Gap identified</label>
+              <label className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
+                Gap identified
+              </label>
               <Textarea value={gap} onChange={(e) => setGap(e.target.value)}
                 placeholder="e.g. Team-size claim: stated 12, confirmed 8" rows={2} className="text-xs" />
             </div>
             <div className="space-y-1">
-              <label className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">Context</label>
+              <label className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
+                Context
+              </label>
               <Textarea value={ctx} onChange={(e) => setCtx(e.target.value)}
                 placeholder="e.g. Minor inflation, not material misrepresentation" rows={2} className="text-xs" />
             </div>
             <div className="space-y-1">
-              <label className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">Mitigation</label>
+              <label className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
+                Mitigation
+              </label>
               <Textarea value={mitigation} onChange={(e) => setMitigation(e.target.value)}
                 placeholder="e.g. Flag to HM at offer stage" rows={2} className="text-xs" />
             </div>
@@ -1189,12 +1284,19 @@ function VerdictSection({ bg, setBg, setBanner, setError }) {
 
       <div className="flex justify-end pt-1 border-t">
         <Button size="sm" className="text-xs" onClick={handleSave}
-          disabled={saving || !selected || (selected === 'pass_with_concerns' && (!gap.trim() || !ctx.trim() || !mitigation.trim()))}>
+          disabled={
+            saving || !selected ||
+            (selected === 'pass_with_concerns' &&
+              (!gap.trim() || !ctx.trim() || !mitigation.trim()))
+          }
+        >
           {saving
             ? <><Loader2 className="h-3.5 w-3.5 mr-1.5 animate-spin" /> Saving…</>
-            : <><Check className="h-3.5 w-3.5 mr-1.5" />{bg.verdict ? 'Update verdict' : 'Commit verdict'}</>}
+            : <><Check className="h-3.5 w-3.5 mr-1.5" />
+                {bg.verdict ? 'Update verdict' : 'Commit verdict'}</>}
         </Button>
       </div>
+
     </div>
   );
 }
@@ -1296,6 +1398,7 @@ export default function BgCheckCandidatePage() {
       </div>
 
       <div className="px-6 pb-6 pt-4 space-y-5">
+
         {error && (
           <div className="flex items-center gap-2 px-4 py-3 rounded-lg border border-red-200 bg-red-50 text-sm text-red-600">
             <AlertTriangle className="h-4 w-4 shrink-0" /> {error}
@@ -1357,6 +1460,7 @@ export default function BgCheckCandidatePage() {
             </div>
           </aside>
         </div>
+
       </div>
     </>
   );
