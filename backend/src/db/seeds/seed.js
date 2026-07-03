@@ -26,6 +26,7 @@ import {
   INSIGHTS_COMPLETED_AT,
 } from '../data/dummy_insights.js';
 import { batteryAResults, BATTERY_A_COMPLETED_AT } from '../data/dummy_battery_a.js';
+import { dummySessions } from '../data/dummy_sessions.js';
 import companyBudgetsData, { createCompanyBudget } from '../data/company_budgets.js';
 import candidateInterviewData from '../data/candidate_interview.js';
 import candidateBgData from '../data/candidate_bg.js';
@@ -48,6 +49,7 @@ const seed = async () => {
     await getDb().query('DELETE FROM master_applicant');
     await getDb().query('DELETE FROM master_recruiters');
     await getDb().query('DELETE FROM core_job_sourcing');
+    await getDb().query('DELETE FROM assessment_sessions');
     await getDb().query('DELETE FROM core_job_template');
     await getDb().query('DELETE FROM core_job');
     await getDb().query('DELETE FROM master_job_account');
@@ -416,6 +418,17 @@ const seed = async () => {
       );
     }
     console.log(`Seeded ${batteryAResults.length} Battery A result(s)`);
+
+    // 25. assessment_sessions — Budi Santoso invited for Battery A (fixed token for testing)
+    for (const s of dummySessions) {
+      await getDb().query(
+        `INSERT INTO assessment_sessions (token, battery, candidate_id, job_id, created_by, status, expired_at, submitted_at)
+        VALUES ($1::uuid, $2, $3, $4, $5, $6, $7, $8::timestamptz)
+        ON CONFLICT (token) DO NOTHING`,
+        [s.token, s.battery, s.candidate_id, s.job_id, s.created_by, s.status, s.expired_at, s.submitted_at ?? null]
+      );
+    }
+    console.log(`Seeded ${dummySessions.length} assessment session(s)`);
 
     // 26. company_budgets — monthly AI budget caps (Task 6.12: AI cost cap)
     //     Seed budgets for current month for all companies in companiesData.

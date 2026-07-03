@@ -273,6 +273,7 @@ function BatteryRunner({ session, hash, onSubmit }) {
     prefilledProfile,
     portalHash: hash,
     onPortalSubmit: onSubmit,
+    allowViewReport: false,
   };
 
   switch (session.battery) {
