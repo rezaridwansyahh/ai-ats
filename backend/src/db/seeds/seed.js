@@ -25,6 +25,7 @@ import {
   buildSummaryJSON,
   INSIGHTS_COMPLETED_AT,
 } from '../data/dummy_insights.js';
+import { batteryAResults, BATTERY_A_COMPLETED_AT } from '../data/dummy_battery_a.js';
 import companyBudgetsData, { createCompanyBudget } from '../data/company_budgets.js';
 import candidateInterviewData from '../data/candidate_interview.js';
 import candidateBgData from '../data/candidate_bg.js';
@@ -396,7 +397,27 @@ const seed = async () => {
     }
     console.log(`Seeded Insights participants and ${insightsResults.length} Insights results`);
 
-    // 24. company_budgets — monthly AI budget caps (Task 6.12: AI cost cap)
+    // 24. core_applicant_assessment — Battery A dummy results
+    for (const r of batteryAResults) {
+      await getDb().query(
+        `INSERT INTO core_applicant_assessment (
+           candidate_id, assessment_id, status,
+           results, summary, started_at, completed_at, assessment_date
+         )
+         VALUES ($1, $2, 'completed', $3, $4, $5::timestamp, $6::timestamptz, CURRENT_DATE)
+         ON CONFLICT (candidate_id, assessment_id) DO NOTHING`,
+        [
+          r.candidate_id, r.assessment_id,
+          JSON.stringify(r.results),
+          JSON.stringify(r.summary),
+          BATTERY_A_COMPLETED_AT,
+          BATTERY_A_COMPLETED_AT,
+        ]
+      );
+    }
+    console.log(`Seeded ${batteryAResults.length} Battery A result(s)`);
+
+    // 26. company_budgets — monthly AI budget caps (Task 6.12: AI cost cap)
     //     Seed budgets for current month for all companies in companiesData.
     //     Creates default $100/month budget (configurable per pilot contract).
     console.log('Seeding company budgets for current month...');
