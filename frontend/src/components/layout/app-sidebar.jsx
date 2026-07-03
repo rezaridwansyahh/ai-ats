@@ -96,6 +96,7 @@ const routeMap = {
   'Interview': '/selection/interview',
   'Background Check': '/selection/background-check',
   'Offer & Contract': '/selection/offer-contract',
+  'Onboarding':        '/selection/onboarding',
 };
 
 // Maps a raw "module" name (as it appears in permissions data) to the
