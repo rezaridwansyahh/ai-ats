@@ -4,6 +4,8 @@ import {
   ArrowLeft, Loader2, AlertTriangle, Check, ChevronRight,
   Wand2, Plus, X, Pencil, ShieldCheck, FileText,
   ClipboardList, GitBranch, Scale, RotateCw,
+  Copy, RefreshCw, XCircle, Sparkles, Ban,
+  Activity, ChevronDown, ChevronUp,
 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -20,6 +22,8 @@ import {
   getBgCheck, getClaims, extractClaims,
   addClaim, updateClaim, toggleClaim, deleteClaim,
   confirmClaims, saveVerdict, updateBgStatus,
+  getConsent, generateConsentLink, revokeConsent,
+  getLanes, createLanes, updateTracker,
 } from '@/api/background-check.api';
 
 const VALID_LANES = ['identity', 'edu', 'emp', 'cert', 'crim', 'cred', 'salary'];
@@ -33,6 +37,25 @@ const LANE_META = {
   cred:     { label: 'cred',     color: 'border-orange-200 bg-orange-50 text-orange-700'    },
   salary:   { label: 'salary',   color: 'border-cyan-200 bg-cyan-50 text-cyan-700'          },
 };
+
+const LANE_LABELS_ID = {
+  identity: 'Identitas (identity) — verifikasi NIK, KTP, dan dokumen identitas resmi',
+  edu:      'Pendidikan (edu) — verifikasi ijazah dan transkrip pendidikan',
+  emp:      'Pekerjaan (emp) — verifikasi riwayat pekerjaan',
+  cert:     'Sertifikasi (cert) — verifikasi sertifikat dan lisensi profesional',
+  crim:     'Catatan kepolisian (crim) — SKCK aktif dari POLRI',
+  cred:     'Riwayat kredit (cred) — BI Checking / OJK SLIK Online',
+  salary:   'Riwayat gaji (salary) — verifikasi kompensasi terakhir',
+};
+
+const TRACKER_STATUSES = [
+  { value: 'pending',            label: 'Pending',       color: 'border-border text-muted-foreground bg-muted/40'     },
+  { value: 'in_progress',        label: 'In progress',   color: 'border-blue-200 text-blue-700 bg-blue-50'           },
+  { value: 'pass',               label: 'Pass',          color: 'border-emerald-200 text-emerald-700 bg-emerald-50'  },
+  { value: 'pass_with_concerns', label: 'Pass · note',   color: 'border-amber-200 text-amber-700 bg-amber-50'       },
+  { value: 'fail',               label: 'Fail',          color: 'border-rose-200 text-rose-700 bg-rose-50'          },
+  { value: 'stalled',            label: 'Stalled',       color: 'border-orange-200 text-orange-700 bg-orange-50'    },
+];
 
 const SUBSTAGES = [
   { key: 'claims',  number: 1, label: 'Claims',  sub: 'select items' },
@@ -66,6 +89,19 @@ const VERDICT_OPTIONS = [
     color:       'border-rose-200 bg-rose-50/50 text-rose-700',
   },
 ];
+
+function fmtDate(d) {
+  if (!d) return '—';
+  try {
+    return new Date(d).toLocaleDateString('en-GB', {
+      day: 'numeric', month: 'short', year: 'numeric',
+    });
+  } catch { return '—'; }
+}
+
+function getStatusMeta(status) {
+  return TRACKER_STATUSES.find((s) => s.value === status) || TRACKER_STATUSES[0];
+}
 
 function LanePill({ lane_type }) {
   const meta = LANE_META[lane_type] || {
@@ -161,6 +197,73 @@ function CandidateCard({ bg }) {
         </div>
       </CardContent>
     </Card>
+  );
+}
+
+function GenerateLinkRow({ onGenerate, generating, label = 'Generate link' }) {
+  return (
+    <div className="rounded-lg border border-dashed bg-muted/20 p-3 flex items-center justify-between gap-3 flex-wrap">
+      <div className="min-w-0">
+        <p className="text-[10px] font-bold tracking-widest uppercase text-muted-foreground">
+          Portal link
+        </p>
+        <p className="text-[11px] text-muted-foreground mt-0.5">
+          Generate a 7-day portal link for the candidate to review and e-sign.
+        </p>
+      </div>
+      <Button size="sm" onClick={onGenerate} disabled={generating} className="shrink-0">
+        {generating
+          ? <><Loader2 className="h-3.5 w-3.5 animate-spin mr-1.5" /> Generating…</>
+          : <><Sparkles className="h-3.5 w-3.5 mr-1.5" /> {label}</>}
+      </Button>
+    </div>
+  );
+}
+
+function PortalLinkRow({ url, expiresAt, sentAt, onRegenerate, onRevoke, generating }) {
+  const [copied, setCopied] = useState(false);
+
+  const handleCopy = async () => {
+    try {
+      await navigator.clipboard.writeText(url);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 1500);
+    } catch {}
+  };
+
+  return (
+    <div className="rounded-lg border bg-muted/30 p-3 space-y-2">
+      <div className="flex items-center justify-between gap-2 flex-wrap">
+        <p className="text-[10px] font-bold tracking-widest uppercase text-muted-foreground">
+          Portal link · 7-day consent token
+        </p>
+        <span className="text-[10px] text-muted-foreground">Expires {fmtDate(expiresAt)}</span>
+      </div>
+      <div className="flex items-center gap-2">
+        <code className="flex-1 truncate text-[11px] font-mono text-foreground bg-background border rounded px-2 py-1.5">
+          {url}
+        </code>
+        <Button size="sm" variant="outline" className="h-7 text-xs shrink-0" onClick={handleCopy}>
+          {copied ? <><Check className="h-3 w-3 mr-1" /> Copied</> : <><Copy className="h-3 w-3 mr-1" /> Copy</>}
+        </Button>
+        <Button
+          size="sm" variant="outline" className="h-7 text-xs shrink-0"
+          onClick={onRegenerate} disabled={generating} title="Regenerate link"
+        >
+          <RefreshCw className="h-3 w-3" />
+        </Button>
+        <Button
+          size="sm" variant="outline"
+          className="h-7 text-xs shrink-0 text-rose-600 hover:text-rose-700 hover:bg-rose-50 border-rose-200"
+          onClick={onRevoke}
+        >
+          <Ban className="h-3 w-3 mr-1" /> Revoke
+        </Button>
+      </div>
+      <p className="text-[10px] text-muted-foreground">
+        sent {fmtDate(sentAt)}
+      </p>
+    </div>
   );
 }
 
@@ -263,7 +366,12 @@ function ClaimsSection({ bg, claims, setClaims, setBanner, setError, onAdvance }
     setError(null);
     try {
       await confirmClaims(bg.bg_id);
-      setBanner({ ok: true, text: bg.status === 'claims' ? 'Claims confirmed — advanced to Consent.' : 'Claim changes saved.' });
+      setBanner({
+        ok: true,
+        text: bg.status === 'claims'
+          ? 'Claims confirmed — advanced to Consent.'
+          : 'Claim changes saved.',
+      });
       if (bg.status === 'claims') onAdvance('consent');
     } catch (err) {
       setError(err.response?.data?.message || err.message || 'Confirm failed');
@@ -275,65 +383,45 @@ function ClaimsSection({ bg, claims, setClaims, setBanner, setError, onAdvance }
   return (
     <div className="space-y-4">
 
-      {/* Stats */}
       <div className="grid grid-cols-3 gap-3">
-        <Card>
-          <CardContent className="p-3 text-center">
-            <p className="text-[10px] text-muted-foreground">Total items</p>
-            <p className="text-2xl font-bold font-mono">{claims.length}</p>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardContent className="p-3 text-center">
-            <p className="text-[10px] text-muted-foreground">Selected</p>
-            <p className="text-2xl font-bold font-mono">{selectedCount}</p>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardContent className="p-3 text-center">
-            <p className="text-[10px] text-muted-foreground">Lanes derived</p>
-            <p className="text-2xl font-bold font-mono text-primary">{laneTypes.length}</p>
-          </CardContent>
-        </Card>
+        <Card><CardContent className="p-3 text-center">
+          <p className="text-[10px] text-muted-foreground">Total items</p>
+          <p className="text-2xl font-bold font-mono">{claims.length}</p>
+        </CardContent></Card>
+        <Card><CardContent className="p-3 text-center">
+          <p className="text-[10px] text-muted-foreground">Selected</p>
+          <p className="text-2xl font-bold font-mono">{selectedCount}</p>
+        </CardContent></Card>
+        <Card><CardContent className="p-3 text-center">
+          <p className="text-[10px] text-muted-foreground">Lanes derived</p>
+          <p className="text-2xl font-bold font-mono text-primary">{laneTypes.length}</p>
+        </CardContent></Card>
       </div>
 
-      {/* Action buttons */}
       <div className="flex items-center gap-2 flex-wrap">
-        <Button
-          size="sm" variant="outline" className="text-xs"
-          onClick={handleExtract} disabled={extracting}
-        >
+        <Button size="sm" variant="outline" className="text-xs"
+          onClick={handleExtract} disabled={extracting}>
           {extracting
             ? <><Loader2 className="h-3.5 w-3.5 mr-1.5 animate-spin" /> Extracting…</>
-            : <><Wand2 className="h-3.5 w-3.5 mr-1.5" />
-                {claims.length ? 'Re-extract from CV' : 'Extract from CV'}</>}
+            : <><Wand2 className="h-3.5 w-3.5 mr-1.5" />{claims.length ? 'Re-extract from CV' : 'Extract from CV'}</>}
         </Button>
-        <Button
-          size="sm" variant="outline" className="text-xs"
-          onClick={() => setShowAddForm((v) => !v)}
-        >
+        <Button size="sm" variant="outline" className="text-xs"
+          onClick={() => setShowAddForm((v) => !v)}>
           <Plus className="h-3.5 w-3.5 mr-1.5" /> Add manually
         </Button>
         <p className="text-[10px] text-muted-foreground ml-auto">~Rp 6 / extract</p>
       </div>
 
-      {/* Manual add form */}
       {showAddForm && (
         <Card className="border-primary/30 bg-primary/5">
           <CardContent className="p-4 space-y-3">
             <p className="text-xs font-semibold">Add claim manually</p>
-            <Input
-              value={addText}
-              onChange={(e) => setAddText(e.target.value)}
+            <Input value={addText} onChange={(e) => setAddText(e.target.value)}
               placeholder="Claim text — e.g. PT Tokopedia · Frontend Engr · 2020–2021"
-              className="text-xs h-8"
-            />
-            <Input
-              value={addDetail}
-              onChange={(e) => setAddDetail(e.target.value)}
+              className="text-xs h-8" />
+            <Input value={addDetail} onChange={(e) => setAddDetail(e.target.value)}
               placeholder="Detail (optional) — e.g. ref: Bu Lestari (manager)"
-              className="text-xs h-8"
-            />
+              className="text-xs h-8" />
             <div className="flex items-center gap-2 flex-wrap">
               <Select value={addLane} onValueChange={setAddLane}>
                 <SelectTrigger className="h-8 text-xs w-36">
@@ -345,20 +433,12 @@ function ClaimsSection({ bg, claims, setClaims, setBanner, setError, onAdvance }
                   ))}
                 </SelectContent>
               </Select>
-              <Button
-                size="sm" className="text-xs h-8"
-                onClick={handleAdd}
-                disabled={!addText.trim() || !addLane}
-              >
+              <Button size="sm" className="text-xs h-8"
+                onClick={handleAdd} disabled={!addText.trim() || !addLane}>
                 <Check className="h-3.5 w-3.5 mr-1" /> Add
               </Button>
-              <Button
-                size="sm" variant="ghost" className="text-xs h-8"
-                onClick={() => {
-                  setShowAddForm(false);
-                  setAddText(''); setAddDetail(''); setAddLane('');
-                }}
-              >
+              <Button size="sm" variant="ghost" className="text-xs h-8"
+                onClick={() => { setShowAddForm(false); setAddText(''); setAddDetail(''); setAddLane(''); }}>
                 Cancel
               </Button>
             </div>
@@ -366,7 +446,6 @@ function ClaimsSection({ bg, claims, setClaims, setBanner, setError, onAdvance }
         </Card>
       )}
 
-      {/* Claims list */}
       <Card>
         <CardHeader className="pb-2">
           <CardTitle className="text-sm flex items-center gap-2">
@@ -385,71 +464,46 @@ function ClaimsSection({ bg, claims, setClaims, setBanner, setError, onAdvance }
           ) : (
             <div className="divide-y">
               {claims.map((claim) => (
-                <div
-                  key={claim.id}
-                  className={`px-4 py-3 transition-colors ${!claim.selected ? 'opacity-50' : ''}`}
-                >
+                <div key={claim.id}
+                  className={`px-4 py-3 transition-colors ${!claim.selected ? 'opacity-50' : ''}`}>
                   {editingId === claim.id ? (
                     <div className="space-y-2">
-                      <Input
-                        value={editText}
-                        onChange={(e) => setEditText(e.target.value)}
-                        className="text-xs h-8"
-                        placeholder="Claim text"
-                        autoFocus
-                      />
-                      <Input
-                        value={editDetail}
-                        onChange={(e) => setEditDetail(e.target.value)}
-                        className="text-xs h-8"
-                        placeholder="Detail (optional)"
-                      />
+                      <Input value={editText} onChange={(e) => setEditText(e.target.value)}
+                        className="text-xs h-8" placeholder="Claim text" autoFocus />
+                      <Input value={editDetail} onChange={(e) => setEditDetail(e.target.value)}
+                        className="text-xs h-8" placeholder="Detail (optional)" />
                       <div className="flex items-center gap-2 flex-wrap">
                         <Select value={editLane} onValueChange={setEditLane}>
-                          <SelectTrigger className="h-8 text-xs w-36">
-                            <SelectValue />
-                          </SelectTrigger>
+                          <SelectTrigger className="h-8 text-xs w-36"><SelectValue /></SelectTrigger>
                           <SelectContent>
                             {VALID_LANES.map((l) => (
                               <SelectItem key={l} value={l} className="text-xs">{l}</SelectItem>
                             ))}
                           </SelectContent>
                         </Select>
-                        <Button
-                          size="sm" className="text-xs h-8"
+                        <Button size="sm" className="text-xs h-8"
                           onClick={() => handleUpdate(claim.id)}
-                          disabled={!editText.trim() || !editLane}
-                        >
+                          disabled={!editText.trim() || !editLane}>
                           <Check className="h-3.5 w-3.5 mr-1" /> Save
                         </Button>
-                        <Button
-                          size="sm" variant="ghost" className="text-xs h-8"
-                          onClick={() => setEditingId(null)}
-                        >
+                        <Button size="sm" variant="ghost" className="text-xs h-8"
+                          onClick={() => setEditingId(null)}>
                           Cancel
                         </Button>
-                        <button
-                          type="button"
-                          onClick={() => handleDelete(claim.id)}
-                          className="ml-auto text-[11px] text-rose-600 flex items-center gap-1 hover:underline"
-                        >
+                        <button type="button" onClick={() => handleDelete(claim.id)}
+                          className="ml-auto text-[11px] text-rose-600 flex items-center gap-1 hover:underline">
                           <X className="h-3 w-3" /> Remove
                         </button>
                       </div>
                     </div>
                   ) : (
                     <div className="flex items-start gap-3">
-                      <input
-                        type="checkbox"
-                        checked={claim.selected}
+                      <input type="checkbox" checked={claim.selected}
                         onChange={() => handleToggle(claim)}
-                        className="mt-1 shrink-0 cursor-pointer"
-                      />
+                        className="mt-1 shrink-0 cursor-pointer" />
                       <div className="flex-1 min-w-0">
                         <div className="flex items-center gap-2 flex-wrap">
-                          <span className="text-xs font-semibold">
-                            {claim.claim_text}
-                          </span>
+                          <span className="text-xs font-semibold">{claim.claim_text}</span>
                           <LanePill lane_type={claim.lane_type} />
                           {claim.edited_at && (
                             <Badge variant="outline" className="text-[8px] border-violet-200 text-violet-600">
@@ -463,11 +517,8 @@ function ClaimsSection({ bg, claims, setClaims, setBanner, setError, onAdvance }
                           </p>
                         )}
                       </div>
-                      <button
-                        type="button"
-                        onClick={() => openEdit(claim)}
-                        className="shrink-0 text-muted-foreground hover:text-foreground transition-colors"
-                      >
+                      <button type="button" onClick={() => openEdit(claim)}
+                        className="shrink-0 text-muted-foreground hover:text-foreground transition-colors">
                         <Pencil className="h-3.5 w-3.5" />
                       </button>
                     </div>
@@ -477,8 +528,6 @@ function ClaimsSection({ bg, claims, setClaims, setBanner, setError, onAdvance }
             </div>
           )}
         </CardContent>
-
-        {/* Card footer — summary + re-extract */}
         {claims.length > 0 && (
           <div className="px-4 py-3 border-t bg-muted/20 flex items-center justify-between gap-3 flex-wrap">
             <p className="text-[10px] text-muted-foreground">
@@ -487,28 +536,22 @@ function ClaimsSection({ bg, claims, setClaims, setBanner, setError, onAdvance }
                 <> · {laneTypes.length} lane{laneTypes.length === 1 ? '' : 's'}: {laneTypes.join(' · ')}</>
               )}
             </p>
-            <Button
-              size="sm" variant="outline" className="text-xs h-7"
-              onClick={handleExtract} disabled={extracting}
-            >
+            <Button size="sm" variant="outline" className="text-xs h-7"
+              onClick={handleExtract} disabled={extracting}>
               <RotateCw className="h-3 w-3 mr-1" /> Re-extract
             </Button>
           </div>
         )}
       </Card>
 
-      {/* Primary action — always visible below the card */}
       <div className="flex items-center justify-between gap-3 pt-2 border-t flex-wrap">
         <p className="text-[10px] text-muted-foreground">
           {bg.status === 'claims'
             ? 'Confirm selection to advance to Consent stage'
             : 'Already advanced — edit claims above then save'}
         </p>
-        <Button
-          size="sm" className="text-xs"
-          onClick={handleConfirm}
-          disabled={confirming || selectedCount === 0}
-        >
+        <Button size="sm" className="text-xs"
+          onClick={handleConfirm} disabled={confirming || selectedCount === 0}>
           {confirming
             ? <><Loader2 className="h-3.5 w-3.5 mr-1.5 animate-spin" /> Saving…</>
             : <><Check className="h-3.5 w-3.5 mr-1.5" />
@@ -520,87 +563,611 @@ function ClaimsSection({ bg, claims, setClaims, setBanner, setError, onAdvance }
   );
 }
 
-function ConsentSection({ bg, onAdvance }) {
-  const [advancing, setAdvancing] = useState(false);
+function ConsentSection({ bg, setBg, claims, setBanner, setError, onAdvance }) {
+  const [consent,      setConsent]      = useState(null);
+  const [loading,      setLoading]      = useState(true);
+  const [generating,   setGenerating]   = useState(false);
+  const [revoking,     setRevoking]     = useState(false);
+  const [advancing,    setAdvancing]    = useState(false);
+  const [showRevoke,   setShowRevoke]   = useState(false);
+  const [revokeReason, setRevokeReason] = useState('');
 
-  const handleAdvance = async () => {
+  const loadConsent = useCallback(async () => {
+    setLoading(true);
+    try {
+      const res = await getConsent(bg.bg_id);
+      setConsent(res.data?.consent || null);
+    } catch { } finally {
+      setLoading(false);
+    }
+  }, [bg.bg_id]);
+
+  useEffect(() => { loadConsent(); }, [loadConsent]);
+
+  const handleGenerate = async () => {
+    setGenerating(true);
+    setError(null);
+    try {
+      const res = await generateConsentLink(bg.bg_id);
+      setConsent(res.data?.consent || null);
+      setBanner({ ok: true, text: 'Consent link generated — copy and share with candidate.' });
+    } catch (err) {
+      setError(err.response?.data?.message || err.message || 'Failed to generate link');
+    } finally {
+      setGenerating(false);
+    }
+  };
+
+  const handleRevoke = async () => {
+    if (consent?.status === 'signed') {
+      setError('Consent has been signed and cannot be revoked.');
+      setShowRevoke(false);
+      return;
+    }
+    setRevoking(true);
+    setError(null);
+    try {
+      const res = await revokeConsent(bg.bg_id, revokeReason || null);
+      setConsent(res.data?.consent || null);
+      setShowRevoke(false);
+      setRevokeReason('');
+      setBanner({ ok: true, text: 'Consent revoked.' });
+    } catch (err) {
+      setError(err.response?.data?.message || err.message || 'Revoke failed');
+    } finally {
+      setRevoking(false);
+    }
+  };
+
+  const handleAdvanceToTracker = async () => {
     setAdvancing(true);
+    setError(null);
     try {
       await updateBgStatus(bg.bg_id, 'tracker');
+      setBg((prev) => ({ ...prev, status: 'tracker' }));
+      setBanner({ ok: true, text: 'Advanced to Tracker.' });
       onAdvance('tracker');
     } catch (err) {
-      console.error(err);
+      setError(err.response?.data?.message || err.message || 'Failed to advance');
     } finally {
       setAdvancing(false);
     }
   };
 
+  const selectedClaims = claims.filter((c) => c.selected);
+  const uniqueLanes    = [...new Set(selectedClaims.map((c) => c.lane_type))];
+  const isSigned       = consent?.status === 'signed';
+  const isRevoked      = consent?.status === 'revoked';
+
+  if (loading) {
+    return (
+      <div className="flex justify-center py-12">
+        <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
+      </div>
+    );
+  }
+
   return (
     <div className="space-y-4">
       <Card>
-        <CardContent className="py-12 text-center space-y-3">
-          <div className="h-10 w-10 rounded-full bg-muted flex items-center justify-center mx-auto">
-            <FileText className="h-5 w-5 text-muted-foreground" />
+        <CardHeader className="pb-3">
+          <div className="flex items-center gap-2">
+            <FileText className="h-4 w-4 text-primary shrink-0" />
+            <div className="min-w-0 flex-1">
+              <CardTitle className="text-sm">Consent · UU PDP 27/2022 compliant</CardTitle>
+              <p className="text-[10px] text-muted-foreground mt-0.5">
+                candidate e-signed via portal
+                {isSigned ? ' ' : ' · revocable until signed'}
+              </p>
+            </div>
+            {consent?.status && (
+              <Badge
+                variant="outline"
+                className={`text-[9px] shrink-0 ${
+                  isSigned   ? 'border-emerald-300 text-emerald-700 bg-emerald-50'
+                  : isRevoked ? 'border-rose-300 text-rose-700 bg-rose-50'
+                  : consent.status === 'sent' ? 'border-blue-300 text-blue-700 bg-blue-50'
+                  : 'border-border text-muted-foreground'
+                }`}
+              >
+                {consent.status}
+              </Badge>
+            )}
           </div>
-          <p className="text-sm font-semibold">Consent · UU PDP 27/2022</p>
-          <p className="text-xs text-muted-foreground max-w-sm mx-auto">
-            Consent collection and e-signature portal will be built in the next sprint.
-            Once the candidate signs, this panel will show the signed document, IP log, and revocation link.
-          </p>
-          <Button
-            size="sm" className="text-xs mt-2"
-            onClick={handleAdvance}
-            disabled={advancing}
-          >
-            {advancing
-              ? <><Loader2 className="h-3.5 w-3.5 mr-1.5 animate-spin" /> Advancing…</>
-              : <><ChevronRight className="h-3.5 w-3.5 mr-1" /> Mark consent received &amp; open Tracker</>}
-          </Button>
+        </CardHeader>
+        <CardContent className="space-y-3">
+          {isSigned && (
+            <div className="flex items-center gap-2 px-3 py-2 rounded-lg border border-emerald-200 bg-emerald-50 text-xs text-emerald-700">
+              <Check className="h-4 w-4 shrink-0" />
+              Consent signed {fmtDate(consent.signed_at)} 
+            </div>
+          )}
+          {isRevoked && (
+            <div className="flex items-center gap-2 px-3 py-2 rounded-lg border border-rose-200 bg-rose-50 text-xs text-rose-700">
+              <XCircle className="h-4 w-4 shrink-0" />
+              Consent revoked {fmtDate(consent.revoked_at)}
+              {consent.revocation_reason && (
+                <span className="italic"> — "{consent.revocation_reason}"</span>
+              )}
+            </div>
+          )}
+
+          {/* Portal link row */}
+          {isSigned ? (
+            <div className="rounded-lg border border-dashed bg-emerald-50/50 border-emerald-200 p-3 text-center space-y-0.5">
+              <p className="text-[11px] text-emerald-700 font-semibold flex items-center justify-center gap-1.5">
+                <Check className="h-3.5 w-3.5" /> Signed {fmtDate(consent.signed_at)}
+              </p>
+            </div>
+          ) : consent?.status === 'sent' && consent.portal_url ? (
+            /* Sent — show the link with revoke option */
+            <PortalLinkRow
+              url={consent.portal_url}
+              expiresAt={consent.token_expires_at}
+              sentAt={consent.sent_at}
+              onRegenerate={handleGenerate}
+              onRevoke={() => { setShowRevoke(true); setRevokeReason(''); }}
+              generating={generating}
+            />
+          ) : (
+            /* Draft or revoked — show generate button */
+            <GenerateLinkRow
+              onGenerate={handleGenerate}
+              generating={generating}
+              label={isRevoked ? 'Regenerate link' : 'Generate link'}
+            />
+          )}
+
+          {showRevoke && !isSigned && (
+            <div className="space-y-2 p-3 rounded-lg border border-rose-200 bg-rose-50/30">
+              <p className="text-[10px] font-semibold text-rose-700 uppercase tracking-wide">
+                Revoke consent
+              </p>
+              <Input
+                value={revokeReason}
+                onChange={(e) => setRevokeReason(e.target.value)}
+                placeholder="Reason (optional) — e.g. candidate withdrew"
+                className="text-xs h-8"
+              />
+              <div className="flex gap-2">
+                <Button size="sm" variant="destructive" className="text-xs h-8"
+                  onClick={handleRevoke} disabled={revoking}>
+                  {revoking
+                    ? <><Loader2 className="h-3.5 w-3.5 mr-1.5 animate-spin" /> Revoking…</>
+                    : 'Confirm revoke'}
+                </Button>
+                <Button size="sm" variant="ghost" className="text-xs h-8"
+                  onClick={() => { setShowRevoke(false); setRevokeReason(''); }}>
+                  Cancel
+                </Button>
+              </div>
+            </div>
+          )}
+
         </CardContent>
       </Card>
+
+      <Card>
+        <CardHeader className="pb-2">
+          <CardTitle className="text-[10px] uppercase tracking-wide text-muted-foreground">
+            Consent document · {uniqueLanes.length} lane{uniqueLanes.length === 1 ? '' : 's'} enumerated
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="p-0">
+          <div className="mx-4 mb-4 rounded-lg border bg-muted/10 overflow-hidden">
+            <div className="px-5 py-4 border-b bg-muted/20 text-center">
+              <p className="text-xs font-bold tracking-wide uppercase text-foreground">
+                SURAT PERSETUJUAN PEMERIKSAAN LATAR BELAKANG
+              </p>
+              <p className="text-[10px] text-muted-foreground mt-1">
+                PT — · sesuai UU No. 27 Tahun 2022 tentang Pelindungan Data Pribadi
+              </p>
+            </div>
+            <div className="px-5 py-4 space-y-3 text-[11px] leading-relaxed text-foreground">
+              <p>
+                Saya yang bertanda tangan di bawah ini,{' '}
+                <strong>{bg.candidate_name}</strong>,
+                dengan ini memberikan persetujuan tertulis kepada{' '}
+                <strong>perusahaan</strong> untuk melakukan pemeriksaan latar belakang
+                ("BG Check") sehubungan dengan proses rekrutmen saya untuk posisi{' '}
+                <strong>{bg.job_title}</strong>.
+              </p>
+              {uniqueLanes.length > 0 ? (
+                <>
+                  <p>Pemeriksaan akan mencakup lajur-lajur (lanes) berikut:</p>
+                  <ol className="space-y-1.5 pl-5 list-decimal">
+                    {uniqueLanes.map((lt, i) => {
+                      const claimsForLane = selectedClaims.filter((c) => c.lane_type === lt);
+                      return (
+                        <li key={i}>
+                          <strong>{LANE_LABELS_ID[lt] || lt}</strong>
+                          {claimsForLane.length > 0 && (
+                            <span className="text-muted-foreground">
+                              {' '}· {claimsForLane.map((c) => c.claim_text).join(', ')}
+                            </span>
+                          )}
+                        </li>
+                      );
+                    })}
+                  </ol>
+                </>
+              ) : (
+                <p className="text-muted-foreground italic">
+                  No claims selected yet — go back to Claims and select items to verify.
+                </p>
+              )}
+              <p className="text-muted-foreground">
+                Data yang terkumpul akan disimpan paling lama 24 bulan setelah keputusan akhir,
+                dan saya berhak mencabut persetujuan ini kapan saja sebelum keputusan akhir
+                (Verdict) ditetapkan, sesuai Pasal 9 UU 27/2022.
+              </p>
+              {isSigned && (
+                <p className="text-emerald-700 font-medium">
+                  Ditandatangani secara elektronik · {fmtDate(consent.signed_at)}
+                </p>
+              )}
+            </div>
+          </div>
+          {isSigned && (
+            <div className="grid grid-cols-2 gap-3 px-4 pb-4">
+              <div className="rounded-lg border bg-muted/10 p-3 space-y-1.5">
+                <p className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
+                  Signature record
+                </p>
+                <div className="text-[11px] text-foreground leading-relaxed space-y-0.5">
+                  <p>Method: agreed checkbox · portal</p>
+                  <p>Audit ref: <span className="font-mono text-[10px]">consent#{consent.id}</span></p>
+                  <p>Date: {fmtDate(consent.signed_at)}</p>
+                </div>
+              </div>
+              <div className="rounded-lg border bg-muted/10 p-3 space-y-1.5">
+                <p className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
+                  Revocation
+                </p>
+                <div className="text-[11px] text-foreground leading-relaxed space-y-0.5">
+                  <Badge variant="outline" className="text-[9px] border-rose-200 text-rose-700 bg-rose-50">
+                    permanently locked
+                  </Badge>
+                </div>
+              </div>
+            </div>
+          )}
+
+        </CardContent>
+      </Card>
+
+      <div className="flex items-center justify-between gap-3 pt-2 border-t flex-wrap">
+        <p className="text-[10px] text-muted-foreground">
+          {isSigned
+            ? 'Consent signed — open Tracker to begin lane verification'
+            : 'Once the candidate signs via the portal link, advance to Tracker'}
+        </p>
+        <Button size="sm" className="text-xs"
+          onClick={handleAdvanceToTracker} disabled={advancing}>
+          {advancing
+            ? <><Loader2 className="h-3.5 w-3.5 mr-1.5 animate-spin" /> Advancing…</>
+            : <><ChevronRight className="h-3.5 w-3.5 mr-1" /> Open Tracker</>}
+        </Button>
+      </div>
+
     </div>
   );
 }
 
-function TrackerSection({ bg, onAdvance }) {
-  const [advancing, setAdvancing] = useState(false);
+function TrackerSection({ bg, setBg, setBanner, setError, onAdvance }) {
+  const [lanes,      setLanes]      = useState([]);
+  const [loading,    setLoading]    = useState(true);
+  const [spawning,   setSpawning]   = useState(false);
+  const [advancing,  setAdvancing]  = useState(false);
+  const [expandedId, setExpandedId] = useState(null);
+  const [editingId,  setEditingId]  = useState(null);
+  const [editNote,   setEditNote]   = useState('');
+  const [editStatus, setEditStatus] = useState('');
+  const [saving,     setSaving]     = useState(false);
 
-  const handleAdvance = async () => {
+  const loadLanes = useCallback(async () => {
+    setLoading(true);
+    try {
+      const res = await getLanes(bg.bg_id);
+      setLanes(res.data?.lanes || []);
+    } catch (err) {
+      setError(err.response?.data?.message || err.message || 'Failed to load lanes');
+    } finally {
+      setLoading(false);
+    }
+  }, [bg.bg_id]);
+
+  useEffect(() => { loadLanes(); }, [loadLanes]);
+
+  const handleSpawn = async () => {
+    setSpawning(true);
+    setError(null);
+    try {
+      const res = await createLanes(bg.bg_id);
+      setLanes(res.data?.lanes || []);
+      setBanner({ ok: true, text: `${res.data?.lanes?.length || 0} verification lanes created.` });
+    } catch (err) {
+      setError(err.response?.data?.message || err.message || 'Failed to create lanes');
+    } finally {
+      setSpawning(false);
+    }
+  };
+
+  const openEdit = (lane) => {
+    setEditingId(lane.id);
+    setEditNote(lane.note || '');
+    setEditStatus(lane.status);
+    setExpandedId(lane.id);
+  };
+
+  const handleSaveLane = async (lane_id) => {
+    setSaving(true);
+    setError(null);
+    try {
+      const res = await updateTracker(lane_id, { note: editNote, status: editStatus });
+      setLanes((prev) => prev.map((l) => l.id === lane_id ? { ...l, ...res.data.lane } : l));
+      setEditingId(null);
+      setBanner({ ok: true, text: 'Lane updated.' });
+    } catch (err) {
+      setError(err.response?.data?.message || err.message || 'Update failed');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const handleAdvanceToVerdict = async () => {
     setAdvancing(true);
+    setError(null);
     try {
       await updateBgStatus(bg.bg_id, 'verdict');
+      setBg((prev) => ({ ...prev, status: 'verdict' }));
+      setBanner({ ok: true, text: 'All lanes resolved — advanced to Verdict.' });
       onAdvance('verdict');
     } catch (err) {
-      console.error(err);
+      setError(err.response?.data?.message || err.message || 'Failed to advance');
     } finally {
       setAdvancing(false);
     }
   };
 
+  const counts = {
+    pass:        lanes.filter((l) => ['pass', 'pass_with_concerns'].includes(l.status)).length,
+    in_progress: lanes.filter((l) => l.status === 'in_progress').length,
+    stalled:     lanes.filter((l) => l.status === 'stalled').length,
+    fail:        lanes.filter((l) => l.status === 'fail').length,
+    pending:     lanes.filter((l) => l.status === 'pending').length,
+  };
+
+  const passLaneTypes    = lanes.filter((l) => ['pass', 'pass_with_concerns'].includes(l.status)).map((l) => l.lane_type);
+  const stalledTypes     = lanes.filter((l) => l.status === 'stalled').map((l) => l.lane_type);
+  const inProgressTypes  = lanes.filter((l) => l.status === 'in_progress').map((l) => l.lane_type);
+
+  if (loading) {
+    return (
+      <div className="flex justify-center py-12">
+        <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
+      </div>
+    );
+  }
+
   return (
     <div className="space-y-4">
+
+      {/* Header card */}
       <Card>
-        <CardContent className="py-12 text-center space-y-3">
-          <div className="h-10 w-10 rounded-full bg-muted flex items-center justify-center mx-auto">
-            <GitBranch className="h-5 w-5 text-muted-foreground" />
+        <CardHeader className="pb-3">
+          <div className="flex items-center gap-2">
+            <Activity className="h-4 w-4 text-primary shrink-0" />
+            <div className="min-w-0 flex-1">
+              <CardTitle className="text-sm">
+                Tracker · {lanes.length} verification lane{lanes.length === 1 ? '' : 's'}
+              </CardTitle>
+              <p className="text-[10px] text-muted-foreground mt-0.5">
+                {counts.pass}/{lanes.length} pass · {counts.stalled} stalled · {counts.in_progress} in progress
+              </p>
+            </div>
+            <Button size="sm" variant="outline" className="text-xs shrink-0"
+              onClick={handleSpawn} disabled={spawning}>
+              {spawning
+                ? <><Loader2 className="h-3.5 w-3.5 animate-spin mr-1.5" /> Creating…</>
+                : <><GitBranch className="h-3.5 w-3.5 mr-1.5" />
+                    {lanes.length ? 'Re-sync lanes' : 'Create lanes'}</>}
+            </Button>
           </div>
-          <p className="text-sm font-semibold">Tracker · verification lanes</p>
-          <p className="text-xs text-muted-foreground max-w-sm mx-auto">
-            Per-lane vendor tracking will be built alongside the{' '}
-            <code className="text-[10px]">bg_lane</code> table.
-            Each selected claim will spawn a lane row here once consent is collected.
-          </p>
-          <Button
-            size="sm" className="text-xs mt-2"
-            onClick={handleAdvance}
-            disabled={advancing}
-          >
-            {advancing
-              ? <><Loader2 className="h-3.5 w-3.5 mr-1.5 animate-spin" /> Advancing…</>
-              : <><ChevronRight className="h-3.5 w-3.5 mr-1" /> All lanes resolved — open Verdict</>}
-          </Button>
-        </CardContent>
+        </CardHeader>
       </Card>
+
+      {lanes.length === 0 ? (
+        <Card>
+          <CardContent className="py-10 text-center space-y-3">
+            <div className="h-10 w-10 rounded-full bg-muted flex items-center justify-center mx-auto">
+              <GitBranch className="h-5 w-5 text-muted-foreground" />
+            </div>
+            <p className="text-xs text-muted-foreground">
+              No lanes yet — click "Create lanes" to spawn one verification lane per selected claim.
+            </p>
+          </CardContent>
+        </Card>
+      ) : (
+        <>
+          {/* Stat tiles */}
+          <div className="grid grid-cols-4 gap-3">
+            <Card><CardContent className="p-3 text-center">
+              <p className="text-[10px] text-muted-foreground">Lanes pass</p>
+              <p className="text-2xl font-bold font-mono text-emerald-600">{counts.pass}</p>
+              {passLaneTypes.length > 0 && (
+                <p className="text-[9px] text-muted-foreground mt-0.5 truncate">{passLaneTypes.join(' · ')}</p>
+              )}
+            </CardContent></Card>
+            <Card><CardContent className="p-3 text-center">
+              <p className="text-[10px] text-muted-foreground">In progress</p>
+              <p className="text-2xl font-bold font-mono text-blue-600">{counts.in_progress}</p>
+              {inProgressTypes.length > 0 && (
+                <p className="text-[9px] text-muted-foreground mt-0.5 truncate">{inProgressTypes.join(' · ')}</p>
+              )}
+            </CardContent></Card>
+            <Card><CardContent className="p-3 text-center">
+              <p className="text-[10px] text-muted-foreground">Stalled</p>
+              <p className="text-2xl font-bold font-mono text-amber-600">{counts.stalled}</p>
+              {stalledTypes.length > 0 && (
+                <p className="text-[9px] text-muted-foreground mt-0.5 truncate">{stalledTypes.join(' · ')}</p>
+              )}
+            </CardContent></Card>
+            <Card><CardContent className="p-3 text-center">
+              <p className="text-[10px] text-muted-foreground">Fail</p>
+              <p className={`text-2xl font-bold font-mono ${counts.fail > 0 ? 'text-rose-600' : 'text-muted-foreground'}`}>
+                {counts.fail}
+              </p>
+              <p className="text-[9px] text-muted-foreground mt-0.5">
+                {counts.fail === 0 ? 'none' : 'needs attention'}
+              </p>
+            </CardContent></Card>
+          </div>
+
+          {/* Lane rows */}
+          <Card>
+            <CardHeader className="pb-2">
+              <CardTitle className="text-xs uppercase tracking-wide text-muted-foreground">
+                Lanes · per-lane status · click to expand
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="p-0">
+              <div className="divide-y">
+                {lanes.map((lane) => {
+                  const meta      = getStatusMeta(lane.status);
+                  const isExp     = expandedId === lane.id;
+                  const isEditing = editingId  === lane.id;
+
+                  return (
+                    <div key={lane.id} className="px-4 py-3">
+                      {/* Lane header row */}
+                      <div
+                        className="flex items-center gap-3 cursor-pointer"
+                        onClick={() => { if (!isEditing) setExpandedId(isExp ? null : lane.id); }}
+                      >
+                        <LanePill lane_type={lane.lane_type} />
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center gap-2 flex-wrap">
+                            <span className="text-xs font-semibold">{lane.claim_text}</span>
+                          </div>
+                          {lane.note && !isExp && (
+                            <p className="text-[10px] text-muted-foreground mt-0.5 truncate">
+                              {lane.note}
+                            </p>
+                          )}
+                        </div>
+                        <Badge variant="outline" className={`text-[9px] shrink-0 ${meta.color}`}>
+                          {meta.label}
+                        </Badge>
+                        <button type="button" className="text-muted-foreground shrink-0">
+                          {isExp
+                            ? <ChevronUp className="h-3.5 w-3.5" />
+                            : <ChevronDown className="h-3.5 w-3.5" />}
+                        </button>
+                      </div>
+
+                      {/* Expanded detail */}
+                      {isExp && (
+                        <div className="mt-3 space-y-3 pl-1">
+                          {lane.claim_detail && (
+                            <p className="text-[10px] text-muted-foreground">{lane.claim_detail}</p>
+                          )}
+
+                          {isEditing ? (
+                            <div className="space-y-2">
+                              <div className="space-y-1">
+                                <label className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
+                                  Finding note
+                                </label>
+                                <Textarea
+                                  value={editNote}
+                                  onChange={(e) => setEditNote(e.target.value)}
+                                  placeholder="e.g. KTP / NIK 3174 verified · Dukcapil match"
+                                  rows={2}
+                                  className="text-xs"
+                                />
+                              </div>
+                              <div className="space-y-1">
+                                <label className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
+                                  Status
+                                </label>
+                                <div className="flex flex-wrap gap-2">
+                                  {TRACKER_STATUSES.map((s) => (
+                                    <button
+                                      key={s.value}
+                                      type="button"
+                                      onClick={() => setEditStatus(s.value)}
+                                      className={`px-2.5 py-1 rounded-full border text-[10px] font-semibold transition-all ${
+                                        editStatus === s.value
+                                          ? `${s.color} ring-2 ring-offset-1 ring-current`
+                                          : `${s.color} opacity-60 hover:opacity-100`
+                                      }`}
+                                    >
+                                      {s.label}
+                                    </button>
+                                  ))}
+                                </div>
+                              </div>
+                              <div className="flex gap-2">
+                                <Button size="sm" className="text-xs h-8"
+                                  onClick={() => handleSaveLane(lane.id)}
+                                  disabled={saving || !editStatus}>
+                                  {saving
+                                    ? <><Loader2 className="h-3.5 w-3.5 animate-spin mr-1" /> Saving…</>
+                                    : <><Check className="h-3.5 w-3.5 mr-1" /> Save</>}
+                                </Button>
+                                <Button size="sm" variant="ghost" className="text-xs h-8"
+                                  onClick={() => setEditingId(null)}>
+                                  Cancel
+                                </Button>
+                              </div>
+                            </div>
+                          ) : (
+                            <div className="space-y-2">
+                              {lane.note && (
+                                <p className="text-[11px] text-foreground leading-relaxed">
+                                  {lane.note}
+                                </p>
+                              )}
+                              {lane.resolved_at && (
+                                <p className="text-[10px] text-muted-foreground">
+                                  Resolved {fmtDate(lane.resolved_at)}
+                                </p>
+                              )}
+                              <Button size="sm" variant="outline" className="text-xs h-7"
+                                onClick={(e) => { e.stopPropagation(); openEdit(lane); }}>
+                                <Pencil className="h-3 w-3 mr-1" /> Edit lane
+                              </Button>
+                            </div>
+                          )}
+                        </div>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+            </CardContent>
+          </Card>
+        </>
+      )}
+
+      {/* Advance to verdict */}
+      <div className="flex items-center justify-between gap-3 pt-2 border-t flex-wrap">
+        <p className="text-[10px] text-muted-foreground">
+          {counts.stalled > 0
+            ? `${counts.stalled} lane${counts.stalled === 1 ? '' : 's'} stalled — resolve before opening Verdict`
+            : counts.in_progress > 0
+              ? `${counts.in_progress} lane${counts.in_progress === 1 ? '' : 's'} still in progress`
+              : 'All lanes resolved — open Verdict when ready'}
+        </p>
+        <Button size="sm" className="text-xs"
+          onClick={handleAdvanceToVerdict} disabled={advancing}>
+          {advancing
+            ? <><Loader2 className="h-3.5 w-3.5 mr-1.5 animate-spin" /> Advancing…</>
+            : <><ChevronRight className="h-3.5 w-3.5 mr-1" /> Open Verdict</>}
+        </Button>
+      </div>
+
     </div>
   );
 }
@@ -620,7 +1187,6 @@ function VerdictSection({ bg, setBg, setBanner, setError }) {
       const verdict_note = selected === 'pass_with_concerns'
         ? { gap: gap.trim(), context: ctx.trim(), mitigation: mitigation.trim() }
         : null;
-
       await saveVerdict(bg.bg_id, { verdict: selected, verdict_note });
       setBg((prev) => ({ ...prev, verdict: selected, status: 'done' }));
       setBanner({ ok: true, text: `Verdict saved: ${selected.replace(/_/g, ' ')}.` });
@@ -634,7 +1200,6 @@ function VerdictSection({ bg, setBg, setBanner, setError }) {
   return (
     <div className="space-y-4">
 
-      {/* Current verdict banner */}
       {bg.verdict && (
         <div className={`flex items-center gap-2 px-4 py-3 rounded-lg border text-xs font-semibold ${
           bg.verdict === 'pass'
@@ -648,7 +1213,6 @@ function VerdictSection({ bg, setBg, setBanner, setError }) {
         </div>
       )}
 
-      {/* Verdict picker */}
       <Card>
         <CardHeader className="pb-3">
           <CardTitle className="text-sm flex items-center gap-2">
@@ -659,9 +1223,7 @@ function VerdictSection({ bg, setBg, setBanner, setError }) {
           {VERDICT_OPTIONS.map((opt) => {
             const isActive = selected === opt.value;
             return (
-              <button
-                key={opt.value}
-                type="button"
+              <button key={opt.value} type="button"
                 onClick={() => setSelected(isActive ? null : opt.value)}
                 className={`w-full flex items-start gap-3 px-4 py-3 rounded-lg border text-left transition-all cursor-pointer ${
                   isActive ? opt.activeColor : `${opt.color} hover:brightness-95`
@@ -682,69 +1244,46 @@ function VerdictSection({ bg, setBg, setBanner, setError }) {
         </CardContent>
       </Card>
 
-      {/* pass_with_concerns note */}
       {selected === 'pass_with_concerns' && (
         <Card className="border-amber-200 bg-amber-50/30">
           <CardHeader className="pb-2">
-            <CardTitle className="text-xs text-amber-800">
-              Concern note — required for pass with concerns
-            </CardTitle>
+            <CardTitle className="text-xs text-amber-800">Concern note — required</CardTitle>
           </CardHeader>
           <CardContent className="space-y-3">
             <div className="space-y-1">
               <label className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
                 Gap identified
               </label>
-              <Textarea
-                value={gap}
-                onChange={(e) => setGap(e.target.value)}
-                placeholder="e.g. Team-size claim: stated 12, confirmed 8 (incl. 4 interns)"
-                rows={2}
-                className="text-xs"
-              />
+              <Textarea value={gap} onChange={(e) => setGap(e.target.value)}
+                placeholder="e.g. Team-size claim: stated 12, confirmed 8" rows={2} className="text-xs" />
             </div>
             <div className="space-y-1">
               <label className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
                 Context
               </label>
-              <Textarea
-                value={ctx}
-                onChange={(e) => setCtx(e.target.value)}
-                placeholder="e.g. Minor inflation, not material misrepresentation"
-                rows={2}
-                className="text-xs"
-              />
+              <Textarea value={ctx} onChange={(e) => setCtx(e.target.value)}
+                placeholder="e.g. Minor inflation, not material misrepresentation" rows={2} className="text-xs" />
             </div>
             <div className="space-y-1">
               <label className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
                 Mitigation
               </label>
-              <Textarea
-                value={mitigation}
-                onChange={(e) => setMitigation(e.target.value)}
-                placeholder="e.g. Flag to HM at offer stage"
-                rows={2}
-                className="text-xs"
-              />
+              <Textarea value={mitigation} onChange={(e) => setMitigation(e.target.value)}
+                placeholder="e.g. Flag to HM at offer stage" rows={2} className="text-xs" />
             </div>
           </CardContent>
         </Card>
       )}
 
-      {/* UU PDP fail notice */}
       {selected === 'fail' && (
         <div className="px-4 py-3 rounded-lg border border-rose-200 bg-rose-50/50 text-[10px] text-rose-700">
           <strong>UU PDP 27/2022 routing.</strong> Failed BG cases are routed to the locked
-          🔒 <em>BG concerns</em> Talent Pool segment — view-only, never auto-resurfaced.
-          Data retained for 24 months after final decision.
+          🔒 <em>BG concerns</em> Talent Pool segment — data retained 24 months.
         </div>
       )}
 
-      {/* Submit — always available */}
       <div className="flex justify-end pt-1 border-t">
-        <Button
-          size="sm" className="text-xs"
-          onClick={handleSave}
+        <Button size="sm" className="text-xs" onClick={handleSave}
           disabled={
             saving || !selected ||
             (selected === 'pass_with_concerns' &&
@@ -828,13 +1367,10 @@ export default function BgCheckCandidatePage() {
       {/* Sticky header */}
       <div className="sticky top-[52px] z-10 bg-background/95 backdrop-blur-sm -mt-5 -mx-5 px-5 pt-5 pb-4 border-b border-border/60">
         <div className="space-y-3">
-          <Button
-            variant="ghost" size="sm" className="text-xs -ml-2 w-fit"
-            onClick={() => navigate(`/selection/background-check/job/${bg.job_id}`)}
-          >
+          <Button variant="ghost" size="sm" className="text-xs -ml-2 w-fit"
+            onClick={() => navigate(`/selection/background-check/job/${bg.job_id}`)}>
             <ArrowLeft className="h-3.5 w-3.5 mr-1" /> Back to position
           </Button>
-
           <div className="flex items-center gap-3 flex-wrap">
             <div className="h-11 w-11 rounded-full bg-primary/10 text-primary flex items-center justify-center font-bold flex-shrink-0 text-sm">
               {getInitials(bg.candidate_name || '?')}
@@ -849,14 +1385,11 @@ export default function BgCheckCandidatePage() {
                 {bg.work_type    && <span>· {bg.work_type}</span>}
               </div>
             </div>
-            <Badge
-              variant="outline"
-              className={`text-[10px] shrink-0 ${
-                bg.status === 'done'
-                  ? 'border-emerald-300 text-emerald-700 bg-emerald-50'
-                  : 'border-border text-muted-foreground'
-              }`}
-            >
+            <Badge variant="outline" className={`text-[10px] shrink-0 ${
+              bg.status === 'done'
+                ? 'border-emerald-300 text-emerald-700 bg-emerald-50'
+                : 'border-border text-muted-foreground'
+            }`}>
               <ShieldCheck className="h-3 w-3 mr-1" />
               {bg.status}
             </Badge>
@@ -866,7 +1399,6 @@ export default function BgCheckCandidatePage() {
 
       <div className="px-6 pb-6 pt-4 space-y-5">
 
-        {/* Error banner */}
         {error && (
           <div className="flex items-center gap-2 px-4 py-3 rounded-lg border border-red-200 bg-red-50 text-sm text-red-600">
             <AlertTriangle className="h-4 w-4 shrink-0" /> {error}
@@ -876,7 +1408,6 @@ export default function BgCheckCandidatePage() {
           </div>
         )}
 
-        {/* Success/info banner */}
         {banner && (
           <div className={`flex items-center gap-2 px-4 py-3 rounded-lg border text-sm ${
             banner.ok
@@ -890,42 +1421,39 @@ export default function BgCheckCandidatePage() {
           </div>
         )}
 
-        {/* Stepper — always fully navigable */}
         <SubStageStepper
           currentStatus={bg.status}
           activeSection={activeSection}
           onSelect={setActiveSection}
         />
 
-        {/* Two-column layout */}
         <div className="grid grid-cols-1 lg:grid-cols-[minmax(0,1fr)_220px] gap-6">
           <div className="min-w-0">
             {activeSection === 'claims' && (
               <ClaimsSection
-                bg={bg}
-                claims={claims}
-                setClaims={setClaims}
-                setBanner={setBanner}
-                setError={setError}
-                onAdvance={handleAdvance}
+                bg={bg} claims={claims} setClaims={setClaims}
+                setBanner={setBanner} setError={setError} onAdvance={handleAdvance}
               />
             )}
             {activeSection === 'consent' && (
-              <ConsentSection bg={bg} onAdvance={handleAdvance} />
+              <ConsentSection
+                bg={bg} setBg={setBg} claims={claims}
+                setBanner={setBanner} setError={setError} onAdvance={handleAdvance}
+              />
             )}
             {activeSection === 'tracker' && (
-              <TrackerSection bg={bg} onAdvance={handleAdvance} />
+              <TrackerSection
+                bg={bg} setBg={setBg}
+                setBanner={setBanner} setError={setError} onAdvance={handleAdvance}
+              />
             )}
             {activeSection === 'verdict' && (
               <VerdictSection
-                bg={bg}
-                setBg={setBg}
-                setBanner={setBanner}
-                setError={setError}
+                bg={bg} setBg={setBg}
+                setBanner={setBanner} setError={setError}
               />
             )}
           </div>
-
           <aside>
             <div className="sticky top-[184px]">
               <CandidateCard bg={bg} />

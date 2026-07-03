@@ -1,7 +1,6 @@
 import { useEffect, useState, useCallback, useRef } from 'react';
 import { loadCardData, saveCardData, clearCardData, SKEY } from './utils/storage';
 import { computeProfile, fmtDateID, getProfile } from './utils/scoring';
-import { createParticipantByEmail } from '@/api/participant.api';
 import { updatePortalParticipant } from '@/api/portal-assessment.api';
 import { submitAssessment, updateAssessmentReport } from '@/api/assessment-battery-result.api';
 import { unpackAssessorState, packAssessorState } from './report/assessor-state';
@@ -106,15 +105,7 @@ export default function CandidateCard({
       goTo('briefing');
       return;
     }
-    const { data } = await createParticipantByEmail({
-      name: newProfile.name,
-      email: newProfile.email,
-      position: newProfile.position,
-      department: newProfile.department,
-      education: newProfile.education,
-      date_birth: newProfile.date_birth,
-    });
-    setProfile({ ...newProfile, participant_id: data?.participant?.id ?? null });
+    setProfile({ ...newProfile });
     goTo('briefing');
   }, [goTo, isPortal, portalHash, prefilledProfile]);
 
@@ -147,11 +138,6 @@ export default function CandidateCard({
   const submitResults = useCallback(async () => {
     const r = results.insights;
     if (!r) return;
-    if (!isPortal && !profile?.participant_id) {
-      setSubmitStatus('error');
-      setSubmitError('Participant ID belum tersedia. Silakan ulangi pengisian data peserta dari awal.');
-      return;
-    }
     setSubmitStatus('submitting');
     setSubmitError(null);
     try {
@@ -174,7 +160,6 @@ export default function CandidateCard({
         // Portal: don't capture the row — kandidat shouldn't see HR-editable fields.
       } else {
         const res = await submitAssessment({
-          participant_id: profile.participant_id,
           assessment_id: ASSESSMENT_ID_INSIGHTS,
           ...payload,
         });
@@ -193,7 +178,7 @@ export default function CandidateCard({
       setSubmitStatus('error');
       setSubmitError(e?.response?.data?.message || e?.message || 'Gagal mengirim hasil ke server.');
     }
-  }, [profile?.participant_id, results, isPortal, onPortalSubmit]);
+  }, [profile, results, isPortal, onPortalSubmit]);
 
   useEffect(() => {
     if (screen === 'complete' && !submitOnceRef.current && submitStatus === 'idle') {

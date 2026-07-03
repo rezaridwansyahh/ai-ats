@@ -317,6 +317,188 @@ class BackgroundCheckModel {
     return result.rows.map((r) => r.lane_type);
   }
 
+  async ensureConsent(candidate_bg_id) {
+    const db = getDb();
+
+    const existing = await db.query(`
+      SELECT * FROM bg_consent
+      WHERE candidate_bg_id = $1
+    `, [candidate_bg_id]);
+
+    if (existing.rows[0]) return existing.rows[0];
+
+    const inserted = await db.query(`
+      INSERT INTO bg_consent (candidate_bg_id)
+      VALUES ($1)
+      RETURNING *
+    `, [candidate_bg_id]);
+
+    return inserted.rows[0];
+  }
+
+  async getConsentByBgId(candidate_bg_id) {
+    const result = await getDb().query(`
+      SELECT * FROM bg_consent
+      WHERE candidate_bg_id = $1
+    `, [candidate_bg_id]);
+
+    return result.rows[0] || null;
+  }
+
+  async sendConsent(candidate_bg_id, { document, sent_by }) {
+    const result = await getDb().query(`
+      UPDATE bg_consent
+      SET
+        document         = $2::jsonb,
+        sent_at          = NOW(),
+        sent_by          = $3,
+        token_expires_at = NOW() + INTERVAL '7 days',
+        status           = 'sent',
+        updated_at       = NOW()
+      WHERE candidate_bg_id = $1
+      RETURNING *
+    `, [candidate_bg_id, JSON.stringify(document), sent_by || null]);
+
+    return result.rows[0] || null;
+  }
+
+  async resendConsent(candidate_bg_id, { document, sent_by }) {
+    const result = await getDb().query(`
+      UPDATE bg_consent
+      SET
+        token             = gen_random_uuid(),
+        document          = $2::jsonb,
+        sent_at           = NOW(),
+        sent_by           = $3,
+        token_expires_at  = NOW() + INTERVAL '7 days',
+        signed_at         = NULL,
+        revoked_at        = NULL,
+        revoked_by        = NULL,
+        revocation_reason = NULL,
+        status            = 'sent',
+        updated_at        = NOW()
+      WHERE candidate_bg_id = $1
+      RETURNING *
+    `, [candidate_bg_id, JSON.stringify(document), sent_by || null]);
+
+    return result.rows[0] || null;
+  }
+
+  async revokeConsent(candidate_bg_id, { revoked_by, revocation_reason }) {
+    const result = await getDb().query(`
+      UPDATE bg_consent
+      SET
+        revoked_at        = NOW(),
+        revoked_by        = $2,
+        revocation_reason = $3,
+        status            = 'revoked',
+        updated_at        = NOW()
+      WHERE candidate_bg_id = $1
+      RETURNING *
+    `, [candidate_bg_id, revoked_by || null, revocation_reason || null]);
+
+    return result.rows[0] || null;
+  }  
+  
+  async createFromClaims(candidate_bg_id) {
+    const db     = getDb();
+    const client = await db.connect();
+
+    try {
+      await client.query('BEGIN');
+
+      const claims = await client.query(`
+        SELECT id, lane_type
+        FROM bg_claim
+        WHERE candidate_bg_id = $1 AND selected = true
+      `, [candidate_bg_id]);
+
+      for (const c of claims.rows) {
+        await client.query(`
+          INSERT INTO bg_lane (candidate_bg_id, bg_claim_id, lane_type)
+          VALUES ($1, $2, $3)
+          ON CONFLICT (bg_claim_id) DO NOTHING
+        `, [candidate_bg_id, c.id, c.lane_type]);
+      }
+
+      await client.query('COMMIT');
+    } catch (err) {
+      await client.query('ROLLBACK');
+      throw err;
+    } finally {
+      client.release();
+    }
+
+    return this.getLanesByBgId(candidate_bg_id);
+  }
+
+  async getLanesByBgId(candidate_bg_id) {
+    const result = await getDb().query(`
+      SELECT
+        bl.id,
+        bl.candidate_bg_id,
+        bl.bg_claim_id,
+        bl.lane_type,
+        bl.note,
+        bl.status,
+        bl.resolved_at,
+        bl.resolved_by,
+        bl.created_at,
+        bl.updated_at,
+
+        bc.claim_text,
+        bc.claim_detail
+
+      FROM bg_lane bl
+      JOIN bg_claim bc ON bc.id = bl.bg_claim_id
+      WHERE bl.candidate_bg_id = $1
+      ORDER BY bl.lane_type ASC, bl.id ASC
+    `, [candidate_bg_id]);
+
+    return result.rows;
+  }
+
+  async getLaneById(lane_id) {
+    const result = await getDb().query(`
+      SELECT * FROM bg_lane WHERE id = $1
+    `, [lane_id]);
+
+    return result.rows[0] || null;
+  }
+
+  async updateTracker(lane_id, { note, status, resolved_by }) {
+    const isResolved = ['pass', 'pass_with_concerns', 'fail'].includes(status);
+
+    const result = await getDb().query(`
+      UPDATE bg_lane
+      SET
+        note        = $2,
+        status      = $3,
+        resolved_at = CASE WHEN $4 THEN NOW() ELSE resolved_at END,
+        resolved_by = CASE WHEN $4 THEN $5 ELSE resolved_by END,
+        updated_at  = NOW()
+      WHERE id = $1
+      RETURNING *
+    `, [lane_id, note || null, status, isResolved, resolved_by || null]);
+
+    return result.rows[0] || null;
+  }
+
+  async countLanesByStatus(candidate_bg_id) {
+    const result = await getDb().query(`
+      SELECT status, COUNT(*) AS count
+      FROM bg_lane
+      WHERE candidate_bg_id = $1
+      GROUP BY status
+    `, [candidate_bg_id]);
+
+    const counts = { pending: 0, in_progress: 0, pass: 0, pass_with_concerns: 0, fail: 0, stalled: 0 };
+    for (const row of result.rows) {
+      counts[row.status] = Number(row.count);
+    }
+    return counts;
+  }  
+
 }
 
 export default new BackgroundCheckModel();

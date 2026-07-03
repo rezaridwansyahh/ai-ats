@@ -27,3 +27,17 @@ export const updateClaim = (claim_id, { claim_text, claim_detail, lane_type }) =
 export const toggleClaim = (claim_id, selected) => api.patch(`/background-check/claims/${claim_id}/selected`, { selected });
 
 export const deleteClaim = (claim_id) => api.delete(`/background-check/claims/${claim_id}`);
+
+export const getConsent = (bg_id) => api.get(`/background-check/${bg_id}/consent`);
+
+export const generateConsentLink = (bg_id) => api.post(`/background-check/${bg_id}/consent/generate-link`);
+
+export const revokeConsent = (bg_id, revocation_reason) => api.post(`/background-check/${bg_id}/consent/revoke`, { revocation_reason });
+
+export const getLanes = (bg_id) => api.get(`/background-check/${bg_id}/lanes`);
+
+export const createLanes = (bg_id) => api.post(`/background-check/${bg_id}/lanes/create`);
+
+export const getLaneCounts = (bg_id) => api.get(`/background-check/${bg_id}/lanes/counts`);
+
+export const updateTracker = (lane_id, { note, status }) => api.put(`/background-check/lanes/${lane_id}`, { note, status });

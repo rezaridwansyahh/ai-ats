@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import {
   Loader2, AlertTriangle, ArrowLeft, ArrowRight, Check,
@@ -6,7 +6,7 @@ import {
   ThumbsUp, ThumbsDown, Pause, MessageSquare,
   Plus, X, Target, TrendingUp, Code2, Info,
   Send, RefreshCw, Mail, Clock, Pencil,
-  ClipboardList, ChevronDown, ChevronRight,
+  ClipboardList, ChevronDown, ChevronRight, Upload
 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -20,11 +20,10 @@ import {
 import {
   Dialog, DialogContent, DialogHeader, DialogFooter, DialogTitle, DialogDescription,
 } from '@/components/ui/dialog';
-
 import {
   getScreening, setScreeningDecision, getRubric, runMatching,
   getQa, getQaResponses, generateQa, updateQa, sendQa,
-  getApplicationFormTemplate,
+  getApplicationFormTemplate, extractFacetsFromFile, extractFacetsFromText,
 } from '@/api/screening.api';
 import {
   Select,
@@ -70,6 +69,13 @@ function totalWeight(rubric) {
 function fmt(d) {
   if (!d) return '—';
   try { return new Date(d).toISOString().slice(0, 10); } catch { return '—'; }
+}
+
+function scoreRecommendation(score) {
+  if (score == null) return null;
+  if (score >= 70) return { label: 'Recommended',     badge: 'bg-emerald-100 text-emerald-700' };
+  if (score >= 50) return { label: 'Consider',        badge: 'bg-amber-100 text-amber-700' };
+  return              { label: 'Not Recommended', badge: 'bg-rose-100 text-rose-700' };
 }
 
 /* ─── Follow-up Q&A config ─── */
@@ -382,13 +388,25 @@ export default function AIScreeningCandidatePage() {
     );
   }
 
-  const { candidate_name, applicant_id, applied_at,
+    const { candidate_name, applicant_id, applied_at,
           job_id, job_title, job_location, work_type, seniority_level,
           engine, decision, decision_reason: existingReason, decided_at, rubric_is_stale,
-          facets } = data;
+          facets, attachment } = data;
+
+  const cvText = [data.last_position, data.address, data.education_text]
+  .filter(Boolean).join('\n');
 
   const initials = (candidate_name || '?').split(/\s+/).map((s) => s[0]).join('').slice(0, 2).toUpperCase();
   const scored = engine === 'done';
+  
+  const decisionLocked = qa.status !== 'responded';
+  const decisionLockReason = !scored
+    ? 'Run AI Matching first to score this candidate.'
+    : qa.status === 'sent'
+      ? 'Waiting for the candidate\'s Q&A response.'
+      : qa.status === 'expired'
+        ? 'Q&A window expired without a response — decision remains locked.'
+        : 'Send the Q&A to the candidate and wait for their response.';
 
   // Switch engine step + scroll to top (mirrors JobEdit's step navigation).
   const goToStep = (key) => { setActiveEngine(key); window.scrollTo({ top: 0, behavior: 'smooth' }); };
@@ -440,7 +458,15 @@ export default function AIScreeningCandidatePage() {
 
             {/* Engine panel (re-animates on each step switch) */}
             <div key={activeEngine} className="animate-fade-in-up">
-              {activeEngine === 'parse' && <ParsePanel facets={facets} />}
+              {activeEngine === 'parse' && (
+                <ParsePanel
+                  facets={facets}
+                  applicant_id={applicant_id}
+                  cv_text={cvText}
+                  attachment={attachment}
+                  onParsed={load}
+                />
+              )}
               {activeEngine === 'match' && <MatchPanel data={data} match={match} />}
               {activeEngine === 'qa'    && (
                 <QAPanel
@@ -452,7 +478,7 @@ export default function AIScreeningCandidatePage() {
             </div>
 
             {/* Step paginator (mirrors JobEdit) */}
-            <StepPaginator activeEngine={activeEngine} onStep={goToStep} engine={engine} />
+            <StepPaginator activeEngine={activeEngine} onStep={goToStep} engine={engine} parsed={!!facets} scored={scored} />
           </div>
 
           {/* SIDEBAR — contextual primary action + steps nav.
@@ -464,18 +490,24 @@ export default function AIScreeningCandidatePage() {
                 match={match}
                 qa={qa}
                 scored={scored}
+                parsed={!!facets}
+                overall_score={data.overall_score} 
                 onStep={goToStep}
                 candidateName={candidate_name}
               />
               <DecisionCard
                 decision={decision}
                 existingReason={existingReason}
+                locked={decisionLocked}              
+                lockReason={decisionLockReason}      
                 onPick={setDecisionDraft}
               />
               <StepsNav
                 activeEngine={activeEngine}
                 onStep={goToStep}
                 engine={engine}
+                parsed={!!facets}
+                scored={scored}
               />
             </div>
           </aside>
@@ -495,18 +527,29 @@ export default function AIScreeningCandidatePage() {
 }
 
 /* ─────────── Sidebar: contextual primary action ─────────── */
-function SidebarAction({ activeEngine, match, qa, scored, onStep, candidateName }) {
+function SidebarAction({ activeEngine, match, qa, scored, parsed, overall_score, onStep, candidateName }) {
   if (activeEngine === 'parse') {
     return (
       <Card className="animate-scale-in">
         <CardContent className="p-3 space-y-2">
           <p className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">Next step</p>
-          <Button size="sm" className="w-full text-xs" onClick={() => onStep('match')}>
+          <Button
+            size="sm"
+            className="w-full text-xs"
+            onClick={() => onStep('match')}
+            disabled={!parsed}
+          >
             Continue to Match <ArrowRight className="h-3.5 w-3.5 ml-1.5" />
           </Button>
-          <p className="text-[10px] text-muted-foreground leading-snug">
-            CV facets are parsed on the position page. Configure the rubric and score this candidate in Match.
-          </p>
+          {!parsed ? (
+            <p className="text-[10px] text-amber-600 flex items-start gap-1 leading-snug">
+              <AlertTriangle className="h-3 w-3 mt-0.5 shrink-0" /> Parse the CV first before proceeding to Match.
+            </p>
+          ) : (
+            <p className="text-[10px] text-muted-foreground leading-snug">
+              CV parsed. Configure the rubric and score this candidate in Match.
+            </p>
+          )}
         </CardContent>
       </Card>
     );
@@ -515,17 +558,45 @@ function SidebarAction({ activeEngine, match, qa, scored, onStep, candidateName 
   if (activeEngine === 'match') {
     return (
       <Card className="animate-scale-in">
-        <CardContent className="p-3 space-y-2.5">
+        <CardContent className="p-3 space-y-2">
           <div className="flex items-center justify-between">
-            <p className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">Run matching</p>
-            <Badge className={`text-[10px] ${match.totalIs100 ? 'bg-emerald-100 text-emerald-700' : 'bg-rose-100 text-rose-700'}`}>
-              {Math.round(match.total)}%
-            </Badge>
+            <p className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
+              {scored ? 'Matching done' : 'Run matching'}
+            </p>
+            {scored ? (() => {
+              const rec = scoreRecommendation(overall_score);
+              return rec ? (
+                <Badge className={`text-[10px] ${rec.badge}`}>
+                  {overall_score}% · {rec.label}
+                </Badge>
+              ) : null;
+            })() : (
+              <Badge className={`text-[10px] ${match.totalIs100 ? 'bg-emerald-100 text-emerald-700' : 'bg-rose-100 text-rose-700'}`}>
+                {Math.round(match.total)}%
+              </Badge>
+            )}
           </div>
-          <Button className="w-full text-xs" onClick={match.handleRun} disabled={!match.totalIs100 || match.running}>
-            {match.running ? <Loader2 className="h-3.5 w-3.5 mr-1.5 animate-spin" /> : <Wand2 className="h-3.5 w-3.5 mr-1.5" />}
-            Run AI Matching
-          </Button>
+
+          {/* Primary action changes once scored */}
+          {scored ? (
+            <Button size="sm" className="w-full text-xs" onClick={() => onStep('qa')}>
+              Continue to Q&A <ArrowRight className="h-3.5 w-3.5 ml-1.5" />
+            </Button>
+          ) : (
+            <Button className="w-full text-xs" onClick={match.handleRun} disabled={!match.totalIs100 || match.running}>
+              {match.running ? <Loader2 className="h-3.5 w-3.5 mr-1.5 animate-spin" /> : <Wand2 className="h-3.5 w-3.5 mr-1.5" />}
+              Run AI Matching
+            </Button>
+          )}
+
+          {/* Re-run as secondary when already scored */}
+          {scored && (
+            <Button variant="outline" size="sm" className="w-full text-xs" onClick={match.handleRun} disabled={!match.totalIs100 || match.running}>
+              {match.running ? <Loader2 className="h-3.5 w-3.5 mr-1.5 animate-spin" /> : <RefreshCw className="h-3.5 w-3.5 mr-1.5" />}
+              Re-run Matching
+            </Button>
+          )}
+
           {!match.totalIs100 && (
             <p className="text-[10px] text-rose-600 flex items-start gap-1 leading-snug">
               <AlertTriangle className="h-3 w-3 mt-0.5 shrink-0" /> Weights must total 100% (currently {Math.round(match.total)}%).
@@ -536,9 +607,11 @@ function SidebarAction({ activeEngine, match, qa, scored, onStep, candidateName 
               <AlertTriangle className="h-3 w-3 mt-0.5 shrink-0" /> {match.runError}
             </div>
           )}
-          <p className="text-[10px] text-muted-foreground leading-snug">
-            Re-scores every candidate on this job using the rubric.
-          </p>
+          {!scored && (
+            <p className="text-[10px] text-muted-foreground leading-snug">
+              Scores this candidate against the job rubric.
+            </p>
+          )}
         </CardContent>
       </Card>
     );
@@ -548,15 +621,36 @@ function SidebarAction({ activeEngine, match, qa, scored, onStep, candidateName 
   return (
     <Card className="animate-scale-in">
       <CardContent className="p-3 space-y-2">
-        <p className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">Send Q&A</p>
+        <div className="flex items-center justify-between">
+          <p className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">Send Q&A</p>
+          {scored ? (() => {
+            const rec = scoreRecommendation(overall_score);
+            return rec ? (
+              <Badge className={`text-[10px] ${rec.badge}`}>
+                {overall_score}% · {rec.label}
+              </Badge>
+            ) : null;
+          })() : (
+            <Badge className={`text-[10px] ${match.totalIs100 ? 'bg-emerald-100 text-emerald-700' : 'bg-rose-100 text-rose-700'}`}>
+              {Math.round(match.total)}%
+            </Badge>
+          )}
+        </div>
+        
         {!scored ? (
           <p className="text-[10px] text-muted-foreground leading-snug">
             Run AI Matching first — follow-up Q&A unlocks once this candidate has a fit score.
           </p>
         ) : (
           <>
-            <Button className="w-full text-xs" onClick={qa.handleSend} disabled={qa.sending || qa.questions.length === 0}>
-              {qa.sending ? <Loader2 className="h-3.5 w-3.5 mr-1.5 animate-spin" /> : <Send className="h-3.5 w-3.5 mr-1.5" />}
+            <Button
+              className="w-full text-xs"
+              onClick={qa.handleSend}
+              disabled={qa.sending || qa.questions.length === 0}
+            >
+              {qa.sending
+                ? <Loader2 className="h-3.5 w-3.5 mr-1.5 animate-spin" />
+                : <Send className="h-3.5 w-3.5 mr-1.5" />}
               Send to candidate
             </Button>
             <p className="text-[10px] text-muted-foreground leading-snug">
@@ -577,7 +671,7 @@ const DECISION_META = {
 };
 
 /* ─────────── Sidebar: decision trigger card ─────────── */
-function DecisionCard({ decision, existingReason, onPick }) {
+function DecisionCard({ decision, existingReason, locked, lockReason, onPick }) {
   return (
     <Card className="animate-scale-in">
       <CardContent className="p-3 space-y-2">
@@ -591,28 +685,37 @@ function DecisionCard({ decision, existingReason, onPick }) {
             </Badge>
           )}
         </div>
-        {existingReason && (
-          <div className="text-[10px] text-muted-foreground italic px-2 py-1.5 rounded-md bg-muted/30 border leading-snug">
-            "{existingReason}"
-          </div>
+
+        {locked ? (
+          <p className="text-[10px] text-muted-foreground leading-snug italic">
+            {lockReason}
+          </p>
+        ) : (
+          <>
+            {existingReason && (
+              <div className="text-[10px] text-muted-foreground italic px-2 py-1.5 rounded-md bg-muted/30 border leading-snug">
+                "{existingReason}"
+              </div>
+            )}
+            <div className="grid gap-1.5">
+              {['advance', 'hold', 'reject'].map((key) => {
+                const meta = DECISION_META[key];
+                const Icon = meta.icon;
+                return (
+                  <Button
+                    key={key}
+                    variant="outline"
+                    size="sm"
+                    className="w-full justify-start text-xs"
+                    onClick={() => onPick(key)}
+                  >
+                    <Icon className={`h-3.5 w-3.5 mr-1.5 ${meta.iconCls}`} /> {meta.label}
+                  </Button>
+                );
+              })}
+            </div>
+          </>
         )}
-        <div className="grid gap-1.5">
-          {['advance', 'hold', 'reject'].map((key) => {
-            const meta = DECISION_META[key];
-            const Icon = meta.icon;
-            return (
-              <Button
-                key={key}
-                variant="outline"
-                size="sm"
-                className="w-full justify-start text-xs"
-                onClick={() => onPick(key)}
-              >
-                <Icon className={`h-3.5 w-3.5 mr-1.5 ${meta.iconCls}`} /> {meta.label}
-              </Button>
-            );
-          })}
-        </div>
       </CardContent>
     </Card>
   );
@@ -654,7 +757,7 @@ function DecisionDialog({ decision, reason, setReason, saving, onConfirm, onClos
 }
 
 /* ─────────── Step paginator (numbered, JobEdit-style) ─────────── */
-function StepPaginator({ activeEngine, onStep, engine }) {
+function StepPaginator({ activeEngine, onStep, engine, parsed, scored }) {
   const activeIdx = ENGINES.findIndex((e) => e.key === activeEngine);
   return (
     <div className="border-t border-border/60 pt-4 space-y-2">
@@ -674,13 +777,15 @@ function StepPaginator({ activeEngine, onStep, engine }) {
           const isDone =
             (engine === 'match' && i === 0) ||
             (engine === 'done'  && i <= 1);
+            const locked = (i === 1 && !parsed) || (i === 2 && !scored);
           return (
             <button
               key={eng.key}
               type="button"
-              title={eng.label}
-              onClick={() => onStep(eng.key)}
-              className={`h-8 w-8 rounded-md text-xs font-semibold flex items-center justify-center transition-colors ${
+              title={locked ? 'Parse CV first' : eng.label}
+              onClick={() => !locked && onStep(eng.key)}
+              disabled={locked}
+              className={`h-8 w-8 rounded-md text-xs font-semibold flex items-center justify-center transition-colors disabled:opacity-40 disabled:cursor-not-allowed ${
                 active
                   ? 'bg-primary text-primary-foreground'
                   : isDone
@@ -697,7 +802,11 @@ function StepPaginator({ activeEngine, onStep, engine }) {
           variant="ghost"
           size="icon"
           className="h-8 w-8"
-          disabled={activeIdx >= ENGINES.length - 1}
+          disabled={
+            activeIdx >= ENGINES.length - 1 ||
+            (activeIdx === 0 && !parsed) ||
+            (activeIdx === 1 && !scored)
+          }
           onClick={() => onStep(ENGINES[activeIdx + 1].key)}
         >
           <ArrowRight className="h-4 w-4" />
@@ -711,7 +820,7 @@ function StepPaginator({ activeEngine, onStep, engine }) {
 }
 
 /* ─────────── Sidebar: vertical steps nav ─────────── */
-function StepsNav({ activeEngine, onStep, engine }) {
+function StepsNav({ activeEngine, onStep, engine, parsed, scored }) {
   return (
     <Card>
       <CardContent className="p-3 space-y-1">
@@ -722,12 +831,15 @@ function StepsNav({ activeEngine, onStep, engine }) {
             (engine === 'match' && idx === 0) ||
             (engine === 'done'  && idx <= 1);
           const active = eng.key === activeEngine;
+          const locked = (idx === 1 && !parsed) || (idx === 2 && !scored);
           return (
             <button
               key={eng.key}
               type="button"
-              onClick={() => onStep(eng.key)}
-              className={`w-full flex items-center gap-2 px-2 py-1.5 rounded-md text-left transition-colors ${
+              disabled={locked}
+              onClick={() => !locked && onStep(eng.key)}
+              title={locked ? 'Parse CV first' : undefined}
+              className={`w-full flex items-center gap-2 px-2 py-1.5 rounded-md text-left transition-colors disabled:opacity-40 disabled:cursor-not-allowed ${
                 active ? 'bg-primary/10 text-primary' : 'hover:bg-muted/50 text-foreground'
               }`}
             >
@@ -754,7 +866,38 @@ function StepsNav({ activeEngine, onStep, engine }) {
 }
 
 /* ─────────── Parse panel ─────────── */
-function ParsePanel({ facets }) {
+function ParsePanel({ facets, applicant_id, cv_text, attachment, onParsed }) {
+  const [parsing, setParsing] = useState(false);
+  const [parseError, setParseError] = useState(null);
+  const fileRef = useRef(null);
+
+  const parseFromText = async () => {
+    if (!cv_text?.trim()) return;
+    setParsing(true);
+    setParseError(null);
+    try {
+      await extractFacetsFromText(applicant_id, cv_text);
+      onParsed?.();
+    } catch (err) {
+      setParseError(err.response?.data?.message || err.message || 'Parse failed');
+    } finally {
+      setParsing(false);
+    }
+  };
+
+  const parseFromFile = async (file) => {
+    setParsing(true);
+    setParseError(null);
+    try {
+      await extractFacetsFromFile(applicant_id, file);
+      onParsed?.();
+    } catch (err) {
+      setParseError(err.response?.data?.message || err.message || 'Parse failed');
+    } finally {
+      setParsing(false);
+    }
+  };
+
   if (!facets) {
     return (
       <Card>
@@ -763,12 +906,75 @@ function ParsePanel({ facets }) {
             <FileText className="h-4 w-4 text-primary" /> Parse
           </CardTitle>
         </CardHeader>
-        <CardContent className="py-8 text-center text-xs text-muted-foreground italic">
-          CV not parsed yet. Trigger parse from the position page (Match lane shows once parsed).
+        <CardContent className="py-8">
+          <div className="flex flex-col items-center gap-4 text-center max-w-xs mx-auto">
+            <div className="h-12 w-12 rounded-full bg-muted flex items-center justify-center">
+              <FileText className="h-5 w-5 text-muted-foreground" />
+            </div>
+            <div className="space-y-1">
+              <p className="text-sm font-medium">CV not parsed yet</p>
+              <p className="text-xs text-muted-foreground">
+                Extract skills, experience and education so the Match engine can score this candidate.
+              </p>
+            </div>
+
+            {parseError && (
+              <div className="flex items-center gap-2 px-3 py-2 rounded-md border border-red-200 bg-red-50 text-xs text-red-600 w-full text-left">
+                <AlertTriangle className="h-3.5 w-3.5 shrink-0" /> {parseError}
+              </div>
+            )}
+
+            <div className="flex flex-col gap-2 w-full">
+              {/* Primary — parse from existing row data */}
+              {cv_text?.trim() && (
+                <Button
+                  size="sm"
+                  onClick={parseFromText}
+                  disabled={parsing}
+                  className="gap-2 w-full"
+                >
+                  {parsing
+                    ? <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                    : <Wand2 className="h-3.5 w-3.5" />}
+                  {parsing ? 'Parsing…' : 'Parse from profile data'}
+                </Button>
+              )}
+
+              {/* Secondary — upload a better file */}
+              <input
+                ref={fileRef}
+                type="file"
+                accept=".pdf,.docx,.doc,.txt"
+                className="hidden"
+                onChange={(e) => {
+                  const f = e.target.files?.[0];
+                  if (f) parseFromFile(f);
+                  e.target.value = '';
+                }}
+              />
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => fileRef.current?.click()}
+                disabled={parsing}
+                className="gap-2 w-full"
+              >
+                <Upload className="h-3.5 w-3.5" />
+                Upload CV file
+              </Button>
+            </div>
+
+            {attachment && (
+              <p className="text-[10px] text-muted-foreground italic">
+                Stored attachment: <span className="font-mono">{attachment}</span>
+              </p>
+            )}
+          </div>
         </CardContent>
       </Card>
     );
   }
+
   const skills    = Array.isArray(facets.skills) ? facets.skills : [];
   const education = Array.isArray(facets.education) ? facets.education : [];
   const exp       = facets.experience || {};

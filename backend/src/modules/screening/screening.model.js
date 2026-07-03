@@ -164,7 +164,7 @@ class ScreeningModel {
         cj.preferred_skills,
         cj.rubric,
         cj.status              AS job_status,
-        ma.information         AS facets,
+        COALESCE(ma.information, mc.information) AS facets,
         s.id                       AS score_id,
         s.overall_score,
         s.skills_score,
@@ -179,9 +179,9 @@ class ScreeningModel {
         s.summary              AS score_summary,
         s.scored_at,
         CASE
-          WHEN ma.information IS NULL THEN 'parse'
-          WHEN s.id IS NULL          THEN 'match'
-          ELSE                            'done'
+          WHEN COALESCE(ma.information, mc.information) IS NULL THEN 'parse'
+          WHEN s.id IS NULL                                     THEN 'match'
+          ELSE                                                       'done'
         END AS engine,
         (cj.rubric IS NOT NULL AND s.rubric_snapshot IS NOT NULL AND s.rubric_snapshot IS DISTINCT FROM cj.rubric) AS rubric_is_stale
       FROM candidate_screening cs

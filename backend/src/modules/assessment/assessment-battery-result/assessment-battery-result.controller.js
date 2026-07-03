@@ -19,10 +19,10 @@ class AssessmentBatteryResultController {
     }
   }
 
-  async getByParticipantId(req, res) {
+  async getByCandidateId(req, res) {
     try {
-      const results = await assessmentBatteryResultService.getByParticipantId(req.params.participant_id);
-      res.status(200).json({ message: 'Assessment results for participant', results });
+      const results = await assessmentBatteryResultService.getByCandidateId(req.params.candidate_id);
+      res.status(200).json({ message: 'Assessment results for candidate', results });
     } catch (err) {
       res.status(err.status || 500).json({ message: err.message });
     }
@@ -44,7 +44,7 @@ class AssessmentBatteryResultController {
   async getActiveProgress(req, res) {
     try {
       const progress = await assessmentBatteryResultService.getActiveProgress(
-        req.params.participant_id,
+        req.params.candidate_id,
         req.query.assessment_id,
       );
       res.status(200).json({ message: 'Active progress', progress });
@@ -55,9 +55,9 @@ class AssessmentBatteryResultController {
 
   async submit(req, res) {
     try {
-      const { participant_id, assessment_id, answers, started_at, results, summary } = req.body;
+      const { candidate_id, assessment_id, answers, started_at, results, summary } = req.body;
       const result = await assessmentBatteryResultService.submit({
-        participant_id, assessment_id, answers, started_at, results, summary,
+        candidate_id, assessment_id, answers, started_at, results, summary,
       });
       res.status(201).json({ message: 'Assessment submitted', result });
     } catch (err) {

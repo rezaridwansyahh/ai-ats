@@ -1,3 +1,4 @@
+// DISABLED - participant table removed
 import express from 'express';
 const router = express.Router();
 
@@ -6,15 +7,15 @@ import authToken from '../../../shared/middleware/auth.middleware.js';
 
 router.use(authToken);
 
-router.get('/', participantController.getAll);
-router.get('/email/:email', participantController.getByEmail);
-router.get('/:id', participantController.getById);
+// router.get('/', participantController.getAll);
+// router.get('/email/:email', participantController.getByEmail);
+// router.get('/:id', participantController.getById);
 
-router.post('/', participantController.create);
-router.post('/create-by-email', participantController.createByEmail);
+// router.post('/', participantController.create);
+// router.post('/create-by-email', participantController.createByEmail);
 
-router.put('/:id', participantController.update);
+// router.put('/:id', participantController.update);
 
-router.delete('/:id', participantController.delete);
+// router.delete('/:id', participantController.delete);
 
 export default router;
