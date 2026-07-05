@@ -32,6 +32,7 @@ export default function CandidateDetailPage() {
   // later re-fetches (e.g. after Generate URL) don't yank the user away from their
   // current tab navigation.
   const restoredOnceRef = useRef(false);
+  const restoredDecideRef = useRef(false);   // ← add this
 
   // Latest core_applicant_assessment row for (candidate, battery). Drives both the
   // Take tab's per-subtest "Scored" pills and the Score & Decide tab's ReportView.
@@ -62,6 +63,7 @@ export default function CandidateDetailPage() {
   useEffect(() => {
     if (!candidateId) return undefined;
     restoredOnceRef.current = false;
+    restoredDecideRef.current = false;
     let cancelled = false;
     (async () => {
       try {
@@ -103,6 +105,15 @@ export default function CandidateDetailPage() {
     })();
     return () => { cancelled = true; };
   }, [candidateId, battery]);
+
+  // Auto-advance to Score & Decide on first load when the result is already complete.
+  // restoredDecideRef prevents re-firing when the user manually tabs back to Take.
+  useEffect(() => {
+    if (latestResult?.status === 'completed' && !restoredDecideRef.current) {
+      restoredDecideRef.current = true;
+      setActiveKey('decide');
+    }
+  }, [latestResult]);
 
   // Per-subtest status for the Take tab. A key is "scored" iff it shows up in
   // results.by_subtest with non-null data; otherwise "invited".
