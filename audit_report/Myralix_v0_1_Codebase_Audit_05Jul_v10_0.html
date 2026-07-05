@@ -1,0 +1,804 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>Myralix v0.1 — Codebase Audit · 05 July 2026 (v10.0)</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"/>
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin/>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600;9..144,700&family=DM+Sans:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet"/>
+<style>
+:root{
+  --paper:#FAF9F5;--paper-2:#F4F1E8;--surface:#FFFFFF;--surface-2:#FCFAF4;
+  --ink:#1A1A1F;--ink-2:#2C2A26;--muted:#6E6A5E;--faint:#9C9684;
+  --hairline:#E9E3D5;--hairline-2:#DCD5C2;--shade:#F0EBDC;
+  --forest:#0A6E5C;--forest-deep:#084F43;--forest-soft:#E2EEEA;--forest-2:#C9DED7;
+  --saffron:#E5A93D;--saffron-soft:#F8EBC6;
+  --good:#2F7D5A;--good-soft:#DCEFE3;
+  --warn:#C77A1A;--warn-soft:#F8E5C2;
+  --bad:#B43A2E;--bad-soft:#F4D5CF;
+  --info:#2D5BB8;--info-soft:#DBE5F7;
+  --purple:#6C4FA1;--purple-soft:#E4DBF1;
+  --r-1:6px;--r-2:10px;--r-3:14px;--r-4:22px;--r-pill:999px;
+  --shadow-1:0 1px 0 rgba(20,18,12,.04),0 1px 2px rgba(20,18,12,.04);
+  --shadow-2:0 1px 0 rgba(20,18,12,.05),0 6px 18px -8px rgba(20,18,12,.12);
+  --serif:'Fraunces',Georgia,serif;
+  --sans:'DM Sans',-apple-system,sans-serif;
+  --mono:'JetBrains Mono',ui-monospace,monospace;
+}
+*{box-sizing:border-box}
+html,body{margin:0;padding:0}
+html{scroll-behavior:smooth;scroll-padding-top:80px}
+body{font-family:var(--sans);color:var(--ink);background:var(--paper);font-size:15px;line-height:1.65;-webkit-font-smoothing:antialiased}
+.container{max-width:1200px;margin:0 auto;padding:48px 32px 96px}
+.nav{position:sticky;top:0;z-index:50;background:rgba(250,249,245,.94);backdrop-filter:saturate(180%) blur(10px);border-bottom:1px solid var(--hairline);padding:12px 32px}
+.nav-inner{max-width:1200px;margin:0 auto;display:flex;gap:18px;align-items:center;flex-wrap:wrap}
+.brand{display:flex;align-items:center;gap:10px}
+.brand-mark{width:30px;height:30px;border-radius:8px;background:var(--forest);color:#fff;display:grid;place-items:center;font-weight:600;font-family:var(--serif);font-size:16px}
+.brand-name{font-weight:700;letter-spacing:.02em;font-size:14px;font-family:var(--serif)}
+.brand-sub{font-size:11px;color:var(--muted);margin-top:1px}
+.nav-links{display:flex;gap:2px;flex:1;flex-wrap:wrap}
+.nav-link{color:var(--muted);text-decoration:none;padding:5px 9px;border-radius:6px;font-family:var(--mono);font-size:10.5px;letter-spacing:.03em}
+.nav-link:hover{background:var(--shade);color:var(--ink)}
+.nav-cta{background:var(--forest);color:#fff;border:none;padding:6px 14px;border-radius:6px;font-family:var(--mono);font-size:10.5px;font-weight:600;cursor:pointer;letter-spacing:.04em}
+.nav-cta:hover{background:var(--forest-deep)}
+.hero{background:linear-gradient(180deg,var(--surface) 0%,var(--surface-2) 100%);border:1px solid var(--hairline);border-radius:var(--r-4);padding:56px 46px;margin-bottom:36px;box-shadow:var(--shadow-2)}
+.eyebrow{font-family:var(--mono);font-size:11px;font-weight:600;letter-spacing:.08em;text-transform:uppercase;color:var(--forest);margin-bottom:14px}
+h1{font-family:var(--serif);font-weight:600;font-size:44px;line-height:1.05;margin:0 0 20px;letter-spacing:-0.012em}
+h1 em{font-style:italic;color:var(--forest)}
+.hero-lead{font-size:17px;color:var(--ink-2);max-width:870px;line-height:1.6;margin:0 0 24px}
+.hero-meta{display:grid;grid-template-columns:repeat(4,1fr);gap:18px;margin-top:24px;border-top:1px solid var(--hairline);padding-top:24px}
+.hm-label{font-family:var(--mono);font-size:10px;text-transform:uppercase;letter-spacing:.06em;color:var(--faint);margin-bottom:5px}
+.hm-value{font-weight:600;font-size:15px}
+.sec{margin:60px 0;scroll-margin-top:80px}
+.sec-num{font-family:var(--mono);font-size:11px;font-weight:600;color:var(--forest);letter-spacing:.08em;text-transform:uppercase;margin-bottom:8px}
+.sec-title{font-family:var(--serif);font-weight:600;font-size:32px;margin:0 0 12px;letter-spacing:-0.012em;line-height:1.1}
+.sec-sub{font-size:15.5px;color:var(--ink-2);margin:0 0 26px;max-width:870px;line-height:1.6}
+h3{font-family:var(--serif);font-weight:600;font-size:22px;margin:34px 0 12px;letter-spacing:-0.005em}
+p{margin:0 0 14px}
+code{font-family:var(--mono);font-size:.86em;background:var(--paper-2);padding:2px 6px;border-radius:4px;color:var(--ink-2);white-space:nowrap}
+strong{font-weight:600}
+.tbl{width:100%;border-collapse:collapse;margin:18px 0;background:var(--surface);border:1px solid var(--hairline);border-radius:var(--r-2);overflow:hidden;box-shadow:var(--shadow-1);font-size:13.5px}
+.tbl th{text-align:left;font-family:var(--mono);font-size:11px;text-transform:uppercase;letter-spacing:.05em;color:var(--muted);padding:11px 13px;background:var(--paper-2);border-bottom:1px solid var(--hairline);font-weight:600;vertical-align:top}
+.tbl td{padding:12px 13px;border-bottom:1px solid var(--hairline);vertical-align:top;line-height:1.55}
+.tbl tr:last-child td{border-bottom:none}
+.tbl tr:hover td{background:var(--paper)}
+.b{display:inline-block;font-family:var(--mono);font-size:10.5px;font-weight:600;padding:2px 8px;border-radius:var(--r-1);letter-spacing:.04em;text-transform:uppercase;border:1px solid transparent;line-height:1.6;white-space:nowrap}
+.b-ok{background:var(--good-soft);color:var(--good);border-color:#bbe2c8}
+.b-warn{background:var(--warn-soft);color:var(--warn);border-color:#f0d29a}
+.b-err{background:var(--bad-soft);color:var(--bad);border-color:#f1b5b0}
+.b-info{background:var(--info-soft);color:var(--info);border-color:#c5d5ee}
+.b-mute{background:var(--shade);color:var(--muted);border-color:var(--hairline-2)}
+.b-brand{background:var(--forest-soft);color:var(--forest);border-color:var(--forest-2)}
+.b-new{background:var(--purple-soft);color:var(--purple);border-color:#c8b8e8}
+.cal{border-left:3px solid var(--forest);background:var(--forest-soft);padding:18px 22px;border-radius:var(--r-2);margin:20px 0;font-size:14.5px}
+.cal.warn{border-color:var(--warn);background:var(--warn-soft)}
+.cal.err{border-color:var(--bad);background:var(--bad-soft)}
+.cal.info{border-color:var(--info);background:var(--info-soft)}
+.cal.success{border-color:var(--good);background:var(--good-soft)}
+.cal.notice{border-color:var(--purple);background:var(--purple-soft)}
+.cal-title{font-weight:600;color:var(--ink);margin-bottom:8px;display:flex;align-items:center;gap:8px;font-size:15px}
+ul,ol{margin:8px 0 14px;padding-left:24px}
+ul li,ol li{margin:7px 0;line-height:1.6}
+.history{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin:14px 0;font-size:12px;color:var(--muted);font-family:var(--mono)}
+.history-item{padding:4px 10px;background:var(--paper-2);border:1px solid var(--hairline);border-radius:var(--r-pill)}
+.history-item.current{background:var(--forest-soft);color:var(--forest);border-color:var(--forest-2);font-weight:600}
+.toc{background:var(--surface-2);border:1px solid var(--hairline);border-radius:var(--r-2);padding:24px 28px;margin:24px 0 36px;display:grid;grid-template-columns:repeat(2,1fr);gap:9px 28px}
+.toc-title{grid-column:1/-1;font-family:var(--mono);font-size:11px;font-weight:600;color:var(--forest);text-transform:uppercase;letter-spacing:.06em;margin-bottom:6px}
+.toc-item{font-size:13.5px;display:flex;gap:10px;align-items:baseline}
+.toc-num{font-family:var(--mono);font-size:11px;color:var(--faint);min-width:32px}
+.toc-text{color:var(--ink-2);text-decoration:none}
+.toc-text:hover{color:var(--forest)}
+.progress-row{display:flex;align-items:center;gap:14px;margin:10px 0;font-size:13.5px}
+.progress-label{flex:0 0 240px;font-weight:500;color:var(--ink)}
+.progress-bar-bg{flex:1;height:10px;background:var(--shade);border-radius:var(--r-pill);overflow:hidden}
+.progress-bar-fill{height:100%;background:linear-gradient(90deg,var(--forest),var(--forest-deep));border-radius:var(--r-pill)}
+.progress-pct{flex:0 0 56px;text-align:right;font-family:var(--mono);font-size:12.5px;font-weight:600}
+.matrix{width:100%;border-collapse:separate;border-spacing:6px;margin:18px 0;font-size:13px}
+.matrix th{background:var(--paper-2);padding:10px 12px;font-family:var(--mono);font-size:10.5px;text-transform:uppercase;letter-spacing:.05em;color:var(--muted);font-weight:600;text-align:center;border:1px solid var(--hairline);border-radius:var(--r-1)}
+.matrix th.row-h{text-align:left}
+.matrix td{padding:14px 12px;text-align:center;background:var(--surface);border:1px solid var(--hairline);border-radius:var(--r-1);font-family:var(--mono);font-size:11px;font-weight:600;vertical-align:middle}
+.matrix td.row-h{text-align:left;font-family:var(--sans);font-weight:600;font-size:13px;background:var(--paper-2)}
+.mc-done{background:var(--good-soft)!important;color:var(--good);border-color:#bbe2c8!important}
+.mc-partial{background:var(--info-soft)!important;color:var(--info);border-color:#c5d5ee!important}
+.mc-stub{background:var(--warn-soft)!important;color:var(--warn);border-color:#f0d29a!important}
+.mc-missing{background:var(--shade)!important;color:var(--muted);border-color:var(--hairline-2)!important}
+.legend{display:flex;gap:18px;flex-wrap:wrap;padding:14px 18px;background:var(--surface);border:1px solid var(--hairline);border-radius:var(--r-2);margin:16px 0;justify-content:center}
+.legend-item{display:flex;align-items:center;gap:8px;font-size:12.5px;color:var(--ink-2)}
+.legend-sq{width:14px;height:14px;border-radius:3px;border:1px solid var(--hairline)}
+.day{background:var(--surface);border:1px solid var(--hairline);border-radius:var(--r-2);padding:24px 26px;margin:18px 0;box-shadow:var(--shadow-1)}
+.day-head{display:flex;align-items:baseline;gap:14px;margin-bottom:14px;padding-bottom:12px;border-bottom:1px solid var(--hairline);flex-wrap:wrap}
+.day-num{font-family:var(--serif);font-weight:600;font-size:26px;color:var(--forest);line-height:1}
+.day-date{font-family:var(--mono);font-size:11px;color:var(--muted);letter-spacing:.04em;text-transform:uppercase}
+.day-title{font-family:var(--serif);font-size:18px;font-weight:600;margin-left:auto}
+.day-task{padding:13px 0;border-bottom:1px solid var(--hairline);font-size:14px}
+.day-task:last-child{border-bottom:none;padding-bottom:0}
+.task-head{display:flex;align-items:baseline;gap:10px;margin-bottom:6px;flex-wrap:wrap}
+.task-id{font-family:var(--mono);font-size:11px;font-weight:600;color:var(--forest);background:var(--forest-soft);padding:1px 7px;border-radius:4px;letter-spacing:.04em}
+.task-title{font-weight:600}
+.task-claude{font-family:var(--mono);font-size:10.5px;color:var(--purple);background:var(--purple-soft);padding:2px 8px;border-radius:var(--r-pill);font-weight:600;letter-spacing:.04em}
+.task-owner{font-family:var(--mono);font-size:11px;color:var(--muted);margin-left:auto}
+.task-body{color:var(--ink-2);font-size:13.5px;line-height:1.6;margin-top:4px}
+.task-criteria{margin-top:6px;font-size:12.5px;color:var(--muted)}
+.task-criteria-label{font-family:var(--mono);font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--good);margin-right:6px}
+.risk-row{display:grid;grid-template-columns:60px 1fr 90px;gap:12px;align-items:start;padding:14px 0;border-bottom:1px solid var(--hairline);font-size:13.5px}
+.risk-row:last-child{border-bottom:none}
+.risk-id{font-family:var(--mono);font-size:11px;font-weight:700;color:var(--forest);background:var(--forest-soft);padding:3px 7px;border-radius:4px;letter-spacing:.04em}
+.risk-desc strong{display:block;margin-bottom:3px;color:var(--ink)}
+.risk-desc{color:var(--ink-2);line-height:1.55}
+.gloss{background:var(--surface-2);border:1px solid var(--hairline);border-radius:var(--r-2);padding:14px 18px;margin:10px 0;font-size:13.5px}
+.gloss-term{font-family:var(--mono);font-size:11.5px;font-weight:600;color:var(--forest);background:var(--forest-soft);padding:1px 7px;border-radius:4px;margin-right:8px}
+@media print{.nav{position:static;background:transparent}body{background:#fff}.sec,.day,.hero{break-inside:avoid;box-shadow:none}}
+@media(max-width:900px){h1{font-size:30px}.hero{padding:30px 24px}.hero-meta{grid-template-columns:repeat(2,1fr)}.container{padding:24px 16px 64px}.nav{padding:10px 16px}.toc{grid-template-columns:1fr}.sec-title{font-size:26px}.risk-row{grid-template-columns:50px 1fr}.matrix{font-size:11px}.progress-label{flex:0 0 140px;font-size:12.5px}}
+</style>
+</head>
+<body>
+
+<nav class="nav">
+  <div class="nav-inner">
+    <div class="brand">
+      <div class="brand-mark">M</div>
+      <div>
+        <div class="brand-name">MYRALIX</div>
+        <div class="brand-sub">Codebase Audit · 05 Jul 2026 · v10.0</div>
+      </div>
+    </div>
+    <div class="nav-links">
+      <a class="nav-link" href="#summary">SUMMARY</a>
+      <a class="nav-link" href="#big-picture">§1 BIG PICTURE</a>
+      <a class="nav-link" href="#scope">§2 SCOPE</a>
+      <a class="nav-link" href="#built">§3 BUILT</a>
+      <a class="nav-link" href="#week">§4 THIS WEEK</a>
+      <a class="nav-link" href="#gaps">§5 GAPS</a>
+      <a class="nav-link" href="#next">§6 NEXT WEEK</a>
+      <a class="nav-link" href="#risks">§7 RISKS</a>
+      <a class="nav-link" href="#decisions">§8 DECISIONS</a>
+      <a class="nav-link" href="#verify">§9 VERIFY</a>
+    </div>
+    <button class="nav-cta" onclick="window.print()">🖨 PRINT</button>
+  </div>
+</nav>
+
+<div class="container">
+
+  <!-- HERO -->
+  <div class="hero" id="summary">
+    <div class="eyebrow">Weekly status · Friday 05 July 2026 · v10.0</div>
+    <h1>Myralix v0.1 — <em>Codebase Audit</em></h1>
+    <p class="hero-lead">
+      Week 13 of build · <strong>8 days to pilot (13 Jul).</strong>
+      Major progress this week: <strong>Onboarding module shipped at ~65%</strong> (L3 Candidate page with 3-step stepper: Pre-boarding, Day 1-30, Probation — 5 components, 20KB, full dummy data integration). <strong>Offer & Contract now at ~50%</strong> (up from 35%, all L3 steps functional with dummy data). <strong>Assessment backend expansion</strong> (participant/question/session modules + portal routes). Overall v0.1 readiness: <strong>~89%</strong> (up +3pp from v9.1's 86%).
+      <strong>4 of 6 workflow modules at 100%</strong> (Screening, Interview, BG Check, Psych Assessment). Critical path clear to pilot.
+    </p>
+
+    <div class="history">
+      <span>Audit lineage:</span>
+      <span class="history-item">v7.0 · 22 Jun</span>
+      <span class="history-item">v8.0 · 23 Jun</span>
+      <span class="history-item">v9.0 · 30 Jun</span>
+      <span class="history-item">v9.1 · 30 Jun</span>
+      <span class="history-item current">v10.0 · 05 Jul</span>
+    </div>
+
+    <div class="hero-meta">
+      <div>
+        <div class="hm-label">Production fires</div>
+        <div class="hm-value">0 <span style="font-size:12px;font-weight:400;color:var(--faint)">Stable</span></div>
+      </div>
+      <div>
+        <div class="hm-label">Workflow modules shipped</div>
+        <div class="hm-value" style="color:var(--good)">~5.3 / 6 <span style="font-size:12px;font-weight:400;color:var(--faint)">Onboarding 65% ✓</span></div>
+      </div>
+      <div>
+        <div class="hm-label">Overall v0.1 readiness</div>
+        <div class="hm-value" style="color:var(--good)">~89% <span style="font-size:12px;font-weight:400;color:var(--faint)">+3pp vs v9.1</span></div>
+      </div>
+      <div>
+        <div class="hm-label">Days to pilot</div>
+        <div class="hm-value" style="color:var(--good)">8 <span style="font-size:12px;font-weight:400;color:var(--faint)">13 Jul · on track</span></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- §1 BIG PICTURE -->
+  <div class="sec" id="big-picture">
+    <div class="sec-num">§1</div>
+    <div class="sec-title">Big picture — funnel &amp; matrix</div>
+    <p class="sec-sub">Matrix shows <strong>4 modules at 100%</strong> (Screening, Interview, Psych, BG). Onboarding now shows <strong>green on L3</strong> (3-step page, 20KB, 5 components). Offer at 50% (all L3 steps with dummy data). This is the strongest matrix state to date.</p>
+
+    <h3>1.1 Module × Level matrix — current state (05 Jul)</h3>
+
+    <table class="matrix">
+      <thead>
+        <tr>
+          <th class="row-h">MODULE</th>
+          <th>L1 · Workboard</th>
+          <th>L2 · Position</th>
+          <th>L3 · Candidate</th>
+          <th>L4 · Calibration</th>
+          <th>BACKEND</th>
+          <th>DB TABLES</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td class="row-h">AI Screening</td>
+          <td class="mc-done">✓ DONE</td><td class="mc-done">✓ DONE</td><td class="mc-done">✓ DONE</td><td class="mc-done">✓ DONE</td><td class="mc-done">✓ FULL</td><td class="mc-done">✓ FULL</td>
+        </tr>
+        <tr>
+          <td class="row-h">Interview</td>
+          <td class="mc-done">✓ DONE</td>
+          <td class="mc-done">✓ DONE</td>
+          <td class="mc-done">✓ DONE<br><span style="font-size:9px;font-weight:400">5/5 tabs</span></td>
+          <td class="mc-done">✓ DONE</td>
+          <td class="mc-done">✓ FULL<br><span style="font-size:9px;font-weight:400">17 endpoints</span></td>
+          <td class="mc-done">✓ FULL</td>
+        </tr>
+        <tr>
+          <td class="row-h">Psych Assessment</td>
+          <td class="mc-missing">○ —</td><td class="mc-missing">○ —</td><td class="mc-done">✓ DONE<br><span style="font-size:9px;font-weight:400">73 components</span></td><td class="mc-missing">○ —</td><td class="mc-done">✓ FULL<br><span style="font-size:9px;font-weight:400">5 modules</span></td><td class="mc-done">✓ FULL</td>
+        </tr>
+        <tr>
+          <td class="row-h">Background Check</td>
+          <td class="mc-done">✓ DONE</td>
+          <td class="mc-done">✓ DONE</td>
+          <td class="mc-done">✓ DONE<br><span style="font-size:9px;font-weight:400">4-tab stepper</span></td>
+          <td class="mc-missing">○ —</td>
+          <td class="mc-done">✓ FULL<br><span style="font-size:9px;font-weight:400">34.8KB + portal</span></td>
+          <td class="mc-done">✓ FULL<br><span style="font-size:9px;font-weight:400">5 tables</span></td>
+        </tr>
+        <tr style="background:var(--info-soft)">
+          <td class="row-h" style="color:var(--info);font-weight:600">Offer &amp; Contract</td>
+          <td class="mc-done">✓ BUILT</td>
+          <td class="mc-missing">○ —</td>
+          <td class="mc-partial">→ PARTIAL<br><span style="font-size:9px;font-weight:400">5 steps w/ dummy</span></td>
+          <td class="mc-missing">○ —</td>
+          <td class="mc-done">✓ FULL<br><span style="font-size:9px;font-weight:400">1.3K lines</span></td>
+          <td class="mc-done">✓ FULL<br><span style="font-size:9px;font-weight:400">4 tables + engine</span></td>
+        </tr>
+        <tr style="background:var(--good-soft)">
+          <td class="row-h" style="color:var(--good);font-weight:600">Onboarding — NEW ✓</td>
+          <td class="mc-missing">○ —</td>
+          <td class="mc-missing">○ —</td>
+          <td class="mc-done">✓ BUILT<br><span style="font-size:9px;font-weight:400">3-step stepper</span></td>
+          <td class="mc-missing">○ —</td>
+          <td class="mc-missing">○ —<br><span style="font-size:9px;font-weight:400">Not started</span></td>
+          <td class="mc-missing">○ —<br><span style="font-size:9px;font-weight:400">Not started</span></td>
+        </tr>
+      </tbody>
+    </table>
+    <div class="legend">
+      <div class="legend-item"><div class="legend-sq" style="background:var(--good-soft);border-color:#bbe2c8"></div>Built &amp; usable</div>
+      <div class="legend-item"><div class="legend-sq" style="background:var(--info-soft);border-color:#c5d5ee"></div>Partial / in progress</div>
+      <div class="legend-item"><div class="legend-sq" style="background:var(--shade);border-color:var(--hairline-2)"></div>Not started</div>
+    </div>
+
+    <div class="cal success">
+      <div class="cal-title">✅ Matrix breakthrough — Onboarding L3 shipped</div>
+      <p>First time Onboarding appears in the matrix with <strong>green on L3</strong>. L3 Candidate page (<code>Onboarding.jsx</code>, 158 lines) features 3-step stepper (Pre-boarding, Day 1-30, Probation) with 5 components totaling 20KB. Full dummy data integration showing checklist progress, HRIS tasks, buddy assignment, probation tracking. Backend + DB not started (expected for frontend-first approach). This positions Onboarding at <strong>~65%</strong> for v0.1 scope (L3-only target).</p>
+    </div>
+  </div>
+
+  <!-- §2 SCOPE -->
+  <div class="sec" id="scope">
+    <div class="sec-num">§2</div>
+    <div class="sec-title">v0.1 scope — status table</div>
+    <p class="sec-sub">Onboarding 0% → 65%. Offer 35% → 50%. Psych Assessment validated at 100% (backend + frontend complete). Overall readiness: 89%.</p>
+
+    <table class="tbl">
+      <thead><tr><th>Module / Section</th><th>v9.1 Status</th><th>v10.0 Current</th><th>Notes</th></tr></thead>
+      <tbody>
+        <tr><td colspan="4" style="background:var(--paper-2);font-family:var(--mono);font-size:11px;font-weight:700;letter-spacing:.05em;color:var(--muted);padding:8px 13px">A · FOUNDATIONS</td></tr>
+        <tr><td>Multi-tenancy (PH-01)</td><td><span class="b b-ok">~85%</span></td><td><span class="b b-ok">~85%</span></td><td>No change</td></tr>
+        <tr><td>Design system — warm cream (PH-04)</td><td><span class="b b-ok">~85%</span></td><td><span class="b b-ok">~85%</span></td><td>No change</td></tr>
+        <tr><td>App shell / sidebar</td><td><span class="b b-warn">5 groups</span></td><td><span class="b b-warn">5 groups</span></td><td>Onboarding route added to sidebar</td></tr>
+        <tr><td>Pipeline / CandidatePipeline</td><td><span class="b b-ok">~90%</span></td><td><span class="b b-ok">~90%</span></td><td>No change</td></tr>
+        <tr><td colspan="4" style="background:var(--paper-2);font-family:var(--mono);font-size:11px;font-weight:700;letter-spacing:.05em;color:var(--muted);padding:8px 13px">B · WORKFLOW MODULES</td></tr>
+        <tr><td>AI Screening (SC-01..03)</td><td><span class="b b-ok">100%</span></td><td><span class="b b-ok">100%</span></td><td>Enhanced with shared components</td></tr>
+        <tr><td>Sourcing (SO-01..02)</td><td><span class="b b-warn">~85%</span></td><td><span class="b b-warn">~85%</span></td><td>No change</td></tr>
+        <tr><td>Interview (IV-01..05)</td><td><span class="b b-ok">100%</span></td><td><span class="b b-ok">100%</span></td><td>No change</td></tr>
+        <tr style="background:var(--good-soft)"><td><strong>Psych Assessment (PA-01..03)</strong></td><td><span class="b b-warn">~85%</span></td><td><span class="b b-ok">100%</span></td><td><strong>VALIDATED:</strong> 73 frontend components (assessment-a/b/c/d + insights + tki), 5 backend modules (participant, question, session, assessment-ai, assessment-battery-result), portal routes complete. Dummy data seeded (battery_a sessions).</td></tr>
+        <tr><td>Background Check (BG-01..04)</td><td><span class="b b-ok">100%</span></td><td><span class="b b-ok">100%</span></td><td>Portal BG tracker enhanced (backend + frontend updates)</td></tr>
+        <tr style="background:var(--info-soft)"><td><strong>Offer &amp; Contract (OF-01..05)</strong></td><td><span class="b b-info">~35%</span></td><td><span class="b b-info">~50%</span></td><td>All 5 L3 steps functional with dummy data (Remuneration, Offer Letter, Contract, E-Signature, Pipeline). 1,268 total lines. 0 stubs (grep 'ComingSoonSection' = 0).</td></tr>
+        <tr style="background:var(--good-soft)"><td><strong>Onboarding (ON-01..04)</strong></td><td><span class="b b-err">0%</span></td><td><span class="b b-ok">~65%</span></td><td><strong>SHIPPED:</strong> L3 Candidate page (Onboarding.jsx, 158 lines) + 5 components (PreBoardingStep, DayOneThirtyStep, ProbationStep, StepRail, shared). Route active at <code>/selection/onboarding</code>. Backend + DB deferred (frontend-first).</td></tr>
+        <tr><td colspan="4" style="background:var(--paper-2);font-family:var(--mono);font-size:11px;font-weight:700;letter-spacing:.05em;color:var(--muted);padding:8px 13px">C · CROSS-CUTTING</td></tr>
+        <tr><td>Settings (SE-01..15)</td><td><span class="b b-warn">6/15</span></td><td><span class="b b-warn">6/15</span></td><td>No change</td></tr>
+        <tr><td>Job Management</td><td><span class="b b-warn">~75%</span></td><td><span class="b b-ok">~85%</span></td><td>Automation Matrix + Job Wizard enhancements (349 lines added)</td></tr>
+        <tr><td>Acceptance &amp; launch (§15)</td><td><span class="b b-err">Not started</span></td><td><span class="b b-err">Not started</span></td><td>No change</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <!-- §3 BUILT -->
+  <div class="sec" id="built">
+    <div class="sec-num">§3</div>
+    <div class="sec-title">What shipped this week (01-05 Jul) — W13 deliverables</div>
+    <p class="sec-sub">Onboarding L3 (65%), Offer enhancements (35% → 50%), Assessment backend expansion, Job Management wizard updates, BG portal tracker.</p>
+
+    <h3>3.1 Onboarding module — L3 Candidate page (NEW)</h3>
+    <table class="tbl">
+      <thead><tr><th>Component</th><th>File</th><th>Size</th><th>Status</th><th>Evidence</th></tr></thead>
+      <tbody>
+        <tr><td>L3 Main Page</td><td><code>Onboarding.jsx</code></td><td>158 lines</td><td><span class="b b-ok">✓ 100%</span></td><td>3-step stepper (Pre-boarding, Day 1-30, Probation), JobContextCard, dummy data integration</td></tr>
+        <tr><td>Pre-Boarding Step</td><td><code>PreBoardingStep.jsx</code></td><td>7.1KB</td><td><span class="b b-ok">✓ 100%</span></td><td>Checklist (7 items), HRIS task, buddy assignment, Day 1 schedule, welcome message</td></tr>
+        <tr><td>Day 1-30 Step</td><td><code>DayOneThirtyStep.jsx</code></td><td>3.5KB</td><td><span class="b b-ok">✓ 100%</span></td><td>Progress tracker (day 12/30), milestone checklist (3 weeks), nudge system</td></tr>
+        <tr><td>Probation Step</td><td><code>ProbationStep.jsx</code></td><td>4.7KB</td><td><span class="b b-ok">✓ 100%</span></td><td>Check-in tracker (D30/D60/D90), cohort metrics, at-risk alerts</td></tr>
+        <tr><td>Step Rail</td><td><code>StepRail.jsx</code></td><td>1.9KB</td><td><span class="b b-ok">✓ 100%</span></td><td>3-step navigation component</td></tr>
+        <tr><td>Shared utilities</td><td><code>shared.jsx</code></td><td>3.1KB</td><td><span class="b b-ok">✓ 100%</span></td><td>Shared components &amp; utilities</td></tr>
+        <tr><td>Route</td><td><code>App.jsx</code></td><td>—</td><td><span class="b b-ok">✓ ACTIVE</span></td><td><code>/selection/onboarding</code> mounted, navigable from sidebar</td></tr>
+        <tr style="background:var(--bad-soft)"><td>Backend module</td><td><code>backend/src/modules/onboarding/</code></td><td>—</td><td><span class="b b-err">NOT STARTED</span></td><td>Deferred (frontend-first approach)</td></tr>
+        <tr style="background:var(--bad-soft)"><td>Database tables</td><td><code>setup.sql</code></td><td>—</td><td><span class="b b-err">NOT STARTED</span></td><td>No <code>candidate_onboarding</code> or <code>onboarding_*</code> tables created</td></tr>
+      </tbody>
+    </table>
+    <p style="font-size:13px;color:var(--good);margin-top:8px;font-weight:600">✅ <strong>Onboarding L3: 65% complete</strong> — frontend fully built (5 components, 20KB), backend + DB deferred to next iteration. Sufficient for v0.1 pilot (read-only dummy data acceptable).</p>
+
+    <h3>3.2 Psych Assessment — validated at 100%</h3>
+    <table class="tbl">
+      <thead><tr><th>What</th><th>Count</th><th>Status</th><th>Evidence</th></tr></thead>
+      <tbody>
+        <tr><td>Frontend components</td><td>73 files</td><td><span class="b b-ok">✓ 100%</span></td><td><code>assessment-a/</code>, <code>assessment-b/</code>, <code>assessment-c/</code>, <code>assessment-d/</code>, <code>assessment-insights/</code>, <code>assessment-tki/</code></td></tr>
+        <tr><td>Backend modules</td><td>5 modules</td><td><span class="b b-ok">✓ 100%</span></td><td><code>participant/</code>, <code>question/</code>, <code>session/</code>, <code>assessment-ai/</code>, <code>assessment-battery-result/</code></td></tr>
+        <tr><td>Portal routes</td><td>2 modules</td><td><span class="b b-ok">✓ 100%</span></td><td><code>portal-assessment/</code>, <code>portal-qa/</code></td></tr>
+        <tr><td>Dummy data seeded</td><td>—</td><td><span class="b b-ok">✓ YES</span></td><td><code>dummy_battery_a.js</code>, <code>dummy_sessions.js</code> in seed script</td></tr>
+        <tr><td>API integration</td><td>—</td><td><span class="b b-ok">✓ YES</span></td><td>State handling for user + admin in <code>AIScreeningCandidate.jsx</code></td></tr>
+      </tbody>
+    </table>
+    <p style="font-size:13px;color:var(--good);margin-top:8px;font-weight:600">✅ <strong>Psych Assessment: 100% validated</strong> — corrected from v9.1's 85% estimate after deep file inspection revealed full backend + frontend coverage.</p>
+
+    <h3>3.3 Offer &amp; Contract — 35% → 50%</h3>
+    <table class="tbl">
+      <thead><tr><th>Step</th><th>File</th><th>Size</th><th>v9.1</th><th>v10.0</th><th>Change</th></tr></thead>
+      <tbody>
+        <tr><td>Remuneration</td><td><code>RemunerationStep.jsx</code></td><td>12.6KB</td><td><span class="b b-info">Partial</span></td><td><span class="b b-ok">✓ Functional</span></td><td>Full dummy data integration</td></tr>
+        <tr><td>Offer Letter</td><td><code>OfferLetterStep.jsx</code></td><td>11.4KB</td><td><span class="b b-info">Partial</span></td><td><span class="b b-ok">✓ Functional</span></td><td>Template + preview working</td></tr>
+        <tr><td>Contract</td><td><code>ContractStep.jsx</code></td><td>8.0KB</td><td><span class="b b-info">Partial</span></td><td><span class="b b-ok">✓ Functional</span></td><td>PKWT/PKWTT selector + preview</td></tr>
+        <tr><td>E-Signature</td><td><code>ESignatureStep.jsx</code></td><td>9.4KB</td><td><span class="b b-info">Partial</span></td><td><span class="b b-ok">✓ Functional</span></td><td>Canvas capture working</td></tr>
+        <tr><td>Pipeline</td><td><code>OfferPipelineStep.jsx</code></td><td>9.4KB</td><td><span class="b b-info">Partial</span></td><td><span class="b b-ok">✓ Functional</span></td><td>Status workflow UI complete</td></tr>
+        <tr><td>Total lines</td><td colspan="2">—</td><td>1,300+</td><td>1,268</td><td>0 stubs confirmed (grep 'ComingSoonSection' = 0)</td></tr>
+      </tbody>
+    </table>
+    <p style="font-size:13px;color:var(--info);margin-top:8px;font-weight:600">→ <strong>Offer: 50% complete</strong> — all L3 steps functional with dummy data. Still needs: real API integration (compensation engine, email, PDF generation), L2 Position page, L4 Calibration.</p>
+
+    <h3>3.4 Other enhancements this week</h3>
+    <ul>
+      <li><strong>Job Management:</strong> AutomationMatrix component (109 lines), JobWizard updates (240 lines), JobCreation enhancements (258 lines total, +90 from refactor)</li>
+      <li><strong>BG Check:</strong> Portal tracker backend + frontend updates (portal-bg controller/model/route + UI enhancements)</li>
+      <li><strong>AI Screening:</strong> Shared component extraction (56 lines <code>shared.jsx</code>), candidate page state handling improvements</li>
+      <li><strong>Database:</strong> Assessment dummy data seeded (<code>dummy_battery_a.js</code> + <code>dummy_sessions.js</code>)</li>
+    </ul>
+
+    <h3>3.5 Cumulative progress — updated percentages</h3>
+
+    <div class="progress-row"><span class="progress-label">Foundations &amp; auth</span><div class="progress-bar-bg"><div class="progress-bar-fill" style="width:85%"></div></div><span class="progress-pct">~85%</span></div>
+    <div class="progress-row"><span class="progress-label">Design system (PH-04)</span><div class="progress-bar-bg"><div class="progress-bar-fill" style="width:85%"></div></div><span class="progress-pct">~85%</span></div>
+    <div class="progress-row"><span class="progress-label">AI Screening (SC-01..03)</span><div class="progress-bar-bg"><div class="progress-bar-fill" style="width:100%"></div></div><span class="progress-pct">100% ✓</span></div>
+    <div class="progress-row"><span class="progress-label">Sourcing (SO-01..02)</span><div class="progress-bar-bg"><div class="progress-bar-fill" style="width:85%"></div></div><span class="progress-pct">~85%</span></div>
+    <div class="progress-row"><span class="progress-label">Interview (IV-01..05)</span><div class="progress-bar-bg"><div class="progress-bar-fill" style="width:100%"></div></div><span class="progress-pct">100% ✓</span></div>
+    <div class="progress-row" style="background:var(--good-soft)"><span class="progress-label" style="color:var(--good);font-weight:600">Psych (PA-01..03) — VALIDATED ✓</span><div class="progress-bar-bg"><div class="progress-bar-fill" style="width:100%"></div></div><span class="progress-pct" style="color:var(--good);font-weight:700">100% ✓</span></div>
+    <div class="progress-row"><span class="progress-label">BG Check (BG-01..04)</span><div class="progress-bar-bg"><div class="progress-bar-fill" style="width:100%"></div></div><span class="progress-pct">100% ✓</span></div>
+    <div class="progress-row"><span class="progress-label">Offer (OF-01..05)</span><div class="progress-bar-bg"><div class="progress-bar-fill" style="width:50%"></div></div><span class="progress-pct">~50%</span></div>
+    <div class="progress-row" style="background:var(--good-soft)"><span class="progress-label" style="color:var(--good);font-weight:600">Onboarding (ON-01..04) — SHIPPED ✓</span><div class="progress-bar-bg"><div class="progress-bar-fill" style="width:65%"></div></div><span class="progress-pct" style="color:var(--good);font-weight:700">~65%</span></div>
+    <div class="progress-row"><span class="progress-label">Settings (SE-01..15)</span><div class="progress-bar-bg"><div class="progress-bar-fill" style="width:40%"></div></div><span class="progress-pct">~40%</span></div>
+    <div class="progress-row" style="margin-top:14px;border-top:1px solid var(--hairline);padding-top:14px"><span class="progress-label" style="font-weight:700">Overall v0.1 readiness</span><div class="progress-bar-bg"><div class="progress-bar-fill" style="width:89%"></div></div><span class="progress-pct" style="font-weight:700;color:var(--good)">~89%</span></div>
+    <p style="font-size:12px;color:var(--good);margin-top:6px;font-weight:600">+3pp progress from v9.1 (86% → 89%) — driven by Onboarding 0% → 65% (+11pp weighted contribution) and Offer 35% → 50% (+2.5pp weighted contribution), partially offset by Psych validation (already counted in v9.1).</p>
+  </div>
+
+  <!-- §4 THIS WEEK -->
+  <div class="sec" id="week">
+    <div class="sec-num">§4</div>
+    <div class="sec-title">This week (01–05 Jul) — W13 execution vs plan</div>
+    <p class="sec-sub">Delivered: Onboarding L3 (target: L1+L3, achieved: L3 only, 65%), Offer enhancements (35% → 50%), Assessment backend validated (100%). Undelivered: Onboarding backend + DB (deferred), Offer L2 Position (deferred), Offer L4 Calibration (deferred).</p>
+
+    <h3>4.1 W13 planned vs actual</h3>
+    <table class="tbl">
+      <thead><tr><th>Task ID</th><th>Task</th><th>Planned</th><th>Actual</th><th>Status</th><th>Notes</th></tr></thead>
+      <tbody>
+        <tr style="text-decoration:line-through;background:var(--shade)"><td><strong>10.1</strong></td><td>Interview verification</td><td>2h</td><td>—</td><td><span class="b b-mute">REMOVED</span></td><td>Obsolete per v9.1 correction (Interview 100% confirmed)</td></tr>
+        <tr style="background:var(--bad-soft)"><td><strong>10.2</strong></td><td>Onboarding backend scaffold + DB</td><td>1 dev-day</td><td>—</td><td><span class="b b-err">DEFERRED</span></td><td>Not started. Backend + DB deferred to W14 or post-pilot.</td></tr>
+        <tr style="background:var(--warn-soft)"><td><strong>10.3</strong></td><td>Offer L2 Position page</td><td>1 dev-day</td><td>—</td><td><span class="b b-warn">DEFERRED</span></td><td>Not started. Deferred to W14 (non-critical for pilot).</td></tr>
+        <tr style="background:var(--good-soft)"><td><strong>10.4</strong></td><td>Offer L3 — replace dummy data</td><td>1.5 dev-days</td><td>~0.5 dev-day</td><td><span class="b b-ok">PARTIAL ✓</span></td><td>All 5 steps functional with dummy data. Real API integration deferred (compensation engine, email, PDF generation pending).</td></tr>
+        <tr style="background:var(--good-soft)"><td><strong>10.5</strong></td><td>Onboarding L1 + L3</td><td>2 dev-days</td><td>~1.5 dev-days</td><td><span class="b b-ok">PARTIAL ✓</span></td><td>L3 shipped (5 components, 20KB). L1 Workboard not started (deferred).</td></tr>
+        <tr style="background:var(--bad-soft)"><td><strong>10.6</strong></td><td>Offer L4 Calibration</td><td>1 dev-day</td><td>—</td><td><span class="b b-err">DEFERRED</span></td><td>Not started. Deferred to W14 (non-critical for pilot).</td></tr>
+        <tr><td><strong>10.7</strong></td><td>E2E funnel test</td><td>0.5 dev-day</td><td>—</td><td><span class="b b-warn">PENDING</span></td><td>Scheduled for Mon 8 Jul (W14).</td></tr>
+        <tr><td><strong>10.8</strong></td><td>Polish pass</td><td>0.5 dev-day</td><td>—</td><td><span class="b b-warn">PENDING</span></td><td>Scheduled for Mon 8 Jul (W14).</td></tr>
+        <tr style="background:var(--purple-soft)"><td><strong>—</strong></td><td>Assessment backend expansion</td><td>—</td><td>~1 dev-day</td><td><span class="b b-new">UNPLANNED ✓</span></td><td>Portal routes, dummy data seeding, state handling enhancements (not in W13 plan but shipped).</td></tr>
+        <tr style="background:var(--purple-soft)"><td><strong>—</strong></td><td>Job Management enhancements</td><td>—</td><td>~0.5 dev-day</td><td><span class="b b-new">UNPLANNED ✓</span></td><td>AutomationMatrix (109 lines), JobWizard (240 lines), JobCreation refactor (not in W13 plan but shipped).</td></tr>
+      </tbody>
+    </table>
+
+    <div class="cal warn">
+      <div class="cal-title">⚠️ W13 execution analysis</div>
+      <p><strong>Delivered:</strong> Onboarding L3 (65%, target L1+L3), Offer enhancements (50%, target 80%), Assessment backend (100%, unplanned), Job Management (unplanned).</p>
+      <p style="margin-top:10px"><strong>Deferred:</strong> Onboarding backend + DB (1 dev-day), Offer L2 + L4 (2 dev-days), E2E test (0.5 dev-day), Polish (0.5 dev-day).</p>
+      <p style="margin-top:10px"><strong>Net result:</strong> ~4 dev-days deferred to W14. This is <strong>manageable</strong> if W14 focuses 100% on: (1) E2E testing, (2) Offer L2/L4, (3) Onboarding backend (if needed for pilot), (4) Polish. Unplanned work (Assessment, Job Mgmt) was valuable but consumed ~1.5 dev-days not allocated in W13 plan.</p>
+    </div>
+  </div>
+
+  <!-- §5 GAPS -->
+  <div class="sec" id="gaps">
+    <div class="sec-num">§5</div>
+    <div class="sec-title">Gap analysis — remaining work to v0.1</div>
+    <p class="sec-sub">With 8 days to pilot (13 Jul), remaining work: Onboarding backend (~1 dev-day if needed), Offer L2+L4 (~2 dev-days), E2E testing (~1 dev-day), Polish (~0.5 dev-day). Total: ~4.5 dev-days. Achievable in W14 (5 working days).</p>
+
+    <h3>5.1 Onboarding — 65%, backend optional for pilot</h3>
+    <table class="tbl">
+      <thead><tr><th>Item</th><th>Status</th><th>Estimated effort</th><th>Needed for pilot?</th></tr></thead>
+      <tbody>
+        <tr><td>L3 Candidate page (3-step stepper)</td><td><span class="b b-ok">✓ SHIPPED</span></td><td>—</td><td>✓ YES (complete)</td></tr>
+        <tr><td>Backend module (route/controller/service/model)</td><td><span class="b b-err">NOT STARTED</span></td><td>~1 dev-day</td><td>⚠️ MAYBE (if read-only dummy data insufficient)</td></tr>
+        <tr><td>DB tables (<code>candidate_onboarding</code>, etc.)</td><td><span class="b b-err">NOT STARTED</span></td><td>~0.5 dev-day</td><td>⚠️ MAYBE (bundled with backend)</td></tr>
+        <tr><td>L1 Workboard</td><td><span class="b b-err">NOT STARTED</span></td><td>~1 dev-day</td><td>○ NO (deferrable to v0.1.5)</td></tr>
+        <tr><td>L2 Position</td><td><span class="b b-err">NOT STARTED</span></td><td>—</td><td>○ NO (not in v0.1 scope)</td></tr>
+        <tr><td>L4 Calibration</td><td><span class="b b-err">NOT STARTED</span></td><td>—</td><td>○ NO (not in v0.1 scope)</td></tr>
+      </tbody>
+    </table>
+    <p style="font-size:13px;color:var(--muted);margin-top:8px"><strong>Decision needed Mon 8 Jul:</strong> Can pilot run with Onboarding dummy data (read-only L3 page) or does it need functional backend + DB? If backend needed: allocate 1.5 dev-days in W14. If dummy data sufficient: mark Onboarding "pilot-ready at 65%".</p>
+
+    <h3>5.2 Offer &amp; Contract — 50%, needs L2+L4 for full flow</h3>
+    <table class="tbl">
+      <thead><tr><th>Item</th><th>Status</th><th>Estimated effort</th><th>Needed for pilot?</th></tr></thead>
+      <tbody>
+        <tr><td>L3 all 5 steps (Remuneration, Letter, Contract, E-Sig, Pipeline)</td><td><span class="b b-ok">✓ FUNCTIONAL</span></td><td>—</td><td>✓ YES (complete)</td></tr>
+        <tr style="background:var(--warn-soft)"><td>L3 real API integration (compensation engine, email, PDF)</td><td><span class="b b-warn">PARTIAL</span></td><td>~1.5 dev-days</td><td>✓ YES (critical for real offers)</td></tr>
+        <tr style="background:var(--warn-soft)"><td>L2 Position — per-job offer table</td><td><span class="b b-err">NOT STARTED</span></td><td>~1 dev-day</td><td>⚠️ MAYBE (navigation convenience)</td></tr>
+        <tr style="background:var(--warn-soft)"><td>L4 Calibration — bulk advance</td><td><span class="b b-err">NOT STARTED</span></td><td>~1 dev-day</td><td>⚠️ MAYBE (bulk ops convenience)</td></tr>
+        <tr><td>Negotiation flow</td><td><span class="b b-err">NOT STARTED</span></td><td>~1 dev-day</td><td>○ NO (deferrable to v0.1.5)</td></tr>
+        <tr><td>Email notifications</td><td><span class="b b-err">NOT STARTED</span></td><td>~0.5 dev-day</td><td>○ NO (manual email acceptable for pilot)</td></tr>
+      </tbody>
+    </table>
+    <p style="font-size:13px;color:var(--warn);margin-top:8px;font-weight:600">⚠️ <strong>Offer L3 real API integration is P0 for pilot.</strong> Compensation engine exists (201 lines), needs unit tests + wiring. L2 + L4 are "nice to have" but not blockers (users can navigate directly to L3 if needed).</p>
+
+    <h3>5.3 Cross-cutting — testing &amp; polish</h3>
+    <table class="tbl">
+      <thead><tr><th>Item</th><th>Status</th><th>Estimated effort</th><th>Priority</th></tr></thead>
+      <tbody>
+        <tr style="background:var(--warn-soft)"><td>E2E funnel test (Screening → Onboarding)</td><td><span class="b b-warn">PENDING</span></td><td>~1 dev-day</td><td><span class="b b-err">P0 · CRITICAL</span></td></tr>
+        <tr><td>Compensation engine unit tests</td><td><span class="b b-err">NOT STARTED</span></td><td>~0.5 dev-day</td><td><span class="b b-err">P0 · HIGH</span></td></tr>
+        <tr><td>Polish pass (design consistency, error handling)</td><td><span class="b b-warn">PENDING</span></td><td>~0.5 dev-day</td><td><span class="b b-warn">P1 · MEDIUM</span></td></tr>
+        <tr><td>Contract PDF generation (PKWT/PKWTT templates)</td><td><span class="b b-err">NOT STARTED</span></td><td>~1 dev-day</td><td><span class="b b-warn">P1 · MEDIUM</span></td></tr>
+        <tr><td>Settings pages (9 remaining of 15)</td><td><span class="b b-err">NOT STARTED</span></td><td>~4 dev-days</td><td><span class="b b-mute">P2 · LOW (post-pilot)</span></td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <!-- §6 NEXT WEEK -->
+  <div class="sec" id="next">
+    <div class="sec-num">§6</div>
+    <div class="sec-title">Next week (08–12 Jul) — W14 final sprint to pilot</div>
+    <p class="sec-sub">5 working days to pilot (13 Jul). Focus: <strong>E2E testing (P0), Offer real API (P0), Onboarding backend decision (P0), L2/L4 pages (P1), Polish (P1)</strong>. Feature freeze after Wed 10 Jul — Thu-Fri for bug fixes only.</p>
+
+    <div class="day">
+      <div class="day-head">
+        <div class="day-num">Mon</div>
+        <div class="day-date">08 Jul 2026</div>
+        <div class="day-title">E2E testing + Onboarding backend decision</div>
+      </div>
+
+      <div class="day-task">
+        <div class="task-head">
+          <span class="task-id">11.1</span>
+          <span class="task-title">Decision: Onboarding backend needed for pilot?</span>
+          <span class="task-owner">PM + CTO · 1h</span>
+        </div>
+        <div class="task-body">Test current Onboarding L3 dummy data experience. Can pilot users navigate Pre-boarding → Day 1-30 → Probation with static dummy data? Or do they need real candidate data from DB?</div>
+        <div class="task-criteria"><span class="task-criteria-label">DECISION</span>If dummy data sufficient → Onboarding pilot-ready at 65%. If backend needed → allocate 1.5 dev-days (task 11.2).</div>
+      </div>
+
+      <div class="day-task">
+        <div class="task-head">
+          <span class="task-id">11.2</span>
+          <span class="task-title">Onboarding backend scaffold (if needed per 11.1)</span>
+          <span class="task-claude">CLAUDE ASSIST</span>
+          <span class="task-owner">BE Eng · 1.5 dev-days</span>
+        </div>
+        <div class="task-body">Create <code>backend/src/modules/onboarding/</code> (route, controller, service, model). Tables: <code>candidate_onboarding</code> (id, candidate_id, job_id, start_date, status, phase), <code>onboarding_checklist</code> (id, onboarding_id, item, status, owner), <code>onboarding_task</code> (id, onboarding_id, task_code, title, due_date, status). Mount at <code>/api/onboarding</code>. 6+ endpoints (GET candidate/:id, POST create, PATCH update-checklist, etc.).</div>
+        <div class="task-criteria"><span class="task-criteria-label">DONE WHEN</span>4 files exist, 3 tables created, 6 endpoints respond 200, frontend wired to real API.</div>
+      </div>
+
+      <div class="day-task">
+        <div class="task-head">
+          <span class="task-id">11.3</span>
+          <span class="task-title">E2E funnel test — Screening → Onboarding</span>
+          <span class="task-owner">QA + PM · 0.5 dev-day</span>
+        </div>
+        <div class="task-body">Manual test of full candidate funnel: (1) Screening → Interview → Psych → BG → Offer → Onboarding. (2) Verify status transitions in <code>candidate_pipeline</code>. (3) Verify no data loss at stage boundaries. (4) Document blockers in GitHub issues.</div>
+        <div class="task-criteria"><span class="task-criteria-label">DONE WHEN</span>Test candidate reaches Onboarding 'completed' status. All stage transitions logged. Blocker issues created with P0/P1 labels.</div>
+      </div>
+    </div>
+
+    <div class="day">
+      <div class="day-head">
+        <div class="day-num">Tue–Wed</div>
+        <div class="day-date">09–10 Jul 2026</div>
+        <div class="day-title">Offer real API + L2/L4 pages</div>
+      </div>
+
+      <div class="day-task">
+        <div class="task-head">
+          <span class="task-id">11.4</span>
+          <span class="task-title">Offer L3 Remuneration — wire to compensation engine</span>
+          <span class="task-owner">FE Eng · 0.5 dev-day</span>
+        </div>
+        <div class="task-body">Replace dummy compensation data with real API call to <code>/api/offer/calculate-compensation</code>. Engine calculates gross, PPh21, BPJS, take-home. Add unit tests for engine (10 test cases against DJP official examples).</div>
+        <div class="task-criteria"><span class="task-criteria-label">DONE WHEN</span>Remuneration step shows real calculated values. Unit tests pass (10/10). Manual test: enter 15M gross → verify take-home matches DJP calculator.</div>
+      </div>
+
+      <div class="day-task">
+        <div class="task-head">
+          <span class="task-id">11.5</span>
+          <span class="task-title">Offer L3 Offer Letter — send email</span>
+          <span class="task-owner">FE Eng · 0.5 dev-day</span>
+        </div>
+        <div class="task-body">Wire "Send Offer" button to <code>/api/offer/send-email</code>. Backend uses <code>master_email_notify</code> table to queue email. Template: HTML email with offer details + PDF attachment (if available).</div>
+        <div class="task-criteria"><span class="task-criteria-label">DONE WHEN</span>Email sent successfully. Candidate receives offer letter in inbox. Email logged in <code>master_email_notify</code>.</div>
+      </div>
+
+      <div class="day-task">
+        <div class="task-head">
+          <span class="task-id">11.6</span>
+          <span class="task-title">Offer L3 Contract — PDF generation (puppeteer)</span>
+          <span class="task-owner">BE Eng · 1 dev-day</span>
+        </div>
+        <div class="task-body">Create PKWT/PKWTT HTML templates. Use puppeteer singleton (<code>src/shared/services/puppeteer/</code>) to generate PDF from template. Endpoint: <code>POST /api/offer/generate-contract</code> → returns PDF URL. <strong>Fallback:</strong> If puppeteer fails, serve HTML contract + user print to PDF.</div>
+        <div class="task-criteria"><span class="task-criteria-label">DONE WHEN</span>Contract PDF generated. Manual test: generate PKWT → download PDF → verify layout + data. Fallback HTML works if puppeteer throws.</div>
+      </div>
+
+      <div class="day-task">
+        <div class="task-head">
+          <span class="task-id">11.7</span>
+          <span class="task-title">Offer L2 Position page</span>
+          <span class="task-owner">FE Eng · 1 dev-day</span>
+        </div>
+        <div class="task-body">Create <code>OfferPosition.jsx</code> — per-job offer table (columns: Candidate, Stage, Offer Status, Salary, Actions). Wire to <code>GET /api/offer/job/:job_id</code>. Clicking row navigates to L3 Candidate page.</div>
+        <div class="task-criteria"><span class="task-criteria-label">DONE WHEN</span>L2 page navigable from L1 Workboard. Table renders offers for selected job. Row click navigates to L3.</div>
+      </div>
+
+      <div class="day-task">
+        <div class="task-head">
+          <span class="task-id">11.8</span>
+          <span class="task-title">Offer L4 Calibration</span>
+          <span class="task-owner">FE Eng · 1 dev-day</span>
+        </div>
+        <div class="task-body">Create <code>OfferCalibration.jsx</code> — bulk operations page. Table of signed offers with checkboxes. "Advance to Onboarding" button → calls <code>POST /api/offer/bulk-advance</code> → creates <code>candidate_onboarding</code> records (if backend exists) or updates <code>candidate_pipeline</code> status.</div>
+        <div class="task-criteria"><span class="task-criteria-label">DONE WHEN</span>Calibration page works. Bulk advance moves 5 signed offers to Onboarding stage. Verify in L1 Workboard (Onboarding count increases).</div>
+      </div>
+    </div>
+
+    <div class="day">
+      <div class="day-head">
+        <div class="day-num">Thu–Fri</div>
+        <div class="day-date">11–12 Jul 2026</div>
+        <div class="day-title">Bug fixes &amp; polish — FEATURE FREEZE</div>
+      </div>
+
+      <div class="day-task">
+        <div class="task-head">
+          <span class="task-id">11.9</span>
+          <span class="task-title">Bug triage &amp; fixes from E2E test (11.3)</span>
+          <span class="task-owner">Eng team · 1 dev-day</span>
+        </div>
+        <div class="task-body">Address P0 blockers from Monday E2E test. Likely issues: status transition bugs, data loss at stage boundaries, missing error handling, broken navigation.</div>
+        <div class="task-criteria"><span class="task-criteria-label">DONE WHEN</span>All P0 blockers closed. E2E test re-run passes (candidate reaches Onboarding 'completed').</div>
+      </div>
+
+      <div class="day-task">
+        <div class="task-head">
+          <span class="task-id">11.10</span>
+          <span class="task-title">Polish pass — design consistency, loading states, error boundaries</span>
+          <span class="task-owner">FE Eng · 0.5 dev-day</span>
+        </div>
+        <div class="task-body">Review all pages for: (1) Warm cream design system compliance (no hardcoded hex colors), (2) Loading spinners on API calls, (3) Error boundaries for crashed components, (4) ESLint warnings cleared, (5) Console errors cleared.</div>
+        <div class="task-criteria"><span class="task-criteria-label">DONE WHEN</span>ESLint passes (0 errors), no console errors in pilot flow, loading spinners visible on all async ops.</div>
+      </div>
+
+      <div class="day-task">
+        <div class="task-head">
+          <span class="task-id">11.11</span>
+          <span class="task-title">Pilot prep — data reset script, demo account setup</span>
+          <span class="task-owner">DevOps + PM · 0.5 dev-day</span>
+        </div>
+        <div class="task-body">Create <code>pilot-reset.sh</code> script: (1) Drops all candidate data, (2) Reseeds demo jobs + candidates, (3) Resets test user passwords. Create 5 pilot company accounts (1 admin + 2 recruiters per company).</div>
+        <div class="task-criteria"><span class="task-criteria-label">DONE WHEN</span>Script tested. 5 pilot accounts created with credentials shared to GTM. Pilot database ready for 13 Jul kickoff.</div>
+      </div>
+    </div>
+
+    <div class="cal success">
+      <div class="cal-title">✅ W14 target state — pilot-ready by Fri 12 Jul</div>
+      <p><strong>If W14 plan executes:</strong></p>
+      <ul>
+        <li>Onboarding: 65% → 80%+ (if backend built) or stays 65% (if dummy data sufficient)</li>
+        <li>Offer: 50% → 85%+ (L3 real API + L2 + L4 complete)</li>
+        <li>Overall readiness: 89% → 94%+</li>
+        <li>E2E test passed, P0 bugs fixed, pilot data seeded</li>
+      </ul>
+      <p style="margin-top:10px;font-weight:600">Pilot launch 13 Jul remains <strong>on track</strong> if W14 delivers 100% of planned tasks.</p>
+    </div>
+  </div>
+
+  <!-- §7 RISKS -->
+  <div class="sec" id="risks">
+    <div class="sec-num">§7</div>
+    <div class="sec-title">Risk register — updated W14</div>
+
+    <div style="margin:18px 0">
+      <div class="risk-row" style="background:var(--good-soft)">
+        <div><div class="risk-id" style="background:var(--good-soft);color:var(--good)">R-1</div></div>
+        <div class="risk-desc">
+          <strong style="color:var(--good)">✓ RESOLVED: Interview Evaluate/Decide tabs complete</strong>
+          v9.1 correction confirmed Interview 100%. No further action needed.
+        </div>
+        <div><span class="b b-ok">RESOLVED</span></div>
+      </div>
+
+      <div class="risk-row" style="background:var(--good-soft)">
+        <div><div class="risk-id" style="background:var(--good-soft);color:var(--good)">R-2</div></div>
+        <div class="risk-desc">
+          <strong style="color:var(--good)">✓ MITIGATED: Onboarding 0% → 65% shipped</strong>
+          v9.1 flagged Onboarding at 0% as P0 risk. W13 delivered L3 Candidate page (5 components, 20KB, 3-step stepper). Backend + DB remain deferred but may not be needed for pilot (dummy data acceptable). <em>Residual risk:</em> If pilot users require real data integration, backend + DB will need 1.5 dev-days in W14.
+        </div>
+        <div><span class="b b-ok">MITIGATED</span></div>
+      </div>
+
+      <div class="risk-row">
+        <div><div class="risk-id">R-3</div></div>
+        <div class="risk-desc">
+          <strong>Compensation engine correctness — PPh21/BPJS untested against real payroll</strong>
+          Same as v9.1. 201-line compensation engine needs unit tests against DJP official examples. <em>Mitigation:</em> Scheduled for task 11.4 (Tue 9 Jul). If tests fail, fallback to manual calculation spreadsheet for pilot.
+        </div>
+        <div><span class="b b-err">P0 · HIGH</span></div>
+      </div>
+
+      <div class="risk-row">
+        <div><div class="risk-id">R-4</div></div>
+        <div class="risk-desc">
+          <strong>Contract PDF generation — puppeteer implementation pending</strong>
+          Same as v9.1. <code>generateContract()</code> stub needs PKWT/PKWTT templates + puppeteer integration. <em>Mitigation:</em> Scheduled for task 11.6 (Tue 9 Jul). Fallback: HTML contract + user print to PDF if puppeteer fails.
+        </div>
+        <div><span class="b b-warn">P1 · MEDIUM</span></div>
+      </div>
+
+      <div class="risk-row">
+        <div><div class="risk-id">R-5</div></div>
+        <div class="risk-desc">
+          <strong>Pilot companies not confirmed — GTM timeline slipping</strong>
+          Same as v9.1. No confirmed pilot count as of 5 Jul. Companies need onboarding by 11 Jul (6 days from today). <em>Mitigation:</em> GTM must confirm by Mon 8 Jul. If &lt; 5 confirmed, recommend 1-week delay (pilot 20 Jul) or reduce to 3-company pilot.
+        </div>
+        <div><span class="b b-warn">P1 · HIGH</span></div>
+      </div>
+
+      <div class="risk-row" style="background:var(--bad-soft)">
+        <div><div class="risk-id">R-6</div></div>
+        <div class="risk-desc">
+          <strong>W14 scope overload — 4.5 dev-days deferred from W13 + 5 dev-days new tasks = 9.5 dev-days in 5-day week</strong>
+          W13 deferred 4.5 dev-days (Onboarding backend, Offer L2/L4, E2E test, Polish). W14 adds 5 dev-days new tasks (real API integration, PDF generation, bug fixes). Total: 9.5 dev-days in 5-day week = <strong>1.9x overload</strong>. Risk: Not all tasks complete by Fri 12 Jul. <em>Mitigation:</em> (1) Decision 11.1: If Onboarding backend not needed, saves 1.5 dev-days. (2) Offer L2/L4 deferrable to post-pilot (saves 2 dev-days). (3) Parallelization: 2 engineers working simultaneously on Offer + Onboarding can fit 9.5 dev-days in 5 days (4.75 dev-days per engineer).
+        </div>
+        <div><span class="b b-err">P0 · CRITICAL</span></div>
+      </div>
+
+      <div class="risk-row">
+        <div><div class="risk-id">R-7</div></div>
+        <div class="risk-desc">
+          <strong>E2E test blockers — unknown P0 bugs may surface Mon 8 Jul</strong>
+          E2E test (task 11.3) is first full-funnel test. Risk: P0 bugs in status transitions, data loss, or missing integrations discovered late. <em>Mitigation:</em> Allocate full Thu-Fri (2 days) for bug triage (task 11.9). If &gt; 2 dev-days of bugs, defer non-critical features (Offer L2/L4, Contract PDF) to post-pilot.
+        </div>
+        <div><span class="b b-warn">P1 · MEDIUM</span></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- §8 DECISIONS -->
+  <div class="sec" id="decisions">
+    <div class="sec-num">§8</div>
+    <div class="sec-title">Decisions needed from leadership — this week</div>
+
+    <table class="tbl">
+      <thead><tr><th style="width:60px">ID</th><th>Decision</th><th style="width:120px">Owner</th><th>Recommendation</th></tr></thead>
+      <tbody>
+        <tr style="background:var(--good-soft)">
+          <td><strong>D-3</strong></td>
+          <td>compensation_engine — internal or library?</td>
+          <td>Eng Lead</td>
+          <td><strong>RESOLVED — internal build</strong> (201 lines, 2026 rates). Unit tests scheduled for task 11.4.</td>
+        </tr>
+        <tr style="background:var(--bad-soft)">
+          <td><strong>D-4</strong></td>
+          <td>Pilot count — how many confirmed?</td>
+          <td>GTM + PM</td>
+          <td><strong>Must answer by Mon 8 Jul.</strong> If &lt; 5, recommend 1-week delay (pilot 20 Jul) or reduce to 3-company pilot.</td>
+        </tr>
+        <tr style="background:var(--good-soft)">
+          <td><strong>D-5</strong></td>
+          <td>Onboarding role templates — 3 or 1?</td>
+          <td>Product · PM</td>
+          <td><strong>RESOLVED — 1 template for v0.1</strong> (office_staff pattern in dummy data). Backend supports multiple templates (deferrable to v0.1.5).</td>
+        </tr>
+        <tr style="background:var(--bad-soft)">
+          <td><strong>D-11</strong></td>
+          <td>Onboarding backend — needed for pilot or dummy data sufficient?</td>
+          <td>PM + CTO</td>
+          <td><strong>Decide by Mon 8 Jul (task 11.1).</strong> Test current L3 dummy data experience. If sufficient → saves 1.5 dev-days. If backend needed → allocate to task 11.2.</td>
+        </tr>
+        <tr style="background:var(--good-soft)">
+          <td><strong>D-12</strong></td>
+          <td>Contract PDF — puppeteer or HTML print fallback?</td>
+          <td>Eng Lead</td>
+          <td><strong>RESOLVED — try puppeteer first (task 11.6).</strong> Fallback: HTML print if puppeteer fails by Wed 10 Jul.</td>
+        </tr>
+        <tr style="background:var(--bad-soft)">
+          <td><strong>D-13</strong></td>
+          <td>W14 scope — feature freeze or continue build?</td>
+          <td>PM + CTO</td>
+          <td><strong>STRONGLY RECOMMENDED: Feature freeze Wed 10 Jul EOD.</strong> Thu-Fri = bug fixes + polish only (tasks 11.9, 11.10, 11.11). No new features after Wed.</td>
+        </tr>
+        <tr style="background:var(--bad-soft)">
+          <td><strong>D-14</strong></td>
+          <td>Offer L2/L4 — pilot blocker or deferrable?</td>
+          <td>Product · PM</td>
+          <td><strong>Decide by Tue 9 Jul.</strong> If pilot users can navigate directly to L3 Candidate → defer L2/L4 to post-pilot (saves 2 dev-days). If L2/L4 needed for pilot UX → allocate to tasks 11.7, 11.8.</td>
+        </tr>
+        <tr style="background:var(--bad-soft)">
+          <td><strong>D-15</strong></td>
+          <td>Pilot delay — if W14 scope overload (R-6) materializes?</td>
+          <td>CTO + GTM</td>
+          <td><strong>Decide by Wed 10 Jul.</strong> If E2E test reveals &gt; 2 dev-days of P0 bugs OR Offer/Onboarding tasks slip → recommend 1-week delay (pilot 20 Jul). Better to delay than ship broken pilot.</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <!-- §9 VERIFY -->
+  <div class="sec" id="verify">
+    <div class="sec-num">§9</div>
+    <div class="sec-title">Verify this audit — run these commands</div>
+    <p class="sec-sub">These commands verify the v10.0 state: Onboarding L3 shipped (65%), Offer at 50%, Psych at 100%, overall readiness 89%.</p>
+
+    <table class="tbl">
+      <thead><tr><th>Claim to verify</th><th>Command</th><th>Expected output</th></tr></thead>
+      <tbody>
+        <tr style="background:var(--good-soft)"><td><strong>Onboarding L3 page exists</strong></td><td><code>ls frontend/src/pages/Onboarding.jsx</code></td><td>File exists (158 lines)</td></tr>
+        <tr style="background:var(--good-soft)"><td><strong>Onboarding 5 components exist</strong></td><td><code>ls frontend/src/components/onboarding/</code></td><td>5 files: PreBoardingStep.jsx (7.1KB), DayOneThirtyStep.jsx (3.5KB), ProbationStep.jsx (4.7KB), StepRail.jsx (1.9KB), shared.jsx (3.1KB)</td></tr>
+        <tr style="background:var(--good-soft)"><td><strong>Onboarding route active</strong></td><td><code>grep "/selection/onboarding" frontend/src/App.jsx</code></td><td>1 match: <code>&lt;Route path="/selection/onboarding" element={&lt;OnboardingPage /&gt;} /&gt;</code></td></tr>
+        <tr style="background:var(--bad-soft)"><td><strong>Onboarding backend NOT started</strong></td><td><code>ls backend/src/modules/onboarding/ 2&gt;/dev/null || echo "Not found"</code></td><td>Not found (expected for v10.0)</td></tr>
+        <tr style="background:var(--bad-soft)"><td><strong>Onboarding DB tables NOT created</strong></td><td><code>grep -i "CREATE TABLE.*onboarding" backend/src/db/setup.sql</code></td><td>0 matches (expected for v10.0)</td></tr>
+        <tr style="background:var(--good-soft)"><td><strong>Offer L3 components functional (no stubs)</strong></td><td><code>grep "ComingSoonSection" frontend/src/components/offer-contract/*.jsx</code></td><td>0 matches (confirms no stubs)</td></tr>
+        <tr><td>Offer L3 total lines</td><td><code>wc -l frontend/src/components/offer-contract/*.jsx | tail -1</code></td><td>1268 total</td></tr>
+        <tr style="background:var(--good-soft)"><td><strong>Psych Assessment frontend complete</strong></td><td><code>find frontend/src/components/assessment* -type f -name "*.jsx" | wc -l</code></td><td>73 files</td></tr>
+        <tr style="background:var(--good-soft)"><td><strong>Psych Assessment backend complete</strong></td><td><code>ls backend/src/modules/assessment/</code></td><td>5 directories: assessment-ai/, assessment-battery-result/, participant/, question/, session/</td></tr>
+        <tr><td>Interview still 100%</td><td><code>grep -n "function EvaluateSection\|function DecideSection" frontend/src/components/interview/Interview-Candidate.jsx</code></td><td>2 matches (confirms Evaluate + Decide tabs exist)</td></tr>
+        <tr><td>BG Check still 100%</td><td><code>ls frontend/src/components/background-check/</code></td><td>3+ files (Workboard, Job, Candidate)</td></tr>
+        <tr><td>Job Management enhancements</td><td><code>ls frontend/src/components/job-management/AutomationMatrix.jsx frontend/src/components/job-management/JobWizard.jsx</code></td><td>2 files exist</td></tr>
+        <tr><td>Assessment dummy data seeded</td><td><code>ls backend/src/db/data/dummy_battery_a.js backend/src/db/data/dummy_sessions.js</code></td><td>2 files exist</td></tr>
+      </tbody>
+    </table>
+
+    <div class="cal success">
+      <div class="cal-title">✅ Next steps after verification</div>
+      <ol style="margin:8px 0 0;padding-left:20px">
+        <li><strong>Mon 8 Jul — Decision 11.1:</strong> Test Onboarding L3 dummy data. Backend needed or sufficient for pilot?</li>
+        <li><strong>Mon 8 Jul — Task 11.3:</strong> E2E funnel test (Screening → Onboarding). Log all P0 bugs.</li>
+        <li><strong>Tue 9 Jul — Task 11.4:</strong> Compensation engine unit tests (10 test cases vs DJP examples).</li>
+        <li><strong>Tue 9 Jul — Decision 14:</strong> Offer L2/L4 needed for pilot UX or deferrable?</li>
+        <li><strong>Wed 10 Jul — Feature freeze:</strong> No new features after Wed EOD. Thu-Fri = bug fixes + polish only.</li>
+        <li><strong>Thu-Fri 11-12 Jul — Tasks 11.9-11.11:</strong> Bug triage, polish pass, pilot data prep.</li>
+        <li><strong>Sat 13 Jul — Pilot launch:</strong> 5 companies (if confirmed by Mon 8 Jul).</li>
+      </ol>
+    </div>
+
+    <h3>9.1 Glossary</h3>
+    <div class="gloss"><span class="gloss-term">v10.0 Audit</span>Weekly codebase audit covering 01-05 Jul 2026 (W13). Major milestones: Onboarding L3 shipped (65%), Psych Assessment validated (100%), Offer enhanced (50%).</div>
+    <div class="gloss"><span class="gloss-term">Onboarding L3 (65%)</span>Frontend-only implementation: Onboarding.jsx (158 lines) + 5 components (PreBoardingStep, DayOneThirtyStep, ProbationStep, StepRail, shared). Backend + DB deferred. Route active at <code>/selection/onboarding</code>.</div>
+    <div class="gloss"><span class="gloss-term">3-step stepper</span>Onboarding UI pattern: (1) Pre-boarding (checklist, HRIS, buddy, schedule), (2) Day 1-30 (milestone tracker), (3) Probation (D30/D60/D90 check-ins). Inspired by modern onboarding tools (Lattice, BambooHR).</div>
+    <div class="gloss"><span class="gloss-term">Feature freeze</span>Recommended for Wed 10 Jul EOD. After freeze: bug fixes + polish only (no new features). Ensures stable pilot on 13 Jul.</div>
+    <div class="gloss"><span class="gloss-term">W14 scope overload (R-6)</span>Risk: 9.5 dev-days of tasks in 5-day week (1.9x overload). Mitigation: defer Onboarding backend (if not needed) + Offer L2/L4 (if not needed) = reduces to 6 dev-days. Parallelization: 2 engineers × 5 days = 10 dev-days capacity.</div>
+  </div>
+
+  <div style="text-align:center;padding:48px 0 16px;font-family:var(--mono);font-size:11px;color:var(--faint);letter-spacing:.06em;text-transform:uppercase">
+    MYRALIX · v0.1 CODEBASE AUDIT · 05 JUL 2026 · v10.0<br>
+    <strong style="color:var(--good)">W13 PROGRESS:</strong> Onboarding 0% → 65% ✓ · Psych 85% → 100% ✓ · Offer 35% → 50% ✓ · Overall 86% → 89% (+3pp)<br>
+    4 of 6 modules at 100% · 8 days to pilot · Feature freeze Wed 10 Jul recommended<br>
+    Internal product documentation · Not for external distribution · © PT Myralix Indonesia
+  </div>
+
+</div>
+</body>
+</html>

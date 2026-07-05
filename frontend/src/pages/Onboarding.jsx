@@ -1,5 +1,6 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { Loader2 } from 'lucide-react';
 import { JobContextCard } from '@/components/common/JobContextCard';
 import { StepRail } from '@/components/onboarding/StepRail';
 import { PreBoardingStep } from '@/components/onboarding/PreBoardingStep';
@@ -119,12 +120,84 @@ const onboardingMock = {
    Page
 ───────────────────────────────────────────────────────────────────────────── */
 
-export default function OnboardingPage({ data = onboardingMock }) {
+export default function OnboardingPage({ data = null }) {
   const [activeStep, setActiveStep] = useState('preBoarding');
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+  const [onboardingData, setOnboardingData] = useState(null);
+
   const navigate = useNavigate();
-  const { job, candidateName, preBoarding, dayOneThirty, probation } = data;
+
+  // Simulate data fetch (replace with real API call later)
+  useEffect(() => {
+    const loadOnboardingData = async () => {
+      setLoading(true);
+      setError(null);
+      try {
+        // TODO: Replace with real API call
+        // const response = await getOnboarding(candidateId);
+        // setOnboardingData(response.data);
+
+        // Simulate network delay
+        await new Promise(resolve => setTimeout(resolve, 500));
+        setOnboardingData(data || onboardingMock);
+      } catch (err) {
+        setError(err.response?.data?.message || err.message || 'Failed to load onboarding data');
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    loadOnboardingData();
+  }, [data]);
 
   const goTo = (key) => setActiveStep(key);
+
+  // Loading state
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center min-h-[400px]">
+        <div className="text-center space-y-3">
+          <Loader2 className="w-8 h-8 animate-spin mx-auto text-primary" />
+          <p className="text-sm text-muted-foreground">Loading onboarding data...</p>
+        </div>
+      </div>
+    );
+  }
+
+  // Error state
+  if (error) {
+    return (
+      <div className="flex items-center justify-center min-h-[400px]">
+        <div className="text-center space-y-3 max-w-md">
+          <div className="w-12 h-12 rounded-full bg-destructive/10 flex items-center justify-center mx-auto">
+            <span className="text-2xl">⚠️</span>
+          </div>
+          <h3 className="font-semibold text-lg">Failed to load onboarding data</h3>
+          <p className="text-sm text-muted-foreground">{error}</p>
+          <button
+            onClick={() => window.location.reload()}
+            className="text-sm text-primary hover:underline"
+          >
+            Try again
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  // No data state
+  if (!onboardingData) {
+    return (
+      <div className="flex items-center justify-center min-h-[400px]">
+        <div className="text-center space-y-3">
+          <p className="text-muted-foreground">No onboarding data available</p>
+        </div>
+      </div>
+    );
+  }
+
+  const { job, candidateName, preBoarding, dayOneThirty, probation } = onboardingData;
 
   return (
     <div className="space-y-5 p-6">
