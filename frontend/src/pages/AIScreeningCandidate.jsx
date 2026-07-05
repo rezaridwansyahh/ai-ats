@@ -2,9 +2,9 @@ import { useEffect, useRef, useState } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import {
   Loader2, AlertTriangle, ArrowLeft, ArrowRight, Check,
-  Briefcase, MapPin, GraduationCap, FileText, Wand2, ShieldCheck,
+  Briefcase, MapPin, FileText, Wand2, ShieldCheck,
   ThumbsUp, ThumbsDown, Pause, MessageSquare,
-  Plus, X, Target, TrendingUp, Code2, Info,
+  Plus, X, Target, Info,
   Send, RefreshCw, Mail, Clock, Pencil,
   ClipboardList, ChevronDown, ChevronRight, Upload
 } from 'lucide-react';
@@ -33,6 +33,8 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 
+import { FIXED_KEYS, FIXED_META, DEFAULT_RUBRIC, totalWeight } from '@/components/ai-screening/shared';
+
 /* ─── Engine config (mirrors the spec) ─── */
 const ENGINES = [
   { key: 'parse', label: 'Parse',  sub: 'extract CV',  icon: FileText },
@@ -41,30 +43,30 @@ const ENGINES = [
 ];
 
 /* ─── AI Matching rubric config ─── */
-const FIXED_KEYS = ['skills', 'experience', 'career_trajectory', 'education'];
+// const FIXED_KEYS = ['skills', 'experience', 'career_trajectory', 'education'];
 
-const FIXED_META = {
-  skills:            { label: 'Skills',            icon: Code2,        description: 'Match against the required + preferred skills' },
-  experience:        { label: 'Experience',        icon: Briefcase,    description: 'Years, role relevance, progression vs seniority' },
-  career_trajectory: { label: 'Career Trajectory', icon: TrendingUp,   description: 'Tenure pattern, stability, growth (validate via Q&A)' },
-  education:         { label: 'Education',         icon: GraduationCap,description: 'Degree relevance + school tier vs qualifications' },
-};
+// const FIXED_META = {
+//   skills:            { label: 'Skills',            icon: Code2,        description: 'Match against the required + preferred skills' },
+//   experience:        { label: 'Experience',        icon: Briefcase,    description: 'Years, role relevance, progression vs seniority' },
+//   career_trajectory: { label: 'Career Trajectory', icon: TrendingUp,   description: 'Tenure pattern, stability, growth (validate via Q&A)' },
+//   education:         { label: 'Education',         icon: GraduationCap,description: 'Degree relevance + school tier vs qualifications' },
+// };
 
-const DEFAULT_RUBRIC = {
-  fixed_criteria: {
-    skills:            { weight: 45 },
-    experience:        { weight: 35 },
-    career_trajectory: { weight: 15 },
-    education:         { weight: 5  },
-  },
-  custom_criteria: [],
-};
+// const DEFAULT_RUBRIC = {
+//   fixed_criteria: {
+//     skills:            { weight: 45 },
+//     experience:        { weight: 35 },
+//     career_trajectory: { weight: 15 },
+//     education:         { weight: 5  },
+//   },
+//   custom_criteria: [],
+// };
 
-function totalWeight(rubric) {
-  const fixedSum = FIXED_KEYS.reduce((s, k) => s + (Number(rubric.fixed_criteria[k]?.weight) || 0), 0);
-  const customSum = (rubric.custom_criteria || []).reduce((s, c) => s + (Number(c.weight) || 0), 0);
-  return fixedSum + customSum;
-}
+// function totalWeight(rubric) {
+//   const fixedSum = FIXED_KEYS.reduce((s, k) => s + (Number(rubric.fixed_criteria[k]?.weight) || 0), 0);
+//   const customSum = (rubric.custom_criteria || []).reduce((s, c) => s + (Number(c.weight) || 0), 0);
+//   return fixedSum + customSum;
+// }
 
 function fmt(d) {
   if (!d) return '—';

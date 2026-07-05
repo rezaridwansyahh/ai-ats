@@ -84,6 +84,7 @@ const routeMap = {
   'Source Management': '/sourcing/source-management',
   'Talent Pool':       '/sourcing/talent-pool',
   'Source Candidate':  '/sourcing/source-candidate',
+  'Search & Outreach': '/sourcing/source-candidate',
   'AI Screening':      '/selection/ai-screening',
   'AI Matching':       '/selection/ai-screening',
   'Psych Assessment':  '/selection/assessment',
