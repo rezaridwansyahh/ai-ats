@@ -2,7 +2,6 @@ import jwt from 'jsonwebtoken';
 import PortalAssessment from './portal-assessment.model.js';
 import AssessmentBatteryResult from '../assessment/assessment-battery-result/assessment-battery-result.model.js';
 import Session from '../assessment/session/session.model.js';
-import participantService from '../assessment/participant/participant.service.js';
 import getDb from '../../config/postgres.js';
 
 const JWT_SECRET = process.env.JWT_SECRET;
@@ -109,8 +108,8 @@ class PortalAssessmentService {
     const raw = await Session.getById(sessionId);
     if (!raw) throw { status: 404, message: 'Session not found' };
     const session = await lazyExpire(raw);
-    if (session.participant_id == null) {
-      throw { status: 400, message: 'Session is not bound to a participant.' };
+    if (session.candidate_id == null) {
+      throw { status: 400, message: 'Session is not bound to a candidate.' };
     }
     if (session.status === 'completed') {
       throw { status: 409, message: 'This assessment has already been submitted.' };
@@ -131,8 +130,7 @@ class PortalAssessmentService {
       throw { status: 400, message: 'No valid participant fields to update.' };
     }
 
-    const participant = await participantService.update(session.participant_id, allowed);
-    return { participant };
+    return { candidate_id: session.candidate_id };
   }
 
   async submit({ sessionId, results, summary }) {
@@ -142,7 +140,7 @@ class PortalAssessmentService {
     const raw = await Session.getById(sessionId);
     if (!raw) throw { status: 404, message: 'Session not found' };
     const session = await lazyExpire(raw);
-    if (!session.participant_id)  throw { status: 400, message: 'Session is not bound to a participant.' };
+    if (!session.candidate_id)    throw { status: 400, message: 'Session is not bound to a candidate.' };    
     // One-time attempt: an already-completed invitation can't be re-submitted.
     if (session.status === 'completed') {
       throw { status: 409, message: 'This assessment has already been submitted. Re-takes are not allowed.' };
@@ -162,7 +160,7 @@ class PortalAssessmentService {
       await client.query('BEGIN');
 
       const row = await AssessmentBatteryResult.create(client, {
-        participant_id: session.participant_id,
+        candidate_id: session.candidate_id,
         assessment_id:  assessmentId,
         status:         'completed',
         results,

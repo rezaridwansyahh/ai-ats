@@ -302,8 +302,15 @@ class BackgroundCheckService {
       throw { status: 403, message: 'Cross-tenant access denied' };
     }
 
-    return await backgroundCheckModel.ensureConsent(bg_id);
-  }  
+    const consent = await backgroundCheckModel.ensureConsent(bg_id);
+
+    const baseUrl = process.env.FRONTEND_URL || 'http://localhost:5173';
+    if (consent.token && consent.status === 'sent') {
+      consent.portal_url = `${baseUrl}/portal/bg/consent/${consent.token}`;
+    }
+
+    return consent;
+  }
 
   async generateConsentLink(bg_id, { company_id = null, sent_by = null } = {}) {
     if (!bg_id) throw { status: 400, message: 'bg_id is required' };
@@ -382,15 +389,79 @@ class BackgroundCheckService {
     const consent = await backgroundCheckModel.getConsentByBgId(bg_id);
     if (!consent) throw { status: 404, message: 'No consent record found' };
 
+    if (consent.status === 'signed') {
+      throw { status: 400, message: 'Consent has been signed and cannot be revoked.' };
+    }
     if (consent.status === 'revoked') {
-      throw { status: 400, message: 'Consent is already revoked' };
+      throw { status: 400, message: 'Consent is already revoked.' };
     }
     if (consent.status === 'draft') {
-      throw { status: 400, message: 'Cannot revoke a draft consent — generate a link first' };
+      throw { status: 400, message: 'Cannot revoke a draft consent — generate a link first.' };
     }
 
     return await backgroundCheckModel.revokeConsent(bg_id, { revoked_by, revocation_reason });
-  }  
+  }
+
+  async getLanes(bg_id, { company_id = null } = {}) {
+    if (!bg_id) throw { status: 400, message: 'bg_id is required' };
+
+    const bg = await backgroundCheckModel.getBgById(bg_id);
+    if (!bg) throw { status: 404, message: 'Background check record not found' };
+
+    if (company_id && bg.company_id && bg.company_id !== company_id) {
+      throw { status: 403, message: 'Cross-tenant access denied' };
+    }
+
+    return await backgroundCheckModel.getLanesByBgId(bg_id);
+  }
+
+  async createFromClaims(bg_id, { company_id = null } = {}) {
+    if (!bg_id) throw { status: 400, message: 'bg_id is required' };
+
+    const bg = await backgroundCheckModel.getBgById(bg_id);
+    if (!bg) throw { status: 404, message: 'Background check record not found' };
+
+    if (company_id && bg.company_id && bg.company_id !== company_id) {
+      throw { status: 403, message: 'Cross-tenant access denied' };
+    }
+
+    return await backgroundCheckModel.createFromClaims(bg_id);
+  }
+
+  async updateTracker(lane_id, { note, status, resolved_by, company_id = null } = {}) {
+    if (!lane_id) throw { status: 400, message: 'lane_id is required' };
+
+    const validStatuses = ['pending', 'in_progress', 'pass', 'pass_with_concerns', 'fail', 'stalled'];
+    if (!validStatuses.includes(status)) {
+      throw { status: 400, message: `status must be one of: ${validStatuses.join(', ')}` };
+    }
+
+    const existing = await backgroundCheckModel.getLaneById(lane_id);
+    if (!existing) throw { status: 404, message: 'Lane not found' };
+
+    if (company_id) {
+      const bg = await backgroundCheckModel.getBgById(existing.candidate_bg_id);
+      if (bg?.company_id && bg.company_id !== company_id) {
+        throw { status: 403, message: 'Cross-tenant access denied' };
+      }
+    }
+
+    return await backgroundCheckModel.updateTracker(lane_id, { note, status, resolved_by });
+  }
+
+  async getLaneCounts(bg_id, { company_id = null } = {}) {
+    if (!bg_id) throw { status: 400, message: 'bg_id is required' };
+
+    const bg = await backgroundCheckModel.getBgById(bg_id);
+    if (!bg) throw { status: 404, message: 'Background check record not found' };
+
+    if (company_id && bg.company_id && bg.company_id !== company_id) {
+      throw { status: 403, message: 'Cross-tenant access denied' };
+    }
+
+    return await backgroundCheckModel.countLanesByStatus(bg_id);
+  }
+
 
 }
 

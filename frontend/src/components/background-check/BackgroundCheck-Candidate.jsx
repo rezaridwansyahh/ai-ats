@@ -5,6 +5,7 @@ import {
   Wand2, Plus, X, Pencil, ShieldCheck, FileText,
   ClipboardList, GitBranch, Scale, RotateCw,
   Copy, RefreshCw, XCircle, Sparkles, Ban,
+  Activity, ChevronDown, ChevronUp,
 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -22,9 +23,8 @@ import {
   addClaim, updateClaim, toggleClaim, deleteClaim,
   confirmClaims, saveVerdict, updateBgStatus,
   getConsent, generateConsentLink, revokeConsent,
+  getLanes, createLanes, updateTracker,
 } from '@/api/background-check.api';
-
-// ── Constants ─────────────────────────────────────────────────────────────────
 
 const VALID_LANES = ['identity', 'edu', 'emp', 'cert', 'crim', 'cred', 'salary'];
 
@@ -47,6 +47,15 @@ const LANE_LABELS_ID = {
   cred:     'Riwayat kredit (cred) — BI Checking / OJK SLIK Online',
   salary:   'Riwayat gaji (salary) — verifikasi kompensasi terakhir',
 };
+
+const TRACKER_STATUSES = [
+  { value: 'pending',            label: 'Pending',       color: 'border-border text-muted-foreground bg-muted/40'     },
+  { value: 'in_progress',        label: 'In progress',   color: 'border-blue-200 text-blue-700 bg-blue-50'           },
+  { value: 'pass',               label: 'Pass',          color: 'border-emerald-200 text-emerald-700 bg-emerald-50'  },
+  { value: 'pass_with_concerns', label: 'Pass · note',   color: 'border-amber-200 text-amber-700 bg-amber-50'       },
+  { value: 'fail',               label: 'Fail',          color: 'border-rose-200 text-rose-700 bg-rose-50'          },
+  { value: 'stalled',            label: 'Stalled',       color: 'border-orange-200 text-orange-700 bg-orange-50'    },
+];
 
 const SUBSTAGES = [
   { key: 'claims',  number: 1, label: 'Claims',  sub: 'select items' },
@@ -81,8 +90,6 @@ const VERDICT_OPTIONS = [
   },
 ];
 
-// ── Helpers ───────────────────────────────────────────────────────────────────
-
 function fmtDate(d) {
   if (!d) return '—';
   try {
@@ -92,7 +99,9 @@ function fmtDate(d) {
   } catch { return '—'; }
 }
 
-// ── Shared small components ───────────────────────────────────────────────────
+function getStatusMeta(status) {
+  return TRACKER_STATUSES.find((s) => s.value === status) || TRACKER_STATUSES[0];
+}
 
 function LanePill({ lane_type }) {
   const meta = LANE_META[lane_type] || {
@@ -191,8 +200,6 @@ function CandidateCard({ bg }) {
   );
 }
 
-// ── Portal link subcomponents (assessment TakeTab pattern) ────────────────────
-
 function GenerateLinkRow({ onGenerate, generating, label = 'Generate link' }) {
   return (
     <div className="rounded-lg border border-dashed bg-muted/20 p-3 flex items-center justify-between gap-3 flex-wrap">
@@ -201,7 +208,7 @@ function GenerateLinkRow({ onGenerate, generating, label = 'Generate link' }) {
           Portal link
         </p>
         <p className="text-[11px] text-muted-foreground mt-0.5">
-          Generate a 7-day portal link for the candidate to review and e-sign the consent document.
+          Generate a 7-day portal link for the candidate to review and e-sign.
         </p>
       </div>
       <Button size="sm" onClick={onGenerate} disabled={generating} className="shrink-0">
@@ -230,18 +237,14 @@ function PortalLinkRow({ url, expiresAt, sentAt, onRegenerate, onRevoke, generat
         <p className="text-[10px] font-bold tracking-widest uppercase text-muted-foreground">
           Portal link · 7-day consent token
         </p>
-        <span className="text-[10px] text-muted-foreground">
-          Expires {fmtDate(expiresAt)}
-        </span>
+        <span className="text-[10px] text-muted-foreground">Expires {fmtDate(expiresAt)}</span>
       </div>
       <div className="flex items-center gap-2">
         <code className="flex-1 truncate text-[11px] font-mono text-foreground bg-background border rounded px-2 py-1.5">
           {url}
         </code>
         <Button size="sm" variant="outline" className="h-7 text-xs shrink-0" onClick={handleCopy}>
-          {copied
-            ? <><Check className="h-3 w-3 mr-1" /> Copied</>
-            : <><Copy className="h-3 w-3 mr-1" /> Copy</>}
+          {copied ? <><Check className="h-3 w-3 mr-1" /> Copied</> : <><Copy className="h-3 w-3 mr-1" /> Copy</>}
         </Button>
         <Button
           size="sm" variant="outline" className="h-7 text-xs shrink-0"
@@ -258,13 +261,11 @@ function PortalLinkRow({ url, expiresAt, sentAt, onRegenerate, onRevoke, generat
         </Button>
       </div>
       <p className="text-[10px] text-muted-foreground">
-        Share via WhatsApp, email, or any channel · sent {fmtDate(sentAt)}
+        sent {fmtDate(sentAt)}
       </p>
     </div>
   );
 }
-
-// ── Section 1: Claims ─────────────────────────────────────────────────────────
 
 function ClaimsSection({ bg, claims, setClaims, setBanner, setError, onAdvance }) {
   const [extracting,  setExtracting]  = useState(false);
@@ -382,29 +383,21 @@ function ClaimsSection({ bg, claims, setClaims, setBanner, setError, onAdvance }
   return (
     <div className="space-y-4">
 
-      {/* Stats */}
       <div className="grid grid-cols-3 gap-3">
-        <Card>
-          <CardContent className="p-3 text-center">
-            <p className="text-[10px] text-muted-foreground">Total items</p>
-            <p className="text-2xl font-bold font-mono">{claims.length}</p>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardContent className="p-3 text-center">
-            <p className="text-[10px] text-muted-foreground">Selected</p>
-            <p className="text-2xl font-bold font-mono">{selectedCount}</p>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardContent className="p-3 text-center">
-            <p className="text-[10px] text-muted-foreground">Lanes derived</p>
-            <p className="text-2xl font-bold font-mono text-primary">{laneTypes.length}</p>
-          </CardContent>
-        </Card>
+        <Card><CardContent className="p-3 text-center">
+          <p className="text-[10px] text-muted-foreground">Total items</p>
+          <p className="text-2xl font-bold font-mono">{claims.length}</p>
+        </CardContent></Card>
+        <Card><CardContent className="p-3 text-center">
+          <p className="text-[10px] text-muted-foreground">Selected</p>
+          <p className="text-2xl font-bold font-mono">{selectedCount}</p>
+        </CardContent></Card>
+        <Card><CardContent className="p-3 text-center">
+          <p className="text-[10px] text-muted-foreground">Lanes derived</p>
+          <p className="text-2xl font-bold font-mono text-primary">{laneTypes.length}</p>
+        </CardContent></Card>
       </div>
 
-      {/* Action buttons */}
       <div className="flex items-center gap-2 flex-wrap">
         <Button size="sm" variant="outline" className="text-xs"
           onClick={handleExtract} disabled={extracting}>
@@ -419,7 +412,6 @@ function ClaimsSection({ bg, claims, setClaims, setBanner, setError, onAdvance }
         <p className="text-[10px] text-muted-foreground ml-auto">~Rp 6 / extract</p>
       </div>
 
-      {/* Manual add form */}
       {showAddForm && (
         <Card className="border-primary/30 bg-primary/5">
           <CardContent className="p-4 space-y-3">
@@ -454,7 +446,6 @@ function ClaimsSection({ bg, claims, setClaims, setBanner, setError, onAdvance }
         </Card>
       )}
 
-      {/* Claims list */}
       <Card>
         <CardHeader className="pb-2">
           <CardTitle className="text-sm flex items-center gap-2">
@@ -553,7 +544,6 @@ function ClaimsSection({ bg, claims, setClaims, setBanner, setError, onAdvance }
         )}
       </Card>
 
-      {/* Primary action */}
       <div className="flex items-center justify-between gap-3 pt-2 border-t flex-wrap">
         <p className="text-[10px] text-muted-foreground">
           {bg.status === 'claims'
@@ -573,8 +563,6 @@ function ClaimsSection({ bg, claims, setClaims, setBanner, setError, onAdvance }
   );
 }
 
-// ── Section 2: Consent ────────────────────────────────────────────────────────
-
 function ConsentSection({ bg, setBg, claims, setBanner, setError, onAdvance }) {
   const [consent,      setConsent]      = useState(null);
   const [loading,      setLoading]      = useState(true);
@@ -589,9 +577,7 @@ function ConsentSection({ bg, setBg, claims, setBanner, setError, onAdvance }) {
     try {
       const res = await getConsent(bg.bg_id);
       setConsent(res.data?.consent || null);
-    } catch {
-      // no consent yet — fine
-    } finally {
+    } catch { } finally {
       setLoading(false);
     }
   }, [bg.bg_id]);
@@ -613,17 +599,20 @@ function ConsentSection({ bg, setBg, claims, setBanner, setError, onAdvance }) {
   };
 
   const handleRevoke = async () => {
+    if (consent?.status === 'signed') {
+      setError('Consent has been signed and cannot be revoked.');
+      setShowRevoke(false);
+      return;
+    }
     setRevoking(true);
     setError(null);
     try {
       const res = await revokeConsent(bg.bg_id, revokeReason || null);
-      console.log('revoke response:', res.data);  // add this
       setConsent(res.data?.consent || null);
       setShowRevoke(false);
       setRevokeReason('');
       setBanner({ ok: true, text: 'Consent revoked.' });
     } catch (err) {
-      console.error('revoke error:', err.response?.data || err.message);  // add this
       setError(err.response?.data?.message || err.message || 'Revoke failed');
     } finally {
       setRevoking(false);
@@ -645,7 +634,6 @@ function ConsentSection({ bg, setBg, claims, setBanner, setError, onAdvance }) {
     }
   };
 
-  // Document is always built from selected claims — never gated on generate
   const selectedClaims = claims.filter((c) => c.selected);
   const uniqueLanes    = [...new Set(selectedClaims.map((c) => c.lane_type))];
   const isSigned       = consent?.status === 'signed';
@@ -661,8 +649,6 @@ function ConsentSection({ bg, setBg, claims, setBanner, setError, onAdvance }) {
 
   return (
     <div className="space-y-4">
-
-      {/* ── Card 1: Header + portal link only ────────────────────────────── */}
       <Card>
         <CardHeader className="pb-3">
           <div className="flex items-center gap-2">
@@ -670,7 +656,8 @@ function ConsentSection({ bg, setBg, claims, setBanner, setError, onAdvance }) {
             <div className="min-w-0 flex-1">
               <CardTitle className="text-sm">Consent · UU PDP 27/2022 compliant</CardTitle>
               <p className="text-[10px] text-muted-foreground mt-0.5">
-                candidate e-signed via portal · revocable until Verdict
+                candidate e-signed via portal
+                {isSigned ? ' ' : ' · revocable until signed'}
               </p>
             </div>
             {consent?.status && (
@@ -689,16 +676,12 @@ function ConsentSection({ bg, setBg, claims, setBanner, setError, onAdvance }) {
           </div>
         </CardHeader>
         <CardContent className="space-y-3">
-
-          {/* Signed banner */}
           {isSigned && (
             <div className="flex items-center gap-2 px-3 py-2 rounded-lg border border-emerald-200 bg-emerald-50 text-xs text-emerald-700">
               <Check className="h-4 w-4 shrink-0" />
-              Consent signed {fmtDate(consent.signed_at)} · revocable until Verdict
+              Consent signed {fmtDate(consent.signed_at)} 
             </div>
           )}
-
-          {/* Revoked banner */}
           {isRevoked && (
             <div className="flex items-center gap-2 px-3 py-2 rounded-lg border border-rose-200 bg-rose-50 text-xs text-rose-700">
               <XCircle className="h-4 w-4 shrink-0" />
@@ -709,8 +692,15 @@ function ConsentSection({ bg, setBg, claims, setBanner, setError, onAdvance }) {
             </div>
           )}
 
-          {/* Portal link row — the ONLY thing gated on generate */}
-          {consent?.status === 'sent' && consent.portal_url ? (
+          {/* Portal link row */}
+          {isSigned ? (
+            <div className="rounded-lg border border-dashed bg-emerald-50/50 border-emerald-200 p-3 text-center space-y-0.5">
+              <p className="text-[11px] text-emerald-700 font-semibold flex items-center justify-center gap-1.5">
+                <Check className="h-3.5 w-3.5" /> Signed {fmtDate(consent.signed_at)}
+              </p>
+            </div>
+          ) : consent?.status === 'sent' && consent.portal_url ? (
+            /* Sent — show the link with revoke option */
             <PortalLinkRow
               url={consent.portal_url}
               expiresAt={consent.token_expires_at}
@@ -719,20 +709,8 @@ function ConsentSection({ bg, setBg, claims, setBanner, setError, onAdvance }) {
               onRevoke={() => { setShowRevoke(true); setRevokeReason(''); }}
               generating={generating}
             />
-          ) : isSigned ? (
-            <div className="rounded-lg border border-dashed bg-muted/10 p-3 text-center">
-              <p className="text-[11px] text-muted-foreground">
-                Consent already signed — no new link needed.
-              </p>
-              <button
-                type="button"
-                onClick={() => { setShowRevoke(true); setRevokeReason(''); }}
-                className="text-[11px] text-rose-600 hover:underline mt-1"
-              >
-                Revoke to re-send
-              </button>
-            </div>
           ) : (
+            /* Draft or revoked — show generate button */
             <GenerateLinkRow
               onGenerate={handleGenerate}
               generating={generating}
@@ -740,8 +718,7 @@ function ConsentSection({ bg, setBg, claims, setBanner, setError, onAdvance }) {
             />
           )}
 
-          {/* Revoke form */}
-          {showRevoke && (
+          {showRevoke && !isSigned && (
             <div className="space-y-2 p-3 rounded-lg border border-rose-200 bg-rose-50/30">
               <p className="text-[10px] font-semibold text-rose-700 uppercase tracking-wide">
                 Revoke consent
@@ -770,17 +747,14 @@ function ConsentSection({ bg, setBg, claims, setBanner, setError, onAdvance }) {
         </CardContent>
       </Card>
 
-      {/* ── Card 2: Consent document — always visible, built from claims ──── */}
       <Card>
         <CardHeader className="pb-2">
           <CardTitle className="text-[10px] uppercase tracking-wide text-muted-foreground">
-            Consent document · Bahasa Indonesia · {uniqueLanes.length} lane{uniqueLanes.length === 1 ? '' : 's'} enumerated
+            Consent document · {uniqueLanes.length} lane{uniqueLanes.length === 1 ? '' : 's'} enumerated
           </CardTitle>
         </CardHeader>
         <CardContent className="p-0">
           <div className="mx-4 mb-4 rounded-lg border bg-muted/10 overflow-hidden">
-
-            {/* cd-head */}
             <div className="px-5 py-4 border-b bg-muted/20 text-center">
               <p className="text-xs font-bold tracking-wide uppercase text-foreground">
                 SURAT PERSETUJUAN PEMERIKSAAN LATAR BELAKANG
@@ -789,8 +763,6 @@ function ConsentSection({ bg, setBg, claims, setBanner, setError, onAdvance }) {
                 PT — · sesuai UU No. 27 Tahun 2022 tentang Pelindungan Data Pribadi
               </p>
             </div>
-
-            {/* cd-body */}
             <div className="px-5 py-4 space-y-3 text-[11px] leading-relaxed text-foreground">
               <p>
                 Saya yang bertanda tangan di bawah ini,{' '}
@@ -800,7 +772,6 @@ function ConsentSection({ bg, setBg, claims, setBanner, setError, onAdvance }) {
                 ("BG Check") sehubungan dengan proses rekrutmen saya untuk posisi{' '}
                 <strong>{bg.job_title}</strong>.
               </p>
-
               {uniqueLanes.length > 0 ? (
                 <>
                   <p>Pemeriksaan akan mencakup lajur-lajur (lanes) berikut:</p>
@@ -825,13 +796,11 @@ function ConsentSection({ bg, setBg, claims, setBanner, setError, onAdvance }) {
                   No claims selected yet — go back to Claims and select items to verify.
                 </p>
               )}
-
               <p className="text-muted-foreground">
                 Data yang terkumpul akan disimpan paling lama 24 bulan setelah keputusan akhir,
                 dan saya berhak mencabut persetujuan ini kapan saja sebelum keputusan akhir
                 (Verdict) ditetapkan, sesuai Pasal 9 UU 27/2022.
               </p>
-
               {isSigned && (
                 <p className="text-emerald-700 font-medium">
                   Ditandatangani secara elektronik · {fmtDate(consent.signed_at)}
@@ -839,8 +808,6 @@ function ConsentSection({ bg, setBg, claims, setBanner, setError, onAdvance }) {
               )}
             </div>
           </div>
-
-          {/* Signature + revocation — only shown after signing */}
           {isSigned && (
             <div className="grid grid-cols-2 gap-3 px-4 pb-4">
               <div className="rounded-lg border bg-muted/10 p-3 space-y-1.5">
@@ -858,15 +825,9 @@ function ConsentSection({ bg, setBg, claims, setBanner, setError, onAdvance }) {
                   Revocation
                 </p>
                 <div className="text-[11px] text-foreground leading-relaxed space-y-0.5">
-                  <p>
-                    Status:{' '}
-                    <Badge variant="outline" className="text-[9px] border-emerald-200 text-emerald-700 bg-emerald-50">
-                      active
-                    </Badge>
-                  </p>
-                  <p className="text-muted-foreground">
-                    Candidate may revoke until Verdict is logged.
-                  </p>
+                  <Badge variant="outline" className="text-[9px] border-rose-200 text-rose-700 bg-rose-50">
+                    permanently locked
+                  </Badge>
                 </div>
               </div>
             </div>
@@ -875,7 +836,6 @@ function ConsentSection({ bg, setBg, claims, setBanner, setError, onAdvance }) {
         </CardContent>
       </Card>
 
-      {/* Advance to tracker */}
       <div className="flex items-center justify-between gap-3 pt-2 border-t flex-wrap">
         <p className="text-[10px] text-muted-foreground">
           {isSigned
@@ -894,18 +854,74 @@ function ConsentSection({ bg, setBg, claims, setBanner, setError, onAdvance }) {
   );
 }
 
-// ── Section 3: Tracker ────────────────────────────────────────────────────────
-
 function TrackerSection({ bg, setBg, setBanner, setError, onAdvance }) {
-  const [advancing, setAdvancing] = useState(false);
+  const [lanes,      setLanes]      = useState([]);
+  const [loading,    setLoading]    = useState(true);
+  const [spawning,   setSpawning]   = useState(false);
+  const [advancing,  setAdvancing]  = useState(false);
+  const [expandedId, setExpandedId] = useState(null);
+  const [editingId,  setEditingId]  = useState(null);
+  const [editNote,   setEditNote]   = useState('');
+  const [editStatus, setEditStatus] = useState('');
+  const [saving,     setSaving]     = useState(false);
 
-  const handleAdvance = async () => {
+  const loadLanes = useCallback(async () => {
+    setLoading(true);
+    try {
+      const res = await getLanes(bg.bg_id);
+      setLanes(res.data?.lanes || []);
+    } catch (err) {
+      setError(err.response?.data?.message || err.message || 'Failed to load lanes');
+    } finally {
+      setLoading(false);
+    }
+  }, [bg.bg_id]);
+
+  useEffect(() => { loadLanes(); }, [loadLanes]);
+
+  const handleSpawn = async () => {
+    setSpawning(true);
+    setError(null);
+    try {
+      const res = await createLanes(bg.bg_id);
+      setLanes(res.data?.lanes || []);
+      setBanner({ ok: true, text: `${res.data?.lanes?.length || 0} verification lanes created.` });
+    } catch (err) {
+      setError(err.response?.data?.message || err.message || 'Failed to create lanes');
+    } finally {
+      setSpawning(false);
+    }
+  };
+
+  const openEdit = (lane) => {
+    setEditingId(lane.id);
+    setEditNote(lane.note || '');
+    setEditStatus(lane.status);
+    setExpandedId(lane.id);
+  };
+
+  const handleSaveLane = async (lane_id) => {
+    setSaving(true);
+    setError(null);
+    try {
+      const res = await updateTracker(lane_id, { note: editNote, status: editStatus });
+      setLanes((prev) => prev.map((l) => l.id === lane_id ? { ...l, ...res.data.lane } : l));
+      setEditingId(null);
+      setBanner({ ok: true, text: 'Lane updated.' });
+    } catch (err) {
+      setError(err.response?.data?.message || err.message || 'Update failed');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const handleAdvanceToVerdict = async () => {
     setAdvancing(true);
     setError(null);
     try {
       await updateBgStatus(bg.bg_id, 'verdict');
       setBg((prev) => ({ ...prev, status: 'verdict' }));
-      setBanner({ ok: true, text: 'Advanced to Verdict.' });
+      setBanner({ ok: true, text: 'All lanes resolved — advanced to Verdict.' });
       onAdvance('verdict');
     } catch (err) {
       setError(err.response?.data?.message || err.message || 'Failed to advance');
@@ -914,32 +930,247 @@ function TrackerSection({ bg, setBg, setBanner, setError, onAdvance }) {
     }
   };
 
+  const counts = {
+    pass:        lanes.filter((l) => ['pass', 'pass_with_concerns'].includes(l.status)).length,
+    in_progress: lanes.filter((l) => l.status === 'in_progress').length,
+    stalled:     lanes.filter((l) => l.status === 'stalled').length,
+    fail:        lanes.filter((l) => l.status === 'fail').length,
+    pending:     lanes.filter((l) => l.status === 'pending').length,
+  };
+
+  const passLaneTypes    = lanes.filter((l) => ['pass', 'pass_with_concerns'].includes(l.status)).map((l) => l.lane_type);
+  const stalledTypes     = lanes.filter((l) => l.status === 'stalled').map((l) => l.lane_type);
+  const inProgressTypes  = lanes.filter((l) => l.status === 'in_progress').map((l) => l.lane_type);
+
+  if (loading) {
+    return (
+      <div className="flex justify-center py-12">
+        <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
+      </div>
+    );
+  }
+
   return (
     <div className="space-y-4">
+
+      {/* Header card */}
       <Card>
-        <CardContent className="py-12 text-center space-y-3">
-          <div className="h-10 w-10 rounded-full bg-muted flex items-center justify-center mx-auto">
-            <GitBranch className="h-5 w-5 text-muted-foreground" />
+        <CardHeader className="pb-3">
+          <div className="flex items-center gap-2">
+            <Activity className="h-4 w-4 text-primary shrink-0" />
+            <div className="min-w-0 flex-1">
+              <CardTitle className="text-sm">
+                Tracker · {lanes.length} verification lane{lanes.length === 1 ? '' : 's'}
+              </CardTitle>
+              <p className="text-[10px] text-muted-foreground mt-0.5">
+                {counts.pass}/{lanes.length} pass · {counts.stalled} stalled · {counts.in_progress} in progress
+              </p>
+            </div>
+            <Button size="sm" variant="outline" className="text-xs shrink-0"
+              onClick={handleSpawn} disabled={spawning}>
+              {spawning
+                ? <><Loader2 className="h-3.5 w-3.5 animate-spin mr-1.5" /> Creating…</>
+                : <><GitBranch className="h-3.5 w-3.5 mr-1.5" />
+                    {lanes.length ? 'Re-sync lanes' : 'Create lanes'}</>}
+            </Button>
           </div>
-          <p className="text-sm font-semibold">Tracker · verification lanes</p>
-          <p className="text-xs text-muted-foreground max-w-sm mx-auto">
-            Per-lane vendor tracking will be built alongside the{' '}
-            <code className="text-[10px]">bg_lane</code> table.
-            Each selected claim spawns a lane row here once consent is collected.
-          </p>
-          <Button size="sm" className="text-xs mt-2"
-            onClick={handleAdvance} disabled={advancing}>
-            {advancing
-              ? <><Loader2 className="h-3.5 w-3.5 mr-1.5 animate-spin" /> Advancing…</>
-              : <><ChevronRight className="h-3.5 w-3.5 mr-1" /> All lanes resolved — open Verdict</>}
-          </Button>
-        </CardContent>
+        </CardHeader>
       </Card>
+
+      {lanes.length === 0 ? (
+        <Card>
+          <CardContent className="py-10 text-center space-y-3">
+            <div className="h-10 w-10 rounded-full bg-muted flex items-center justify-center mx-auto">
+              <GitBranch className="h-5 w-5 text-muted-foreground" />
+            </div>
+            <p className="text-xs text-muted-foreground">
+              No lanes yet — click "Create lanes" to spawn one verification lane per selected claim.
+            </p>
+          </CardContent>
+        </Card>
+      ) : (
+        <>
+          {/* Stat tiles */}
+          <div className="grid grid-cols-4 gap-3">
+            <Card><CardContent className="p-3 text-center">
+              <p className="text-[10px] text-muted-foreground">Lanes pass</p>
+              <p className="text-2xl font-bold font-mono text-emerald-600">{counts.pass}</p>
+              {passLaneTypes.length > 0 && (
+                <p className="text-[9px] text-muted-foreground mt-0.5 truncate">{passLaneTypes.join(' · ')}</p>
+              )}
+            </CardContent></Card>
+            <Card><CardContent className="p-3 text-center">
+              <p className="text-[10px] text-muted-foreground">In progress</p>
+              <p className="text-2xl font-bold font-mono text-blue-600">{counts.in_progress}</p>
+              {inProgressTypes.length > 0 && (
+                <p className="text-[9px] text-muted-foreground mt-0.5 truncate">{inProgressTypes.join(' · ')}</p>
+              )}
+            </CardContent></Card>
+            <Card><CardContent className="p-3 text-center">
+              <p className="text-[10px] text-muted-foreground">Stalled</p>
+              <p className="text-2xl font-bold font-mono text-amber-600">{counts.stalled}</p>
+              {stalledTypes.length > 0 && (
+                <p className="text-[9px] text-muted-foreground mt-0.5 truncate">{stalledTypes.join(' · ')}</p>
+              )}
+            </CardContent></Card>
+            <Card><CardContent className="p-3 text-center">
+              <p className="text-[10px] text-muted-foreground">Fail</p>
+              <p className={`text-2xl font-bold font-mono ${counts.fail > 0 ? 'text-rose-600' : 'text-muted-foreground'}`}>
+                {counts.fail}
+              </p>
+              <p className="text-[9px] text-muted-foreground mt-0.5">
+                {counts.fail === 0 ? 'none' : 'needs attention'}
+              </p>
+            </CardContent></Card>
+          </div>
+
+          {/* Lane rows */}
+          <Card>
+            <CardHeader className="pb-2">
+              <CardTitle className="text-xs uppercase tracking-wide text-muted-foreground">
+                Lanes · per-lane status · click to expand
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="p-0">
+              <div className="divide-y">
+                {lanes.map((lane) => {
+                  const meta      = getStatusMeta(lane.status);
+                  const isExp     = expandedId === lane.id;
+                  const isEditing = editingId  === lane.id;
+
+                  return (
+                    <div key={lane.id} className="px-4 py-3">
+                      {/* Lane header row */}
+                      <div
+                        className="flex items-center gap-3 cursor-pointer"
+                        onClick={() => { if (!isEditing) setExpandedId(isExp ? null : lane.id); }}
+                      >
+                        <LanePill lane_type={lane.lane_type} />
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center gap-2 flex-wrap">
+                            <span className="text-xs font-semibold">{lane.claim_text}</span>
+                          </div>
+                          {lane.note && !isExp && (
+                            <p className="text-[10px] text-muted-foreground mt-0.5 truncate">
+                              {lane.note}
+                            </p>
+                          )}
+                        </div>
+                        <Badge variant="outline" className={`text-[9px] shrink-0 ${meta.color}`}>
+                          {meta.label}
+                        </Badge>
+                        <button type="button" className="text-muted-foreground shrink-0">
+                          {isExp
+                            ? <ChevronUp className="h-3.5 w-3.5" />
+                            : <ChevronDown className="h-3.5 w-3.5" />}
+                        </button>
+                      </div>
+
+                      {/* Expanded detail */}
+                      {isExp && (
+                        <div className="mt-3 space-y-3 pl-1">
+                          {lane.claim_detail && (
+                            <p className="text-[10px] text-muted-foreground">{lane.claim_detail}</p>
+                          )}
+
+                          {isEditing ? (
+                            <div className="space-y-2">
+                              <div className="space-y-1">
+                                <label className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
+                                  Finding note
+                                </label>
+                                <Textarea
+                                  value={editNote}
+                                  onChange={(e) => setEditNote(e.target.value)}
+                                  placeholder="e.g. KTP / NIK 3174 verified · Dukcapil match"
+                                  rows={2}
+                                  className="text-xs"
+                                />
+                              </div>
+                              <div className="space-y-1">
+                                <label className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
+                                  Status
+                                </label>
+                                <div className="flex flex-wrap gap-2">
+                                  {TRACKER_STATUSES.map((s) => (
+                                    <button
+                                      key={s.value}
+                                      type="button"
+                                      onClick={() => setEditStatus(s.value)}
+                                      className={`px-2.5 py-1 rounded-full border text-[10px] font-semibold transition-all ${
+                                        editStatus === s.value
+                                          ? `${s.color} ring-2 ring-offset-1 ring-current`
+                                          : `${s.color} opacity-60 hover:opacity-100`
+                                      }`}
+                                    >
+                                      {s.label}
+                                    </button>
+                                  ))}
+                                </div>
+                              </div>
+                              <div className="flex gap-2">
+                                <Button size="sm" className="text-xs h-8"
+                                  onClick={() => handleSaveLane(lane.id)}
+                                  disabled={saving || !editStatus}>
+                                  {saving
+                                    ? <><Loader2 className="h-3.5 w-3.5 animate-spin mr-1" /> Saving…</>
+                                    : <><Check className="h-3.5 w-3.5 mr-1" /> Save</>}
+                                </Button>
+                                <Button size="sm" variant="ghost" className="text-xs h-8"
+                                  onClick={() => setEditingId(null)}>
+                                  Cancel
+                                </Button>
+                              </div>
+                            </div>
+                          ) : (
+                            <div className="space-y-2">
+                              {lane.note && (
+                                <p className="text-[11px] text-foreground leading-relaxed">
+                                  {lane.note}
+                                </p>
+                              )}
+                              {lane.resolved_at && (
+                                <p className="text-[10px] text-muted-foreground">
+                                  Resolved {fmtDate(lane.resolved_at)}
+                                </p>
+                              )}
+                              <Button size="sm" variant="outline" className="text-xs h-7"
+                                onClick={(e) => { e.stopPropagation(); openEdit(lane); }}>
+                                <Pencil className="h-3 w-3 mr-1" /> Edit lane
+                              </Button>
+                            </div>
+                          )}
+                        </div>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+            </CardContent>
+          </Card>
+        </>
+      )}
+
+      {/* Advance to verdict */}
+      <div className="flex items-center justify-between gap-3 pt-2 border-t flex-wrap">
+        <p className="text-[10px] text-muted-foreground">
+          {counts.stalled > 0
+            ? `${counts.stalled} lane${counts.stalled === 1 ? '' : 's'} stalled — resolve before opening Verdict`
+            : counts.in_progress > 0
+              ? `${counts.in_progress} lane${counts.in_progress === 1 ? '' : 's'} still in progress`
+              : 'All lanes resolved — open Verdict when ready'}
+        </p>
+        <Button size="sm" className="text-xs"
+          onClick={handleAdvanceToVerdict} disabled={advancing}>
+          {advancing
+            ? <><Loader2 className="h-3.5 w-3.5 mr-1.5 animate-spin" /> Advancing…</>
+            : <><ChevronRight className="h-3.5 w-3.5 mr-1" /> Open Verdict</>}
+        </Button>
+      </div>
+
     </div>
   );
 }
-
-// ── Section 4: Verdict ────────────────────────────────────────────────────────
 
 function VerdictSection({ bg, setBg, setBanner, setError }) {
   const [selected,   setSelected]   = useState(bg.verdict || null);
@@ -1016,9 +1247,7 @@ function VerdictSection({ bg, setBg, setBanner, setError }) {
       {selected === 'pass_with_concerns' && (
         <Card className="border-amber-200 bg-amber-50/30">
           <CardHeader className="pb-2">
-            <CardTitle className="text-xs text-amber-800">
-              Concern note — required for pass with concerns
-            </CardTitle>
+            <CardTitle className="text-xs text-amber-800">Concern note — required</CardTitle>
           </CardHeader>
           <CardContent className="space-y-3">
             <div className="space-y-1">
@@ -1026,24 +1255,21 @@ function VerdictSection({ bg, setBg, setBanner, setError }) {
                 Gap identified
               </label>
               <Textarea value={gap} onChange={(e) => setGap(e.target.value)}
-                placeholder="e.g. Team-size claim: stated 12, confirmed 8 (incl. 4 interns)"
-                rows={2} className="text-xs" />
+                placeholder="e.g. Team-size claim: stated 12, confirmed 8" rows={2} className="text-xs" />
             </div>
             <div className="space-y-1">
               <label className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
                 Context
               </label>
               <Textarea value={ctx} onChange={(e) => setCtx(e.target.value)}
-                placeholder="e.g. Minor inflation, not material misrepresentation"
-                rows={2} className="text-xs" />
+                placeholder="e.g. Minor inflation, not material misrepresentation" rows={2} className="text-xs" />
             </div>
             <div className="space-y-1">
               <label className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
                 Mitigation
               </label>
               <Textarea value={mitigation} onChange={(e) => setMitigation(e.target.value)}
-                placeholder="e.g. Flag to HM at offer stage"
-                rows={2} className="text-xs" />
+                placeholder="e.g. Flag to HM at offer stage" rows={2} className="text-xs" />
             </div>
           </CardContent>
         </Card>
@@ -1074,8 +1300,6 @@ function VerdictSection({ bg, setBg, setBanner, setError }) {
     </div>
   );
 }
-
-// ── Page ──────────────────────────────────────────────────────────────────────
 
 export default function BgCheckCandidatePage() {
   const navigate        = useNavigate();

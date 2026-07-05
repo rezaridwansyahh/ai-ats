@@ -47,6 +47,7 @@ import OfferWorkboard from "./pages/OfferWorkboard"
 import InterviewPage from "./pages/Interview"
 import SettingsPage from "./pages/Settings"
 import OfferContractPage from "./pages/OfferContract"
+import OnboardingPage from "./pages/Onboarding"
 
 function App() {
   return (
@@ -120,6 +121,9 @@ function App() {
         <Route path="/report-candidate/:candidateId" element={<ReportCandidateDetailPage />} />
 
         <Route path="/selection/offer-contract" element={<OfferContractPage />} />
+
+        <Route path="/selection/offer-contract" element={<OfferContractPage />} />
+        <Route path="/selection/onboarding" element={<OnboardingPage />} />
 
         {/* Catch-all: any unregistered path shows Coming Soon */}
         <Route path="*" element={<ComingSoonPage />} />

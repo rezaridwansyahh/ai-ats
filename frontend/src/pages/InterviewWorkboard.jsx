@@ -258,7 +258,8 @@ export default function InterviewWorkboard() {
             <CardTitle className="text-sm gap-3 flex items-center h-[40px]">
               {activeJob === '' ? "All candidates" : `${activeJob.job_title}`}
               <span className="ml-2 text-[11px] font-normal text-muted-foreground">
-                {filtered.length} {activeStatus ? `at ${STAGE_META[activeStatus].label}` : 'total'}
+                {/* {filtered.length} {activeStatus ? `at ${STAGE_META[activeStatus].label}` : 'total'} */}
+                {filtered.length} {activeStatus ? `at ${STATUS_META[activeStatus].label}` : 'total'}
               </span>
               {activeJob !== '' && (
                 <Button variant="outline" size="sm" onClick={() => navigate(`/selection/interview/job/${activeJob.job_id}`)}>

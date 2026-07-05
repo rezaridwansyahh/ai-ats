@@ -84,6 +84,7 @@ const routeMap = {
   'Source Management': '/sourcing/source-management',
   'Talent Pool':       '/sourcing/talent-pool',
   'Source Candidate':  '/sourcing/source-candidate',
+  'Search & Outreach': '/sourcing/source-candidate',
   'AI Screening':      '/selection/ai-screening',
   'AI Matching':       '/selection/ai-screening',
   'Psych Assessment':  '/selection/assessment',
@@ -95,7 +96,8 @@ const routeMap = {
   'Thomas Kilmann Assessment':     '/asesmen/thomas-kilmann-assessment',
   'Interview': '/selection/interview',
   'Background Check': '/selection/background-check',
-  'Offer & Contract': '/selection/offer',
+  'Offer & Contract': '/selection/offer-contract',
+  'Onboarding':        '/selection/onboarding',
 };
 
 // Maps a raw "module" name (as it appears in permissions data) to the

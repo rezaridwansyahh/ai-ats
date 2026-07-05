@@ -7,7 +7,7 @@ const STAGES = [
   { key: 'Assess',    letter: 'P', count: 12,  route: '/selection/psych-assessment' }, 
   { key: 'Verify',    letter: 'V', count: 7,   route: '/selection/background-check' }, 
   { key: 'Offer',     letter: 'O', count: 4,   route: '/selection/offer-contract' },
-  { key: 'Onboard',   letter: 'N', count: 2,   route: '/onboarding' }, // ⚠️ see below
+  { key: 'Onboard',   letter: 'N', count: 2,   route: '/selection/onboarding' },
 ];
 
 export default function PipelineBar() {

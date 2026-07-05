@@ -33,3 +33,11 @@ export const getConsent = (bg_id) => api.get(`/background-check/${bg_id}/consent
 export const generateConsentLink = (bg_id) => api.post(`/background-check/${bg_id}/consent/generate-link`);
 
 export const revokeConsent = (bg_id, revocation_reason) => api.post(`/background-check/${bg_id}/consent/revoke`, { revocation_reason });
+
+export const getLanes = (bg_id) => api.get(`/background-check/${bg_id}/lanes`);
+
+export const createLanes = (bg_id) => api.post(`/background-check/${bg_id}/lanes/create`);
+
+export const getLaneCounts = (bg_id) => api.get(`/background-check/${bg_id}/lanes/counts`);
+
+export const updateTracker = (lane_id, { note, status }) => api.put(`/background-check/lanes/${lane_id}`, { note, status });
