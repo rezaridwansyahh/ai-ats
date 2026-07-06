@@ -359,7 +359,8 @@ class ScreeningModel {
         LEFT JOIN master_applicant ma ON ma.id = mc.applicant_id
         LEFT JOIN candidate_job_score s
           ON s.applicant_id = mc.applicant_id AND s.job_id = mc.job_id
-        LEFT JOIN screening_qa sq ON sq.id = cj.company_id
+        LEFT JOIN candidate_screening cs ON cs.candidate_id = mc.id
+        LEFT JOIN screening_qa sq ON sq.screening_id = cs.id
         WHERE cj.company_id = $1 AND mc.applicant_id IS NOT NULL
       ) 
       SELECT
@@ -457,7 +458,7 @@ class ScreeningModel {
         CASE
           WHEN a.information IS NULL THEN 'parse'
           WHEN s.id IS NULL          THEN 'match'
-          WHEN sq is null then 'qa'
+          WHEN sq.status != 'responded' THEN 'qa'
           ELSE                            'ready'
         END AS engine
       FROM master_candidate mc

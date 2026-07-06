@@ -48,79 +48,84 @@ import SettingsPage from "./pages/Settings"
 import OfferContractPage from "./pages/OfferContract"
 import OnboardingPage from "./pages/Onboarding"
 
+import { Toaster } from '@/components/ui/sonner';
+
 function App() {
   return (
-    <Routes>
-      <Route path="/" element={<LoginPage />} />
-      <Route path="/login" element={<LoginPage />} />
-      <Route path="/register" element={<RegisterPage />} />
+    <>
+      <Routes>
+        <Route path="/" element={<LoginPage />} />
+        <Route path="/login" element={<LoginPage />} />
+        <Route path="/register" element={<RegisterPage />} />
 
-      {/* Public candidate-facing portal */}
-      <Route path="/assessment-placement/:hash" element={<AssessmentPlacementPage />} />
-      <Route path="/qa/:token" element={<QAFollowUpPage />} />
-      <Route path="/bg/consent/:token" element={<BackgroundCheckConsentPage />} />
+        {/* Public candidate-facing portal */}
+        <Route path="/assessment-placement/:hash" element={<AssessmentPlacementPage />} />
+        <Route path="/qa/:token" element={<QAFollowUpPage />} />
+        <Route path="/bg/consent/:token" element={<BackgroundCheckConsentPage />} />
 
-      {/* All authenticated routes share DashboardLayout */}
-      <Route element={<DashboardLayout />}>
-        <Route path="/dashboard" element={<DashboardPage />} />
-        <Route path="/candidate-pipeline" element={<CandidatePipelinePage />} />
-        <Route path="/candidate-pipeline/:id" element={<CandidatePipelineDetailPage />} />
+        {/* All authenticated routes share DashboardLayout */}
+        <Route element={<DashboardLayout />}>
+          <Route path="/dashboard" element={<DashboardPage />} />
+          <Route path="/candidate-pipeline" element={<CandidatePipelinePage />} />
+          <Route path="/candidate-pipeline/:id" element={<CandidatePipelineDetailPage />} />
 
-        <Route path="/sourcing/job-management" element={<JobManagementPage />} />
-        <Route path="/sourcing/job-management/new" element={<JobEditPage />} />
-        <Route path="/sourcing/job-management/:id/edit" element={<JobEditPage />} />
-        <Route path="/sourcing/job-management/:id" element={<JobDetailPage />} />
-        <Route path="/sourcing/source-management" element={<SourceManagementPage />} />
-        <Route path="/sourcing/talent-pool" element={<TalentPoolPage />} />
-        <Route path="/sourcing/source-candidate" element={<SourceCandidatePage />} />
+          <Route path="/sourcing/job-management" element={<JobManagementPage />} />
+          <Route path="/sourcing/job-management/new" element={<JobEditPage />} />
+          <Route path="/sourcing/job-management/:id/edit" element={<JobEditPage />} />
+          <Route path="/sourcing/job-management/:id" element={<JobDetailPage />} />
+          <Route path="/sourcing/source-management" element={<SourceManagementPage />} />
+          <Route path="/sourcing/talent-pool" element={<TalentPoolPage />} />
+          <Route path="/sourcing/source-candidate" element={<SourceCandidatePage />} />
 
-        {/* Backward-compat: old `AI Matching` menu name still navigates here */}
-        <Route path="/selection/ai-matching" element={<Navigate to="/selection/ai-screening" replace />} />
-        <Route path="/ai-matching" element={<Navigate to="/selection/ai-screening" replace />} />
+          {/* Backward-compat: old `AI Matching` menu name still navigates here */}
+          <Route path="/selection/ai-matching" element={<Navigate to="/selection/ai-screening" replace />} />
+          <Route path="/ai-matching" element={<Navigate to="/selection/ai-screening" replace />} />
 
-        <Route path="/selection/ai-screening" element={<AIScreeningWorkboard />} />
-        <Route path="/selection/ai-screening/job/:jobId" element={<AIScreeningPage />} />
-        <Route path="/selection/ai-screening/candidate/:screeningId" element={<AIScreeningCandidatePage />} />
+          <Route path="/selection/ai-screening" element={<AIScreeningWorkboard />} />
+          <Route path="/selection/ai-screening/job/:jobId" element={<AIScreeningPage />} />
+          <Route path="/selection/ai-screening/candidate/:screeningId" element={<AIScreeningCandidatePage />} />
 
-        <Route path="/selection/assessment" element={<PsychAssesmentPage />} />
-        <Route path="/selection/assessment/:jobId/:participantId" element={<CandidateDetailPage />} />
+          <Route path="/selection/assessment" element={<PsychAssesmentPage />} />
+          <Route path="/selection/assessment/:jobId/:participantId" element={<CandidateDetailPage />} />
 
-        <Route path="/selection/interview" element={<InterviewWorkboard />} />
-        <Route path="/selection/interview/job/:jobId" element={<InterviewJobPage/>} />
-        <Route path="/selection/interview/candidate/:interviewId" element={<InterviewCandidatePage />} />
-        <Route path="/selection/interview/calibration/:jobId" element={<InterviewCalibration />} />
+          <Route path="/selection/interview" element={<InterviewWorkboard />} />
+          <Route path="/selection/interview/job/:jobId" element={<InterviewJobPage/>} />
+          <Route path="/selection/interview/candidate/:interviewId" element={<InterviewCandidatePage />} />
+          <Route path="/selection/interview/calibration/:jobId" element={<InterviewCalibration />} />
 
-        {/* <Route path="/selection/interview" element={<InterviewPage />} />  */}
-        <Route path="/selection/background-check" element={<BackgroundCheckPage />} />
-        <Route path="/selection/background-check/job/:jobId" element={<BackgroundCheckJobPage />} />
-        <Route path="/selection/background-check/candidate/:bgId" element={<BackgroundCheckCandidatePage />} />
-        <Route path="/asesmen/assessment-a" element={<AssessmentAPage />} />
-        <Route path="/asesmen/assessment-b" element={<AssessmentBPage />} />
-        <Route path="/asesmen/assessment-c" element={<AssessmentCPage />} />
-        <Route path="/asesmen/assessment-d" element={<AssessmentDPage />} />
-        <Route path="/asesmen/insights-discovery-assessment" element={<InsightsDiscoveryAssessmentPage />} />
-        <Route path="/asesmen/thomas-kilmann-assessment" element={<ThomasKilmannAssessmentPage />} />
+          {/* <Route path="/selection/interview" element={<InterviewPage />} />  */}
+          <Route path="/selection/background-check" element={<BackgroundCheckPage />} />
+          <Route path="/selection/background-check/job/:jobId" element={<BackgroundCheckJobPage />} />
+          <Route path="/selection/background-check/candidate/:bgId" element={<BackgroundCheckCandidatePage />} />
+          <Route path="/asesmen/assessment-a" element={<AssessmentAPage />} />
+          <Route path="/asesmen/assessment-b" element={<AssessmentBPage />} />
+          <Route path="/asesmen/assessment-c" element={<AssessmentCPage />} />
+          <Route path="/asesmen/assessment-d" element={<AssessmentDPage />} />
+          <Route path="/asesmen/insights-discovery-assessment" element={<InsightsDiscoveryAssessmentPage />} />
+          <Route path="/asesmen/thomas-kilmann-assessment" element={<ThomasKilmannAssessmentPage />} />
 
-        <Route path="/settings" element={<SettingsPage />} />
-        <Route path="/settings/user-management" element={<UserManagementPage />} />
-        <Route path="/settings/role-management" element={<RoleManagementPage />} />
-        <Route path="/settings/integrations" element={<IntegrationsPage />} />
-        <Route path="/settings/account" element={<AccountPage />} />
-        <Route path="/settings/budget" element={<BudgetSettingsPage />} />
-        <Route path="/settings/recruiters" element={<RecruitersPage />} />
+          <Route path="/settings" element={<SettingsPage />} />
+          <Route path="/settings/user-management" element={<UserManagementPage />} />
+          <Route path="/settings/role-management" element={<RoleManagementPage />} />
+          <Route path="/settings/integrations" element={<IntegrationsPage />} />
+          <Route path="/settings/account" element={<AccountPage />} />
+          <Route path="/settings/budget" element={<BudgetSettingsPage />} />
+          <Route path="/settings/recruiters" element={<RecruitersPage />} />
 
-        <Route path="/report-candidate" element={<ReportCandidatePage />} />
-        <Route path="/report-candidate/:candidateId" element={<ReportCandidateDetailPage />} />
+          <Route path="/report-candidate" element={<ReportCandidatePage />} />
+          <Route path="/report-candidate/:candidateId" element={<ReportCandidateDetailPage />} />
 
-        <Route path="/selection/offer-contract" element={<OfferContractPage />} />
+          <Route path="/selection/offer-contract" element={<OfferContractPage />} />
 
-        <Route path="/selection/offer-contract" element={<OfferContractPage />} />
-        <Route path="/selection/onboarding" element={<OnboardingPage />} />
+          <Route path="/selection/offer-contract" element={<OfferContractPage />} />
+          <Route path="/selection/onboarding" element={<OnboardingPage />} />
 
-        {/* Catch-all: any unregistered path shows Coming Soon */}
-        <Route path="*" element={<ComingSoonPage />} />
-      </Route>
-    </Routes>
+          {/* Catch-all: any unregistered path shows Coming Soon */}
+          <Route path="*" element={<ComingSoonPage />} />
+        </Route>
+      </Routes>
+      <Toaster />
+    </>
   )
 }
 

@@ -19,6 +19,12 @@ import {
   getCalibration, advanceBulk, getLaneCandidates, getScreeningByCandidate,
 } from '@/api/screening.api';
 
+import ParseStageDashboard from '@/components/ai-screening/ParseStageDashboard';
+import MatchStageDashboard from '@/components/ai-screening/MatchStageDashboard';
+import QAStageDashboard from '@/components/ai-screening/QAStageDashboard';
+import PipelineStageDashboard from '@/components/ai-screening/PipelineStageDashboard';
+
+
 function scoreColor(score) {
   if (score == null) return 'text-muted-foreground';
   if (score >= 80) return 'text-emerald-700';
@@ -327,122 +333,56 @@ export default function AIScreeningPage() {
       </Card>
       
       {/* Stage detail */}
-      <Card>
-        <CardContent className="px-0 pb-0">
-          {activeStage === 'parse' && (
-            <TwoPane
-              left={{ label: 'Pending parse', rows: parseRows }}
-              right={{ label: 'Parsed ✓', rows: [...matchRows, ...qaRows, ...cohortRows] }}
-              onOpen={openCandidate}
-            />
-          )}
+        {activeStage === 'parse' && (
+          <ParseStageDashboard
+            pendingRows={parseRows}
+            parsedRows={[...matchRows, ...qaRows, ...cohortRows]}
+            onOpen={openCandidate}
+          />
+        )}
 
-          {activeStage === 'match' && (
-            <TwoPane
-              left={{ label: 'Awaiting score', rows: matchRows }}
-              right={{ label: 'Scored ✓', rows: [...qaRows, ...cohortRows] }}
-              onOpen={openCandidate}
-            />
-          )}
+        {activeStage === 'match' && (
+          <MatchStageDashboard
+            jobId={jobId}
+            pendingRows={matchRows}
+            scoredRows={[...qaRows, ...cohortRows]}
+            onOpen={openCandidate}
+            onScored={loadStages}   // reuses the existing loadStages() you already have
+          />
+        )}
 
-          {activeStage === 'qa' && (
-            <TwoPane
-              left={{ label: 'Q&A sent · awaiting reply', rows: qaRows }}
-              right={{ label: 'Responded ✓', rows: cohortRows }}
-              onOpen={openCandidate}
-            />
-          )}
+        {activeStage === 'qa' && (
+          <QAStageDashboard
+            pendingRows={qaRows}
+            respondedRows={cohortRows}
+            onOpen={openCandidate}
+          />
+        )}
 
-          {activeStage === 'ready' && (
-            cohortRows.length === 0 ? (
-              <p className="py-10 text-center text-xs text-muted-foreground italic">
-                No candidates ready yet. Open a candidate and run AI Matching from their Match panel.
-              </p>
-            ) : (
-              <>
-                <Table className="w-full">
-                  <TableHeader className="bg-muted/40">
-                    <TableRow>
-                      <TableHead className="w-[36px] pl-4">
-                        <Checkbox checked={allSelected} onCheckedChange={toggleAll} />
-                      </TableHead>
-                      <TableHead className="text-[10px] font-bold uppercase">Candidate</TableHead>
-                      <SortableHeader label="Fit"        col="overall_score"           sortKey={sortKey} sortDir={sortDir} onClick={toggleSort} className="text-center" />
-                      <SortableHeader label="Skills"     col="skills_score"            sortKey={sortKey} sortDir={sortDir} onClick={toggleSort} className="text-center" />
-                      <SortableHeader label="Exp"        col="experience_score"        sortKey={sortKey} sortDir={sortDir} onClick={toggleSort} className="text-center" />
-                      <SortableHeader label="Trajectory" col="career_trajectory_score" sortKey={sortKey} sortDir={sortDir} onClick={toggleSort} className="text-center" />
-                      <SortableHeader label="Edu"        col="education_score"         sortKey={sortKey} sortDir={sortDir} onClick={toggleSort} className="text-center" />
-                      <TableHead className="text-[10px] font-bold uppercase">Recommendation</TableHead>
-                      <TableHead className="text-[10px] font-bold uppercase pr-4">Summary</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {sortedCohort.map((r) => {
-                      const rec = recommendation(r.overall_score);
-                      const isSel = selected.has(r.screening_id);
-                      return (
-                        <TableRow
-                          key={r.screening_id}
-                          onClick={() => navigate(`/selection/ai-screening/candidate/${r.screening_id}`)}
-                          className={`cursor-pointer hover:bg-muted/30 transition-colors ${isSel ? 'bg-primary/5' : ''}`}
-                        >
-                          <TableCell className="pl-4" onClick={(e) => e.stopPropagation()}>
-                            <Checkbox checked={isSel} onCheckedChange={() => toggle(r.screening_id)} />
-                          </TableCell>
-                          <TableCell className="text-xs">
-                            <div className="font-medium truncate">{r.applicant_name || `#${r.applicant_id}`}</div>
-                            <div className="text-[10px] text-muted-foreground truncate">
-                              {r.last_position || '—'}
-                              {r.rubric_is_stale && (
-                                <Badge variant="outline" className="ml-1 text-[9px] border-amber-300 text-amber-700">stale</Badge>
-                              )}
-                            </div>
-                          </TableCell>
-                          <TableCell className="text-center">
-                            <Badge className={`text-xs font-mono font-bold ${scoreBg(r.overall_score)}`}>{r.overall_score ?? '—'}</Badge>
-                          </TableCell>
-                          <TableCell className={`text-center text-xs font-mono ${scoreColor(r.skills_score)}`}>{r.skills_score ?? '—'}</TableCell>
-                          <TableCell className={`text-center text-xs font-mono ${scoreColor(r.experience_score)}`}>{r.experience_score ?? '—'}</TableCell>
-                          <TableCell className={`text-center text-xs font-mono ${scoreColor(r.career_trajectory_score)}`}>{r.career_trajectory_score ?? '—'}</TableCell>
-                          <TableCell className={`text-center text-xs font-mono ${scoreColor(r.education_score)}`}>{r.education_score ?? '—'}</TableCell>
-                          <TableCell>
-                            <Badge variant="outline" className={`text-[10px] ${rec.tone}`}>{rec.label}</Badge>
-                          </TableCell>
-                          <TableCell className="text-xs text-muted-foreground pr-4 align-top whitespace-normal leading-snug">
-                            {r.score_summary || '—'}
-                          </TableCell>
-                        </TableRow>
-                      );
-                    })}
-                  </TableBody>
-                </Table>
-
-                {/* Advance action bar */}
-                <div className="border-t p-4 space-y-3">
-                  <div className="flex items-center justify-between gap-3 flex-wrap">
-                    <div className="text-xs text-muted-foreground">
-                      <span className="font-semibold text-foreground">{selected.size} selected</span>
-                      {' '}· {cohortRows.length} ready · candidates without a decision
-                    </div>
-                    <Button size="sm" className="text-xs" disabled={selected.size === 0 || advancing} onClick={handleAdvance}>
-                      {advancing
-                        ? <><Loader2 className="h-3.5 w-3.5 mr-1.5 animate-spin" />Advancing…</>
-                        : <>Advance {selected.size} to Interview <ArrowRight className="h-3.5 w-3.5 ml-1.5" /></>}
-                    </Button>
-                  </div>
-                  <Textarea
-                    placeholder="Optional reason (applies to all advanced candidates)…"
-                    value={reason}
-                    onChange={(e) => setReason(e.target.value)}
-                    rows={2}
-                    className="text-xs"
-                  />
-                </div>
-              </>
-            )
-          )}
-        </CardContent>
-      </Card>
+        {activeStage === 'ready' && (
+          <PipelineStageDashboard
+            rows={cohortRows}
+            advancing={advancing}
+            onAdvance={async (ids, reasonText) => {
+              setAdvancing(true);
+              setError(null);
+              setResultBanner(null);
+              try {
+                const res = await advanceBulk(jobId, ids, { decision_reason: reasonText });
+                const { advanced = [], skipped = [], errors = [], interview_ids = [] } = res.data || {};
+                setResultBanner({
+                  ok: errors.length === 0,
+                  text: `${advanced.length} advanced · ${skipped.length} skipped · ${errors.length} errors · ${interview_ids.length} interview rows created`,
+                });
+                await loadStages();
+              } catch (err) {
+                setError(err.response?.data?.message || err.message || 'Advance-bulk failed');
+              } finally {
+                setAdvancing(false);
+              }
+            }}
+          />
+        )}
     </div>
   );
 }
