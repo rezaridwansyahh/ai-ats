@@ -5,7 +5,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/com
 import { toast } from 'sonner'
 import { Badge }    from '@/components/ui/badge';
 
-import { getJobAccounts, createJobAccount, updateJobAccount, deleteJobAccount, getJobAccountsByUserId } from '@/api/job-accounts.api';
+import { createJobAccount, updateJobAccount, deleteJobAccount, getJobAccountsByUserId } from '@/api/job-accounts.api';
 import { checkConnection, syncSeekJobPosts } from '@/api/job-posting-seek.api';
 
 import { hasPermission } from '@/utils/permissions';
@@ -35,29 +35,23 @@ const PRIVATE_CHANNELS = [
 ];
 
 export default function AccountPage() {
-  const canCreate = hasPermission('Settings', 'Account', 'create');
-  const canEdit   = hasPermission('Settings', 'Account', 'update');
-  const canDelete = hasPermission('Settings', 'Account', 'delete');
-
-  // ── Data ──S
+  // ── Data ──
   const [accounts, setAccounts] = useState([]);
   const [loading,  setLoading]  = useState(true);
-  const [error,    setError]    = useState(null);
 
   const [user] = useState(JSON.parse(localStorage.getItem('user')));
 
   const fetchAccounts = useCallback(async () => {
     setLoading(true);
-    setError(null);
     try {
       const { data } = await getJobAccountsByUserId(user.id);
       setAccounts(data.accounts || []);
     } catch (err) {
-      setError(err.response?.data?.message || err.message || 'Failed to load job accounts');
+      toast.error(err.response?.data?.message || err.message || 'Failed to load job accounts');
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [user.id]);
 
   useEffect(() => {
     async function fetch() {
@@ -69,7 +63,6 @@ export default function AccountPage() {
 
   // ── Dialog state ──
   const [formOpen,         setFormOpen]         = useState(false);
-  const [deleteOpen,       setDeleteOpen]       = useState(false);
   const [selectedAccount,  setSelectedAccount]  = useState(null);
   const [selectedPlatform,  setSelectedPlatform]  = useState(null);
   const [submitting,       setSubmitting]       = useState(false);
@@ -81,9 +74,6 @@ export default function AccountPage() {
     setFormOpen(true);
   };
 
-  const openEdit   = (account) => { setSelectedAccount(account); setFormOpen(true); };
-  const openDelete = (account) => { setSelectedAccount(account); setDeleteOpen(true); };
-
   // ── CRUD handlers ──
   const handleCreateOrUpdate = async (payload, accountId) => {
     setSubmitting(true);
@@ -93,16 +83,6 @@ export default function AccountPage() {
       } else {
         await createJobAccount(payload);
       }
-      await fetchAccounts();
-    } finally {
-      setSubmitting(false);
-    }
-  };
-
-  const handleDelete = async (accountId) => {
-    setSubmitting(true);
-    try {
-      await deleteJobAccount(accountId);
       await fetchAccounts();
     } finally {
       setSubmitting(false);

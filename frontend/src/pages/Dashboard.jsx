@@ -1,5 +1,4 @@
 import { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
 import { AlertTriangle, CircleDot, Sparkles, Clock } from 'lucide-react';
 
 // ─────────────────────────────────────────────────
@@ -160,7 +159,9 @@ export default function Dashboard() {
     try {
       const str = localStorage.getItem('user');
       if (str && str !== 'undefined' && str !== 'null') setUser(JSON.parse(str));
-    } catch {}
+    } catch (err) {
+      console.error('Failed to parse user from localStorage:', err);
+    }
   }, []);
 
   const greeting    = getGreeting();

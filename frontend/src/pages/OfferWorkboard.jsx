@@ -43,7 +43,6 @@ export default function OfferWorkboard() {
   const navigate = useNavigate();
 
   const [offers, setOffers] = useState([]);
-  const [grouped, setGrouped] = useState({});
   const [summary, setSummary] = useState({});
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
