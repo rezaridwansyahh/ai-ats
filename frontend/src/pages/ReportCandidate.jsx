@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { getAll } from '@/api/candidate.api';
 import ReportCandidate from '@/components/report-candidate/report-candidate';
@@ -7,7 +7,6 @@ export default function JobManagementPage() {
   const navigate = useNavigate();
   const [candidates, setCandidates] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [recruiters, setRecruiters] = useState([]);
 
   useEffect(() => {
     const fetchCandidates = async () => {

@@ -1,4 +1,4 @@
-import { useEffect, useCallback, useMemo, useState } from 'react';
+import { useEffect, useCallback, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import {
   Loader2, AlertTriangle, ArrowLeft, MessageSquare, ArrowRight, MapPin, Save, Send, ChevronUp,
@@ -27,9 +27,6 @@ export default function ReportCandidateDetailPage() {
 
   const [activeStep, setActiveStep] = useState(0);
   const [activeSubStep, setActiveSubStep] = useState(0);
-
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null);
 
   const fetchCandidate = useCallback(async () => {
     setLoading(true);

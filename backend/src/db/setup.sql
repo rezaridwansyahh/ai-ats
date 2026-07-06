@@ -38,6 +38,10 @@ DROP TABLE IF EXISTS bg_claim;
 DROP TABLE IF EXISTS bg_consent;
 DROP TABLE IF EXISTS bg_lane CASCADE;
 DROP TABLE IF EXISTS candidate_bg;
+DROP TABLE IF EXISTS offer_negotiation CASCADE;
+DROP TABLE IF EXISTS offer_contract CASCADE;
+DROP TABLE IF EXISTS offer_compensation CASCADE;
+DROP TABLE IF EXISTS candidate_offer CASCADE;
 
 DROP TABLE IF EXISTS master_recruiters CASCADE;
 DROP TABLE IF EXISTS core_job_pipeline_stages CASCADE;
@@ -80,6 +84,10 @@ DROP TYPE IF EXISTS assessment_status_type CASCADE;
 DROP TYPE IF EXISTS screening_qa_status_type CASCADE;
 DROP TYPE IF EXISTS interview_status_type CASCADE;
 DROP TYPE IF EXISTS interview_recommendation_type CASCADE;
+DROP TYPE IF EXISTS offer_status_type CASCADE;
+DROP TYPE IF EXISTS contract_status_type CASCADE;
+DROP TYPE IF EXISTS contract_type_enum CASCADE;
+DROP TYPE IF EXISTS negotiation_initiator_type CASCADE;
 
 -- Create ENUM type
 CREATE TYPE status_type AS ENUM ('Draft', 'Active', 'Running', 'Expired', 'Failed', 'Blocked');
@@ -105,6 +113,10 @@ CREATE TYPE assessment_status_type AS ENUM ('in_progress', 'completed', 'expired
 CREATE TYPE screening_qa_status_type AS ENUM ('draft', 'sent', 'responded', 'expired');
 CREATE TYPE interview_status_type AS ENUM ('ongoing', 'interviewed', 'no_show', 'reschedule', 'cancelled', 'done');
 CREATE TYPE interview_recommendation_type  AS ENUM ('strong_no_hire', 'no_hire', 'hire', 'strong_hire');
+CREATE TYPE offer_status_type AS ENUM ('draft', 'sent', 'negotiating', 'accepted', 'rejected', 'expired');
+CREATE TYPE contract_status_type AS ENUM ('draft', 'ready', 'sent', 'signed', 'expired');
+CREATE TYPE contract_type_enum AS ENUM ('PKWT', 'PKWTT'); -- PKWT = Fixed-term, PKWTT = Permanent
+CREATE TYPE negotiation_initiator_type AS ENUM ('candidate', 'recruiter');
 CREATE EXTENSION IF NOT EXISTS pgcrypto;
 CREATE EXTENSION IF NOT EXISTS pg_trgm;
 
@@ -657,6 +669,92 @@ CREATE TABLE bg_consent (
   created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
   updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
+
+-- =============================================================================
+-- OFFER & CONTRACT MODULE
+-- =============================================================================
+
+CREATE TABLE candidate_offer (
+  id SERIAL PRIMARY KEY,
+  company_id INTEGER NOT NULL REFERENCES core_company(id) ON DELETE CASCADE,
+  candidate_id INTEGER NOT NULL REFERENCES master_candidate(id) ON DELETE CASCADE,
+  job_id INTEGER NOT NULL REFERENCES core_job(id) ON DELETE CASCADE,
+  position_title VARCHAR(255) NOT NULL,
+  contract_type contract_type_enum NOT NULL,
+  offer_status offer_status_type NOT NULL DEFAULT 'draft',
+  contract_status contract_status_type,
+  metadata JSONB NOT NULL DEFAULT '{}',
+  sent_at TIMESTAMPTZ,
+  accepted_at TIMESTAMPTZ,
+  rejected_at TIMESTAMPTZ,
+  expired_at TIMESTAMPTZ,
+  created_by INTEGER REFERENCES master_users(id) ON DELETE SET NULL,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  UNIQUE (candidate_id, job_id)
+);
+
+CREATE INDEX idx_candidate_offer_company ON candidate_offer(company_id);
+CREATE INDEX idx_candidate_offer_candidate ON candidate_offer(candidate_id);
+CREATE INDEX idx_candidate_offer_job ON candidate_offer(job_id);
+CREATE INDEX idx_candidate_offer_status ON candidate_offer(offer_status);
+
+CREATE TABLE offer_compensation (
+  id SERIAL PRIMARY KEY,
+  offer_id INTEGER NOT NULL UNIQUE REFERENCES candidate_offer(id) ON DELETE CASCADE,
+  base_salary NUMERIC(15,2) NOT NULL,
+  allowances JSONB NOT NULL DEFAULT '{}', -- { transport, meal, health, communication, etc }
+  bonus_structure JSONB NOT NULL DEFAULT '{}', -- { annual_bonus, performance_bonus, etc }
+  gross_salary NUMERIC(15,2) NOT NULL, -- base + allowances
+  pph21 NUMERIC(15,2) NOT NULL, -- Indonesian income tax
+  bpjs_kesehatan NUMERIC(15,2) NOT NULL, -- Health insurance (employee portion)
+  bpjs_ketenagakerjaan NUMERIC(15,2) NOT NULL, -- Employment insurance
+  net_salary NUMERIC(15,2) NOT NULL, -- take-home pay
+  calculation_metadata JSONB NOT NULL DEFAULT '{}', -- audit trail of calculation
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+CREATE INDEX idx_offer_compensation_offer ON offer_compensation(offer_id);
+
+CREATE TABLE offer_negotiation (
+  id SERIAL PRIMARY KEY,
+  offer_id INTEGER NOT NULL REFERENCES candidate_offer(id) ON DELETE CASCADE,
+  initiated_by negotiation_initiator_type NOT NULL,
+  message TEXT NOT NULL,
+  requested_salary NUMERIC(15,2),
+  response_type VARCHAR(20), -- 'accept' | 'counter' | 'decline'
+  status VARCHAR(20) NOT NULL DEFAULT 'pending', -- pending | responded | closed
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+CREATE INDEX idx_offer_negotiation_offer ON offer_negotiation(offer_id);
+CREATE INDEX idx_offer_negotiation_created ON offer_negotiation(created_at DESC);
+
+CREATE TABLE offer_contract (
+  id SERIAL PRIMARY KEY,
+  offer_id INTEGER NOT NULL UNIQUE REFERENCES candidate_offer(id) ON DELETE CASCADE,
+  contract_type contract_type_enum NOT NULL,
+  start_date DATE NOT NULL,
+  end_date DATE, -- NULL for PKWTT (permanent), required for PKWT (fixed-term)
+  status contract_status_type NOT NULL DEFAULT 'draft',
+  pdf_url TEXT,
+  metadata JSONB NOT NULL DEFAULT '{}', -- { clauses, benefits, termination_conditions, etc }
+  signature_data TEXT, -- base64 PNG of candidate signature
+  signed_at TIMESTAMPTZ,
+  sent_at TIMESTAMPTZ,
+  sent_by INTEGER REFERENCES master_users(id) ON DELETE SET NULL,
+  generated_by INTEGER REFERENCES master_users(id) ON DELETE SET NULL,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+CREATE INDEX idx_offer_contract_offer ON offer_contract(offer_id);
+CREATE INDEX idx_offer_contract_status ON offer_contract(status);
+
+-- =============================================================================
+-- END OFFER & CONTRACT MODULE
+-- =============================================================================
 
 CREATE TABLE bg_lane (
   id SERIAL PRIMARY KEY,

@@ -130,13 +130,18 @@ const SOON_ITEMS = new Set([
 ]);
 
 // Explicit ordering for items inside the "Selection" section.
-// Explicit ordering for items inside the "Selection" section.
 const SELECTION_MENU_ORDER = [
   'AI Screening',
   'Interview',
   'Psych Assessment',
   'Medical Assessment',
   'Background Check',
+];
+
+// Explicit ordering for items inside the "Offer & Onboard" section.
+const OFFER_ONBOARD_MENU_ORDER = [
+  'Offer & Contract',
+  'Onboarding',
 ];
 
 // Explicit ordering for top-level sections.
@@ -183,6 +188,7 @@ const useSidebarStructure = (permissions) => {
     });
 
     return Object.values(bySection).sort((a, b) => {
+      // Sort menus within "Selection" section
       if (a.sectionLabel === 'Selection') {
         a.menus.sort((ma, mb) => {
           const ia = SELECTION_MENU_ORDER.indexOf(ma);
@@ -190,6 +196,15 @@ const useSidebarStructure = (permissions) => {
           return (ia === -1 ? 999 : ia) - (ib === -1 ? 999 : ib);
         });
       }
+      // Sort menus within "Offer & Onboard" section
+      if (a.sectionLabel === 'Offer & Onboard') {
+        a.menus.sort((ma, mb) => {
+          const ia = OFFER_ONBOARD_MENU_ORDER.indexOf(ma);
+          const ib = OFFER_ONBOARD_MENU_ORDER.indexOf(mb);
+          return (ia === -1 ? 999 : ia) - (ib === -1 ? 999 : ib);
+        });
+      }
+      // Sort sections
       const ai = SECTION_ORDER.indexOf(a.sectionLabel);
       const bi = SECTION_ORDER.indexOf(b.sectionLabel);
       return (ai === -1 ? 999 : ai) - (bi === -1 ? 999 : bi);

@@ -41,6 +41,7 @@ import BackgroundCheckPage from "./pages/BackgroundCheck"
 import BackgroundCheckCandidatePage from "./components/background-check/BackgroundCheck-Candidate"
 import BackgroundCheckJobPage from "./components/background-check/BackgroundCheck-Job"
 import BackgroundCheckConsentPage from "./pages/portal/BgConsent"
+import OfferWorkboard from "./pages/OfferWorkboard"
 
 //PUNYA BAYU MASIH DUMMY
 import InterviewPage from "./pages/Interview"
@@ -93,16 +94,23 @@ function App() {
           <Route path="/selection/interview/candidate/:interviewId" element={<InterviewCandidatePage />} />
           <Route path="/selection/interview/calibration/:jobId" element={<InterviewCalibration />} />
 
-          {/* <Route path="/selection/interview" element={<InterviewPage />} />  */}
-          <Route path="/selection/background-check" element={<BackgroundCheckPage />} />
-          <Route path="/selection/background-check/job/:jobId" element={<BackgroundCheckJobPage />} />
-          <Route path="/selection/background-check/candidate/:bgId" element={<BackgroundCheckCandidatePage />} />
-          <Route path="/asesmen/assessment-a" element={<AssessmentAPage />} />
-          <Route path="/asesmen/assessment-b" element={<AssessmentBPage />} />
-          <Route path="/asesmen/assessment-c" element={<AssessmentCPage />} />
-          <Route path="/asesmen/assessment-d" element={<AssessmentDPage />} />
-          <Route path="/asesmen/insights-discovery-assessment" element={<InsightsDiscoveryAssessmentPage />} />
-          <Route path="/asesmen/thomas-kilmann-assessment" element={<ThomasKilmannAssessmentPage />} />
+        {/* <Route path="/selection/interview" element={<InterviewPage />} />  */}
+        <Route path="/selection/background-check" element={<BackgroundCheckPage />} />
+        <Route path="/selection/background-check/job/:jobId" element={<BackgroundCheckJobPage />} />
+        <Route path="/selection/background-check/candidate/:bgId" element={<BackgroundCheckCandidatePage />} />
+
+        <Route path="/selection/offer" element={<OfferWorkboard />} />
+        {/* TODO: Add L2, L3, L4 routes when pages are ready */}
+        {/* <Route path="/selection/offer/job/:jobId" element={<OfferJobPage />} /> */}
+        {/* <Route path="/selection/offer/candidate/:offerId" element={<OfferCandidatePage />} /> */}
+        {/* <Route path="/selection/offer/calibration/:jobId" element={<OfferCalibration />} /> */}
+
+        <Route path="/asesmen/assessment-a" element={<AssessmentAPage />} />
+        <Route path="/asesmen/assessment-b" element={<AssessmentBPage />} />
+        <Route path="/asesmen/assessment-c" element={<AssessmentCPage />} />
+        <Route path="/asesmen/assessment-d" element={<AssessmentDPage />} />
+        <Route path="/asesmen/insights-discovery-assessment" element={<InsightsDiscoveryAssessmentPage />} />
+        <Route path="/asesmen/thomas-kilmann-assessment" element={<ThomasKilmannAssessmentPage />} />
 
           <Route path="/settings" element={<SettingsPage />} />
           <Route path="/settings/user-management" element={<UserManagementPage />} />
