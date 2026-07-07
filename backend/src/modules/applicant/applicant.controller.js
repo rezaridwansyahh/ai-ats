@@ -10,6 +10,17 @@ class ApplicantController {
     }
   }
 
+  async getAllByCompanyId(req, res) {
+    const companyId = req.params.company_id;
+
+    try {
+      const applicants = await applicantService.getAllByCompanyId(companyId);
+      res.status(200).json({ message: `List all applicants of Company Id : ${companyId}`, applicants });
+    } catch(err) {
+      res.status(err.status || 500). json({ message: err.message });
+    }
+  }
+
   async getByJobSourcingId(req, res) {
     try {
       const applicants = await applicantService.getByJobSourcingId(req.params.job_sourcing_id);
