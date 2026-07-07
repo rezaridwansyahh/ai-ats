@@ -163,7 +163,7 @@ export default function TalentPoolPage() {
           highlight="Pool"
           subtitle="Browse all applicants. Use the filters below to narrow by position, skill, education, or location."
         />
-        <Button size="sm" className="text-xs shrink-0 mt-1">
+        <Button size="sm" className="text-xs shrink-0 mt-1" disabled title="Coming soon">
           <Sparkles className="h-3.5 w-3.5 mr-1.5" /> AI Suggest
         </Button>
       </div>

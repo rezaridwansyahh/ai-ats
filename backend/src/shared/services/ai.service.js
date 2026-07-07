@@ -2,6 +2,7 @@ import OpenAI from 'openai';
 import { normalizeSkills } from '../../modules/screening/skill-normalizer.js';
 import companyUsageService from '../../modules/company-usage/company-usage.service.js';
 
+console.log("testing: ", process.env.OPENAI_API_KEY);
 const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
 
 const SCORING_MODEL = 'gpt-4o-mini';
