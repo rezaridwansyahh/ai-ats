@@ -620,6 +620,10 @@ function ConsentSection({ bg, setBg, claims, setBanner, setError, onAdvance }) {
   };
 
   const handleAdvanceToTracker = async () => {
+    if (bg.status === 'claims') {
+      setError('Complete Claims stage and confirm selection before advancing to Tracker.');
+      return;
+    }
     setAdvancing(true);
     setError(null);
     try {
@@ -838,12 +842,17 @@ function ConsentSection({ bg, setBg, claims, setBanner, setError, onAdvance }) {
 
       <div className="flex items-center justify-between gap-3 pt-2 border-t flex-wrap">
         <p className="text-[10px] text-muted-foreground">
-          {isSigned
-            ? 'Consent signed — open Tracker to begin lane verification'
-            : 'Once the candidate signs via the portal link, advance to Tracker'}
+          {bg.status === 'claims'
+            ? 'Complete Claims stage and confirm selection before advancing to Tracker'
+            : isSigned
+              ? 'Consent signed — open Tracker to begin lane verification'
+              : 'Once the candidate signs via the portal link, advance to Tracker'}
         </p>
-        <Button size="sm" className="text-xs"
-          onClick={handleAdvanceToTracker} disabled={advancing}>
+        <Button
+          size="sm" className="text-xs"
+          onClick={handleAdvanceToTracker}
+          disabled={advancing || bg.status === 'claims'}
+        >
           {advancing
             ? <><Loader2 className="h-3.5 w-3.5 mr-1.5 animate-spin" /> Advancing…</>
             : <><ChevronRight className="h-3.5 w-3.5 mr-1" /> Open Tracker</>}
@@ -916,6 +925,29 @@ function TrackerSection({ bg, setBg, setBanner, setError, onAdvance }) {
   };
 
   const handleAdvanceToVerdict = async () => {
+    if (bg.status === 'claims' || bg.status === 'consent') {
+      setError(
+        bg.status === 'claims'
+          ? 'Complete Claims and Consent stages before opening Verdict.'
+          : 'Complete Consent stage before opening Verdict.'
+      );
+      return;
+    }
+
+    if (lanes.length === 0) {
+      setError('Create verification lanes before opening Verdict.');
+      return;
+    }
+
+    const unresolvedCount = lanes.filter(
+      (l) => !['pass', 'pass_with_concerns', 'fail'].includes(l.status)
+    ).length;
+
+    if (unresolvedCount > 0) {
+      setError(`${unresolvedCount} lane${unresolvedCount === 1 ? '' : 's'} not yet resolved — mark each lane pass or fail before opening Verdict.`);
+      return;
+    }
+
     setAdvancing(true);
     setError(null);
     try {
@@ -941,6 +973,13 @@ function TrackerSection({ bg, setBg, setBanner, setError, onAdvance }) {
   const passLaneTypes    = lanes.filter((l) => ['pass', 'pass_with_concerns'].includes(l.status)).map((l) => l.lane_type);
   const stalledTypes     = lanes.filter((l) => l.status === 'stalled').map((l) => l.lane_type);
   const inProgressTypes  = lanes.filter((l) => l.status === 'in_progress').map((l) => l.lane_type);
+
+  const unresolvedCount = lanes.filter(
+    (l) => !['pass', 'pass_with_concerns', 'fail'].includes(l.status)
+  ).length;
+  const isBlocked = bg.status === 'claims' || bg.status === 'consent'
+    || lanes.length === 0
+    || unresolvedCount > 0;  
 
   if (loading) {
     return (
@@ -1154,14 +1193,19 @@ function TrackerSection({ bg, setBg, setBanner, setError, onAdvance }) {
       {/* Advance to verdict */}
       <div className="flex items-center justify-between gap-3 pt-2 border-t flex-wrap">
         <p className="text-[10px] text-muted-foreground">
-          {counts.stalled > 0
-            ? `${counts.stalled} lane${counts.stalled === 1 ? '' : 's'} stalled — resolve before opening Verdict`
-            : counts.in_progress > 0
-              ? `${counts.in_progress} lane${counts.in_progress === 1 ? '' : 's'} still in progress`
-              : 'All lanes resolved — open Verdict when ready'}
+          {bg.status === 'claims' || bg.status === 'consent'
+            ? 'Complete Claims and Consent stages first before opening Verdict'
+            : lanes.length === 0
+              ? 'Create verification lanes before opening Verdict'
+              : unresolvedCount > 0
+                ? `${unresolvedCount} lane${unresolvedCount === 1 ? '' : 's'} not yet resolved — mark each lane pass or fail`
+                : 'All lanes resolved — open Verdict when ready'}
         </p>
-        <Button size="sm" className="text-xs"
-          onClick={handleAdvanceToVerdict} disabled={advancing}>
+        <Button
+          size="sm" className="text-xs"
+          onClick={handleAdvanceToVerdict}
+          disabled={advancing || isBlocked}
+        >
           {advancing
             ? <><Loader2 className="h-3.5 w-3.5 mr-1.5 animate-spin" /> Advancing…</>
             : <><ChevronRight className="h-3.5 w-3.5 mr-1" /> Open Verdict</>}
