@@ -1,4 +1,6 @@
 import applicantService from './applicant.service.js';
+import companyService from '../company/company.service.js';
+import userService from '../user/user.service.js';
 
 class ApplicantController {
   async getAll(req, res) {
@@ -11,9 +13,14 @@ class ApplicantController {
   }
 
   async getAllByCompanyId(req, res) {
-    const companyId = req.params.company_id;
+    const userData = req.user;
+    const companyId = Number(req.params.company_id);
 
     try {
+      const user = await userService.getById(userData.user_id);
+
+      if(user.company_id !== companyId) return res.status(403).json({ message: "Forbidden" });
+
       const applicants = await applicantService.getAllByCompanyId(companyId);
       res.status(200).json({ message: `List all applicants of Company Id : ${companyId}`, applicants });
     } catch(err) {
