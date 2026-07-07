@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo, useCallback } from 'react';
-import { Loader2 } from 'lucide-react';
+import { Loader2, User } from 'lucide-react';
 import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from '@/components/ui/table';
@@ -11,7 +11,7 @@ import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from '@/components/ui/select';
 import { JobBanner } from '@/components/source-management/JobBanner';
-import { getAll } from '@/api/applicant.api';
+import { getAllByCompany } from '@/api/applicant.api';
 
 const PLATFORM_OPTIONS = ['linkedin', 'seek', 'internal'];
 const PAGE_SIZE = 10;
@@ -37,7 +37,8 @@ export default function ListCandidate({ selectedJob }) {
   const fetchApplicants = useCallback(async () => {
     setLoading(true);
     try {
-      const res = await getAll();
+      const storage = localStorage.getItem("user");
+      const res = await getAllByCompany(storage.company_id);
       const data = res.data.applicants || [];
       // Fall back to dummy data so the UI isn't blank during development
       setApplicants(data.length > 0 ? data : DUMMY_APPLICANTS);
