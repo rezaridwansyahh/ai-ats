@@ -262,12 +262,12 @@ function useQa(screeningId, scored, enabled) {
     if (!scored || generating) return;
 
     // ‘responded’ is permanently locked — candidate’s answers must not be destroyed.
-    if (status === ‘responded’) return;
+    if (status === 'responded') return;
 
     // ‘sent’ — old link will be invalidated; recruiter must re-send a new email.
-    if (status === ‘sent’) {
+    if (status === 'sent') {
       const ok = window.confirm(
-        ‘The link already sent to the candidate will be permanently invalidated — they will no longer be able to use it.\n\nYou will need to send a new email with the updated questions.\n\nContinue?’
+        'The link already sent to the candidate will be permanently invalidated — they will no longer be able to use it.\n\nYou will need to send a new email with the updated questions.\n\nContinue?'
       );
       if (!ok) return;
     }
@@ -280,9 +280,9 @@ function useQa(screeningId, scored, enabled) {
       const row = res.data?.qa || null;
       setQa(row);
       const qs = Array.isArray(row?.questions) ? row.questions : [];
-      setQuestions(qs.map((q) => ({ topic: q.topic || ‘’, text: q.text || ‘’ })));
+      setQuestions(qs.map((q) => ({ topic: q.topic || '', text: q.text || '' })));
     } catch (err) {
-      setError(err.response?.data?.message || err.message || ‘Failed to generate questions’);
+      setError(err.response?.data?.message || err.message || 'Failed to generate questions');
     } finally {
       setGenerating(false);
     }
@@ -1569,10 +1569,10 @@ function QAPanel({ qaCtl, jobTitle, scored }) {
           </div>
         )}
 
-        {tab === ‘generate’ ? (
+        {tab === 'generate' ? (
           <>
             {/* ── Responded: fully locked ── */}
-            {status === ‘responded’ ? (
+            {status === 'responded' ? (
               <div className="flex items-start gap-3 px-4 py-3 rounded-lg border border-emerald-200 bg-emerald-50 text-xs text-emerald-800">
                 <Check className="h-4 w-4 shrink-0 mt-0.5 text-emerald-600" />
                 <div className="space-y-0.5">
@@ -1585,20 +1585,20 @@ function QAPanel({ qaCtl, jobTitle, scored }) {
             ) : (
               <>
                 {/* ── Sent warning banner ── */}
-                {status === ‘sent’ && (
+                {status === 'sent' && (
                   <div className="flex items-start gap-3 px-4 py-3 rounded-lg border border-amber-200 bg-amber-50 text-xs text-amber-800">
                     <AlertTriangle className="h-4 w-4 shrink-0 mt-0.5 text-amber-600" />
                     <div className="space-y-0.5">
                       <p className="font-semibold">Link already sent to candidate</p>
                       <p className="text-amber-700 leading-relaxed">
-                        Regenerating will <strong>permanently invalidate</strong> the link in the candidate’s email. You will need to send a new link.
+                        Regenerating will <strong>permanently invalidate</strong> the link in the candidate's email. You will need to send a new link.
                       </p>
                     </div>
                   </div>
                 )}
 
                 <div className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
-                  Generate · tuned to {jobTitle || ‘the role’} + parsed CV
+                  Generate · tuned to {jobTitle || 'the role'} + parsed CV
                 </div>
 
                 <div className="grid grid-cols-1 gap-3 md:grid-cols-3">
@@ -1619,7 +1619,7 @@ function QAPanel({ qaCtl, jobTitle, scored }) {
                       <SelectTrigger className="w-full text-xs h-9"><SelectValue /></SelectTrigger>
                       <SelectContent>
                         {QA_NUM_OPTIONS.map((n) => (
-                          <SelectItem key={n} value={String(n)} className="text-xs">{n}{n === 3 ? ‘ (recommended)’ : ‘’}</SelectItem>
+                          <SelectItem key={n} value={String(n)} className="text-xs">{n}{n === 3 ? ' (recommended)' : ''}</SelectItem>
                         ))}
                       </SelectContent>
                     </Select>
@@ -1642,13 +1642,13 @@ function QAPanel({ qaCtl, jobTitle, scored }) {
             <div className="rounded-lg border bg-muted/20 p-4">
               <div className="mb-3 flex items-center justify-between gap-2 flex-wrap">
                 <div className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
-                  {status === ‘responded’ ? ‘Sent questions (read-only)’ : ‘Drafted questions · click to edit’}
+                  {status === 'responded' ? 'Sent questions (read-only)' : 'Drafted questions · click to edit'}
                 </div>
-                {status !== ‘responded’ && (
+                {status !== 'responded' && (
                 <div className="flex gap-2">
                   <Button size="sm" variant="outline" className="text-xs" onClick={onGenerate} disabled={generating}>
                     {generating ? <Loader2 className="h-3 w-3 mr-1 animate-spin" /> : <RefreshCw className="h-3 w-3 mr-1" />}
-                    {questions.length ? ‘Regenerate’ : ‘Generate’}
+                    {questions.length ? 'Regenerate' : 'Generate'}
                   </Button>
                   <Button size="sm" variant="outline" className="text-xs" onClick={onAddQuestion} disabled={generating}>
                     <Plus className="h-3 w-3 mr-1" /> Add custom
