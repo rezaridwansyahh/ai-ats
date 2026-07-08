@@ -17,56 +17,56 @@ import {
 } from '@/api/portal-qa.api';
 import { PORTAL_TOKEN_KEY } from '@/api/portal-axios';
 
-/* ─── Bahasa Indonesia copy (kept in one place for easy editing) ─── */
+/* ─── English copy (kept in one place for easy editing) ─── */
 const T = {
-  brandSub:        'Portal Tanya Jawab',
-  loadInvitation:  'Memuat tautan…',
-  genericError:    'Tidak dapat memuat. Coba muat ulang halaman.',
-  reload:          'Muat ulang',
+  brandSub:        'Follow-up Q&A Portal',
+  loadInvitation:  'Loading invitation…',
+  genericError:    'Unable to load. Please try refreshing the page.',
+  reload:          'Refresh',
   // Expired
-  expiredTitle:    'Tautan kedaluwarsa',
-  expiredBody:     (when) => `Tautan ini sudah kedaluwarsa pada ${when}. Silakan hubungi tim rekrutmen jika Anda memerlukan kesempatan lain.`,
+  expiredTitle:    'Link expired',
+  expiredBody:     (when) => `This link expired on ${when}. Please contact the recruitment team if you need another opportunity to respond.`,
   // Responded
-  respondedTitle:  'Jawaban sudah terkirim',
-  respondedBody:   'Anda sudah mengirim jawaban untuk pertanyaan ini. Terima kasih atas waktunya.',
+  respondedTitle:  'Response already submitted',
+  respondedBody:   'You have already submitted your answers for this invitation. Thank you for your time.',
   // Gate
-  gateLabel:       'Verifikasi Email',
-  gateForPosition: (job) => `Untuk posisi ${job || '—'}`,
-  gateDeadline:    (when) => `Mohon diselesaikan sebelum ${when}.`,
-  gateHelper:      'Masukkan email yang Anda gunakan saat melamar untuk membuka pertanyaan.',
-  gateButton:      'Lanjutkan',
-  gateVerifying:   'Memverifikasi…',
-  gatePlaceholder: 'email@anda.com',
-  gateMismatch:    'Email tidak sesuai. Silakan coba lagi.',
-  gateHelpFooter:  'Ada kendala? Hubungi rekruter yang mengirim tautan ini.',
+  gateLabel:       'Email Verification',
+  gateForPosition: (job) => `For the position: ${job || '—'}`,
+  gateDeadline:    (when) => `Please complete by ${when}.`,
+  gateHelper:      'Enter the email address you used when applying to unlock the questions.',
+  gateButton:      'Continue',
+  gateVerifying:   'Verifying…',
+  gatePlaceholder: 'your@email.com',
+  gateMismatch:    'Email does not match. Please try again.',
+  gateHelpFooter:  'Having trouble? Contact the recruiter who sent you this link.',
   // Form
-  formLabel:       'Pertanyaan Tindak Lanjut',
-  formForPosition: (job) => `Untuk posisi ${job || '—'}`,
-  formDeadline:    (when) => `Mohon kirim sebelum ${when}.`,
-  formIntro:       'Lengkapi formulir lamaran dan jawab pertanyaan berikut. Field bertanda * wajib diisi, dan minimal satu pertanyaan harus dijawab.',
-  answerLabel:     'Jawaban Anda',
-  answerPlaceholder: 'Tulis jawaban Anda di sini…',
-  submitButton:    'Kirim Jawaban',
-  submitting:      'Mengirim…',
-  topicFallback:   'Pertanyaan',
+  formLabel:       'Follow-up Questions',
+  formForPosition: (job) => `For the position: ${job || '—'}`,
+  formDeadline:    (when) => `Please submit by ${when}.`,
+  formIntro:       'Complete the application form and answer the questions below. Fields marked * are required, and at least one question must be answered.',
+  answerLabel:     'Your Answer',
+  answerPlaceholder: 'Type your answer here…',
+  submitButton:    'Submit Answers',
+  submitting:      'Submitting…',
+  topicFallback:   'Question',
   // Tabs + application form
-  tabForm:         'Formulir Lamaran',
-  tabQuestions:    'Pertanyaan',
-  requiredHint:    'Wajib diisi',
-  selectPlaceholder: 'Pilih…',
-  formMissingError: 'Lengkapi field wajib yang ditandai pada Formulir Lamaran.',
-  needOneAnswer:   'Mohon jawab minimal satu pertanyaan.',
-  citiesHint:      'Pilih satu atau lebih.',
+  tabForm:         'Application Form',
+  tabQuestions:    'Questions',
+  requiredHint:    'This field is required',
+  selectPlaceholder: 'Select…',
+  formMissingError: 'Please complete the required fields marked in the Application Form.',
+  needOneAnswer:   'Please answer at least one question.',
+  citiesHint:      'Select one or more.',
   // Submitted
-  submittedTitle:  'Terima kasih!',
-  submittedBody:   'Jawaban Anda sudah terkirim. Anda dapat menutup tab ini.',
+  submittedTitle:  'Thank you!',
+  submittedBody:   'Your answers have been submitted. You may close this tab.',
 };
 
-/* Indonesian-friendly absolute date+time. Falls back to '—' if invalid. */
+/* English-friendly absolute date+time. Falls back to '—' if invalid. */
 function fmtDate(d) {
   if (!d) return '—';
   try {
-    return new Date(d).toLocaleString('id-ID', {
+    return new Date(d).toLocaleString('en-AU', {
       day: '2-digit', month: 'long', year: 'numeric', hour: '2-digit', minute: '2-digit',
     });
   } catch {
@@ -81,35 +81,33 @@ function isExpired(summary) {
   return new Date(summary.expired_at).getTime() < Date.now();
 }
 
-/* ─── Application Form (Bahasa labels + client-side schema helpers) ─── */
-// Schema field/section labels are English; localize known keys, fall back to the
-// schema label for any unknown/custom field so future custom forms still render.
+/* ─── Application Form (English labels + client-side schema helpers) ─── */
+// Fall back to the schema label for any unknown/custom field so future custom forms still render.
 const FORM_FIELD_LABEL_ID = {
-  full_name:         'Nama Lengkap',
-  date_of_birth:     'Tanggal Lahir',
-  national_id:       'KTP / NIK',
-  education_level:   'Pendidikan (Gelar Tertinggi)',
-  institution:       'Nama Institusi',
-  last_employer:     'Perusahaan Terakhir',
-  last_position:     'Posisi Terakhir',
-  employment_period: 'Periode Kerja',
-  preferred_cities:  'Preferensi Kota Penempatan',
+  full_name:         'Full Name',
+  date_of_birth:     'Date of Birth',
+  national_id:       'National ID',
+  education_level:   'Highest Education Level',
+  institution:       'Institution Name',
+  last_employer:     'Last Employer',
+  last_position:     'Last Position',
+  employment_period: 'Employment Period',
+  preferred_cities:  'Preferred Work Location',
 };
 const FORM_SECTION_LABEL_ID = {
-  personal:   'Data Pribadi',
-  education:  'Riwayat Pendidikan',
-  experience: 'Pengalaman Kerja',
-  placement:  'Preferensi Penempatan',
+  personal:   'Personal Details',
+  education:  'Education',
+  experience: 'Work Experience',
+  placement:  'Location Preference',
 };
-// Bahasa placeholders so every text field reads "like any other field".
 const FORM_FIELD_PLACEHOLDER_ID = {
-  full_name:         'Nama lengkap sesuai KTP',
-  national_id:       '16 digit NIK',
-  institution:       'Nama universitas / sekolah',
-  last_employer:     'Nama perusahaan',
-  last_position:     'Jabatan terakhir',
-  employment_period: 'mis. Jan 2020 – Des 2023',
-  preferred_cities:  'mis. Jakarta, Surabaya, atau terbuka untuk relokasi',
+  full_name:         'Full name as on ID',
+  national_id:       'National ID number',
+  institution:       'University / school name',
+  last_employer:     'Company name',
+  last_position:     'Most recent job title',
+  employment_period: 'e.g. Jan 2020 – Dec 2023',
+  preferred_cities:  'e.g. Sydney, Melbourne, or open to relocation',
 };
 const labelFor = (field) => FORM_FIELD_LABEL_ID[field?.key] || field?.label || field?.key || '';
 const sectionLabelFor = (section) => FORM_SECTION_LABEL_ID[section?.key] || section?.label || '';
@@ -456,13 +454,13 @@ export default function QAFollowUpPage() {
                   />
                 ) : (
                   <Card><CardContent className="p-5 text-center text-[11px] text-muted-foreground italic">
-                    Tidak ada formulir lamaran untuk tautan ini.
+                    No application form attached to this link.
                   </CardContent></Card>
                 )
               ) : (
                 questions.length === 0 ? (
                   <Card><CardContent className="p-5 text-center text-[11px] text-muted-foreground italic">
-                    Tidak ada pertanyaan tambahan.
+                    No additional questions for this invitation.
                   </CardContent></Card>
                 ) : (
                   questions.map((q, i) => (

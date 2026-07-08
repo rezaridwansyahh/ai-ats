@@ -719,6 +719,8 @@ class ScreeningModel {
   }
 
   // Insert or replace the Q&A set for a screening; regenerate resets it to draft.
+  // If the existing row was 'sent', a new token is generated so the old portal link
+  // is permanently invalidated — the recruiter must send a fresh email.
   async upsertQa({ screening_id, focus_area, language, num_questions, questions, created_by }) {
     const result = await getDb().query(
       `
@@ -730,6 +732,10 @@ class ScreeningModel {
         num_questions = EXCLUDED.num_questions,
         questions     = EXCLUDED.questions,
         status        = 'draft',
+        token         = CASE
+                          WHEN screening_qa.status = 'sent' THEN gen_random_uuid()
+                          ELSE screening_qa.token
+                        END,
         answers       = NULL,
         application_form        = NULL,
         application_form_schema = NULL,

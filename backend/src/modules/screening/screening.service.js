@@ -506,7 +506,7 @@ class ScreeningService {
   }
 
   // Email the questions to the candidate via the portal link; mark the set sent.
-  async qaSend(screening_id) {
+  async qaSend(screening_id, { subject, body } = {}) {
     const qa = await screeningModel.getQaByScreening(screening_id);
     if (!qa) throw { status: 404, message: 'No Q&A set for this screening — generate first' };
     if (!Array.isArray(qa.questions) || qa.questions.length === 0) {
@@ -534,6 +534,8 @@ class ScreeningService {
       candidateEmail: ctx.candidate_email,
       jobTitle: ctx.job_title,
       link,
+      customSubject: subject || null,
+      customBody: body || null,
     });
 
     return { sent_to: ctx.candidate_email, link, status: sent.status, expired_at: sent.expired_at };
