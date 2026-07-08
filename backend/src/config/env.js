@@ -7,3 +7,5 @@ const __filename = fileURLToPath(import.meta.url)
 const __dirname = path.dirname(__filename)
 
 dotenv.config({ path: path.resolve(__dirname, '../../.env.dev') }); //change this
+
+console.log("testing: ", process.env.OPENAI_API_KEY);

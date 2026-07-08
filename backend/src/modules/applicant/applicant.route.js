@@ -10,6 +10,7 @@ router.get('/', applicantController.getAll);
 router.get('/job-sourcing/:job_sourcing_id', applicantController.getByJobSourcingId);
 router.get('/:id', applicantController.getById);
 router.get('/:id/cv', applicantController.downloadCv);
+router.get('/company/:company_id', applicantController.getAllByCompanyId);
 
 router.delete('/:id', applicantController.delete);
 

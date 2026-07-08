@@ -13,7 +13,7 @@ import {
 import { StatCard } from '@/components/cards/StatCard';
 import AddToJobDialog from '@/components/talent-pool/AddToJobDialog';
 import { searchScreening } from '@/api/screening.api';
-import { getAll } from '@/api/applicant.api';
+import { getAllByCompany } from '@/api/applicant.api';
 import { PageHeader } from '@/components/common';
 
 const PAGE_SIZE = 10;
@@ -49,7 +49,8 @@ export default function TalentPoolPage() {
     (async () => {
       setStatsLoading(true);
       try {
-        const { data } = await getAll();
+        const storage = localStorage.getItem("user");
+        const { data } = await getAllByCompany(localStorage.getItem(storage.company_id));
         if (!cancelled) setAllApplicants(data.applicants || []);
       } catch {
         if (!cancelled) setAllApplicants([]);
@@ -163,7 +164,7 @@ export default function TalentPoolPage() {
           highlight="Pool"
           subtitle="Browse all applicants. Use the filters below to narrow by position, skill, education, or location."
         />
-        <Button size="sm" className="text-xs shrink-0 mt-1">
+        <Button size="sm" className="text-xs shrink-0 mt-1" disabled title="Coming soon">
           <Sparkles className="h-3.5 w-3.5 mr-1.5" /> AI Suggest
         </Button>
       </div>

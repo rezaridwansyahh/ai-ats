@@ -9,6 +9,16 @@ class ApplicantModel {
     return result.rows;
   }
 
+  async getAllByCompanyId(company_id) {
+    const result = await getDb().query(`
+      SELECT * FROM master_applicant
+      WHERE company_id = $1
+      ORDER BY id ASC
+    `, [company_id]);
+    
+    return result.rows;
+  }
+
   async getById(id) {
     const result = await getDb().query(`
       SELECT * FROM master_applicant
