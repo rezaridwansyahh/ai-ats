@@ -2,17 +2,12 @@ import { useState, useEffect, useMemo, useCallback } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import {
   Loader2, AlertTriangle, Wand2,
-  ArrowRight, ArrowLeft, Check, ChevronUp, ChevronDown, ChevronRight,
+  ArrowLeft, Check,
   FileText, MessageSquare,
 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Checkbox } from '@/components/ui/checkbox';
-import { Textarea } from '@/components/ui/textarea';
-import {
-  Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
-} from '@/components/ui/table';
 
 import { getJobById } from '@/api/job.api';
 import {
@@ -23,29 +18,6 @@ import ParseStageDashboard from '@/components/ai-screening/ParseStageDashboard';
 import MatchStageDashboard from '@/components/ai-screening/MatchStageDashboard';
 import QAStageDashboard from '@/components/ai-screening/QAStageDashboard';
 import PipelineStageDashboard from '@/components/ai-screening/PipelineStageDashboard';
-
-
-function scoreColor(score) {
-  if (score == null) return 'text-muted-foreground';
-  if (score >= 80) return 'text-emerald-700';
-  if (score >= 60) return 'text-amber-700';
-  return 'text-rose-700';
-}
-
-function scoreBg(score) {
-  if (score == null) return 'bg-gray-100 text-gray-500 border-gray-200';
-  if (score >= 80) return 'bg-emerald-100 text-emerald-700 border-emerald-200';
-  if (score >= 60) return 'bg-amber-100 text-amber-700 border-amber-200';
-  return 'bg-rose-100 text-rose-700 border-rose-200';
-}
-
-function recommendation(score) {
-  if (score == null) return { label: 'Awaiting score', tone: 'bg-muted text-muted-foreground border-border' };
-  if (score >= 90) return { label: 'Strong advance', tone: 'bg-emerald-50 text-emerald-700 border-emerald-200' };
-  if (score >= 80) return { label: 'Advance',         tone: 'bg-emerald-50 text-emerald-700 border-emerald-200' };
-  if (score >= 60) return { label: 'Hold · borderline', tone: 'bg-amber-50 text-amber-700 border-amber-200' };
-  return                  { label: 'Reject · below threshold', tone: 'bg-rose-50 text-rose-700 border-rose-200' };
-}
 
 function statusTone(status) {
   switch ((status || '').toLowerCase()) {
@@ -79,14 +51,9 @@ export default function AIScreeningPage() {
   const [matchRows, setMatchRows]   = useState([]);
   const [qaRows, setQaRows]         = useState([]);
 
-  // Ready-cohort interaction
-  const [selected, setSelected] = useState(new Set());
-  const [sortKey, setSortKey] = useState('overall_score');
-  const [sortDir, setSortDir] = useState('desc');
-  const [reason, setReason] = useState('');
   const [advancing, setAdvancing] = useState(false);
 
-  // Accordion open state — Ready open by default
+  // Accordion open state — Parse open by default
   const [activeStage, setActiveStage] = useState('parse');
 
   // Refresh just the stage tables (after run / advance)
@@ -102,7 +69,6 @@ export default function AIScreeningPage() {
     setParseRows(Array.isArray(parseRes.data?.candidates)   ? parseRes.data.candidates   : []);
     setMatchRows(Array.isArray(matchRes.data?.candidates)   ? matchRes.data.candidates   : []);
     setQaRows(Array.isArray(qaRes.data?.candidates)         ? qaRes.data.candidates      : []);
-    setSelected(new Set());
   }, [jobId]);
 
   // Full load on jobId change
@@ -128,7 +94,6 @@ export default function AIScreeningPage() {
         setParseRows(Array.isArray(parseRes.data?.candidates)  ? parseRes.data.candidates : []);
         setMatchRows(Array.isArray(matchRes.data?.candidates)  ? matchRes.data.candidates : []);
         setQaRows(Array.isArray(qaRes.data?.candidates)        ? qaRes.data.candidates    : []);
-        setSelected(new Set());
       } catch (err) {
         if (!cancelled) setError(err.response?.data?.message || err.message || 'Failed to load screening');
       } finally {
@@ -137,57 +102,6 @@ export default function AIScreeningPage() {
     })();
     return () => { cancelled = true; };
   }, [jobId]);
-
-  // Cohort sort + selection
-  const sortedCohort = useMemo(() => {
-    const list = [...cohortRows];
-    list.sort((a, b) => {
-      const av = a[sortKey] ?? -1;
-      const bv = b[sortKey] ?? -1;
-      const diff = av === bv ? a.screening_id - b.screening_id : (av < bv ? -1 : 1);
-      return sortDir === 'desc' ? -diff : diff;
-    });
-    return list;
-  }, [cohortRows, sortKey, sortDir]);
-
-  const toggleSort = (key) => {
-    if (sortKey === key) setSortDir((d) => (d === 'desc' ? 'asc' : 'desc'));
-    else { setSortKey(key); setSortDir('desc'); }
-  };
-
-  const allSelected = sortedCohort.length > 0 && sortedCohort.every((r) => selected.has(r.screening_id));
-  const toggleAll = () => {
-    setSelected(allSelected ? new Set() : new Set(sortedCohort.map((r) => r.screening_id)));
-  };
-
-  const toggle = (id) => {
-    setSelected((cur) => {
-      const next = new Set(cur);
-      next.has(id) ? next.delete(id) : next.add(id);
-      return next;
-    });
-  };
-
-  const handleAdvance = async () => {
-    if (selected.size === 0 || advancing) return;
-    setAdvancing(true);
-    setError(null);
-    setResultBanner(null);
-    try {
-      const res = await advanceBulk(jobId, [...selected], { decision_reason: reason || undefined });
-      const { advanced = [], skipped = [], errors = [], interview_ids = [] } = res.data || {};
-      setResultBanner({
-        ok: errors.length === 0,
-        text: `${advanced.length} advanced · ${skipped.length} skipped · ${errors.length} errors · ${interview_ids.length} interview rows created`,
-      });
-      setReason('');
-      await loadStages();
-    } catch (err) {
-      setError(err.response?.data?.message || err.message || 'Advance-bulk failed');
-    } finally {
-      setAdvancing(false);
-    }
-  };
 
   // Lazy-create screening row if missing, then open candidate detail
   const openCandidate = async (row) => {
@@ -313,17 +227,15 @@ export default function AIScreeningPage() {
                     <span className="text-xs font-semibold flex items-center gap-1.5">
                       <Icon className="h-3.5 w-3.5 text-primary" /> {t.num} · {t.label}
                     </span>
-                    {t.soon
-                      ? <span className="text-[9px] uppercase tracking-wider text-muted-foreground">soon</span>
-                      : <span className="text-xs font-mono font-bold">
-                          {t.done} <span className="font-sans font-normal text-muted-foreground">{t.word}</span>
-                        </span>}
+                    <span className="text-xs font-mono font-bold">
+                      {t.done} <span className="font-sans font-normal text-muted-foreground">{t.word}</span>
+                    </span>
                   </div>
                   <div className="mt-2 h-1.5 rounded-full bg-muted overflow-hidden">
                     <div className="h-full bg-primary transition-all" style={{ width: `${t.pct}%` }} />
                   </div>
                   <div className="mt-1.5 text-[10px] text-muted-foreground">
-                    {t.soon ? 'Engine not built yet' : `${t.footer} · see candidates`}
+                    {t.footer} · see candidates
                   </div>
                 </button>
               );
@@ -331,159 +243,58 @@ export default function AIScreeningPage() {
           </div>
         </CardContent>
       </Card>
-      
+
       {/* Stage detail */}
-        {activeStage === 'parse' && (
-          <ParseStageDashboard
-            pendingRows={parseRows}
-            parsedRows={[...matchRows, ...qaRows, ...cohortRows]}
-            onOpen={openCandidate}
-          />
-        )}
+      {activeStage === 'parse' && (
+        <ParseStageDashboard
+          pendingRows={parseRows}
+          parsedRows={[...matchRows, ...qaRows, ...cohortRows]}
+          onOpen={openCandidate}
+        />
+      )}
 
-        {activeStage === 'match' && (
-          <MatchStageDashboard
-            jobId={jobId}
-            pendingRows={matchRows}
-            scoredRows={[...qaRows, ...cohortRows]}
-            onOpen={openCandidate}
-            onScored={loadStages}   // reuses the existing loadStages() you already have
-          />
-        )}
+      {activeStage === 'match' && (
+        <MatchStageDashboard
+          jobId={jobId}
+          pendingRows={matchRows}
+          scoredRows={[...qaRows, ...cohortRows]}
+          onOpen={openCandidate}
+          onScored={loadStages}
+        />
+      )}
 
-        {activeStage === 'qa' && (
-          <QAStageDashboard
-            pendingRows={qaRows}
-            respondedRows={cohortRows}
-            onOpen={openCandidate}
-          />
-        )}
+      {activeStage === 'qa' && (
+        <QAStageDashboard
+          pendingRows={qaRows}
+          respondedRows={cohortRows}
+          onOpen={openCandidate}
+        />
+      )}
 
-        {activeStage === 'ready' && (
-          <PipelineStageDashboard
-            rows={cohortRows}
-            advancing={advancing}
-            onAdvance={async (ids, reasonText) => {
-              setAdvancing(true);
-              setError(null);
-              setResultBanner(null);
-              try {
-                const res = await advanceBulk(jobId, ids, { decision_reason: reasonText });
-                const { advanced = [], skipped = [], errors = [], interview_ids = [] } = res.data || {};
-                setResultBanner({
-                  ok: errors.length === 0,
-                  text: `${advanced.length} advanced · ${skipped.length} skipped · ${errors.length} errors · ${interview_ids.length} interview rows created`,
-                });
-                await loadStages();
-              } catch (err) {
-                setError(err.response?.data?.message || err.message || 'Advance-bulk failed');
-              } finally {
-                setAdvancing(false);
-              }
-            }}
-          />
-        )}
+      {activeStage === 'ready' && (
+        <PipelineStageDashboard
+          rows={cohortRows}
+          advancing={advancing}
+          onAdvance={async (ids, reasonText) => {
+            setAdvancing(true);
+            setError(null);
+            setResultBanner(null);
+            try {
+              const res = await advanceBulk(jobId, ids, { decision_reason: reasonText });
+              const { advanced = [], skipped = [], errors = [], interview_ids = [] } = res.data || {};
+              setResultBanner({
+                ok: errors.length === 0,
+                text: `${advanced.length} advanced · ${skipped.length} skipped · ${errors.length} errors · ${interview_ids.length} interview rows created`,
+              });
+              await loadStages();
+            } catch (err) {
+              setError(err.response?.data?.message || err.message || 'Advance-bulk failed');
+            } finally {
+              setAdvancing(false);
+            }
+          }}
+        />
+      )}
     </div>
-  );
-}
-
-function StageSection({ id, num, title, count, subtitle, open, onToggle, children }) {
-  return (
-    <Card id={id}>
-      <CardHeader className="pb-3 cursor-pointer" onClick={onToggle}>
-        <CardTitle className="text-sm flex items-center gap-2">
-          <ChevronRight className={`h-4 w-4 transition-transform ${open ? 'rotate-90' : ''}`} />
-          <span className="text-[10px] font-bold text-muted-foreground bg-muted rounded px-1.5 py-0.5">{num}</span>
-          {title}
-          {count != null && (
-            <Badge variant="secondary" className="text-[10px] font-mono">{count}</Badge>
-          )}
-          {subtitle && <span className="text-[11px] font-normal text-muted-foreground">· {subtitle}</span>}
-        </CardTitle>
-      </CardHeader>
-      {open && <CardContent className="px-0 pb-0">{children}</CardContent>}
-    </Card>
-  );
-}
-
-function TwoPane({ left, right, onOpen }) {
-  return (
-    <div className="grid grid-cols-2 divide-x min-h-[200px]">
-      <div>
-        <div className="px-4 py-2 border-b bg-muted/30 flex items-center gap-2">
-          <span className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
-            {left.label}
-          </span>
-          <span className="text-[10px] font-mono bg-muted px-1.5 py-0.5 rounded-full text-muted-foreground">
-            {left.rows.length}
-          </span>
-        </div>
-        <LaneTable rows={left.rows} onOpen={onOpen} />
-      </div>
-      <div>
-        <div className="px-4 py-2 border-b bg-emerald-50 flex items-center gap-2">
-          <span className="text-[10px] font-semibold uppercase tracking-wide text-emerald-700">
-            {right.label}
-          </span>
-          <span className="text-[10px] font-mono bg-emerald-100 text-emerald-700 px-1.5 py-0.5 rounded-full">
-            {right.rows.length}
-          </span>
-        </div>
-        <LaneTable rows={right.rows} onOpen={onOpen} muted />
-      </div>
-    </div>
-  );
-}
-
-
-function LaneTable({ rows, onOpen, muted = false }) {
-  if (!rows || rows.length === 0) {
-    return (
-      <p className={`py-8 text-center text-xs italic ${muted ? 'text-muted-foreground/50' : 'text-muted-foreground'}`}>
-        No candidates in this stage.
-      </p>
-    );
-  }
-  return (
-    <Table className="w-full">
-      <TableHeader className={muted ? 'bg-muted/20' : 'bg-muted/40'}>
-        <TableRow>
-          <TableHead className="text-[10px] font-bold uppercase pl-4">Candidate</TableHead>
-          <TableHead className="text-[10px] font-bold uppercase">Last position</TableHead>
-          <TableHead className="text-[10px] font-bold uppercase">Location</TableHead>
-        </TableRow>
-      </TableHeader>
-      <TableBody>
-        {rows.map((r) => (
-          <TableRow
-            key={r.screening_id ?? r.applicant_id}
-            className={`cursor-pointer transition-colors ${muted ? 'opacity-60 hover:opacity-100 hover:bg-muted/20' : 'hover:bg-muted/30'}`}
-            onClick={() => onOpen(r)}
-          >
-            <TableCell className="text-xs pl-4">
-              <div className="font-medium truncate">{r.applicant_name || `#${r.applicant_id}`}</div>
-              <div className="text-[10px] text-muted-foreground">#{r.applicant_id}</div>
-            </TableCell>
-            <TableCell className="text-xs text-muted-foreground">{r.last_position || '—'}</TableCell>
-            <TableCell className="text-xs text-muted-foreground">{r.address || '—'}</TableCell>
-          </TableRow>
-        ))}
-      </TableBody>
-    </Table>
-  );
-}
-
-function SortableHeader({ label, col, sortKey, sortDir, onClick, className }) {
-  const active = sortKey === col;
-  return (
-    <TableHead
-      className={`text-[10px] font-bold uppercase cursor-pointer select-none ${className || ''}`}
-      onClick={() => onClick(col)}
-    >
-      <span className="inline-flex items-center gap-1 justify-center">
-        {label}
-        {active && (sortDir === 'desc' ? <ChevronDown className="h-3 w-3" /> : <ChevronUp className="h-3 w-3" />)}
-      </span>
-    </TableHead>
   );
 }

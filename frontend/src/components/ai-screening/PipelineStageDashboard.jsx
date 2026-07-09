@@ -7,14 +7,7 @@ import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Textarea } from '@/components/ui/textarea';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { StatCard } from './shared';
-
-function recommendation(score) {
-  if (score == null) return { label: 'Awaiting score', tone: 'bg-muted text-muted-foreground border-border', bucket: 'awaiting' };
-  if (score >= 80) return { label: 'Advance',            tone: 'bg-emerald-50 text-emerald-700 border-emerald-200', bucket: 'advance' };
-  if (score >= 60) return { label: 'Hold · borderline',  tone: 'bg-amber-50 text-amber-700 border-amber-200',       bucket: 'awaiting' };
-  return                  { label: 'Reject · below threshold', tone: 'bg-rose-50 text-rose-700 border-rose-200',    bucket: 'archive' };
-}
+import { StatCard, scoreRecommendation } from './shared';
 
 function scoreBg(score) {
   if (score == null) return 'bg-gray-100 text-gray-500 border-gray-200';
@@ -43,7 +36,7 @@ export default function PipelineStageDashboard({ rows = [], onAdvance, advancing
 
   const buckets = useMemo(() => {
     const b = { advance: [], awaiting: [], archive: [] };
-    for (const r of rows) b[recommendation(r.overall_score).bucket].push(r);
+    for (const r of rows) b[scoreRecommendation(r.overall_score).bucket].push(r);
     return b;
   }, [rows]);
 
@@ -152,7 +145,7 @@ export default function PipelineStageDashboard({ rows = [], onAdvance, advancing
                 </TableHeader>
                 <TableBody>
                   {rows.map((r) => {
-                    const rec = recommendation(r.overall_score);
+                    const rec = scoreRecommendation(r.overall_score);
                     const isSel = selected.has(r.screening_id);
                     return (
                       <TableRow key={r.screening_id} className={isSel ? 'bg-primary/5' : ''}>

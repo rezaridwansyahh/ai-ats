@@ -28,6 +28,8 @@ export default function ReportCandidateDetailPage() {
   const [activeStep, setActiveStep] = useState(0);
   const [activeSubStep, setActiveSubStep] = useState(0);
 
+  const [loading, setLoading] = useState(false);
+
   const fetchCandidate = useCallback(async () => {
     setLoading(true);
     try {
@@ -83,12 +85,16 @@ export default function ReportCandidateDetailPage() {
           <div className="space-y-4 min-w-0">
             <Card className="py-8 gap-3">
               <CardContent className="flex items-center justify-center">
-                <Pattern 
-                  candidate={candidate}
-                  stages={stages}
-                  activeStep={activeStep}
-                  onActiveStepChange={setActiveStep}
-                />
+                {loading ? (
+                  <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
+                ) : (
+                  <Pattern 
+                    candidate={candidate}
+                    stages={stages}
+                    activeStep={activeStep}
+                    onActiveStepChange={setActiveStep}
+                  />
+                )}
               </CardContent>
             </Card>
             
