@@ -13,7 +13,7 @@ import {
 import { StatCard } from '@/components/cards/StatCard';
 import AddToJobDialog from '@/components/talent-pool/AddToJobDialog';
 import { searchScreening } from '@/api/screening.api';
-import { getAllByCompany } from '@/api/applicant.api';
+import { getAllByCompanyWithScore } from '@/api/applicant.api';
 import { PageHeader } from '@/components/common';
 
 const PAGE_SIZE = 10;
@@ -50,7 +50,7 @@ export default function TalentPoolPage() {
       setStatsLoading(true);
       try {
         const storage = localStorage.getItem("user");
-        const { data } = await getAllByCompany(localStorage.getItem(storage.company_id));
+        const { data } = await getAllByCompanyWithScore(localStorage.getItem(storage.company_id));
         if (!cancelled) setAllApplicants(data.applicants || []);
       } catch {
         if (!cancelled) setAllApplicants([]);
