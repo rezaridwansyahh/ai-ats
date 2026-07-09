@@ -11,7 +11,7 @@ import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from '@/components/ui/select';
 import { JobBanner } from '@/components/source-management/JobBanner';
-import { getAllByCompanyId } from '@/api/applicant.api';
+import { getAllByCompany } from '@/api/applicant.api';
 
 const PLATFORM_OPTIONS = ['linkedin', 'seek', 'internal'];
 const PAGE_SIZE = 10;
@@ -39,7 +39,7 @@ export default function ListCandidate({ selectedJob }) {
     setError(null);
     try {
       const storage = JSON.parse(localStorage.getItem("user"));
-      const res = await getAllByCompanyId(storage.company_id);
+      const res = await getAllByCompany(storage.company_id);
       setApplicants(res.data.applicants || []);
     } catch (err) {
       setError(err.response?.data?.message || err.message || 'Failed to load applicants');

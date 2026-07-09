@@ -33,9 +33,10 @@ class ApplicantModel {
       FROM master_applicant ma
       WHERE ma.company_id = $1
       ORDER BY latest_score DESC NULLS LAST;  -- Sort by the latest score
-    `)
-  }
+    `, [company_id]);
 
+    return result.rows;
+  }
   async getById(id) {
     const result = await getDb().query(`
       SELECT * FROM master_applicant
