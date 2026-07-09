@@ -406,9 +406,7 @@ Return STRICT JSON:
       en: 'English only.',
       id: 'Bahasa Indonesia only.',
     };
-    // Locked to Bahasa Indonesia for now — questions are always written in Bahasa
-    // regardless of the requested `language`.
-    const langGuidance = langMap['id'];
+    const langGuidance = langMap[language] || langMap['en'];
 
     const jobPayload = {
       job_title: job.job_title || '',
