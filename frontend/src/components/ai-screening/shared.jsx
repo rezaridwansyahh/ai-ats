@@ -11,6 +11,15 @@ import { Card, CardContent } from '@/components/ui/card';
  * are live, consider having AIScreeningCandidate.jsx import from here too instead of
  * keeping two copies — flagging rather than changing that file now since it's out of
  * scope for this pass.
+ *
+ * NOTE: scoreRecommendation below replaces two previously-separate, disagreeing copies:
+ * AIScreeningCandidatePage.jsx had its own scoreRecommendation() using 70/50 thresholds
+ * and "Recommended / Consider / Not Recommended" labels; PipelineStageDashboard.jsx had
+ * its own recommendation() using 80/60 and "Advance / Hold / Reject" labels. Standardized
+ * on the Pipeline version since its labels map directly onto the real decision values
+ * the backend accepts (setScreeningDecision only takes advance | hold | reject) — the
+ * candidate-page wording didn't correspond to any real backend state. Both files should
+ * import this instead of defining their own.
  */
 
 export function StatCard({ label, value, tone = 'default', hint }) {
@@ -28,6 +37,23 @@ export function StatCard({ label, value, tone = 'default', hint }) {
       </CardContent>
     </Card>
   );
+}
+
+// Score → recommendation mapping. Labels match the real decision values the
+// backend accepts (advance / hold / reject) so what a recruiter sees always
+// lines up with what they can actually click. `bucket` groups scores for
+// PipelineStageDashboard's three-column layout (advance / awaiting / archive).
+export function scoreRecommendation(score) {
+  if (score == null) {
+    return { label: 'Awaiting score', tone: 'bg-muted text-muted-foreground border-border', bucket: 'awaiting' };
+  }
+  if (score >= 80) {
+    return { label: 'Advance', tone: 'bg-emerald-50 text-emerald-700 border-emerald-200', bucket: 'advance' };
+  }
+  if (score >= 60) {
+    return { label: 'Hold · borderline', tone: 'bg-amber-50 text-amber-700 border-amber-200', bucket: 'awaiting' };
+  }
+  return { label: 'Reject · below threshold', tone: 'bg-rose-50 text-rose-700 border-rose-200', bucket: 'archive' };
 }
 
 export const FIXED_KEYS = ['skills', 'experience', 'career_trajectory', 'education'];

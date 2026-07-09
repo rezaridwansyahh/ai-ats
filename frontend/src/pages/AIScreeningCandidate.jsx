@@ -33,7 +33,7 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 
-import { FIXED_KEYS, FIXED_META, DEFAULT_RUBRIC, totalWeight } from '@/components/ai-screening/shared';
+import { FIXED_KEYS, FIXED_META, DEFAULT_RUBRIC, totalWeight, scoreRecommendation } from '@/components/ai-screening/shared';
 
 /* ─── Engine config (mirrors the spec) ─── */
 const ENGINES = [
@@ -42,42 +42,9 @@ const ENGINES = [
   { key: 'qa',    label: 'Q&A',    sub: 'follow-up',   icon: MessageSquare, comingSoon: true },
 ];
 
-/* ─── AI Matching rubric config ─── */
-// const FIXED_KEYS = ['skills', 'experience', 'career_trajectory', 'education'];
-
-// const FIXED_META = {
-//   skills:            { label: 'Skills',            icon: Code2,        description: 'Match against the required + preferred skills' },
-//   experience:        { label: 'Experience',        icon: Briefcase,    description: 'Years, role relevance, progression vs seniority' },
-//   career_trajectory: { label: 'Career Trajectory', icon: TrendingUp,   description: 'Tenure pattern, stability, growth (validate via Q&A)' },
-//   education:         { label: 'Education',         icon: GraduationCap,description: 'Degree relevance + school tier vs qualifications' },
-// };
-
-// const DEFAULT_RUBRIC = {
-//   fixed_criteria: {
-//     skills:            { weight: 45 },
-//     experience:        { weight: 35 },
-//     career_trajectory: { weight: 15 },
-//     education:         { weight: 5  },
-//   },
-//   custom_criteria: [],
-// };
-
-// function totalWeight(rubric) {
-//   const fixedSum = FIXED_KEYS.reduce((s, k) => s + (Number(rubric.fixed_criteria[k]?.weight) || 0), 0);
-//   const customSum = (rubric.custom_criteria || []).reduce((s, c) => s + (Number(c.weight) || 0), 0);
-//   return fixedSum + customSum;
-// }
-
 function fmt(d) {
   if (!d) return '—';
   try { return new Date(d).toISOString().slice(0, 10); } catch { return '—'; }
-}
-
-function scoreRecommendation(score) {
-  if (score == null) return null;
-  if (score >= 70) return { label: 'Recommended',     badge: 'bg-emerald-100 text-emerald-700' };
-  if (score >= 50) return { label: 'Consider',        badge: 'bg-amber-100 text-amber-700' };
-  return              { label: 'Not Recommended', badge: 'bg-rose-100 text-rose-700' };
 }
 
 /* ─── Follow-up Q&A config ─── */
@@ -660,7 +627,7 @@ function SidebarAction({ activeEngine, match, qa, scored, parsed, overall_score,
             {scored ? (() => {
               const rec = scoreRecommendation(overall_score);
               return rec ? (
-                <Badge className={`text-[10px] ${rec.badge}`}>
+                <Badge className={`text-[10px] ${rec.tone}`}>
                   {overall_score}% · {rec.label}
                 </Badge>
               ) : null;
@@ -720,7 +687,7 @@ function SidebarAction({ activeEngine, match, qa, scored, parsed, overall_score,
           {scored ? (() => {
             const rec = scoreRecommendation(overall_score);
             return rec ? (
-              <Badge className={`text-[10px] ${rec.badge}`}>
+              <Badge className={`text-[10px] ${rec.tone}`}>
                 {overall_score}% · {rec.label}
               </Badge>
             ) : null;
