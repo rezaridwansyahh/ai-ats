@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Sparkles, Loader2, Check, Save, X } from 'lucide-react';
+import { Sparkles, Loader2, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import {
@@ -42,9 +42,8 @@ const SUB_WEIGHTS = { GI: '30%', KA: '17.5%' };
 const TRAIT_ORDER = ['E', 'A', 'C', 'N', 'O'];
 const DISC_ORDER = ['D', 'I', 'S', 'C'];
 
-export default function ReportView({ profile, results, state, updateState, saveNow, onClose }) {
+export default function ReportView({ profile, results, state, updateState, saveNow }) {
   const [showDetail, setShowDetail] = useState(false);
-  const [saveBtnState, setSaveBtnState] = useState('idle'); // idle | saving | saved | error
 
   const tk = results.tk;
   const bigfive = results.bigfive;
@@ -89,18 +88,6 @@ export default function ReportView({ profile, results, state, updateState, saveN
       SYNTHESIS_IDS.map((id) => [id, state['edit_' + id] || '']),
     ),
   });
-
-  const handleSave = async () => {
-    if (!saveNow) return;
-    setSaveBtnState('saving');
-    try {
-      await saveNow();
-      setSaveBtnState('saved');
-      setTimeout(() => setSaveBtnState('idle'), 2000);
-    } catch {
-      setSaveBtnState('error');
-    }
-  };
 
   return (
     <div className="max-w-[1100px] mx-auto px-4 py-5 pb-20">
@@ -565,26 +552,6 @@ export default function ReportView({ profile, results, state, updateState, saveN
         Myralix Assessment Platform · Laporan Psikologis Battery A v10 · RAHASIA — Hanya untuk penggunaan internal
       </div>
 
-      <div className="flex flex-wrap items-center gap-2 mt-3">
-        <Button variant="outline" size="sm" onClick={() => window.print()}>🖨 Cetak / Simpan PDF</Button>
-        <Button size="sm" onClick={handleSave} disabled={saveBtnState === 'saving' || !saveNow}
-                className="bg-teal-700 hover:bg-teal-800 text-white">
-          {saveBtnState === 'saving' ? (
-            <><Loader2 className="h-3.5 w-3.5 animate-spin mr-1.5" /> Menyimpan…</>
-          ) : saveBtnState === 'saved' ? (
-            <><Check className="h-3.5 w-3.5 mr-1.5" /> Tersimpan</>
-          ) : saveBtnState === 'error' ? (
-            <>❌ Gagal — coba lagi</>
-          ) : (
-            <><Save className="h-3.5 w-3.5 mr-1.5" /> Simpan Sekarang</>
-          )}
-        </Button>
-        {onClose && (
-          <Button variant="outline" size="sm" onClick={onClose} className="ml-auto">
-            Tutup
-          </Button>
-        )}
-      </div>
     </div>
   );
 }

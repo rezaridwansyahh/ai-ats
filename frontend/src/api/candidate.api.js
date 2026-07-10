@@ -48,3 +48,6 @@ export const getCandidateById = (id) =>
 
 export const getProgress = (id) =>
   api.get(`/candidate-pipeline/${id}/progress`);
+
+export const addCandidateStage = (candidateId, job_stage_id, decision) =>
+  api.post(`/candidate-pipeline/${candidateId}/stages`, { job_stage_id, decision });
