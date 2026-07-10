@@ -30,6 +30,7 @@ import { dummySessions } from '../data/dummy_sessions.js';
 import companyBudgetsData, { createCompanyBudget } from '../data/company_budgets.js';
 import candidateInterviewData from '../data/candidate_interview.js';
 import candidateBgData from '../data/candidate_bg.js';
+import candidateOfferData from '../data/candidate_offer.js';
 
 const seed = async () => {
   await getDb().query('BEGIN');
@@ -37,6 +38,7 @@ const seed = async () => {
   try {
     await getDb().query('DELETE FROM company_budgets');
     await getDb().query('DELETE FROM company_usage');
+    await getDb().query('DELETE FROM candidate_offer');
     await getDb().query('DELETE FROM bg_claim');       
     await getDb().query('DELETE FROM candidate_bg'); 
     await getDb().query('DELETE FROM candidate_interview');
@@ -376,6 +378,24 @@ const seed = async () => {
       SELECT setval('candidate_bg_id_seq', (SELECT MAX(id) FROM candidate_bg))
     `);
     console.log(`Seeded ${candidateBgData.length} candidate_bg rows`);
+
+    // 21d. candidate_offer
+    for (const o of candidateOfferData) {
+      await getDb().query(
+        `INSERT INTO candidate_offer (
+          id, company_id, candidate_id, job_id, position_title, contract_type,
+          offer_status, contract_status, metadata,
+          sent_at, accepted_at, rejected_at, expired_at, created_by
+        )
+        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14)
+        ON CONFLICT (candidate_id, job_id) DO NOTHING`,
+        [
+          o.id, o.company_id, o.candidate_id, o.job_id, o.position_title, o.contract_type,
+          o.offer_status, o.contract_status ?? null, JSON.stringify(o.metadata ?? {}),
+          o.sent_at, o.accepted_at, o.rejected_at, o.expired_at, o.created_by ?? null,
+        ]
+      );
+    }    
 
     // 23. core_applicant_assessment — Insights results (assessment_id = 5). Status = 'completed'
     //     so the rows show up directly in Score & Decide. assessor JSONB pre-populates HR notes.
