@@ -57,7 +57,7 @@ const POLL_MAX_ATTEMPTS = 12; // ~60s total
 // /assessment-battery-result/:id while ai_report_status is pending/generating. When
 // it lands on 'completed', we merge any freshly-generated section narratives into
 // `state` for keys the assessor has NOT already filled in (assessor edits always win).
-export default function ScoreDecideTab({ candidate, battery, result, onJumpToTab }) {
+export default function ScoreDecideTab({ candidate, battery, result, onJumpToTab, saveNowRef, onSaveStatusChange, finalRecRef, onFinalRecChange }) {
   const hasResults = !!result?.results?.by_subtest;
 
   const [liveResult, setLiveResult] = useState(result);
@@ -91,6 +91,32 @@ export default function ScoreDecideTab({ candidate, battery, result, onJumpToTab
       throw new Error(msg);
     }
   };
+
+  // Expose doSave to parent sidebar via ref.
+  useEffect(() => {
+    if (saveNowRef) saveNowRef.current = doSave;
+  });
+
+  // Expose finalRec getter/setter to parent sidebar via ref.
+  useEffect(() => {
+    if (finalRecRef) {
+      finalRecRef.current = {
+        get: () => latestStateRef.current.finalRec ?? null,
+        set: (v) => { setState((prev) => ({ ...prev, finalRec: v })); setIsDirty(true); },
+      };
+    }
+  });
+
+  // Notify parent whenever finalRec changes (sidebar badge/button state).
+  useEffect(() => {
+    onFinalRecChange?.(state.finalRec ?? null);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [state.finalRec]);
+
+  // Report save status changes to parent so sidebar can show feedback.
+  useEffect(() => {
+    onSaveStatusChange?.(saveStatus);
+  }, [saveStatus, onSaveStatusChange]);
 
   // Debounced auto-save. Skips when there's nothing to save (idle / clean state).
   useEffect(() => {
@@ -263,7 +289,6 @@ export default function ScoreDecideTab({ candidate, battery, result, onJumpToTab
 
   return (
     <div>
-      <SaveStatusBadge status={saveStatus} error={saveError} />
       <AiReportBanner
         status={aiStatus}
         timedOut={pollTimedOut}

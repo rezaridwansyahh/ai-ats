@@ -364,7 +364,8 @@ class ScreeningController {
   async qaSend(req, res) {
     try {
       const screening_id = Number(req.params.screening_id);
-      const result = await screeningService.qaSend(screening_id);
+      const { subject, body } = req.body || {};
+      const result = await screeningService.qaSend(screening_id, { subject, body });
       res.status(200).json({ message: 'Q&A sent', ...result });
     } catch (err) {
       res.status(err.status || 500).json({ message: err.message });

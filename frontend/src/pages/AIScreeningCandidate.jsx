@@ -33,7 +33,7 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 
-import { FIXED_KEYS, FIXED_META, DEFAULT_RUBRIC, totalWeight } from '@/components/ai-screening/shared';
+import { FIXED_KEYS, FIXED_META, DEFAULT_RUBRIC, totalWeight, scoreRecommendation } from '@/components/ai-screening/shared';
 
 /* ─── Engine config (mirrors the spec) ─── */
 const ENGINES = [
@@ -42,42 +42,9 @@ const ENGINES = [
   { key: 'qa',    label: 'Q&A',    sub: 'follow-up',   icon: MessageSquare, comingSoon: true },
 ];
 
-/* ─── AI Matching rubric config ─── */
-// const FIXED_KEYS = ['skills', 'experience', 'career_trajectory', 'education'];
-
-// const FIXED_META = {
-//   skills:            { label: 'Skills',            icon: Code2,        description: 'Match against the required + preferred skills' },
-//   experience:        { label: 'Experience',        icon: Briefcase,    description: 'Years, role relevance, progression vs seniority' },
-//   career_trajectory: { label: 'Career Trajectory', icon: TrendingUp,   description: 'Tenure pattern, stability, growth (validate via Q&A)' },
-//   education:         { label: 'Education',         icon: GraduationCap,description: 'Degree relevance + school tier vs qualifications' },
-// };
-
-// const DEFAULT_RUBRIC = {
-//   fixed_criteria: {
-//     skills:            { weight: 45 },
-//     experience:        { weight: 35 },
-//     career_trajectory: { weight: 15 },
-//     education:         { weight: 5  },
-//   },
-//   custom_criteria: [],
-// };
-
-// function totalWeight(rubric) {
-//   const fixedSum = FIXED_KEYS.reduce((s, k) => s + (Number(rubric.fixed_criteria[k]?.weight) || 0), 0);
-//   const customSum = (rubric.custom_criteria || []).reduce((s, c) => s + (Number(c.weight) || 0), 0);
-//   return fixedSum + customSum;
-// }
-
 function fmt(d) {
   if (!d) return '—';
   try { return new Date(d).toISOString().slice(0, 10); } catch { return '—'; }
-}
-
-function scoreRecommendation(score) {
-  if (score == null) return null;
-  if (score >= 70) return { label: 'Recommended',     badge: 'bg-emerald-100 text-emerald-700' };
-  if (score >= 50) return { label: 'Consider',        badge: 'bg-amber-100 text-amber-700' };
-  return              { label: 'Not Recommended', badge: 'bg-rose-100 text-rose-700' };
 }
 
 /* ─── Follow-up Q&A config ─── */
@@ -88,9 +55,10 @@ const QA_FOCUS_OPTIONS = [
   'Leadership scope',
   'Job Requirement',
 ];
-// Locked to Bahasa Indonesia for now (EN / mixed deferred).
 const QA_LANGUAGES = [
+  { value: 'en', label: 'English' },
   { value: 'id', label: 'Bahasa Indonesia' },
+  { value: 'id-en', label: 'Mixed (ID + EN terms)' },
 ];
 const QA_NUM_OPTIONS = [2, 3, 4, 5, 6]; // backend clamps 2–6, default 3
 const QA_STATUS_META = {
@@ -188,12 +156,15 @@ function useQa(screeningId, scored, enabled) {
   // Generate controls
   const [focusArea, setFocusArea] = useState(QA_FOCUS_OPTIONS[0]);
   const [numQuestions, setNumQuestions] = useState('3');
-  const [language, setLanguage] = useState('id');
+  const [language, setLanguage] = useState('en');
   const [generating, setGenerating] = useState(false);
 
   // Editable working copy of the question set (flushed to the backend on send)
   const [questions, setQuestions] = useState([]); // [{ topic, text }]
   const [sending, setSending] = useState(false);
+
+  // Email editor modal
+  const [emailModal, setEmailModal] = useState({ open: false, subject: '', body: '' });
 
   // Standard Application Form template — read-only preview of what gets sent
   // alongside the questions. Static, so fetched once when the Q&A step opens.
@@ -256,12 +227,18 @@ function useQa(screeningId, scored, enabled) {
 
   const handleGenerate = async () => {
     if (!scored || generating) return;
-    if (qa && status !== 'draft') {
+
+    // ‘responded’ is permanently locked — candidate’s answers must not be destroyed.
+    if (status === 'responded') return;
+
+    // ‘sent’ — old link will be invalidated; recruiter must re-send a new email.
+    if (status === 'sent') {
       const ok = window.confirm(
-        'Regenerating replaces the sent questions and permanently deletes the candidate’s answers. Continue?'
+        'The link already sent to the candidate will be permanently invalidated — they will no longer be able to use it.\n\nYou will need to send a new email with the updated questions.\n\nContinue?'
       );
       if (!ok) return;
     }
+
     setGenerating(true);
     setError(null);
     try {
@@ -285,8 +262,9 @@ function useQa(screeningId, scored, enabled) {
 
   const removeQuestion = (idx) => setQuestions((qs) => qs.filter((_, i) => i !== idx));
 
-  const handleSend = async () => {
-    if (sending) return;
+  // Opens the email editor with a pre-filled English template.
+  // Does NOT send yet — recruiter reviews and confirms in the modal.
+  const handleSend = (candidateName, jobTitle) => {
     const cleaned = questions
       .map((q) => ({ topic: (q.topic || '').trim(), text: (q.text || '').trim() }))
       .filter((q) => q.text.length > 0);
@@ -294,13 +272,27 @@ function useQa(screeningId, scored, enabled) {
       setError('Add at least one question with text before sending.');
       return;
     }
+    setEmailModal({
+      open: true,
+      subject: `Follow-up Questions — ${jobTitle || 'the position'}`,
+      body: `Hi ${candidateName || 'there'},\n\nThank you for applying. As a next step, we have a few short follow-up questions for you.\n\nPlease complete them via the link below:\n\n{{LINK}}\n\nPlease respond within 48 hours. This link is personal — kindly do not share it with others.\n\nThank you,\nThe Recruitment Team`,
+    });
+  };
+
+  // Called when recruiter confirms send from the email editor modal.
+  const handleConfirmSend = async () => {
+    if (sending) return;
+    const cleaned = questions
+      .map((q) => ({ topic: (q.topic || '').trim(), text: (q.text || '').trim() }))
+      .filter((q) => q.text.length > 0);
     setSending(true);
     setError(null);
     try {
-      await updateQa(screeningId, cleaned); 
-      await sendQa(screeningId);            
-      await load();                         
-      setTab('inbox');                      
+      await updateQa(screeningId, cleaned);
+      await sendQa(screeningId, { subject: emailModal.subject, body: emailModal.body });
+      setEmailModal({ open: false, subject: '', body: '' });
+      await load();
+      setTab('inbox');
     } catch (err) {
       setError(err.response?.data?.message || err.message || 'Failed to send Q&A');
     } finally {
@@ -312,7 +304,9 @@ function useQa(screeningId, scored, enabled) {
     tab, setTab, qa, status, meta, loading, error,
     focusArea, setFocusArea, numQuestions, setNumQuestions, language, setLanguage,
     generating, questions, setQuestionField, addQuestion, removeQuestion, sending,
-    handleGenerate, handleSend, formTemplate,
+    handleGenerate, handleSend, handleConfirmSend,
+    emailModal, setEmailModal,
+    formTemplate,
   };
 }
 
@@ -493,9 +487,10 @@ export default function AIScreeningCandidatePage() {
                 qa={qa}
                 scored={scored}
                 parsed={!!facets}
-                overall_score={data.overall_score} 
+                overall_score={data.overall_score}
                 onStep={goToStep}
                 candidateName={candidate_name}
+                jobTitle={job_title}
               />
               <DecisionCard
                 decision={decision}
@@ -524,12 +519,76 @@ export default function AIScreeningCandidatePage() {
         onConfirm={() => handleDecide(decisionDraft)}
         onClose={() => { setDecisionDraft(null); setDecisionReason(''); }}
       />
+
+      {/* ── Email Editor Modal ── */}
+      <Dialog open={qa.emailModal.open} onOpenChange={(open) => !open && qa.setEmailModal((m) => ({ ...m, open: false }))}>
+        <DialogContent className="max-w-lg">
+          <DialogHeader>
+            <DialogTitle className="text-sm font-semibold flex items-center gap-2">
+              <Mail className="h-4 w-4 text-primary" /> Email to Candidate
+            </DialogTitle>
+            <DialogDescription className="text-xs text-muted-foreground">
+              Review and edit the email before sending. The portal link is inserted automatically where you see <code className="bg-muted px-1 rounded">{'{{LINK}}'}</code>.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-3 py-1">
+            <div className="space-y-1">
+              <label className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">Subject</label>
+              <Input
+                value={qa.emailModal.subject}
+                onChange={(e) => qa.setEmailModal((m) => ({ ...m, subject: e.target.value }))}
+                className="h-9 text-sm"
+                placeholder="Email subject…"
+              />
+            </div>
+            <div className="space-y-1">
+              <label className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">Body</label>
+              <Textarea
+                value={qa.emailModal.body}
+                onChange={(e) => qa.setEmailModal((m) => ({ ...m, body: e.target.value }))}
+                rows={12}
+                className="text-sm font-mono leading-relaxed resize-y"
+                placeholder="Email body…"
+              />
+            </div>
+            {!qa.emailModal.body.includes('{{LINK}}') && (
+              <div className="flex items-start gap-2 px-3 py-2 rounded-md border border-amber-200 bg-amber-50 text-[11px] text-amber-700">
+                <AlertTriangle className="h-3.5 w-3.5 shrink-0 mt-0.5" />
+                <span>
+                  <strong>{'{{LINK}}'}</strong> is missing from the body. The portal link will be appended automatically at the bottom of the email.
+                </span>
+              </div>
+            )}
+          </div>
+          <DialogFooter className="gap-2">
+            <Button
+              variant="outline"
+              size="sm"
+              className="text-xs"
+              onClick={() => qa.setEmailModal((m) => ({ ...m, open: false }))}
+              disabled={qa.sending}
+            >
+              Cancel
+            </Button>
+            <Button
+              size="sm"
+              className="text-xs"
+              onClick={qa.handleConfirmSend}
+              disabled={qa.sending || !qa.emailModal.subject.trim()}
+            >
+              {qa.sending
+                ? <><Loader2 className="h-3.5 w-3.5 mr-1.5 animate-spin" />Sending…</>
+                : <><Send className="h-3.5 w-3.5 mr-1.5" />Confirm Send</>}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </>
   );
 }
 
 /* ─────────── Sidebar: contextual primary action ─────────── */
-function SidebarAction({ activeEngine, match, qa, scored, parsed, overall_score, onStep, candidateName }) {
+function SidebarAction({ activeEngine, match, qa, scored, parsed, overall_score, onStep, candidateName, jobTitle }) {
   if (activeEngine === 'parse') {
     return (
       <Card className="animate-scale-in">
@@ -568,7 +627,7 @@ function SidebarAction({ activeEngine, match, qa, scored, parsed, overall_score,
             {scored ? (() => {
               const rec = scoreRecommendation(overall_score);
               return rec ? (
-                <Badge className={`text-[10px] ${rec.badge}`}>
+                <Badge className={`text-[10px] ${rec.tone}`}>
                   {overall_score}% · {rec.label}
                 </Badge>
               ) : null;
@@ -628,7 +687,7 @@ function SidebarAction({ activeEngine, match, qa, scored, parsed, overall_score,
           {scored ? (() => {
             const rec = scoreRecommendation(overall_score);
             return rec ? (
-              <Badge className={`text-[10px] ${rec.badge}`}>
+              <Badge className={`text-[10px] ${rec.tone}`}>
                 {overall_score}% · {rec.label}
               </Badge>
             ) : null;
@@ -643,20 +702,33 @@ function SidebarAction({ activeEngine, match, qa, scored, parsed, overall_score,
           <p className="text-[10px] text-muted-foreground leading-snug">
             Run AI Matching first — follow-up Q&A unlocks once this candidate has a fit score.
           </p>
+        ) : qa.status === 'responded' ? (
+          <div className="flex items-center gap-1.5 text-[10px] text-emerald-700">
+            <Check className="h-3.5 w-3.5 shrink-0" />
+            Candidate has responded. Q&A is locked.
+          </div>
+        ) : qa.status === 'sent' ? (
+          <>
+            <div className="flex items-center gap-1.5 text-[10px] text-blue-700">
+              <Clock className="h-3.5 w-3.5 shrink-0" />
+              Awaiting response · link sent to {candidateName || 'the candidate'}.
+            </div>
+            <p className="text-[10px] text-muted-foreground leading-snug">
+              To resend with new questions, Regenerate from the Q&A panel first.
+            </p>
+          </>
         ) : (
           <>
             <Button
               className="w-full text-xs"
-              onClick={qa.handleSend}
+              onClick={() => qa.handleSend(candidateName, jobTitle)}
               disabled={qa.sending || qa.questions.length === 0}
             >
-              {qa.sending
-                ? <Loader2 className="h-3.5 w-3.5 mr-1.5 animate-spin" />
-                : <Send className="h-3.5 w-3.5 mr-1.5" />}
-              Send to candidate
+              <Mail className="h-3.5 w-3.5 mr-1.5" />
+              Send to Candidate
             </Button>
             <p className="text-[10px] text-muted-foreground leading-snug">
-              Sent to {candidateName || 'the candidate'} · response window 48h.
+              Sends to {candidateName || 'the candidate'} · response window 48h.
             </p>
           </>
         )}
@@ -1466,58 +1538,80 @@ function QAPanel({ qaCtl, jobTitle, scored }) {
 
         {tab === 'generate' ? (
           <>
-            <div className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
-              Generate · tuned to {jobTitle || 'the role'} + parsed CV
-            </div>
+            {/* ── Responded: fully locked ── */}
+            {status === 'responded' ? (
+              <div className="flex items-start gap-3 px-4 py-3 rounded-lg border border-emerald-200 bg-emerald-50 text-xs text-emerald-800">
+                <Check className="h-4 w-4 shrink-0 mt-0.5 text-emerald-600" />
+                <div className="space-y-0.5">
+                  <p className="font-semibold">Candidate has responded — Q&A is locked</p>
+                  <p className="text-emerald-700 leading-relaxed">
+                    Questions and answers are preserved as a record. Switch to <strong>Response Inbox</strong> to review the submission.
+                  </p>
+                </div>
+              </div>
+            ) : (
+              <>
+                {/* ── Sent warning banner ── */}
+                {status === 'sent' && (
+                  <div className="flex items-start gap-3 px-4 py-3 rounded-lg border border-amber-200 bg-amber-50 text-xs text-amber-800">
+                    <AlertTriangle className="h-4 w-4 shrink-0 mt-0.5 text-amber-600" />
+                    <div className="space-y-0.5">
+                      <p className="font-semibold">Link already sent to candidate</p>
+                      <p className="text-amber-700 leading-relaxed">
+                        Regenerating will <strong>permanently invalidate</strong> the link in the candidate's email. You will need to send a new link.
+                      </p>
+                    </div>
+                  </div>
+                )}
 
-            <div className="grid grid-cols-1 gap-3 md:grid-cols-3">
-              <div className="space-y-1.5">
-                <label className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">Focus area</label>
-                <Select value={focusArea} onValueChange={setFocusArea}>
-                  <SelectTrigger className="w-full text-xs h-9"><SelectValue /></SelectTrigger>
-                  <SelectContent>
-                    {QA_FOCUS_OPTIONS.map((f) => (
-                      <SelectItem key={f} value={f} className="text-xs">{f}</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-              <div className="space-y-1.5">
-                <label className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground"># Questions</label>
-                <Select value={numQuestions} onValueChange={setNumQuestions}>
-                  <SelectTrigger className="w-full text-xs h-9"><SelectValue /></SelectTrigger>
-                  <SelectContent>
-                    {QA_NUM_OPTIONS.map((n) => (
-                      <SelectItem key={n} value={String(n)} className="text-xs">{n}{n === 3 ? ' (recommended)' : ''}</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-              <div className="space-y-1.5">
-                <label className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">Language</label>
-                <Select value={language} onValueChange={setLanguage}>
-                  <SelectTrigger className="w-full text-xs h-9"><SelectValue /></SelectTrigger>
-                  <SelectContent>
-                    {QA_LANGUAGES.map((l) => (
-                      <SelectItem key={l.value} value={l.value} className="text-xs">{l.label}</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-            </div>
+                <div className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
+                  Generate · tuned to {jobTitle || 'the role'} + parsed CV
+                </div>
 
-            {qaRow && status !== 'draft' && (
-              <div className="flex items-center gap-2 px-3 py-2 rounded-lg border border-amber-200 bg-amber-50 text-xs text-amber-700">
-                <AlertTriangle className="h-3.5 w-3.5 shrink-0" />
-                <span>Already {meta?.label.toLowerCase()}. Regenerating or re-sending replaces the questions and deletes the candidate’s answers.</span>
-              </div>
+                <div className="grid grid-cols-1 gap-3 md:grid-cols-3">
+                  <div className="space-y-1.5">
+                    <label className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">Focus area</label>
+                    <Select value={focusArea} onValueChange={setFocusArea}>
+                      <SelectTrigger className="w-full text-xs h-9"><SelectValue /></SelectTrigger>
+                      <SelectContent>
+                        {QA_FOCUS_OPTIONS.map((f) => (
+                          <SelectItem key={f} value={f} className="text-xs">{f}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="space-y-1.5">
+                    <label className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground"># Questions</label>
+                    <Select value={numQuestions} onValueChange={setNumQuestions}>
+                      <SelectTrigger className="w-full text-xs h-9"><SelectValue /></SelectTrigger>
+                      <SelectContent>
+                        {QA_NUM_OPTIONS.map((n) => (
+                          <SelectItem key={n} value={String(n)} className="text-xs">{n}{n === 3 ? ' (recommended)' : ''}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="space-y-1.5">
+                    <label className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">Language</label>
+                    <Select value={language} onValueChange={setLanguage}>
+                      <SelectTrigger className="w-full text-xs h-9"><SelectValue /></SelectTrigger>
+                      <SelectContent>
+                        {QA_LANGUAGES.map((l) => (
+                          <SelectItem key={l.value} value={l.value} className="text-xs">{l.label}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </div>
+              </>
             )}
 
             <div className="rounded-lg border bg-muted/20 p-4">
               <div className="mb-3 flex items-center justify-between gap-2 flex-wrap">
                 <div className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
-                  Drafted questions · click to edit
+                  {status === 'responded' ? 'Sent questions (read-only)' : 'Drafted questions · click to edit'}
                 </div>
+                {status !== 'responded' && (
                 <div className="flex gap-2">
                   <Button size="sm" variant="outline" className="text-xs" onClick={onGenerate} disabled={generating}>
                     {generating ? <Loader2 className="h-3 w-3 mr-1 animate-spin" /> : <RefreshCw className="h-3 w-3 mr-1" />}
@@ -1527,6 +1621,7 @@ function QAPanel({ qaCtl, jobTitle, scored }) {
                     <Plus className="h-3 w-3 mr-1" /> Add custom
                   </Button>
                 </div>
+                )}
               </div>
 
               {questions.length === 0 ? (
@@ -1562,6 +1657,11 @@ function QAPanel({ qaCtl, jobTitle, scored }) {
                             </button>
                             <Button size="sm" variant="ghost" className="text-xs" onClick={() => setEditingIdx(null)}>Done</Button>
                           </div>
+                        </div>
+                      ) : status === 'responded' ? (
+                        <div className="text-xs leading-relaxed">
+                          <span className="font-semibold">{i + 1}. {q.topic || 'Untitled'}</span>
+                          <span className="text-muted-foreground"> — {q.text}</span>
                         </div>
                       ) : (
                         <button

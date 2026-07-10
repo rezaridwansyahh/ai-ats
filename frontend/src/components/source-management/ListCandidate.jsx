@@ -36,14 +36,14 @@ export default function ListCandidate({ selectedJob }) {
   // ── Fetch ──────────────────────────────────────────────────────
   const fetchApplicants = useCallback(async () => {
     setLoading(true);
+    setError(null);
     try {
-      const storage = localStorage.getItem("user");
+      const storage = JSON.parse(localStorage.getItem("user"));
       const res = await getAllByCompany(storage.company_id);
-      const data = res.data.applicants || [];
-      // Fall back to dummy data so the UI isn't blank during development
-      setApplicants(data.length > 0 ? data : DUMMY_APPLICANTS);
-    } catch {
-      setApplicants(DUMMY_APPLICANTS);
+      setApplicants(res.data.applicants || []);
+    } catch (err) {
+      setError(err.response?.data?.message || err.message || 'Failed to load applicants');
+      setApplicants([]);
     } finally {
       setLoading(false);
     }

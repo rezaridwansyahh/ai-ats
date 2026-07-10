@@ -11,6 +11,10 @@ class ApplicantService {
     return await applicantModel.getAllByCompanyId(company_id);
   }
 
+  async getAllByCompanyWithScore(company_id) {
+    return await applicantModel.getAllByCompanyWithScore(company_id);
+  }
+
   async getById(id) {
     const applicant = await applicantModel.getById(id);
     if (!applicant) throw { status: 404, message: 'Applicant not found' };

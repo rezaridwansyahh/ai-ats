@@ -24,7 +24,23 @@ class ApplicantController {
       const applicants = await applicantService.getAllByCompanyId(companyId);
       res.status(200).json({ message: `List all applicants of Company Id : ${companyId}`, applicants });
     } catch(err) {
-      res.status(err.status || 500). json({ message: err.message });
+      res.status(err.status || 500).json({ message: err.message });
+    }
+  }
+
+  async getAllByCompanyWithScore(req, res) {
+    const userData = req.user;
+    const companyId = Number(req.params.company_id);
+
+    try {
+      const user = await userService.getById(userData.user_id);
+
+      if(user.company_id !== companyId) return res.status(403).json({ message: "Forbidden" });
+
+      const applicants = await applicantService.getAllByCompanyWithScore(companyId);
+      res.status(200).json({ message: `List all applicants with score of Company Id : ${companyId}`, applicants });
+    } catch(err) {
+      res.status(err.status || 500).json({ message: err.message });
     }
   }
 
