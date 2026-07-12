@@ -345,6 +345,17 @@ class OfferModel {
     const result = await getDb().query(query, [job_id, company_id]);
     return result.rows[0];
   }
+
+  async mergeMetadata(offer_id, metadata) {
+    const query = `
+      UPDATE candidate_offer
+      SET metadata = metadata || $2::jsonb, updated_at = NOW()
+      WHERE id = $1
+      RETURNING metadata
+    `;
+    const result = await getDb().query(query, [offer_id, JSON.stringify(metadata)]);
+    return result.rows[0]?.metadata;
+  }  
 }
 
 export default new OfferModel();
