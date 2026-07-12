@@ -3,14 +3,15 @@ import {
   Settings2, Users, ShieldCheck, Workflow, Plug, Bell, Globe,
   ShieldQuestion, FileText, CreditCard, CalendarClock, Plus, X,
 } from 'lucide-react';
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
-import { Switch } from '@/components/ui/switch';
 import {
   Select, SelectTrigger, SelectValue, SelectContent, SelectItem,
 } from '@/components/ui/select';
+
+// Sub-settings component imports
 import TeamSettings from '../components/settings/TeamSettings';
 import RolesPermissionsSettings from '../components/settings/RolesPermissionsSettings';
 import WorkflowTemplatesSettings from '../components/settings/WorkflowTemplatesSettings';
@@ -21,8 +22,9 @@ import ComplianceSettings from '../components/settings/ComplianceSettings';
 import AuditExportSettings from '../components/settings/AuditExportSettings';
 import BillingPlanSettings from '../components/settings/BillingPlanSettings';
 import ProbationTemplatesSettings from '../components/settings/ProbationTemplatesSettings';
+import GeneralSettings from '../components/settings/GeneralSettings';
 
-// ── Static config — swap for API data when backend is ready ──
+// ── Static Configuration & Mock Data ──
 
 const CHAIN_TABS = [
   { id: 'requisition-offer', label: 'Requisition Offer' },
@@ -53,28 +55,7 @@ const SETTINGS_NAV = [
   { id: 'probation-templates', label: 'Probation Templates', icon: CalendarClock },
 ];
 
-const ORG_FIELDS = [
-  { label: 'Company name', value: 'ACME Indonesia' },
-  { label: 'Legal entity', value: 'PT Acme Digital Indonesia' },
-  { label: 'Primary domain', value: 'acme.co.id' },
-  { label: 'Industry', value: 'Technology · Fintech' },
-];
-
-const LOCALE_FIELDS = [
-  { label: 'Timezone', value: 'Asia/Jakarta (WIB · UTC+7)' },
-  { label: 'Currency', value: 'IDR (Rp)' },
-  { label: 'Default language', value: 'Bahasa Indonesia' },
-  { label: 'Date format', value: 'DD MMM YYYY' },
-];
-
-const DEFAULT_TOGGLES = [
-  { id: 'five-stage', label: 'Default to 5-stage pipeline', checked: true },
-  { id: 'rubric-required', label: 'Require rubric before publishing', checked: true },
-  { id: 'ai-screening', label: 'AI screening on by default', checked: true },
-  { id: 'public-pages', label: 'Allow public job pages on acme.myralix.co', checked: false },
-];
-
-// ── Approval chain step ──
+// ── Shared Sub-Components ──
 
 function ChainStep({ step, onChange, onRemove, showArrow }) {
   return (
@@ -123,14 +104,12 @@ function ChainStep({ step, onChange, onRemove, showArrow }) {
         </div>
       </div>
 
-      {showArrow && (
-        <span className="mx-3 text-muted-foreground">→</span>
-      )}
+      {showArrow && <span className="mx-3 text-muted-foreground">→</span>}
     </div>
   );
 }
 
-// ── Approval chains section ──
+// ── Featured Settings Sections ──
 
 function ApprovalChains() {
   const [activeTab, setActiveTab] = useState('requisition-offer');
@@ -157,8 +136,7 @@ function ApprovalChains() {
         <h1 className="text-2xl font-bold tracking-tight font-serif">Approval chains</h1>
         <p className="text-sm text-muted-foreground mt-1">
           Every approval flow in Myralix routes through one of these chains. Edit the role, the
-          order, the parallel/serial mode, and the SLA. Used by JM-03 (req approval), OF-02
-          (offer approval), budget exceptions, etc.
+          order, the parallel/serial mode, and the SLA.
         </p>
       </div>
 
@@ -181,20 +159,20 @@ function ApprovalChains() {
 
       {/* Chain builder */}
       <div className="rounded-xl border bg-muted/30 p-5">
-        <div className="flex items-center">
+        <div className="flex items-center overflow-x-auto py-2">
           {chain.map((step, i) => (
             <ChainStep
               key={step.id}
               step={step}
               onChange={updateStep}
               onRemove={removeStep}
-              showArrow
+              showArrow={i < chain.length - 1}
             />
           ))}
           <button
             type="button"
             onClick={addStep}
-            className="h-[88px] w-12 rounded-lg border border-dashed flex items-center justify-center text-muted-foreground hover:text-foreground hover:border-foreground/40 transition-colors"
+            className="h-[88px] w-12 shrink-0 rounded-lg border border-dashed flex items-center justify-center text-muted-foreground hover:text-foreground hover:border-foreground/40 transition-colors"
             aria-label="Add step"
           >
             <Plus className="h-4 w-4" />
@@ -214,91 +192,7 @@ function ApprovalChains() {
   );
 }
 
-// ── Settings detail field row ──
-
-function FieldRow({ label, value }) {
-  return (
-    <div className="flex items-center justify-between py-3 border-b last:border-b-0">
-      <div>
-        <p className="text-xs uppercase tracking-wide text-muted-foreground">{label}</p>
-        <p className="text-sm font-medium mt-0.5">{value}</p>
-      </div>
-      <Button variant="link" size="sm" className="h-auto p-0 text-sm">
-        Edit
-      </Button>
-    </div>
-  );
-}
-
-// ── Toggle row ──
-
-function ToggleRow({ label, checked, onCheckedChange }) {
-  return (
-    <div className="flex items-center justify-between py-2.5">
-      <span className="text-sm">{label}</span>
-      <Switch checked={checked} onCheckedChange={onCheckedChange} />
-    </div>
-  );
-}
-
-// ── Main settings panel (General tab) ──
-
-function GeneralSettings() {
-  const [toggles, setToggles] = useState(DEFAULT_TOGGLES);
-
-  const toggle = (id) => {
-    setToggles((prev) =>
-      prev.map((t) => (t.id === id ? { ...t, checked: !t.checked } : t))
-    );
-  };
-
-  return (
-    <div className="space-y-4">
-      <Card>
-        <CardHeader>
-          <CardTitle>Organization</CardTitle>
-          <CardDescription>Company profile used on job posts and candidate communication.</CardDescription>
-        </CardHeader>
-        <CardContent className="pt-0">
-          {ORG_FIELDS.map((f) => (
-            <FieldRow key={f.label} label={f.label} value={f.value} />
-          ))}
-        </CardContent>
-      </Card>
-
-      <Card>
-        <CardHeader>
-          <CardTitle>Locale & regional</CardTitle>
-          <CardDescription>Controls dates, currency, and default working hours.</CardDescription>
-        </CardHeader>
-        <CardContent className="pt-0">
-          {LOCALE_FIELDS.map((f) => (
-            <FieldRow key={f.label} label={f.label} value={f.value} />
-          ))}
-        </CardContent>
-      </Card>
-
-      <Card>
-        <CardHeader>
-          <CardTitle>Workspace defaults</CardTitle>
-          <CardDescription>Apply to new jobs unless overridden.</CardDescription>
-        </CardHeader>
-        <CardContent className="pt-0 divide-y">
-          {toggles.map((t) => (
-            <ToggleRow
-              key={t.id}
-              label={t.label}
-              checked={t.checked}
-              onCheckedChange={() => toggle(t.id)}
-            />
-          ))}
-        </CardContent>
-      </Card>
-    </div>
-  );
-}
-
-// ── Section registry ──
+// ── Section Registry Map ──
 
 const SECTION_COMPONENTS = {
   general: GeneralSettings,
@@ -314,16 +208,17 @@ const SECTION_COMPONENTS = {
   'probation-templates': ProbationTemplatesSettings,
 };
 
-// ── Page ──
+// ── View Wrapper Page ──
 
 export default function SettingsPage() {
   const [activeSection, setActiveSection] = useState('general');
-
   const ActiveComponent = SECTION_COMPONENTS[activeSection];
 
   return (
-    <div className="space-y-8">
+    <div className="space-y-8 p-6 max-w-6xl mx-auto">
       <ApprovalChains />
+
+      <hr className="border-t" />
 
       <div>
         <h1 className="text-2xl font-bold tracking-tight font-serif">Settings</h1>
@@ -332,9 +227,9 @@ export default function SettingsPage() {
         </p>
       </div>
 
-      <div className="grid grid-cols-[220px_1fr] gap-6">
-        {/* Sub-nav */}
-        <nav className="space-y-0.5">
+      <div className="grid grid-cols-[240px_1fr] gap-8 items-start">
+        {/* Navigation Sidebar */}
+        <nav className="space-y-1">
           {SETTINGS_NAV.map((item) => {
             const Icon = item.icon;
             const isActive = activeSection === item.id;
@@ -362,7 +257,7 @@ export default function SettingsPage() {
           })}
         </nav>
 
-        {/* Detail panel */}
+        {/* Dynamic Detail Settings Render Box */}
         <div>
           {ActiveComponent ? (
             <ActiveComponent />
