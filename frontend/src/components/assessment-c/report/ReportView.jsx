@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Sparkles, Loader2, Check, Save, X } from 'lucide-react';
+import { Sparkles, Loader2, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { useNarrativeAI } from '@/components/assessment/hooks/useNarrativeAI';
@@ -46,9 +46,8 @@ const NARR_LABELS = {
 const SUB_NAMES = { GI: 'Kemampuan Umum', PV: 'Penalaran Verbal', KN: 'Kemampuan Numerik', PA: 'Penalaran Abstrak', KA: 'Kecepatan & Akurasi' };
 const SUB_WEIGHTS = { GI: '30%', PV: '17.5%', KN: '17.5%', PA: '17.5%', KA: '17.5%' };
 
-export default function ReportView({ profile, results, state, updateState, saveNow, onClose }) {
+export default function ReportView({ profile, results, state, updateState, saveNow }) {
   const [showDetail, setShowDetail] = useState(false);
-  const [saveBtnState, setSaveBtnState] = useState('idle');
 
   const tk = results.tk;
   const epps = results.epps;
@@ -94,18 +93,6 @@ export default function ReportView({ profile, results, state, updateState, saveN
       SYNTHESIS_IDS.map((id) => [id, state['edit_' + id] || '']),
     ),
   });
-
-  const handleSave = async () => {
-    if (!saveNow) return;
-    setSaveBtnState('saving');
-    try {
-      await saveNow();
-      setSaveBtnState('saved');
-      setTimeout(() => setSaveBtnState('idle'), 2000);
-    } catch {
-      setSaveBtnState('error');
-    }
-  };
 
   // EPPS top scales for highlight
   const eppsTop = epps
@@ -554,26 +541,6 @@ export default function ReportView({ profile, results, state, updateState, saveN
         Myralix Assessment Platform · Laporan Psikologis Battery C v10 · RAHASIA — Hanya untuk penggunaan internal
       </div>
 
-      <div className="flex flex-wrap items-center gap-2 mt-3">
-        <Button variant="outline" size="sm" onClick={() => window.print()}>🖨 Cetak / Simpan PDF</Button>
-        <Button size="sm" onClick={handleSave} disabled={saveBtnState === 'saving' || !saveNow}
-                className="bg-teal-700 hover:bg-teal-800 text-white">
-          {saveBtnState === 'saving' ? (
-            <><Loader2 className="h-3.5 w-3.5 animate-spin mr-1.5" /> Menyimpan…</>
-          ) : saveBtnState === 'saved' ? (
-            <><Check className="h-3.5 w-3.5 mr-1.5" /> Tersimpan</>
-          ) : saveBtnState === 'error' ? (
-            <>❌ Gagal — coba lagi</>
-          ) : (
-            <><Save className="h-3.5 w-3.5 mr-1.5" /> Simpan Sekarang</>
-          )}
-        </Button>
-        {onClose && (
-          <Button variant="outline" size="sm" onClick={onClose} className="ml-auto">
-            Tutup
-          </Button>
-        )}
-      </div>
     </div>
   );
 }

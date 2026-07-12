@@ -107,29 +107,6 @@ export default function ManagerView({ profile, results, finalRec, onSetFinalRec 
           dangerouslySetInnerHTML={{ __html: summary }}
         />
 
-        <div className="mt-4">
-          <div className="text-[11px] font-bold tracking-wider uppercase text-slate-500 mb-2.5">Tindak Lanjut Manajer</div>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-2.5">
-            {[
-              { val: 'direkomendasikan', icon: '✅', label: 'Lanjutkan ke Wawancara', cls: 'bg-teal-700 text-white border-teal-700 hover:bg-teal-800' },
-              { val: 'evaluasi', icon: '⚠️', label: 'Butuh Evaluasi Lanjutan', cls: 'bg-white text-amber-700 border-amber-300 hover:bg-amber-50' },
-              { val: 'tidak', icon: '❌', label: 'Tidak Dilanjutkan', cls: 'bg-white text-red-600 border-red-300 hover:bg-red-50' },
-            ].map((b) => {
-              const active = finalRec === b.val;
-              return (
-                <Button
-                  key={b.val}
-                  onClick={() => onSetFinalRec(b.val)}
-                  variant="outline"
-                  className={`h-auto py-3 flex flex-col gap-1 border-2 ${b.cls} ${active ? 'ring-2 ring-current ring-offset-2' : ''}`}
-                >
-                  <span className="text-lg">{b.icon}</span>
-                  <span className="text-xs font-semibold">{b.label}</span>
-                </Button>
-              );
-            })}
-          </div>
-        </div>
       </div>
     </section>
   );

@@ -81,7 +81,7 @@ class OfferModel {
         mc.information->>'phone' as candidate_phone,
         mc.information as candidate_profile,
         cj.job_title,
-        cj.job_description,
+        cj.job_desc AS job_description,
         comp.*,
         contract.id as contract_id,
         contract.contract_type as contract_doc_type,
@@ -99,7 +99,7 @@ class OfferModel {
       LEFT JOIN offer_contract contract ON co.id = contract.offer_id
       WHERE co.id = $1 AND co.company_id = $2
     `;
-
+  
     const result = await getDb().query(query, [offer_id, company_id]);
     return result.rows[0];
   }

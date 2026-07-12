@@ -42,6 +42,8 @@ import BackgroundCheckCandidatePage from "./components/background-check/Backgrou
 import BackgroundCheckJobPage from "./components/background-check/BackgroundCheck-Job"
 import BackgroundCheckConsentPage from "./pages/portal/BgConsent"
 import OfferWorkboard from "./pages/OfferWorkboard"
+import OfferJobPage from "./components/offer-contract/Offer-Job";
+import OfferCandidatePage from "./components/offer-contract/Offer-Candidate";
 
 //PUNYA BAYU MASIH DUMMY
 import InterviewPage from "./pages/Interview"
@@ -99,11 +101,9 @@ function App() {
         <Route path="/selection/background-check/job/:jobId" element={<BackgroundCheckJobPage />} />
         <Route path="/selection/background-check/candidate/:bgId" element={<BackgroundCheckCandidatePage />} />
 
-        <Route path="/selection/offer" element={<OfferWorkboard />} />
-        {/* TODO: Add L2, L3, L4 routes when pages are ready */}
-        {/* <Route path="/selection/offer/job/:jobId" element={<OfferJobPage />} /> */}
-        {/* <Route path="/selection/offer/candidate/:offerId" element={<OfferCandidatePage />} /> */}
-        {/* <Route path="/selection/offer/calibration/:jobId" element={<OfferCalibration />} /> */}
+        <Route path="/selection/offer-contract" element={<OfferWorkboard />} />
+        <Route path="/selection/offer-contract/job/:jobId" element={<OfferJobPage />} />
+        <Route path="/selection/offer-contract/candidate/:offerId" element={<OfferCandidatePage />} />
 
         <Route path="/asesmen/assessment-a" element={<AssessmentAPage />} />
         <Route path="/asesmen/assessment-b" element={<AssessmentBPage />} />
@@ -123,9 +123,9 @@ function App() {
           <Route path="/report-candidate" element={<ReportCandidatePage />} />
           <Route path="/report-candidate/:candidateId" element={<ReportCandidateDetailPage />} />
 
-          <Route path="/selection/offer-contract" element={<OfferContractPage />} />
+          {/* <Route path="/selection/offer-contract" element={<OfferContractPage />} />
 
-          <Route path="/selection/offer-contract" element={<OfferContractPage />} />
+          <Route path="/selection/offer-contract" element={<OfferContractPage />} /> */}
           <Route path="/selection/onboarding" element={<OnboardingPage />} />
 
           {/* Catch-all: any unregistered path shows Coming Soon */}
