@@ -425,7 +425,7 @@ class OfferService {
   }
 
   // HR/HM manually types in whatever line items are on the candidate's payslip.
-  async recordSlipGaji(offer_id, line_items, company_id, user_id) {
+  async recordSlipGaji(offer_id, line_items, expected_salary, company_id, user_id) {
     const offer = await OfferModel.getOfferById(offer_id, company_id);
     if (!offer) {
       throw { status: 404, message: 'Offer not found' };
@@ -445,6 +445,7 @@ class OfferService {
       status: 'recorded',
       line_items,
       total,
+      expected_salary: expected_salary != null ? Number(expected_salary) : null,
       recorded_at: new Date(),
       recorded_by: user_id,
     };

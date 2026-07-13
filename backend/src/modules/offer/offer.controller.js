@@ -221,8 +221,8 @@ class OfferController {
     try {
       const { offer_id } = req.params;
       const { company_id, user_id } = req.user;
-      const { line_items } = req.body;
-      const result = await OfferService.recordSlipGaji(offer_id, line_items, company_id, user_id);
+      const { line_items, expected_salary } = req.body;
+      const result = await OfferService.recordSlipGaji(offer_id, line_items, expected_salary, company_id, user_id);
       res.json(result);
     } catch (error) {
       console.error('Error in recordSlipGaji:', error);

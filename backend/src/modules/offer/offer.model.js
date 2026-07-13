@@ -82,7 +82,16 @@ class OfferModel {
         mc.information as candidate_profile,
         cj.job_title,
         cj.job_desc AS job_description,
-        comp.*,
+        comp.id as compensation_id,
+        comp.base_salary,
+        comp.allowances,
+        comp.bonus_structure,
+        comp.gross_salary,
+        comp.pph21,
+        comp.bpjs_kesehatan,
+        comp.bpjs_ketenagakerjaan,
+        comp.net_salary,
+        comp.calculation_metadata,
         contract.id as contract_id,
         contract.contract_type as contract_doc_type,
         contract.start_date,
@@ -111,7 +120,16 @@ class OfferModel {
         co.*,
         mc.name as candidate_name,
         ma.email as candidate_email,
-        comp.*,
+        comp.id as compensation_id,
+        comp.base_salary,
+        comp.allowances,
+        comp.bonus_structure,
+        comp.gross_salary,
+        comp.pph21,
+        comp.bpjs_kesehatan,
+        comp.bpjs_ketenagakerjaan,
+        comp.net_salary,
+        comp.calculation_metadata,
         contract.status as contract_doc_status,
         contract.pdf_url
       FROM candidate_offer co
@@ -121,7 +139,7 @@ class OfferModel {
       LEFT JOIN offer_contract contract ON co.id = contract.offer_id
       WHERE co.id = $1
     `;
-
+  
     const result = await getDb().query(query, [offer_id]);
     return result.rows[0];
   }
