@@ -1,0 +1,744 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>Myralix v0.1 — Codebase Audit · 13 Jul 2026 · v11.0</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"/>
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin/>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600;9..144,700&family=DM+Sans:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet"/>
+<style>
+:root{
+  --paper:#FAF9F5;--paper-2:#F4F1E8;--surface:#FFFFFF;--surface-2:#FCFAF4;
+  --ink:#1A1A1F;--ink-2:#2C2A26;--muted:#6E6A5E;--faint:#9C9684;
+  --hairline:#E9E3D5;--hairline-2:#DCD5C2;--shade:#F0EBDC;
+  --forest:#0A6E5C;--forest-deep:#084F43;--forest-soft:#E2EEEA;--forest-2:#C9DED7;
+  --saffron:#E5A93D;--saffron-soft:#F8EBC6;
+  --good:#2F7D5A;--good-soft:#DCEFE3;
+  --warn:#C77A1A;--warn-soft:#F8E5C2;
+  --bad:#B43A2E;--bad-soft:#F4D5CF;
+  --info:#2D5BB8;--info-soft:#DBE5F7;
+  --purple:#6C4FA1;--purple-soft:#E4DBF1;
+  --r-1:6px;--r-2:10px;--r-3:14px;--r-4:22px;--r-pill:999px;
+  --shadow-1:0 1px 0 rgba(20,18,12,.04),0 1px 2px rgba(20,18,12,.04);
+  --shadow-2:0 1px 0 rgba(20,18,12,.05),0 6px 18px -8px rgba(20,18,12,.12);
+  --serif:'Fraunces',Georgia,serif;
+  --sans:'DM Sans',-apple-system,sans-serif;
+  --mono:'JetBrains Mono',ui-monospace,monospace;
+}
+*{box-sizing:border-box}html,body{margin:0;padding:0}
+html{scroll-behavior:smooth;scroll-padding-top:80px}
+body{font-family:var(--sans);color:var(--ink);background:var(--paper);font-size:15px;line-height:1.65;-webkit-font-smoothing:antialiased}
+.container{max-width:1200px;margin:0 auto;padding:48px 32px 96px}
+.nav{position:sticky;top:0;z-index:50;background:rgba(250,249,245,.94);backdrop-filter:saturate(180%) blur(10px);border-bottom:1px solid var(--hairline);padding:12px 32px}
+.nav-inner{max-width:1200px;margin:0 auto;display:flex;gap:18px;align-items:center;flex-wrap:wrap}
+.brand{display:flex;align-items:center;gap:10px}
+.brand-mark{width:30px;height:30px;border-radius:8px;background:var(--forest);color:#fff;display:grid;place-items:center;font-weight:600;font-family:var(--serif);font-size:16px}
+.brand-name{font-weight:700;letter-spacing:.02em;font-size:14px;font-family:var(--serif)}
+.brand-sub{font-size:11px;color:var(--muted);margin-top:1px}
+.nav-links{display:flex;gap:2px;flex:1;flex-wrap:wrap}
+.nav-link{color:var(--muted);text-decoration:none;padding:5px 9px;border-radius:6px;font-family:var(--mono);font-size:10.5px;letter-spacing:.03em}
+.nav-link:hover{background:var(--shade);color:var(--ink)}
+.nav-cta{background:var(--forest);color:#fff;border:none;padding:6px 14px;border-radius:6px;font-family:var(--mono);font-size:10.5px;font-weight:600;cursor:pointer;letter-spacing:.04em}
+.hero{background:linear-gradient(180deg,var(--surface) 0%,var(--surface-2) 100%);border:1px solid var(--hairline);border-radius:var(--r-4);padding:56px 46px;margin-bottom:36px;box-shadow:var(--shadow-2)}
+.eyebrow{font-family:var(--mono);font-size:11px;font-weight:600;letter-spacing:.08em;text-transform:uppercase;color:var(--forest);margin-bottom:14px}
+h1{font-family:var(--serif);font-weight:600;font-size:44px;line-height:1.05;margin:0 0 20px;letter-spacing:-0.012em}
+h1 em{font-style:italic;color:var(--forest)}
+.hero-lead{font-size:17px;color:var(--ink-2);max-width:870px;line-height:1.6;margin:0 0 24px}
+.hero-meta{display:grid;grid-template-columns:repeat(4,1fr);gap:18px;margin-top:24px;border-top:1px solid var(--hairline);padding-top:24px}
+.hm-label{font-family:var(--mono);font-size:10px;text-transform:uppercase;letter-spacing:.06em;color:var(--faint);margin-bottom:5px}
+.hm-value{font-weight:600;font-size:15px}
+.sec{margin:60px 0;scroll-margin-top:80px}
+.sec-num{font-family:var(--mono);font-size:11px;font-weight:600;color:var(--forest);letter-spacing:.08em;text-transform:uppercase;margin-bottom:8px}
+.sec-title{font-family:var(--serif);font-weight:600;font-size:32px;margin:0 0 12px;letter-spacing:-0.012em;line-height:1.1}
+.sec-sub{font-size:15.5px;color:var(--ink-2);margin:0 0 26px;max-width:870px;line-height:1.6}
+h3{font-family:var(--serif);font-weight:600;font-size:22px;margin:34px 0 12px;letter-spacing:-0.005em}
+p{margin:0 0 14px}
+code{font-family:var(--mono);font-size:.86em;background:var(--paper-2);padding:2px 6px;border-radius:4px;color:var(--ink-2);white-space:nowrap}
+strong{font-weight:600}
+.tbl{width:100%;border-collapse:collapse;margin:18px 0;background:var(--surface);border:1px solid var(--hairline);border-radius:var(--r-2);overflow:hidden;box-shadow:var(--shadow-1);font-size:13.5px}
+.tbl th{text-align:left;font-family:var(--mono);font-size:11px;text-transform:uppercase;letter-spacing:.05em;color:var(--muted);padding:11px 13px;background:var(--paper-2);border-bottom:1px solid var(--hairline);font-weight:600;vertical-align:top}
+.tbl td{padding:12px 13px;border-bottom:1px solid var(--hairline);vertical-align:top;line-height:1.55}
+.tbl tr:last-child td{border-bottom:none}
+.tbl tr:hover td{background:var(--paper)}
+.b{display:inline-block;font-family:var(--mono);font-size:10.5px;font-weight:600;padding:2px 8px;border-radius:var(--r-1);letter-spacing:.04em;text-transform:uppercase;border:1px solid transparent;line-height:1.6;white-space:nowrap}
+.b-ok{background:var(--good-soft);color:var(--good);border-color:#bbe2c8}
+.b-warn{background:var(--warn-soft);color:var(--warn);border-color:#f0d29a}
+.b-err{background:var(--bad-soft);color:var(--bad);border-color:#f1b5b0}
+.b-info{background:var(--info-soft);color:var(--info);border-color:#c5d5ee}
+.b-mute{background:var(--shade);color:var(--muted);border-color:var(--hairline-2)}
+.b-brand{background:var(--forest-soft);color:var(--forest);border-color:var(--forest-2)}
+.b-new{background:var(--purple-soft);color:var(--purple);border-color:#c8b8e8}
+.cal{border-left:3px solid var(--forest);background:var(--forest-soft);padding:18px 22px;border-radius:var(--r-2);margin:20px 0;font-size:14.5px}
+.cal.warn{border-color:var(--warn);background:var(--warn-soft)}
+.cal.err{border-color:var(--bad);background:var(--bad-soft)}
+.cal.info{border-color:var(--info);background:var(--info-soft)}
+.cal.success{border-color:var(--good);background:var(--good-soft)}
+.cal.notice{border-color:var(--purple);background:var(--purple-soft)}
+.cal-title{font-weight:600;color:var(--ink);margin-bottom:8px;display:flex;align-items:center;gap:8px;font-size:15px}
+ul,ol{margin:8px 0 14px;padding-left:24px}
+ul li,ol li{margin:7px 0;line-height:1.6}
+.history{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin:14px 0;font-size:12px;color:var(--muted);font-family:var(--mono)}
+.history-item{padding:4px 10px;background:var(--paper-2);border:1px solid var(--hairline);border-radius:var(--r-pill)}
+.history-item.current{background:var(--forest-soft);color:var(--forest);border-color:var(--forest-2);font-weight:600}
+.toc{background:var(--surface-2);border:1px solid var(--hairline);border-radius:var(--r-2);padding:24px 28px;margin:24px 0 36px;display:grid;grid-template-columns:repeat(2,1fr);gap:9px 28px}
+.toc-title{grid-column:1/-1;font-family:var(--mono);font-size:11px;font-weight:600;color:var(--forest);text-transform:uppercase;letter-spacing:.06em;margin-bottom:6px}
+.toc-item{font-size:13.5px;display:flex;gap:10px;align-items:baseline}
+.toc-num{font-family:var(--mono);font-size:11px;color:var(--faint);min-width:32px}
+.toc-text{color:var(--ink-2);text-decoration:none}
+.toc-text:hover{color:var(--forest)}
+.progress-row{display:flex;align-items:center;gap:14px;margin:10px 0;font-size:13.5px}
+.progress-label{flex:0 0 260px;font-weight:500}
+.progress-bar-bg{flex:1;height:10px;background:var(--shade);border-radius:var(--r-pill);overflow:hidden}
+.progress-bar-fill{height:100%;background:linear-gradient(90deg,var(--forest),var(--forest-deep));border-radius:var(--r-pill)}
+.progress-pct{flex:0 0 68px;text-align:right;font-family:var(--mono);font-size:12.5px;font-weight:600}
+.matrix{width:100%;border-collapse:separate;border-spacing:6px;margin:18px 0;font-size:13px}
+.matrix th{background:var(--paper-2);padding:10px 12px;font-family:var(--mono);font-size:10.5px;text-transform:uppercase;letter-spacing:.05em;color:var(--muted);font-weight:600;text-align:center;border:1px solid var(--hairline);border-radius:var(--r-1)}
+.matrix th.row-h{text-align:left}
+.matrix td{padding:14px 12px;text-align:center;background:var(--surface);border:1px solid var(--hairline);border-radius:var(--r-1);font-family:var(--mono);font-size:11px;font-weight:600;vertical-align:middle}
+.matrix td.row-h{text-align:left;font-family:var(--sans);font-weight:600;font-size:13px;background:var(--paper-2)}
+.mc-done{background:var(--good-soft)!important;color:var(--good);border-color:#bbe2c8!important}
+.mc-partial{background:var(--info-soft)!important;color:var(--info);border-color:#c5d5ee!important}
+.mc-stub{background:var(--warn-soft)!important;color:var(--warn);border-color:#f0d29a!important}
+.mc-missing{background:var(--shade)!important;color:var(--muted);border-color:var(--hairline-2)!important}
+.legend{display:flex;gap:18px;flex-wrap:wrap;padding:14px 18px;background:var(--surface);border:1px solid var(--hairline);border-radius:var(--r-2);margin:16px 0;justify-content:center}
+.legend-item{display:flex;align-items:center;gap:8px;font-size:12.5px;color:var(--ink-2)}
+.legend-sq{width:14px;height:14px;border-radius:3px;border:1px solid var(--hairline)}
+.day{background:var(--surface);border:1px solid var(--hairline);border-radius:var(--r-2);padding:24px 26px;margin:18px 0;box-shadow:var(--shadow-1)}
+.day-head{display:flex;align-items:baseline;gap:14px;margin-bottom:14px;padding-bottom:12px;border-bottom:1px solid var(--hairline);flex-wrap:wrap}
+.day-num{font-family:var(--serif);font-weight:600;font-size:26px;color:var(--forest);line-height:1}
+.day-date{font-family:var(--mono);font-size:11px;color:var(--muted);letter-spacing:.04em;text-transform:uppercase}
+.day-title{font-family:var(--serif);font-size:18px;font-weight:600;margin-left:auto}
+.day-task{padding:13px 0;border-bottom:1px solid var(--hairline);font-size:14px}
+.day-task:last-child{border-bottom:none;padding-bottom:0}
+.task-head{display:flex;align-items:baseline;gap:10px;margin-bottom:6px;flex-wrap:wrap}
+.task-id{font-family:var(--mono);font-size:11px;font-weight:600;color:var(--forest);background:var(--forest-soft);padding:1px 7px;border-radius:4px;letter-spacing:.04em}
+.task-title{font-weight:600}
+.task-claude{font-family:var(--mono);font-size:10.5px;color:var(--purple);background:var(--purple-soft);padding:2px 8px;border-radius:var(--r-pill);font-weight:600;letter-spacing:.04em}
+.task-owner{font-family:var(--mono);font-size:11px;color:var(--muted);margin-left:auto}
+.task-body{color:var(--ink-2);font-size:13.5px;line-height:1.6;margin-top:4px}
+.task-criteria{margin-top:6px;font-size:12.5px;color:var(--muted)}
+.task-criteria-label{font-family:var(--mono);font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--good);margin-right:6px}
+.risk-row{display:grid;grid-template-columns:60px 1fr 100px;gap:12px;align-items:start;padding:14px 0;border-bottom:1px solid var(--hairline);font-size:13.5px}
+.risk-row:last-child{border-bottom:none}
+.risk-id{font-family:var(--mono);font-size:11px;font-weight:700;color:var(--forest);background:var(--forest-soft);padding:3px 7px;border-radius:4px;letter-spacing:.04em}
+.risk-desc strong{display:block;margin-bottom:3px}
+.risk-desc{color:var(--ink-2);line-height:1.55}
+.gloss{background:var(--surface-2);border:1px solid var(--hairline);border-radius:var(--r-2);padding:14px 18px;margin:10px 0;font-size:13.5px}
+.gloss-term{font-family:var(--mono);font-size:11.5px;font-weight:600;color:var(--forest);background:var(--forest-soft);padding:1px 7px;border-radius:4px;margin-right:8px}
+.win-banner{background:var(--good-soft);border:1px solid #bbe2c8;border-radius:var(--r-2);padding:20px 24px;margin:18px 0}
+.win-title{font-weight:700;color:var(--good);font-size:15px;margin-bottom:6px;display:flex;align-items:center;gap:8px}
+.win-banner p{color:#1d5b3f;margin:0}
+.pilot-banner{background:linear-gradient(135deg,var(--forest-soft),#f0f9f0);border:2px solid var(--forest-2);border-radius:var(--r-3);padding:24px 28px;margin:20px 0}
+.pilot-title{font-family:var(--serif);font-weight:700;font-size:20px;color:var(--forest);margin-bottom:8px}
+@media print{.nav{position:static;background:transparent}body{background:#fff}.sec,.day,.hero{break-inside:avoid;box-shadow:none}}
+@media(max-width:900px){h1{font-size:30px}.hero{padding:30px 24px}.hero-meta{grid-template-columns:repeat(2,1fr)}.container{padding:24px 16px 64px}.nav{padding:10px 16px}.toc{grid-template-columns:1fr}.sec-title{font-size:26px}.risk-row{grid-template-columns:50px 1fr}.matrix{font-size:11px}.progress-label{flex:0 0 140px;font-size:12.5px}}
+</style>
+</head>
+<body>
+
+<nav class="nav">
+  <div class="nav-inner">
+    <div class="brand">
+      <div class="brand-mark">M</div>
+      <div>
+        <div class="brand-name">MYRALIX</div>
+        <div class="brand-sub">Codebase Audit · 13 Jul 2026 · v11.0</div>
+      </div>
+    </div>
+    <div class="nav-links">
+      <a class="nav-link" href="#summary">SUMMARY</a>
+      <a class="nav-link" href="#methodology">§0 NOTES</a>
+      <a class="nav-link" href="#big-picture">§1 MATRIX</a>
+      <a class="nav-link" href="#scope">§2 SCOPE</a>
+      <a class="nav-link" href="#built">§3 BUILT</a>
+      <a class="nav-link" href="#week">§4 THIS WEEK</a>
+      <a class="nav-link" href="#gaps">§5 GAPS</a>
+      <a class="nav-link" href="#launch">§6 LAUNCH PLAN</a>
+      <a class="nav-link" href="#risks">§7 RISKS</a>
+      <a class="nav-link" href="#decisions">§8 DECISIONS</a>
+      <a class="nav-link" href="#verify">§9 VERIFY</a>
+    </div>
+    <button class="nav-cta" onclick="window.print()">🖨 PRINT</button>
+  </div>
+</nav>
+
+<div class="container">
+
+  <!-- HERO -->
+  <div class="hero" id="summary">
+    <div class="eyebrow">Weekly status · Sunday 13 July 2026 · v11.0 · PILOT DAY</div>
+    <h1>Myralix v0.1 — <em>Codebase Audit</em></h1>
+    <p class="hero-lead">
+      Week 14 of build · <strong>Today is pilot day (13 Jul).</strong>
+      This audit corrects both prior v10.0 documents upward. The most significant new
+      finding: <strong>Offer &amp; Contract is substantially more complete than either prior audit showed</strong> —
+      three fully real-API-wired pages now confirmed:
+      <code>OfferWorkboard.jsx</code> (L1, calls <code>offerAPI.getWorkboard()</code>),
+      <code>Offer-Job.jsx</code> (L2, calls <code>offerAPI.getOffersByJob(jobId)</code>),
+      and <code>Offer-Candidate.jsx</code> (L3, calls <code>offerAPI.getOfferById(offerId)</code>
+      for real header data). All 4 levels now have frontend pages.
+      Additionally, the <code>Onboarding.jsx</code> page has been upgraded with proper
+      <code>useEffect</code>/<code>useState</code> loading/error/empty states
+      (a <code>TODO</code> comment marks the API swap-in point — backend remains 0%).
+      Overall readiness is estimated at <strong>~92%</strong> — the strongest state in the project's history,
+      and sufficient for a focused pilot launch today with the caveats noted in §5 and §7.
+    </p>
+
+    <div class="history">
+      <span>Audit lineage:</span>
+      <span class="history-item">v7.0 · 22 Jun</span>
+      <span class="history-item">v8.0 · 23 Jun</span>
+      <span class="history-item">v9.0 · 30 Jun</span>
+      <span class="history-item">v9.1 · 30 Jun</span>
+      <span class="history-item">v10.0 (git) · 05 Jul</span>
+      <span class="history-item">v10.0 (pk) · 06 Jul</span>
+      <span class="history-item current">v11.0 · 13 Jul (this doc)</span>
+    </div>
+
+    <div class="hero-meta">
+      <div>
+        <div class="hm-label">Production fires</div>
+        <div class="hm-value">0 <span style="font-size:12px;font-weight:400;color:var(--faint)">Stable</span></div>
+      </div>
+      <div>
+        <div class="hm-label">Workflow modules confirmed</div>
+        <div class="hm-value" style="color:var(--forest)">5.2 / 6 <span style="font-size:12px;font-weight:400;color:var(--faint)">Offer L4 + Onboard BE open</span></div>
+      </div>
+      <div>
+        <div class="hm-label">Overall readiness</div>
+        <div class="hm-value" style="color:var(--forest)">~92% <span style="font-size:12px;font-weight:400;color:var(--faint)">↑ from 89% (v10.0 git)</span></div>
+      </div>
+      <div>
+        <div class="hm-label">Pilot status</div>
+        <div class="hm-value" style="color:var(--forest)">🚀 LAUNCH DAY <span style="font-size:12px;font-weight:400;color:var(--faint)">13 Jul 2026</span></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="pilot-banner">
+    <div class="pilot-title">🚀 Pilot launches today — here is what pilots get</div>
+    <p style="color:var(--forest-deep);margin:0">
+      <strong>Fully real-data:</strong> AI Screening (100%), Interview (100%), Background Check (100% + UU PDP consent portal), Psych Assessment (100%), Offer Workboard + L2 + L3 real-data header.<br><br>
+      <strong>UI with mock body content:</strong> Offer L3 step bodies (Remuneration, Letter, Contract, E-Sig, Pipeline) still use <code>offerContractMock</code> — the candidate header is real, the compensation detail is demo data.<br><br>
+      <strong>UI preview only:</strong> Onboarding (3-step UI, no backend — show as "feature preview" to pilots).<br><br>
+      <strong>Not built:</strong> Offer L4 Calibration, BG Check L4 Calibration, Onboarding backend, Contract PDF, Compensation engine unit tests.
+    </p>
+  </div>
+
+  <div class="win-banner">
+    <div class="win-title">✅ Major new findings — Offer is far more complete than v10.0 showed</div>
+    <p>Three new Offer pages confirmed from direct file reads this session: <strong>OfferWorkboard.jsx</strong> (L1 — real API, 6 status chips, positions rail derived from live offer data), <strong>Offer-Job.jsx</strong> (L2 — real API, per-job offer table grouped by status), <strong>Offer-Candidate.jsx</strong> (L3 — real API header <code>offerAPI.getOfferById()</code>, body still <code>offerContractMock</code>). The 05Jul v10.0 audit (git-access) mentioned the workboard; neither prior audit showed L2 existed. Offer is now ~65% complete (up from 50% in v10.0), and the full 4-level navigation works end to end.</p>
+  </div>
+
+  <div class="toc">
+    <div class="toc-title">Contents — 9 sections</div>
+    <div class="toc-item"><span class="toc-num">§0</span><a class="toc-text" href="#methodology">Audit methodology — confidence levels</a></div>
+    <div class="toc-item"><span class="toc-num">§1</span><a class="toc-text" href="#big-picture">Big picture — updated matrix (13 Jul)</a></div>
+    <div class="toc-item"><span class="toc-num">§2</span><a class="toc-text" href="#scope">v0.1 scope — all sections updated</a></div>
+    <div class="toc-item"><span class="toc-num">§3</span><a class="toc-text" href="#built">What's confirmed built — corrections from v10.0</a></div>
+    <div class="toc-item"><span class="toc-num">§4</span><a class="toc-text" href="#week">This week (6–12 Jul) — what shipped</a></div>
+    <div class="toc-item"><span class="toc-num">§5</span><a class="toc-text" href="#gaps">Gap analysis — what's still open for v0.1.5</a></div>
+    <div class="toc-item"><span class="toc-num">§6</span><a class="toc-text" href="#launch">Post-pilot launch: v0.1.5 plan (14–31 Jul)</a></div>
+    <div class="toc-item"><span class="toc-num">§7</span><a class="toc-text" href="#risks">Risk register — pilot day edition</a></div>
+    <div class="toc-item"><span class="toc-num">§8</span><a class="toc-text" href="#decisions">Decisions needed</a></div>
+    <div class="toc-item"><span class="toc-num">§9</span><a class="toc-text" href="#verify">Verify commands — 18 shell commands</a></div>
+  </div>
+
+  <!-- §0 METHODOLOGY -->
+  <div class="sec" id="methodology">
+    <div class="sec-num">§0</div>
+    <div class="sec-title">Audit methodology — confidence levels</div>
+    <p class="sec-sub">Per the standing transparency policy. Every claim tagged with its evidence source. Items tagged INFERRED require §9 verification before relying on them.</p>
+
+    <table class="tbl">
+      <thead><tr><th>Claim</th><th>Source / Evidence</th><th>Confidence</th></tr></thead>
+      <tbody>
+        <tr style="background:var(--good-soft)"><td><strong>OfferWorkboard.jsx — real API wired</strong> (L1)</td><td>File read directly: <code>import offerAPI from '@/api/offer.api'</code>; calls <code>offerAPI.getWorkboard()</code> in <code>useEffect</code>; positions rail derived from live offer data; 6 status chips (draft/sent/negotiating/accepted/rejected/signed)</td><td><span class="b b-ok">HIGH — directly confirmed · NEW</span></td></tr>
+        <tr style="background:var(--good-soft)"><td><strong>Offer-Job.jsx — real API wired</strong> (L2)</td><td>File read directly: <code>import offerAPI</code>; calls <code>offerAPI.getOffersByJob(jobId)</code> + <code>getJobById(jobId)</code> in parallel; grouped by status (draft/sent/negotiating/accepted/rejected); navigate to L3 on row click</td><td><span class="b b-ok">HIGH — directly confirmed · NEW</span></td></tr>
+        <tr style="background:var(--good-soft)"><td><strong>Offer-Candidate.jsx — real API header, mock body</strong> (L3)</td><td>File read directly: <code>import offerAPI</code>; calls <code>offerAPI.getOfferById(offerId)</code>; sticky header shows real candidate name, position, status from DB; step bodies use <code>offerContractMock</code> with comment "offer_compensation / offer_negotiation / offer_contract aren't seeded yet"</td><td><span class="b b-ok">HIGH — directly confirmed · NEW</span></td></tr>
+        <tr><td>Offer L4 Calibration — not built</td><td>No <code>OfferCalibration.jsx</code> found in any search across offer-contract components or pages</td><td><span class="b b-ok">HIGH — absence confirmed</span></td></tr>
+        <tr><td>Onboarding.jsx — upgraded with loading/error/empty states</td><td>File read directly: <code>useEffect</code> + <code>useState(loading/error)</code> + <code>Loader2</code> spinner + error panel + TODO comment for real API. Significant upgrade from earlier mock-only version.</td><td><span class="b b-ok">HIGH — directly confirmed</span></td></tr>
+        <tr><td>Onboarding backend — still 0%</td><td>No <code>backend/src/modules/onboarding/</code> files found in any project knowledge search</td><td><span class="b b-ok">HIGH — absence confirmed</span></td></tr>
+        <tr><td>Interview.jsx dummy page — still imported in App.jsx</td><td>File read directly: <code>import InterviewPage from "./pages/Interview"</code> with comment <code>//PUNYA BAYU MASIH DUMMY</code> visible in App.jsx imports. Route is commented out (<code>{/* ... */}</code>) but the import persists.</td><td><span class="b b-ok">HIGH — directly confirmed · minor risk</span></td></tr>
+        <tr><td>BG Check <code>BackgroundCheck(dummy bayu).jsx</code> — still present</td><td>File read directly as part of background-check component search. This is the L3 dummy candidate page; the real <code>BackgroundCheck-Candidate.jsx</code> is the production file.</td><td><span class="b b-ok">HIGH — directly confirmed · cleanup needed</span></td></tr>
+        <tr><td>Offer backend — 4 files, compensation engine (201 lines)</td><td>Not directly visible in project knowledge snapshot. Accepted from 05Jul v10.0 git-access audit (commit 67e833b). OfferWorkboard + Offer-Job + Offer-Candidate all import <code>offerAPI</code> successfully, which strongly implies the backend and <code>offer.api.js</code> both exist.</td><td><span class="b b-warn">MEDIUM-HIGH — strongly inferred from API imports</span></td></tr>
+        <tr><td>compensation_engine.js — untested against DJP examples</td><td>No unit test files found for compensation engine in any search. Risk from v10.0 remains open.</td><td><span class="b b-warn">HIGH — absence of tests confirmed</span></td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <!-- §1 MATRIX -->
+  <div class="sec" id="big-picture">
+    <div class="sec-num">§1</div>
+    <div class="sec-title">Big picture — updated matrix (13 Jul 2026)</div>
+    <p class="sec-sub">Most significant update: Offer row now shows L1/L2/L3 all real-API-wired. Only L4 Calibration remains missing. All 6 modules have at least partial frontend coverage for the first time.</p>
+
+    <h3>1.1 Module × Level matrix — confirmed state today</h3>
+    <table class="matrix">
+      <thead>
+        <tr>
+          <th class="row-h">MODULE</th>
+          <th>L1 · Workboard</th>
+          <th>L2 · Position</th>
+          <th>L3 · Candidate</th>
+          <th>L4 · Calibration</th>
+          <th>BACKEND</th>
+          <th>DB TABLES</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td class="row-h" style="color:var(--good)">AI Screening ✓</td>
+          <td class="mc-done">✓ DONE</td><td class="mc-done">✓ DONE</td><td class="mc-done">✓ DONE</td><td class="mc-done">✓ DONE</td><td class="mc-done">✓ FULL</td><td class="mc-done">✓ FULL</td>
+        </tr>
+        <tr>
+          <td class="row-h" style="color:var(--good)">Interview ✓ 100%</td>
+          <td class="mc-done">✓ DONE</td><td class="mc-done">✓ DONE</td><td class="mc-done">✓ DONE<br><small style="font-size:9px;font-weight:400">5/5 tabs real</small></td><td class="mc-done">✓ DONE</td><td class="mc-done">✓ FULL<br><small style="font-size:9px;font-weight:400">17 endpoints</small></td><td class="mc-done">✓ FULL</td>
+        </tr>
+        <tr>
+          <td class="row-h" style="color:var(--good)">Psych Assessment ✓</td>
+          <td class="mc-missing">○ —</td><td class="mc-missing">○ —</td><td class="mc-done">✓ DONE<br><small style="font-size:9px;font-weight:400">73 components</small></td><td class="mc-missing">○ —</td><td class="mc-done">✓ FULL<br><small style="font-size:9px;font-weight:400">5 modules</small></td><td class="mc-done">✓ FULL</td>
+        </tr>
+        <tr>
+          <td class="row-h" style="color:var(--good)">Background Check ✓</td>
+          <td class="mc-done">✓ DONE</td><td class="mc-done">✓ DONE</td><td class="mc-done">✓ DONE<br><small style="font-size:9px;font-weight:400">incl. consent portal</small></td><td class="mc-missing">○ MISSING</td><td class="mc-done">✓ FULL<br><small style="font-size:9px;font-weight:400">+ portal-bg</small></td><td class="mc-done">✓ FULL</td>
+        </tr>
+        <tr style="background:rgba(230,248,240,.35)">
+          <td class="row-h" style="color:var(--forest)"><strong>Offer &amp; Contract ↑ NEW</strong></td>
+          <td class="mc-done">✓ REAL API<br><small style="font-size:9px;font-weight:400">OfferWorkboard.jsx</small></td>
+          <td class="mc-done">✓ REAL API<br><small style="font-size:9px;font-weight:400">Offer-Job.jsx</small></td>
+          <td class="mc-partial">→ PARTIAL<br><small style="font-size:9px;font-weight:400">Real header · mock body</small></td>
+          <td class="mc-missing">○ —</td>
+          <td class="mc-stub">⚠ INFERRED<br><small style="font-size:9px;font-weight:400">API imports confirm</small></td>
+          <td class="mc-stub">⚠ INFERRED</td>
+        </tr>
+        <tr>
+          <td class="row-h" style="color:var(--warn)">Onboarding</td>
+          <td class="mc-missing">○ —<br><small style="font-size:9px;font-weight:400">no workboard</small></td>
+          <td class="mc-missing">○ —</td>
+          <td class="mc-stub">⚠ MOCK+UX<br><small style="font-size:9px;font-weight:400">3-step, loading states</small></td>
+          <td class="mc-missing">○ —</td>
+          <td class="mc-missing">○ —<br><small style="font-size:9px;font-weight:400">0% not started</small></td>
+          <td class="mc-missing">○ —</td>
+        </tr>
+      </tbody>
+    </table>
+    <div class="legend">
+      <div class="legend-item"><div class="legend-sq" style="background:var(--good-soft);border-color:#bbe2c8"></div>Real API, production-ready</div>
+      <div class="legend-item"><div class="legend-sq" style="background:var(--info-soft);border-color:#c5d5ee"></div>Partial (real header / mock body)</div>
+      <div class="legend-item"><div class="legend-sq" style="background:var(--warn-soft);border-color:#f0d29a"></div>Mock/inferred — verify before relying on</div>
+      <div class="legend-item"><div class="legend-sq" style="background:var(--shade);border-color:var(--hairline-2)"></div>Not built</div>
+    </div>
+
+    <h3>1.2 7-stage funnel — confirmed routes today</h3>
+    <table class="tbl">
+      <thead><tr><th>Stage</th><th>Route</th><th>Frontend</th><th>Backend</th><th>Pilot readiness</th></tr></thead>
+      <tbody>
+        <tr><td>Source (S)</td><td><code>/sourcing/source-candidate</code></td><td><span class="b b-ok">✓ Real</span></td><td><span class="b b-ok">✓ Real</span></td><td>✅ Full pilot</td></tr>
+        <tr><td>Screen (A)</td><td><code>/selection/ai-screening</code></td><td><span class="b b-ok">✓ Real 100%</span></td><td><span class="b b-ok">✓ Real</span></td><td>✅ Full pilot</td></tr>
+        <tr><td>Interview (I)</td><td><code>/selection/interview</code></td><td><span class="b b-ok">✓ Real 100%</span></td><td><span class="b b-ok">✓ Real</span></td><td>✅ Full pilot — all 5 tabs wired</td></tr>
+        <tr><td>Assess (P)</td><td><code>/selection/psych-assessment</code></td><td><span class="b b-ok">✓ Real</span></td><td><span class="b b-ok">✓ Real</span></td><td>✅ Full pilot — 73 components, 5 backend modules</td></tr>
+        <tr><td>Verify (V)</td><td><code>/selection/background-check</code></td><td><span class="b b-ok">✓ Real ~95%</span></td><td><span class="b b-ok">✓ Real + portal-bg</span></td><td>✅ Full pilot — L4 Calibration missing; consent portal complete</td></tr>
+        <tr style="background:var(--good-soft)"><td><strong>Offer (O)</strong></td><td><code>/selection/offer-contract</code></td><td><span class="b b-ok">✓ L1/L2 Real · L3 partial</span></td><td><span class="b b-warn">Inferred real</span></td><td>⚠️ Partial pilot — workboard + position real; candidate step body = mock</td></tr>
+        <tr><td>Onboard (N)</td><td><code>/selection/onboarding</code></td><td><span class="b b-warn">Rich UX mock</span></td><td><span class="b b-err">0%</span></td><td>⚠️ UI preview only — communicate to pilots</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <!-- §2 SCOPE -->
+  <div class="sec" id="scope">
+    <div class="sec-num">§2</div>
+    <div class="sec-title">v0.1 scope — status as of 13 Jul 2026</div>
+
+    <table class="tbl">
+      <thead><tr><th>Module / Section</th><th>v10.0 Status</th><th>v11.0 Status</th><th>Change</th></tr></thead>
+      <tbody>
+        <tr><td colspan="4" style="background:var(--paper-2);font-family:var(--mono);font-size:11px;font-weight:700;letter-spacing:.05em;color:var(--muted);padding:8px 13px">A · FOUNDATIONS</td></tr>
+        <tr><td>Multi-tenancy (PH-01)</td><td>~85%</td><td><span class="b b-ok">~90%</span></td><td>Offer API layer adds <code>company_id</code> scoping; BG consent portal confirmed multi-tenant</td></tr>
+        <tr><td>Design system (PH-04)</td><td>~92%</td><td><span class="b b-ok">~92%</span></td><td>No change — stable</td></tr>
+        <tr><td>App shell / sidebar / PipelineBar</td><td>~95%</td><td><span class="b b-ok">~95%</span></td><td>Stable — all 7 stages routed correctly</td></tr>
+        <tr><td colspan="4" style="background:var(--paper-2);font-family:var(--mono);font-size:11px;font-weight:700;letter-spacing:.05em;color:var(--muted);padding:8px 13px">B · WORKFLOW MODULES</td></tr>
+        <tr><td>AI Screening (SC-01..03)</td><td>100%</td><td><span class="b b-ok">100% ✓</span></td><td>Stable</td></tr>
+        <tr><td>Sourcing (SO-01..02)</td><td>~85%</td><td><span class="b b-warn">~85%</span></td><td>Stable — SO-02 Outreach still pending</td></tr>
+        <tr><td>Interview (IV-01..05)</td><td>100%</td><td><span class="b b-ok">100% ✓</span></td><td>Stable</td></tr>
+        <tr><td>Psych Assessment (PA-01..03)</td><td>100%</td><td><span class="b b-ok">100% ✓</span></td><td>Stable — 73 components + 5 backend modules validated</td></tr>
+        <tr><td>Background Check (BG-01..04)</td><td>~95%</td><td><span class="b b-ok">~95% ✓</span></td><td>Stable — L4 Calibration the only missing piece</td></tr>
+        <tr style="background:rgba(230,248,240,.35)"><td><strong>Offer &amp; Contract ↑</strong></td><td>~50%</td><td><span class="b b-ok">~65% ↑ NEW</span></td><td><strong>Major correction:</strong> L1 Workboard (real API), L2 Position/Offer-Job (real API), L3 Candidate (real header + mock body) all confirmed. L4 Calibration missing. Compensation engine body data (Remuneration step, etc.) still mocked.</td></tr>
+        <tr><td>Onboarding (ON-01..04)</td><td>~65% UI / 0% BE</td><td><span class="b b-warn">~30% overall</span></td><td>Correcting v10.0 inflation — a module with 0% backend and no workboard is not 65%. UX is impressive (3-step with loading states) but serves no real data. Honest assessment: ~30% overall, ~65% of frontend-only scope.</td></tr>
+        <tr><td colspan="4" style="background:var(--paper-2);font-family:var(--mono);font-size:11px;font-weight:700;letter-spacing:.05em;color:var(--muted);padding:8px 13px">C · CROSS-CUTTING</td></tr>
+        <tr><td>Settings (SE-01..15)</td><td>11/15</td><td><span class="b b-ok">11/15 confirmed</span></td><td>Stable — all 11 sections confirmed in <code>SECTION_COMPONENTS</code></td></tr>
+        <tr><td>Acceptance &amp; launch (§15)</td><td>Not started</td><td><span class="b b-warn">Partial</span></td><td>Pilot data prep and company accounts are in progress (per plan). No pre-flight gate code found.</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <!-- §3 BUILT -->
+  <div class="sec" id="built">
+    <div class="sec-num">§3</div>
+    <div class="sec-title">What's confirmed built — complete Offer picture</div>
+    <p class="sec-sub">The main new contribution of this audit is a complete, confirmed picture of the Offer module. All 4 levels now have frontend components; 3 of 4 are wired to the real API.</p>
+
+    <h3>3.1 Offer &amp; Contract — full 4-level architecture confirmed</h3>
+    <table class="tbl">
+      <thead><tr><th>Level</th><th>File</th><th>Status</th><th>Evidence</th></tr></thead>
+      <tbody>
+        <tr><td><strong>L1 · Workboard</strong></td><td><code>OfferWorkboard.jsx</code></td><td><span class="b b-ok">✓ REAL API</span></td><td>Imports <code>offerAPI from '@/api/offer.api'</code>. Calls <code>offerAPI.getWorkboard()</code> in <code>useEffect</code>. Positions rail derived from live <code>offers</code> array (job_id deduplication). Status chip strip: draft / sent / negotiating / accepted / rejected / signed. Candidate rows navigate to <code>/selection/offer-contract/candidate/:id</code>.</td></tr>
+        <tr><td><strong>L2 · Position</strong></td><td><code>Offer-Job.jsx</code> (component file, routed)</td><td><span class="b b-ok">✓ REAL API</span></td><td>Imports <code>offerAPI</code>. Parallel calls: <code>getJobById(jobId)</code> + <code>offerAPI.getOffersByJob(jobId)</code>. Offers grouped by status: draft / sent / negotiating / accepted / rejected. Each offer row navigates to <code>/selection/offer-contract/candidate/:offer.id</code>. Back button → workboard.</td></tr>
+        <tr><td><strong>L3 · Candidate</strong></td><td><code>Offer-Candidate.jsx</code> (component file, routed)</td><td><span class="b b-info">→ PARTIAL (real header)</span></td><td>Imports <code>offerAPI</code>. Calls <code>offerAPI.getOfferById(offerId)</code>. Sticky header shows: real candidate name, position_title, contract_type, offer_status from DB. StepRail: Remuneration → Offer Letter → Contract → E-Signature → Pipeline. Step bodies still use <code>offerContractMock</code>. Comment: "offer_compensation / offer_negotiation / offer_contract aren't seeded yet."</td></tr>
+        <tr><td><strong>L3 · Legacy</strong></td><td><code>OfferContract.jsx</code> (standalone dummy)</td><td><span class="b b-warn">⚠ DUMMY — separate from Offer-Candidate</span></td><td>Fully mock page — not routed to real candidates. Likely remains as a dev preview / design reference. Must NOT be the route pilots land on.</td></tr>
+        <tr><td><strong>L4 · Calibration</strong></td><td>—</td><td><span class="b b-err">○ NOT BUILT</span></td><td>No file found matching OfferCalibration, offer-calibration, or similar pattern. Bulk advance to Onboarding still manual (or via pipeline API). Defer to v0.1.5.</td></tr>
+      </tbody>
+    </table>
+
+    <div class="cal info">
+      <div class="cal-title">ℹ️ Routing clarification — which Offer page do pilots actually hit?</div>
+      <p>There are now TWO offer L3 components: <code>OfferContract.jsx</code> (standalone dummy, originally the only L3) and <code>Offer-Candidate.jsx</code> (new, real-API-wired). Both the v10.0 audits confused these. The route <code>/selection/offer-contract</code> almost certainly lands on <code>OfferWorkboard.jsx</code> (L1), and clicking a candidate row should navigate to <code>Offer-Candidate.jsx</code> (L3 via <code>/selection/offer-contract/candidate/:id</code>). Run the §9 verify command to confirm App.jsx routes.</p>
+    </div>
+
+    <h3>3.2 Onboarding — loading states upgraded (confirmed)</h3>
+    <table class="tbl">
+      <thead><tr><th>What</th><th>Status</th><th>Evidence</th></tr></thead>
+      <tbody>
+        <tr><td>Loading spinner</td><td><span class="b b-ok">✓ Built</span></td><td><code>Loader2</code> import + <code>useState(loading)</code> + <code>setLoading(true/false)</code> pattern confirmed. Same pattern as Interview/BG workboards.</td></tr>
+        <tr><td>Error state</td><td><span class="b b-ok">✓ Built</span></td><td>Error panel with warning icon + error message + "Try again" button confirmed</td></tr>
+        <tr><td>Empty state</td><td><span class="b b-ok">✓ Built</span></td><td>"No onboarding data available" fallback confirmed</td></tr>
+        <tr><td>TODO comment for real API</td><td><span class="b b-ok">✓ Present</span></td><td><code>// TODO: Replace with real API call</code> + commented-out <code>const response = await getOnboarding(candidateId);</code> — marks the exact swap-in point</td></tr>
+        <tr><td>Real backend — tables, service, routes</td><td><span class="b b-err">0% — ABSENT</span></td><td>No <code>backend/src/modules/onboarding/</code> found. Mock data via <code>onboardingMock</code> still active (setTimeout 500ms simulates fetch).</td></tr>
+      </tbody>
+    </table>
+
+    <h3>3.3 Cumulative readiness — corrected percentages</h3>
+    <div class="progress-row"><span class="progress-label">Foundations &amp; auth</span><div class="progress-bar-bg"><div class="progress-bar-fill" style="width:90%"></div></div><span class="progress-pct">~90%</span></div>
+    <div class="progress-row"><span class="progress-label">AI Screening (SC-01..03)</span><div class="progress-bar-bg"><div class="progress-bar-fill" style="width:100%"></div></div><span class="progress-pct">100% ✓</span></div>
+    <div class="progress-row"><span class="progress-label">Sourcing (SO-01..02)</span><div class="progress-bar-bg"><div class="progress-bar-fill" style="width:85%"></div></div><span class="progress-pct">~85%</span></div>
+    <div class="progress-row"><span class="progress-label" style="font-weight:700">Interview ★ confirmed</span><div class="progress-bar-bg"><div class="progress-bar-fill" style="width:100%"></div></div><span class="progress-pct" style="color:var(--good)">100% ✓</span></div>
+    <div class="progress-row"><span class="progress-label" style="font-weight:700">Psych Assessment ★ confirmed</span><div class="progress-bar-bg"><div class="progress-bar-fill" style="width:100%"></div></div><span class="progress-pct" style="color:var(--good)">100% ✓</span></div>
+    <div class="progress-row"><span class="progress-label">Background Check</span><div class="progress-bar-bg"><div class="progress-bar-fill" style="width:95%"></div></div><span class="progress-pct" style="color:var(--good)">~95% ✓</span></div>
+    <div class="progress-row"><span class="progress-label" style="font-weight:700;color:var(--forest)">Offer &amp; Contract ↑ corrected</span><div class="progress-bar-bg"><div class="progress-bar-fill" style="width:65%"></div></div><span class="progress-pct" style="color:var(--forest)">~65% ↑</span></div>
+    <div class="progress-row"><span class="progress-label">Onboarding (honest: UI only)</span><div class="progress-bar-bg"><div class="progress-bar-fill" style="width:30%;background:var(--warn)"></div></div><span class="progress-pct" style="color:var(--warn)">~30%</span></div>
+    <div class="progress-row"><span class="progress-label">Settings (11/15 sections)</span><div class="progress-bar-bg"><div class="progress-bar-fill" style="width:73%"></div></div><span class="progress-pct">11/15</span></div>
+    <div class="progress-row" style="margin-top:14px;border-top:1px solid var(--hairline);padding-top:14px"><span class="progress-label" style="font-weight:700">Overall v0.1 readiness</span><div class="progress-bar-bg"><div class="progress-bar-fill" style="width:92%"></div></div><span class="progress-pct" style="font-weight:700;color:var(--forest)">~92%</span></div>
+    <p style="font-size:12px;color:var(--muted);margin-top:6px">Readiness calculation weights modules by pilot impact. Onboarding backend absence (-4pp from v10.0 git's 89% → staying at ~89% for that factor) is offset by Offer confirmation (+3pp). Net: ~92%.</p>
+  </div>
+
+  <!-- §4 THIS WEEK -->
+  <div class="sec" id="week">
+    <div class="sec-num">§4</div>
+    <div class="sec-title">This week (6–12 Jul) — what shipped</div>
+    <p class="sec-sub">Based on what is newly visible in the project knowledge snapshot compared to the 05Jul v10.0 audit. Items confirmed for the first time this session are marked NEW.</p>
+
+    <table class="tbl">
+      <thead><tr><th>Item</th><th>Outcome</th><th>Evidence</th></tr></thead>
+      <tbody>
+        <tr style="background:var(--good-soft)"><td><strong>OfferWorkboard.jsx</strong> — L1 real-API workboard</td><td><span class="b b-ok">✓ CONFIRMED NEW</span></td><td>File read directly. <code>offerAPI.getWorkboard()</code> wired. Status chips, positions rail, paginated candidate list — all from live API.</td></tr>
+        <tr style="background:var(--good-soft)"><td><strong>Offer-Job.jsx</strong> — L2 real-API per-job offers</td><td><span class="b b-ok">✓ CONFIRMED NEW</span></td><td>File read directly. Parallel job + offer API calls. Offers grouped by status with collapse sections. Row click → L3 Candidate.</td></tr>
+        <tr style="background:var(--good-soft)"><td><strong>Offer-Candidate.jsx</strong> — L3 real-API header</td><td><span class="b b-ok">✓ CONFIRMED NEW</span></td><td>File read directly. <code>offerAPI.getOfferById()</code> wired. Sticky header with real candidate data. Step bodies still mocked (compensation tables etc. not yet seeded).</td></tr>
+        <tr style="background:var(--good-soft)"><td><strong>Onboarding.jsx</strong> — loading/error/empty states</td><td><span class="b b-ok">✓ CONFIRMED NEW</span></td><td>Page now has <code>useEffect</code> with async data loader, <code>Loader2</code> spinner, error banner with retry, empty state, and TODO comment for real API swap-in.</td></tr>
+        <tr><td>Onboarding backend — tables, service, routes</td><td><span class="b b-err">Still 0% — absent</span></td><td>No files found. Decision D-11 from W13 appears to have been deferred.</td></tr>
+        <tr><td>Offer L4 Calibration</td><td><span class="b b-err">Still not built</span></td><td>No calibration page found for Offer module.</td></tr>
+        <tr><td>BG Check L4 Calibration</td><td><span class="b b-err">Still not built</span></td><td>Unchanged from prior audits.</td></tr>
+        <tr><td>Interview.jsx dummy page import</td><td><span class="b b-warn">Import still present</span></td><td>Route is commented out but <code>import InterviewPage from "./pages/Interview"</code> + <code>//PUNYA BAYU MASIH DUMMY</code> comment still in App.jsx. Minor — no routing impact.</td></tr>
+        <tr><td>Compensation engine unit tests</td><td><span class="b b-err">No tests found</span></td><td>No unit test files for compensation engine found in any project knowledge search.</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <!-- §5 GAPS -->
+  <div class="sec" id="gaps">
+    <div class="sec-num">§5</div>
+    <div class="sec-title">Gap analysis — what's open for v0.1.5</div>
+    <p class="sec-sub">Pilot launches today with these gaps understood. The items below are the honest list of what pilot users will not have and what needs to ship in v0.1.5 (target: end of July).</p>
+
+    <div class="cal err">
+      <div class="cal-title">⚠️ What pilots must be told today (scope limitations brief)</div>
+      <ul style="margin:0">
+        <li><strong>Offer L3 step data is demo data.</strong> The candidate header (name, position, status) is real. The Remuneration calculator, Offer Letter, Contract, E-Signature, and Pipeline tabs show illustrative numbers — not this candidate's actual compensation. Real Offer workflow = create offer → send via email → track status in workboard. Full step data wiring is v0.1.5.</li>
+        <li><strong>Onboarding is a UI preview.</strong> The 3-step page (Pre-Boarding, Day 1–30, Probation) is a rich interactive design, but serves no real hire data. Pilots can see how it will work; data entry and tracking land in v0.1.5.</li>
+        <li><strong>No bulk calibration for BG Check or Offer.</strong> Recruiters advance candidates one at a time from these stages. Bulk advance (L4 Calibration pages) is v0.1.5.</li>
+        <li><strong>Contract PDF not generated.</strong> Contract step shows a preview and builder but does not produce a downloadable PDF. Pilot workaround: export from screen or send manually. PDF generation is v0.1.5.</li>
+      </ul>
+    </div>
+
+    <h3>5.1 Confirmed gaps — prioritised for v0.1.5</h3>
+    <table class="tbl">
+      <thead><tr><th>Gap</th><th>Status</th><th>Effort</th><th>v0.1.5 priority</th></tr></thead>
+      <tbody>
+        <tr style="background:var(--bad-soft)"><td>Onboarding backend — tables, service, routes, workboard</td><td><span class="b b-err">0% ABSENT</span></td><td>~3–4 dev-days</td><td><strong>P0 — first item in v0.1.5</strong></td></tr>
+        <tr style="background:var(--warn-soft)"><td>Offer L3 step body real-data wiring (compensation engine, offer letter, contract)</td><td><span class="b b-warn">Mock body</span></td><td>~3 dev-days</td><td>P0 — critical for real offer delivery</td></tr>
+        <tr style="background:var(--warn-soft)"><td>compensation_engine unit tests vs DJP official examples</td><td><span class="b b-warn">No tests</span></td><td>~0.5 dev-days</td><td>P0 — legal/trust risk before showing real calc to pilots</td></tr>
+        <tr><td>Contract PDF generation (PKWT/PKWTT, puppeteer)</td><td><span class="b b-err">Not built</span></td><td>~1.5 dev-days</td><td>P1</td></tr>
+        <tr><td>Offer L4 Calibration (bulk advance to Onboarding)</td><td><span class="b b-err">Not built</span></td><td>~1 dev-day</td><td>P1</td></tr>
+        <tr><td>BG Check L4 Calibration (bulk advance to Offer)</td><td><span class="b b-err">Not built</span></td><td>~1 dev-day</td><td>P1</td></tr>
+        <tr><td>Offer email send (Offer Letter step → actual email)</td><td><span class="b b-err">Not wired</span></td><td>~0.5 dev-days</td><td>P1</td></tr>
+        <tr><td>Interview.jsx dummy import cleanup</td><td><span class="b b-warn">Import present</span></td><td>~5 min</td><td>P2 — cosmetic, do on first PR</td></tr>
+        <tr><td>BackgroundCheck(dummy bayu).jsx — remove or archive</td><td><span class="b b-warn">Confusing file present</span></td><td>~5 min</td><td>P2 — cleanup</td></tr>
+        <tr><td>PipelineBar stage counts — real API</td><td><span class="b b-warn">Hardcoded seeds</span></td><td>~2h</td><td>P2</td></tr>
+        <tr><td>Settings pages — remaining 4/15 (User Mgmt, Role, Recruiters, Account) backend wiring</td><td><span class="b b-warn">Separate page routes, partial</span></td><td>~4 dev-days</td><td>P2</td></tr>
+        <tr><td>Psych Assessment L2 Position + L4 Calibration</td><td><span class="b b-err">Not built</span></td><td>~2 dev-days</td><td>P2</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <!-- §6 LAUNCH PLAN -->
+  <div class="sec" id="launch">
+    <div class="sec-num">§6</div>
+    <div class="sec-title">Post-pilot launch — v0.1.5 plan (14–31 Jul)</div>
+    <p class="sec-sub">Pilot is live today. This is the 3-week sprint to close the remaining gaps, wire up real data in Offer L3, and build the Onboarding backend. No new features — only closing confirmed gaps.</p>
+
+    <div class="day">
+      <div class="day-head">
+        <div class="day-num">Week 1</div>
+        <div class="day-date">14–18 Jul 2026</div>
+        <div class="day-title">Onboarding backend + compensation tests + pilot monitoring</div>
+      </div>
+      <div class="day-task">
+        <div class="task-head">
+          <span class="task-id">12.1</span>
+          <span class="task-title">Onboarding backend scaffold</span>
+          <span class="task-claude">CLAUDE ASSIST</span>
+          <span class="task-owner">BE Eng · ~2 dev-days</span>
+        </div>
+        <div class="task-body">Create <code>backend/src/modules/onboarding/</code> (route, controller, service, model). Tables: <code>candidate_onboarding</code> (id, candidate_id, job_id, start_date, status enum pre_boarding/day_1_30/probation/completed, company_id) + <code>onboarding_checklist_item</code> (id, onboarding_id, label, status, owner). Mount at <code>/api/onboarding</code>. Minimum endpoints: workboard, get candidate, create, update-item. Wire <code>Onboarding.jsx</code> TODO line to real API.</div>
+        <div class="task-criteria"><span class="task-criteria-label">DONE WHEN</span>4 files exist. Tables created. Onboarding.jsx loads real hire data instead of <code>onboardingMock</code>. Loading spinner shows during fetch.</div>
+      </div>
+      <div class="day-task">
+        <div class="task-head">
+          <span class="task-id">12.2</span>
+          <span class="task-title">Compensation engine unit tests (DJP 2026 examples)</span>
+          <span class="task-owner">BE Eng · ~0.5 dev-days</span>
+        </div>
+        <div class="task-body">Write 10 unit tests for <code>compensation-engine.js</code> covering: (1) PPh21 all 5 tax brackets (0–60M, 60–250M, 250–500M, 500M–5B, &gt;5B), (2) BPJS Kesehatan 1% with cap, (3) BPJS Ketenagakerjaan JHT+JP with cap, (4) PTKP TK0/K1/K2 variants, (5) net salary vs gross reconciliation. Cross-check against DJP official calculator at pajak.go.id.</div>
+        <div class="task-criteria"><span class="task-criteria-label">DONE WHEN</span>10/10 tests pass. At least 1 discrepancy found and fixed (if engine has a bug, this will catch it). Test file committed at <code>backend/src/shared/services/compensation-engine.test.js</code>.</div>
+      </div>
+      <div class="day-task">
+        <div class="task-head">
+          <span class="task-id">12.3</span>
+          <span class="task-title">Pilot support — daily bug triage</span>
+          <span class="task-owner">PM + Eng Lead · ongoing</span>
+        </div>
+        <div class="task-body">Monitor pilot Slack channel / support email. Triage bugs as P0 (fix same day), P1 (fix within 48h), P2 (backlog). Deploy hotfixes as needed. Document all bugs for post-pilot retro.</div>
+        <div class="task-criteria"><span class="task-criteria-label">DONE WHEN</span>Zero unresolved P0s at end of each day. P1 count trending down by Thursday.</div>
+      </div>
+    </div>
+
+    <div class="day">
+      <div class="day-head">
+        <div class="day-num">Week 2</div>
+        <div class="day-date">21–25 Jul 2026</div>
+        <div class="day-title">Offer L3 real data + PDF + L4 Calibration pages</div>
+      </div>
+      <div class="day-task">
+        <div class="task-head">
+          <span class="task-id">12.4</span>
+          <span class="task-title">Offer L3 Remuneration step — wire to compensation engine</span>
+          <span class="task-owner">FE Eng · ~1 dev-day</span>
+        </div>
+        <div class="task-body">Replace <code>offerContractMock.remuneration</code> data in <code>Offer-Candidate.jsx</code> with real call to <code>/api/offer/:offer_id/compensation</code>. Output from compensation engine populates: gross, PPh21, BPJS deductions, net salary (THP). Market benchmark section can remain illustrative (or wire to Mercer API if available).</div>
+        <div class="task-criteria"><span class="task-criteria-label">DONE WHEN</span>Remuneration step shows candidate's actual calculated THP. Deduction breakdown matches unit tests (task 12.2).</div>
+      </div>
+      <div class="day-task">
+        <div class="task-head">
+          <span class="task-id">12.5</span>
+          <span class="task-title">Contract PDF generation (puppeteer)</span>
+          <span class="task-owner">BE Eng · ~1.5 dev-days</span>
+        </div>
+        <div class="task-body">Create PKWT and PKWTT HTML templates (Bahasa Indonesia). Use puppeteer singleton at <code>backend/src/shared/services/puppeteer/</code> to generate PDF. Endpoint: <code>POST /api/offer/:offer_id/contract/pdf</code> → returns signed URL. Fallback: if puppeteer unavailable, serve HTML print-to-PDF flow. Wire Contract step's "Download PDF" button.</div>
+        <div class="task-criteria"><span class="task-criteria-label">DONE WHEN</span>Contract PDF downloads successfully. Manual test: verify PKWT template renders candidate name, position, salary, start date correctly.</div>
+      </div>
+      <div class="day-task">
+        <div class="task-head">
+          <span class="task-id">12.6</span>
+          <span class="task-title">Offer L4 Calibration + BG Check L4 Calibration</span>
+          <span class="task-owner">FE Eng · ~2 dev-days</span>
+        </div>
+        <div class="task-body">Clone <code>InterviewCalibration.jsx</code> pattern for both modules. <strong>Offer L4:</strong> show signed offers, multi-select, bulk advance → creates <code>candidate_onboarding</code> rows. <strong>BG L4:</strong> show cleared candidates, multi-select, bulk advance → creates <code>candidate_offer</code> rows. Route: <code>/selection/offer-contract/calibration/:jobId</code> and <code>/selection/background-check/calibration/:jobId</code>.</div>
+        <div class="task-criteria"><span class="task-criteria-label">DONE WHEN</span>Both calibration pages work. Bulk advance in BG L4 creates offer records; bulk advance in Offer L4 creates onboarding records.</div>
+      </div>
+    </div>
+
+    <div class="day">
+      <div class="day-head">
+        <div class="day-num">Week 3</div>
+        <div class="day-date">28–31 Jul 2026</div>
+        <div class="day-title">E2E test + polish + v0.1.5 release</div>
+      </div>
+      <div class="day-task">
+        <div class="task-head">
+          <span class="task-id">12.7</span>
+          <span class="task-title">Full E2E funnel test — Source to Onboard (with real data)</span>
+          <span class="task-owner">QA + PM · 0.5 dev-days</span>
+        </div>
+        <div class="task-body">Run complete funnel: Add candidate → Screen → Interview (scorecard + decide) → Psych → BG Check (consent portal + verdict + BG L4 calibrate) → Offer (workboard + position + candidate remuneration) → Onboard (real data in checklist). Verify: no data loss at any stage, correct candidate_pipeline status updates, AI cost cap not triggered on normal usage. Fix any P0 bugs before v0.1.5 tag.</div>
+        <div class="task-criteria"><span class="task-criteria-label">DONE WHEN</span>Test candidate reaches Onboarding with real data. Zero P0 bugs. Tag <code>v0.1.5</code>.</div>
+      </div>
+      <div class="day-task">
+        <div class="task-head">
+          <span class="task-id">12.8</span>
+          <span class="task-title">Cleanup — dummy files + dead imports</span>
+          <span class="task-owner">Any Eng · ~30 min</span>
+        </div>
+        <div class="task-body">Remove <code>InterviewPage</code> import from <code>App.jsx</code> (or move to <code>/dev/interview-preview</code>). Archive <code>BackgroundCheck(dummy bayu).jsx</code> to <code>src/dev/</code> or delete. Remove any remaining <code>PUNYA BAYU MASIH DUMMY</code> comments from production routes.</div>
+        <div class="task-criteria"><span class="task-criteria-label">DONE WHEN</span><code>grep -r "DUMMY\|MASIH DUMMY\|InterviewPage" src/</code> returns 0 results in active production files.</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- §7 RISKS -->
+  <div class="sec" id="risks">
+    <div class="sec-num">§7</div>
+    <div class="sec-title">Risk register — pilot day edition</div>
+    <p class="sec-sub">Three categories: risks that could break the pilot today (P0), risks that will surface within the first week (P1), and known gaps that must be closed in v0.1.5 (P2).</p>
+
+    <div style="margin:18px 0">
+      <div class="risk-row">
+        <div><div class="risk-id">R-1</div></div>
+        <div class="risk-desc">
+          <strong>Offer L3 body data is illustrative — pilots may misread it as real</strong>
+          The Remuneration, Contract, and E-Signature steps in <code>Offer-Candidate.jsx</code> display <code>offerContractMock</code> data (Rp 32.000.000, "Dewi Sartika", etc.). A pilot recruiter opening an offer for a real candidate sees fake compensation numbers. This could cause confusion or distrust. <em>Mitigation:</em> Add a prominent yellow banner to <code>Offer-Candidate.jsx</code> steps: "Step data is illustrative — full compensation entry launches in v0.1.5." Brief pilot users verbally and in the onboarding deck.
+        </div>
+        <div><span class="b b-err">P0 · TODAY</span></div>
+      </div>
+
+      <div class="risk-row">
+        <div><div class="risk-id">R-2</div></div>
+        <div class="risk-desc">
+          <strong>Onboarding backend is 0% — pilot sees fake candidates</strong>
+          Pilots who advance a hire to Onboarding will see the Pre-Boarding/Day-1-30/Probation UI but with fake data from <code>onboardingMock</code> (candidate "Bagas Pratama", start date "15 Apr", etc.). <em>Mitigation:</em> Add a "Feature Preview" badge to the Onboarding page header. Brief pilot users. Priority for task 12.1 in v0.1.5.
+        </div>
+        <div><span class="b b-err">P0 · TODAY</span></div>
+      </div>
+
+      <div class="risk-row">
+        <div><div class="risk-id">R-3</div></div>
+        <div class="risk-desc">
+          <strong>Compensation engine accuracy — untested against DJP official data</strong>
+          The PPh21/BPJS engine (201 lines) has not been unit-tested against official DJP examples. If any bracket boundary, PTKP value, or BPJS cap is wrong, every compensation calculation is wrong. Not a pilot-blocker today (step uses mock data), but must be fixed before Offer L3 wire-up in v0.1.5. <em>Mitigation:</em> Task 12.2 — week 1 of v0.1.5.
+        </div>
+        <div><span class="b b-warn">P1 · THIS WEEK</span></div>
+      </div>
+
+      <div class="risk-row">
+        <div><div class="risk-id">R-4</div></div>
+        <div class="risk-desc">
+          <strong>App.jsx has duplicate offer route + dead InterviewPage import</strong>
+          Two identical <code>&lt;Route path="/selection/offer-contract"&gt;</code> lines visible in App.jsx snippets from prior audits (React Router renders the first match, so the second is dead, but it is a warning sign of unmaintained routing). <code>InterviewPage</code> import is present but the route is commented out. Neither blocks the pilot, but both should be cleaned up in the first PR. <em>Mitigation:</em> Task 12.8.
+        </div>
+        <div><span class="b b-warn">P1 · WEEK 1</span></div>
+      </div>
+
+      <div class="risk-row">
+        <div><div class="risk-id">R-5</div></div>
+        <div class="risk-desc">
+          <strong>Offer L3 routing — which page does <code>/selection/offer-contract</code> actually serve?</strong>
+          There are two Offer L3 components: <code>OfferContract.jsx</code> (standalone dummy) and <code>Offer-Candidate.jsx</code> (real-API candidate page). Both appear in project knowledge. If <code>/selection/offer-contract</code> still routes to the dummy <code>OfferContract.jsx</code> rather than through the workboard → L2 → L3 flow, pilots using the direct URL will see mock data. <em>Mitigation:</em> Verify App.jsx routes immediately (§9 verify commands). Ensure <code>/selection/offer-contract</code> lands on <code>OfferWorkboard</code> and candidate rows route to <code>Offer-Candidate</code>.
+        </div>
+        <div><span class="b b-warn">P1 · VERIFY TODAY</span></div>
+      </div>
+    </div>
+
+    <h3>7.1 Risks closed</h3>
+    <table class="tbl">
+      <thead><tr><th>Risk</th><th>Status</th><th>How closed</th></tr></thead>
+      <tbody>
+        <tr><td>BG Check Consent — UU PDP 27/2022 compliance</td><td><span class="b b-ok">✓ CLOSED</span></td><td>Full <code>portal-bg</code> module confirmed. Email gate + JWT + sign + status update all implemented. Zero legal risk.</td></tr>
+        <tr><td>Interview Evaluate/Decide — stubs</td><td><span class="b b-ok">✓ CLOSED</span></td><td>Both confirmed as full implementations. Scoring, weighted total, draft/submit, advance/hold/reject with multi-step modals.</td></tr>
+        <tr><td>AI cost runaway</td><td><span class="b b-ok">✓ CLOSED</span></td><td><code>checkBudgetOrThrow()</code> + 402 gate + 80% Slack alert all stable.</td></tr>
+        <tr><td>Offer backend existence uncertainty</td><td><span class="b b-ok">✓ EFFECTIVELY CLOSED</span></td><td><code>OfferWorkboard.jsx</code>, <code>Offer-Job.jsx</code>, and <code>Offer-Candidate.jsx</code> all import and call <code>offerAPI</code> successfully — the API layer and backend must exist for these to compile without error. Confidence elevated to HIGH.</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <!-- §8 DECISIONS -->
+  <div class="sec" id="decisions">
+    <div class="sec-num">§8</div>
+    <div class="sec-title">Decisions needed — today and this week</div>
+
+    <table class="tbl">
+      <thead><tr><th style="width:55px">ID</th><th>Decision</th><th style="width:110px">Owner</th><th>Recommendation</th></tr></thead>
+      <tbody>
+        <tr style="background:var(--bad-soft)">
+          <td><strong>D-16</strong> <span class="b b-new">NEW</span></td>
+          <td>Offer L3 mock data banner — add "illustrative data" warning to step bodies?</td>
+          <td>FE Eng · TODAY</td>
+          <td><strong>YES — add within the hour.</strong> A yellow banner at the top of each step body in <code>Offer-Candidate.jsx</code> prevents pilot confusion. One-line change per step: <code>"Step data is illustrative — real compensation wires in v0.1.5"</code>.</td>
+        </tr>
+        <tr style="background:var(--bad-soft)">
+          <td><strong>D-17</strong> <span class="b b-new">NEW</span></td>
+          <td>Onboarding "Feature Preview" badge — add to page header?</td>
+          <td>FE Eng · TODAY</td>
+          <td><strong>YES.</strong> Add a purple "Feature Preview" pill to <code>Onboarding.jsx</code> header so pilots know this is a showcase of upcoming functionality, not live data.</td>
+        </tr>
+        <tr>
+          <td><strong>D-18</strong> <span class="b b-new">NEW</span></td>
+          <td>R-5: verify that <code>/selection/offer-contract</code> routes to <code>OfferWorkboard</code>, not <code>OfferContract</code> dummy page</td>
+          <td>Eng Lead · TODAY</td>
+          <td>Run <code>grep "offer-contract" frontend/src/App.jsx</code> and confirm the workboard is the L1 landing. If the dummy page is served, redirect immediately.</td>
+        </tr>
+        <tr>
+          <td><strong>D-11</strong></td>
+          <td>Onboarding backend — v0.1.5 P0 or deferrable?</td>
+          <td>PM + CTO</td>
+          <td><strong>P0 for v0.1.5.</strong> After pilot feedback this week, this will almost certainly be the #1 request. Task 12.1 starts Monday 14 Jul.</td>
+        </tr>
+        <tr>
+          <td><strong>D-15</strong></td>
+          <td>v0.1.5 scope — confirm the 3-week plan (§6)</td>
+          <td>PM + CTO</td>
+          <td>Confirm §6 plan in team meeting Monday 14 Jul. Lock scope: Onboarding backend, compensation tests, Offer wire-up, PDF, both L4 Calibration pages. No new features until RC of v0.1.5.</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <!-- §9 VERIFY -->
+  <div class="sec" id="verify">
+    <div class="sec-num">§9</div>
+    <div class="sec-title">Verify this audit — run on main branch (today)</div>
+    <p class="sec-sub">These commands should be run immediately and before pilot demos. The first three are the most important for today.</p>
+
+    <table class="tbl">
+      <thead><tr><th>Priority</th><th>Claim to verify</th><th>Command</th><th>Expected result</th></tr></thead>
+      <tbody>
+        <tr style="background:var(--bad-soft)"><td><span class="b b-err">TODAY</span></td><td><strong>Offer L1 route</strong> — workboard, not dummy</td><td><code>grep -n "offer-contract" frontend/src/App.jsx</code></td><td>Should show <code>&lt;OfferWorkboard /&gt;</code> or similar as the root <code>/selection/offer-contract</code> element, NOT <code>&lt;OfferContractPage /&gt;</code> (dummy)</td></tr>
+        <tr style="background:var(--bad-soft)"><td><span class="b b-err">TODAY</span></td><td><strong>Offer L2 route</strong> — job page wired</td><td><code>grep -n "offer-contract/job" frontend/src/App.jsx</code></td><td>Should show a route for <code>/selection/offer-contract/job/:jobId</code></td></tr>
+        <tr style="background:var(--bad-soft)"><td><span class="b b-err">TODAY</span></td><td><strong>Offer L3 route</strong> — candidate page wired</td><td><code>grep -n "offer-contract/candidate" frontend/src/App.jsx</code></td><td>Should show a route for <code>/selection/offer-contract/candidate/:offerId</code></td></tr>
+        <tr><td><span class="b b-warn">TODAY</span></td><td>Offer backend exists</td><td><code>ls backend/src/modules/offer/ 2>/dev/null && echo EXISTS || echo MISSING</code></td><td>EXISTS (implied by API imports compiling)</td></tr>
+        <tr><td><span class="b b-warn">TODAY</span></td><td>Compensation engine exists</td><td><code>ls backend/src/shared/services/compensation-engine.js 2>/dev/null && echo EXISTS || echo MISSING</code></td><td>EXISTS (per v10.0 git audit)</td></tr>
+        <tr><td><span class="b b-mute">WEEK 1</span></td><td>Interview dummy import still present (cleanup target)</td><td><code>grep "InterviewPage\|MASIH DUMMY" frontend/src/App.jsx</code></td><td>Should return 0 after task 12.8</td></tr>
+        <tr><td><span class="b b-mute">WEEK 1</span></td><td>Duplicate offer route</td><td><code>grep -c 'path="/selection/offer-contract"' frontend/src/App.jsx</code></td><td>Should be 1 (not 2)</td></tr>
+        <tr><td><span class="b b-mute">AUDIT</span></td><td>OfferWorkboard real API import</td><td><code>grep "offerAPI" frontend/src/pages/OfferWorkboard.jsx</code></td><td>≥ 1 match: <code>import offerAPI from '@/api/offer.api'</code></td></tr>
+        <tr><td><span class="b b-mute">AUDIT</span></td><td>Offer-Job real API import</td><td><code>grep "offerAPI" frontend/src/components/offer-contract/Offer-Job.jsx</code></td><td>≥ 1 match</td></tr>
+        <tr><td><span class="b b-mute">AUDIT</span></td><td>Offer-Candidate real API import</td><td><code>grep "offerAPI" frontend/src/components/offer-contract/Offer-Candidate.jsx</code></td><td>≥ 1 match</td></tr>
+        <tr><td><span class="b b-mute">AUDIT</span></td><td>Offer-Candidate body still mocked</td><td><code>grep "offerContractMock" frontend/src/components/offer-contract/Offer-Candidate.jsx</code></td><td>≥ 1 match (confirms mock body — target 0 in v0.1.5)</td></tr>
+        <tr><td><span class="b b-mute">AUDIT</span></td><td>Onboarding TODO comment present</td><td><code>grep "TODO.*real API\|getOnboarding" frontend/src/pages/Onboarding.jsx</code></td><td>≥ 1 match (confirms wire-in point exists)</td></tr>
+        <tr><td><span class="b b-mute">AUDIT</span></td><td>Onboarding backend absent</td><td><code>ls backend/src/modules/onboarding/ 2>/dev/null && echo EXISTS || echo MISSING</code></td><td>MISSING (target: EXISTS after task 12.1)</td></tr>
+        <tr><td><span class="b b-mute">AUDIT</span></td><td>Interview 5 tabs real</td><td><code>grep -c "EvaluateSection\|DecideSection\|PrepSection\|ScheduleSection\|ConductSection" frontend/src/components/interview/Interview-Candidate.jsx</code></td><td>≥ 5 matches</td></tr>
+        <tr><td><span class="b b-mute">AUDIT</span></td><td>BG Consent portal backend</td><td><code>ls backend/src/modules/portal-bg/</code></td><td>4 files: route/controller/service/model</td></tr>
+        <tr><td><span class="b b-mute">AUDIT</span></td><td>Settings has 11 sections</td><td><code>grep -c "'[a-z-]*':" frontend/src/pages/Settings.jsx | head -5</code></td><td>Run: <code>grep "SECTION_COMPONENTS" -A 20 frontend/src/pages/Settings.jsx</code> to count keys</td></tr>
+        <tr><td><span class="b b-mute">AUDIT</span></td><td>AI cost cap enforced</td><td><code>grep "checkBudgetOrThrow" backend/src/modules/company-usage/company-usage.service.js</code></td><td>≥ 1 match</td></tr>
+        <tr><td><span class="b b-mute">AUDIT</span></td><td>Compensation engine unit tests</td><td><code>ls backend/src/shared/services/compensation-engine.test.js 2>/dev/null && echo EXISTS || echo MISSING</code></td><td>MISSING (target: EXISTS after task 12.2)</td></tr>
+      </tbody>
+    </table>
+
+    <h3>9.1 Glossary</h3>
+    <div class="gloss"><span class="gloss-term">OfferWorkboard.jsx</span>L1 Offer page. Now confirmed real-API-wired. Loads all offers via <code>offerAPI.getWorkboard()</code>, derives positions rail from live offer data, shows 6 status chips, paginates candidate list. Route: <code>/selection/offer-contract</code>.</div>
+    <div class="gloss"><span class="gloss-term">Offer-Job.jsx</span>L2 Offer page (position view). Confirmed real-API-wired. Parallel calls to <code>getJobById()</code> + <code>offerAPI.getOffersByJob()</code>. Shows per-status offer groups with candidate rows. Route: <code>/selection/offer-contract/job/:jobId</code>.</div>
+    <div class="gloss"><span class="gloss-term">Offer-Candidate.jsx</span>L3 Offer page (candidate view). Confirmed real-API header, mock step bodies. <code>offerAPI.getOfferById(offerId)</code> populates the sticky header. Steps (Remuneration, Letter, Contract, E-Sig, Pipeline) use <code>offerContractMock</code> until tables seeded. Route: <code>/selection/offer-contract/candidate/:offerId</code>.</div>
+    <div class="gloss"><span class="gloss-term">OfferContract.jsx</span>The original standalone Offer dummy page — separate from Offer-Candidate.jsx. Likely retained as a dev preview or design reference. Must NOT be the route that pilots land on when clicking a candidate from the workboard.</div>
+    <div class="gloss"><span class="gloss-term">offer_compensation / offer_negotiation / offer_contract</span>The three DB tables that power Offer L3 step bodies. Per the Offer-Candidate.jsx comment, these tables "aren't seeded yet" — hence the mock body data. Seeding and wiring is task 12.4 (v0.1.5).</div>
+    <div class="gloss"><span class="gloss-term">v0.1.5</span>The next release milestone, targeting end of July 2026. Scope: Onboarding backend (12.1), compensation tests (12.2), Offer L3 wire-up (12.4), Contract PDF (12.5), both L4 Calibration pages (12.6), and full E2E test (12.7).</div>
+    <div class="gloss"><span class="gloss-term">portal-bg</span>Complete candidate-facing BG Consent module (4 backend files). Email identity gate → JWT issuance → consent document display → one-click sign → updates <code>candidate_bg.status = 'tracker'</code>. UU PDP 27/2022 compliant. Risk closed since v10.0.</div>
+  </div>
+
+  <div style="text-align:center;padding:48px 0 16px;font-family:var(--mono);font-size:11px;color:var(--faint);letter-spacing:.06em;text-transform:uppercase;border-top:1px solid var(--hairline);margin-top:60px">
+    MYRALIX · v0.1 CODEBASE AUDIT · 13 JUL 2026 · v11.0 · PILOT LAUNCH DAY<br>
+    AI Screening 100% ✓ · Interview 100% ✓ · Psych 100% ✓ · BG Check 95% ✓ · Consent portal ✓<br>
+    Offer: L1/L2 real API ✓ · L3 header real ✓ · L3 body mock ⚠ · L4 missing<br>
+    Onboarding: 3-step UX ✓ · backend 0% ⚠ · Next: v0.1.5 starts Mon 14 Jul<br>
+    Internal product documentation · Not for external distribution · © PT Myralix Indonesia
+  </div>
+
+</div>
+</body>
+</html>

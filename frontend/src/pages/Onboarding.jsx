@@ -1,11 +1,12 @@
 import { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useParams } from 'react-router-dom';
 import { Loader2 } from 'lucide-react';
 import { JobContextCard } from '@/components/common/JobContextCard';
 import { StepRail } from '@/components/onboarding/StepRail';
 import { PreBoardingStep } from '@/components/onboarding/PreBoardingStep';
 import { DayOneThirtyStep } from '@/components/onboarding/DayOneThirtyStep';
 import { ProbationStep } from '@/components/onboarding/ProbationStep';
+import { getOnboarding } from '@/api/onboarding.api';
 
 /* ─────────────────────────────────────────────────────────────────────────────
    DUMMY DATA
@@ -127,20 +128,23 @@ export default function OnboardingPage({ data = null }) {
   const [onboardingData, setOnboardingData] = useState(null);
 
   const navigate = useNavigate();
+  const { onboardingId } = useParams();
 
-  // Simulate data fetch (replace with real API call later)
+  // Fetch onboarding data from API
   useEffect(() => {
     const loadOnboardingData = async () => {
       setLoading(true);
       setError(null);
       try {
-        // TODO: Replace with real API call
-        // const response = await getOnboarding(candidateId);
-        // setOnboardingData(response.data);
-
-        // Simulate network delay
-        await new Promise(resolve => setTimeout(resolve, 500));
-        setOnboardingData(data || onboardingMock);
+        // If onboardingId exists in route, fetch from API
+        if (onboardingId) {
+          const response = await getOnboarding(onboardingId);
+          setOnboardingData(response.data.data);
+        } else {
+          // Fallback to mock data for demo (when accessed via /selection/onboarding)
+          await new Promise(resolve => setTimeout(resolve, 500));
+          setOnboardingData(data || onboardingMock);
+        }
       } catch (err) {
         setError(err.response?.data?.message || err.message || 'Failed to load onboarding data');
       } finally {
@@ -149,7 +153,7 @@ export default function OnboardingPage({ data = null }) {
     };
 
     loadOnboardingData();
-  }, [data]);
+  }, [onboardingId, data]);
 
   const goTo = (key) => setActiveStep(key);
 
