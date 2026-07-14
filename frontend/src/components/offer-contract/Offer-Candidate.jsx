@@ -15,11 +15,16 @@ import { OfferPipelineStep } from '@/components/offer-contract/OfferPipelineStep
 import offerAPI from '@/api/offer.api';
 
 /* ─────────────────────────────────────────────────────────────────────────────
-   DUMMY BODY DATA
-   offer_compensation / offer_negotiation / offer_contract aren't seeded yet,
-   so the step content below stays mocked. Only the header (name, position,
-   status) comes from the real fetched offer. Swap this block out once those
-   tables have real per-offer data to fetch.
+   MOCK DATA FALLBACK
+   ✅ REMUNERATION STEP: Now wired to real API (offer_compensation table)
+   ⚠️ Other steps still use mock data (offerLetter, contract, eSignature, pipeline)
+
+   Mock data below is used as fallback for:
+   - KPIs/metrics (until we build stats aggregation)
+   - Offer Letter workflow (until letter generation is built)
+   - Contract PDF generation (until puppeteer template is ready)
+   - E-Signature flow (until DocuSign/similar integration)
+   - Pipeline step (until onboarding bridge is built)
 ───────────────────────────────────────────────────────────────────────────── */
 const offerContractMock = {
   remuneration: {
@@ -292,6 +297,67 @@ export default function OfferCandidatePage() {
 
   if (!offer) return null;
 
+  // Transform compensation data from API to RemunerationStep format
+  const remunerationData = offer.base_salary ? {
+    offerBuild: [
+      { label: 'Base monthly (THP)', value: `Rp ${Number(offer.base_salary || 0).toLocaleString('id-ID')}`, meta: '/mo' },
+      ...(offer.allowances?.transport ? [{ label: 'Tunjangan Transport', value: `Rp ${Number(offer.allowances.transport).toLocaleString('id-ID')}`, meta: '/mo' }] : []),
+      ...(offer.allowances?.meal ? [{ label: 'Tunjangan Makan', value: `Rp ${Number(offer.allowances.meal).toLocaleString('id-ID')}`, meta: '/mo' }] : []),
+      ...(offer.allowances?.health ? [{ label: 'Tunjangan Kesehatan', value: `Rp ${Number(offer.allowances.health).toLocaleString('id-ID')}`, meta: '/mo' }] : []),
+      ...(offer.bonus_structure?.annual ? [{ label: 'Bonus Tahunan', value: `Rp ${Number(offer.bonus_structure.annual).toLocaleString('id-ID')}`, meta: 'annual' }] : []),
+      { label: 'BPJS Kesehatan', value: `Rp ${Number(offer.bpjs_kesehatan || 0).toLocaleString('id-ID')}`, meta: '/mo' },
+      { label: 'BPJS Ketenagakerjaan', value: `Rp ${Number(offer.bpjs_ketenagakerjaan || 0).toLocaleString('id-ID')}`, meta: '/mo' },
+    ],
+    salarySlip: {
+      month: 'Month 1 Preview',
+      currency: 'Rp',
+      earnings: [
+        { label: 'Gaji Pokok (Base)', amount: Number(offer.base_salary || 0) },
+        ...(offer.allowances?.transport ? [{ label: 'Tunjangan Transport', amount: Number(offer.allowances.transport) }] : []),
+        ...(offer.allowances?.meal ? [{ label: 'Tunjangan Makan', amount: Number(offer.allowances.meal) }] : []),
+        ...(offer.allowances?.health ? [{ label: 'Tunjangan Kesehatan', amount: Number(offer.allowances.health) }] : []),
+      ],
+      deductions: [
+        { label: 'BPJS Kesehatan (1%)', amount: -Number(offer.bpjs_kesehatan || 0) },
+        { label: 'BPJS Ketenagakerjaan', amount: -Number(offer.bpjs_ketenagakerjaan || 0) },
+        { label: 'PPh 21', amount: -Number(offer.pph21 || 0) },
+      ],
+      footnote: 'Estimasi berdasarkan calculation_metadata — final ditetapkan oleh Finance',
+    },
+    totalAnnualPackage: `Rp ${Number(offer.gross_salary || 0).toLocaleString('id-ID')}`,
+    aiInsight: offer.calculation_metadata?.notes || 'Kompensasi telah dihitung sesuai aturan DJP 2026.',
+    // Keep mock data for metrics/benchmark until we have real stats
+    ...offerContractMock.remuneration,
+    // Override with real data
+    offerBuild: [
+      { label: 'Base monthly (THP)', value: `Rp ${Number(offer.base_salary || 0).toLocaleString('id-ID')}`, meta: '/mo' },
+      ...(offer.allowances?.transport ? [{ label: 'Tunjangan Transport', value: `Rp ${Number(offer.allowances.transport).toLocaleString('id-ID')}`, meta: '/mo' }] : []),
+      ...(offer.allowances?.meal ? [{ label: 'Tunjangan Makan', value: `Rp ${Number(offer.allowances.meal).toLocaleString('id-ID')}`, meta: '/mo' }] : []),
+      ...(offer.allowances?.health ? [{ label: 'Tunjangan Kesehatan', value: `Rp ${Number(offer.allowances.health).toLocaleString('id-ID')}`, meta: '/mo' }] : []),
+      ...(offer.bonus_structure?.annual ? [{ label: 'Bonus Tahunan', value: `Rp ${Number(offer.bonus_structure.annual).toLocaleString('id-ID')}`, meta: 'annual' }] : []),
+      { label: 'BPJS Kesehatan', value: `Rp ${Number(offer.bpjs_kesehatan || 0).toLocaleString('id-ID')}`, meta: '/mo' },
+      { label: 'BPJS Ketenagakerjaan', value: `Rp ${Number(offer.bpjs_ketenagakerjaan || 0).toLocaleString('id-ID')}`, meta: '/mo' },
+      { label: 'Gross Salary', value: `Rp ${Number(offer.gross_salary || 0).toLocaleString('id-ID')}`, meta: '/mo' },
+      { label: 'Net Salary (THP)', value: `Rp ${Number(offer.net_salary || 0).toLocaleString('id-ID')}`, meta: '/mo' },
+    ],
+    salarySlip: {
+      month: 'Month 1 Preview',
+      currency: 'Rp',
+      earnings: [
+        { label: 'Gaji Pokok (Base)', amount: Number(offer.base_salary || 0) },
+        ...(offer.allowances?.transport ? [{ label: 'Tunjangan Transport', amount: Number(offer.allowances.transport) }] : []),
+        ...(offer.allowances?.meal ? [{ label: 'Tunjangan Makan', amount: Number(offer.allowances.meal) }] : []),
+        ...(offer.allowances?.health ? [{ label: 'Tunjangan Kesehatan', amount: Number(offer.allowances.health) }] : []),
+      ],
+      deductions: [
+        { label: 'BPJS Kesehatan', amount: -Number(offer.bpjs_kesehatan || 0) },
+        { label: 'BPJS Ketenagakerjaan', amount: -Number(offer.bpjs_ketenagakerjaan || 0) },
+        { label: 'PPh 21', amount: -Number(offer.pph21 || 0) },
+      ],
+      footnote: 'Estimasi berdasarkan calculation_metadata — final ditetapkan oleh Finance',
+    },
+  } : offerContractMock.remuneration;
+
   return (
     <>
       {/* Sticky header — real data */}
@@ -336,7 +402,7 @@ export default function OfferCandidatePage() {
 
         {activeStep === 'remuneration' && (
           <RemunerationStep
-            data={offerContractMock.remuneration}
+            data={remunerationData}
             candidate={{ name: offer.candidate_name, role: offer.position_title, location: offer.job_location }}
             onNext={() => setActiveStep('offerLetter')}
           />
