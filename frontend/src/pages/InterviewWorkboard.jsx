@@ -9,7 +9,7 @@ import { TablePagination } from '@/components/shared/TablePagination';
 import { getInitials } from '@/lib/batteries';
 import { PageHeader } from '@/components/common';
 
-import { getWorkboard, getInterviewsByJob, getInterviewByCandidate } from '@/api/interview.api';
+import { getWorkboard, getInterviewsByJob, getInterviewByCandidateId } from '@/api/interview.api';
 
 const STATUS_META = {
   ongoing:   { label: 'Ongoing',   color: 'bg-blue-100 text-blue-700'      },
@@ -118,7 +118,7 @@ export default function InterviewWorkboard() {
         navigate(`/selection/interview/candidate/${i.interview_id}`);
         return;
       }
-      const res = await getInterviewByCandidate(i.candidate_id);
+      const res = await getInterviewByCandidateId(i.candidate_id);
       const iid = res.data?.interview?.interview_id;
       if (iid) navigate(`/selection/interview/candidate/${iid}`);
     } catch (err) {

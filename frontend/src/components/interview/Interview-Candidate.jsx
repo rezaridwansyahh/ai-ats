@@ -29,6 +29,7 @@ import {
   recordOutcome, clearOutcome,
   getScorecard, saveScorecard, deleteScorecard,
   getDecideByJob, bulkDecide, resetDecision,
+  getInterviewByCandidateId,
 } from '@/api/interview.api';
 
 const COMPETENCY_CODES = ['HRD-01', 'HRD-02', 'HRD-03', 'HRD-04', 'HRD-05', 'HRD-06'];
@@ -130,7 +131,7 @@ function scoreBg(score) {
 
 export default function InterviewCandidatePage() {
   const navigate                 = useNavigate();
-  const { interviewId: idParam } = useParams();
+  const { candidateId }          = useParams();
   const interviewId              = idParam ? Number(idParam) : null;
 
   const [interview, setInterview] = useState(null);
@@ -145,7 +146,7 @@ export default function InterviewCandidatePage() {
     setLoading(true);
     setError(null);
     try {
-      const res = await getInterview(interviewId);
+      const res = await getInterviewByCandidateId(candidateId);
       const row = res.data?.interview;
       setInterview(row);
       if (row?.job_id) {

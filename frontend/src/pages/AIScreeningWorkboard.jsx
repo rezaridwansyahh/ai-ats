@@ -8,11 +8,9 @@ import { Input } from '@/components/ui/input';
 import { TablePagination } from '@/components/shared/TablePagination';
 import { getInitials } from '@/lib/batteries';
 
-import { getWorkboard, getLaneCandidates, getScreeningByCandidate } from '@/api/screening.api';
+import { getWorkboard, getLaneCandidates } from '@/api/screening.api';
 
 import { PageHeader } from '@/components/common';
-
-
 
 // Sub-stage chip + pill styling. q&a kept for parity (engine not built → always 0).
 const STAGE_META = {
@@ -125,13 +123,7 @@ export default function AIScreeningWorkboard() {
 
   const openCandidate = async (c) => {
     try {
-      if (c.screening_id) {
-        navigate(`/selection/ai-screening/candidate/${c.screening_id}`);
-        return;
-      }
-      const res = await getScreeningByCandidate(c.candidate_id);
-      const sid = res.data?.screening?.screening_id;
-      if (sid) navigate(`/selection/ai-screening/candidate/${sid}`);
+      navigate(`/selection/ai-screening/candidate/${c.candidate_id}`);
     } catch (err) {
       setError(err.response?.data?.message || err.message || 'Failed to open candidate');
     }
