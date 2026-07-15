@@ -20,7 +20,7 @@ import { fileURLToPath } from 'url';
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
 const DB_URL   = 'postgresql://postgres:postgres123@localhost:5432/newtest';
-const PARSED   = 'C:/Users/cdarm/Downloads/IT Technical-20260715T113412Z-1-001/IT Technical/parsed-results.json';
+const PARSED   = path.join(__dirname, 'parsed-results.json');
 const COMPANY_ID = 1;
 
 const pool = new pg.Pool({ connectionString: DB_URL });
@@ -32,7 +32,13 @@ async function main() {
     await client.query('BEGIN');
 
     // ── 1. Job ────────────────────────────────────────────────────────────────
-    const jobRes = await client.query(`
+    // Check if already exists first (no unique constraint on job_title)
+    const existingJob = await client.query(
+      `SELECT id FROM core_job WHERE job_title = 'Technical Support' AND company_id = $1 ORDER BY id LIMIT 1`,
+      [COMPANY_ID]
+    );
+
+    const jobRes = existingJob.rows.length === 0 ? await client.query(`
       INSERT INTO core_job (
         company_id, job_title, job_desc, job_location,
         work_option, work_type,
@@ -50,26 +56,20 @@ async function main() {
         $2, $3, $4,
         'Active', NOW(), NOW() + INTERVAL '6 months'
       )
-      ON CONFLICT DO NOTHING
       RETURNING id
     `, [
       COMPANY_ID,
       JSON.stringify(['Windows OS', 'Networking', 'Active Directory', 'Troubleshooting', 'Hardware Maintenance']),
       JSON.stringify(['ITIL', 'Linux', 'VMware', 'PowerShell']),
       JSON.stringify(['BPJS Kesehatan & Ketenagakerjaan', 'THR', 'Overtime Pay', 'Performance Bonus']),
-    ]);
+    ]) : { rows: [] };
 
     let jobId;
     if (jobRes.rows.length > 0) {
       jobId = jobRes.rows[0].id;
       console.log(`✓ Created job id=${jobId}`);
     } else {
-      // Already exists — fetch it
-      const existing = await client.query(
-        `SELECT id FROM core_job WHERE job_title = 'Technical Support' AND company_id = $1 ORDER BY id LIMIT 1`,
-        [COMPANY_ID]
-      );
-      jobId = existing.rows[0].id;
+      jobId = existingJob.rows[0].id;
       console.log(`ℹ Job already exists id=${jobId}`);
     }
 
@@ -116,7 +116,18 @@ async function main() {
       console.log(`ℹ Sourcing already exists id=${sourcingId}`);
     }
 
-    // ── 4. Load parsed results ────────────────────────────────────────────────
+    // ── 4. Link job to IT Dev template (master_template_stage id=2) ──────────
+    await client.query(`
+      INSERT INTO core_job_template (job_id, template_stage_id)
+      VALUES ($1, 2)
+      ON CONFLICT (job_id) DO UPDATE SET template_stage_id = 2, updated_at = NOW()
+    `, [jobId]);
+    console.log(`✓ Linked job ${jobId} → Template IT Dev (id=2)`);
+
+    // job_stage id=6 = 'AI CV Screening' from Template IT Dev
+    const SCREENING_STAGE_ID = 6;
+
+    // ── 5. Load parsed results ────────────────────────────────────────────────
     if (!fs.existsSync(PARSED)) {
       throw new Error(`parsed-results.json not found at: ${PARSED}`);
     }
@@ -170,18 +181,19 @@ async function main() {
       const candRes = await client.query(`
         INSERT INTO master_candidate (
           job_id, applicant_id, name, last_position,
-          address, education, information, date
+          address, education, information, date, latest_stage
         ) VALUES (
-          $1, $2, $3, $4, $5, $6, $7, NOW()
+          $1, $2, $3, $4, $5, $6, $7, NOW(), $8
         )
         ON CONFLICT (name, job_id) DO UPDATE
           SET applicant_id  = EXCLUDED.applicant_id,
               last_position  = EXCLUDED.last_position,
-              information    = EXCLUDED.information
+              information    = EXCLUDED.information,
+              latest_stage   = EXCLUDED.latest_stage
         RETURNING id, (xmax = 0) AS is_insert
       `, [
         jobId, applicantId, name, lastPosition,
-        'Jakarta', education, JSON.stringify(information),
+        'Jakarta', education, JSON.stringify(information), SCREENING_STAGE_ID,
       ]);
 
       if (candRes.rows[0].is_insert) inserted++;
