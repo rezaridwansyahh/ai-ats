@@ -46,6 +46,7 @@ import interview from "./src/modules/interview/interview.route.js"
 import backgroundCheck from "./src/modules/background-check/background-check.route.js"
 import portalBg from "./src/modules/portal-bg/portal-bg.route.js"
 import offer from "./src/modules/offer/offer.route.js"
+import onboarding from "./src/modules/onboarding/onboarding.route.js"
 
 app.use(express.json());
 app.use(cors({
@@ -88,6 +89,7 @@ portal.use("/api/interview", interview);
 portal.use("/api/background-check", backgroundCheck);
 portal.use("/api/portal-bg-consent", portalBg);
 portal.use("/api/offer", offer);
+portal.use("/api/onboarding", onboarding);
 app.use("/portal", portal);
 app.use("/api/auth", auth);
 app.use("/api/cookies", cookies);
@@ -123,6 +125,7 @@ app.use("/api/interview", interview);
 app.use("/api/background-check", backgroundCheck);
 app.use("/api/portal-bg-consent", portalBg);
 app.use("/api/offer", offer);
+app.use("/api/onboarding", onboarding);
 
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => {

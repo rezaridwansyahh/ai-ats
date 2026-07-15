@@ -1,4 +1,13 @@
 -- Drop tables in reverse dependency order (most dependent first)
+-- Onboarding tables (Migration 010)
+DROP TABLE IF EXISTS onboarding_hris_task CASCADE;
+DROP TABLE IF EXISTS onboarding_welcome_message CASCADE;
+DROP TABLE IF EXISTS onboarding_probation_checkin CASCADE;
+DROP TABLE IF EXISTS onboarding_milestone CASCADE;
+DROP TABLE IF EXISTS onboarding_day_one_schedule CASCADE;
+DROP TABLE IF EXISTS onboarding_checklist_item CASCADE;
+DROP TABLE IF EXISTS candidate_onboarding CASCADE;
+
 DROP TABLE IF EXISTS company_budgets CASCADE;
 DROP TABLE IF EXISTS company_usage CASCADE;
 DROP TABLE IF EXISTS candidate_interview CASCADE;
@@ -768,6 +777,147 @@ CREATE INDEX idx_offer_contract_status ON offer_contract(status);
 
 -- =============================================================================
 -- END OFFER & CONTRACT MODULE
+
+-- =============================================================================
+-- Migration 010: Onboarding Module
+-- MVP scaffold for post-offer onboarding flow
+-- Created: 14 Jul 2026
+-- =============================================================================
+
+-- Main onboarding record
+CREATE TABLE candidate_onboarding (
+  id SERIAL PRIMARY KEY,
+  company_id INTEGER NOT NULL REFERENCES core_company(id) ON DELETE CASCADE,
+  candidate_id INTEGER NOT NULL REFERENCES master_candidate(id) ON DELETE CASCADE,
+  job_id INTEGER NOT NULL REFERENCES core_job(id) ON DELETE CASCADE,
+  offer_id INTEGER NOT NULL REFERENCES candidate_offer(id) ON DELETE CASCADE,
+  candidate_name VARCHAR(255) NOT NULL,
+  position_title VARCHAR(255) NOT NULL,
+  start_date DATE NOT NULL,
+  probation_duration_days INTEGER DEFAULT 90,
+  probation_end_date DATE,
+  current_stage VARCHAR(50) DEFAULT 'pre-boarding',
+  onboarding_status VARCHAR(50) DEFAULT 'pending',
+  buddy_user_id INTEGER REFERENCES master_users(id),
+  buddy_name VARCHAR(255),
+  manager_user_id INTEGER REFERENCES master_users(id),
+  manager_name VARCHAR(255),
+  created_at TIMESTAMP DEFAULT NOW(),
+  updated_at TIMESTAMP DEFAULT NOW(),
+  preboarding_completed_at TIMESTAMP,
+  day_one_started_at TIMESTAMP,
+  probation_started_at TIMESTAMP,
+  confirmed_at TIMESTAMP,
+  terminated_at TIMESTAMP,
+  CONSTRAINT unique_candidate_onboarding UNIQUE(candidate_id, offer_id)
+);
+
+CREATE INDEX idx_onboarding_company ON candidate_onboarding(company_id);
+CREATE INDEX idx_onboarding_candidate ON candidate_onboarding(candidate_id);
+CREATE INDEX idx_onboarding_job ON candidate_onboarding(job_id);
+CREATE INDEX idx_onboarding_offer ON candidate_onboarding(offer_id);
+CREATE INDEX idx_onboarding_status ON candidate_onboarding(onboarding_status);
+CREATE INDEX idx_onboarding_stage ON candidate_onboarding(current_stage);
+CREATE INDEX idx_onboarding_start_date ON candidate_onboarding(start_date);
+
+-- Pre-boarding checklist items
+CREATE TABLE onboarding_checklist_item (
+  id SERIAL PRIMARY KEY,
+  onboarding_id INTEGER NOT NULL REFERENCES candidate_onboarding(id) ON DELETE CASCADE,
+  label VARCHAR(255) NOT NULL,
+  category VARCHAR(50) DEFAULT 'document',
+  owner VARCHAR(100) DEFAULT 'Candidate',
+  status VARCHAR(50) DEFAULT 'notStarted',
+  sort_order INTEGER DEFAULT 0,
+  notes TEXT,
+  due_date DATE,
+  created_at TIMESTAMP DEFAULT NOW(),
+  completed_at TIMESTAMP
+);
+
+CREATE INDEX idx_checklist_onboarding ON onboarding_checklist_item(onboarding_id);
+CREATE INDEX idx_checklist_status ON onboarding_checklist_item(status);
+
+-- Day 1 schedule
+CREATE TABLE onboarding_day_one_schedule (
+  id SERIAL PRIMARY KEY,
+  onboarding_id INTEGER NOT NULL REFERENCES candidate_onboarding(id) ON DELETE CASCADE,
+  time VARCHAR(10) NOT NULL,
+  activity TEXT NOT NULL,
+  sort_order INTEGER DEFAULT 0,
+  completed BOOLEAN DEFAULT FALSE,
+  created_at TIMESTAMP DEFAULT NOW()
+);
+
+CREATE INDEX idx_schedule_onboarding ON onboarding_day_one_schedule(onboarding_id);
+
+-- Day 1-30 milestones
+CREATE TABLE onboarding_milestone (
+  id SERIAL PRIMARY KEY,
+  onboarding_id INTEGER NOT NULL REFERENCES candidate_onboarding(id) ON DELETE CASCADE,
+  week_label VARCHAR(50),
+  week_number INTEGER,
+  item_label VARCHAR(255) NOT NULL,
+  status VARCHAR(50) DEFAULT 'notStarted',
+  sort_order INTEGER DEFAULT 0,
+  created_at TIMESTAMP DEFAULT NOW(),
+  completed_at TIMESTAMP
+);
+
+CREATE INDEX idx_milestone_onboarding ON onboarding_milestone(onboarding_id);
+CREATE INDEX idx_milestone_week ON onboarding_milestone(week_number);
+CREATE INDEX idx_milestone_status ON onboarding_milestone(status);
+
+-- Probation check-ins
+CREATE TABLE onboarding_probation_checkin (
+  id SERIAL PRIMARY KEY,
+  onboarding_id INTEGER NOT NULL REFERENCES candidate_onboarding(id) ON DELETE CASCADE,
+  checkin_code VARCHAR(10) NOT NULL,
+  checkin_title VARCHAR(100) NOT NULL,
+  scheduled_date DATE,
+  status VARCHAR(50) DEFAULT 'awaiting',
+  manager_note TEXT,
+  created_at TIMESTAMP DEFAULT NOW(),
+  completed_at TIMESTAMP
+);
+
+CREATE INDEX idx_checkin_onboarding ON onboarding_probation_checkin(onboarding_id);
+CREATE INDEX idx_checkin_status ON onboarding_probation_checkin(status);
+
+-- Welcome message
+CREATE TABLE onboarding_welcome_message (
+  id SERIAL PRIMARY KEY,
+  onboarding_id INTEGER NOT NULL REFERENCES candidate_onboarding(id) ON DELETE CASCADE,
+  from_user_id INTEGER REFERENCES master_users(id),
+  from_name VARCHAR(255),
+  message_text TEXT NOT NULL,
+  created_at TIMESTAMP DEFAULT NOW(),
+  CONSTRAINT unique_welcome_message UNIQUE(onboarding_id)
+);
+
+CREATE INDEX idx_welcome_onboarding ON onboarding_welcome_message(onboarding_id);
+
+-- HRIS integration tasks
+CREATE TABLE onboarding_hris_task (
+  id SERIAL PRIMARY KEY,
+  onboarding_id INTEGER NOT NULL REFERENCES candidate_onboarding(id) ON DELETE CASCADE,
+  task_code VARCHAR(20),
+  task_title VARCHAR(255) NOT NULL,
+  task_description TEXT,
+  status VARCHAR(50) DEFAULT 'pending',
+  integration_data JSONB DEFAULT '{}'::jsonb,
+  error_message TEXT,
+  retry_count INTEGER DEFAULT 0,
+  created_at TIMESTAMP DEFAULT NOW(),
+  executed_at TIMESTAMP,
+  completed_at TIMESTAMP
+);
+
+CREATE INDEX idx_hris_task_onboarding ON onboarding_hris_task(onboarding_id);
+CREATE INDEX idx_hris_task_status ON onboarding_hris_task(status);
+
+-- =============================================================================
+-- END ONBOARDING MODULE
 -- =============================================================================
 
 CREATE INDEX idx_applicant_information_gin

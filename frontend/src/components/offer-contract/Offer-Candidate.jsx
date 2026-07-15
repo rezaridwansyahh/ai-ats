@@ -872,6 +872,67 @@ export default function OfferCandidatePage() {
 
   if (!offer) return null;
 
+  // Transform compensation data from API to RemunerationStep format
+  const remunerationData = offer.base_salary ? {
+    offerBuild: [
+      { label: 'Base monthly (THP)', value: `Rp ${Number(offer.base_salary || 0).toLocaleString('id-ID')}`, meta: '/mo' },
+      ...(offer.allowances?.transport ? [{ label: 'Tunjangan Transport', value: `Rp ${Number(offer.allowances.transport).toLocaleString('id-ID')}`, meta: '/mo' }] : []),
+      ...(offer.allowances?.meal ? [{ label: 'Tunjangan Makan', value: `Rp ${Number(offer.allowances.meal).toLocaleString('id-ID')}`, meta: '/mo' }] : []),
+      ...(offer.allowances?.health ? [{ label: 'Tunjangan Kesehatan', value: `Rp ${Number(offer.allowances.health).toLocaleString('id-ID')}`, meta: '/mo' }] : []),
+      ...(offer.bonus_structure?.annual ? [{ label: 'Bonus Tahunan', value: `Rp ${Number(offer.bonus_structure.annual).toLocaleString('id-ID')}`, meta: 'annual' }] : []),
+      { label: 'BPJS Kesehatan', value: `Rp ${Number(offer.bpjs_kesehatan || 0).toLocaleString('id-ID')}`, meta: '/mo' },
+      { label: 'BPJS Ketenagakerjaan', value: `Rp ${Number(offer.bpjs_ketenagakerjaan || 0).toLocaleString('id-ID')}`, meta: '/mo' },
+    ],
+    salarySlip: {
+      month: 'Month 1 Preview',
+      currency: 'Rp',
+      earnings: [
+        { label: 'Gaji Pokok (Base)', amount: Number(offer.base_salary || 0) },
+        ...(offer.allowances?.transport ? [{ label: 'Tunjangan Transport', amount: Number(offer.allowances.transport) }] : []),
+        ...(offer.allowances?.meal ? [{ label: 'Tunjangan Makan', amount: Number(offer.allowances.meal) }] : []),
+        ...(offer.allowances?.health ? [{ label: 'Tunjangan Kesehatan', amount: Number(offer.allowances.health) }] : []),
+      ],
+      deductions: [
+        { label: 'BPJS Kesehatan (1%)', amount: -Number(offer.bpjs_kesehatan || 0) },
+        { label: 'BPJS Ketenagakerjaan', amount: -Number(offer.bpjs_ketenagakerjaan || 0) },
+        { label: 'PPh 21', amount: -Number(offer.pph21 || 0) },
+      ],
+      footnote: 'Estimasi berdasarkan calculation_metadata — final ditetapkan oleh Finance',
+    },
+    totalAnnualPackage: `Rp ${Number(offer.gross_salary || 0).toLocaleString('id-ID')}`,
+    aiInsight: offer.calculation_metadata?.notes || 'Kompensasi telah dihitung sesuai aturan DJP 2026.',
+    // Keep mock data for metrics/benchmark until we have real stats
+    ...offerContractMock.remuneration,
+    // Override with real data
+    offerBuild: [
+      { label: 'Base monthly (THP)', value: `Rp ${Number(offer.base_salary || 0).toLocaleString('id-ID')}`, meta: '/mo' },
+      ...(offer.allowances?.transport ? [{ label: 'Tunjangan Transport', value: `Rp ${Number(offer.allowances.transport).toLocaleString('id-ID')}`, meta: '/mo' }] : []),
+      ...(offer.allowances?.meal ? [{ label: 'Tunjangan Makan', value: `Rp ${Number(offer.allowances.meal).toLocaleString('id-ID')}`, meta: '/mo' }] : []),
+      ...(offer.allowances?.health ? [{ label: 'Tunjangan Kesehatan', value: `Rp ${Number(offer.allowances.health).toLocaleString('id-ID')}`, meta: '/mo' }] : []),
+      ...(offer.bonus_structure?.annual ? [{ label: 'Bonus Tahunan', value: `Rp ${Number(offer.bonus_structure.annual).toLocaleString('id-ID')}`, meta: 'annual' }] : []),
+      { label: 'BPJS Kesehatan', value: `Rp ${Number(offer.bpjs_kesehatan || 0).toLocaleString('id-ID')}`, meta: '/mo' },
+      { label: 'BPJS Ketenagakerjaan', value: `Rp ${Number(offer.bpjs_ketenagakerjaan || 0).toLocaleString('id-ID')}`, meta: '/mo' },
+      { label: 'Gross Salary', value: `Rp ${Number(offer.gross_salary || 0).toLocaleString('id-ID')}`, meta: '/mo' },
+      { label: 'Net Salary (THP)', value: `Rp ${Number(offer.net_salary || 0).toLocaleString('id-ID')}`, meta: '/mo' },
+    ],
+    salarySlip: {
+      month: 'Month 1 Preview',
+      currency: 'Rp',
+      earnings: [
+        { label: 'Gaji Pokok (Base)', amount: Number(offer.base_salary || 0) },
+        ...(offer.allowances?.transport ? [{ label: 'Tunjangan Transport', amount: Number(offer.allowances.transport) }] : []),
+        ...(offer.allowances?.meal ? [{ label: 'Tunjangan Makan', amount: Number(offer.allowances.meal) }] : []),
+        ...(offer.allowances?.health ? [{ label: 'Tunjangan Kesehatan', amount: Number(offer.allowances.health) }] : []),
+      ],
+      deductions: [
+        { label: 'BPJS Kesehatan', amount: -Number(offer.bpjs_kesehatan || 0) },
+        { label: 'BPJS Ketenagakerjaan', amount: -Number(offer.bpjs_ketenagakerjaan || 0) },
+        { label: 'PPh 21', amount: -Number(offer.pph21 || 0) },
+      ],
+      footnote: 'Estimasi berdasarkan calculation_metadata — final ditetapkan oleh Finance',
+    },
+  } : offerContractMock.remuneration;
+
   return (
     <>
       {/* Sticky header */}
