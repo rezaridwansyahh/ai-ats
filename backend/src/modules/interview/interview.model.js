@@ -397,6 +397,18 @@ class InterviewModel {
     return result.rows[0] || null;
   }
 
+  async hasSubmittedScorecardsByJob(job_id) {
+    const result = await getDb().query(
+      `SELECT EXISTS (
+         SELECT 1 FROM interview_scorecard isc
+         JOIN candidate_interview ci ON ci.id = isc.interview_id
+         WHERE ci.job_id = $1 AND isc.is_draft = false
+       ) AS has_submitted`,
+      [job_id]
+    );
+    return result.rows[0]?.has_submitted === true;
+  }
+
   async getDecideByJob(job_id) {
     const result = await getDb().query(
       `SELECT

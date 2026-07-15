@@ -532,6 +532,10 @@ class InterviewService {
       throw { status: 403, message: 'Cross-tenant access denied' };
     }
     if (!prep.rubric_locked) return prep;
+    const hasScorecard = await interviewModel.hasSubmittedScorecardsByJob(job_id);
+    if (hasScorecard) {
+      throw { status: 400, message: 'Cannot unlock: submitted scorecards already exist for this job. The rubric is permanently locked to ensure scoring integrity.' };
+    }
     return await interviewModel.unlockRubric(job_id);
   }
 

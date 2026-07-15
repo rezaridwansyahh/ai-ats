@@ -206,6 +206,7 @@ export default function InterviewJobPage() {
           setPrep={setPrep}
           setBanner={setBanner}
           setError={setError}
+          hasSubmittedScorecards={interviews.some((i) => i.status === 'done')}
         />
       )}
       {activeSection === 'rubric' && (
@@ -215,6 +216,7 @@ export default function InterviewJobPage() {
           setPrep={setPrep}
           setBanner={setBanner}
           setError={setError}
+          hasSubmittedScorecards={interviews.some((i) => i.status === 'done')}
         />
       )}
     </div>
@@ -279,7 +281,7 @@ function CandidatesSection({ interviews, navigate }) {
   );
 }
 
-function QuestionsSection({ jobId, job, prep, setPrep, setBanner, setError }) {
+function QuestionsSection({ jobId, job, prep, setPrep, setBanner, setError, hasSubmittedScorecards }) {
   const [numQuestions, setNumQuestions] = useState('8');
   const [language, setLanguage]         = useState('id');
   const [generating, setGenerating]     = useState(false);
@@ -294,10 +296,14 @@ function QuestionsSection({ jobId, job, prep, setPrep, setBanner, setError }) {
     setQuestions(Array.isArray(prep?.questions) ? prep.questions : []);
   }, [prep]);
 
-  const isLocked = !!prep?.rubric_locked;
+  const isLocked = !!prep?.rubric_locked || hasSubmittedScorecards;
 
   const handleGenerate = async () => {
     if (generating) return;
+    if (hasSubmittedScorecards) {
+      setError('Scorecards have been submitted — questions cannot be changed to preserve scoring integrity.');
+      return;
+    }
     if (isLocked) {
       setError('Rubric is locked — unlock it from the Rubric tab before regenerating.');
       return;
@@ -368,7 +374,13 @@ function QuestionsSection({ jobId, job, prep, setPrep, setBanner, setError }) {
           </CardTitle>
         </CardHeader>
         <CardContent className="space-y-4">
-          {isLocked && (
+          {hasSubmittedScorecards && (
+            <div className="flex items-center gap-2 px-3 py-2 rounded-lg border border-red-200 bg-red-50 text-xs text-red-700">
+              <Lock className="h-3.5 w-3.5 shrink-0" />
+              Scorecards have been submitted — questions are permanently locked to preserve scoring integrity.
+            </div>
+          )}
+          {!hasSubmittedScorecards && isLocked && (
             <div className="flex items-center gap-2 px-3 py-2 rounded-lg border border-amber-200 bg-amber-50 text-xs text-amber-700">
               <Lock className="h-3.5 w-3.5 shrink-0" />
               Rubric is locked. Unlock from the Rubric tab to regenerate or edit questions.
@@ -556,7 +568,7 @@ function QuestionsSection({ jobId, job, prep, setPrep, setBanner, setError }) {
   );
 }
 
-function RubricSection({ jobId, prep, setPrep, setBanner, setError }) {
+function RubricSection({ jobId, prep, setPrep, setBanner, setError, hasSubmittedScorecards }) {
   const [items, setItems]   = useState(DEFAULT_RUBRIC_ITEMS);
   const [saving, setSaving] = useState(false);
   const [locking, setLocking] = useState(false);
@@ -631,33 +643,42 @@ function RubricSection({ jobId, prep, setPrep, setBanner, setError }) {
       <Card>
         <CardContent className="p-4 flex items-center justify-between gap-3 flex-wrap">
           <div className="flex items-center gap-3">
-            <div className={`h-9 w-9 rounded-full flex items-center justify-center ${isLocked ? 'bg-amber-100' : 'bg-muted'}`}>
-              {isLocked
-                ? <Lock className="h-4 w-4 text-amber-600" />
+            <div className={`h-9 w-9 rounded-full flex items-center justify-center ${
+              hasSubmittedScorecards ? 'bg-red-100' : isLocked ? 'bg-amber-100' : 'bg-muted'
+            }`}>
+              {hasSubmittedScorecards || isLocked
+                ? <Lock className={`h-4 w-4 ${hasSubmittedScorecards ? 'text-red-600' : 'text-amber-600'}`} />
                 : <Unlock className="h-4 w-4 text-muted-foreground" />}
             </div>
             <div>
-              <p className="text-xs font-semibold">{isLocked ? 'Rubric locked' : 'Rubric unlocked'}</p>
+              <p className="text-xs font-semibold">
+                {hasSubmittedScorecards
+                  ? 'Rubric permanently locked'
+                  : isLocked ? 'Rubric locked' : 'Rubric unlocked'}
+              </p>
               <p className="text-[10px] text-muted-foreground">
-                {isLocked
-                  ? 'Locked — safe for the pack to be sent. Unlock to edit.'
-                  : 'Unlock state — you can edit weights and anchors. Lock before sending the pack.'}
+                {hasSubmittedScorecards
+                  ? 'Scorecards have been submitted — the rubric cannot be changed to preserve scoring integrity.'
+                  : isLocked
+                    ? 'Locked — safe for the pack to be sent. Unlock to edit (only while no scorecards are submitted).'
+                    : 'Unlock state — you can edit weights and anchors. Lock before sending the pack.'}
               </p>
             </div>
           </div>
           <div className="flex gap-2">
-            {!isLocked && (
+            {!isLocked && !hasSubmittedScorecards && (
               <Button size="sm" className="text-xs" onClick={handleSave} disabled={saving}>
                 {saving ? <Loader2 className="h-3.5 w-3.5 mr-1.5 animate-spin" /> : <Check className="h-3.5 w-3.5 mr-1.5" />}
                 Save rubric
               </Button>
             )}
-            {isLocked ? (
+            {isLocked && !hasSubmittedScorecards && (
               <Button size="sm" variant="outline" className="text-xs" onClick={handleUnlock} disabled={locking}>
                 {locking ? <Loader2 className="h-3.5 w-3.5 mr-1.5 animate-spin" /> : <Unlock className="h-3.5 w-3.5 mr-1.5" />}
                 Unlock
               </Button>
-            ) : (
+            )}
+            {!isLocked && !hasSubmittedScorecards && (
               <Button size="sm" variant="outline" className="text-xs border-amber-300 text-amber-700 hover:bg-amber-50" onClick={handleLock} disabled={locking || !prep}>
                 {locking ? <Loader2 className="h-3.5 w-3.5 mr-1.5 animate-spin" /> : <Lock className="h-3.5 w-3.5 mr-1.5" />}
                 Lock rubric
