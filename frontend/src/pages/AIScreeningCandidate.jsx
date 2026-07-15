@@ -311,7 +311,7 @@ function useQa(screeningId, scored, enabled) {
 }
 
 export default function AIScreeningCandidatePage() {
-  const { screeningId } = useParams();
+  const { candidateId } = useParams();
   const navigate = useNavigate();
 
   const [data, setData] = useState(null);
@@ -330,7 +330,7 @@ export default function AIScreeningCandidatePage() {
     setLoading(true);
     setError(null);
     try {
-      const res = await getScreening(screeningId);
+      const res = await getScreeningByCandidate(candidateId);
       const row = res.data?.screening;
       setData(row);
       if (row?.engine) setActiveEngine(row.engine === 'done' ? 'qa' : row.engine);

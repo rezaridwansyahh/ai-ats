@@ -120,13 +120,6 @@ export default function InterviewJobPage() {
 
   useEffect(() => { load(); }, [load]);
 
-  // Auto-navigate to the right starting tab based on setup state
-  useEffect(() => {
-    if (loading) return;
-    if (!prep) setActiveSection('rubric');
-    else if (!prep.questions?.length) setActiveSection('questions');
-  }, [loading, prep]);
-
   if (loading) {
     return (
       <div className="p-6 flex items-center justify-center">
@@ -278,7 +271,7 @@ function CandidatesSection({ interviews, navigate }) {
                 <TableRow
                   key={i.interview_id}
                   className="cursor-pointer hover:bg-muted/30 transition-colors"
-                  onClick={() => navigate(`/selection/interview/candidate/${i.interview_id}`)}
+                  onClick={() => navigate(`/selection/interview/candidate/${i.candidate_id}`)}
                 >
                   <TableCell className="text-xs pl-4">
                     <div className="font-medium">{i.candidate_name || `#${i.candidate_id}`}</div>
