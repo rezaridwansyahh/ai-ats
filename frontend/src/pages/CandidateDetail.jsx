@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { useNavigate, useParams } from 'react-router-dom';
+import { useNavigate, useParams, useLocation } from 'react-router-dom';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { ArrowLeft, ArrowRight, Check, Loader2, Printer, Save, FileText, Wand2, ClipboardCheck, ThumbsUp, Pause, ThumbsDown } from 'lucide-react';
@@ -14,8 +14,12 @@ import { getResultFromCandidate } from '@/api/assessment-battery-result.api';
 
 export default function CandidateDetailPage() {
   const navigate = useNavigate();
+  const location = useLocation();
   const { jobId, participantId: candidateIdParam } = useParams();
   const candidateId = Number(candidateIdParam);
+  const backPath = location.pathname.startsWith('/selection/psych-assessment')
+  ? '/selection/psych-assessment'
+  : '/selection/assessment';
 
   const [candidate, setCandidate]   = useState(null);
   const [loading, setLoading]       = useState(true);
@@ -214,7 +218,7 @@ export default function CandidateDetailPage() {
           variant="ghost"
           size="sm"
           className="text-xs -ml-2 w-fit"
-          onClick={() => navigate('/selection/assessment')}
+          onClick={() => navigate(backPath)}
         >
           <ArrowLeft className="h-3.5 w-3.5 mr-1" /> Back to candidates
         </Button>
