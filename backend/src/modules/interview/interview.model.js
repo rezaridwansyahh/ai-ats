@@ -65,8 +65,7 @@ class InterviewModel {
          cj.preferred_skills,
          ipp.id             AS prep_id,
          ipp.questions,
-         ipp.rubric_items,
-         ipp.rubric_locked
+         ipp.rubric_items
        FROM candidate_interview ci
        JOIN master_candidate mc ON mc.id = ci.candidate_id
        JOIN core_job cj          ON cj.id = ci.job_id
@@ -397,6 +396,19 @@ class InterviewModel {
     return result.rows[0] || null;
   }
 
+  async upsertRubricOnly(job_id, company_id, rubric_items, created_by) {
+    const result = await getDb().query(
+      `INSERT INTO interview_position_prep (job_id, company_id, questions, rubric_items, created_by)
+      VALUES ($1, $2, '[]'::jsonb, $3::jsonb, $4)
+      ON CONFLICT (job_id) DO UPDATE SET
+        rubric_items = EXCLUDED.rubric_items,
+        updated_at   = NOW()
+      RETURNING *`,
+      [job_id, company_id || null, JSON.stringify(rubric_items), created_by || null]
+    );
+    return result.rows[0] || null;
+  }
+
   async hasSubmittedScorecardsByJob(job_id) {
     const result = await getDb().query(
       `SELECT EXISTS (
@@ -563,9 +575,6 @@ class InterviewModel {
        ON CONFLICT (job_id) DO UPDATE SET
          questions        = EXCLUDED.questions,
          rubric_items     = EXCLUDED.rubric_items,
-         rubric_locked    = false,
-         rubric_locked_at = NULL,
-         locked_by        = NULL,
          updated_at       = NOW()
        RETURNING *`,
       [job_id, company_id || null, JSON.stringify(questions || []), JSON.stringify(rubric_items || []), created_by || null]
@@ -589,31 +598,10 @@ class InterviewModel {
     return result.rows[0] || null;
   }
 
-  async lockRubric(job_id, locked_by) {
-    const result = await getDb().query(
-      `UPDATE interview_position_prep
-          SET rubric_locked = true, rubric_locked_at = NOW(), locked_by = $2, updated_at = NOW()
-        WHERE job_id = $1 RETURNING *`,
-      [job_id, locked_by || null]
-    );
-    return result.rows[0] || null;
-  }
-
-  async unlockRubric(job_id) {
-    const result = await getDb().query(
-      `UPDATE interview_position_prep
-          SET rubric_locked = false, rubric_locked_at = NULL, locked_by = NULL, updated_at = NOW()
-        WHERE job_id = $1 RETURNING *`,
-      [job_id]
-    );
-    return result.rows[0] || null;
-  }
-
   async getPrepContext(job_id) {
     const result = await getDb().query(
       `SELECT
          ipp.id, ipp.job_id, ipp.company_id, ipp.questions, ipp.rubric_items,
-         ipp.rubric_locked, ipp.rubric_locked_at, ipp.locked_by,
          ipp.created_by, ipp.created_at, ipp.updated_at,
          cj.job_title, cj.job_desc, cj.job_location, cj.work_type,
          cj.seniority_level, cj.required_skills, cj.preferred_skills, cj.qualifications

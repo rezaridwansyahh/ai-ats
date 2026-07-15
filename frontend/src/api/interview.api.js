@@ -21,9 +21,8 @@ export const updateQuestions = (job_id, questions) =>  api.put(`/interview/job/$
  
 export const updateRubric = (job_id, rubric_items) => api.put(`/interview/job/${job_id}/prep/rubric`, { rubric_items });
  
-export const lockRubric = (job_id) => api.post(`/interview/job/${job_id}/prep/rubric/lock`);
- 
-export const unlockRubric = (job_id) => api.post(`/interview/job/${job_id}/prep/rubric/unlock`);
+export const generateAnchors = (job_id) =>
+  api.post(`/interview/job/${job_id}/prep/rubric/generate-anchors`);
  
 export const getSchedules = (interview_id) => api.get(`/interview/${interview_id}/schedules`);
  

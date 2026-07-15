@@ -2,6 +2,15 @@ import interviewModel from './interview.model.js';
 import jobModel from '../job/job.model.js';
 import aiService from '../../shared/services/ai.service.js';
 
+const DEFAULT_RUBRIC_ITEMS = [
+  { competency_code: 'HRD-01', competency_name: 'Leadership',                           weight: 1 },
+  { competency_code: 'HRD-02', competency_name: 'Planning & Organizing',                weight: 1 },
+  { competency_code: 'HRD-03', competency_name: 'Problem Solving & Decision Making',    weight: 1 },
+  { competency_code: 'HRD-04', competency_name: 'Value for Best Quality',               weight: 1 },
+  { competency_code: 'HRD-05', competency_name: 'Creativity',                           weight: 1 },
+  { competency_code: 'HRD-06', competency_name: 'Teamwork',                             weight: 1 },
+];
+
 class InterviewService {
   async getWorkboard(company_id) {
     if (!company_id) throw { status: 400, message: 'company_id is required' };
@@ -243,8 +252,9 @@ class InterviewService {
 
     if (!job) throw { status: 404, message: 'Job not found' };
 
-    if (ctx?.rubric_locked) {
-      throw { status: 400, message: 'Rubric is locked — unlock it before regenerating questions' };
+    const hasScorecard = await interviewModel.hasSubmittedScorecardsByJob(job_id);
+    if (hasScorecard) {
+      throw { status: 400, message: 'Cannot regenerate — scorecards already submitted for this job' };
     }
 
     const aiContext = {
@@ -254,7 +264,7 @@ class InterviewService {
 
     const { questions } = await aiService.generateInterviewQuestions(
       job,
-      { numQuestions: num_questions, language },
+      { numQuestions: num_questions, language, rubric_items: ctx?.rubric_items || [] },
       aiContext
     );
 
@@ -280,8 +290,9 @@ class InterviewService {
     if (company_id && prep.company_id && prep.company_id !== company_id) {
       throw { status: 403, message: 'Cross-tenant access denied' };
     }
-    if (prep.rubric_locked) {
-      throw { status: 400, message: 'Rubric is locked — unlock it before editing questions' };
+    const hasScorecard = await interviewModel.hasSubmittedScorecardsByJob(job_id);
+    if (hasScorecard) {
+      throw { status: 400, message: 'Cannot edit — scorecards already submitted for this job' };
     }
 
     const clean = questions
@@ -485,58 +496,72 @@ class InterviewService {
 
     return await interviewModel.batchRecordDecisions(mapped, company_id);
   }
+
   async updateRubric(job_id, rubric_items, { company_id = null } = {}) {
     if (!job_id) throw { status: 400, message: 'job_id is required' };
     if (!Array.isArray(rubric_items) || rubric_items.length === 0) {
       throw { status: 400, message: 'rubric_items[] is required' };
     }
 
+    const job = await jobModel.getById(job_id);
+    if (!job) throw { status: 404, message: 'Job not found' };
+
     const prep = await interviewModel.getPrepByJob(job_id);
-    if (!prep) throw { status: 404, message: 'No prep found for this job — generate first' };
-    if (company_id && prep.company_id && prep.company_id !== company_id) {
+    if (company_id && prep?.company_id && prep.company_id !== company_id) {
       throw { status: 403, message: 'Cross-tenant access denied' };
     }
-    if (prep.rubric_locked) {
-      throw { status: 400, message: 'Rubric is locked — unlock it before editing' };
+    const hasScorecard = await interviewModel.hasSubmittedScorecardsByJob(job_id);
+    if (hasScorecard) {
+      throw { status: 400, message: 'Cannot edit — scorecards already submitted for this job' };
     }
 
     this._validateRubricItems(rubric_items);
+
+    // Rubric-first flow: no prep yet → create it now with empty questions
+    if (!prep) {
+      return await interviewModel.upsertRubricOnly(
+        job_id, company_id || job.company_id || null, rubric_items, null
+      );
+    }
 
     const updated = await interviewModel.updatePrepRubric(job_id, rubric_items);
     if (!updated) throw { status: 404, message: 'Prep not found' };
     return updated;
   }
 
-  async lockRubric(job_id, { locked_by = null, company_id = null } = {}) {
+  async generateRubricAnchors(job_id, { company_id = null } = {}, context = {}) {
     if (!job_id) throw { status: 400, message: 'job_id is required' };
-    const prep = await interviewModel.getPrepByJob(job_id);
-    if (!prep) throw { status: 404, message: 'No prep found for this job — generate first' };
-    if (company_id && prep.company_id && prep.company_id !== company_id) {
-      throw { status: 403, message: 'Cross-tenant access denied' };
-    }
-    if (prep.rubric_locked) return prep;
-    if (!prep.rubric_items || prep.rubric_items.length === 0) {
-      throw { status: 400, message: 'Cannot lock an empty rubric — add rubric items first' };
-    }
-    if (!prep.questions || prep.questions.length === 0) {
-      throw { status: 400, message: 'Cannot lock — no questions generated yet' };
-    }
-    return await interviewModel.lockRubric(job_id, locked_by);
-  }
 
-  async unlockRubric(job_id, { company_id = null } = {}) {
-    if (!job_id) throw { status: 400, message: 'job_id is required' };
-    const prep = await interviewModel.getPrepByJob(job_id);
-    if (!prep) throw { status: 404, message: 'No prep found for this job' };
-    if (company_id && prep.company_id && prep.company_id !== company_id) {
+    const job = await jobModel.getById(job_id);
+    if (!job) throw { status: 404, message: 'Job not found' };
+    if (company_id && job.company_id && job.company_id !== company_id) {
       throw { status: 403, message: 'Cross-tenant access denied' };
     }
-    if (!prep.rubric_locked) return prep;
+
     const hasScorecard = await interviewModel.hasSubmittedScorecardsByJob(job_id);
     if (hasScorecard) {
-      throw { status: 400, message: 'Cannot unlock: submitted scorecards already exist for this job. The rubric is permanently locked to ensure scoring integrity.' };
+      throw { status: 400, message: 'Cannot edit — scorecards already submitted for this job' };
     }
-    return await interviewModel.unlockRubric(job_id);
+
+    const prep = await interviewModel.getPrepByJob(job_id);
+    const rubric_items = prep?.rubric_items?.length ? prep.rubric_items : DEFAULT_RUBRIC_ITEMS;
+
+    const anchors = await aiService.generateRubricAnchors(job, rubric_items, {
+      company_id: company_id || job.company_id || null,
+      ...context,
+    });
+
+    // Merge generated anchors back into rubric items
+    const merged = rubric_items.map((item) => {
+      const match = anchors.find((a) => a.competency_code === item.competency_code);
+      return match
+        ? { ...item, anchor_1: match.anchor_1, anchor_7: match.anchor_7 }
+        : item;
+    });
+
+    return await interviewModel.upsertRubricOnly(
+      job_id, company_id || job.company_id || null, merged, context.user_id || null
+    );
   }
 
   _validateRubricItems(rubric_items) {

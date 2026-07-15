@@ -331,26 +331,16 @@ class InterviewController {
     }
   }
 
-  async lockRubric(req, res) {
+  async generateRubricAnchors(req, res) {
     try {
       const job_id = Number(req.params.job_id);
-      const result = await interviewService.lockRubric(job_id, {
-        locked_by:  req.user?.user_id    || null,
+      const result = await interviewService.generateRubricAnchors(job_id, {
+        company_id: req.user?.company_id || null,
+      }, {
+        user_id:    req.user?.user_id    || null,
         company_id: req.user?.company_id || null,
       });
-      res.status(200).json({ message: 'Rubric locked', prep: result });
-    } catch (err) {
-      res.status(err.status || 500).json({ message: err.message });
-    }
-  }
-
-  async unlockRubric(req, res) {
-    try {
-      const job_id = Number(req.params.job_id);
-      const result = await interviewService.unlockRubric(job_id, {
-        company_id: req.user?.company_id || null,
-      });
-      res.status(200).json({ message: 'Rubric unlocked', prep: result });
+      res.status(200).json({ message: 'Anchors generated', prep: result });
     } catch (err) {
       res.status(err.status || 500).json({ message: err.message });
     }
