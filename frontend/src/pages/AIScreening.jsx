@@ -11,7 +11,7 @@ import { Badge } from '@/components/ui/badge';
 
 import { getJobById } from '@/api/job.api';
 import {
-  getCalibration, advanceBulk, getLaneCandidates, getScreeningByCandidate,
+  getCalibration, advanceBulk, getLaneCandidates,
 } from '@/api/screening.api';
 
 import ParseStageDashboard from '@/components/ai-screening/ParseStageDashboard';
@@ -106,13 +106,7 @@ export default function AIScreeningPage() {
   // Lazy-create screening row if missing, then open candidate detail
   const openCandidate = async (row) => {
     try {
-      if (row.screening_id) {
-        navigate(`/selection/ai-screening/candidate/${row.screening_id}`);
-        return;
-      }
-      const res = await getScreeningByCandidate(row.candidate_id);
-      const sid = res.data?.screening?.screening_id;
-      if (sid) navigate(`/selection/ai-screening/candidate/${sid}`);
+      navigate(`/selection/ai-screening/candidate/${row.candidate_id}`);
     } catch (err) {
       setError(err.response?.data?.message || err.message || 'Failed to open candidate');
     }

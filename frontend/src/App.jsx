@@ -87,15 +87,16 @@ function App() {
 
           <Route path="/selection/ai-screening" element={<AIScreeningWorkboard />} />
           <Route path="/selection/ai-screening/job/:jobId" element={<AIScreeningPage />} />
-          <Route path="/selection/ai-screening/candidate/:screeningId" element={<AIScreeningCandidatePage />} />
+          <Route path="/selection/ai-screening/candidate/:candidateId" element={<AIScreeningCandidatePage />} />
 
           <Route path="/selection/psych-assessment" element={<PsychAssesmentPage />} />
           <Route path="/selection/psych-assessment/:jobId/:participantId" element={<CandidateDetailPage />} />
           <Route path="/selection/medical-assessment" element={<ComingSoonPage />} />
+          <Route path="/selection/psych-assessment/:jobId/:participantId" element={<CandidateDetailPage />} />
 
           <Route path="/selection/interview" element={<InterviewWorkboard />} />
           <Route path="/selection/interview/job/:jobId" element={<InterviewJobPage/>} />
-          <Route path="/selection/interview/candidate/:interviewId" element={<InterviewCandidatePage />} />
+          <Route path="/selection/interview/candidate/:candidateId" element={<InterviewCandidatePage />} />
           <Route path="/selection/interview/calibration/:jobId" element={<InterviewCalibration />} />
 
         

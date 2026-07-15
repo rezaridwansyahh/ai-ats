@@ -9,7 +9,7 @@ import { TablePagination } from '@/components/shared/TablePagination';
 import { getInitials } from '@/lib/batteries';
 import { PageHeader } from '@/components/common';
 
-import { getWorkboard, getInterviewsByJob, getInterviewByCandidate } from '@/api/interview.api';
+import { getWorkboard, getInterviewsByJob, getInterviewByCandidateId } from '@/api/interview.api';
 
 const STATUS_META = {
   ongoing:   { label: 'Ongoing',   color: 'bg-blue-100 text-blue-700'      },
@@ -114,13 +114,7 @@ export default function InterviewWorkboard() {
 
   const openInterview = async (i) => {
     try {
-      if (i.interview_id) {
-        navigate(`/selection/interview/candidate/${i.interview_id}`);
-        return;
-      }
-      const res = await getInterviewByCandidate(i.candidate_id);
-      const iid = res.data?.interview?.interview_id;
-      if (iid) navigate(`/selection/interview/candidate/${iid}`);
+      navigate(`/selection/interview/candidate/${i.candidate_id}`);
     } catch (err) {
       setError(err.response?.data?.message || err.message || 'Failed to open interview');
     }

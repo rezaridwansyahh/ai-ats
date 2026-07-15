@@ -5,7 +5,7 @@ export const getInterviewsByJob = (job_id) => api.get(`/interview/job/${job_id}`
 
 export const getInterview = (interview_id) => api.get(`/interview/${interview_id}`);
 
-export const getInterviewByCandidate = (candidate_id, round = 1) => api.get(`/interview/by-candidate/${candidate_id}`, { params: { round } });
+export const getInterviewByCandidateId = (candidate_id, round = 1) => api.get(`/interview/by-candidate/${candidate_id}`, { params: { round } });
 
 export const updateInterviewStatus = (interview_id, status) => api.patch(`/interview/${interview_id}/status`, { status });
 
