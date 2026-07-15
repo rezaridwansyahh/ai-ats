@@ -63,9 +63,9 @@ const offerAPI = {
   getSlipGaji: (offerId) => api.get(`/offer/${offerId}/slip-gaji`),
  
   recordSlipGaji: (offerId, lineItems) => api.post(`/offer/${offerId}/slip-gaji/record`, { line_items: lineItems }),
- 
+
   skipSlipGaji: (offerId, reason) => api.post(`/offer/${offerId}/slip-gaji/skip`, { reason }),
- 
+
   reviewSlipGaji: (offerId, note) => api.post(`/offer/${offerId}/slip-gaji/review`, { note }),
 };
 

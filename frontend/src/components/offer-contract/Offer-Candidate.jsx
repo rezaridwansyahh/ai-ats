@@ -2,7 +2,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import {
   ArrowLeft, Loader2, AlertTriangle, Check, ChevronRight, X,
-  FileText, Wallet, Send, FileSignature, Plus, Trash2,
+  FileText, Pencil, Wallet, Send, FileSignature, Plus, Trash2,
   MessageSquareText, PenLine,
 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -116,15 +116,25 @@ function CandidateCard({ offer }) {
   );
 }
 
-function IntakeSection({ offerId, setBanner, setError }) {
+const DEFAULT_ROWS = [
+  { label: 'Gaji Pokok', amount: '' },
+  { label: 'Transport', amount: '' },
+  { label: 'Meal', amount: '' },
+  { label: 'Komisi / Insentif', amount: '' },
+  { label: 'Lain-lain', amount: '' },
+];
+ 
+function IntakeSection({ offer, offerId, setBanner, setError }) {
   const [slipGaji, setSlipGaji] = useState(null);
   const [loading, setLoading]   = useState(true);
   const [saving, setSaving]     = useState(false);
-  const [lineItems, setLineItems] = useState([{ label: '', amount: '' }]);
+  const [editing, setEditing]   = useState(false);
+  const [lineItems, setLineItems] = useState(DEFAULT_ROWS.map((r) => ({ ...r })));
+  const [expectedSalary, setExpectedSalary] = useState('');
   const [skipReason, setSkipReason] = useState('');
   const [reviewNote, setReviewNote] = useState('');
   const [showSkip, setShowSkip] = useState(false);
-
+ 
   const load = useCallback(async () => {
     setLoading(true);
     try {
@@ -136,44 +146,58 @@ function IntakeSection({ offerId, setBanner, setError }) {
       setLoading(false);
     }
   }, [offerId, setError]);
-
+ 
   useEffect(() => { load(); }, [load]);
-
+ 
   const addRow = () => setLineItems((prev) => [...prev, { label: '', amount: '' }]);
   const removeRow = (i) => setLineItems((prev) => prev.filter((_, idx) => idx !== i));
   const updateRow = (i, field, value) =>
     setLineItems((prev) => prev.map((row, idx) => idx === i ? { ...row, [field]: value } : row));
-
+ 
   const total = lineItems.reduce((sum, row) => sum + (Number(row.amount) || 0), 0);
-
-  const handleRecord = async () => {
+ 
+  const startEdit = () => {
+    setLineItems(
+      slipGaji.line_items.map((item) => ({ label: item.label, amount: String(item.amount) }))
+    );
+    setExpectedSalary(slipGaji.expected_salary != null ? String(slipGaji.expected_salary) : '');
+    setEditing(true);
+  };
+ 
+  const cancelEdit = () => {
+    setEditing(false);
+  };
+ 
+  const handleSave = async () => {
     const cleaned = lineItems
       .filter((row) => row.label.trim() && row.amount !== '')
       .map((row) => ({ label: row.label.trim(), amount: Number(row.amount) }));
-
+ 
     if (cleaned.length === 0) {
-      setError('Add at least one line item with a label and amount');
+      setError('Fill in at least one line item with an amount');
       return;
     }
-
+ 
     setSaving(true);
     setError(null);
     try {
-      const res = await offerAPI.recordSlipGaji(offerId, { line_items: cleaned });
+      const res = await offerAPI.recordSlipGaji(offerId, cleaned, expectedSalary ? Number(expectedSalary) : null);
       setSlipGaji(res.data?.slip_gaji);
-      setBanner({ ok: true, text: 'Slip gaji recorded.' });
+      setEditing(false);
+      setReviewNote('');
+      setBanner({ ok: true, text: editing ? 'Slip gaji updated.' : 'Slip gaji saved.' });
     } catch (err) {
-      setError(err.response?.data?.message || err.message || 'Failed to record slip gaji');
+      setError(err.response?.data?.message || err.message || 'Failed to save slip gaji');
     } finally {
       setSaving(false);
     }
   };
-
+ 
   const handleSkip = async () => {
     setSaving(true);
     setError(null);
     try {
-      const res = await offerAPI.skipSlipGaji(offerId, { reason: skipReason || null });
+      const res = await offerAPI.skipSlipGaji(offerId, skipReason || null);
       setSlipGaji(res.data?.slip_gaji);
       setShowSkip(false);
       setBanner({ ok: true, text: 'Slip gaji step skipped.' });
@@ -183,12 +207,12 @@ function IntakeSection({ offerId, setBanner, setError }) {
       setSaving(false);
     }
   };
-
+ 
   const handleReview = async () => {
     setSaving(true);
     setError(null);
     try {
-      const res = await offerAPI.reviewSlipGaji(offerId, { note: reviewNote });
+      const res = await offerAPI.reviewSlipGaji(offerId, reviewNote);
       setSlipGaji(res.data?.slip_gaji);
       setBanner({ ok: true, text: 'Review recorded.' });
     } catch (err) {
@@ -197,7 +221,7 @@ function IntakeSection({ offerId, setBanner, setError }) {
       setSaving(false);
     }
   };
-
+ 
   if (loading) {
     return (
       <div className="flex justify-center py-12">
@@ -205,12 +229,13 @@ function IntakeSection({ offerId, setBanner, setError }) {
       </div>
     );
   }
-
+ 
   const status = slipGaji?.status || 'not_recorded';
-
+  const showForm = status === 'not_recorded' || editing;
+ 
   return (
     <div className="space-y-4">
-
+ 
       <Card>
         <CardHeader className="pb-3">
           <div className="flex items-center gap-2">
@@ -218,37 +243,70 @@ function IntakeSection({ offerId, setBanner, setError }) {
             <div className="min-w-0 flex-1">
               <CardTitle className="text-sm">Verify slip gaji</CardTitle>
               <p className="text-[10px] text-muted-foreground mt-0.5">
-                Optional sanity-check against the candidate's current salary · no OCR, manual entry
+                Optional sanity-check against the candidate's current salary 
               </p>
             </div>
+ 
+            {status === 'recorded' && !editing && (
+              <Button size="sm" variant="outline" className="text-xs h-7 shrink-0" onClick={startEdit}>
+                <Pencil className="h-3 w-3 mr-1.5" /> Edit
+              </Button>
+            )}
+ 
             <Badge variant="outline" className="text-[9px] shrink-0">{status.replace(/_/g, ' ')}</Badge>
           </div>
         </CardHeader>
         <CardContent className="space-y-3">
-
+ 
           {status === 'skipped' && (
             <div className="flex items-center gap-2 px-3 py-2 rounded-lg border border-gray-200 bg-gray-50 text-xs text-gray-600">
               Skipped{slipGaji.skip_reason ? ` — ${slipGaji.skip_reason}` : ''}
             </div>
           )}
-
-          {status === 'recorded' && (
-            <div className="space-y-2">
-              <div className="rounded-lg border divide-y">
-                {slipGaji.line_items.map((item, i) => (
-                  <div key={i} className="flex items-center justify-between px-3 py-2 text-xs">
-                    <span>{item.label}</span>
-                    <span className="font-mono">{fmtCurrency(item.amount)}</span>
+ 
+          {status === 'recorded' && !editing && (
+            <div className="space-y-3">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="rounded-lg border overflow-hidden">
+                  <div className="px-4 py-3 border-b bg-muted/20">
+                    <p className="text-sm font-bold">{offer?.company_name || 'Slip Gaji'}</p>
+                    <p className="text-[10px] text-muted-foreground mt-0.5">
+                      Slip Gaji · {fmtDate(slipGaji.recorded_at)} · {offer?.candidate_name}
+                    </p>
                   </div>
-                ))}
-                <div className="flex items-center justify-between px-3 py-2 text-xs font-semibold bg-muted/30">
-                  <span>Total</span>
-                  <span className="font-mono">{fmtCurrency(slipGaji.total)}</span>
+                  <div className="divide-y">
+                    {slipGaji.line_items.map((item, i) => (
+                      <div key={i} className="flex items-center justify-between px-4 py-2 text-xs">
+                        <span className="text-muted-foreground">{item.label}</span>
+                        <span className="font-mono">{fmtCurrency(item.amount)}</span>
+                      </div>
+                    ))}
+                  </div>
+                  <div className="flex items-center justify-between px-4 py-3 text-xs font-bold bg-muted/30 border-t">
+                    <span>Total Gross</span>
+                    <span className="font-mono">{fmtCurrency(slipGaji.total)}</span>
+                  </div>
+                </div>
+ 
+                <div className="rounded-lg border p-4 space-y-2">
+                  <p className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground mb-1">
+                    Recorded values
+                  </p>
+                  {slipGaji.line_items.map((item, i) => (
+                    <div key={i} className="flex items-center justify-between text-xs">
+                      <span className="text-muted-foreground">{item.label}</span>
+                      <span className="font-mono">{fmtCurrency(item.amount)}</span>
+                    </div>
+                  ))}
+                  {slipGaji.expected_salary != null && (
+                    <div className="flex items-center justify-between text-xs px-2 py-1.5 rounded border border-emerald-200 bg-emerald-50 mt-2">
+                      <span className="text-emerald-700 font-medium">Expected</span>
+                      <span className="font-mono text-emerald-700">{fmtCurrency(slipGaji.expected_salary)}</span>
+                    </div>
+                  )}
                 </div>
               </div>
-              <p className="text-[10px] text-muted-foreground">
-                Recorded {fmtDate(slipGaji.recorded_at)}
-              </p>
+ 
               {slipGaji.review_note && (
                 <div className="flex items-start gap-2 px-3 py-2 rounded-lg border border-emerald-200 bg-emerald-50 text-xs text-emerald-700">
                   <MessageSquareText className="h-3.5 w-3.5 shrink-0 mt-0.5" />
@@ -257,39 +315,80 @@ function IntakeSection({ offerId, setBanner, setError }) {
               )}
             </div>
           )}
-
-          {status === 'not_recorded' && !showSkip && (
+ 
+           {showForm && (
             <div className="space-y-2">
+ 
               {lineItems.map((row, i) => (
                 <div key={i} className="flex items-center gap-2">
                   <Input
-                    placeholder="e.g. Gaji Pokok"
-                    className="text-xs h-8"
+                    placeholder="Label"
+                    className="text-xs h-9"
                     value={row.label}
                     onChange={(e) => updateRow(i, 'label', e.target.value)}
                   />
-                  <Input
-                    type="number"
-                    placeholder="Rp"
-                    className="text-xs h-8 w-40"
-                    value={row.amount}
-                    onChange={(e) => updateRow(i, 'amount', e.target.value)}
-                  />
+                  <div className="relative w-44 shrink-0">
+                    <span className="absolute left-2.5 top-1/2 -translate-y-1/2 text-[11px] text-muted-foreground pointer-events-none">
+                      Rp
+                    </span>
+                    <Input
+                      type="number"
+                      className="text-xs h-9 pl-7"
+                      value={row.amount}
+                      onChange={(e) => updateRow(i, 'amount', e.target.value)}
+                    />
+                  </div>
                   <button type="button" onClick={() => removeRow(i)} className="shrink-0 text-muted-foreground hover:text-rose-600">
                     <Trash2 className="h-3.5 w-3.5" />
                   </button>
                 </div>
               ))}
-              <div className="flex items-center justify-between">
+ 
+              <div className="flex items-center gap-2">
+                <span className="text-xs w-full max-w-[calc(100%-3rem)] text-muted-foreground">
+                  Expected (candidate's ask — informational only)
+                </span>
+                <div className="relative w-44 shrink-0">
+                  <span className="absolute left-2.5 top-1/2 -translate-y-1/2 text-[11px] text-emerald-700 pointer-events-none">
+                    Rp
+                  </span>
+                  <Input
+                    type="number"
+                    className="text-xs h-9 pl-7 border-emerald-300 bg-emerald-50/40 focus-visible:ring-emerald-400"
+                    value={expectedSalary}
+                    onChange={(e) => setExpectedSalary(e.target.value)}
+                  />
+                </div>
+                <span className="w-3.5 shrink-0" />
+              </div>
+ 
+              <div className="flex items-center justify-between pt-1">
                 <Button size="sm" variant="outline" className="text-xs h-7" onClick={addRow}>
                   <Plus className="h-3 w-3 mr-1" /> Add row
                 </Button>
                 <span className="text-xs font-mono text-muted-foreground">Total: {fmtCurrency(total)}</span>
               </div>
+ 
+              <div className="flex gap-2 pt-1">
+                <Button size="sm" className="text-xs" onClick={handleSave} disabled={saving}>
+                  {saving
+                    ? <><Loader2 className="h-3.5 w-3.5 mr-1.5 animate-spin" /> Saving…</>
+                    : <><Check className="h-3.5 w-3.5 mr-1.5" /> {editing ? 'Save changes' : 'Save'}</>}
+                </Button>
+                {editing ? (
+                  <Button size="sm" variant="ghost" className="text-xs" onClick={cancelEdit} disabled={saving}>
+                    Cancel
+                  </Button>
+                ) : !showSkip ? (
+                  <Button size="sm" variant="outline" className="text-xs" onClick={() => setShowSkip(true)}>
+                    Skip this step
+                  </Button>
+                ) : null}
+              </div>
             </div>
           )}
-
-          {showSkip && (
+ 
+          {showSkip && !editing && (
             <div className="space-y-2 p-3 rounded-lg border border-dashed">
               <Input
                 placeholder="Reason (optional) — e.g. entry-level, fresh-grad"
@@ -307,19 +406,8 @@ function IntakeSection({ offerId, setBanner, setError }) {
               </div>
             </div>
           )}
-
-          {status === 'not_recorded' && !showSkip && (
-            <div className="flex gap-2 pt-1">
-              <Button size="sm" className="text-xs" onClick={handleRecord} disabled={saving}>
-                {saving ? <><Loader2 className="h-3.5 w-3.5 mr-1.5 animate-spin" /> Saving…</> : <><Check className="h-3.5 w-3.5 mr-1.5" /> Record</>}
-              </Button>
-              <Button size="sm" variant="outline" className="text-xs" onClick={() => setShowSkip(true)}>
-                Skip this step
-              </Button>
-            </div>
-          )}
-
-          {status === 'recorded' && !slipGaji.review_note && (
+ 
+          {status === 'recorded' && !editing && !slipGaji.review_note && (
             <div className="space-y-2 pt-2 border-t">
               <Textarea
                 placeholder="Review note — e.g. matches candidate's stated expectation, proceeding"
@@ -333,10 +421,10 @@ function IntakeSection({ offerId, setBanner, setError }) {
               </Button>
             </div>
           )}
-
+ 
         </CardContent>
       </Card>
-
+ 
     </div>
   );
 }
