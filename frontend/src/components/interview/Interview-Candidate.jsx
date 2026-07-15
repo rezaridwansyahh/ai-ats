@@ -23,13 +23,12 @@ import {
 } from '@/components/ui/dialog';
 
 import {
-  getInterview, getPrep, updateQuestions,
+  getPrep, updateQuestions,
   getSchedules, createSchedule, updateSchedule,
   confirmSchedule, unconfirmSchedule, deleteSchedule,
   recordOutcome, clearOutcome,
   getScorecard, saveScorecard, deleteScorecard,
-  getDecideByJob, bulkDecide, resetDecision,
-  getInterviewByCandidateId,
+  getDecideByJob, bulkDecide, resetDecision, getInterviewByCandidateId
 } from '@/api/interview.api';
 
 const COMPETENCY_CODES = ['HRD-01', 'HRD-02', 'HRD-03', 'HRD-04', 'HRD-05', 'HRD-06'];
@@ -131,10 +130,11 @@ function scoreBg(score) {
 
 export default function InterviewCandidatePage() {
   const navigate                 = useNavigate();
-  const { candidateId }          = useParams();
-  const interviewId              = idParam ? Number(idParam) : null;
-
+  const { candidateId } = useParams();
+  const candidateIdNum = candidateId ? Number(candidateId) : null;
   const [interview, setInterview] = useState(null);
+  const [interviewId, setInterviewId] = useState(null);
+
   const [prep, setPrep]           = useState(null);
   const [loading, setLoading]     = useState(true);
   const [error, setError]         = useState(null);
@@ -142,15 +142,16 @@ export default function InterviewCandidatePage() {
   const [activeSection, setActiveSection] = useState('prep');
 
   const load = useCallback(async () => {
-    if (!interviewId) return;
+    if (!candidateIdNum) return;
     setLoading(true);
     setError(null);
     try {
-      const res = await getInterviewByCandidateId(candidateId);
-      const row = res.data?.interview;
-      setInterview(row);
-      if (row?.job_id) {
-        const prepRes = await getPrep(row.job_id);
+      const res = await getInterviewByCandidateId(candidateIdNum);
+      const data = res.data?.interview || null;
+      setInterview(data);
+      setInterviewId(data?.interview_id ?? null);
+      if (data?.job_id) {
+        const prepRes = await getPrep(data.job_id);
         setPrep(prepRes.data?.prep || null);
       }
     } catch (err) {
@@ -158,7 +159,7 @@ export default function InterviewCandidatePage() {
     } finally {
       setLoading(false);
     }
-  }, [interviewId]);
+  }, [candidateIdNum]);
 
   useEffect(() => { load(); }, [load]);
 

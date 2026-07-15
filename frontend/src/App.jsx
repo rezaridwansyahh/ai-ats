@@ -91,7 +91,7 @@ function App() {
 
           <Route path="/selection/psych-assessment" element={<PsychAssesmentPage />} />
           <Route path="/selection/medical-assessment" element={<ComingSoonPage />} />
-          <Route path="/selection/assessment/:jobId/:participantId" element={<CandidateDetailPage />} />
+          <Route path="/selection/psych-assessment/:jobId/:participantId" element={<CandidateDetailPage />} />
 
           <Route path="/selection/interview" element={<InterviewWorkboard />} />
           <Route path="/selection/interview/job/:jobId" element={<InterviewJobPage/>} />

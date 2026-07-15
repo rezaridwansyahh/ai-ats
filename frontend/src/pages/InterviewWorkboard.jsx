@@ -114,13 +114,7 @@ export default function InterviewWorkboard() {
 
   const openInterview = async (i) => {
     try {
-      if (i.interview_id) {
-        navigate(`/selection/interview/candidate/${i.interview_id}`);
-        return;
-      }
-      const res = await getInterviewByCandidateId(i.candidate_id);
-      const iid = res.data?.interview?.interview_id;
-      if (iid) navigate(`/selection/interview/candidate/${iid}`);
+      navigate(`/selection/interview/candidate/${i.candidate_id}`);
     } catch (err) {
       setError(err.response?.data?.message || err.message || 'Failed to open interview');
     }

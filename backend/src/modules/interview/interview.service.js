@@ -33,7 +33,8 @@ class InterviewService {
     if (company_id && row.company_id && row.company_id !== company_id) {
       throw { status: 403, message: 'Cross-tenant access denied' };
     }
-    return row;
+    // Fetch full hydrated object (same shape as getById)
+    return await interviewModel.getById(row.id);
   }
 
   async getInterviewsByJob(job_id, { company_id = null } = {}) {
