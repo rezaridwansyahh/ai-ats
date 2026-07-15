@@ -415,6 +415,92 @@ class OfferService {
   async getOfferStats(job_id, company_id) {
     return await OfferModel.getOfferStatsByJob(job_id, company_id);
   }
+
+  async getSlipGaji(offer_id, company_id) {
+    const offer = await OfferModel.getOfferById(offer_id, company_id);
+    if (!offer) {
+      throw { status: 404, message: 'Offer not found' };
+    }
+    return offer.metadata?.intake?.slip_gaji || { status: 'not_recorded' };
+  }
+
+  // HR/HM manually types in whatever line items are on the candidate's payslip.
+  async recordSlipGaji(offer_id, line_items, expected_salary, company_id, user_id) {
+    const offer = await OfferModel.getOfferById(offer_id, company_id);
+    if (!offer) {
+      throw { status: 404, message: 'Offer not found' };
+    }
+    if (!Array.isArray(line_items) || line_items.length === 0) {
+      throw { status: 400, message: 'At least one line item is required' };
+    }
+    for (const item of line_items) {
+      if (!item.label || typeof item.amount !== 'number' || item.amount < 0) {
+        throw { status: 400, message: 'Each line item needs a label and a non-negative amount' };
+      }
+    }
+  
+    const total = line_items.reduce((sum, item) => sum + item.amount, 0);
+  
+    const slip_gaji = {
+      status: 'recorded',
+      line_items,
+      total,
+      expected_salary: expected_salary != null ? Number(expected_salary) : null,
+      recorded_at: new Date(),
+      recorded_by: user_id,
+    };
+  
+    const metadata = await OfferModel.mergeMetadata(offer_id, {
+      intake: { ...(offer.metadata?.intake || {}), slip_gaji },
+    });
+    return { slip_gaji: metadata.intake.slip_gaji, message: 'Slip gaji recorded' };
+  }
+  
+  // Recruiter skips this step entirely
+  async skipSlipGaji(offer_id, reason, company_id, user_id) {
+    const offer = await OfferModel.getOfferById(offer_id, company_id);
+    if (!offer) {
+      throw { status: 404, message: 'Offer not found' };
+    }
+  
+    const slip_gaji = {
+      status: 'skipped',
+      skip_reason: reason || null,
+      skipped_at: new Date(),
+      skipped_by: user_id,
+    };
+  
+    const metadata = await OfferModel.mergeMetadata(offer_id, {
+      intake: { ...(offer.metadata?.intake || {}), slip_gaji },
+    });
+    return { slip_gaji: metadata.intake.slip_gaji, message: 'Slip gaji step skipped' };
+  }
+  
+  // Recruiter's sanity-check note against what was recorded
+  async reviewSlipGaji(offer_id, note, company_id, user_id) {
+    const offer = await OfferModel.getOfferById(offer_id, company_id);
+    if (!offer) {
+      throw { status: 404, message: 'Offer not found' };
+    }
+  
+    const current = offer.metadata?.intake?.slip_gaji;
+    if (!current || current.status !== 'recorded') {
+      throw { status: 400, message: 'No recorded slip gaji to review yet' };
+    }
+  
+    const slip_gaji = {
+      ...current,
+      reviewed_at: new Date(),
+      reviewed_by: user_id,
+      review_note: note || null,
+    };
+  
+    const metadata = await OfferModel.mergeMetadata(offer_id, {
+      intake: { ...(offer.metadata?.intake || {}), slip_gaji },
+    });
+    return { slip_gaji: metadata.intake.slip_gaji, message: 'Review recorded' };
+  }
+
 }
 
 export default new OfferService();

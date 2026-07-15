@@ -204,6 +204,57 @@ class OfferController {
       res.status(error.status || 500).json({ message: error.message });
     }
   }
+
+  async getSlipGaji(req, res) {
+    try {
+      const { offer_id } = req.params;
+      const { company_id } = req.user;
+      const result = await OfferService.getSlipGaji(offer_id, company_id);
+      res.json(result);
+    } catch (error) {
+      console.error('Error in getSlipGaji:', error);
+      res.status(error.status || 500).json({ message: error.message });
+    }
+  }
+  
+  async recordSlipGaji(req, res) {
+    try {
+      const { offer_id } = req.params;
+      const { company_id, user_id } = req.user;
+      const { line_items, expected_salary } = req.body;
+      const result = await OfferService.recordSlipGaji(offer_id, line_items, expected_salary, company_id, user_id);
+      res.json(result);
+    } catch (error) {
+      console.error('Error in recordSlipGaji:', error);
+      res.status(error.status || 500).json({ message: error.message });
+    }
+  }
+  
+  async skipSlipGaji(req, res) {
+    try {
+      const { offer_id } = req.params;
+      const { company_id, user_id } = req.user;
+      const { reason } = req.body;
+      const result = await OfferService.skipSlipGaji(offer_id, reason, company_id, user_id);
+      res.json(result);
+    } catch (error) {
+      console.error('Error in skipSlipGaji:', error);
+      res.status(error.status || 500).json({ message: error.message });
+    }
+  }
+  
+  async reviewSlipGaji(req, res) {
+    try {
+      const { offer_id } = req.params;
+      const { company_id, user_id } = req.user;
+      const { note } = req.body;
+      const result = await OfferService.reviewSlipGaji(offer_id, note, company_id, user_id);
+      res.json(result);
+    } catch (error) {
+      console.error('Error in reviewSlipGaji:', error);
+      res.status(error.status || 500).json({ message: error.message });
+    }
+  }  
 }
 
 export default new OfferController();

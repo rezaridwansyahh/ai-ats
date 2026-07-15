@@ -495,7 +495,6 @@ Return STRICT JSON:
     return { questions };
   }
 
-
   async generateInterviewQuestions(job, { numQuestions, language } = {}, context = {}) {
     if (!job || typeof job !== 'object') throw new Error('generateInterviewQuestions: job is required');
  
@@ -591,6 +590,79 @@ Return STRICT JSON:
     if (questions.length === 0) throw new Error('generateInterviewQuestions: model returned no questions');
  
     return { questions };
+  }
+
+  async generateRubricAnchors(job, rubric_items, context = {}) {
+    if (!job || typeof job !== 'object') throw new Error('generateRubricAnchors: job is required');
+
+    await companyUsageService.checkBudgetOrThrow(context.company_id);
+
+    const jobPayload = {
+      job_title:       job.job_title       || '',
+      job_desc:        typeof job.job_desc === 'string'     ? job.job_desc.slice(0, 3000)     : '',
+      qualifications:  typeof job.qualifications === 'string' ? job.qualifications.slice(0, 1500) : '',
+      required_skills: Array.isArray(job.required_skills)   ? job.required_skills             : [],
+      seniority_level: job.seniority_level || '',
+    };
+
+    const competencies = rubric_items.map((r) => ({
+      code:   r.competency_code,
+      name:   r.competency_name,
+      weight: r.weight,
+    }));
+
+    const prompt = `You are an expert HR consultant writing behavioral anchor descriptions for an interview rubric. Return STRICT JSON only.
+
+  JOB CONTEXT:
+  ${JSON.stringify(jobPayload, null, 2)}
+
+  COMPETENCIES TO ANCHOR:
+  ${JSON.stringify(competencies, null, 2)}
+
+  For each competency, write two anchor descriptions tailored to this specific job:
+  - anchor_1: what the WORST/LOWEST performance looks like (score 1 of 7) — concrete observable behaviors
+  - anchor_7: what the BEST/HIGHEST performance looks like (score 7 of 7) — concrete observable behaviors
+
+  Each anchor should be 1-2 sentences, specific to the role, and observable during an interview.
+
+  Return STRICT JSON:
+  {
+    "anchors": [
+      {
+        "competency_code": "<HRD-XX>",
+        "anchor_1": "<poor behavior description>",
+        "anchor_7": "<excellent behavior description>"
+      }
+    ]
+  }`;
+
+    const response = await openai.chat.completions.create({
+      model: SCORING_MODEL,
+      messages: [{ role: 'user', content: prompt }],
+      response_format: { type: 'json_object' },
+      temperature: 0.4,
+    });
+
+    await this._logUsage({
+      context,
+      model:      SCORING_MODEL,
+      operation:  'generate_rubric_anchors',
+      usage:      response.usage,
+      request_id: response.id,
+      metadata:   { job_title: job.job_title || null, ...(context.metadata || {}) },
+    });
+
+    const raw = response.choices[0]?.message?.content || '{}';
+    let parsed;
+    try { parsed = JSON.parse(raw); } catch {
+      throw new Error('generateRubricAnchors: model returned non-JSON');
+    }
+
+    if (!Array.isArray(parsed.anchors) || parsed.anchors.length === 0) {
+      throw new Error('generateRubricAnchors: model returned no anchors');
+    }
+
+    return parsed.anchors;
   }
 
   async extractBgClaims(information, job_title, context = {}) {

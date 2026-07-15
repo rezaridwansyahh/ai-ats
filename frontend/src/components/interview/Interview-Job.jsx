@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import {
   ArrowLeft, Loader2, AlertTriangle, Wand2, RotateCw,
@@ -24,8 +24,7 @@ import {
   generateQuestions,
   updateQuestions,
   updateRubric,
-  lockRubric,
-  unlockRubric,
+  generateAnchors,
 } from '@/api/interview.api';
 
 const COMPETENCY_CODES = ['HRD-01', 'HRD-02', 'HRD-03', 'HRD-04', 'HRD-05', 'HRD-06'];
@@ -53,9 +52,9 @@ const STATUS_META = {
 };
 
 const SECTIONS = [
-  { key: 'candidates', label: 'Candidates',      icon: Users },
-  { key: 'questions',  label: 'Questions',        icon: ClipboardList },
-  { key: 'rubric',     label: 'Rubric',           icon: CalendarCheck },
+  { key: 'candidates', label: 'Candidates',  icon: Users },
+  { key: 'rubric',     label: 'Rubric',      icon: CalendarCheck },
+  { key: 'questions',  label: 'Questions',   icon: ClipboardList },
 ];
 
 const NUM_Q_OPTIONS = [3, 5, 6, 8, 10, 12, 15];
@@ -74,6 +73,14 @@ function statusTone(status) {
   }
 }
 
+function formatTimeSince(date) {
+  const sec = Math.floor((Date.now() - date.getTime()) / 1000);
+  if (sec < 10)  return 'just now';
+  if (sec < 60)  return `${sec}s ago`;
+  if (sec < 3600) return `${Math.floor(sec / 60)}m ago`;
+  return `${Math.floor(sec / 3600)}h ago`;
+}
+
 export default function InterviewJobPage() {
   const navigate        = useNavigate();
   const { jobId: jobIdParam } = useParams();
@@ -87,6 +94,9 @@ export default function InterviewJobPage() {
   const [banner, setBanner]         = useState(null);
 
   const [activeSection, setActiveSection] = useState('candidates');
+
+  const rubricReady = !!prep?.rubric_items?.length &&
+    prep.rubric_items.every((it) => it.anchor_1?.trim() && it.anchor_7?.trim());
 
   const load = useCallback(async () => {
     if (!jobId) return;
@@ -109,6 +119,13 @@ export default function InterviewJobPage() {
   }, [jobId]);
 
   useEffect(() => { load(); }, [load]);
+
+  // Auto-navigate to the right starting tab based on setup state
+  useEffect(() => {
+    if (loading) return;
+    if (!prep) setActiveSection('rubric');
+    else if (!prep.questions?.length) setActiveSection('questions');
+  }, [loading, prep]);
 
   if (loading) {
     return (
@@ -175,20 +192,26 @@ export default function InterviewJobPage() {
 
       {/* section tabs */}
       <div className="flex gap-1 border-b border-border/60">
-        {SECTIONS.map(({ key, label, icon: Icon }) => (
-          <button
-            key={key}
-            type="button"
-            onClick={() => setActiveSection(key)}
-            className={`inline-flex items-center gap-1.5 px-4 py-2.5 text-xs font-semibold border-b-2 transition-colors ${
-              activeSection === key
-                ? 'border-primary text-primary'
-                : 'border-transparent text-muted-foreground hover:text-foreground'
-            }`}
-          >
-            <Icon className="h-3.5 w-3.5" /> {label}
-          </button>
-        ))}
+        {SECTIONS.map(({ key, label, icon: Icon }) => {
+          const blocked = key === 'questions' && !rubricReady;
+          return (
+            <button
+              key={key}
+              type="button"
+              onClick={() => !blocked && setActiveSection(key)}
+              className={`inline-flex items-center gap-1.5 px-4 py-2.5 text-xs font-semibold border-b-2 transition-colors ${
+                blocked
+                  ? 'border-transparent text-muted-foreground/40 cursor-not-allowed'
+                  : activeSection === key
+                    ? 'border-primary text-primary'
+                    : 'border-transparent text-muted-foreground hover:text-foreground'
+              }`}
+            >
+              <Icon className="h-3.5 w-3.5" /> {label}
+              {blocked && <Lock className="h-3 w-3 ml-0.5" />}
+            </button>
+          );
+        })}
       </div>
 
       {/* section content */}
@@ -206,6 +229,8 @@ export default function InterviewJobPage() {
           setPrep={setPrep}
           setBanner={setBanner}
           setError={setError}
+          hasSubmittedScorecards={interviews.some((i) => i.status === 'done')}
+          rubricReady={rubricReady}
         />
       )}
       {activeSection === 'rubric' && (
@@ -215,6 +240,7 @@ export default function InterviewJobPage() {
           setPrep={setPrep}
           setBanner={setBanner}
           setError={setError}
+          hasSubmittedScorecards={interviews.some((i) => i.status === 'done')}
         />
       )}
     </div>
@@ -279,7 +305,7 @@ function CandidatesSection({ interviews, navigate }) {
   );
 }
 
-function QuestionsSection({ jobId, job, prep, setPrep, setBanner, setError }) {
+function QuestionsSection({ jobId, job, prep, setPrep, setBanner, setError, hasSubmittedScorecards }) {
   const [numQuestions, setNumQuestions] = useState('8');
   const [language, setLanguage]         = useState('id');
   const [generating, setGenerating]     = useState(false);
@@ -294,10 +320,14 @@ function QuestionsSection({ jobId, job, prep, setPrep, setBanner, setError }) {
     setQuestions(Array.isArray(prep?.questions) ? prep.questions : []);
   }, [prep]);
 
-  const isLocked = !!prep?.rubric_locked;
+  const isLocked = hasSubmittedScorecards;
 
   const handleGenerate = async () => {
     if (generating) return;
+    if (hasSubmittedScorecards) {
+      setError('Scorecards have been submitted — questions cannot be changed to preserve scoring integrity.');
+      return;
+    }
     if (isLocked) {
       setError('Rubric is locked — unlock it from the Rubric tab before regenerating.');
       return;
@@ -368,10 +398,22 @@ function QuestionsSection({ jobId, job, prep, setPrep, setBanner, setError }) {
           </CardTitle>
         </CardHeader>
         <CardContent className="space-y-4">
-          {isLocked && (
+          {hasSubmittedScorecards && (
+            <div className="flex items-center gap-2 px-3 py-2 rounded-lg border border-red-200 bg-red-50 text-xs text-red-700">
+              <Lock className="h-3.5 w-3.5 shrink-0" />
+              Scorecards have been submitted — questions are permanently locked to preserve scoring integrity.
+            </div>
+          )}
+          {!hasSubmittedScorecards && isLocked && (
             <div className="flex items-center gap-2 px-3 py-2 rounded-lg border border-amber-200 bg-amber-50 text-xs text-amber-700">
               <Lock className="h-3.5 w-3.5 shrink-0" />
               Rubric is locked. Unlock from the Rubric tab to regenerate or edit questions.
+            </div>
+          )}
+          {!isLocked && !hasSubmittedScorecards && !!prep?.rubric_items?.length && !questions.length && (
+            <div className="flex items-center gap-2 px-3 py-2 rounded-lg border border-teal-200 bg-teal-50 text-xs text-teal-700">
+              <Check className="h-3.5 w-3.5 shrink-0" />
+              Rubric ready ({prep.rubric_items.length} competencies). Generate questions — the rubric will be used as AI context.
             </div>
           )}
 
@@ -556,28 +598,62 @@ function QuestionsSection({ jobId, job, prep, setPrep, setBanner, setError }) {
   );
 }
 
-function RubricSection({ jobId, prep, setPrep, setBanner, setError }) {
-  const [items, setItems]   = useState(DEFAULT_RUBRIC_ITEMS);
-  const [saving, setSaving] = useState(false);
-  const [locking, setLocking] = useState(false);
+function RubricSection({ jobId, prep, setPrep, setBanner, setError, hasSubmittedScorecards }) {
+  const [items, setItems]         = useState(DEFAULT_RUBRIC_ITEMS);
+  const [saving, setSaving]       = useState(false);
+  const [generating, setGenerating] = useState(false);
   const [editingIdx, setEditingIdx] = useState(null);
+  const [lastSaved, setLastSaved]   = useState(null);
+  const [autoSaving, setAutoSaving] = useState(false);
+  const isInitialLoad = useRef(true);
 
-  const isLocked = !!prep?.rubric_locked;
+  const isLocked = hasSubmittedScorecards;
 
-  // sync from prep
+  // Reset initial load flag when prep syncs
   useEffect(() => {
     if (Array.isArray(prep?.rubric_items) && prep.rubric_items.length > 0) {
       setItems(prep.rubric_items);
     } else {
       setItems(DEFAULT_RUBRIC_ITEMS);
     }
+    isInitialLoad.current = true;
   }, [prep]);
+  
+  // Autosave debounce — only fires after user edits, only when all anchors filled
+  useEffect(() => {
+    if (isInitialLoad.current) {
+      isInitialLoad.current = false;
+      return;
+    }
+    if (isLocked) return;
+    const allReady = items.every((it) => it.anchor_1?.trim() && it.anchor_7?.trim());
+    if (!allReady) return;
+
+    const t = setTimeout(async () => {
+      setAutoSaving(true);
+      try {
+        const res = await updateRubric(jobId, items);
+        setPrep((p) => ({ ...p, rubric_items: res.data?.prep?.rubric_items || items }));
+        setLastSaved(new Date());
+      } catch { /* silent */ } finally {
+        setAutoSaving(false);
+      }
+    }, 2000);
+
+    return () => clearTimeout(t);
+  }, [items]);
 
   const setField = (idx, field, val) =>
     setItems((its) => its.map((it, i) => (i === idx ? { ...it, [field]: val } : it)));
 
   const handleSave = async () => {
     if (saving || isLocked) return;
+    // Validate anchors
+    const missing = items.filter((it) => !it.anchor_1?.trim() || !it.anchor_7?.trim());
+    if (missing.length > 0) {
+      setError(`Fill in both anchors for: ${missing.map((m) => m.competency_name).join(', ')}`);
+      return;
+    }
     setSaving(true);
     setError(null);
     setBanner(null);
@@ -593,191 +669,137 @@ function RubricSection({ jobId, prep, setPrep, setBanner, setError }) {
     }
   };
 
-  const handleLock = async () => {
-    if (locking) return;
-    setLocking(true);
+  const handleGenerateAnchors = async () => {
+    if (generating || isLocked) return;
+    setGenerating(true);
     setError(null);
     setBanner(null);
     try {
-      const res = await lockRubric(jobId);
-      setPrep((p) => ({ ...p, ...res.data?.prep }));
-      setBanner({ ok: true, text: 'Rubric locked. The pack can now be sent.' });
+      const res = await generateAnchors(jobId);
+      const newPrep = res.data?.prep;
+      setPrep(newPrep);
+      setItems(Array.isArray(newPrep?.rubric_items) ? newPrep.rubric_items : items);
+      setBanner({ ok: true, text: 'Anchors generated — review and save.' });
     } catch (err) {
-      setError(err.response?.data?.message || err.message || 'Lock failed');
+      setError(err.response?.data?.message || err.message || 'Generation failed');
     } finally {
-      setLocking(false);
-    }
-  };
-
-  const handleUnlock = async () => {
-    if (locking) return;
-    setLocking(true);
-    setError(null);
-    setBanner(null);
-    try {
-      const res = await unlockRubric(jobId);
-      setPrep((p) => ({ ...p, ...res.data?.prep }));
-      setBanner({ ok: true, text: 'Rubric unlocked. You can now edit questions and rubric.' });
-    } catch (err) {
-      setError(err.response?.data?.message || err.message || 'Unlock failed');
-    } finally {
-      setLocking(false);
+      setGenerating(false);
     }
   };
 
   return (
     <div className="space-y-4">
-      {/* lock status card */}
-      <Card>
-        <CardContent className="p-4 flex items-center justify-between gap-3 flex-wrap">
-          <div className="flex items-center gap-3">
-            <div className={`h-9 w-9 rounded-full flex items-center justify-center ${isLocked ? 'bg-amber-100' : 'bg-muted'}`}>
-              {isLocked
-                ? <Lock className="h-4 w-4 text-amber-600" />
-                : <Unlock className="h-4 w-4 text-muted-foreground" />}
-            </div>
-            <div>
-              <p className="text-xs font-semibold">{isLocked ? 'Rubric locked' : 'Rubric unlocked'}</p>
-              <p className="text-[10px] text-muted-foreground">
-                {isLocked
-                  ? 'Locked — safe for the pack to be sent. Unlock to edit.'
-                  : 'Unlock state — you can edit weights and anchors. Lock before sending the pack.'}
-              </p>
-            </div>
-          </div>
-          <div className="flex gap-2">
-            {!isLocked && (
-              <Button size="sm" className="text-xs" onClick={handleSave} disabled={saving}>
-                {saving ? <Loader2 className="h-3.5 w-3.5 mr-1.5 animate-spin" /> : <Check className="h-3.5 w-3.5 mr-1.5" />}
-                Save rubric
-              </Button>
-            )}
-            {isLocked ? (
-              <Button size="sm" variant="outline" className="text-xs" onClick={handleUnlock} disabled={locking}>
-                {locking ? <Loader2 className="h-3.5 w-3.5 mr-1.5 animate-spin" /> : <Unlock className="h-3.5 w-3.5 mr-1.5" />}
-                Unlock
-              </Button>
-            ) : (
-              <Button size="sm" variant="outline" className="text-xs border-amber-300 text-amber-700 hover:bg-amber-50" onClick={handleLock} disabled={locking || !prep}>
-                {locking ? <Loader2 className="h-3.5 w-3.5 mr-1.5 animate-spin" /> : <Lock className="h-3.5 w-3.5 mr-1.5" />}
-                Lock rubric
-              </Button>
-            )}
-          </div>
-        </CardContent>
-      </Card>
-
-      {!prep && (
-        <div className="px-4 py-3 rounded-lg border border-amber-200 bg-amber-50 text-xs text-amber-700">
-          Generate questions first — the rubric is created alongside the question set.
+      {hasSubmittedScorecards && (
+        <div className="flex items-center gap-3 px-4 py-3 rounded-lg border border-red-200 bg-red-50 text-xs text-red-700">
+          <Lock className="h-3.5 w-3.5 shrink-0" />
+          Scorecards have been submitted — rubric cannot be changed to preserve scoring integrity.
         </div>
       )}
 
-      {/* competency rubric items */}
       <Card>
         <CardHeader className="pb-3">
-          <CardTitle className="text-sm">
-            Competency Framework
-            <span className="ml-2 text-[11px] font-normal text-muted-foreground">
-              FRM.PTAP.HRD.01-06 · scored 1–7 by interviewer
-            </span>
-          </CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-2">
-          {items.map((item, i) => (
-            <div key={item.competency_code} className="rounded-lg border bg-muted/10 p-3">
-              {editingIdx === i && !isLocked ? (
-                <div className="space-y-2">
-                  <div className="flex items-center gap-2">
-                    <Badge variant="outline" className="text-[10px] border-blue-200 text-blue-700 font-mono">
-                      {item.competency_code}
-                    </Badge>
-                    <span className="text-xs font-semibold">{item.competency_name}</span>
-                  </div>
-                  <div className="grid grid-cols-2 gap-2">
-                    <div className="space-y-1">
-                      <label className="text-[10px] text-muted-foreground">Weight (multiplier)</label>
-                      <Input
-                        type="number" min={0.1} max={5} step={0.1}
-                        value={item.weight}
-                        onChange={(e) => setField(i, 'weight', Number(e.target.value) || 1)}
-                        className="h-8 text-xs"
-                      />
-                    </div>
-                    <div className="space-y-1">
-                      <label className="text-[10px] text-muted-foreground">Score range</label>
-                      <div className="h-8 flex items-center text-xs text-muted-foreground px-2 border rounded-md bg-muted/20">
-                        1 (lowest) → 7 (highest)
-                      </div>
-                    </div>
-                  </div>
-                  <div className="space-y-1">
-                    <label className="text-[10px] text-muted-foreground">Anchor — Score 1 (poor)</label>
-                    <Textarea
-                      value={item.anchor_1 || ''}
-                      onChange={(e) => setField(i, 'anchor_1', e.target.value)}
-                      placeholder="Describe the lowest performance level…"
-                      rows={2}
-                      className="text-xs"
-                    />
-                  </div>
-                  <div className="space-y-1">
-                    <label className="text-[10px] text-muted-foreground">Anchor — Score 7 (excellent)</label>
-                    <Textarea
-                      value={item.anchor_7 || ''}
-                      onChange={(e) => setField(i, 'anchor_7', e.target.value)}
-                      placeholder="Describe the highest performance level…"
-                      rows={2}
-                      className="text-xs"
-                    />
-                  </div>
-                  <div className="flex justify-end">
-                    <Button
-                      size="sm"
-                      variant="ghost"
-                      className="text-xs"
-                      onClick={(e) => { e.stopPropagation(); setEditingIdx(null); }}
-                    >
-                      Done
-                    </Button>
-                  </div>
+          <div className="flex items-center justify-between gap-2 flex-wrap">
+            <CardTitle className="text-sm">
+              Competency Framework
+              <span className="ml-2 text-[11px] font-normal text-muted-foreground">
+                FRM.PTAP.HRD.01-06 · scored 1–7 by interviewer
+              </span>
+            </CardTitle>
+            <div className="flex items-center gap-3">
+              {autoSaving && (
+                <span className="text-[10px] text-muted-foreground flex items-center gap-1">
+                  <Loader2 className="h-3 w-3 animate-spin" /> Saving…
+                </span>
+              )}
+              {!autoSaving && lastSaved && (
+                <span className="text-[10px] text-muted-foreground">
+                  Saved {formatTimeSince(lastSaved)}
+                </span>
+              )}
+              {!isLocked && (
+                <div className="flex gap-2">
+                  <Button size="sm" variant="outline" className="text-xs" onClick={handleGenerateAnchors} disabled={generating}>
+                    {generating
+                      ? <><Loader2 className="h-3.5 w-3.5 mr-1.5 animate-spin" /> Generating…</>
+                      : <><Wand2 className="h-3.5 w-3.5 mr-1.5" /> Generate AI Anchors</>}
+                  </Button>
+                  <Button size="sm" className="text-xs" onClick={handleSave} disabled={saving}>
+                    {saving
+                      ? <><Loader2 className="h-3.5 w-3.5 mr-1.5 animate-spin" /> Saving…</>
+                      : <><Check className="h-3.5 w-3.5 mr-1.5" /> Save Rubric</>}
+                  </Button>
                 </div>
-              ) : (
-                <button
-                  type="button"
-                  onClick={() => !isLocked && setEditingIdx((prev) => (prev === i ? null : i))}
-                  className={`w-full text-left group ${isLocked ? 'cursor-default' : 'cursor-pointer'}`}
-                >
-                  <div className="flex items-start justify-between gap-3">
-                    <div className="flex items-start gap-2 min-w-0 flex-1">
-                      <Badge variant="outline" className="text-[9px] border-blue-200 text-blue-700 bg-blue-50 font-mono shrink-0 mt-0.5">
-                        {item.competency_code}
-                      </Badge>
-                      <div className="min-w-0">
-                        <p className="text-xs font-semibold">{item.competency_name}</p>
-                        {item.anchor_1 && (
-                          <p className="text-[10px] text-muted-foreground mt-0.5">
-                            <span className="font-medium">1:</span> {item.anchor_1.slice(0, 80)}{item.anchor_1.length > 80 ? '…' : ''}
-                          </p>
-                        )}
-                        {item.anchor_7 && (
-                          <p className="text-[10px] text-muted-foreground">
-                            <span className="font-medium">7:</span> {item.anchor_7.slice(0, 80)}{item.anchor_7.length > 80 ? '…' : ''}
-                          </p>
-                        )}
-                      </div>
-                    </div>
-                    <div className="flex items-center gap-2 shrink-0">
-                      <span className="text-[10px] font-mono text-muted-foreground">×{item.weight}</span>
-                      {!isLocked && (
-                        <Pencil className="h-3 w-3 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity" />
-                      )}
-                    </div>
-                  </div>
-                </button>
               )}
             </div>
-          ))}
+          </div>
+        </CardHeader>
+        <CardContent className="space-y-2">
+          {items.map((item, i) => {
+            const missingAnchor = !item.anchor_1?.trim() || !item.anchor_7?.trim();
+            return (
+              <div key={item.competency_code} className="rounded-lg border bg-muted/10 overflow-hidden">
+                <div
+                  onClick={() => !isLocked && setEditingIdx((prev) => (prev === i ? null : i))}
+                  className={`flex items-center gap-2 min-w-0 p-3 ${!isLocked ? 'cursor-pointer hover:bg-muted/20 transition-colors' : ''}`}
+                >
+                  <Badge variant="outline" className="text-[9px] border-blue-200 text-blue-700 bg-blue-50 font-mono shrink-0">
+                    {item.competency_code}
+                  </Badge>
+                  <span className="text-xs font-semibold truncate">{item.competency_name}</span>
+                  {!isLocked && editingIdx !== i && (
+                    <span className="text-[10px] text-muted-foreground italic">· click to edit</span>
+                  )}
+                  {missingAnchor && (
+                    <span className="ml-auto text-[10px] text-amber-600 font-medium shrink-0">anchors required</span>
+                  )}
+                </div>
+
+                <div className={`grid transition-all duration-200 ease-in-out ${editingIdx === i ? 'grid-rows-[1fr]' : 'grid-rows-[0fr]'}`}>
+                  <div className="overflow-hidden">
+                    <div className="space-y-2 px-3 pb-3 border-t border-border/60">
+                      <div className="space-y-0.5 pt-2">
+                        <label className="text-[9px] text-muted-foreground font-medium">
+                          Weight · <span className="text-foreground font-semibold">{item.weight}×</span>
+                        </label>
+                        <input
+                          type="range"
+                          min={0.5} max={3} step={0.5}
+                          value={item.weight}
+                          onChange={(e) => setField(i, 'weight', Number(e.target.value))}
+                          className="w-full accent-primary"
+                        />
+                        <div className="flex justify-between text-[9px] text-muted-foreground px-0.5">
+                          <span>0.5×</span><span>1×</span><span>1.5×</span><span>2×</span><span>2.5×</span><span>3×</span>
+                        </div>
+                      </div>
+                      <div className="grid grid-cols-2 gap-2">
+                        <div className="space-y-1">
+                          <label className="text-[9px] text-muted-foreground font-medium">Score 1 — Poor</label>
+                          <Textarea
+                            value={item.anchor_1 || ''}
+                            onChange={(e) => setField(i, 'anchor_1', e.target.value)}
+                            placeholder="Describe lowest performance…"
+                            rows={2}
+                            className="text-xs resize-none"
+                          />
+                        </div>
+                        <div className="space-y-1">
+                          <label className="text-[9px] text-muted-foreground font-medium">Score 7 — Excellent</label>
+                          <Textarea
+                            value={item.anchor_7 || ''}
+                            onChange={(e) => setField(i, 'anchor_7', e.target.value)}
+                            placeholder="Describe highest performance…"
+                            rows={2}
+                            className="text-xs resize-none"
+                          />
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            );
+          })}
         </CardContent>
       </Card>
     </div>

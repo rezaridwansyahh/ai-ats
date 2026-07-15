@@ -584,11 +584,8 @@ CREATE TABLE interview_position_prep (
   id SERIAL PRIMARY KEY,
   job_id INTEGER NOT NULL REFERENCES core_job(id) ON DELETE CASCADE,
   company_id INTEGER REFERENCES core_company(id) ON DELETE CASCADE,
-  questions JSONB NOT NULL,          -- generated from JD + skills
-  rubric_items JSONB NOT NULL,          -- competency framework with weights & anchors
-  rubric_locked BOOLEAN NOT NULL DEFAULT false,       -- must be true before any batch is sent
-  rubric_locked_at TIMESTAMPTZ,
-  locked_by INTEGER REFERENCES master_users(id) ON DELETE SET NULL,
+  questions JSONB NOT NULL,
+  rubric_items JSONB NOT NULL,
   created_by INTEGER REFERENCES master_users(id) ON DELETE SET NULL,
   created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
   updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),

@@ -117,4 +117,32 @@ router.get(
   OfferController.getOfferStats
 );
 
+router.get(
+  '/:offer_id/slip-gaji',
+  authToken,
+  checkPermission('Offer & Onboard', 'Offer & Contract', 'read'),
+  OfferController.getSlipGaji
+);
+ 
+router.post(
+  '/:offer_id/slip-gaji/record',
+  authToken,
+  checkPermission('Offer & Onboard', 'Offer & Contract', 'update'),
+  OfferController.recordSlipGaji
+);
+ 
+router.post(
+  '/:offer_id/slip-gaji/skip',
+  authToken,
+  checkPermission('Offer & Onboard', 'Offer & Contract', 'update'),
+  OfferController.skipSlipGaji
+);
+ 
+router.post(
+  '/:offer_id/slip-gaji/review',
+  authToken,
+  checkPermission('Offer & Onboard', 'Offer & Contract', 'update'),
+  OfferController.reviewSlipGaji
+);
+
 export default router;

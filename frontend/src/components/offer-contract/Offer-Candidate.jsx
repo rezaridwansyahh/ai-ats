@@ -1,246 +1,25 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
-import { ArrowLeft, Loader2, AlertTriangle, FileText } from 'lucide-react';
+import {
+  ArrowLeft, Loader2, AlertTriangle, Check, ChevronRight, X,
+  FileText, Pencil, Wallet, Send, FileSignature, Plus, Trash2,
+  MessageSquareText, PenLine,
+} from 'lucide-react';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
+import { Input } from '@/components/ui/input';
+import { Textarea } from '@/components/ui/textarea';
 import { getInitials } from '@/lib/batteries';
-
-import { StepRail } from '@/components/offer-contract/StepRail';
-import { RemunerationStep } from '@/components/offer-contract/RemunerationStep';
-import { OfferLetterStep } from '@/components/offer-contract/OfferLetterStep';
-import { ContractStep } from '@/components/offer-contract/ContractStep';
-import { ESignatureStep } from '@/components/offer-contract/ESignatureStep';
-import { OfferPipelineStep } from '@/components/offer-contract/OfferPipelineStep';
 
 import offerAPI from '@/api/offer.api';
 
-/* ─────────────────────────────────────────────────────────────────────────────
-   MOCK DATA FALLBACK
-   ✅ REMUNERATION STEP: Now wired to real API (offer_compensation table)
-   ⚠️ Other steps still use mock data (offerLetter, contract, eSignature, pipeline)
-
-   Mock data below is used as fallback for:
-   - KPIs/metrics (until we build stats aggregation)
-   - Offer Letter workflow (until letter generation is built)
-   - Contract PDF generation (until puppeteer template is ready)
-   - E-Signature flow (until DocuSign/similar integration)
-   - Pipeline step (until onboarding bridge is built)
-───────────────────────────────────────────────────────────────────────────── */
-const offerContractMock = {
-  remuneration: {
-    autoSchedulingOff: true,
-    kpis: [
-      { label: 'Active Bands',      value: '42',     sub: 'Across 12 job families',        tone: 'emerald' },
-      { label: 'Median to 50th %',  value: '+3.2%',  sub: 'Above market (Mercer 2024)',     tone: 'emerald' },
-      { label: 'Offer Acceptance', value: '88%',     sub: '12mo rolling · target 85%', tone: 'blue', progress: 88 },
-      { label: 'Agency Commission', value: 'Rp 1.2B', sub: 'Outstanding · 8 vendors',        tone: 'amber' },
-    ],
-    offerBuild: [
-      { label: 'Base monthly (THP)',         value: 'Rp 32.000.000', meta: '/mo' },
-      { label: 'THR (1x base)',              value: 'Rp 32.000.000', meta: 'annual' },
-      { label: 'Bonus target',               value: '20% of annual', meta: 'on-target' },
-      { label: 'BPJS Kesehatan',              value: 'Rp 320.000',    meta: '/mo' },
-      { label: 'BPJS Ketenagakerjaan',        value: 'Rp 1.440.000',  meta: '/mo' },
-      { label: 'Allowances (transport, meal)', value: 'Rp 2.500.000', meta: '/mo' },
-      { label: 'Sign-on bonus',               value: 'Rp 15.000.000', meta: 'one-off' },
-      { label: 'Annual leave',                value: '16 days',       meta: 'allowance' },
-    ],
-    totalAnnualPackage: 'Rp 485.650.000',
-    benchmark: {
-      contextLabel: 'Sr. Frontend · 5–7y · Jakarta · Tier 1 tech',
-      offerPercentile: '62nd',
-      points: [
-        { label: 'P10', value: 'Rp 22M' },
-        { label: 'P30', value: 'Rp 27M' },
-        { label: 'P50', value: 'Rp 30.5M' },
-        { label: 'P75', value: 'Rp 34M' },
-        { label: 'P90', value: 'Rp 40M' },
-      ],
-      offerPosition: 62,
-    },
-    aiInsight:
-      'At Rp 32M base (62nd percentile), this offer is competitive vs market. Sign-on covers notice-period gap.',
-    commissionTracker: [
-      { vendor: 'KellyPerm Advisors', candidate: 'Dewi Sartika', role: 'Sr. Frontend', terms: '20% × THP × 3mo',  amount: 'Rp 19.200.000', invoiceStatus: 'awaiting', action: 'Pending start' },
-    ],
-    salarySlip: {
-      month: 'Month 1 Preview',
-      currency: 'Rp',
-      earnings: [
-        { label: 'Gaji Pokok (Base)',           amount: 32000000 },
-        { label: 'Tunjangan Transport',         amount: 1500000 },
-        { label: 'Tunjangan Makan',             amount: 750000 },
-        { label: 'Tunjangan Komunikasi',        amount: 250000 },
-        { label: 'Bonus Target (20%, on-target)', amount: 6400000 },
-      ],
-      deductions: [
-        { label: 'BPJS Kesehatan (1%)',          amount: -320000 },
-        { label: 'BPJS Ketenagakerjaan (JHT 2%)', amount: -640000 },
-        { label: 'BPJS Pensiun (1%)',             amount: -320000 },
-        { label: 'PPh 21 (estimasi marginal)',    amount: -4180000 },
-      ],
-      footnote: 'Annualized: 12x THP + THR 1x + Bonus 20% target · est. only — final ditetapkan oleh Finance',
-    },
-  },
-
-  offerLetter: {
-    summary: 'Offer letter generation — 1 unit per personalized letter',
-    autoFillNote: 'Auto-fill from package data · 3 templates (senior, mid, entry) · 2-level approval (HM + Finance) · edit-in-place',
-    approvedCount: 8,
-    kpis: [
-      { label: 'Offers Sent',        value: '47', sub: 'This quarter',              tone: 'emerald' },
-      { label: 'Accepted',           value: '41', sub: '87% acceptance rate',        tone: 'emerald', progress: 87 },
-      { label: 'Awaiting Response',  value: '4',  sub: 'Avg response: 2.1 days',     tone: 'amber'   },
-      { label: 'Negotiating',        value: '3',  sub: 'Counter-offers open',        tone: 'purple'  },
-    ],
-    workflow: [
-      { label: 'Draft',               sub: 'Recruiter · HR'    },
-      { label: 'Hiring Mgr approves', sub: 'Content + role'    },
-      { label: 'Finance approves',    sub: 'Package + band'    },
-      { label: 'Send to candidate',   sub: 'Email + portal'    },
-      { label: 'Negotiate (opt)',     sub: 'Counter rounds'    },
-      { label: 'Accepted',            sub: '→ Contract'        },
-    ],
-    preview: {
-      candidateName: 'Dewi Sartika',
-      role: 'Sr. Frontend Developer',
-      location: 'Jakarta',
-      date: '12 Maret 2024',
-      ref: 'OL-2024-0342',
-      titleLocal: 'Surat Penawaran Kerja',
-      titleEn: 'Letter of Offer',
-      greeting: 'Kepada Yth. Dewi Sartika di Jakarta,',
-      intro: 'Dengan hormat, Kami dengan senang hati menawarkan posisi Sr. Frontend Developer di Myralix Indonesia, dengan rincian sebagai berikut:',
-      terms: [
-        { label: 'Tanggal mulai kerja',    value: '15 April 2024' },
-        { label: 'Gaji pokok (THP)',       value: 'Rp 32.000.000 / bulan' },
-        { label: 'Sign-on bonus',          value: 'Rp 15.000.000 (dibayar di bulan pertama)' },
-        { label: 'Bonus tahunan target',   value: '20% (on-target)' },
-        { label: 'THR, BPJS, allowances',  value: 'sesuai kebijakan perusahaan' },
-        { label: 'Cuti tahunan',           value: '16 hari · cuti khusus' },
-        { label: 'Masa percobaan',         value: '3 bulan · kontrak PKWTT setelahnya' },
-      ],
-      validUntilNote: 'Penawaran ini berlaku hingga 19 Maret 2024, 23:59 WIB.',
-      closing: 'Mohon konfirmasi penerimaan Anda melalui portal kandidat atau balas email ini. Kami sangat menantikan Anda bergabung dengan tim.',
-      approvalChain: [
-        { role: 'Recruiter',      name: 'Siti Aisyah',                status: 'drafted',  timestamp: '11 Mar 14:32' },
-        { role: 'Hiring Manager', name: 'Rudi Hartono — EM Web',      status: 'approved', timestamp: '11 Mar 17:04' },
-        { role: 'Finance',        name: 'Anita Wardhani',             status: 'pending',  timestamp: 'Sent 11 Mar 17:05' },
-        { role: 'HRBP Sign-off',  name: 'Lukman Abdullah',            status: 'auto',     timestamp: null },
-      ],
-      expiryNote: 'Letter auto-expires in 7 days. Candidate gets auto-reminders at day 3 and day 5.',
-    },
-    activeOffers: [],
-  },
-
-  contract: {
-    contractType: 'PKWTT',
-    kpis: [
-      { label: 'Active Contracts',  value: '156', sub: 'PKWTT 112 · PKWT 44',     tone: 'emerald', progress: 72 },
-      { label: 'Generated This Week', value: '8',  sub: 'Ready for e-sign',        tone: 'emerald' },
-      { label: 'Expiring < 30d',    value: '5',   sub: 'PKWT renewals needed',     tone: 'amber'   },
-      { label: 'Template Library',  value: '12',  sub: 'Role × entity × region',   tone: 'blue'    },
-    ],
-    templates: [
-      { name: 'PKWTT — Permanent (IC)',         meta: 'Myralix Indonesia · Used 142x · last edit 2mo ago', selected: true  },
-      { name: 'PKWTT — Permanent (Lead/Mgr)',   meta: 'Myralix Indonesia · Used 28x · last edit 3mo ago',  selected: false },
-      { name: 'PKWT — 12mo fixed-term',         meta: 'Myralix Indonesia · Used 44x · last edit 1mo ago',  selected: false },
-      { name: 'PKWT — Project-based',           meta: 'Myralix Digital · Used 12x · last edit 2mo ago',    selected: false },
-      { name: 'Internship agreement',           meta: 'Myralix Indonesia · Used 9x · last edit 5mo ago',   selected: false },
-    ],
-    clauseLibrary: [
-      'Probation (3mo)', 'Non-compete (6mo)', 'Non-disclosure', 'IP assignment', 'Remote work policy',
-      'Overtime (UU No. 13)', 'Severance (UU No. 6)', 'Data privacy (UU PDP)', 'Dispute resolution (BANI)',
-      'Governing law (RI)', 'Confidentiality', 'Background check consent', 'Code of conduct', 'Anti-bribery',
-      'Notice (30 days)',
-    ],
-    legalReview: {
-      note: 'External counsel (Assegaf Hamzah) — reviewed 18 Jan 2024',
-      nextReview: 'Next review cadence: Oct 2024 (annual) · Alerts route to People Legal Lead',
-      status: 'UP TO DATE',
-    },
-    builder: {
-      autoFilledFieldCount: 36,
-      sections: [
-        { heading: 'Parties & Role', lines: [
-          'PT Myralix Indonesia · NPWP 01.234.567.8-012.000',
-          'Position, dept, and reporting line auto-filled from job data',
-        ]},
-        { heading: 'Compensation', lines: [
-          'Base, sign-on, bonus, allowances auto-filled from Build step',
-        ]},
-        { heading: 'Duration & Probation', lines: [
-          'Type, start date, probation, notice period',
-        ]},
-        { heading: 'Benefits', lines: [
-          'BPJS Kesehatan + Ketenagakerjaan, THR, annual leave, remote policy',
-        ]},
-        { heading: 'Restrictive Covenants', lines: [
-          'NDA, IP assignment, non-compete, non-solicit',
-        ]},
-        { heading: 'Termination & Severance', lines: [
-          'As per UU No.6/2023 (Ciptakerja)',
-        ]},
-      ],
-    },
-  },
-
-  eSignature: {
-    summary: 'E-Signature — 1 unit per signed document',
-    providerNote: 'Privy.id (primary) · Mekari Sign (backup) · UU ITE compliant · tersertifikasi OJK · audit trail exported to Kemnaker',
-    awaitingCount: 6,
-    kpis: [
-      { label: 'Awaiting Signature', value: '7',   sub: 'Candidates · 2 HRBP', tone: 'amber',   progress: 28 },
-      { label: 'Fully Signed',       value: '34',  sub: 'This quarter · 89% in <48h', tone: 'emerald' },
-      { label: 'Avg Turnaround',     value: '18h', sub: 'Candidate → HRBP → done',     tone: 'blue'    },
-      { label: 'Authentication Fail', value: '1',  sub: 'Privy re-verification needed', tone: 'rose'   },
-    ],
-    providerLabel: 'Privy.id',
-    flow: [
-      { label: 'Dispatch',          sub: 'Recruiter →'        },
-      { label: 'Candidate auth',    sub: 'NIK / e-KTP'        },
-      { label: 'Candidate signs',   sub: 'OTP confirmed'      },
-      { label: 'HRBP counter-signs', sub: 'Level 1'           },
-      { label: 'Director endorses', sub: 'Level 2 (if req)'  },
-      { label: 'Onboarding trigger', sub: 'Auto → Step 5'    },
-    ],
-    tracker: [],
-    automations: [],
-  },
-
-  offerPipeline: {
-    kpis: [
-      { label: 'Offers in Flight', value: '22', sub: 'Across 7 active reqs', tone: 'amber'   },
-      { label: 'Accepted (Q1)',     value: '41', sub: '87% acceptance rate', tone: 'emerald' },
-      { label: 'Negotiating',       value: '3',  sub: 'Avg 1.4 rounds',      tone: 'blue'    },
-      { label: 'Declined',          value: '6',  sub: 'Counter was competitive', tone: 'rose' },
-    ],
-    funnel: [
-      { label: 'Package drafted', value: '22', pct: 100 },
-      { label: 'Approvals done',  value: '18', pct: 82  },
-      { label: 'Offer sent',      value: '15', pct: 68  },
-      { label: 'Negotiating',     value: '3',  pct: 14  },
-      { label: 'Accepted',        value: '11', pct: 50  },
-      { label: 'Signed',          value: '8',  pct: 36  },
-    ],
-    offers: [],
-    declineReasons: [
-      { label: 'Counter-offer accepted at current employer', pct: 42 },
-      { label: 'Comp below expectations (avg Rp 4.5M gap)',   pct: 28 },
-      { label: 'Title / scope not matching ambition',         pct: 14 },
-      { label: 'Timing — personal reasons',                   pct: 10 },
-      { label: 'Cultural fit concern',                         pct: 6  },
-    ],
-    aiRecommendation: {
-      summary: 'Counter-offer loss is your biggest leak (42%). Three mitigations:',
-      mitigations: [
-        'Benchmark offers at 65th percentile (currently 55–60th) for high-demand roles — est. +12% offer acceptance.',
-        'Shorten offer → signed cycle from 8 days to <5 days. Each extra day adds 4% decline risk.',
-        'For senior roles, include a non-compete buyback clause to reduce counter-offer attractiveness.',
-      ],
-    },
-  },
-};
+const SUBSTAGES = [
+  { key: 'intake',   number: 1, label: 'Intake',   sub: 'slip gaji'     },
+  { key: 'build',    number: 2, label: 'Build',    sub: 'compensation'  },
+  { key: 'send',     number: 3, label: 'Send',     sub: 'negotiate'     },
+  { key: 'contract', number: 4, label: 'Contract', sub: 'sign'          },
+];
 
 const STATUS_TONE = {
   draft:       'border-slate-300 text-slate-700 bg-slate-50',
@@ -251,6 +30,801 @@ const STATUS_TONE = {
   expired:     'border-gray-300 text-gray-500 bg-gray-50',
 };
 
+function fmtCurrency(value) {
+  if (value == null) return '—';
+  return new Intl.NumberFormat('id-ID', {
+    style: 'currency', currency: 'IDR', minimumFractionDigits: 0, maximumFractionDigits: 0,
+  }).format(value);
+}
+
+function fmtDate(d) {
+  if (!d) return '—';
+  try {
+    return new Date(d).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' });
+  } catch { return '—'; }
+}
+
+function SubStageStepper({ activeSection, onSelect }) {
+  return (
+    <Card>
+      <CardContent className="p-4">
+        <div className="flex items-center gap-0">
+          {SUBSTAGES.map((s, i) => {
+            const isActive = activeSection === s.key;
+            return (
+              <div key={s.key} className="flex items-center flex-1 min-w-0">
+                <button
+                  type="button"
+                  onClick={() => onSelect(s.key)}
+                  className={`flex flex-col items-center gap-1 flex-1 py-2 px-1 rounded-lg transition-colors ${
+                    isActive ? 'bg-primary/10' : 'hover:bg-muted/50'
+                  }`}
+                >
+                  <span className={`h-7 w-7 rounded-full flex items-center justify-center text-xs font-bold shrink-0 ${
+                    isActive ? 'bg-primary text-primary-foreground' : 'bg-muted text-muted-foreground'
+                  }`}>
+                    {s.number}
+                  </span>
+                  <span className={`text-[11px] font-semibold ${isActive ? 'text-primary' : 'text-foreground'}`}>
+                    {s.label}
+                  </span>
+                  <span className="text-[9px] text-muted-foreground">{s.sub}</span>
+                </button>
+                {i < SUBSTAGES.length - 1 && <div className="h-px w-6 shrink-0 mx-1 bg-border" />}
+              </div>
+            );
+          })}
+        </div>
+      </CardContent>
+    </Card>
+  );
+}
+
+function CandidateCard({ offer }) {
+  return (
+    <Card>
+      <CardContent className="p-3 space-y-2">
+        <p className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
+          Offer
+        </p>
+        <div className="text-xs text-foreground">{offer.position_title}</div>
+        {offer.candidate_email && (
+          <div className="text-[10px] text-muted-foreground">{offer.candidate_email}</div>
+        )}
+        <div className="pt-1 border-t space-y-1">
+          <div className="flex items-center justify-between gap-2">
+            <span className="text-[10px] text-muted-foreground">Status</span>
+            <Badge variant="outline" className={`text-[9px] ${STATUS_TONE[offer.offer_status] || ''}`}>
+              {offer.offer_status}
+            </Badge>
+          </div>
+          {offer.contract_status && (
+            <div className="flex items-center justify-between gap-2">
+              <span className="text-[10px] text-muted-foreground">Contract</span>
+              <Badge variant="outline" className="text-[9px]">{offer.contract_status}</Badge>
+            </div>
+          )}
+          {offer.net_salary && (
+            <div className="flex items-center justify-between gap-2">
+              <span className="text-[10px] text-muted-foreground">Net salary</span>
+              <span className="text-[10px] font-mono">{fmtCurrency(offer.net_salary)}</span>
+            </div>
+          )}
+        </div>
+      </CardContent>
+    </Card>
+  );
+}
+
+const DEFAULT_ROWS = [
+  { label: 'Gaji Pokok', amount: '' },
+  { label: 'Transport', amount: '' },
+  { label: 'Meal', amount: '' },
+  { label: 'Komisi / Insentif', amount: '' },
+  { label: 'Lain-lain', amount: '' },
+];
+ 
+function IntakeSection({ offer, offerId, setBanner, setError }) {
+  const [slipGaji, setSlipGaji] = useState(null);
+  const [loading, setLoading]   = useState(true);
+  const [saving, setSaving]     = useState(false);
+  const [editing, setEditing]   = useState(false);
+  const [lineItems, setLineItems] = useState(DEFAULT_ROWS.map((r) => ({ ...r })));
+  const [expectedSalary, setExpectedSalary] = useState('');
+  const [skipReason, setSkipReason] = useState('');
+  const [reviewNote, setReviewNote] = useState('');
+  const [showSkip, setShowSkip] = useState(false);
+ 
+  const load = useCallback(async () => {
+    setLoading(true);
+    try {
+      const res = await offerAPI.getSlipGaji(offerId);
+      setSlipGaji(res.data || { status: 'not_recorded' });
+    } catch (err) {
+      setError(err.response?.data?.message || err.message || 'Failed to load slip gaji');
+    } finally {
+      setLoading(false);
+    }
+  }, [offerId, setError]);
+ 
+  useEffect(() => { load(); }, [load]);
+ 
+  const addRow = () => setLineItems((prev) => [...prev, { label: '', amount: '' }]);
+  const removeRow = (i) => setLineItems((prev) => prev.filter((_, idx) => idx !== i));
+  const updateRow = (i, field, value) =>
+    setLineItems((prev) => prev.map((row, idx) => idx === i ? { ...row, [field]: value } : row));
+ 
+  const total = lineItems.reduce((sum, row) => sum + (Number(row.amount) || 0), 0);
+ 
+  const startEdit = () => {
+    setLineItems(
+      slipGaji.line_items.map((item) => ({ label: item.label, amount: String(item.amount) }))
+    );
+    setExpectedSalary(slipGaji.expected_salary != null ? String(slipGaji.expected_salary) : '');
+    setEditing(true);
+  };
+ 
+  const cancelEdit = () => {
+    setEditing(false);
+  };
+ 
+  const handleSave = async () => {
+    const cleaned = lineItems
+      .filter((row) => row.label.trim() && row.amount !== '')
+      .map((row) => ({ label: row.label.trim(), amount: Number(row.amount) }));
+ 
+    if (cleaned.length === 0) {
+      setError('Fill in at least one line item with an amount');
+      return;
+    }
+ 
+    setSaving(true);
+    setError(null);
+    try {
+      const res = await offerAPI.recordSlipGaji(offerId, cleaned, expectedSalary ? Number(expectedSalary) : null);
+      setSlipGaji(res.data?.slip_gaji);
+      setEditing(false);
+      setReviewNote('');
+      setBanner({ ok: true, text: editing ? 'Slip gaji updated.' : 'Slip gaji saved.' });
+    } catch (err) {
+      setError(err.response?.data?.message || err.message || 'Failed to save slip gaji');
+    } finally {
+      setSaving(false);
+    }
+  };
+ 
+  const handleSkip = async () => {
+    setSaving(true);
+    setError(null);
+    try {
+      const res = await offerAPI.skipSlipGaji(offerId, skipReason || null);
+      setSlipGaji(res.data?.slip_gaji);
+      setShowSkip(false);
+      setBanner({ ok: true, text: 'Slip gaji step skipped.' });
+    } catch (err) {
+      setError(err.response?.data?.message || err.message || 'Failed to skip');
+    } finally {
+      setSaving(false);
+    }
+  };
+ 
+  const handleReview = async () => {
+    setSaving(true);
+    setError(null);
+    try {
+      const res = await offerAPI.reviewSlipGaji(offerId, reviewNote);
+      setSlipGaji(res.data?.slip_gaji);
+      setBanner({ ok: true, text: 'Review recorded.' });
+    } catch (err) {
+      setError(err.response?.data?.message || err.message || 'Failed to save review');
+    } finally {
+      setSaving(false);
+    }
+  };
+ 
+  if (loading) {
+    return (
+      <div className="flex justify-center py-12">
+        <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
+      </div>
+    );
+  }
+ 
+  const status = slipGaji?.status || 'not_recorded';
+  const showForm = status === 'not_recorded' || editing;
+ 
+  return (
+    <div className="space-y-4">
+ 
+      <Card>
+        <CardHeader className="pb-3">
+          <div className="flex items-center gap-2">
+            <Wallet className="h-4 w-4 text-primary shrink-0" />
+            <div className="min-w-0 flex-1">
+              <CardTitle className="text-sm">Verify slip gaji</CardTitle>
+              <p className="text-[10px] text-muted-foreground mt-0.5">
+                Optional sanity-check against the candidate's current salary 
+              </p>
+            </div>
+ 
+            {status === 'recorded' && !editing && (
+              <Button size="sm" variant="outline" className="text-xs h-7 shrink-0" onClick={startEdit}>
+                <Pencil className="h-3 w-3 mr-1.5" /> Edit
+              </Button>
+            )}
+ 
+            <Badge variant="outline" className="text-[9px] shrink-0">{status.replace(/_/g, ' ')}</Badge>
+          </div>
+        </CardHeader>
+        <CardContent className="space-y-3">
+ 
+          {status === 'skipped' && (
+            <div className="flex items-center gap-2 px-3 py-2 rounded-lg border border-gray-200 bg-gray-50 text-xs text-gray-600">
+              Skipped{slipGaji.skip_reason ? ` — ${slipGaji.skip_reason}` : ''}
+            </div>
+          )}
+ 
+          {status === 'recorded' && !editing && (
+            <div className="space-y-3">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="rounded-lg border overflow-hidden">
+                  <div className="px-4 py-3 border-b bg-muted/20">
+                    <p className="text-sm font-bold">{offer?.company_name || 'Slip Gaji'}</p>
+                    <p className="text-[10px] text-muted-foreground mt-0.5">
+                      Slip Gaji · {fmtDate(slipGaji.recorded_at)} · {offer?.candidate_name}
+                    </p>
+                  </div>
+                  <div className="divide-y">
+                    {slipGaji.line_items.map((item, i) => (
+                      <div key={i} className="flex items-center justify-between px-4 py-2 text-xs">
+                        <span className="text-muted-foreground">{item.label}</span>
+                        <span className="font-mono">{fmtCurrency(item.amount)}</span>
+                      </div>
+                    ))}
+                  </div>
+                  <div className="flex items-center justify-between px-4 py-3 text-xs font-bold bg-muted/30 border-t">
+                    <span>Total Gross</span>
+                    <span className="font-mono">{fmtCurrency(slipGaji.total)}</span>
+                  </div>
+                </div>
+ 
+                <div className="rounded-lg border p-4 space-y-2">
+                  <p className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground mb-1">
+                    Recorded values
+                  </p>
+                  {slipGaji.line_items.map((item, i) => (
+                    <div key={i} className="flex items-center justify-between text-xs">
+                      <span className="text-muted-foreground">{item.label}</span>
+                      <span className="font-mono">{fmtCurrency(item.amount)}</span>
+                    </div>
+                  ))}
+                  {slipGaji.expected_salary != null && (
+                    <div className="flex items-center justify-between text-xs px-2 py-1.5 rounded border border-emerald-200 bg-emerald-50 mt-2">
+                      <span className="text-emerald-700 font-medium">Expected</span>
+                      <span className="font-mono text-emerald-700">{fmtCurrency(slipGaji.expected_salary)}</span>
+                    </div>
+                  )}
+                </div>
+              </div>
+ 
+              {slipGaji.review_note && (
+                <div className="flex items-start gap-2 px-3 py-2 rounded-lg border border-emerald-200 bg-emerald-50 text-xs text-emerald-700">
+                  <MessageSquareText className="h-3.5 w-3.5 shrink-0 mt-0.5" />
+                  {slipGaji.review_note}
+                </div>
+              )}
+            </div>
+          )}
+ 
+           {showForm && (
+            <div className="space-y-2">
+ 
+              {lineItems.map((row, i) => (
+                <div key={i} className="flex items-center gap-2">
+                  <Input
+                    placeholder="Label"
+                    className="text-xs h-9"
+                    value={row.label}
+                    onChange={(e) => updateRow(i, 'label', e.target.value)}
+                  />
+                  <div className="relative w-44 shrink-0">
+                    <span className="absolute left-2.5 top-1/2 -translate-y-1/2 text-[11px] text-muted-foreground pointer-events-none">
+                      Rp
+                    </span>
+                    <Input
+                      type="number"
+                      className="text-xs h-9 pl-7"
+                      value={row.amount}
+                      onChange={(e) => updateRow(i, 'amount', e.target.value)}
+                    />
+                  </div>
+                  <button type="button" onClick={() => removeRow(i)} className="shrink-0 text-muted-foreground hover:text-rose-600">
+                    <Trash2 className="h-3.5 w-3.5" />
+                  </button>
+                </div>
+              ))}
+ 
+              <div className="flex items-center gap-2">
+                <span className="text-xs w-full max-w-[calc(100%-3rem)] text-muted-foreground">
+                  Expected (candidate's ask — informational only)
+                </span>
+                <div className="relative w-44 shrink-0">
+                  <span className="absolute left-2.5 top-1/2 -translate-y-1/2 text-[11px] text-emerald-700 pointer-events-none">
+                    Rp
+                  </span>
+                  <Input
+                    type="number"
+                    className="text-xs h-9 pl-7 border-emerald-300 bg-emerald-50/40 focus-visible:ring-emerald-400"
+                    value={expectedSalary}
+                    onChange={(e) => setExpectedSalary(e.target.value)}
+                  />
+                </div>
+                <span className="w-3.5 shrink-0" />
+              </div>
+ 
+              <div className="flex items-center justify-between pt-1">
+                <Button size="sm" variant="outline" className="text-xs h-7" onClick={addRow}>
+                  <Plus className="h-3 w-3 mr-1" /> Add row
+                </Button>
+                <span className="text-xs font-mono text-muted-foreground">Total: {fmtCurrency(total)}</span>
+              </div>
+ 
+              <div className="flex gap-2 pt-1">
+                <Button size="sm" className="text-xs" onClick={handleSave} disabled={saving}>
+                  {saving
+                    ? <><Loader2 className="h-3.5 w-3.5 mr-1.5 animate-spin" /> Saving…</>
+                    : <><Check className="h-3.5 w-3.5 mr-1.5" /> {editing ? 'Save changes' : 'Save'}</>}
+                </Button>
+                {editing ? (
+                  <Button size="sm" variant="ghost" className="text-xs" onClick={cancelEdit} disabled={saving}>
+                    Cancel
+                  </Button>
+                ) : !showSkip ? (
+                  <Button size="sm" variant="outline" className="text-xs" onClick={() => setShowSkip(true)}>
+                    Skip this step
+                  </Button>
+                ) : null}
+              </div>
+            </div>
+          )}
+ 
+          {showSkip && !editing && (
+            <div className="space-y-2 p-3 rounded-lg border border-dashed">
+              <Input
+                placeholder="Reason (optional) — e.g. entry-level, fresh-grad"
+                className="text-xs h-8"
+                value={skipReason}
+                onChange={(e) => setSkipReason(e.target.value)}
+              />
+              <div className="flex gap-2">
+                <Button size="sm" variant="secondary" className="text-xs h-8" onClick={handleSkip} disabled={saving}>
+                  Confirm skip
+                </Button>
+                <Button size="sm" variant="ghost" className="text-xs h-8" onClick={() => setShowSkip(false)}>
+                  Cancel
+                </Button>
+              </div>
+            </div>
+          )}
+ 
+          {status === 'recorded' && !editing && !slipGaji.review_note && (
+            <div className="space-y-2 pt-2 border-t">
+              <Textarea
+                placeholder="Review note — e.g. matches candidate's stated expectation, proceeding"
+                rows={2}
+                className="text-xs"
+                value={reviewNote}
+                onChange={(e) => setReviewNote(e.target.value)}
+              />
+              <Button size="sm" className="text-xs" onClick={handleReview} disabled={saving || !reviewNote.trim()}>
+                {saving ? <><Loader2 className="h-3.5 w-3.5 mr-1.5 animate-spin" /> Saving…</> : 'Save review'}
+              </Button>
+            </div>
+          )}
+ 
+        </CardContent>
+      </Card>
+ 
+    </div>
+  );
+}
+
+function BuildSection({ offer, setOffer, setBanner, setError, onAdvance }) {
+  const [baseSalary, setBaseSalary] = useState(offer.base_salary || '');
+  const [allowances, setAllowances] = useState(
+    Object.entries(offer.allowances || {}).map(([label, amount]) => ({ label, amount }))
+  );
+  const [saving, setSaving] = useState(false);
+
+  const addAllowance = () => setAllowances((prev) => [...prev, { label: '', amount: '' }]);
+  const removeAllowance = (i) => setAllowances((prev) => prev.filter((_, idx) => idx !== i));
+  const updateAllowance = (i, field, value) =>
+    setAllowances((prev) => prev.map((row, idx) => idx === i ? { ...row, [field]: value } : row));
+
+  const isEditable = offer.offer_status === 'draft';
+
+  const handleSave = async () => {
+    if (!baseSalary || Number(baseSalary) <= 0) {
+      setError('Base salary is required');
+      return;
+    }
+    const allowancesObj = allowances.reduce((acc, row) => {
+      if (row.label.trim() && row.amount !== '') acc[row.label.trim()] = Number(row.amount);
+      return acc;
+    }, {});
+
+    setSaving(true);
+    setError(null);
+    try {
+      const res = await offerAPI.updateCompensation(offer.id, {
+        base_salary: Number(baseSalary),
+        allowances: allowancesObj,
+        bonus_structure: {},
+      });
+      setOffer((prev) => ({ ...prev, ...res.data.compensation }));
+      setBanner({ ok: true, text: 'Compensation updated.' });
+    } catch (err) {
+      setError(err.response?.data?.message || err.message || 'Failed to update compensation');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  return (
+    <div className="space-y-4">
+      <Card>
+        <CardHeader className="pb-3">
+          <CardTitle className="text-sm">Compensation build</CardTitle>
+          <p className="text-[10px] text-muted-foreground mt-0.5">
+            {isEditable ? 'Editable while offer is in draft' : 'Locked — offer has been sent'}
+          </p>
+        </CardHeader>
+        <CardContent className="space-y-3">
+          <div className="space-y-1">
+            <label className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
+              Base salary (monthly)
+            </label>
+            <Input
+              type="number"
+              className="text-xs h-8"
+              value={baseSalary}
+              onChange={(e) => setBaseSalary(e.target.value)}
+              disabled={!isEditable}
+            />
+          </div>
+
+          <div className="space-y-1">
+            <label className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
+              Allowances
+            </label>
+            {allowances.map((row, i) => (
+              <div key={i} className="flex items-center gap-2">
+                <Input
+                  placeholder="e.g. transport"
+                  className="text-xs h-8"
+                  value={row.label}
+                  onChange={(e) => updateAllowance(i, 'label', e.target.value)}
+                  disabled={!isEditable}
+                />
+                <Input
+                  type="number"
+                  placeholder="Rp"
+                  className="text-xs h-8 w-40"
+                  value={row.amount}
+                  onChange={(e) => updateAllowance(i, 'amount', e.target.value)}
+                  disabled={!isEditable}
+                />
+                {isEditable && (
+                  <button type="button" onClick={() => removeAllowance(i)} className="shrink-0 text-muted-foreground hover:text-rose-600">
+                    <Trash2 className="h-3.5 w-3.5" />
+                  </button>
+                )}
+              </div>
+            ))}
+            {isEditable && (
+              <Button size="sm" variant="outline" className="text-xs h-7" onClick={addAllowance}>
+                <Plus className="h-3 w-3 mr-1" /> Add allowance
+              </Button>
+            )}
+          </div>
+
+          {offer.gross_salary && (
+            <div className="rounded-lg border divide-y text-xs">
+              <div className="flex items-center justify-between px-3 py-2">
+                <span className="text-muted-foreground">Gross salary</span>
+                <span className="font-mono">{fmtCurrency(offer.gross_salary)}</span>
+              </div>
+              <div className="flex items-center justify-between px-3 py-2">
+                <span className="text-muted-foreground">PPh 21</span>
+                <span className="font-mono">{fmtCurrency(offer.pph21)}</span>
+              </div>
+              <div className="flex items-center justify-between px-3 py-2">
+                <span className="text-muted-foreground">BPJS Kesehatan</span>
+                <span className="font-mono">{fmtCurrency(offer.bpjs_kesehatan)}</span>
+              </div>
+              <div className="flex items-center justify-between px-3 py-2">
+                <span className="text-muted-foreground">BPJS Ketenagakerjaan</span>
+                <span className="font-mono">{fmtCurrency(offer.bpjs_ketenagakerjaan)}</span>
+              </div>
+              <div className="flex items-center justify-between px-3 py-2 font-semibold bg-muted/30">
+                <span>Net salary</span>
+                <span className="font-mono">{fmtCurrency(offer.net_salary)}</span>
+              </div>
+            </div>
+          )}
+
+          {isEditable && (
+            <Button size="sm" className="text-xs" onClick={handleSave} disabled={saving}>
+              {saving ? <><Loader2 className="h-3.5 w-3.5 mr-1.5 animate-spin" /> Saving…</> : <><Check className="h-3.5 w-3.5 mr-1.5" /> Save compensation</>}
+            </Button>
+          )}
+        </CardContent>
+      </Card>
+
+      <div className="flex items-center justify-between gap-3 pt-2 border-t">
+        <p className="text-[10px] text-muted-foreground">
+          {offer.offer_status === 'draft' ? 'Send the offer once compensation is finalized' : 'Offer already sent'}
+        </p>
+        <Button size="sm" variant="outline" className="text-xs" onClick={() => onAdvance('send')}>
+          <ChevronRight className="h-3.5 w-3.5 mr-1" /> Go to Send
+        </Button>
+      </div>
+    </div>
+  );
+}
+
+function SendSection({ offer, setOffer, setBanner, setError, onAdvance }) {
+  const [sending, setSending] = useState(false);
+  const [responding, setResponding] = useState(false);
+  const [responseMsg, setResponseMsg] = useState('');
+  const [responseType, setResponseType] = useState('accept');
+
+  const handleSend = async () => {
+    setSending(true);
+    setError(null);
+    try {
+      await offerAPI.sendOfferLetter(offer.id);
+      setOffer((prev) => ({ ...prev, offer_status: 'sent' }));
+      setBanner({ ok: true, text: 'Offer letter sent.' });
+    } catch (err) {
+      setError(err.response?.data?.message || err.message || 'Failed to send offer');
+    } finally {
+      setSending(false);
+    }
+  };
+
+  const handleRespond = async () => {
+    if (!responseMsg.trim()) {
+      setError('Enter a response message');
+      return;
+    }
+    setResponding(true);
+    setError(null);
+    try {
+      await offerAPI.respondToNegotiation(offer.id, responseType, responseMsg.trim());
+      setOffer((prev) => ({
+        ...prev,
+        offer_status: responseType === 'accept' ? 'sent' : responseType === 'decline' ? 'rejected' : prev.offer_status,
+      }));
+      setResponseMsg('');
+      setBanner({ ok: true, text: 'Response sent.' });
+    } catch (err) {
+      setError(err.response?.data?.message || err.message || 'Failed to respond');
+    } finally {
+      setResponding(false);
+    }
+  };
+
+  return (
+    <div className="space-y-4">
+      <Card>
+        <CardHeader className="pb-3">
+          <div className="flex items-center gap-2">
+            <Send className="h-4 w-4 text-primary shrink-0" />
+            <CardTitle className="text-sm">Offer status</CardTitle>
+            <Badge variant="outline" className={`text-[9px] ml-auto ${STATUS_TONE[offer.offer_status] || ''}`}>
+              {offer.offer_status}
+            </Badge>
+          </div>
+        </CardHeader>
+        <CardContent className="space-y-3">
+          {offer.offer_status === 'draft' && (
+            <Button size="sm" className="text-xs" onClick={handleSend} disabled={sending}>
+              {sending ? <><Loader2 className="h-3.5 w-3.5 mr-1.5 animate-spin" /> Sending…</> : <><Send className="h-3.5 w-3.5 mr-1.5" /> Send offer letter</>}
+            </Button>
+          )}
+
+          {offer.offer_status === 'sent' && (
+            <p className="text-xs text-muted-foreground">Awaiting candidate response.</p>
+          )}
+
+          {offer.offer_status === 'negotiating' && offer.negotiations?.length > 0 && (
+            <div className="space-y-3">
+              <div className="rounded-lg border divide-y">
+                {offer.negotiations.map((n) => (
+                  <div key={n.id} className="px-3 py-2 text-xs">
+                    <div className="flex items-center justify-between">
+                      <span className="font-semibold capitalize">{n.initiated_by}</span>
+                      <span className="text-[10px] text-muted-foreground">{fmtDate(n.created_at)}</span>
+                    </div>
+                    <p className="text-muted-foreground mt-0.5">{n.message}</p>
+                    {n.requested_salary && (
+                      <p className="font-mono mt-0.5">{fmtCurrency(n.requested_salary)}</p>
+                    )}
+                  </div>
+                ))}
+              </div>
+
+              <div className="space-y-2 pt-2 border-t">
+                <div className="flex gap-2">
+                  {['accept', 'counter', 'decline'].map((t) => (
+                    <button
+                      key={t}
+                      type="button"
+                      onClick={() => setResponseType(t)}
+                      className={`px-2.5 py-1 rounded-full border text-[10px] font-semibold capitalize ${
+                        responseType === t ? 'bg-primary text-primary-foreground border-primary' : 'border-border text-muted-foreground'
+                      }`}
+                    >
+                      {t}
+                    </button>
+                  ))}
+                </div>
+                <Textarea
+                  placeholder="Response message"
+                  rows={2}
+                  className="text-xs"
+                  value={responseMsg}
+                  onChange={(e) => setResponseMsg(e.target.value)}
+                />
+                <Button size="sm" className="text-xs" onClick={handleRespond} disabled={responding}>
+                  {responding ? <><Loader2 className="h-3.5 w-3.5 mr-1.5 animate-spin" /> Sending…</> : 'Send response'}
+                </Button>
+              </div>
+            </div>
+          )}
+
+          {offer.offer_status === 'accepted' && (
+            <div className="flex items-center gap-2 px-3 py-2 rounded-lg border border-emerald-200 bg-emerald-50 text-xs text-emerald-700">
+              <Check className="h-4 w-4 shrink-0" /> Offer accepted — proceed to Contract
+            </div>
+          )}
+
+          {offer.offer_status === 'rejected' && (
+            <div className="flex items-center gap-2 px-3 py-2 rounded-lg border border-rose-200 bg-rose-50 text-xs text-rose-700">
+              <X className="h-4 w-4 shrink-0" /> Offer rejected
+            </div>
+          )}
+        </CardContent>
+      </Card>
+
+      {offer.offer_status === 'accepted' && (
+        <div className="flex items-center justify-end pt-2 border-t">
+          <Button size="sm" variant="outline" className="text-xs" onClick={() => onAdvance('contract')}>
+            <ChevronRight className="h-3.5 w-3.5 mr-1" /> Go to Contract
+          </Button>
+        </div>
+      )}
+    </div>
+  );
+}
+
+function ContractSection({ offer, setOffer, setBanner, setError }) {
+  const [contractType, setContractType] = useState('PKWTT');
+  const [startDate, setStartDate] = useState('');
+  const [endDate, setEndDate] = useState('');
+  const [generating, setGenerating] = useState(false);
+  const [sending, setSending] = useState(false);
+
+  if (offer.offer_status !== 'accepted') {
+    return (
+      <Card>
+        <CardContent className="py-10 text-center text-xs text-muted-foreground">
+          Contract can only be generated once the offer is accepted.
+        </CardContent>
+      </Card>
+    );
+  }
+
+  const handleGenerate = async () => {
+    if (!startDate) {
+      setError('Start date is required');
+      return;
+    }
+    setGenerating(true);
+    setError(null);
+    try {
+      await offerAPI.generateContract(offer.id, contractType, startDate, contractType === 'PKWT' ? endDate : null);
+      setOffer((prev) => ({ ...prev, contract_status: 'ready' }));
+      setBanner({ ok: true, text: 'Contract generated.' });
+    } catch (err) {
+      setError(err.response?.data?.message || err.message || 'Failed to generate contract');
+    } finally {
+      setGenerating(false);
+    }
+  };
+
+  const handleSend = async () => {
+    setSending(true);
+    setError(null);
+    try {
+      await offerAPI.sendContract(offer.id);
+      setOffer((prev) => ({ ...prev, contract_status: 'sent' }));
+      setBanner({ ok: true, text: 'Contract sent for signature.' });
+    } catch (err) {
+      setError(err.response?.data?.message || err.message || 'Failed to send contract');
+    } finally {
+      setSending(false);
+    }
+  };
+
+  return (
+    <div className="space-y-4">
+      <Card>
+        <CardHeader className="pb-3">
+          <div className="flex items-center gap-2">
+            <FileSignature className="h-4 w-4 text-primary shrink-0" />
+            <CardTitle className="text-sm">Contract & signing</CardTitle>
+            {offer.contract_status && (
+              <Badge variant="outline" className="text-[9px] ml-auto">{offer.contract_status}</Badge>
+            )}
+          </div>
+        </CardHeader>
+        <CardContent className="space-y-3">
+
+          {!offer.contract_status || offer.contract_status === 'draft' ? (
+            <>
+              <div className="flex items-center gap-2 flex-wrap">
+                {['PKWTT', 'PKWT'].map((t) => (
+                  <button
+                    key={t}
+                    type="button"
+                    onClick={() => setContractType(t)}
+                    className={`px-2.5 py-1 rounded-full border text-[10px] font-semibold ${
+                      contractType === t ? 'bg-primary text-primary-foreground border-primary' : 'border-border text-muted-foreground'
+                    }`}
+                  >
+                    {t}
+                  </button>
+                ))}
+              </div>
+              <div className="grid grid-cols-2 gap-2">
+                <div className="space-y-1">
+                  <label className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">Start date</label>
+                  <Input type="date" className="text-xs h-8" value={startDate} onChange={(e) => setStartDate(e.target.value)} />
+                </div>
+                {contractType === 'PKWT' && (
+                  <div className="space-y-1">
+                    <label className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">End date</label>
+                    <Input type="date" className="text-xs h-8" value={endDate} onChange={(e) => setEndDate(e.target.value)} />
+                  </div>
+                )}
+              </div>
+              <Button size="sm" className="text-xs" onClick={handleGenerate} disabled={generating}>
+                {generating ? <><Loader2 className="h-3.5 w-3.5 mr-1.5 animate-spin" /> Generating…</> : <><PenLine className="h-3.5 w-3.5 mr-1.5" /> Generate contract</>}
+              </Button>
+            </>
+          ) : offer.contract_status === 'ready' ? (
+            <>
+              <p className="text-xs text-muted-foreground">Contract generated — ready to send for signature.</p>
+              <Button size="sm" className="text-xs" onClick={handleSend} disabled={sending}>
+                {sending ? <><Loader2 className="h-3.5 w-3.5 mr-1.5 animate-spin" /> Sending…</> : <><Send className="h-3.5 w-3.5 mr-1.5" /> Send for signature</>}
+              </Button>
+            </>
+          ) : offer.contract_status === 'sent' ? (
+            <p className="text-xs text-muted-foreground">Awaiting candidate signature.</p>
+          ) : offer.contract_status === 'signed' ? (
+            <div className="flex items-center gap-2 px-3 py-2 rounded-lg border border-emerald-200 bg-emerald-50 text-xs text-emerald-700">
+              <Check className="h-4 w-4 shrink-0" /> Contract signed — offer complete
+            </div>
+          ) : null}
+
+        </CardContent>
+      </Card>
+    </div>
+  );
+}
+
 export default function OfferCandidatePage() {
   const navigate           = useNavigate();
   const { offerId: param } = useParams();
@@ -259,7 +833,8 @@ export default function OfferCandidatePage() {
   const [offer, setOffer]     = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError]     = useState(null);
-  const [activeStep, setActiveStep] = useState('remuneration');
+  const [banner, setBanner]   = useState(null);
+  const [activeSection, setActiveSection] = useState('intake');
 
   const load = useCallback(async () => {
     if (!offerId) return;
@@ -360,7 +935,7 @@ export default function OfferCandidatePage() {
 
   return (
     <>
-      {/* Sticky header — real data */}
+      {/* Sticky header */}
       <div className="sticky top-[52px] z-10 bg-background/95 backdrop-blur-sm -mt-5 -mx-5 px-5 pt-5 pb-4 border-b border-border/60">
         <div className="space-y-3">
           <Button
@@ -395,45 +970,46 @@ export default function OfferCandidatePage() {
         {error && (
           <div className="flex items-center gap-2 px-4 py-3 rounded-lg border border-red-200 bg-red-50 text-sm text-red-600">
             <AlertTriangle className="h-4 w-4 shrink-0" /> {error}
+            <button type="button" onClick={() => setError(null)} className="ml-auto">
+              <X className="h-4 w-4" />
+            </button>
           </div>
         )}
 
-        <StepRail activeKey={activeStep} onSelect={setActiveStep} />
+        {banner && (
+          <div className={`flex items-center gap-2 px-4 py-3 rounded-lg border text-sm ${
+            banner.ok ? 'border-emerald-200 bg-emerald-50 text-emerald-700' : 'border-amber-200 bg-amber-50 text-amber-700'
+          }`}>
+            <Check className="h-4 w-4 shrink-0" /> {banner.text}
+            <button type="button" onClick={() => setBanner(null)} className="ml-auto">
+              <X className="h-4 w-4" />
+            </button>
+          </div>
+        )}
 
-        {activeStep === 'remuneration' && (
-          <RemunerationStep
-            data={remunerationData}
-            candidate={{ name: offer.candidate_name, role: offer.position_title, location: offer.job_location }}
-            onNext={() => setActiveStep('offerLetter')}
-          />
-        )}
-        {activeStep === 'offerLetter' && (
-          <OfferLetterStep
-            data={offerContractMock.offerLetter}
-            onBack={() => setActiveStep('remuneration')}
-            onNext={() => setActiveStep('contract')}
-          />
-        )}
-        {activeStep === 'contract' && (
-          <ContractStep
-            data={{ ...offerContractMock.contract, candidateName: offer.candidate_name, role: offer.position_title }}
-            onBack={() => setActiveStep('offerLetter')}
-            onNext={() => setActiveStep('eSignature')}
-          />
-        )}
-        {activeStep === 'eSignature' && (
-          <ESignatureStep
-            data={offerContractMock.eSignature}
-            onBack={() => setActiveStep('contract')}
-            onNext={() => setActiveStep('pipeline')}
-          />
-        )}
-        {activeStep === 'pipeline' && (
-          <OfferPipelineStep
-            data={offerContractMock.offerPipeline}
-            onBack={() => setActiveStep('eSignature')}
-          />
-        )}
+        <SubStageStepper activeSection={activeSection} onSelect={setActiveSection} />
+
+        <div className="grid grid-cols-1 lg:grid-cols-[minmax(0,1fr)_220px] gap-6">
+          <div className="min-w-0">
+            {activeSection === 'intake' && (
+              <IntakeSection offerId={offer.id} setBanner={setBanner} setError={setError} />
+            )}
+            {activeSection === 'build' && (
+              <BuildSection offer={offer} setOffer={setOffer} setBanner={setBanner} setError={setError} onAdvance={setActiveSection} />
+            )}
+            {activeSection === 'send' && (
+              <SendSection offer={offer} setOffer={setOffer} setBanner={setBanner} setError={setError} onAdvance={setActiveSection} />
+            )}
+            {activeSection === 'contract' && (
+              <ContractSection offer={offer} setOffer={setOffer} setBanner={setBanner} setError={setError} />
+            )}
+          </div>
+          <aside>
+            <div className="sticky top-[184px]">
+              <CandidateCard offer={offer} />
+            </div>
+          </aside>
+        </div>
 
       </div>
     </>
