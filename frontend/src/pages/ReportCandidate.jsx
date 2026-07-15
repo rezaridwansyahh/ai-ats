@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { getAll } from '@/api/candidate.api';
 import ReportCandidate from '@/components/report-candidate/report-candidate';
+import { PageHeader } from '@/components/common';
 
 export default function JobManagementPage() {
   const navigate = useNavigate();
@@ -32,12 +33,11 @@ export default function JobManagementPage() {
 
   return (
     <div className="space-y-6 p-6">
-      <div>
-        <h1 className="text-2xl font-bold tracking-tight">Report Candidate</h1>
-        <p className="text-sm text-muted-foreground mt-0.5">
-          All report in one. Click any other row to view its detailed progress.
-        </p>
-      </div>
+      <PageHeader
+          title="Report"
+          highlight="Candidate"
+          subtitle="All report in one. Click any other row to view its detailed progress."
+      />
 
       <ReportCandidate
         candidates={candidates}

@@ -7,6 +7,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { PageHeader } from '@/components/common';
 import { TablePagination } from '@/components/shared/TablePagination';
 import { getInitials } from '@/lib/batteries';
 
@@ -118,21 +119,17 @@ export default function BackgroundCheckWorkboard() {
 
   return (
     <div className="space-y-5 p-6">
-
       {/* Header */}
-      <div className="flex items-start justify-between gap-3 flex-wrap">
-        <div>
-          <h1 className="text-2xl font-bold tracking-tight flex items-center gap-2">
-            <ShieldCheck className="h-5 w-5 text-primary" /> Background Check
-          </h1>
-          <p className="text-sm text-muted-foreground mt-0.5">
-            {activePositions} active position{activePositions === 1 ? '' : 's'} · {totalBgChecks} candidate{totalBgChecks === 1 ? '' : 's'} in background check
-          </p>
-        </div>
-        <Button variant="outline" size="sm" onClick={loadWorkboard} className="text-xs">
-          <RotateCw className="h-3.5 w-3.5 mr-1.5" /> Refresh
-        </Button>
-      </div>
+     <div className="flex items-start justify-between gap-3 flex-wrap">
+      <PageHeader
+        title="Background"
+        highlight="Check"
+        subtitle={`${activePositions} active position${activePositions === 1 ? '' : 's'} · ${totalBgChecks} candidate${totalBgChecks === 1 ? '' : 's'} in background check`}
+      />
+      <Button variant="outline" size="sm" onClick={loadWorkboard} className="text-xs">
+        <RotateCw className="h-3.5 w-3.5 mr-1.5" /> Refresh
+      </Button>
+    </div>
 
       {error && (
         <div className="flex items-center gap-2 px-4 py-3 rounded-lg border border-red-200 bg-red-50 text-sm text-red-600">

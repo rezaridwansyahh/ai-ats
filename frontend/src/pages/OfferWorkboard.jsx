@@ -7,6 +7,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { PageHeader } from '@/components/common';
 import { TablePagination } from '@/components/shared/TablePagination';
 import { getInitials } from '@/lib/batteries';
 
@@ -132,14 +133,11 @@ export default function OfferWorkboard() {
 
       {/* Header */}
       <div className="flex items-start justify-between gap-3 flex-wrap">
-        <div>
-          <h1 className="text-2xl font-bold tracking-tight flex items-center gap-2">
-            <FileText className="h-5 w-5 text-primary" /> Offer & Contract
-          </h1>
-          <p className="text-sm text-muted-foreground mt-0.5">
-            {activePositions} active position{activePositions === 1 ? '' : 's'} · {totalOffers} candidate{totalOffers === 1 ? '' : 's'} in offer
-          </p>
-        </div>
+        <PageHeader
+          title="Offer &"
+          highlight="Contract"
+          subtitle={`${activePositions} active position${activePositions === 1 ? '' : 's'} · ${totalOffers} candidate${totalOffers === 1 ? '' : 's'} in offer`}
+        />
         <Button variant="outline" size="sm" onClick={loadWorkboard} className="text-xs">
           <RotateCw className="h-3.5 w-3.5 mr-1.5" /> Refresh
         </Button>

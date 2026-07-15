@@ -52,7 +52,7 @@ const iconMap = {
   'Recruiters':         Users,
   'Account':            Settings,
   'Integrations':       Package,
-  'Settings':           Settings,
+  'Settings':            Settings,
 };
 
 const sectionIconMap = {
@@ -87,7 +87,8 @@ const routeMap = {
   'Search & Outreach': '/sourcing/source-candidate',
   'AI Screening':      '/selection/ai-screening',
   'AI Matching':       '/selection/ai-screening',
-  'Psych Assessment':  '/selection/assessment',
+  'Psych Assessment':  '/selection/psych-assessment',
+  'Medical Assessment':  '/selection/medical-assessment',
   'Assessment A':      '/asesmen/assessment-a',
   'Assessment B':      '/asesmen/assessment-b',
   'Assessment C':      '/asesmen/assessment-c',
@@ -124,10 +125,7 @@ const HIDDEN_ITEMS = new Set([
 ]);
 
 // Menu names that are visible but not yet clickable ("SOON" pill).
-const SOON_ITEMS = new Set([
-  'Medical Assessmen',
-  'Psych Assessmen', // displays as "Psychological Ass." via DISPLAY_NAME_MAP
-]);
+const SOON_ITEMS = new Set([]);
 
 // Explicit ordering for items inside the "Selection" section.
 const SELECTION_MENU_ORDER = [

@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Loader2, Search, Calendar, User, Briefcase } from 'lucide-react';
 import { getOnboardingWorkboard } from '@/api/onboarding.api';
+import { PageHeader } from '@/components/common';
 
 export default function OnboardingWorkboard() {
   const [loading, setLoading] = useState(true);
@@ -77,12 +78,11 @@ export default function OnboardingWorkboard() {
   return (
     <div className="p-6 space-y-6">
       {/* Header */}
-      <div>
-        <h1 className="text-2xl font-semibold">Onboarding Workboard</h1>
-        <p className="text-sm text-muted-foreground mt-1">
-          Track new hires through pre-boarding, first 30 days, and probation
-        </p>
-      </div>
+      <PageHeader
+        title="Onboarding"
+        highlight="Workboard"
+        subtitle="Track new hires through pre-boarding, first 30 days, and probation."
+      />
 
       {/* Filters */}
       <div className="flex gap-4 items-center">

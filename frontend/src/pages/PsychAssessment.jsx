@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import JobsSidebar from '@/components/report/JobsSidebar';
 import CandidatesPanel from '@/components/report/CandidatesPanel';
 import StepFilterBar from '@/components/report/StepFilterBar';
+import { PageHeader } from '@/components/common';
 import { getCandidatePipelineSummary, getCandidatesByJobId } from '@/api/candidate.api';
 
 // Real-data Report page.
@@ -97,17 +98,16 @@ export default function PsychAssesmentPage() {
   useEffect(() => { setActiveStep(null); }, [selectedJobId]);
 
   const handleSelectCandidate = (candidate) => {
-    navigate(`/selection/assessment/${candidate.job_id}/${candidate.id}`);
+    navigate(`/selection/psych-assessment/${candidate.job_id}/${candidate.id}`);
   };
 
   return (
-    <div className="space-y-4">
-      <div>
-        <h1 className="text-lg font-bold tracking-tight">Psych Assessment</h1>
-        <p className="text-xs text-muted-foreground mt-0.5">
-          Pick a position to review its candidates and assessment status.
-        </p>
-      </div>
+    <div className="space-y-5 p-6">
+      <PageHeader
+        title="Psych"
+        highlight="Assessment"
+        subtitle="Pick a position to review its candidates and assessment status."
+      />
 
       {jobsError ? (
         <div className="rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-xs text-red-600">

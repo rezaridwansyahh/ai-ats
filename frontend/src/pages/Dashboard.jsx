@@ -1,5 +1,7 @@
 import { useState, useEffect } from 'react';
 import { AlertTriangle, CircleDot, Sparkles, Clock } from 'lucide-react';
+import { PageHeader } from '@/components/common';
+
 
 // ─────────────────────────────────────────────────
 // Dummy data
@@ -177,15 +179,11 @@ export default function Dashboard() {
 
       {/* ── Greeting — fixed height ── */}
       <div className="flex-shrink-0 flex items-baseline gap-3 flex-wrap">
-        <h1 className="text-2xl font-bold tracking-tight">
-          {greeting},{' '}
-          <span className="text-primary italic">{displayName}</span>.
-        </h1>
-        <p className="text-sm text-muted-foreground">
-          You have{' '}
-          <span className="font-semibold text-foreground">13 items</span>{' '}
-          needing attention across 3 cities · 2 are past SLA.
-        </p>
+        <PageHeader
+          title={`${greeting},`}
+          highlight={`${displayName}.`}
+          subtitle="You have 13 items needing attention across 3 cities · 2 are past SLA."
+        />
       </div>
 
       {/* ── Ticker — fixed height ── */}
