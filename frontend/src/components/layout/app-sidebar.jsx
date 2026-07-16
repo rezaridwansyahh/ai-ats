@@ -568,6 +568,14 @@ export function AppSidebar() {
           active={location.pathname.startsWith('/selection/report')}
           soon
         /> */}
+
+        {/* PUNYA BAYU */}
+        <FlatNavItem
+          label="Reports"
+          icon={BarChart3}
+          active={location.pathname.startsWith('/selection/report')}
+          onClick={() => navigate('/selection/report')}
+        />
         <FlatNavItem
           label="Settings"
           icon={Settings}
