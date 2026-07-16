@@ -51,6 +51,7 @@ class InterviewModel {
          ci.decided_at,
          ci.created_at,
          ci.updated_at,
+         ci.custom_questions,
          mc.name            AS candidate_name,
          mc.last_position,
          mc.address,
@@ -596,6 +597,15 @@ class InterviewModel {
       [job_id, JSON.stringify(rubric_items || [])]
     );
     return result.rows[0] || null;
+  }
+
+  async updateCandidateQuestions(interview_id, custom_questions) {
+    await getDb().query(
+      `UPDATE candidate_interview
+      SET custom_questions = $1, updated_at = NOW()
+      WHERE id = $2`,
+      [JSON.stringify(custom_questions ?? []), interview_id]
+    );
   }
 
   async getPrepContext(job_id) {

@@ -38,6 +38,9 @@ export const deleteSchedule = (schedule_id) => api.delete(`/interview/schedules/
 
 export const recordOutcome = (schedule_id, { status, outcome_note } = {}) => api.post(`/interview/schedules/${schedule_id}/outcome`, { status, outcome_note });
 
+export const updateCandidateQuestions = (interview_id, custom_questions) =>
+  api.put(`/interview/${interview_id}/custom-questions`, { custom_questions });
+
 export const clearOutcome = (schedule_id) => api.delete(`/interview/schedules/${schedule_id}/outcome`);
 
 export const getScorecard = (interview_id) => api.get(`/interview/${interview_id}/scorecard`);
