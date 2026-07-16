@@ -123,7 +123,7 @@ const DEFAULT_ROWS = [
   { label: 'Komisi / Insentif', amount: '' },
   { label: 'Lain-lain', amount: '' },
 ];
- 
+
 function IntakeSection({ offer, offerId, setBanner, setError }) {
   const [slipGaji, setSlipGaji] = useState(null);
   const [loading, setLoading]   = useState(true);
@@ -134,7 +134,7 @@ function IntakeSection({ offer, offerId, setBanner, setError }) {
   const [skipReason, setSkipReason] = useState('');
   const [reviewNote, setReviewNote] = useState('');
   const [showSkip, setShowSkip] = useState(false);
- 
+
   const load = useCallback(async () => {
     setLoading(true);
     try {
@@ -146,16 +146,16 @@ function IntakeSection({ offer, offerId, setBanner, setError }) {
       setLoading(false);
     }
   }, [offerId, setError]);
- 
+
   useEffect(() => { load(); }, [load]);
- 
+
   const addRow = () => setLineItems((prev) => [...prev, { label: '', amount: '' }]);
   const removeRow = (i) => setLineItems((prev) => prev.filter((_, idx) => idx !== i));
   const updateRow = (i, field, value) =>
     setLineItems((prev) => prev.map((row, idx) => idx === i ? { ...row, [field]: value } : row));
- 
+
   const total = lineItems.reduce((sum, row) => sum + (Number(row.amount) || 0), 0);
- 
+
   const startEdit = () => {
     setLineItems(
       slipGaji.line_items.map((item) => ({ label: item.label, amount: String(item.amount) }))
@@ -163,21 +163,19 @@ function IntakeSection({ offer, offerId, setBanner, setError }) {
     setExpectedSalary(slipGaji.expected_salary != null ? String(slipGaji.expected_salary) : '');
     setEditing(true);
   };
- 
-  const cancelEdit = () => {
-    setEditing(false);
-  };
- 
+
+  const cancelEdit = () => setEditing(false);
+
   const handleSave = async () => {
     const cleaned = lineItems
       .filter((row) => row.label.trim() && row.amount !== '')
       .map((row) => ({ label: row.label.trim(), amount: Number(row.amount) }));
- 
+
     if (cleaned.length === 0) {
       setError('Fill in at least one line item with an amount');
       return;
     }
- 
+
     setSaving(true);
     setError(null);
     try {
@@ -192,7 +190,7 @@ function IntakeSection({ offer, offerId, setBanner, setError }) {
       setSaving(false);
     }
   };
- 
+
   const handleSkip = async () => {
     setSaving(true);
     setError(null);
@@ -207,7 +205,7 @@ function IntakeSection({ offer, offerId, setBanner, setError }) {
       setSaving(false);
     }
   };
- 
+
   const handleReview = async () => {
     setSaving(true);
     setError(null);
@@ -221,7 +219,7 @@ function IntakeSection({ offer, offerId, setBanner, setError }) {
       setSaving(false);
     }
   };
- 
+
   if (loading) {
     return (
       <div className="flex justify-center py-12">
@@ -229,13 +227,12 @@ function IntakeSection({ offer, offerId, setBanner, setError }) {
       </div>
     );
   }
- 
+
   const status = slipGaji?.status || 'not_recorded';
   const showForm = status === 'not_recorded' || editing;
- 
+
   return (
     <div className="space-y-4">
- 
       <Card>
         <CardHeader className="pb-3">
           <div className="flex items-center gap-2">
@@ -243,27 +240,27 @@ function IntakeSection({ offer, offerId, setBanner, setError }) {
             <div className="min-w-0 flex-1">
               <CardTitle className="text-sm">Verify slip gaji</CardTitle>
               <p className="text-[10px] text-muted-foreground mt-0.5">
-                Optional sanity-check against the candidate's current salary 
+                Optional sanity-check against the candidate's current salary · no OCR, manual entry
               </p>
             </div>
- 
+
             {status === 'recorded' && !editing && (
               <Button size="sm" variant="outline" className="text-xs h-7 shrink-0" onClick={startEdit}>
                 <Pencil className="h-3 w-3 mr-1.5" /> Edit
               </Button>
             )}
- 
+
             <Badge variant="outline" className="text-[9px] shrink-0">{status.replace(/_/g, ' ')}</Badge>
           </div>
         </CardHeader>
         <CardContent className="space-y-3">
- 
+
           {status === 'skipped' && (
             <div className="flex items-center gap-2 px-3 py-2 rounded-lg border border-gray-200 bg-gray-50 text-xs text-gray-600">
               Skipped{slipGaji.skip_reason ? ` — ${slipGaji.skip_reason}` : ''}
             </div>
           )}
- 
+
           {status === 'recorded' && !editing && (
             <div className="space-y-3">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -287,7 +284,7 @@ function IntakeSection({ offer, offerId, setBanner, setError }) {
                     <span className="font-mono">{fmtCurrency(slipGaji.total)}</span>
                   </div>
                 </div>
- 
+
                 <div className="rounded-lg border p-4 space-y-2">
                   <p className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground mb-1">
                     Recorded values
@@ -306,7 +303,7 @@ function IntakeSection({ offer, offerId, setBanner, setError }) {
                   )}
                 </div>
               </div>
- 
+
               {slipGaji.review_note && (
                 <div className="flex items-start gap-2 px-3 py-2 rounded-lg border border-emerald-200 bg-emerald-50 text-xs text-emerald-700">
                   <MessageSquareText className="h-3.5 w-3.5 shrink-0 mt-0.5" />
@@ -315,10 +312,15 @@ function IntakeSection({ offer, offerId, setBanner, setError }) {
               )}
             </div>
           )}
- 
-           {showForm && (
+
+          {showForm && (
             <div className="space-y-2">
- 
+              {editing && (
+                <div className="flex items-center gap-2 px-3 py-2 rounded-lg border border-amber-200 bg-amber-50 text-[11px] text-amber-700">
+                  Editing recorded values — saving will overwrite the previous entry and clear any existing review note.
+                </div>
+              )}
+
               {lineItems.map((row, i) => (
                 <div key={i} className="flex items-center gap-2">
                   <Input
@@ -343,7 +345,7 @@ function IntakeSection({ offer, offerId, setBanner, setError }) {
                   </button>
                 </div>
               ))}
- 
+
               <div className="flex items-center gap-2">
                 <span className="text-xs w-full max-w-[calc(100%-3rem)] text-muted-foreground">
                   Expected (candidate's ask — informational only)
@@ -361,14 +363,14 @@ function IntakeSection({ offer, offerId, setBanner, setError }) {
                 </div>
                 <span className="w-3.5 shrink-0" />
               </div>
- 
+
               <div className="flex items-center justify-between pt-1">
                 <Button size="sm" variant="outline" className="text-xs h-7" onClick={addRow}>
                   <Plus className="h-3 w-3 mr-1" /> Add row
                 </Button>
                 <span className="text-xs font-mono text-muted-foreground">Total: {fmtCurrency(total)}</span>
               </div>
- 
+
               <div className="flex gap-2 pt-1">
                 <Button size="sm" className="text-xs" onClick={handleSave} disabled={saving}>
                   {saving
@@ -387,7 +389,7 @@ function IntakeSection({ offer, offerId, setBanner, setError }) {
               </div>
             </div>
           )}
- 
+
           {showSkip && !editing && (
             <div className="space-y-2 p-3 rounded-lg border border-dashed">
               <Input
@@ -406,7 +408,7 @@ function IntakeSection({ offer, offerId, setBanner, setError }) {
               </div>
             </div>
           )}
- 
+
           {status === 'recorded' && !editing && !slipGaji.review_note && (
             <div className="space-y-2 pt-2 border-t">
               <Textarea
@@ -421,10 +423,41 @@ function IntakeSection({ offer, offerId, setBanner, setError }) {
               </Button>
             </div>
           )}
- 
+
         </CardContent>
       </Card>
- 
+    </div>
+  );
+}
+
+
+function MoneyRow({ row, onLabelChange, onAmountChange, onRemove, disabled, labelPlaceholder = 'Label' }) {
+  return (
+    <div className="flex items-center gap-2">
+      <Input
+        placeholder={labelPlaceholder}
+        className="text-xs h-9"
+        value={row.label}
+        onChange={(e) => onLabelChange(e.target.value)}
+        disabled={disabled}
+      />
+      <div className="relative w-44 shrink-0">
+        <span className="absolute left-2.5 top-1/2 -translate-y-1/2 text-[11px] text-muted-foreground pointer-events-none">
+          Rp
+        </span>
+        <Input
+          type="number"
+          className="text-xs h-9 pl-7"
+          value={row.amount}
+          onChange={(e) => onAmountChange(e.target.value)}
+          disabled={disabled}
+        />
+      </div>
+      {!disabled && (
+        <button type="button" onClick={onRemove} className="shrink-0 text-muted-foreground hover:text-rose-600">
+          <Trash2 className="h-3.5 w-3.5" />
+        </button>
+      )}
     </div>
   );
 }
@@ -432,23 +465,39 @@ function IntakeSection({ offer, offerId, setBanner, setError }) {
 function BuildSection({ offer, setOffer, setBanner, setError, onAdvance }) {
   const [baseSalary, setBaseSalary] = useState(offer.base_salary || '');
   const [allowances, setAllowances] = useState(
-    Object.entries(offer.allowances || {}).map(([label, amount]) => ({ label, amount }))
+    Object.keys(offer.allowances || {}).length > 0
+      ? Object.entries(offer.allowances).map(([label, amount]) => ({ label, amount: String(amount) }))
+      : [{ label: 'Transport', amount: '' }, { label: 'Meal', amount: '' }]
+  );
+  const [bonuses, setBonuses] = useState(
+    Object.keys(offer.bonus_structure || {}).length > 0
+      ? Object.entries(offer.bonus_structure).map(([label, amount]) => ({ label, amount: String(amount) }))
+      : [{ label: 'THR (1x base)', amount: '' }]
   );
   const [saving, setSaving] = useState(false);
+
+  const isEditable = offer.offer_status === 'draft';
 
   const addAllowance = () => setAllowances((prev) => [...prev, { label: '', amount: '' }]);
   const removeAllowance = (i) => setAllowances((prev) => prev.filter((_, idx) => idx !== i));
   const updateAllowance = (i, field, value) =>
     setAllowances((prev) => prev.map((row, idx) => idx === i ? { ...row, [field]: value } : row));
 
-  const isEditable = offer.offer_status === 'draft';
+  const addBonus = () => setBonuses((prev) => [...prev, { label: '', amount: '' }]);
+  const removeBonus = (i) => setBonuses((prev) => prev.filter((_, idx) => idx !== i));
+  const updateBonus = (i, field, value) =>
+    setBonuses((prev) => prev.map((row, idx) => idx === i ? { ...row, [field]: value } : row));
+
+  const allowancesTotal = allowances.reduce((sum, r) => sum + (Number(r.amount) || 0), 0);
+  const bonusesTotal = bonuses.reduce((sum, r) => sum + (Number(r.amount) || 0), 0);
 
   const handleSave = async () => {
     if (!baseSalary || Number(baseSalary) <= 0) {
       setError('Base salary is required');
       return;
     }
-    const allowancesObj = allowances.reduce((acc, row) => {
+
+    const toObject = (rows) => rows.reduce((acc, row) => {
       if (row.label.trim() && row.amount !== '') acc[row.label.trim()] = Number(row.amount);
       return acc;
     }, {});
@@ -458,11 +507,11 @@ function BuildSection({ offer, setOffer, setBanner, setError, onAdvance }) {
     try {
       const res = await offerAPI.updateCompensation(offer.id, {
         base_salary: Number(baseSalary),
-        allowances: allowancesObj,
-        bonus_structure: {},
+        allowances: toObject(allowances),
+        bonus_structure: toObject(bonuses),
       });
       setOffer((prev) => ({ ...prev, ...res.data.compensation }));
-      setBanner({ ok: true, text: 'Compensation updated.' });
+      setBanner({ ok: true, text: 'Compensation saved.' });
     } catch (err) {
       setError(err.response?.data?.message || err.message || 'Failed to update compensation');
     } finally {
@@ -474,52 +523,55 @@ function BuildSection({ offer, setOffer, setBanner, setError, onAdvance }) {
     <div className="space-y-4">
       <Card>
         <CardHeader className="pb-3">
-          <CardTitle className="text-sm">Compensation build</CardTitle>
-          <p className="text-[10px] text-muted-foreground mt-0.5">
-            {isEditable ? 'Editable while offer is in draft' : 'Locked — offer has been sent'}
-          </p>
+          <div className="flex items-center gap-2">
+            <Wallet className="h-4 w-4 text-primary shrink-0" />
+            <div className="min-w-0 flex-1">
+              <CardTitle className="text-sm">Compensation build</CardTitle>
+              <p className="text-[10px] text-muted-foreground mt-0.5">
+                {isEditable ? 'Editable while offer is in draft' : 'Locked — offer has been sent'}
+              </p>
+            </div>
+            {!isEditable && (
+              <Badge variant="outline" className="text-[9px] shrink-0">locked</Badge>
+            )}
+          </div>
         </CardHeader>
-        <CardContent className="space-y-3">
+        <CardContent className="space-y-4">
+
           <div className="space-y-1">
             <label className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
               Base salary (monthly)
             </label>
-            <Input
-              type="number"
-              className="text-xs h-8"
-              value={baseSalary}
-              onChange={(e) => setBaseSalary(e.target.value)}
-              disabled={!isEditable}
-            />
+            <div className="relative max-w-xs">
+              <span className="absolute left-2.5 top-1/2 -translate-y-1/2 text-[11px] text-muted-foreground pointer-events-none">
+                Rp
+              </span>
+              <Input
+                type="number"
+                className="text-xs h-9 pl-7"
+                value={baseSalary}
+                onChange={(e) => setBaseSalary(e.target.value)}
+                disabled={!isEditable}
+              />
+            </div>
           </div>
 
-          <div className="space-y-1">
-            <label className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
-              Allowances
-            </label>
+          <div className="space-y-1.5">
+            <div className="flex items-center justify-between">
+              <label className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
+                Allowances
+              </label>
+              <span className="text-[10px] font-mono text-muted-foreground">Rp {allowancesTotal.toLocaleString('id-ID')}</span>
+            </div>
             {allowances.map((row, i) => (
-              <div key={i} className="flex items-center gap-2">
-                <Input
-                  placeholder="e.g. transport"
-                  className="text-xs h-8"
-                  value={row.label}
-                  onChange={(e) => updateAllowance(i, 'label', e.target.value)}
-                  disabled={!isEditable}
-                />
-                <Input
-                  type="number"
-                  placeholder="Rp"
-                  className="text-xs h-8 w-40"
-                  value={row.amount}
-                  onChange={(e) => updateAllowance(i, 'amount', e.target.value)}
-                  disabled={!isEditable}
-                />
-                {isEditable && (
-                  <button type="button" onClick={() => removeAllowance(i)} className="shrink-0 text-muted-foreground hover:text-rose-600">
-                    <Trash2 className="h-3.5 w-3.5" />
-                  </button>
-                )}
-              </div>
+              <MoneyRow
+                key={i}
+                row={row}
+                disabled={!isEditable}
+                onLabelChange={(v) => updateAllowance(i, 'label', v)}
+                onAmountChange={(v) => updateAllowance(i, 'amount', v)}
+                onRemove={() => removeAllowance(i)}
+              />
             ))}
             {isEditable && (
               <Button size="sm" variant="outline" className="text-xs h-7" onClick={addAllowance}>
@@ -528,34 +580,68 @@ function BuildSection({ offer, setOffer, setBanner, setError, onAdvance }) {
             )}
           </div>
 
-          {offer.gross_salary && (
-            <div className="rounded-lg border divide-y text-xs">
-              <div className="flex items-center justify-between px-3 py-2">
-                <span className="text-muted-foreground">Gross salary</span>
-                <span className="font-mono">{fmtCurrency(offer.gross_salary)}</span>
+          <div className="space-y-1.5">
+            <div className="flex items-center justify-between">
+              <label className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
+                Bonus structure
+              </label>
+              <span className="text-[10px] font-mono text-muted-foreground">Rp {bonusesTotal.toLocaleString('id-ID')}</span>
+            </div>
+            {bonuses.map((row, i) => (
+              <MoneyRow
+                key={i}
+                row={row}
+                disabled={!isEditable}
+                labelPlaceholder="e.g. THR, annual bonus"
+                onLabelChange={(v) => updateBonus(i, 'label', v)}
+                onAmountChange={(v) => updateBonus(i, 'amount', v)}
+                onRemove={() => removeBonus(i)}
+              />
+            ))}
+            {isEditable && (
+              <Button size="sm" variant="outline" className="text-xs h-7" onClick={addBonus}>
+                <Plus className="h-3 w-3 mr-1" /> Add bonus
+              </Button>
+            )}
+          </div>
+
+          {offer.gross_salary != null && (
+            <div className="rounded-lg border overflow-hidden">
+              <div className="px-4 py-2 border-b bg-muted/20">
+                <p className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
+                  Calculated breakdown
+                </p>
               </div>
-              <div className="flex items-center justify-between px-3 py-2">
-                <span className="text-muted-foreground">PPh 21</span>
-                <span className="font-mono">{fmtCurrency(offer.pph21)}</span>
-              </div>
-              <div className="flex items-center justify-between px-3 py-2">
-                <span className="text-muted-foreground">BPJS Kesehatan</span>
-                <span className="font-mono">{fmtCurrency(offer.bpjs_kesehatan)}</span>
-              </div>
-              <div className="flex items-center justify-between px-3 py-2">
-                <span className="text-muted-foreground">BPJS Ketenagakerjaan</span>
-                <span className="font-mono">{fmtCurrency(offer.bpjs_ketenagakerjaan)}</span>
-              </div>
-              <div className="flex items-center justify-between px-3 py-2 font-semibold bg-muted/30">
-                <span>Net salary</span>
-                <span className="font-mono">{fmtCurrency(offer.net_salary)}</span>
+              <div className="divide-y text-xs">
+                <div className="flex items-center justify-between px-4 py-2">
+                  <span className="text-muted-foreground">Gross salary</span>
+                  <span className="font-mono">{fmtCurrency(offer.gross_salary)}</span>
+                </div>
+                <div className="flex items-center justify-between px-4 py-2">
+                  <span className="text-muted-foreground">PPh 21</span>
+                  <span className="font-mono">− {fmtCurrency(offer.pph21)}</span>
+                </div>
+                <div className="flex items-center justify-between px-4 py-2">
+                  <span className="text-muted-foreground">BPJS Kesehatan</span>
+                  <span className="font-mono">− {fmtCurrency(offer.bpjs_kesehatan)}</span>
+                </div>
+                <div className="flex items-center justify-between px-4 py-2">
+                  <span className="text-muted-foreground">BPJS Ketenagakerjaan</span>
+                  <span className="font-mono">− {fmtCurrency(offer.bpjs_ketenagakerjaan)}</span>
+                </div>
+                <div className="flex items-center justify-between px-4 py-3 font-bold bg-muted/30">
+                  <span>Net salary</span>
+                  <span className="font-mono">{fmtCurrency(offer.net_salary)}</span>
+                </div>
               </div>
             </div>
           )}
 
           {isEditable && (
             <Button size="sm" className="text-xs" onClick={handleSave} disabled={saving}>
-              {saving ? <><Loader2 className="h-3.5 w-3.5 mr-1.5 animate-spin" /> Saving…</> : <><Check className="h-3.5 w-3.5 mr-1.5" /> Save compensation</>}
+              {saving
+                ? <><Loader2 className="h-3.5 w-3.5 mr-1.5 animate-spin" /> Saving…</>
+                : <><Check className="h-3.5 w-3.5 mr-1.5" /> Save compensation</>}
             </Button>
           )}
         </CardContent>
@@ -572,6 +658,8 @@ function BuildSection({ offer, setOffer, setBanner, setError, onAdvance }) {
     </div>
   );
 }
+
+/* Send & Negotiate Section */
 
 function SendSection({ offer, setOffer, setBanner, setError, onAdvance }) {
   const [sending, setSending] = useState(false);
@@ -872,70 +960,8 @@ export default function OfferCandidatePage() {
 
   if (!offer) return null;
 
-  // Transform compensation data from API to RemunerationStep format
-  const remunerationData = offer.base_salary ? {
-    offerBuild: [
-      { label: 'Base monthly (THP)', value: `Rp ${Number(offer.base_salary || 0).toLocaleString('id-ID')}`, meta: '/mo' },
-      ...(offer.allowances?.transport ? [{ label: 'Tunjangan Transport', value: `Rp ${Number(offer.allowances.transport).toLocaleString('id-ID')}`, meta: '/mo' }] : []),
-      ...(offer.allowances?.meal ? [{ label: 'Tunjangan Makan', value: `Rp ${Number(offer.allowances.meal).toLocaleString('id-ID')}`, meta: '/mo' }] : []),
-      ...(offer.allowances?.health ? [{ label: 'Tunjangan Kesehatan', value: `Rp ${Number(offer.allowances.health).toLocaleString('id-ID')}`, meta: '/mo' }] : []),
-      ...(offer.bonus_structure?.annual ? [{ label: 'Bonus Tahunan', value: `Rp ${Number(offer.bonus_structure.annual).toLocaleString('id-ID')}`, meta: 'annual' }] : []),
-      { label: 'BPJS Kesehatan', value: `Rp ${Number(offer.bpjs_kesehatan || 0).toLocaleString('id-ID')}`, meta: '/mo' },
-      { label: 'BPJS Ketenagakerjaan', value: `Rp ${Number(offer.bpjs_ketenagakerjaan || 0).toLocaleString('id-ID')}`, meta: '/mo' },
-    ],
-    salarySlip: {
-      month: 'Month 1 Preview',
-      currency: 'Rp',
-      earnings: [
-        { label: 'Gaji Pokok (Base)', amount: Number(offer.base_salary || 0) },
-        ...(offer.allowances?.transport ? [{ label: 'Tunjangan Transport', amount: Number(offer.allowances.transport) }] : []),
-        ...(offer.allowances?.meal ? [{ label: 'Tunjangan Makan', amount: Number(offer.allowances.meal) }] : []),
-        ...(offer.allowances?.health ? [{ label: 'Tunjangan Kesehatan', amount: Number(offer.allowances.health) }] : []),
-      ],
-      deductions: [
-        { label: 'BPJS Kesehatan (1%)', amount: -Number(offer.bpjs_kesehatan || 0) },
-        { label: 'BPJS Ketenagakerjaan', amount: -Number(offer.bpjs_ketenagakerjaan || 0) },
-        { label: 'PPh 21', amount: -Number(offer.pph21 || 0) },
-      ],
-      footnote: 'Estimasi berdasarkan calculation_metadata — final ditetapkan oleh Finance',
-    },
-    totalAnnualPackage: `Rp ${Number(offer.gross_salary || 0).toLocaleString('id-ID')}`,
-    aiInsight: offer.calculation_metadata?.notes || 'Kompensasi telah dihitung sesuai aturan DJP 2026.',
-    // Keep mock data for metrics/benchmark until we have real stats
-    ...offerContractMock.remuneration,
-    // Override with real data
-    offerBuild: [
-      { label: 'Base monthly (THP)', value: `Rp ${Number(offer.base_salary || 0).toLocaleString('id-ID')}`, meta: '/mo' },
-      ...(offer.allowances?.transport ? [{ label: 'Tunjangan Transport', value: `Rp ${Number(offer.allowances.transport).toLocaleString('id-ID')}`, meta: '/mo' }] : []),
-      ...(offer.allowances?.meal ? [{ label: 'Tunjangan Makan', value: `Rp ${Number(offer.allowances.meal).toLocaleString('id-ID')}`, meta: '/mo' }] : []),
-      ...(offer.allowances?.health ? [{ label: 'Tunjangan Kesehatan', value: `Rp ${Number(offer.allowances.health).toLocaleString('id-ID')}`, meta: '/mo' }] : []),
-      ...(offer.bonus_structure?.annual ? [{ label: 'Bonus Tahunan', value: `Rp ${Number(offer.bonus_structure.annual).toLocaleString('id-ID')}`, meta: 'annual' }] : []),
-      { label: 'BPJS Kesehatan', value: `Rp ${Number(offer.bpjs_kesehatan || 0).toLocaleString('id-ID')}`, meta: '/mo' },
-      { label: 'BPJS Ketenagakerjaan', value: `Rp ${Number(offer.bpjs_ketenagakerjaan || 0).toLocaleString('id-ID')}`, meta: '/mo' },
-      { label: 'Gross Salary', value: `Rp ${Number(offer.gross_salary || 0).toLocaleString('id-ID')}`, meta: '/mo' },
-      { label: 'Net Salary (THP)', value: `Rp ${Number(offer.net_salary || 0).toLocaleString('id-ID')}`, meta: '/mo' },
-    ],
-    salarySlip: {
-      month: 'Month 1 Preview',
-      currency: 'Rp',
-      earnings: [
-        { label: 'Gaji Pokok (Base)', amount: Number(offer.base_salary || 0) },
-        ...(offer.allowances?.transport ? [{ label: 'Tunjangan Transport', amount: Number(offer.allowances.transport) }] : []),
-        ...(offer.allowances?.meal ? [{ label: 'Tunjangan Makan', amount: Number(offer.allowances.meal) }] : []),
-        ...(offer.allowances?.health ? [{ label: 'Tunjangan Kesehatan', amount: Number(offer.allowances.health) }] : []),
-      ],
-      deductions: [
-        { label: 'BPJS Kesehatan', amount: -Number(offer.bpjs_kesehatan || 0) },
-        { label: 'BPJS Ketenagakerjaan', amount: -Number(offer.bpjs_ketenagakerjaan || 0) },
-        { label: 'PPh 21', amount: -Number(offer.pph21 || 0) },
-      ],
-      footnote: 'Estimasi berdasarkan calculation_metadata — final ditetapkan oleh Finance',
-    },
-  } : offerContractMock.remuneration;
-
   return (
     <>
-      {/* Sticky header */}
       <div className="sticky top-[52px] z-10 bg-background/95 backdrop-blur-sm -mt-5 -mx-5 px-5 pt-5 pb-4 border-b border-border/60">
         <div className="space-y-3">
           <Button
@@ -992,7 +1018,7 @@ export default function OfferCandidatePage() {
         <div className="grid grid-cols-1 lg:grid-cols-[minmax(0,1fr)_220px] gap-6">
           <div className="min-w-0">
             {activeSection === 'intake' && (
-              <IntakeSection offerId={offer.id} setBanner={setBanner} setError={setError} />
+              <IntakeSection offer={offer} offerId={offer.id} setBanner={setBanner} setError={setError} />
             )}
             {activeSection === 'build' && (
               <BuildSection offer={offer} setOffer={setOffer} setBanner={setBanner} setError={setError} onAdvance={setActiveSection} />

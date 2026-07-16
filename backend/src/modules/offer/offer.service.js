@@ -119,66 +119,44 @@ class OfferService {
   // Update compensation
   async updateCompensation(offer_id, data, company_id, user_id) {
     const offer = await OfferModel.getOfferById(offer_id, company_id);
-
+  
     if (!offer) {
       throw { status: 404, message: 'Offer not found' };
     }
-
+  
     if (offer.offer_status !== 'draft') {
       throw { status: 400, message: 'Cannot update compensation after offer is sent' };
     }
-
+  
     const { base_salary, allowances, bonus_structure } = data;
-
-    // Recalculate
-    const compensation = CompensationEngine.calculate({
+  
+    const calculated = CompensationEngine.calculate({
       base_salary,
       allowances,
       bonus_structure
     });
-
-    // Update compensation
-    await OfferModel.updateCompensation(offer_id, {
+  
+    const payload = {
       base_salary,
       allowances,
       bonus_structure,
-      gross_salary: compensation.gross_salary,
-      pph21: compensation.pph21,
-      bpjs_kesehatan: compensation.bpjs_kesehatan,
-      bpjs_ketenagakerjaan: compensation.bpjs_ketenagakerjaan,
-      net_salary: compensation.net_salary,
-      calculation_metadata: compensation.metadata
-    });
-
-    return {
-      compensation,
-      message: 'Compensation updated successfully'
+      gross_salary: calculated.gross_salary,
+      pph21: calculated.pph21,
+      bpjs_kesehatan: calculated.bpjs_kesehatan,
+      bpjs_ketenagakerjaan: calculated.bpjs_ketenagakerjaan,
+      net_salary: calculated.net_salary,
+      calculation_metadata: calculated.metadata
     };
-  }
-
-  // Send offer letter to candidate
-  async sendOfferLetter(offer_id, company_id, user_id) {
-    const offer = await OfferModel.getOfferById(offer_id, company_id);
-
-    if (!offer) {
-      throw { status: 404, message: 'Offer not found' };
+  
+    if (offer.compensation_id) {
+      await OfferModel.updateCompensation(offer_id, payload);
+    } else {
+      await OfferModel.createCompensation({ offer_id, ...payload });
     }
-
-    // Generate offer letter PDF (TODO: implement PDF generation)
-    // const pdf_url = await generateOfferLetterPDF(offer);
-
-    // Send email to candidate (TODO: implement email)
-    // await sendOfferEmail(offer.candidate_email, pdf_url);
-
-    // Update status
-    await OfferModel.updateOfferStatus(offer_id, 'sent', {
-      sent_at: new Date(),
-      sent_by: user_id
-    });
-
+  
     return {
-      message: 'Offer letter sent successfully',
-      // pdf_url
+      compensation: { base_salary, allowances, bonus_structure, ...calculated },
+      message: 'Compensation updated successfully'
     };
   }
 
