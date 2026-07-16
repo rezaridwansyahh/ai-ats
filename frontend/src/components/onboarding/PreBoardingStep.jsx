@@ -33,11 +33,22 @@ function ChecklistRow({ item }) {
 }
 
 function BuddyCard({ buddy, onChange }) {
+  // Backend only guarantees `name` for now — derive initials if not provided,
+  // and treat `code` / `meta` as optional extras from the mock template.
+  const initials = buddy.initials || (buddy.name
+    ? buddy.name
+        .split(' ')
+        .map((w) => w[0])
+        .join('')
+        .slice(0, 2)
+        .toUpperCase()
+    : '');
+
   return (
     <div className="border rounded-lg p-4">
       <div className="flex items-center justify-between mb-3">
         <div className="text-[10px] font-bold uppercase tracking-wide text-muted-foreground">
-          {buddy.code} · Buddy
+          {buddy.code || 'Buddy'}
         </div>
         <button type="button" onClick={onChange} className="text-xs font-semibold text-foreground hover:underline">
           Change
@@ -45,11 +56,11 @@ function BuddyCard({ buddy, onChange }) {
       </div>
       <div className="flex items-center gap-3">
         <div className="h-10 w-10 rounded-full bg-foreground text-background flex items-center justify-center text-sm font-bold flex-shrink-0">
-          {buddy.initials}
+          {initials}
         </div>
         <div>
           <div className="text-sm font-semibold text-foreground">{buddy.name}</div>
-          <div className="text-xs text-muted-foreground">{buddy.meta}</div>
+          {buddy.meta && <div className="text-xs text-muted-foreground">{buddy.meta}</div>}
         </div>
       </div>
     </div>
@@ -120,24 +131,26 @@ export function PreBoardingStep({ data, candidateName, onNext }) {
             {checklist.map((item) => <ChecklistRow key={item.label} item={item} />)}
           </div>
 
-          <div className="flex items-center justify-between gap-3 border rounded-lg p-4 bg-muted/20">
-            <div className="flex items-center gap-3">
-              <div className="h-9 w-9 rounded-lg border bg-card flex items-center justify-center flex-shrink-0">
-                <span className="text-xs font-bold">{hrisTask.code}</span>
+          {hrisTask && (
+            <div className="flex items-center justify-between gap-3 border rounded-lg p-4 bg-muted/20">
+              <div className="flex items-center gap-3">
+                <div className="h-9 w-9 rounded-lg border bg-card flex items-center justify-center flex-shrink-0">
+                  <span className="text-xs font-bold">{hrisTask.code}</span>
+                </div>
+                <div>
+                  <div className="text-sm font-semibold text-foreground">{hrisTask.title}</div>
+                  <div className="text-xs text-muted-foreground">{hrisTask.description}</div>
+                </div>
               </div>
-              <div>
-                <div className="text-sm font-semibold text-foreground">{hrisTask.title}</div>
-                <div className="text-xs text-muted-foreground">{hrisTask.description}</div>
-              </div>
+              <Button size="sm" className="text-xs flex-shrink-0">{hrisTask.action}</Button>
             </div>
-            <Button size="sm" className="text-xs flex-shrink-0">{hrisTask.action}</Button>
-          </div>
+          )}
         </div>
 
         <div className="p-4 space-y-4">
-          <BuddyCard buddy={buddy} onChange={() => {}} />
+          {buddy && <BuddyCard buddy={buddy} onChange={() => {}} />}
           <DaySchedule schedule={schedule} />
-          <WelcomeMessage message={welcomeMessage} />
+          {welcomeMessage && <WelcomeMessage message={welcomeMessage} />}
         </div>
 
       </div>

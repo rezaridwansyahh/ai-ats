@@ -46,11 +46,10 @@ import OfferJobPage from "./components/offer-contract/Offer-Job";
 import OfferCandidatePage from "./components/offer-contract/Offer-Candidate";
 
 //PUNYA BAYU MASIH DUMMY
-import InterviewPage from "./pages/Interview"
 import SettingsPage from "./pages/Settings"
-import OfferContractPage from "./pages/OfferContract"
 import OnboardingPage from "./pages/Onboarding"
 import OnboardingWorkboard from "./pages/OnboardingWorkboard"
+import ReportsPage from "./pages/Reports"
 
 import { Toaster } from '@/components/ui/sonner';
 
@@ -92,7 +91,6 @@ function App() {
           <Route path="/selection/psych-assessment" element={<PsychAssesmentPage />} />
           <Route path="/selection/psych-assessment/:jobId/:participantId" element={<CandidateDetailPage />} />
           <Route path="/selection/medical-assessment" element={<ComingSoonPage />} />
-          <Route path="/selection/psych-assessment/:jobId/:participantId" element={<CandidateDetailPage />} />
 
           <Route path="/selection/interview" element={<InterviewWorkboard />} />
           <Route path="/selection/interview/job/:jobId" element={<InterviewJobPage/>} />
@@ -115,25 +113,24 @@ function App() {
         <Route path="/asesmen/insights-discovery-assessment" element={<InsightsDiscoveryAssessmentPage />} />
         <Route path="/asesmen/thomas-kilmann-assessment" element={<ThomasKilmannAssessmentPage />} />
 
-          <Route path="/settings" element={<SettingsPage />} />
-          <Route path="/settings/user-management" element={<UserManagementPage />} />
-          <Route path="/settings/role-management" element={<RoleManagementPage />} />
-          <Route path="/settings/integrations" element={<IntegrationsPage />} />
-          <Route path="/settings/account" element={<AccountPage />} />
-          <Route path="/settings/budget" element={<BudgetSettingsPage />} />
-          <Route path="/settings/recruiters" element={<RecruitersPage />} />
+        <Route path="/settings" element={<SettingsPage />} />
+        <Route path="/settings/user-management" element={<UserManagementPage />} />
+        <Route path="/settings/role-management" element={<RoleManagementPage />} />
+        <Route path="/settings/integrations" element={<IntegrationsPage />} />
+        <Route path="/settings/account" element={<AccountPage />} />
+        <Route path="/settings/budget" element={<BudgetSettingsPage />} />
+        <Route path="/settings/recruiters" element={<RecruitersPage />} />
 
-          <Route path="/report-candidate" element={<ReportCandidatePage />} />
-          <Route path="/report-candidate/:candidateId" element={<ReportCandidateDetailPage />} />
+        <Route path="/selection/report" element={<ReportsPage />} />
+        <Route path="/report-candidate" element={<ReportCandidatePage />} />
+        <Route path="/report-candidate/:candidateId" element={<ReportCandidateDetailPage />} />
 
-          {/* <Route path="/selection/offer-contract" element={<OfferContractPage />} />
+        
+        <Route path="/selection/onboarding" element={<OnboardingWorkboard />} />
+        <Route path="/selection/onboarding/:onboardingId" element={<OnboardingPage />} />
 
-          <Route path="/selection/offer-contract" element={<OfferContractPage />} /> */}
-          <Route path="/selection/onboarding" element={<OnboardingWorkboard />} />
-          <Route path="/selection/onboarding/:onboardingId" element={<OnboardingPage />} />
-
-          {/* Catch-all: any unregistered path shows Coming Soon */}
-          <Route path="*" element={<ComingSoonPage />} />
+        {/* Catch-all: any unregistered path shows Coming Soon */}
+        <Route path="*" element={<ComingSoonPage />} />
         </Route>
       </Routes>
       <Toaster />

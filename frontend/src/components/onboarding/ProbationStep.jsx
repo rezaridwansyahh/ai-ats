@@ -83,9 +83,11 @@ export function ProbationStep({ data, onBack }) {
           {checkins.map((c) => <CheckInRow key={c.code} checkin={c} />)}
         </div>
 
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
-          {cohort.map((c) => <CohortStat key={c.label} {...c} />)}
-        </div>
+        {cohort && cohort.length > 0 && (
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+            {cohort.map((c) => <CohortStat key={c.label} {...c} />)}
+          </div>
+        )}
       </div>
     </StepCard>
   );
