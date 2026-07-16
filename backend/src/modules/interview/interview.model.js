@@ -146,11 +146,10 @@ class InterviewModel {
                   AND scheduled_at >= NOW()
               ),
               status = CASE
-                WHEN EXISTS (
-                  SELECT 1 FROM interview_schedule
-                  WHERE interview_id = $1
-                ) THEN 'scheduled'
-                ELSE status
+                WHEN NOT EXISTS (
+                  SELECT 1 FROM interview_schedule WHERE interview_id = $1
+                ) THEN 'ongoing'
+                ELSE 'scheduled'
               END,
               updated_at = NOW()
         WHERE id = $1

@@ -712,7 +712,6 @@ function ConductSection({ interviewId, interview, setInterview, setBanner, setEr
   const [sessions, setSessions]               = useState([]);
   const [loadingSessions, setLoadingSessions] = useState(true);
   const [recordingId, setRecordingId]         = useState(null);
-  const [clearingId, setClearingId]           = useState(null);
   const [outcomeNote, setOutcomeNote]         = useState('');
   const [expandedId, setExpandedId]           = useState(null);
   const [showNotesDialog, setShowNotesDialog] = useState(false);
@@ -757,16 +756,6 @@ function ConductSection({ interviewId, interview, setInterview, setBanner, setEr
     finally { setSavingNotes(false); }
   };
 
-  const handleClear = async (sessionId) => {
-    setClearingId(sessionId); setError(null); setBanner(null);
-    try {
-      const res = await clearOutcome(sessionId);
-      setSessions((prev) => prev.map((s) => s.id === sessionId ? res.data.schedule : s));
-      setInterview((prev) => ({ ...prev, status: 'scheduled' }));
-      setBanner({ ok: true, text: 'Outcome cleared.' });
-    } catch (err) { setError(err.response?.data?.message || err.message || 'Failed to clear outcome'); }
-    finally { setClearingId(null); }
-  };
 
   if (loadingSessions) return <div className="flex justify-center py-12"><Loader2 className="h-5 w-5 animate-spin text-muted-foreground" /></div>;
 
@@ -793,7 +782,6 @@ function ConductSection({ interviewId, interview, setInterview, setBanner, setEr
           const outcomeMeta = hasOutcome ? OUTCOME_OPTIONS.find((o) => o.value === session.status) : null;
           const isExpanded  = expandedId === session.id;
           const isRecording = recordingId === session.id;
-          const isClearing  = clearingId === session.id;
           return (
             <Card key={session.id} className={`transition-colors ${session.status === 'interviewed' ? 'border-emerald-200 bg-emerald-50/20' : session.status === 'no_show' ? 'border-rose-200 bg-rose-50/20' : session.status === 'reschedule' ? 'border-amber-200 bg-amber-50/20' : ''}`}>
               <CardContent className="p-4 space-y-3">
@@ -815,14 +803,12 @@ function ConductSection({ interviewId, interview, setInterview, setBanner, setEr
                     </div>
                   </div>
                   <div className="flex items-center gap-1.5 shrink-0">
-                    {hasOutcome ? (
-                      <Button size="sm" variant="outline" className="h-7 text-xs text-muted-foreground" onClick={() => handleClear(session.id)} disabled={isClearing}>
-                        {isClearing ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : 'Clear'}
-                      </Button>
-                    ) : <Button size="sm" className="h-7 text-xs" onClick={() => setExpandedId(isExpanded ? null : session.id)}>Record outcome</Button>}
+                    <Button size="sm" variant={hasOutcome ? 'outline' : 'default'} className="h-7 text-xs" onClick={() => setExpandedId(isExpanded ? null : session.id)}>
+                      <Pencil className="h-3 w-3 mr-1" />{hasOutcome ? 'Edit' : 'Record outcome'}
+                    </Button>
                   </div>
                 </div>
-                {isExpanded && !hasOutcome && (
+                {isExpanded && (
                   <div className="pt-3 border-t space-y-3">
                     <p className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">What happened in this session?</p>
                     <div className="grid grid-cols-3 gap-2">
@@ -1406,15 +1392,17 @@ function DecideSection({ interviewId, interview, setInterview, setBanner, setErr
                 <span className="font-normal ml-1">· {REJECT_REASONS.find((r) => r.value === interview.reject_reason)?.label}</span>
               )}
             </span>
-            <Button
-              size="sm"
-              variant="ghost"
-              className="h-6 text-[10px] px-2 opacity-70 hover:opacity-100"
-              onClick={handleResetDecision}
-              disabled={submitting}
-            >
-              {submitting ? <Loader2 className="h-3 w-3 animate-spin" /> : 'Undo'}
-            </Button>
+            {decision === 'hold' && (
+              <Button
+                size="sm"
+                variant="ghost"
+                className="h-6 text-[10px] px-2 opacity-70 hover:opacity-100"
+                onClick={handleResetDecision}
+                disabled={submitting}
+              >
+                {submitting ? <Loader2 className="h-3 w-3 animate-spin" /> : 'Undo'}
+              </Button>
+            )}
           </div>
         );
       })()}
@@ -1518,8 +1506,8 @@ function DecideSection({ interviewId, interview, setInterview, setBanner, setErr
         </Card>
       )}
 
-      {/* verdict selector — shown whenever scorecard is submitted, decided or not */}
-      {isSubmitted && (
+      {/* verdict selector — hidden once advance/rejected is final */}
+      {isSubmitted && (!alreadyDecided || decision === 'hold') && (
         <Card>
           <CardContent className="p-4 space-y-3">
             <p className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">Make Decision</p>
