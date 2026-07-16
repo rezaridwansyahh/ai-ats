@@ -201,6 +201,18 @@ class InterviewController {
     }
   }
 
+  async updateCandidateQuestions(req, res) {
+    try {
+      const result = await interviewService.updateCandidateQuestions(req.params.interview_id, {
+        custom_questions: req.body.custom_questions,
+        company_id: req.user?.company_id,
+      });
+      res.json(result);
+    } catch (err) {
+      res.status(err.status || 500).json({ message: err.message });
+    }
+  }
+
   async recordOutcome(req, res) {
     try {
       const schedule_id = Number(req.params.schedule_id);

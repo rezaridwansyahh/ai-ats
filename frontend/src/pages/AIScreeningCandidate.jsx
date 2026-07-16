@@ -24,6 +24,7 @@ import {
   getScreening, setScreeningDecision, getRubric, runMatching,
   getQa, getQaResponses, generateQa, updateQa, sendQa,
   getApplicationFormTemplate, extractFacetsFromFile, extractFacetsFromText,
+  getScreeningByCandidate
 } from '@/api/screening.api';
 import {
   Select,
@@ -342,16 +343,16 @@ export default function AIScreeningCandidatePage() {
   };
 
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  useEffect(() => { load(); }, [screeningId]);
+  useEffect(() => { load(); }, [candidateId]);
 
   // Engine state lifted to the page so the sidebar can host the primary actions.
   const match = useMatch(data, load);
-  const qa = useQa(screeningId, data?.engine === 'done', activeEngine === 'qa');
+  const qa = useQa(data?.screening_id, data?.engine === 'done', activeEngine === 'qa');
 
   const handleDecide = async (decision) => {
     setSaving(true);
     try {
-      await setScreeningDecision(screeningId, {
+      await setScreeningDecision(data?.screening_id, {
         decision,
         decision_reason: decisionReason || null,
       });

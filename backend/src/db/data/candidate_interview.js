@@ -5,7 +5,7 @@ export default [
 
   // Job 2 — Backend Engineer
   { id: 3,  candidate_id: 10, job_id: 2, company_id: 1, round_number: 1, status: 'ongoing',   scheduled_at: null },  // Kevin Wijaya      latest_stage 11
-  { id: 4,  candidate_id: 8,  job_id: 2, company_id: 1, round_number: 1, status: 'scheduled', scheduled_at: '2026-06-16T10:00:00Z' }, // Gilang Ramadhan   latest_stage 8
+  { id: 4,  candidate_id: 8,  job_id: 2, company_id: 1, round_number: 1, status: 'ongoing',   scheduled_at: null }, // Gilang Ramadhan   latest_stage 8
 
   // Job 3 — Product Designer
   { id: 5,  candidate_id: 14, job_id: 3, company_id: 1, round_number: 1, status: 'done',      scheduled_at: '2026-06-10T09:00:00Z' }, // Citra Lestari     latest_stage 10

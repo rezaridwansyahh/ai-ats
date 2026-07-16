@@ -23,7 +23,7 @@ import {
 } from '@/components/ui/dialog';
 
 import {
-  getPrep, updateQuestions,
+  getPrep, updateQuestions, updateCandidateQuestions,
   getSchedules, createSchedule, updateSchedule,
   confirmSchedule, unconfirmSchedule, deleteSchedule,
   recordOutcome, clearOutcome,
@@ -188,6 +188,20 @@ export default function InterviewCandidatePage() {
     status, scheduled_at, last_position, address, education_text,
   } = interview;
 
+  // ← must be HERE, before return:
+  const isScheduled  = ['scheduled', 'interviewed', 'no_show', 'reschedule', 'done'].includes(status);
+  const hasConducted = ['interviewed', 'no_show', 'reschedule', 'done'].includes(status);
+  const hasEvaluated = status === 'done';
+
+  const canGoStep = (key) => {
+    if (key === 'prep')     return true;
+    if (key === 'schedule') return true;
+    if (key === 'conduct')  return isScheduled;
+    if (key === 'evaluate') return hasConducted;
+    if (key === 'decide')   return hasEvaluated;
+    return false;
+  };
+
   const statusMeta = STATUS_META[status] || { label: status, color: 'bg-muted text-muted-foreground' };
   const initials   = (candidate_name || '?').split(/\s+/).map((s) => s[0]).join('').slice(0, 2).toUpperCase();
 
@@ -243,17 +257,23 @@ export default function InterviewCandidatePage() {
               {SECTIONS.map(({ key, label, icon: Icon }) => (
                 <button
                   key={key} type="button"
-                  onClick={() => setActiveSection(key)}
+                  onClick={() => canGoStep(key) && setActiveSection(key)}
                   className={`inline-flex items-center gap-1.5 px-4 py-2.5 text-xs font-semibold border-b-2 transition-colors whitespace-nowrap ${
-                    activeSection === key ? 'border-primary text-primary' : 'border-transparent text-muted-foreground hover:text-foreground'
+                    activeSection === key
+                      ? 'border-primary text-primary'
+                      : !canGoStep(key)
+                      ? 'opacity-40 cursor-default border-transparent text-muted-foreground'
+                      : 'border-transparent text-muted-foreground hover:text-foreground'
                   }`}
                 >
-                  <Icon className="h-3.5 w-3.5" /> {label}
+                  <Icon className="h-3.5 w-3.5" />
+                  {label}
+                  {!canGoStep(key) && <Lock className="h-3 w-3 ml-0.5" />}
                 </button>
               ))}
             </div>
 
-            {activeSection === 'prep'     && <PrepSection     jobId={job_id} prep={prep} setPrep={setPrep} setBanner={setBanner} setError={setError} navigate={navigate} />}
+            {activeSection === 'prep' && <PrepSection jobId={job_id} interviewId={interviewId} prep={prep} customQuestions={interview?.custom_questions || []} setPrep={setPrep} setBanner={setBanner} setError={setError} navigate={navigate} />}
             {activeSection === 'schedule' && <ScheduleSection interviewId={interviewId} interview={interview} setInterview={setInterview} setBanner={setBanner} setError={setError} />}
             {activeSection === 'conduct'  && <ConductSection  interviewId={interviewId} interview={interview} setInterview={setInterview} setBanner={setBanner} setError={setError} prep={prep} />}
             {activeSection === 'evaluate' && <EvaluateSection interviewId={interviewId} interview={interview} setInterview={setInterview} prep={prep} setBanner={setBanner} setError={setError} />}
@@ -272,49 +292,46 @@ export default function InterviewCandidatePage() {
   );
 }
 
-function PrepSection({ jobId, prep, setPrep, setBanner, setError, navigate }) {
-  const [questions, setQuestions]         = useState([]);
-  const [saving, setSaving]               = useState(false);
-  const [editingIdx, setEditingIdx]       = useState(null);
-  const [noPrepWarning, setNoPrepWarning] = useState(false);
-  const isLocked = !!prep?.rubric_locked;
+function PrepSection({ jobId, interviewId, prep, customQuestions: initCustom, setPrep, setBanner, setError, navigate }) {
+  const positionQuestions = Array.isArray(prep?.questions) ? prep.questions : [];
+  const [customQuestions, setCustomQuestions] = useState(Array.isArray(initCustom) ? initCustom : []);
+  const [saving, setSaving]                   = useState(false);
+  const [editingIdx, setEditingIdx]           = useState(null);
+  const [noPrepWarning, setNoPrepWarning]     = useState(false);
 
   useEffect(() => {
-    setQuestions(Array.isArray(prep?.questions) ? prep.questions : []);
-    if (prep) setNoPrepWarning(false);
-  }, [prep]);
+    setCustomQuestions(Array.isArray(initCustom) ? initCustom : []);
+  }, [interviewId]); // reset when candidate changes
 
   const addCustom = () => {
-    if (!prep) { setNoPrepWarning(true); return; }
     setNoPrepWarning(false);
-    const next = [...questions, { id: null, competency: null, source: 'open', text: '', follow_up: null, custom_candidate: true }];
-    setQuestions(next);
+    const next = [...customQuestions, { competency: null, text: '', follow_up: null }];
+    setCustomQuestions(next);
     setEditingIdx(next.length - 1);
   };
 
   const removeQuestion = (idx) => {
-    if (!questions[idx]?.custom_candidate) return;
-    setQuestions((qs) => qs.filter((_, i) => i !== idx));
+    setCustomQuestions((qs) => qs.filter((_, i) => i !== idx));
     setEditingIdx(null);
   };
 
   const setField = (idx, field, val) =>
-    setQuestions((qs) => qs.map((q, i) => (i === idx ? { ...q, [field]: val } : q)));
+    setCustomQuestions((qs) => qs.map((q, i) => (i === idx ? { ...q, [field]: val } : q)));
 
   const handleSave = async () => {
-    if (saving || questions.length === 0) return;
+    if (saving) return;
     setSaving(true); setError(null); setBanner(null);
     try {
-      await updateQuestions(jobId, questions);
-      setBanner({ ok: true, text: 'Questions saved for this candidate.' });
+      await updateCandidateQuestions(interviewId, customQuestions);
+      setBanner({ ok: true, text: 'Custom questions saved for this candidate.' });
       setEditingIdx(null);
     } catch (err) {
       setError(err.response?.data?.message || err.message || 'Save failed');
     } finally { setSaving(false); }
   };
 
-  const positionCount = questions.filter((q) => !q.custom_candidate).length;
-  const customCount   = questions.filter((q) => q.custom_candidate).length;
+  const positionCount = positionQuestions.length;
+  const customCount   = customQuestions.length;
 
   return (
     <div className="space-y-4">
@@ -323,9 +340,6 @@ function PrepSection({ jobId, prep, setPrep, setBanner, setError, navigate }) {
           <CardHeader className="pb-2">
             <CardTitle className="text-sm flex items-center gap-2">
               <ClipboardList className="h-4 w-4 text-primary" /> Scoring Rubric
-              {isLocked
-                ? <Badge variant="outline" className="ml-auto text-[9px] border-amber-300 text-amber-700 bg-amber-50"><Lock className="h-3 w-3 mr-1" />Locked</Badge>
-                : <Badge variant="outline" className="ml-auto text-[9px] border-slate-300 text-slate-600">Unlocked</Badge>}
             </CardTitle>
           </CardHeader>
           <CardContent className="pt-0">
@@ -373,14 +387,14 @@ function PrepSection({ jobId, prep, setPrep, setBanner, setError, navigate }) {
             </CardTitle>
             <div className="flex gap-2">
               <Button size="sm" variant="outline" className="text-xs" onClick={addCustom}><Plus className="h-3 w-3 mr-1" /> Add custom</Button>
-              <Button size="sm" className="text-xs" onClick={handleSave} disabled={saving || questions.length === 0}>
+              <Button size="sm" className="text-xs" onClick={handleSave} disabled={saving}>
                 {saving ? <Loader2 className="h-3.5 w-3.5 mr-1.5 animate-spin" /> : <Check className="h-3.5 w-3.5 mr-1.5" />}Save
               </Button>
             </div>
           </div>
         </CardHeader>
         <CardContent className="space-y-2">
-          {questions.length === 0 && (
+          {positionQuestions.length === 0 && customQuestions.length === 0 && (
             <div className="py-10 text-center space-y-2">
               <p className="text-xs text-muted-foreground italic">No questions yet.</p>
               <button type="button" onClick={() => navigate(`/selection/interview/job/${jobId}`)} className="text-xs text-primary underline hover:opacity-80">
@@ -388,10 +402,10 @@ function PrepSection({ jobId, prep, setPrep, setBanner, setError, navigate }) {
               </button>
             </div>
           )}
-          {questions.filter((q) => !q.custom_candidate).length > 0 && (
+          {positionQuestions.length > 0 && (
             <div className="space-y-1.5">
               <p className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground px-1">Position questions</p>
-              {questions.map((q, i) => q.custom_candidate ? null : (
+              {positionQuestions.map((q, i) => (
                 <div key={i} className="rounded-lg border bg-muted/10 p-3">
                   <div className="flex items-start gap-2">
                     <span className="text-[10px] font-mono text-muted-foreground mt-0.5 shrink-0">{i + 1}</span>
@@ -408,10 +422,10 @@ function PrepSection({ jobId, prep, setPrep, setBanner, setError, navigate }) {
               ))}
             </div>
           )}
-          {questions.filter((q) => q.custom_candidate).length > 0 && (
+          {customQuestions.length > 0 && (
             <div className="space-y-1.5 mt-3">
               <p className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground px-1">Custom for this candidate</p>
-              {questions.map((q, i) => !q.custom_candidate ? null : (
+              {customQuestions.map((q, i) => (
                 <div key={i} className="rounded-lg border border-violet-200 bg-violet-50/30 p-3">
                   {editingIdx === i ? (
                     <div className="space-y-2">
@@ -698,7 +712,6 @@ function ConductSection({ interviewId, interview, setInterview, setBanner, setEr
   const [sessions, setSessions]               = useState([]);
   const [loadingSessions, setLoadingSessions] = useState(true);
   const [recordingId, setRecordingId]         = useState(null);
-  const [clearingId, setClearingId]           = useState(null);
   const [outcomeNote, setOutcomeNote]         = useState('');
   const [expandedId, setExpandedId]           = useState(null);
   const [showNotesDialog, setShowNotesDialog] = useState(false);
@@ -743,16 +756,6 @@ function ConductSection({ interviewId, interview, setInterview, setBanner, setEr
     finally { setSavingNotes(false); }
   };
 
-  const handleClear = async (sessionId) => {
-    setClearingId(sessionId); setError(null); setBanner(null);
-    try {
-      const res = await clearOutcome(sessionId);
-      setSessions((prev) => prev.map((s) => s.id === sessionId ? res.data.schedule : s));
-      setInterview((prev) => ({ ...prev, status: 'scheduled' }));
-      setBanner({ ok: true, text: 'Outcome cleared.' });
-    } catch (err) { setError(err.response?.data?.message || err.message || 'Failed to clear outcome'); }
-    finally { setClearingId(null); }
-  };
 
   if (loadingSessions) return <div className="flex justify-center py-12"><Loader2 className="h-5 w-5 animate-spin text-muted-foreground" /></div>;
 
@@ -779,7 +782,6 @@ function ConductSection({ interviewId, interview, setInterview, setBanner, setEr
           const outcomeMeta = hasOutcome ? OUTCOME_OPTIONS.find((o) => o.value === session.status) : null;
           const isExpanded  = expandedId === session.id;
           const isRecording = recordingId === session.id;
-          const isClearing  = clearingId === session.id;
           return (
             <Card key={session.id} className={`transition-colors ${session.status === 'interviewed' ? 'border-emerald-200 bg-emerald-50/20' : session.status === 'no_show' ? 'border-rose-200 bg-rose-50/20' : session.status === 'reschedule' ? 'border-amber-200 bg-amber-50/20' : ''}`}>
               <CardContent className="p-4 space-y-3">
@@ -801,14 +803,12 @@ function ConductSection({ interviewId, interview, setInterview, setBanner, setEr
                     </div>
                   </div>
                   <div className="flex items-center gap-1.5 shrink-0">
-                    {hasOutcome ? (
-                      <Button size="sm" variant="outline" className="h-7 text-xs text-muted-foreground" onClick={() => handleClear(session.id)} disabled={isClearing}>
-                        {isClearing ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : 'Clear'}
-                      </Button>
-                    ) : <Button size="sm" className="h-7 text-xs" onClick={() => setExpandedId(isExpanded ? null : session.id)}>Record outcome</Button>}
+                    <Button size="sm" variant={hasOutcome ? 'outline' : 'default'} className="h-7 text-xs" onClick={() => setExpandedId(isExpanded ? null : session.id)}>
+                      <Pencil className="h-3 w-3 mr-1" />{hasOutcome ? 'Edit' : 'Record outcome'}
+                    </Button>
                   </div>
                 </div>
-                {isExpanded && !hasOutcome && (
+                {isExpanded && (
                   <div className="pt-3 border-t space-y-3">
                     <p className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">What happened in this session?</p>
                     <div className="grid grid-cols-3 gap-2">
@@ -1392,15 +1392,17 @@ function DecideSection({ interviewId, interview, setInterview, setBanner, setErr
                 <span className="font-normal ml-1">· {REJECT_REASONS.find((r) => r.value === interview.reject_reason)?.label}</span>
               )}
             </span>
-            <Button
-              size="sm"
-              variant="ghost"
-              className="h-6 text-[10px] px-2 opacity-70 hover:opacity-100"
-              onClick={handleResetDecision}
-              disabled={submitting}
-            >
-              {submitting ? <Loader2 className="h-3 w-3 animate-spin" /> : 'Undo'}
-            </Button>
+            {decision === 'hold' && (
+              <Button
+                size="sm"
+                variant="ghost"
+                className="h-6 text-[10px] px-2 opacity-70 hover:opacity-100"
+                onClick={handleResetDecision}
+                disabled={submitting}
+              >
+                {submitting ? <Loader2 className="h-3 w-3 animate-spin" /> : 'Undo'}
+              </Button>
+            )}
           </div>
         );
       })()}
@@ -1504,8 +1506,8 @@ function DecideSection({ interviewId, interview, setInterview, setBanner, setErr
         </Card>
       )}
 
-      {/* verdict selector — shown whenever scorecard is submitted, decided or not */}
-      {isSubmitted && (
+      {/* verdict selector — hidden once advance/rejected is final */}
+      {isSubmitted && (!alreadyDecided || decision === 'hold') && (
         <Card>
           <CardContent className="p-4 space-y-3">
             <p className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">Make Decision</p>
@@ -1852,9 +1854,9 @@ function StepsNav({ activeSection, onStep, status, interview }) {
   const stepState = (key) => {
     if (key === 'prep')     return isScheduled  ? 'done'   : 'active';
     if (key === 'schedule') return hasConducted ? 'done'   : isScheduled  ? 'active' : 'pending';
-    if (key === 'conduct')  return hasEvaluated ? 'done'   : hasConducted ? 'active' : 'pending';
+    if (key === 'conduct')  return hasEvaluated ? 'done'   : isScheduled ? 'active' : 'pending';
     if (key === 'evaluate') return hasDecided   ? 'done'   : hasConducted ? 'active' : 'pending';
-    if (key === 'decide')   return isDecidable ? 'active' : 'soon';
+    if (key === 'decide')   return isDecidable ? 'active'  : 'soon';
     return 'soon';
   };
 
@@ -1872,12 +1874,11 @@ function StepsNav({ activeSection, onStep, status, interview }) {
             <button
               key={s.key}
               type="button"
-              onClick={() => !soon && onStep(s.key)}
+              onClick={() => (state === 'active' || state === 'done') && onStep(s.key)}
               className={`w-full flex items-center gap-2 px-2 py-1.5 rounded-md text-left transition-colors ${
                 active   ? 'bg-primary/10 text-primary'
-                : soon   ? 'opacity-40 cursor-default'
-                : pending? 'opacity-60 hover:bg-muted/50 text-muted-foreground'
-                         : 'hover:bg-muted/50 text-foreground'
+                : (soon || pending) ? 'opacity-40 cursor-default'
+                                    : 'hover:bg-muted/50 text-foreground'
               }`}
             >
               <span className={`flex h-5 w-5 items-center justify-center rounded-full text-[9px] font-semibold shrink-0 ${

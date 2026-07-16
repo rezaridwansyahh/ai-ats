@@ -575,6 +575,7 @@ CREATE TABLE candidate_interview (
   decided_at TIMESTAMPTZ,
   created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
   updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  custom_questions JSONB DEFAULT '[]'::jsonb,
   UNIQUE (candidate_id, job_id)
 );
 CREATE INDEX idx_ci_job     ON candidate_interview (job_id);

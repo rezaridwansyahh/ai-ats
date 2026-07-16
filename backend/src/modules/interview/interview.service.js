@@ -530,6 +530,14 @@ class InterviewService {
     return updated;
   }
 
+  async updateCandidateQuestions(interview_id, { custom_questions, company_id } = {}) {
+    const row = await interviewModel.getById(interview_id);
+    if (!row) throw { status: 404, message: 'Interview not found' };
+    if (company_id && row.company_id !== company_id) throw { status: 403, message: 'Forbidden' };
+    await interviewModel.updateCandidateQuestions(interview_id, custom_questions || []);
+    return { success: true };
+  }
+
   async generateRubricAnchors(job_id, { company_id = null } = {}, context = {}) {
     if (!job_id) throw { status: 400, message: 'job_id is required' };
 
