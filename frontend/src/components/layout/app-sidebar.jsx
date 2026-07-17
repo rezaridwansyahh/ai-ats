@@ -122,6 +122,7 @@ const HIDDEN_ITEMS = new Set([
   'Assessment D',
   'Insights Discovery Assessment',
   'Thomas Kilmann Assessment',
+  'Report',
 ]);
 
 // Menu names that are visible but not yet clickable ("SOON" pill).
