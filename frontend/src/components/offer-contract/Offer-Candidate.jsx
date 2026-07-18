@@ -3,7 +3,7 @@ import { useNavigate, useParams } from 'react-router-dom';
 import {
   ArrowLeft, Loader2, AlertTriangle, Check, ChevronRight, X,
   FileText, Pencil, Wallet, Send, FileSignature, Plus, Trash2,
-  MessageSquareText, PenLine,
+  MessageSquareText, PenLine, ShieldCheck, ThumbsDown, Clock, Circle,
 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -17,8 +17,9 @@ import offerAPI from '@/api/offer.api';
 const SUBSTAGES = [
   { key: 'intake',   number: 1, label: 'Intake',   sub: 'slip gaji'     },
   { key: 'build',    number: 2, label: 'Build',    sub: 'compensation'  },
-  { key: 'send',     number: 3, label: 'Send',     sub: 'negotiate'     },
-  { key: 'contract', number: 4, label: 'Contract', sub: 'sign'          },
+  { key: 'approve',  number: 3, label: 'Approve',  sub: 'chain'         },
+  { key: 'send',     number: 4, label: 'Send',     sub: 'negotiate'     },
+  { key: 'contract', number: 5, label: 'Contract', sub: 'sign'          },
 ];
 
 const STATUS_TONE = {
@@ -29,6 +30,20 @@ const STATUS_TONE = {
   rejected:    'border-rose-300 text-rose-700 bg-rose-50',
   expired:     'border-gray-300 text-gray-500 bg-gray-50',
 };
+
+const APPROVAL_TONE = {
+  not_started: 'border-slate-300 text-slate-700 bg-slate-50',
+  in_progress: 'border-blue-300 text-blue-700 bg-blue-50',
+  approved:    'border-emerald-300 text-emerald-700 bg-emerald-50',
+  rejected:    'border-rose-300 text-rose-700 bg-rose-50',
+};
+
+const DEFAULT_APPROVAL_STEPS = [
+  { role: 'Recruiter', name: '' },
+  { role: 'Hiring Manager', name: '' },
+  { role: 'CHRO', name: '' },
+  { role: 'Finance', name: '' },
+];
 
 function fmtCurrency(value) {
   if (value == null) return '—';
@@ -98,6 +113,14 @@ function CandidateCard({ offer }) {
               {offer.offer_status}
             </Badge>
           </div>
+          {offer.metadata?.approval?.status && (
+            <div className="flex items-center justify-between gap-2">
+              <span className="text-[10px] text-muted-foreground">Approval</span>
+              <Badge variant="outline" className={`text-[9px] ${APPROVAL_TONE[offer.metadata.approval.status] || ''}`}>
+                {offer.metadata.approval.status.replace(/_/g, ' ')}
+              </Badge>
+            </div>
+          )}
           {offer.contract_status && (
             <div className="flex items-center justify-between gap-2">
               <span className="text-[10px] text-muted-foreground">Contract</span>
@@ -115,6 +138,8 @@ function CandidateCard({ offer }) {
     </Card>
   );
 }
+
+/* Intake Section — slip gaji, manual line-item entry, editable after saving */
 
 const DEFAULT_ROWS = [
   { label: 'Gaji Pokok', amount: '' },
@@ -430,7 +455,6 @@ function IntakeSection({ offer, offerId, setBanner, setError }) {
   );
 }
 
-
 function MoneyRow({ row, onLabelChange, onAmountChange, onRemove, disabled, labelPlaceholder = 'Label' }) {
   return (
     <div className="flex items-center gap-2">
@@ -649,23 +673,295 @@ function BuildSection({ offer, setOffer, setBanner, setError, onAdvance }) {
 
       <div className="flex items-center justify-between gap-3 pt-2 border-t">
         <p className="text-[10px] text-muted-foreground">
-          {offer.offer_status === 'draft' ? 'Send the offer once compensation is finalized' : 'Offer already sent'}
+          {offer.offer_status === 'draft' ? 'Set up the approval chain once compensation is finalized' : 'Offer already sent'}
         </p>
-        <Button size="sm" variant="outline" className="text-xs" onClick={() => onAdvance('send')}>
-          <ChevronRight className="h-3.5 w-3.5 mr-1" /> Go to Send
+        <Button size="sm" variant="outline" className="text-xs" onClick={() => onAdvance('approve')}>
+          <ChevronRight className="h-3.5 w-3.5 mr-1" /> Go to Approve
         </Button>
       </div>
     </div>
   );
 }
 
-/* Send & Negotiate Section */
+function ApprovalStepRow({ step, onRoleChange, onNameChange, onRemove }) {
+  return (
+    <div className="flex items-center gap-2">
+      <Input
+        placeholder="Role — e.g. Hiring Manager"
+        className="text-xs h-9"
+        value={step.role}
+        onChange={(e) => onRoleChange(e.target.value)}
+      />
+      <Input
+        placeholder="Name"
+        className="text-xs h-9"
+        value={step.name}
+        onChange={(e) => onNameChange(e.target.value)}
+      />
+      <button type="button" onClick={onRemove} className="shrink-0 text-muted-foreground hover:text-rose-600">
+        <Trash2 className="h-3.5 w-3.5" />
+      </button>
+    </div>
+  );
+}
+
+function ApproveSection({ offer, offerId, setOffer, setBanner, setError, onAdvance }) {
+  const [approval, setApproval] = useState(null);
+  const [loading, setLoading]   = useState(true);
+  const [saving, setSaving]     = useState(false);
+  const [editingChain, setEditingChain] = useState(false);
+  const [draftSteps, setDraftSteps] = useState(DEFAULT_APPROVAL_STEPS.map((s) => ({ ...s })));
+  const [note, setNote] = useState('');
+
+  const load = useCallback(async () => {
+    setLoading(true);
+    try {
+      const res = await offerAPI.getApproval(offerId);
+      setApproval(res.data || { status: 'not_started', steps: [] });
+    } catch (err) {
+      setError(err.response?.data?.message || err.message || 'Failed to load approval chain');
+    } finally {
+      setLoading(false);
+    }
+  }, [offerId, setError]);
+
+  useEffect(() => { load(); }, [load]);
+
+  const hasCompensation = offer.base_salary != null;
+
+  const addDraftStep = () => setDraftSteps((prev) => [...prev, { role: '', name: '' }]);
+  const removeDraftStep = (i) => setDraftSteps((prev) => prev.filter((_, idx) => idx !== i));
+  const updateDraftStep = (i, field, value) =>
+    setDraftSteps((prev) => prev.map((s, idx) => idx === i ? { ...s, [field]: value } : s));
+
+  const startEditChain = () => {
+    setDraftSteps(
+      (approval?.steps?.length ? approval.steps : DEFAULT_APPROVAL_STEPS).map((s) => ({ role: s.role, name: s.name }))
+    );
+    setEditingChain(true);
+  };
+
+  const handleSetupChain = async () => {
+    const cleaned = draftSteps.filter((s) => s.role.trim() && s.name.trim());
+    if (cleaned.length === 0) {
+      setError('Add at least one approval step with a role and a name');
+      return;
+    }
+    setSaving(true);
+    setError(null);
+    try {
+      const res = await offerAPI.setupApprovalChain(offerId, cleaned);
+      setApproval(res.data?.approval);
+      setOffer((prev) => ({ ...prev, metadata: { ...(prev.metadata || {}), approval: res.data?.approval } }));
+      setEditingChain(false);
+      setBanner({ ok: true, text: 'Approval chain set up.' });
+    } catch (err) {
+      setError(err.response?.data?.message || err.message || 'Failed to set up chain');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const activeIndex = approval?.steps?.findIndex((s) => s.status !== 'approved') ?? -1;
+
+  const handleDecide = async (decision) => {
+    setSaving(true);
+    setError(null);
+    try {
+      const res = await offerAPI.decideApprovalStep(offerId, activeIndex, decision, note || null);
+      setApproval(res.data?.approval);
+      setOffer((prev) => ({ ...prev, metadata: { ...(prev.metadata || {}), approval: res.data?.approval } }));
+      setNote('');
+      setBanner({ ok: true, text: `Step ${decision}.` });
+    } catch (err) {
+      setError(err.response?.data?.message || err.message || 'Failed to record decision');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  if (loading) {
+    return (
+      <div className="flex justify-center py-12">
+        <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
+      </div>
+    );
+  }
+
+  const status = approval?.status || 'not_started';
+  const steps = approval?.steps || [];
+  const chainStarted = steps.length > 0;
+  const anyDecided = steps.some((s) => s.status === 'approved' || s.status === 'rejected');
+
+  return (
+    <div className="space-y-4">
+      <Card>
+        <CardHeader className="pb-3">
+          <div className="flex items-center gap-2">
+            <ShieldCheck className="h-4 w-4 text-primary shrink-0" />
+            <div className="min-w-0 flex-1">
+              <CardTitle className="text-sm">Approval chain</CardTitle>
+              <p className="text-[10px] text-muted-foreground mt-0.5">
+                Custom chain, recorded by you after confirming with each approver
+              </p>
+            </div>
+            {chainStarted && (
+              <Badge variant="outline" className={`text-[9px] shrink-0 ${APPROVAL_TONE[status] || ''}`}>
+                {status.replace(/_/g, ' ')}
+              </Badge>
+            )}
+          </div>
+        </CardHeader>
+        <CardContent className="space-y-3">
+
+          {!hasCompensation ? (
+            <div className="flex items-center gap-2 px-3 py-2 rounded-lg border border-amber-200 bg-amber-50 text-xs text-amber-700">
+              <AlertTriangle className="h-4 w-4 shrink-0" /> Finish Build (compensation) before setting up the approval chain.
+            </div>
+          ) : !chainStarted || editingChain ? (
+            <div className="space-y-2">
+              {editingChain && anyDecided && (
+                <div className="flex items-center gap-2 px-3 py-2 rounded-lg border border-amber-200 bg-amber-50 text-[11px] text-amber-700">
+                  This chain already has decisions recorded — it can't be edited anymore.
+                </div>
+              )}
+              {(!editingChain || !anyDecided) && (
+                <>
+                  {draftSteps.map((step, i) => (
+                    <ApprovalStepRow
+                      key={i}
+                      step={step}
+                      onRoleChange={(v) => updateDraftStep(i, 'role', v)}
+                      onNameChange={(v) => updateDraftStep(i, 'name', v)}
+                      onRemove={() => removeDraftStep(i)}
+                    />
+                  ))}
+                  <div className="flex items-center gap-2 pt-1">
+                    <Button size="sm" variant="outline" className="text-xs h-7" onClick={addDraftStep}>
+                      <Plus className="h-3 w-3 mr-1" /> Add step
+                    </Button>
+                  </div>
+                  <div className="flex gap-2 pt-1">
+                    <Button size="sm" className="text-xs" onClick={handleSetupChain} disabled={saving}>
+                      {saving ? <Loader2 className="h-3.5 w-3.5 mr-1.5 animate-spin" /> : <Check className="h-3.5 w-3.5 mr-1.5" />}
+                      {chainStarted ? 'Save chain' : 'Start approval chain'}
+                    </Button>
+                    {editingChain && (
+                      <Button size="sm" variant="ghost" className="text-xs" onClick={() => setEditingChain(false)} disabled={saving}>
+                        Cancel
+                      </Button>
+                    )}
+                  </div>
+                </>
+              )}
+            </div>
+          ) : (
+            <div className="space-y-3">
+              {!anyDecided && (
+                <div className="flex justify-end">
+                  <Button size="sm" variant="ghost" className="text-xs h-7" onClick={startEditChain}>
+                    <Pencil className="h-3 w-3 mr-1.5" /> Edit chain
+                  </Button>
+                </div>
+              )}
+
+              <div className="rounded-lg border divide-y">
+                {steps.map((step, i) => {
+                  const isApproved = step.status === 'approved';
+                  const isRejected = step.status === 'rejected';
+                  const isActive = i === activeIndex;
+
+                  return (
+                    <div key={i} className="p-3 space-y-2">
+                      <div className="flex items-center gap-3">
+                        <span className={`h-6 w-6 rounded-full flex items-center justify-center shrink-0 ${
+                          isApproved ? 'bg-emerald-500 text-white'
+                          : isRejected ? 'bg-rose-500 text-white'
+                          : isActive ? 'bg-primary text-primary-foreground'
+                          : 'bg-muted text-muted-foreground'
+                        }`}>
+                          {isApproved ? <Check className="h-3.5 w-3.5" />
+                            : isRejected ? <X className="h-3.5 w-3.5" />
+                            : isActive ? <Clock className="h-3.5 w-3.5" />
+                            : <Circle className="h-2.5 w-2.5" />}
+                        </span>
+                        <div className="min-w-0 flex-1">
+                          <div className="text-xs font-semibold">{step.role} · {step.name}</div>
+                          {step.decided_at && (
+                            <div className="text-[10px] text-muted-foreground">
+                              {isApproved ? 'Approved' : 'Rejected'} {fmtDate(step.decided_at)}
+                            </div>
+                          )}
+                          {!step.decided_at && (
+                            <div className="text-[10px] text-muted-foreground">
+                              {isActive ? 'Awaiting decision' : 'Queued'}
+                            </div>
+                          )}
+                        </div>
+                        {isApproved && <Badge variant="outline" className="text-[9px] border-emerald-300 text-emerald-700 bg-emerald-50">approved</Badge>}
+                        {isRejected && <Badge variant="outline" className="text-[9px] border-rose-300 text-rose-700 bg-rose-50">rejected</Badge>}
+                      </div>
+
+                      {step.note && (
+                        <div className="flex items-start gap-2 pl-9 text-[11px] text-muted-foreground">
+                          <MessageSquareText className="h-3 w-3 shrink-0 mt-0.5" />
+                          {step.note}
+                        </div>
+                      )}
+
+                      {isActive && (
+                        <div className="pl-9 space-y-2">
+                          {isRejected && (
+                            <p className="text-[10px] text-amber-700">
+                              Re-confirm with {step.name} and record the corrected decision below.
+                            </p>
+                          )}
+                          <Textarea
+                            placeholder="Note (optional)"
+                            rows={2}
+                            className="text-xs"
+                            value={note}
+                            onChange={(e) => setNote(e.target.value)}
+                          />
+                          <div className="flex gap-2">
+                            <Button size="sm" className="text-xs h-7" onClick={() => handleDecide('approved')} disabled={saving}>
+                              {saving ? <Loader2 className="h-3 w-3 mr-1 animate-spin" /> : <Check className="h-3 w-3 mr-1" />}
+                              Approve
+                            </Button>
+                            <Button size="sm" variant="destructive" className="text-xs h-7" onClick={() => handleDecide('rejected')} disabled={saving}>
+                              <ThumbsDown className="h-3 w-3 mr-1" /> Reject
+                            </Button>
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          )}
+
+        </CardContent>
+      </Card>
+
+      {status === 'approved' && (
+        <div className="flex items-center justify-end pt-2 border-t">
+          <Button size="sm" variant="outline" className="text-xs" onClick={() => onAdvance('send')}>
+            <ChevronRight className="h-3.5 w-3.5 mr-1" /> Go to Send
+          </Button>
+        </div>
+      )}
+    </div>
+  );
+}
 
 function SendSection({ offer, setOffer, setBanner, setError, onAdvance }) {
   const [sending, setSending] = useState(false);
   const [responding, setResponding] = useState(false);
   const [responseMsg, setResponseMsg] = useState('');
   const [responseType, setResponseType] = useState('accept');
+
+  const isApproved = offer.metadata?.approval?.status === 'approved';
 
   const handleSend = async () => {
     setSending(true);
@@ -716,7 +1012,13 @@ function SendSection({ offer, setOffer, setBanner, setError, onAdvance }) {
           </div>
         </CardHeader>
         <CardContent className="space-y-3">
-          {offer.offer_status === 'draft' && (
+          {offer.offer_status === 'draft' && !isApproved && (
+            <div className="flex items-center gap-2 px-3 py-2 rounded-lg border border-amber-200 bg-amber-50 text-xs text-amber-700">
+              <AlertTriangle className="h-4 w-4 shrink-0" /> Offer needs the approval chain completed before it can be sent.
+            </div>
+          )}
+
+          {offer.offer_status === 'draft' && isApproved && (
             <Button size="sm" className="text-xs" onClick={handleSend} disabled={sending}>
               {sending ? <><Loader2 className="h-3.5 w-3.5 mr-1.5 animate-spin" /> Sending…</> : <><Send className="h-3.5 w-3.5 mr-1.5" /> Send offer letter</>}
             </Button>
@@ -1022,6 +1324,9 @@ export default function OfferCandidatePage() {
             )}
             {activeSection === 'build' && (
               <BuildSection offer={offer} setOffer={setOffer} setBanner={setBanner} setError={setError} onAdvance={setActiveSection} />
+            )}
+            {activeSection === 'approve' && (
+              <ApproveSection offer={offer} offerId={offer.id} setOffer={setOffer} setBanner={setBanner} setError={setError} onAdvance={setActiveSection} />
             )}
             {activeSection === 'send' && (
               <SendSection offer={offer} setOffer={setOffer} setBanner={setBanner} setError={setError} onAdvance={setActiveSection} />

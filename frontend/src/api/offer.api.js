@@ -67,6 +67,15 @@ const offerAPI = {
   skipSlipGaji: (offerId, reason) => api.post(`/offer/${offerId}/slip-gaji/skip`, { reason }),
 
   reviewSlipGaji: (offerId, note) => api.post(`/offer/${offerId}/slip-gaji/review`, { note }),
+
+  getApproval: (offerId) => api.get(`/offer/${offerId}/approval`),
+  
+  submitApproval: (offerId, decision, note) => api.post(`/offer/${offerId}/approval`, { decision, note }),  
+
+  setupApprovalChain: (offerId, steps) => api.post(`/offer/${offerId}/approval/setup`, { steps }),
+  
+  decideApprovalStep: (offerId, stepIndex, decision, note) => api.post(`/offer/${offerId}/approval/${stepIndex}/decide`, { decision, note }),
+
 };
 
 export default offerAPI;

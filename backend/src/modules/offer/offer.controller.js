@@ -255,6 +255,58 @@ class OfferController {
       res.status(error.status || 500).json({ message: error.message });
     }
   }  
+
+  async getApproval(req, res) {
+    try {
+      const { offer_id } = req.params;
+      const { company_id } = req.user;
+      const result = await OfferService.getApproval(offer_id, company_id);
+      res.json(result);
+    } catch (error) {
+      console.error('Error in getApproval:', error);
+      res.status(error.status || 500).json({ message: error.message });
+    }
+  }
+  
+  async submitApproval(req, res) {
+    try {
+      const { offer_id } = req.params;
+      const { company_id, user_id } = req.user;
+      const { decision, note } = req.body;
+      const result = await OfferService.submitApproval(offer_id, decision, note, company_id, user_id);
+      res.json(result);
+    } catch (error) {
+      console.error('Error in submitApproval:', error);
+      res.status(error.status || 500).json({ message: error.message });
+    }
+  }  
+
+  async setupApprovalChain(req, res) {
+    try {
+      const { offer_id } = req.params;
+      const { company_id, user_id } = req.user;
+      const { steps } = req.body;
+      const result = await OfferService.setupApprovalChain(offer_id, steps, company_id, user_id);
+      res.json(result);
+    } catch (error) {
+      console.error('Error in setupApprovalChain:', error);
+      res.status(error.status || 500).json({ message: error.message });
+    }
+  }
+  
+  async decideApprovalStep(req, res) {
+    try {
+      const { offer_id, step_index } = req.params;
+      const { company_id, user_id } = req.user;
+      const { decision, note } = req.body;
+      const result = await OfferService.decideApprovalStep(offer_id, step_index, decision, note, company_id, user_id);
+      res.json(result);
+    } catch (error) {
+      console.error('Error in decideApprovalStep:', error);
+      res.status(error.status || 500).json({ message: error.message });
+    }
+  }
+
 }
 
 export default new OfferController();

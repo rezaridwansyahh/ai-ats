@@ -1,6 +1,14 @@
 import OfferModel from './offer.model.js';
 import CompensationEngine from '../../shared/services/compensation-engine.js';
 
+function computeApprovalStatus(steps) {
+  if (!steps || steps.length === 0) return 'not_started';
+  if (steps.every((s) => s.status === 'approved')) return 'approved';
+  const active = steps.find((s) => s.status !== 'approved');
+  if (active?.status === 'rejected') return 'rejected';
+  return 'in_progress';
+}
+
 class OfferService {
   // L1 Workboard - get all offers across jobs
   async getWorkboard(company_id, user_id) {
@@ -478,6 +486,137 @@ class OfferService {
     });
     return { slip_gaji: metadata.intake.slip_gaji, message: 'Review recorded' };
   }
+
+  async getApproval(offer_id, company_id) {
+    const offer = await OfferModel.getOfferById(offer_id, company_id);
+    if (!offer) {
+      throw { status: 404, message: 'Offer not found' };
+    }
+    return offer.metadata?.approval || { status: 'not_started', steps: [] };
+  }
+  
+  async submitApproval(offer_id, decision, note, company_id, user_id) {
+    const offer = await OfferModel.getOfferById(offer_id, company_id);
+    if (!offer) {
+      throw { status: 404, message: 'Offer not found' };
+    }
+    if (!['approved', 'rejected'].includes(decision)) {
+      throw { status: 400, message: "Decision must be 'approved' or 'rejected'" };
+    }
+    if (offer.offer_status !== 'draft') {
+      throw { status: 400, message: 'Offer is no longer in draft — approval no longer applies' };
+    }
+    if (!offer.base_salary) {
+      throw { status: 400, message: 'Finish Build (compensation) before requesting approval' };
+    }
+  
+    const approval = {
+      status: decision,
+      decided_by: user_id,
+      decided_at: new Date(),
+      note: note || null,
+    };
+  
+    const metadata = await OfferModel.mergeMetadata(offer_id, { approval });
+    return { approval: metadata.approval, message: `Offer ${decision}` };
+  }
+
+ 
+  async sendOfferLetter(offer_id, company_id, user_id) {
+    const offer = await OfferModel.getOfferById(offer_id, company_id);
+  
+    if (!offer) {
+      throw { status: 404, message: 'Offer not found' };
+    }
+  
+    const approvalStatus = offer.metadata?.approval?.status;
+    if (approvalStatus !== 'approved') {
+      throw { status: 400, message: 'Offer must be approved before it can be sent' };
+    }
+  
+    await OfferModel.updateOfferStatus(offer_id, 'sent', {
+      sent_at: new Date(),
+      sent_by: user_id
+    });
+  
+    return {
+      message: 'Offer letter sent successfully',
+      // pdf_url
+    };
+  }  
+
+  async setupApprovalChain(offer_id, steps, company_id, user_id) {
+    const offer = await OfferModel.getOfferById(offer_id, company_id);
+    if (!offer) {
+      throw { status: 404, message: 'Offer not found' };
+    }
+    if (!offer.base_salary) {
+      throw { status: 400, message: 'Finish Build (compensation) before setting up approval' };
+    }
+    if (!Array.isArray(steps) || steps.length === 0) {
+      throw { status: 400, message: 'At least one approval step is required' };
+    }
+    for (const step of steps) {
+      if (!step.role?.trim() || !step.name?.trim()) {
+        throw { status: 400, message: 'Each step needs a role and a name' };
+      }
+    }
+  
+    const existing = offer.metadata?.approval?.steps || [];
+    const anyDecided = existing.some((s) => s.status === 'approved' || s.status === 'rejected');
+    if (anyDecided) {
+      throw { status: 400, message: 'Cannot redefine the chain once a decision has been recorded' };
+    }
+  
+    const newSteps = steps.map((s) => ({
+      role: s.role.trim(),
+      name: s.name.trim(),
+      status: 'pending',
+      note: null,
+      decided_at: null,
+      decided_by: null,
+    }));
+  
+    const approval = { status: computeApprovalStatus(newSteps), steps: newSteps };
+    const metadata = await OfferModel.mergeMetadata(offer_id, { approval });
+    return { approval: metadata.approval, message: 'Approval chain set up' };
+  }
+  
+  async decideApprovalStep(offer_id, step_index, decision, note, company_id, user_id) {
+    const offer = await OfferModel.getOfferById(offer_id, company_id);
+    if (!offer) {
+      throw { status: 404, message: 'Offer not found' };
+    }
+    if (offer.offer_status !== 'draft') {
+      throw { status: 400, message: 'Offer is no longer in draft — approval no longer applies' };
+    }
+    if (!['approved', 'rejected'].includes(decision)) {
+      throw { status: 400, message: "Decision must be 'approved' or 'rejected'" };
+    }
+  
+    const steps = offer.metadata?.approval?.steps;
+    if (!steps || steps.length === 0) {
+      throw { status: 400, message: 'No approval chain set up yet' };
+    }
+  
+    const activeIndex = steps.findIndex((s) => s.status !== 'approved');
+    if (activeIndex === -1) {
+      throw { status: 400, message: 'All steps are already approved' };
+    }
+    if (Number(step_index) !== activeIndex) {
+      throw { status: 400, message: `Step ${activeIndex} is the active step — decide that one first` };
+    }
+  
+    const updatedSteps = steps.map((s, i) =>
+      i === activeIndex
+        ? { ...s, status: decision, note: note || null, decided_at: new Date(), decided_by: user_id }
+        : s
+    );
+  
+    const approval = { status: computeApprovalStatus(updatedSteps), steps: updatedSteps };
+    const metadata = await OfferModel.mergeMetadata(offer_id, { approval });
+    return { approval: metadata.approval, message: `Step ${decision}` };
+  }  
 
 }
 
