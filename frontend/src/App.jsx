@@ -52,6 +52,7 @@ import OnboardingWorkboard from "./pages/OnboardingWorkboard"
 import ReportsPage from "./pages/Reports"
 
 import { Toaster } from '@/components/ui/sonner';
+import MedicalAssessmentPage from "./pages/MedicalAssessment"
 
 function App() {
   return (
@@ -90,7 +91,7 @@ function App() {
 
           <Route path="/selection/psych-assessment" element={<PsychAssesmentPage />} />
           <Route path="/selection/psych-assessment/:jobId/:participantId" element={<CandidateDetailPage />} />
-          <Route path="/selection/medical-assessment" element={<ComingSoonPage />} />
+          <Route path="/selection/medical-assessment" element={<MedicalAssessmentPage />} />
 
           <Route path="/selection/interview" element={<InterviewWorkboard />} />
           <Route path="/selection/interview/job/:jobId" element={<InterviewJobPage/>} />
