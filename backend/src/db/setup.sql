@@ -40,13 +40,14 @@ DROP TABLE IF EXISTS global_permissions CASCADE;
 DROP TABLE IF EXISTS mapping_roles_permissions CASCADE;
 DROP TABLE IF EXISTS master_sourcing CASCADE;
 DROP TABLE IF EXISTS master_sourcing_recruite CASCADE;
-DROP TABLE IF EXISTS interview_schedule;
-DROP TABLE IF EXISTS interview_scorecard;
-DROP TABLE IF EXISTS bg_lane;
-DROP TABLE IF EXISTS bg_claim;
-DROP TABLE IF EXISTS bg_consent;
+DROP TABLE IF EXISTS interview_schedule CASCADE;
+DROP TABLE IF EXISTS interview_scorecard CASCADE;
 DROP TABLE IF EXISTS bg_lane CASCADE;
-DROP TABLE IF EXISTS candidate_bg;
+DROP TABLE IF EXISTS bg_claim CASCADE;
+DROP TABLE IF EXISTS bg_consent CASCADE;
+DROP TABLE IF EXISTS bg_lane CASCADE;
+DROP TABLE IF EXISTS candidate_bg CASCADE;
+DROP TABLE IF EXISTS offer_send CASCADE;
 DROP TABLE IF EXISTS offer_negotiation CASCADE;
 DROP TABLE IF EXISTS offer_contract CASCADE;
 DROP TABLE IF EXISTS offer_compensation CASCADE;
@@ -737,6 +738,23 @@ CREATE TABLE offer_compensation (
 );
 
 CREATE INDEX idx_offer_compensation_offer ON offer_compensation(offer_id);
+
+CREATE TABLE offer_send (
+  id SERIAL PRIMARY KEY,
+  offer_id INTEGER NOT NULL REFERENCES candidate_offer(id) ON DELETE CASCADE,
+  token UUID NOT NULL UNIQUE DEFAULT gen_random_uuid(),
+  token_expires_at TIMESTAMPTZ,
+  document JSONB,
+  sent_at TIMESTAMPTZ,
+  sent_by INTEGER REFERENCES master_users(id) ON DELETE SET NULL,
+  signed_at TIMESTAMPTZ,
+  revoked_at TIMESTAMPTZ,
+  revoked_by INTEGER REFERENCES master_users(id) ON DELETE SET NULL,
+  revocation_reason TEXT,
+  status VARCHAR(20) NOT NULL DEFAULT 'draft',
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
 
 CREATE TABLE offer_negotiation (
   id SERIAL PRIMARY KEY,
