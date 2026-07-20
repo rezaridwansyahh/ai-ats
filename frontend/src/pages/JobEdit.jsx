@@ -22,6 +22,7 @@ import JobStages from '@/components/job-management/JobStages';
 import JobPosting from '@/components/job-management/JobPosting';
 
 import { StatusBadge } from '@/components/common';
+import { isValid } from 'date-fns';
 
 const WORK_OPTIONS = ['On-site', 'Hybrid', 'Remote'];
 const WORK_TYPES = ['Full-time', 'Part-time', 'Contract', 'Casual'];
@@ -64,6 +65,17 @@ const parseLocalDate = (str) => {
 };
 const formatLocalDate = (d) =>
   `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+
+//Helper function
+const isValidUrl1 = (str) => {
+  if (!str) return false;
+  try {
+    const url1 = new URL(str);
+    return url1.protocol === 'http:' || url1.protocol === 'https:';
+  } catch {
+    return false;
+  }
+};
 
 function fieldsDiffer(a, b) {
   // Deep enough for our shapes (primitives, arrays of strings)
@@ -278,16 +290,22 @@ export default function JobEditPage() {
     return missing;
   }, [form]);
 
+  const invalidUrlFields = useMemo(() => {
+    if (!form) return [];
+    const invalid = [];
+    if (form.company_url && !isValidUrl1(form.company_url)) invalid.push('company_url');
+    return invalid;
+  }, [form]);
+
   const handlePublish = async () => {
     if (!job?.id) {
       setValidationErrors(['Save the draft first by filling Basics.']);
       return;
     }
-    if (missingRequired.length > 0 || !hasStages) {
-      setValidationErrors([...missingRequired, ...(!hasStages ? ['pipeline'] : [])]);
-      // jump to the first incomplete step: Basics → JD → Pipeline
+   if (missingRequired.length > 0 || invalidUrlFields.length > 0 || !hasStages) {
+      setValidationErrors([...missingRequired, ...invalidUrlFields, ...(!hasStages ? ['pipeline'] : [])]);
       let firstStep = 0;
-      if (missingRequired.some((k) => REQUIRED_BASICS.includes(k))) firstStep = 0;
+      if (missingRequired.some((k) => REQUIRED_BASICS.includes(k)) || invalidUrlFields.length > 0) firstStep = 0;
       else if (missingRequired.some((k) => REQUIRED_JD.includes(k))) firstStep = 1;
       else if (!hasStages) firstStep = 2;
       setStep(firstStep);
@@ -391,6 +409,7 @@ export default function JobEditPage() {
                 setField={setField}
                 isLocked={isLocked}
                 missingRequired={missingRequired}
+                invalidUrlFields={invalidUrlFields}
                 showValidation={validationErrors.length > 0}
               />
             )}
@@ -455,58 +474,58 @@ export default function JobEditPage() {
 
             {/* STEP PAGINATION — numbered paginator with caption below */}
             <div className="border-t border-border/60 pt-4 space-y-2">
-              <div className="flex items-center justify-center gap-1.5">
-                {/* Prev arrow */}
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  className="h-8 w-8"
-                  disabled={step === 0}
-                  onClick={() => { setStep((s) => Math.max(0, s - 1)); window.scrollTo({ top: 0, behavior: 'smooth' }); }}
-                >
-                  <ArrowLeft className="h-4 w-4" />
-                </Button>
+              <div className="flex items-center justify-center gap-2.5">
+  {/* Prev button */}
+  <Button
+    variant="outline"
+    size="sm"
+    className="text-xs mr-1"
+    disabled={step === 0}
+    onClick={() => { setStep((s) => Math.max(0, s - 1)); window.scrollTo({ top: 0, behavior: 'smooth' }); }}
+  >
+    <ArrowLeft className="h-3.5 w-3.5 mr-1" /> Previous
+  </Button>
 
-                {/* Numbered page pills */}
-                {SECTIONS.map((s, i) => {
-                  const active = step === i;
-                  const missing = s.id === 'basics'
-                    ? missingRequired.filter((k) => REQUIRED_BASICS.includes(k)).length
-                    : s.id === 'jd'
-                      ? missingRequired.filter((k) => REQUIRED_JD.includes(k)).length
-                      : s.id === 'pipeline'
-                        ? (hasStages ? 0 : 1)
-                        : 0;
-                  return (
-                    <button
-                      key={s.id}
-                      type="button"
-                      title={s.label}
-                      onClick={() => { setStep(i); window.scrollTo({ top: 0, behavior: 'smooth' }); }}
-                      className={`h-8 w-8 rounded-md text-xs font-semibold flex items-center justify-center transition-colors ${
-                        active
-                          ? 'bg-primary text-primary-foreground'
-                          : missing > 0
-                            ? 'border border-amber-300 text-amber-700 hover:bg-amber-50'
-                            : 'border border-border text-muted-foreground hover:bg-muted/60'
-                      }`}
-                    >
-                      {i + 1}
-                    </button>
-                  );
-                })}
+  {/* Numbered page pills */}
+  {SECTIONS.map((s, i) => {
+    const active = step === i;
+    const missing = s.id === 'basics'
+      ? missingRequired.filter((k) => REQUIRED_BASICS.includes(k)).length
+      : s.id === 'jd'
+        ? missingRequired.filter((k) => REQUIRED_JD.includes(k)).length
+        : s.id === 'pipeline'
+          ? (hasStages ? 0 : 1)
+          : 0;
+    return (
+      <button
+        key={s.id}
+        type="button"
+        title={s.label}
+        onClick={() => { setStep(i); window.scrollTo({ top: 0, behavior: 'smooth' }); }}
+        className={`h-8 w-8 rounded-md text-xs font-semibold flex items-center justify-center transition-colors ${
+          active
+            ? 'bg-primary text-primary-foreground'
+            : missing > 0
+              ? 'border border-amber-300 text-amber-700 hover:bg-amber-50'
+              : 'border border-border text-muted-foreground hover:bg-muted/60'
+        }`}
+      >
+        {i + 1}
+      </button>
+    );
+  })}
 
-                {/* Next arrow — disabled on the last step */}
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  className="h-8 w-8"
-                  disabled={step === SECTIONS.length - 1}
-                  onClick={() => { setStep((s) => Math.min(SECTIONS.length - 1, s + 1)); window.scrollTo({ top: 0, behavior: 'smooth' }); }}
-                >
-                  <ArrowRight className="h-4 w-4" />
-                </Button>
-              </div>
+  {/* Next button */}
+  <Button
+    variant="outline"
+    size="sm"
+    className="text-xs ml-1"
+    disabled={step === SECTIONS.length - 1}
+    onClick={() => { setStep((s) => Math.min(SECTIONS.length - 1, s + 1)); window.scrollTo({ top: 0, behavior: 'smooth' }); }}
+  >
+    Next <ArrowRight className="h-3.5 w-3.5 ml-1" />
+  </Button>
+</div>
 
               {/* Caption */}
               <p className="text-center text-[11px] text-muted-foreground">
@@ -593,7 +612,7 @@ export default function JobEditPage() {
               </Card>
 
               <CompletenessCard
-                missing={missingRequired.length + (hasStages ? 0 : 1)}
+                missing={missingRequired.length + invalidUrlFields.length + (hasStages ? 0 : 1)}
                 total={REQUIRED_BASICS.length + REQUIRED_JD.length + 1}
               />
 
@@ -625,7 +644,7 @@ export default function JobEditPage() {
 }
 
 /* ───── Basics section ───── */
-function BasicsSection({ form, setField, isLocked, missingRequired, showValidation }) {
+function BasicsSection({ form, setField, isLocked, missingRequired, invalidUrlFields, showValidation }) {
   const isMissing = (k) => showValidation && missingRequired.includes(k);
 
   // Live salary band preview shown beneath the pay fields.
@@ -688,7 +707,13 @@ function BasicsSection({ form, setField, isLocked, missingRequired, showValidati
               className="text-sm"
             />
           </Field>
-          <Field label="Company URL" help="Where candidates can learn more." required missing={isMissing('company_url')}>
+          <Field 
+            label="Company URL" 
+            help="Where candidates can learn more." 
+            required 
+            missing={isMissing('company_url') || invalidUrlFields.includes('company_url')}
+            missingMessage={isMissing('company_url') ? 'required' : 'must be a valid URL (e.g. https://example.com)'}
+          >
             <Input
               type="url"
               value={form.company_url || ''}
@@ -947,7 +972,7 @@ function JDSection({
 
 /* ───── Tiny helpers ───── */
 
-function Field({ label, required, missing, help, children }) {
+function Field({ label, required, missing, missingMessage = 'required', help, children }) {
   return (
     <div>
       <div className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground mb-1 flex items-center gap-1.5">
@@ -955,14 +980,12 @@ function Field({ label, required, missing, help, children }) {
         {required && <span className="text-rose-600">*</span>}
         {missing && (
           <span className="text-[10px] text-rose-600 inline-flex items-center gap-1 font-normal normal-case">
-            <AlertTriangle className="h-3 w-3" /> required
+            <AlertTriangle className="h-3 w-3" /> {missingMessage}
           </span>
         )}
       </div>
       {children}
-      {help && (
-        <p className="text-[10px] text-muted-foreground mt-1 leading-snug">{help}</p>
-      )}
+      {help && <p className="text-[10px] text-muted-foreground mt-1 leading-snug">{help}</p>}
     </div>
   );
 }

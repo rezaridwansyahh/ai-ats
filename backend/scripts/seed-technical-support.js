@@ -19,7 +19,7 @@ import { fileURLToPath } from 'url';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
-const DB_URL   = 'postgresql://postgres:postgres123@localhost:5432/newtest';
+const DB_URL   = 'postgresql://postgres:postgres123@localhost:5432/myralix';
 const PARSED   = path.join(__dirname, 'parsed-results.json');
 const COMPANY_ID = 1;
 
