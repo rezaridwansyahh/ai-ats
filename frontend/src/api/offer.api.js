@@ -16,8 +16,18 @@ const offerAPI = {
   // Update compensation
   updateCompensation: (offerId, data) => api.put(`/offer/${offerId}/compensation`, data),
 
-  // Send offer letter
+  // Send offer letter (first send — creates the offer_send token)
   sendOfferLetter: (offerId) => api.post(`/offer/${offerId}/send`),
+
+  resendOffer: (offerId) => api.post(`/offer/${offerId}/resend`),
+
+  getSendHistory: (offerId) => api.get(`/offer/${offerId}/send-history`),
+
+  getDispatchSettings: (offerId) => api.get(`/offer/${offerId}/dispatch-settings`),
+
+  saveDispatchSettings: (offerId, settings) => api.put(`/offer/${offerId}/dispatch-settings`, settings),
+
+  getTrackTimeline: (offerId) => api.get(`/offer/${offerId}/track`),
 
   // Candidate actions (portal - public endpoints)
   acceptOffer: (offerId, acceptanceNote) =>

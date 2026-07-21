@@ -374,6 +374,47 @@ class OfferModel {
     const result = await getDb().query(query, [offer_id, JSON.stringify(metadata)]);
     return result.rows[0]?.metadata;
   }  
+
+  async createOfferSend(data) {
+    const query = `
+      INSERT INTO offer_send (
+        offer_id, token_expires_at, document, sent_at, sent_by, status
+      )
+      VALUES ($1, $2, $3, NOW(), $4, 'sent')
+      RETURNING *
+    `;
+    const result = await getDb().query(query, [
+      data.offer_id,
+      data.token_expires_at,
+      JSON.stringify(data.document || {}),
+      data.sent_by || null,
+    ]);
+    return result.rows[0];
+  }
+ 
+  async revokeActiveOfferSends(offer_id, revoked_by, reason) {
+    const result = await getDb().query(`
+      UPDATE offer_send
+      SET revoked_at = NOW(), revoked_by = $2, revocation_reason = $3, updated_at = NOW()
+      WHERE offer_id = $1 AND status = 'sent' AND revoked_at IS NULL
+      RETURNING *
+    `, [offer_id, revoked_by, reason || 'Superseded by a new send']);
+    return result.rows;
+  }
+  
+  async getOfferSendHistory(offer_id) {
+    const query = `
+      SELECT os.*, mu.username AS sent_by_name
+      FROM offer_send os
+      LEFT JOIN master_users mu ON mu.id = os.sent_by
+      WHERE os.offer_id = $1
+      ORDER BY os.sent_at DESC
+    `;
+    const result = await getDb().query(query, [offer_id]);
+    return result.rows;
+  }
+
+
 }
 
 export default new OfferModel();
