@@ -86,7 +86,7 @@ function isExpired(summary) {
 const FORM_FIELD_LABEL_ID = {
   full_name:         'Full Name',
   date_of_birth:     'Date of Birth',
-  national_id:       'National ID',
+  national_id:       'Identity Number',
   education_level:   'Highest Education Level',
   institution:       'Institution Name',
   last_employer:     'Last Employer',
@@ -102,7 +102,7 @@ const FORM_SECTION_LABEL_ID = {
 };
 const FORM_FIELD_PLACEHOLDER_ID = {
   full_name:         'Full name as on ID',
-  national_id:       'National ID number',
+  national_id:       '16-digit NIK or Passport number',
   institution:       'University / school name',
   last_employer:     'Company name',
   last_position:     'Most recent job title',
@@ -163,6 +163,8 @@ export default function QAFollowUpPage() {
   const [formValues, setFormValues] = useState({});  // keyed by schema field key
   const [fieldErrors, setFieldErrors] = useState({});// key -> true when required + empty
   const [portalTab, setPortalTab] = useState('form');// 'form' | 'questions' — form first (required)
+  const [identityType, setIdentityType] = useState('KTP'); // 'KTP' | 'Passport'
+  const [talentPoolConsent, setTalentPoolConsent] = useState(false);
 
   /* Initial load — pick a view based on the public summary. */
   useEffect(() => {
@@ -211,8 +213,14 @@ export default function QAFollowUpPage() {
       setQa(fresh);
       const qs = Array.isArray(fresh.questions) ? fresh.questions : [];
       setAnswers(qs.map(() => ''));
-      setFormValues(buildInitialFormValues(fresh.application_form_schema, fresh.application_form));
+      const savedIdType = fresh.application_form?.identity_type || 'KTP';
+      setIdentityType(savedIdType);
+      setFormValues({
+        ...buildInitialFormValues(fresh.application_form_schema, fresh.application_form),
+        identity_type: savedIdType,
+      });
       setFieldErrors({});
+      setTalentPoolConsent(false);
       setPortalTab('form');
       setView('form');
     } catch (err) {
@@ -257,6 +265,24 @@ export default function QAFollowUpPage() {
       return;
     }
 
+    // 1b) Identity Number format validation.
+    const nationalIdVal = (formValues.national_id || '').trim();
+    if (nationalIdVal) {
+      const ktpValid      = /^\d{16}$/.test(nationalIdVal);
+      const passportValid = /^[a-zA-Z0-9]+$/.test(nationalIdVal);
+      const isValid = identityType === 'KTP' ? ktpValid : passportValid;
+      if (!isValid) {
+        setFieldErrors((cur) => ({ ...cur, national_id: true }));
+        setPortalTab('form');
+        setError(
+          identityType === 'KTP'
+            ? 'NIK (KTP) must be exactly 16 digits.'
+            : 'Passport number must contain only letters and numbers.'
+        );
+        return;
+      }
+    }
+
     // 2) At least one answer when questions exist.
     const questions = Array.isArray(qa?.questions) ? qa.questions : [];
     if (questions.length > 0 && !answers.some((a) => (a || '').trim().length > 0)) {
@@ -267,7 +293,8 @@ export default function QAFollowUpPage() {
 
     setBusy(true);
     try {
-      await submitQa(token, answers, schema ? formValues : null);
+      const submitValues = schema ? { ...formValues, identity_type: identityType } : null;
+      await submitQa(token, answers, submitValues);
       localStorage.removeItem(PORTAL_TOKEN_KEY);
       setView('submitted');
     } catch (err) {
@@ -451,6 +478,13 @@ export default function QAFollowUpPage() {
                     errors={fieldErrors}
                     onField={setFormField}
                     onToggle={toggleFormOption}
+                    identityType={identityType}
+                    onIdentityTypeChange={(t) => {
+                      setIdentityType(t);
+                      setFormField('identity_type', t);
+                      // Clear national_id error when type switches
+                      setFieldErrors((cur) => ({ ...cur, national_id: false }));
+                    }}
                   />
                 ) : (
                   <Card><CardContent className="p-5 text-center text-[11px] text-muted-foreground italic">
@@ -503,12 +537,29 @@ export default function QAFollowUpPage() {
 
               {/* One submit, sticky + visible from both tabs */}
               <div className="sticky bottom-3 pt-1">
-                <div className="rounded-lg border bg-background shadow-lg p-2">
-                  <Button onClick={handleSubmit} disabled={busy} className="w-full text-sm">
+                <div className="rounded-lg border bg-background shadow-lg p-3 space-y-2.5">
+                  {/* Talent pool consent */}
+                  <label className="flex items-start gap-2.5 cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={talentPoolConsent}
+                      onChange={(e) => setTalentPoolConsent(e.target.checked)}
+                      className="mt-0.5 h-3.5 w-3.5 shrink-0 rounded border-border accent-primary"
+                    />
+                    <span className="text-[10.5px] text-muted-foreground leading-relaxed">
+                      I consent to my personal information being stored in the talent pool for future recruitment opportunities by this organisation.
+                    </span>
+                  </label>
+                  <Button onClick={handleSubmit} disabled={busy || !talentPoolConsent} className="w-full text-sm">
                     {busy
                       ? <><Loader2 className="h-3.5 w-3.5 mr-1.5 animate-spin" />{T.submitting}</>
                       : <><Send className="h-3.5 w-3.5 mr-1.5" />{T.submitButton}</>}
                   </Button>
+                  {!talentPoolConsent && (
+                    <p className="text-[10px] text-muted-foreground text-center">
+                      Please tick the consent box above to enable submission.
+                    </p>
+                  )}
                 </div>
               </div>
             </div>
@@ -551,7 +602,7 @@ function CenteredCard({ children }) {
 }
 
 /* ─── Candidate-editable Application Form, rendered from the schema snapshot ─── */
-function PortalApplicationForm({ schema, values, errors, onField, onToggle }) {
+function PortalApplicationForm({ schema, values, errors, onField, onToggle, identityType, onIdentityTypeChange }) {
   const sections = Array.isArray(schema?.sections) ? schema.sections : [];
   return (
     <div className="space-y-3">
@@ -569,6 +620,8 @@ function PortalApplicationForm({ schema, values, errors, onField, onToggle }) {
                 invalid={!!errors[field.key]}
                 onField={onField}
                 onToggle={onToggle}
+                identityType={identityType}
+                onIdentityTypeChange={onIdentityTypeChange}
               />
             ))}
           </CardContent>
@@ -578,8 +631,65 @@ function PortalApplicationForm({ schema, values, errors, onField, onToggle }) {
   );
 }
 
-function PortalFormField({ field, value, invalid, onField, onToggle }) {
+function PortalFormField({ field, value, invalid, onField, onToggle, identityType, onIdentityTypeChange }) {
   const errCls = invalid ? 'border-rose-400 focus-visible:ring-rose-300' : '';
+
+  // Special rendering for national_id — show identity type toggle above the input.
+  if (field.key === 'national_id') {
+    const isKtp = identityType === 'KTP';
+    const inputPattern = isKtp ? '[0-9]{16}' : '[a-zA-Z0-9]+';
+    const inputMaxLength = isKtp ? 16 : undefined;
+    return (
+      <div className="space-y-1.5">
+        <label className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
+          {labelFor(field)}
+          {field.required && <span className="text-rose-500 ml-0.5">*</span>}
+        </label>
+        {/* Identity type toggle */}
+        <div className="flex gap-1.5">
+          {['KTP', 'Passport'].map((t) => (
+            <button
+              key={t}
+              type="button"
+              onClick={() => onIdentityTypeChange?.(t)}
+              className={`px-3 py-1 rounded-md border text-xs font-semibold transition-colors ${
+                identityType === t
+                  ? 'bg-primary text-primary-foreground border-primary'
+                  : 'bg-background text-muted-foreground hover:bg-muted border-border'
+              }`}
+            >
+              {t}
+            </button>
+          ))}
+        </div>
+        <Input
+          type="text"
+          value={value ?? ''}
+          onChange={(e) => {
+            const raw = e.target.value;
+            // KTP: digits only; Passport: alphanumeric
+            if (isKtp && raw && !/^\d*$/.test(raw)) return;
+            if (!isKtp && raw && !/^[a-zA-Z0-9]*$/.test(raw)) return;
+            onField(field.key, raw);
+          }}
+          placeholder={isKtp ? '16-digit NIK number' : 'Passport number (alphanumeric)'}
+          maxLength={isKtp ? 16 : undefined}
+          inputMode={isKtp ? 'numeric' : 'text'}
+          aria-invalid={invalid}
+          className={`h-9 text-sm ${errCls}`}
+        />
+        {isKtp && value && value.length !== 16 && value.length > 0 && (
+          <p className="text-[10px] text-amber-600">{value.length}/16 digits</p>
+        )}
+        {invalid && (
+          <p className="text-[10px] text-rose-600">
+            {isKtp ? 'NIK must be exactly 16 digits.' : 'Passport must be alphanumeric.'}
+          </p>
+        )}
+      </div>
+    );
+  }
+
   return (
     <div className="space-y-1">
       <label className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">

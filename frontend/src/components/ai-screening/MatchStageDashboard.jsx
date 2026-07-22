@@ -6,7 +6,7 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { StatCard, FIXED_KEYS, FIXED_META } from './shared';
-import { matchBulk } from '@/api/screening.api';
+import { scoreCandidatesList } from '@/api/screening.api';
 
 /*
  * Job-level "AI Matching" dashboard.
@@ -47,27 +47,26 @@ export default function MatchStageDashboard({ jobId, pendingRows = [], scoredRow
     ? Math.round(scoredRows.reduce((s, r) => s + (r.overall_score ?? 0), 0) / scoredRows.length)
     : 0;
 
-  // ✅ WIRED — real matchBulk call
   const handleRunPending = async () => {
     if (!jobId || pendingRows.length === 0 || running) return;
     setRunning(true);
     try {
       const applicant_ids = pendingRows.map((r) => r.applicant_id);
-      const res = await matchBulk(jobId, applicant_ids);
+      const res = await scoreCandidatesList(jobId, applicant_ids);
       const { scored = 0, total = 0, errors = [] } = res.data || {};
       if (errors.length > 0) {
-        toast.error('Matching finished with errors', {
+        toast.error('Bulk scoring finished with errors', {
           description: `${scored}/${total} scored · ${errors.length} failed. Check console for details.`,
         });
-        console.warn('matchBulk errors:', errors);
+        console.warn('scoreCandidatesList errors:', errors);
       } else {
-        toast.success('Matching complete', {
+        toast.success('Bulk scoring complete', {
           description: `${scored} of ${total} candidates scored.`,
         });
       }
       await onScored?.(); // ask AIScreeningPage to reload lane data
     } catch (err) {
-      toast.error('Matching failed', {
+      toast.error('Bulk scoring failed', {
         description: err.response?.data?.message || err.message || 'Unknown error',
       });
     } finally {
@@ -79,8 +78,8 @@ export default function MatchStageDashboard({ jobId, pendingRows = [], scoredRow
     <div className="space-y-4 p-4">
       {/* Stats row */}
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-        <StatCard label="Ready to match" value={pendingRows.length} />
-        <StatCard label="Matched" value={scoredRows.length} />
+        <StatCard label="Awaiting Score" value={pendingRows.length} />
+        <StatCard label="Scored" value={scoredRows.length} />
         <StatCard label="Top score" value={scoredRows.length ? topScore : '—'} />
         <StatCard label="Avg score" value={scoredRows.length ? avgScore : '—'} />
       </div>
@@ -118,8 +117,8 @@ export default function MatchStageDashboard({ jobId, pendingRows = [], scoredRow
             </div>
             <Button size="sm" className="text-xs" onClick={handleRunPending} disabled={running}>
               {running
-                ? <><Loader2 className="h-3.5 w-3.5 mr-1.5 animate-spin" /> Matching…</>
-                : <><PlayCircle className="h-3.5 w-3.5 mr-1.5" /> Run matching for all pending</>}
+                ? <><Loader2 className="h-3.5 w-3.5 mr-1.5 animate-spin" /> Scoring…</>
+                : <><PlayCircle className="h-3.5 w-3.5 mr-1.5" /> Score All Pending Candidates</>}
             </Button>
           </CardContent>
         </Card>

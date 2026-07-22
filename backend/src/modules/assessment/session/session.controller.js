@@ -144,6 +144,16 @@ class SessionController {
       res.status(err.status || 500).json({ message: err.message });
     }
   }
+
+  async sendInvitation(req, res) {
+    try {
+      const { subject, body } = req.body;
+      const result = await sessionService.sendInvitation(req.params.id, { subject, body });
+      res.status(200).json({ message: 'Invitation sent', ...result });
+    } catch (err) {
+      res.status(err.status || 500).json({ message: err.message });
+    }
+  }
 }
 
 export default new SessionController();

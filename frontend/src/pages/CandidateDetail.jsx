@@ -267,6 +267,8 @@ export default function CandidateDetailPage() {
                   existingSessions={existingSessions}
                   onSessionsChange={setExistingSessions}
                   onRevoke={handleRevoke}
+                  candidateName={candidateView.name}
+                  candidateEmail={candidateView.email !== '—' ? candidateView.email : ''}
                 />
               )}
               {activeKey === 'decide' && (

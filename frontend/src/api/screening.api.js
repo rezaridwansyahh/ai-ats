@@ -16,8 +16,24 @@ export const searchScreening = (params = {}) => {
 export const getScreeningResult = (applicant_id, job_id) =>
   api.get('/screening/result', { params: { applicant_id, job_id } });
 
-export const scoreCandidate = (applicant_id, job_id) =>
+// Legacy simple score (POST /screening/score) — kept for ListCandidate flow.
+export const scoreCandidateLegacy = (applicant_id, job_id) =>
   api.post('/screening/score', { applicant_id, job_id });
+
+// Score ALL candidates in a job using the supplied (or saved) rubric.
+// Equivalent to the old `runMatching`.
+export const scoreAllCandidates = (job_id, { rubric, role_profile } = {}) =>
+  api.post(`/screening/match/${job_id}`, { rubric, role_profile });
+
+// Score ONE candidate in a job — saves the rubric so the UI rubric is respected.
+// Use this from the candidate detail page.
+export const scoreCandidate = (job_id, applicant_id, { rubric, role_profile } = {}) =>
+  api.post(`/screening/job/${job_id}/score-candidate`, { applicant_id, rubric, role_profile });
+
+// Score a specific list of candidates using the saved rubric (no rubric in request).
+// Equivalent to the old `matchBulk`. Use this from the workboard bulk-run action.
+export const scoreCandidatesList = (job_id, applicant_ids, { force } = {}) =>
+  api.post(`/screening/job/${job_id}/match-bulk`, { applicant_ids, force: !!force });
 
 export const scoreBulkForJob = (job_id) =>
   api.post(`/screening/score-bulk/${job_id}`);
@@ -33,15 +49,12 @@ export const extractFacetsFromFile = (applicant_id, file) => {
 export const extractFacetsFromText = (applicant_id, cv_text) =>
   api.post(`/screening/extract-facets/${applicant_id}`, { cv_text });
 
-// AI Matching (rubric flow)
+// AI Scoring — rubric management
 export const getRubric = (job_id) =>
   api.get(`/screening/rubric/${job_id}`);
 
 export const saveRubric = (job_id, rubric) =>
   api.put(`/screening/rubric/${job_id}`, { rubric });
-
-export const runMatching = (job_id, { rubric, role_profile } = {}) =>
-  api.post(`/screening/match/${job_id}`, { rubric, role_profile });
 
 export const getMatchingResults = (job_id) =>
   api.get(`/screening/match/${job_id}/results`);
@@ -55,9 +68,6 @@ export const getLaneCandidates = (job_id, engine) =>
 
 export const parseBulk = (applicant_ids) =>
   api.post('/screening/parse-bulk', { applicant_ids });
-
-export const matchBulk = (job_id, applicant_ids, { force } = {}) =>
-  api.post(`/screening/job/${job_id}/match-bulk`, { applicant_ids, force: !!force });
 
 // L3 Candidate detail (Phase 3)
 export const getScreening = (screening_id) =>

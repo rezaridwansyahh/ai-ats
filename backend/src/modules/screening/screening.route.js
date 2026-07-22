@@ -15,17 +15,18 @@ router.post('/extract-facets/:applicant_id', upload.single('cv'), screeningContr
 router.post('/score', screeningController.score);
 router.post('/score-bulk/:job_id', screeningController.scoreBulk);
 
-// AI Matching (rubric flow)
-router.get('/rubric/:job_id',  screeningController.getRubric);
-router.put('/rubric/:job_id',  screeningController.saveRubric);
-router.post('/match/:job_id',  screeningController.runMatching);
-router.get('/match/:job_id/results', screeningController.getMatchingResults);
+// AI Scoring (rubric flow)
+router.get('/rubric/:job_id',                      screeningController.getRubric);
+router.put('/rubric/:job_id',                      screeningController.saveRubric);
+router.post('/match/:job_id',                      screeningController.scoreAllCandidates);   // score ALL in job
+router.post('/job/:job_id/score-candidate',        screeningController.scoreCandidate);        // score ONE candidate
+router.get('/match/:job_id/results',               screeningController.getMatchingResults);
 
 // L1 Workboard + bulk lane actions (Phase 2)
-router.get('/workboard',                 screeningController.getWorkboard);
-router.get('/job/:job_id/lane',          screeningController.getLaneCandidates);
-router.post('/parse-bulk',               screeningController.parseBulk);
-router.post('/job/:job_id/match-bulk',   screeningController.matchBulk);
+router.get('/workboard',                           screeningController.getWorkboard);
+router.get('/job/:job_id/lane',                    screeningController.getLaneCandidates);
+router.post('/parse-bulk',                         screeningController.parseBulk);
+router.post('/job/:job_id/match-bulk',             screeningController.scoreCandidatesList);  // score specific list
 
 // L3 Candidate detail (Phase 3)
 router.get('/screening/:screening_id',                screeningController.getScreening);

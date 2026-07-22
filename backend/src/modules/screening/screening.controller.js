@@ -109,24 +109,39 @@ class ScreeningController {
     }
   }
 
-  async runMatching(req, res) {
+  // POST /screening/match/:job_id — score ALL candidates in the job
+  async scoreAllCandidates(req, res) {
     try {
       const job_id = Number(req.params.job_id);
       const { rubric, role_profile } = req.body || {};
-      const result = await screeningService.runMatching(job_id, {
+      const result = await screeningService.scoreAllCandidates(job_id, {
         rubric,
         role_profile,
         context: ctxFromReq(req),
       });
-      res.status(200).json({ message: 'AI matching complete', ...result });
+      res.status(200).json({ message: 'All candidates scored', ...result });
     } catch (err) {
-      // Task 6.12: Pass through 402 budget exceeded error
       if (err.status === 402) {
-        return res.status(402).json({
-          message: err.message,
-          budget: err.budget,
-          spent: err.spent
-        });
+        return res.status(402).json({ message: err.message, budget: err.budget, spent: err.spent });
+      }
+      res.status(err.status || 500).json({ message: err.message });
+    }
+  }
+
+  // POST /screening/job/:job_id/score-candidate — score ONE candidate (saves rubric)
+  async scoreCandidate(req, res) {
+    try {
+      const job_id      = Number(req.params.job_id);
+      const { applicant_id, rubric, role_profile } = req.body || {};
+      const result = await screeningService.scoreCandidate(job_id, Number(applicant_id), {
+        rubric,
+        role_profile,
+        context: ctxFromReq(req),
+      });
+      res.status(200).json({ message: 'Candidate scored', ...result });
+    } catch (err) {
+      if (err.status === 402) {
+        return res.status(402).json({ message: err.message, budget: err.budget, spent: err.spent });
       }
       res.status(err.status || 500).json({ message: err.message });
     }
@@ -250,11 +265,12 @@ class ScreeningController {
     }
   }
 
-  async matchBulk(req, res) {
+  // POST /screening/job/:job_id/match-bulk — score a specific list of candidates
+  async scoreCandidatesList(req, res) {
     try {
       const job_id = Number(req.params.job_id);
       const { applicant_ids, force } = req.body || {};
-      const result = await screeningService.matchBulk(job_id, applicant_ids, {
+      const result = await screeningService.scoreCandidatesList(job_id, applicant_ids, {
         force: !!force,
         context: ctxFromReq(req),
       });

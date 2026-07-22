@@ -187,7 +187,8 @@ class ScreeningService {
     return await screeningModel.saveRubric(job_id, rubric);
   }
 
-  async runMatching(job_id, { rubric: providedRubric, role_profile, context = {} } = {}) {
+  // Score ALL candidates in a job (uses / saves rubric). Previously named runMatching.
+  async scoreAllCandidates(job_id, { rubric: providedRubric, role_profile, context = {} } = {}) {
     if (!job_id) throw { status: 400, message: 'job_id is required' };
 
     const job = await jobModel.getById(job_id);
@@ -247,6 +248,57 @@ class ScreeningService {
     }
 
     return { scored: results.length, total_candidates: candidates.length, errors, results };
+  }
+
+  // Score ONE candidate against a job. Saves rubric if provided (so UI changes persist).
+  // Use this from the candidate detail page so the UI rubric is respected.
+  async scoreCandidate(job_id, applicant_id, { rubric: providedRubric, role_profile, context = {} } = {}) {
+    if (!job_id)      throw { status: 400, message: 'job_id is required' };
+    if (!applicant_id) throw { status: 400, message: 'applicant_id is required' };
+
+    const job = await jobModel.getById(job_id);
+    if (!job) throw { status: 404, message: 'Job not found' };
+
+    let rubric = providedRubric;
+    if (rubric) {
+      this.validateRubric(rubric);
+      await screeningModel.saveRubric(job_id, rubric);
+    } else {
+      rubric = await screeningModel.getRubric(job_id);
+      if (!rubric) throw { status: 400, message: 'No rubric provided and no saved rubric exists for this job' };
+    }
+
+    const roleProfile = role_profile === 'fresh_graduate' ? 'fresh_graduate' : 'experienced';
+
+    const applicant = await screeningModel.getApplicant(applicant_id);
+    if (!applicant?.information) {
+      throw { status: 400, message: 'No CV facets — run Extract CV first' };
+    }
+
+    const aiContext = {
+      ...context,
+      metadata: { applicant_id, job_id, ...(context.metadata || {}) },
+    };
+    const llm = await aiService.scoreWithRubric(job, applicant.information, rubric, roleProfile, aiContext);
+    const overall_score = this.computeOverall(rubric, llm);
+
+    const stored = await screeningModel.upsertScore({
+      applicant_id,
+      job_id,
+      overall_score,
+      skills_score:              llm.skills_score,
+      experience_score:          llm.experience_score,
+      career_trajectory_score:   llm.career_trajectory_score,
+      education_score:           llm.education_score,
+      matched_skills:            llm.matched_skills,
+      missing_skills:            llm.missing_skills,
+      custom_criteria_results:   llm.custom_criteria_results,
+      rubric_snapshot:           rubric,
+      role_profile:              roleProfile,
+      summary:                   llm.summary,
+    });
+
+    return { scored: 1, result: stored };
   }
 
   async getMatchingResults(job_id) {
@@ -366,8 +418,9 @@ class ScreeningService {
     return { parsed: results.length, total: applicant_ids.length, results, errors };
   }
 
-  // Match a list of applicants against one job. Skips already-scored unless force=true.
-  async matchBulk(job_id, applicant_ids, { force = false, context = {} } = {}) {
+  // Score a specific list of applicants against one job. Skips already-scored unless force=true.
+  // Previously named matchBulk.
+  async scoreCandidatesList(job_id, applicant_ids, { force = false, context = {} } = {}) {
     if (!job_id) throw { status: 400, message: 'job_id is required' };
     if (!Array.isArray(applicant_ids) || applicant_ids.length === 0) {
       throw { status: 400, message: 'applicant_ids must be a non-empty array' };

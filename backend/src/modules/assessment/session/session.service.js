@@ -1,6 +1,7 @@
 import Session from './session.model.js';
 import Participant from '../participant/participant.model.js';
 import { resolveParticipantByCandidate } from '../../../shared/services/candidate-resolver.js';
+import { sendAssessmentInvitationEmail } from '../../../shared/services/candidate-mailer.js';
 
 const EDITABLE_FIELDS = ['battery', 'participant_id', 'job_id', 'status', 'expired_at', 'notes'];
 const VALID_BATTERIES = ['A', 'B', 'C', 'D', 'I', 'T'];
@@ -177,6 +178,36 @@ class SessionService {
     if (!session) throw { status: 404, message: 'Session not found' };
     await Session.delete(id);
     return session;
+  }
+
+  async sendInvitation(session_id, { subject, body } = {}) {
+    const session = await Session.getById(session_id);
+    if (!session) throw { status: 404, message: 'Session not found' };
+    if (session.status === 'revoked')  throw { status: 409, message: 'Session is revoked' };
+    if (session.status === 'expired')  throw { status: 410, message: 'Session has expired' };
+    if (session.status === 'completed') throw { status: 409, message: 'Session is already completed' };
+
+    const ctx = await Session.getCandidateContext(session_id);
+    if (!ctx?.candidate_email) {
+      throw { status: 400, message: `Candidate "${ctx?.candidate_name || session_id}" has no email on file` };
+    }
+
+    const origin = (process.env.PORTAL_BASE_URL || 'http://localhost:5173')
+      .replace(/\/portal$/, '');
+    const dashless = String(session.token || '').replaceAll('-', '');
+    const link = `${origin}/portal/assessment-placement/${dashless}`;
+
+    await sendAssessmentInvitationEmail({
+      candidateName:  ctx.candidate_name,
+      candidateEmail: ctx.candidate_email,
+      jobTitle:       ctx.job_title || 'the position',
+      battery:        session.battery,
+      link,
+      customSubject:  subject || null,
+      customBody:     body    || null,
+    });
+
+    return { sent_to: ctx.candidate_email, link };
   }
 }
 
