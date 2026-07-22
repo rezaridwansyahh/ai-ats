@@ -154,5 +154,6 @@ router.post( '/:offer_id/approval/:step_index/decide', authToken, checkPermissio
 router.get( '/:offer_id/send-history', authToken, checkPermission('Offer & Onboard', 'Offer & Contract', 'read'), OfferController.getSendHistory);
  
 router.post( '/:offer_id/resend', authToken, checkPermission('Offer & Onboard', 'Offer & Contract', 'update'), OfferController.resendOffer);
+router.post( '/:offer_id/revoke', authToken, checkPermission('Offer & Onboard', 'Offer & Contract', 'update'), OfferController.revokeOffer);
 
 export default router;

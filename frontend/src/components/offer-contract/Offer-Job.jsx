@@ -9,7 +9,7 @@ import { Badge } from '@/components/ui/badge';
 import { getInitials } from '@/lib/batteries';
 
 import { getJobById } from '@/api/job.api';
-import offerAPI from '@/api/offer.api';
+import { getOffersByJob } from '@/api/offer.api';
 
 const STATUS_META = {
   draft:       { label: 'Draft',       color: 'bg-slate-100 text-slate-700'   },
@@ -108,7 +108,7 @@ export default function OfferJobPage() {
     try {
       const [jobRes, offersRes] = await Promise.all([
         getJobById(jobId),
-        offerAPI.getOffersByJob(jobId),
+        getOffersByJob(jobId),
       ]);
       setJob(jobRes.data?.job || jobRes.data || null);
       setOffers(offersRes.data?.offers || []);
@@ -174,7 +174,6 @@ export default function OfferJobPage() {
         </div>
       )}
 
-      {/* Status strip */}
       <Card>
         <CardHeader className="pb-3">
           <CardTitle className="text-xs uppercase tracking-wide text-muted-foreground">

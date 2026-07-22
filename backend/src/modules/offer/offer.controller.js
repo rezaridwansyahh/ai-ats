@@ -318,6 +318,19 @@ class OfferController {
       res.status(error.status || 500).json({ message: error.message });
     }
   }
+
+  async revokeOffer(req, res) {
+    try {
+      const { offer_id } = req.params;
+      const { company_id, user_id } = req.user;
+      const { reason } = req.body;
+      const result = await OfferService.revokeOffer(offer_id, company_id, user_id, reason);
+      res.json(result);
+    } catch (error) {
+      console.error('Error in revokeOffer:', error);
+      res.status(error.status || 500).json({ message: error.message });
+    }
+  }
   
   async getSendHistory(req, res) {
     try {
