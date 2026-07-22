@@ -21,10 +21,10 @@ import {
   Dialog, DialogContent, DialogHeader, DialogFooter, DialogTitle, DialogDescription,
 } from '@/components/ui/dialog';
 import {
-  getScreening, setScreeningDecision, getRubric, runMatching,
+  getScreening, setScreeningDecision, getRubric,
   getQa, getQaResponses, generateQa, updateQa, sendQa,
   getApplicationFormTemplate, extractFacetsFromFile, extractFacetsFromText,
-  getScreeningByCandidate
+  getScreeningByCandidate, scoreCandidate,
 } from '@/api/screening.api';
 import {
   Select,
@@ -77,7 +77,7 @@ const DECISION_BADGE_CLS = {
 
 /* Match engine: rubric config + run. */
 function useMatch(data, onScored) {
-  const { job_id } = data || {};
+  const { job_id, applicant_id } = data || {};
 
   const [roleProfileSel, setRoleProfileSel] = useState('experienced');
   const [rubric, setRubric] = useState(DEFAULT_RUBRIC);
@@ -128,11 +128,12 @@ function useMatch(data, onScored) {
     setRubric((rb) => ({ ...rb, custom_criteria: (rb.custom_criteria || []).map((c, i) => (i === idx ? { ...c, weight } : c)) }));
 
   const handleRun = async () => {
-    if (!job_id || !totalIs100 || running) return;
+    if (!job_id || !applicant_id || !totalIs100 || running) return;
     setRunning(true);
     setRunError(null);
     try {
-      await runMatching(job_id, { rubric, role_profile: roleProfileSel });
+      // Score only this candidate, sending the current UI rubric so it is saved + used.
+      await scoreCandidate(job_id, applicant_id, { rubric, role_profile: roleProfileSel });
       await onScored?.();
     } catch (err) {
       setRunError(err.response?.data?.message || err.message || 'AI matching failed');
@@ -398,7 +399,7 @@ export default function AIScreeningCandidatePage() {
   
   const decisionLocked = qa.status !== 'responded';
   const decisionLockReason = !scored
-    ? 'Run AI Matching first to score this candidate.'
+    ? 'Score this candidate first — use "Score This Candidate" in the Match step.'
     : qa.status === 'sent'
       ? 'Waiting for the candidate\'s Q&A response.'
       : qa.status === 'expired'
@@ -647,7 +648,7 @@ function SidebarAction({ activeEngine, match, qa, scored, parsed, overall_score,
           ) : (
             <Button className="w-full text-xs" onClick={match.handleRun} disabled={!match.totalIs100 || match.running}>
               {match.running ? <Loader2 className="h-3.5 w-3.5 mr-1.5 animate-spin" /> : <Wand2 className="h-3.5 w-3.5 mr-1.5" />}
-              Run AI Matching
+              Score This Candidate
             </Button>
           )}
 
@@ -655,7 +656,7 @@ function SidebarAction({ activeEngine, match, qa, scored, parsed, overall_score,
           {scored && (
             <Button variant="outline" size="sm" className="w-full text-xs" onClick={match.handleRun} disabled={!match.totalIs100 || match.running}>
               {match.running ? <Loader2 className="h-3.5 w-3.5 mr-1.5 animate-spin" /> : <RefreshCw className="h-3.5 w-3.5 mr-1.5" />}
-              Re-run Matching
+              Re-score This Candidate
             </Button>
           )}
 
@@ -701,7 +702,7 @@ function SidebarAction({ activeEngine, match, qa, scored, parsed, overall_score,
         
         {!scored ? (
           <p className="text-[10px] text-muted-foreground leading-snug">
-            Run AI Matching first — follow-up Q&A unlocks once this candidate has a fit score.
+            Score this candidate first — Q&A unlocks once a fit score exists.
           </p>
         ) : qa.status === 'responded' ? (
           <div className="flex items-center gap-1.5 text-[10px] text-emerald-700">
@@ -1354,7 +1355,7 @@ function MatchPanel({ data, match }) {
           {/* Fit breakdown OR not-scored hint */}
           {!score_id ? (
             <p className="border-t pt-4 text-center text-xs text-muted-foreground italic">
-              Not scored yet. Configure the rubric above and Run AI Matching from the sidebar.
+              Not scored yet. Configure the rubric above and click <span className="font-semibold not-italic">Score This Candidate</span> in the sidebar.
             </p>
           ) : (
             <div className="space-y-4 border-t pt-4">
@@ -1473,8 +1474,8 @@ function QAPanel({ qaCtl, jobTitle, scored }) {
           </CardTitle>
         </CardHeader>
         <CardContent className="py-8 text-center text-xs text-muted-foreground italic">
-          Run AI Matching first — follow-up Q&A unlocks once this candidate has a fit score.
-          Open the <span className="font-medium not-italic">Match</span> step and click <span className="font-medium not-italic">Run AI Matching</span>.
+          Score this candidate first — Q&A unlocks once a fit score exists.
+          Open the <span className="font-medium not-italic">Match</span> step and click <span className="font-medium not-italic">Score This Candidate</span>.
         </CardContent>
       </Card>
     );

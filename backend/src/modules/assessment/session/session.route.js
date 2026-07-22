@@ -21,6 +21,7 @@ router.post('/', sessionController.create);
 router.post('/from-candidate', sessionController.findOrCreateFromCandidate);
 router.post('/:id/complete', sessionController.markCompleted);
 router.post('/:id/revoke', sessionController.revoke);
+router.post('/:id/send-invitation', sessionController.sendInvitation);
 
 router.put('/:id', sessionController.update);
 

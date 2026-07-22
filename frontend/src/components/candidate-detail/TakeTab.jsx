@@ -1,10 +1,15 @@
 import { useState } from 'react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Textarea } from '@/components/ui/textarea';
+import {
+  Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter,
+} from '@/components/ui/dialog';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { Copy, Check, Loader2, AlertTriangle, Sparkles, CheckCircle2, Ban } from 'lucide-react';
+import { Copy, Check, Loader2, AlertTriangle, Sparkles, CheckCircle2, Ban, Send, Mail } from 'lucide-react';
 import { BATTERIES } from '@/lib/batteries';
-import { generateSessionFromCandidate, revokeSession } from '@/api/session.api';
+import { generateSessionFromCandidate, revokeSession, sendSessionInvitation } from '@/api/session.api';
 import { RevokeSessionDialog } from './RevokeSessionDialog';
 
 // Tab 2: portal-link generator + read-only per-subtest status.
@@ -19,12 +24,22 @@ export default function TakeTab({
   existingSessions = [],
   onSessionsChange,
   onRevoke,
+  candidateName = '',
+  candidateEmail = '',
 }) {
   const [generating, setGenerating] = useState(false);
   const [error, setError]           = useState(null);
   const [revokeOpen, setRevokeOpen] = useState(false);
   const [revoking, setRevoking]     = useState(false);
   const [revokeError, setRevokeError] = useState(null);
+
+  // Email invitation dialog
+  const [inviteOpen, setInviteOpen]   = useState(false);
+  const [inviteSubject, setInviteSubject] = useState('');
+  const [inviteBody, setInviteBody]   = useState('');
+  const [inviteSending, setInviteSending] = useState(false);
+  const [inviteError, setInviteError] = useState(null);
+  const [inviteSent, setInviteSent]   = useState(false);
 
   if (!battery) {
     return (
@@ -82,68 +97,179 @@ export default function TakeTab({
     }
   };
 
+  // Open invite dialog and pre-fill template
+  const handleOpenInvite = () => {
+    const jobTitle = ''; // parent could pass jobTitle if needed; falls back gracefully
+    setInviteSubject(`Assessment Invitation — ${def.label} (Battery ${def.code})`);
+    setInviteBody(
+      `Hi ${candidateName || 'there'},\n\n` +
+      `Thank you for your interest in our position. As part of our selection process, ` +
+      `we invite you to complete a psychometric assessment (Battery ${def.code} · ${def.label}).\n\n` +
+      `Please access the assessment portal via the link below:\n\n{{LINK}}\n\n` +
+      `This link is valid for 7 days and is personal — kindly do not share it with others.\n\n` +
+      `Thank you,\nThe Recruitment Team`
+    );
+    setInviteError(null);
+    setInviteSent(false);
+    setInviteOpen(true);
+  };
+
+  const handleSendInvite = async () => {
+    if (!session?.id) return;
+    setInviteSending(true);
+    setInviteError(null);
+    try {
+      await sendSessionInvitation(session.id, {
+        subject: inviteSubject.trim(),
+        body:    inviteBody.trim(),
+      });
+      setInviteSent(true);
+      setTimeout(() => setInviteOpen(false), 1200);
+    } catch (err) {
+      setInviteError(err.response?.data?.message || 'Failed to send invitation.');
+    } finally {
+      setInviteSending(false);
+    }
+  };
+
   return (
-    <Card>
-      <CardContent className="space-y-4 p-5">
-        <div className="flex items-center justify-between flex-wrap gap-2">
-          <div>
-            <h3 className="text-sm font-bold">Take · candidate-facing portal</h3>
-            <p className="text-[11px] text-muted-foreground mt-0.5">
-              Battery {def.code} · {def.label}
-            </p>
+    <>
+      <Card>
+        <CardContent className="space-y-4 p-5">
+          <div className="flex items-center justify-between flex-wrap gap-2">
+            <div>
+              <h3 className="text-sm font-bold">Take · candidate-facing portal</h3>
+              <p className="text-[11px] text-muted-foreground mt-0.5">
+                Battery {def.code} · {def.label}
+              </p>
+            </div>
+            <span className="text-[11px] text-primary font-semibold">
+              {scoredCount} of {def.tests.length} tests scored
+              {scoredCount === def.tests.length ? ' · auto-advances to Score & Decide' : ''}
+            </span>
           </div>
-          <span className="text-[11px] text-primary font-semibold">
-            {scoredCount} of {def.tests.length} tests scored
-            {scoredCount === def.tests.length ? ' · auto-advances to Score & Decide' : ''}
-          </span>
-        </div>
 
-        {session
-          ? <PortalLinkPanel
-              battery={def.code}
-              token={session.token}
-              status={session.status}
-              submittedAt={session.submitted_at}
-              onRevokeClick={() => { setRevokeError(null); setRevokeOpen(true); }}
-              revokeError={revokeError}
-            />
-          : <GeneratePanel onGenerate={handleGenerate} generating={generating} error={error} />}
+          {session
+            ? <PortalLinkPanel
+                battery={def.code}
+                token={session.token}
+                status={session.status}
+                submittedAt={session.submitted_at}
+                onRevokeClick={() => { setRevokeError(null); setRevokeOpen(true); }}
+                onSendInviteClick={handleOpenInvite}
+                revokeError={revokeError}
+              />
+            : <GeneratePanel onGenerate={handleGenerate} generating={generating} error={error} />}
 
-        <RevokeSessionDialog
-          open={revokeOpen}
-          onOpenChange={setRevokeOpen}
-          session={session}
-          onConfirm={handleRevokeConfirm}
-          loading={revoking}
-        />
+          <RevokeSessionDialog
+            open={revokeOpen}
+            onOpenChange={setRevokeOpen}
+            session={session}
+            onConfirm={handleRevokeConfirm}
+            loading={revoking}
+          />
 
-        <div className="rounded-lg border overflow-hidden">
-          <Table>
-            <TableHeader className="bg-muted/50">
-              <TableRow>
-                <TableHead className="text-[10px] font-bold uppercase tracking-wider">Test</TableHead>
-                <TableHead className="text-[10px] font-bold uppercase tracking-wider w-[140px]">Status</TableHead>
-                <TableHead className="text-[10px] font-bold uppercase tracking-wider">Notes</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {def.tests.map((t) => {
-                const status = subtestStatus?.[t.key] || 'invited';
-                return (
-                  <TableRow key={t.key}>
-                    <TableCell className="font-bold text-xs">{t.name}</TableCell>
-                    <TableCell>
-                      <StatusPill status={status} />
-                    </TableCell>
-                    <TableCell className="text-[11px] text-muted-foreground">{t.detail}</TableCell>
-                  </TableRow>
-                );
-              })}
-            </TableBody>
-          </Table>
-        </div>
-      </CardContent>
-    </Card>
+          <div className="rounded-lg border overflow-hidden">
+            <Table>
+              <TableHeader className="bg-muted/50">
+                <TableRow>
+                  <TableHead className="text-[10px] font-bold uppercase tracking-wider">Test</TableHead>
+                  <TableHead className="text-[10px] font-bold uppercase tracking-wider w-[140px]">Status</TableHead>
+                  <TableHead className="text-[10px] font-bold uppercase tracking-wider">Notes</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {def.tests.map((t) => {
+                  const status = subtestStatus?.[t.key] || 'invited';
+                  return (
+                    <TableRow key={t.key}>
+                      <TableCell className="font-bold text-xs">{t.name}</TableCell>
+                      <TableCell>
+                        <StatusPill status={status} />
+                      </TableCell>
+                      <TableCell className="text-[11px] text-muted-foreground">{t.detail}</TableCell>
+                    </TableRow>
+                  );
+                })}
+              </TableBody>
+            </Table>
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Send Invitation Dialog */}
+      <Dialog open={inviteOpen} onOpenChange={setInviteOpen}>
+        <DialogContent className="max-w-lg">
+          <DialogHeader>
+            <DialogTitle className="text-sm font-bold flex items-center gap-2">
+              <Mail className="h-4 w-4 text-primary" />
+              Send Assessment Invitation
+            </DialogTitle>
+          </DialogHeader>
+
+          {candidateEmail && (
+            <p className="text-[11px] text-muted-foreground">
+              Sending to: <span className="font-semibold text-foreground">{candidateEmail}</span>
+            </p>
+          )}
+
+          <div className="space-y-3">
+            <div>
+              <label className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
+                Subject
+              </label>
+              <Input
+                value={inviteSubject}
+                onChange={(e) => setInviteSubject(e.target.value)}
+                className="mt-1 text-sm h-9"
+                placeholder="Email subject"
+              />
+            </div>
+            <div>
+              <label className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
+                Body
+              </label>
+              <p className="text-[10px] text-muted-foreground mb-1">
+                Use <code className="bg-muted px-1 rounded">{'{{LINK}}'}</code> where the portal link should appear.
+              </p>
+              <Textarea
+                value={inviteBody}
+                onChange={(e) => setInviteBody(e.target.value)}
+                rows={10}
+                className="mt-1 text-sm font-mono"
+                placeholder="Email body…"
+              />
+            </div>
+
+            {inviteError && (
+              <div className="flex items-center gap-1.5 text-[11px] text-red-600">
+                <AlertTriangle className="h-3.5 w-3.5 shrink-0" />
+                {inviteError}
+              </div>
+            )}
+          </div>
+
+          <DialogFooter className="gap-2">
+            <Button variant="outline" size="sm" onClick={() => setInviteOpen(false)} disabled={inviteSending}>
+              Cancel
+            </Button>
+            <Button
+              size="sm"
+              onClick={handleSendInvite}
+              disabled={inviteSending || inviteSent || !inviteSubject.trim() || !inviteBody.trim()}
+            >
+              {inviteSent ? (
+                <><CheckCircle2 className="h-3.5 w-3.5 mr-1.5 text-emerald-400" />Sent!</>
+              ) : inviteSending ? (
+                <><Loader2 className="h-3.5 w-3.5 mr-1.5 animate-spin" />Sending…</>
+              ) : (
+                <><Send className="h-3.5 w-3.5 mr-1.5" />Send Invitation</>
+              )}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+    </>
   );
 }
 
@@ -171,7 +297,7 @@ function GeneratePanel({ onGenerate, generating, error }) {
   );
 }
 
-function PortalLinkPanel({ battery, token, status, submittedAt, onRevokeClick, revokeError }) {
+function PortalLinkPanel({ battery, token, status, submittedAt, onRevokeClick, onSendInviteClick, revokeError }) {
   const dashless = String(token || '').replaceAll('-', '');
   const url = `${window.location.origin}/portal/assessment-placement/${dashless}`;
   const [copied, setCopied] = useState(false);
@@ -189,8 +315,8 @@ function PortalLinkPanel({ battery, token, status, submittedAt, onRevokeClick, r
   };
 
   return (
-    <div className="rounded-lg border bg-muted/30 p-3">
-      <div className="flex items-center justify-between mb-2 gap-2 flex-wrap">
+    <div className="rounded-lg border bg-muted/30 p-3 space-y-2">
+      <div className="flex items-center justify-between mb-1 gap-2 flex-wrap">
         <div className="text-[10px] font-bold tracking-widest uppercase text-muted-foreground">
           Portal link · single-use, 7-day token
         </div>
@@ -222,8 +348,23 @@ function PortalLinkPanel({ battery, token, status, submittedAt, onRevokeClick, r
           </Button>
         )}
       </div>
+
+      {/* Send invitation button */}
+      {(status === 'invited' || status === 'in_progress') && (
+        <div className="pt-1">
+          <Button
+            size="sm"
+            variant="outline"
+            className="h-7 text-xs"
+            onClick={onSendInviteClick}
+          >
+            <Send className="h-3 w-3 mr-1.5" />Send Invitation Email
+          </Button>
+        </div>
+      )}
+
       {revokeError && (
-        <div className="mt-2 text-[10.5px] text-red-600 flex items-center gap-1.5">
+        <div className="mt-1 text-[10.5px] text-red-600 flex items-center gap-1.5">
           <AlertTriangle className="h-3 w-3" />
           {revokeError}
         </div>

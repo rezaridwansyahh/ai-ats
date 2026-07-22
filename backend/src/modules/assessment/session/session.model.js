@@ -135,6 +135,21 @@ class Session {
     `, [id]);
     return result.rows[0];
   }
+
+  static async getCandidateContext(session_id) {
+    const result = await getDb().query(`
+      SELECT
+        mc.name      AS candidate_name,
+        ma.email     AS candidate_email,
+        cj.job_title
+      FROM assessment_sessions s
+      JOIN master_candidate mc ON mc.id = s.candidate_id
+      JOIN master_applicant ma ON ma.id = mc.applicant_id
+      LEFT JOIN core_job cj ON cj.id = s.job_id
+      WHERE s.id = $1
+    `, [session_id]);
+    return result.rows[0] || null;
+  }
 }
 
 export default Session;

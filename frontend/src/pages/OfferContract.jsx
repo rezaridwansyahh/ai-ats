@@ -180,7 +180,7 @@ const offerContractMock = {
       sections: [
         { heading: 'Parties & Role', lines: [
           'PT Myralix Indonesia · NPWP 01.234.567.8-012.000',
-          'Dewi Sartika · NIK 3174...01',
+          'Dewi Sartika · Identity Number 3174...01',
           'Position: Sr. Frontend Developer',
           'Dept: Engineering · Reports to Rudi Hartono',
         ]},
@@ -231,7 +231,7 @@ const offerContractMock = {
     providerLabel: 'Privy.id',
     flow: [
       { label: 'Dispatch',          sub: 'Recruiter →'        },
-      { label: 'Candidate auth',    sub: 'NIK / e-KTP'        },
+      { label: 'Candidate auth',    sub: 'Identity Number / e-KTP'        },
       { label: 'Candidate signs',   sub: 'OTP confirmed'      },
       { label: 'HRBP counter-signs', sub: 'Level 1'           },
       { label: 'Director endorses', sub: 'Level 2 (if req)'  },
@@ -249,7 +249,7 @@ const offerContractMock = {
     automations: [
       { icon: Send,        title: 'Send welcome email',       description: 'Immediately after final signature · template "Welcome @ Myralix"' },
       { icon: Workflow,     title: 'Trigger Onboarding workflow', description: 'Create Onboarding record, assign buddy, schedule Day 1' },
-      { icon: ListChecks,   title: 'Provision HRIS account',   description: 'Mekari Talenta · NIK, TIN, BPJS auto-filled · first-day sync' },
+      { icon: ListChecks,   title: 'Provision HRIS account',   description: 'Mekari Talenta · Identity Number, TIN, BPJS auto-filled · first-day sync' },
       { icon: Bell,         title: 'Notify hiring manager',    description: 'Email / Slack · with start date + buddy + Day 1 agenda' },
       { icon: RotateCcw,    title: 'Agency commission alert',  description: 'If vendor-sourced, notify Finance of pending commission' },
       { icon: ListChecks,   title: 'Report to Kemnaker',        description: 'Automatic WLK filing for new PKWT / PKWTT employees (monthly)' },
