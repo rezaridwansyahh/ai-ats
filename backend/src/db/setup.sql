@@ -47,6 +47,7 @@ DROP TABLE IF EXISTS bg_claim CASCADE;
 DROP TABLE IF EXISTS bg_consent CASCADE;
 DROP TABLE IF EXISTS bg_lane CASCADE;
 DROP TABLE IF EXISTS candidate_bg CASCADE;
+DROP TABLE IF EXISTS offer_document CASCADE;
 DROP TABLE IF EXISTS offer_send CASCADE;
 DROP TABLE IF EXISTS offer_negotiation CASCADE;
 DROP TABLE IF EXISTS offer_contract CASCADE;
@@ -752,6 +753,17 @@ CREATE TABLE offer_send (
   revoked_by INTEGER REFERENCES master_users(id) ON DELETE SET NULL,
   revocation_reason TEXT,
   status VARCHAR(20) NOT NULL DEFAULT 'draft',
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+CREATE TABLE offer_document (
+  id SERIAL PRIMARY KEY,
+  offer_id INTEGER NOT NULL UNIQUE REFERENCES candidate_offer(id) ON DELETE CASCADE,
+  file VARCHAR(255) NOT NULL,
+  method VARCHAR(20) NOT NULL DEFAULT 'upload', -- 'upload' | 'print'
+  uploaded_by INTEGER REFERENCES master_users(id) ON DELETE SET NULL,
+  uploaded_at TIMESTAMPTZ,
   created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
   updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );

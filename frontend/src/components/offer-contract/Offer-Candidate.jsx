@@ -1324,11 +1324,10 @@ function SendSection({ offer, setOffer, setBanner, setError, onAdvance }) {
           ) : (
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
 
-              {/* Email preview */}
               <div className="rounded-lg border bg-muted/10 overflow-hidden">
                 <div className="px-4 py-2.5 border-b bg-muted/20">
                   <p className="text-[10px] font-bold tracking-widest uppercase text-muted-foreground">
-                    Email preview
+                    Document preview
                   </p>
                 </div>
                 <div className="px-4 py-3 space-y-2.5 text-[11px] leading-relaxed text-foreground">

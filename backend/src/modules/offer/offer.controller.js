@@ -343,6 +343,42 @@ class OfferController {
       res.status(error.status || 500).json({ message: error.message });
     }
   }
+
+  async uploadDocument(req, res) {
+    try {
+      const { offer_id } = req.params;
+      const { company_id, user_id } = req.user;
+      const result = await OfferService.uploadOfferDocument(offer_id, company_id, user_id, req.file);
+      res.status(201).json(result);
+    } catch (error) {
+      console.error('Error in uploadDocument:', error);
+      res.status(error.status || 500).json({ message: error.message });
+    }
+  }
+
+  async markOfferPrinted(req, res) {
+    try {
+      const { offer_id } = req.params;
+      const { company_id, user_id } = req.user;
+      const result = await OfferService.markOfferPrinted(offer_id, company_id, user_id);
+      res.status(201).json(result);
+    } catch (error) {
+      console.error('Error in markOfferPrinted:', error);
+      res.status(error.status || 500).json({ message: error.message });
+    }
+  }
+
+  async getOfferDocument(req, res) {
+    try {
+      const { offer_id } = req.params;
+      const { company_id } = req.user;
+      const result = await OfferService.getOfferDocument(offer_id, company_id);
+      res.json(result);
+    } catch (error) {
+      console.error('Error in getOfferDocument:', error);
+      res.status(error.status || 500).json({ message: error.message });
+    }
+  }
 }
 
 export default new OfferController();

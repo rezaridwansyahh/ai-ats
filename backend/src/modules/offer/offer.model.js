@@ -414,6 +414,37 @@ class OfferModel {
     return result.rows;
   }
 
+  async upsertOfferDocument(data) {
+    const query = `
+      INSERT INTO offer_document (offer_id, file, method, uploaded_by, uploaded_at)
+      VALUES ($1, $2, $3, $4, NOW())
+      ON CONFLICT (offer_id) DO UPDATE
+      SET file = EXCLUDED.file,
+          method = EXCLUDED.method,
+          uploaded_by = EXCLUDED.uploaded_by,
+          uploaded_at = NOW(),
+          updated_at = NOW()
+      RETURNING *
+    `;
+    const result = await getDb().query(query, [
+      data.offer_id,
+      data.file,
+      data.method,
+      data.uploaded_by || null,
+    ]);
+    return result.rows[0];
+  }
+
+  async getOfferDocument(offer_id) {
+    const result = await getDb().query(`
+      SELECT od.*, mu.username AS uploaded_by_name
+      FROM offer_document od
+      LEFT JOIN master_users mu ON mu.id = od.uploaded_by
+      WHERE od.offer_id = $1
+    `, [offer_id]);
+    return result.rows[0] || null;
+  }  
+
 
 }
 
