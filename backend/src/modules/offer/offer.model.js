@@ -82,6 +82,7 @@ class OfferModel {
         mc.information as candidate_profile,
         cj.job_title,
         cj.job_desc AS job_description,
+        cc.name as company_name,
         comp.id as compensation_id,
         comp.base_salary,
         comp.allowances,
@@ -104,6 +105,7 @@ class OfferModel {
       JOIN master_candidate mc ON co.candidate_id = mc.id
       LEFT JOIN master_applicant ma ON mc.applicant_id = ma.id
       JOIN core_job cj ON co.job_id = cj.id
+      JOIN core_company cc ON co.company_id = cc.id
       LEFT JOIN offer_compensation comp ON co.id = comp.offer_id
       LEFT JOIN offer_contract contract ON co.id = contract.offer_id
       WHERE co.id = $1 AND co.company_id = $2
@@ -444,8 +446,6 @@ class OfferModel {
     `, [offer_id]);
     return result.rows[0] || null;
   }  
-
-
 }
 
 export default new OfferModel();
