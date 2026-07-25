@@ -510,8 +510,8 @@ function ScheduleSection({ interviewId, interview, setInterview, setBanner, setE
         setBanner({ ok: true, text: 'Session updated.' });
       } else {
         const res = await createSchedule(interviewId, { title, description, scheduled_at });
-        setSessions((prev) => [...prev, res.data.schedule]);
-        setInterview((prev) => ({ ...prev, scheduled_at: res.data.schedule.scheduled_at }));
+        setSessions((prev) => [...prev, res.data.schedule]); 
+        setInterview((prev) => ({ ...prev, scheduled_at: res.data.schedule.scheduled_at, status: 'scheduled' }));
         setBanner({ ok: true, text: 'Session created.' });
       }
       setShowForm(false);

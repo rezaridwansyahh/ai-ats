@@ -15,6 +15,16 @@ const DEFAULT_STAGES = [
   { id: 'hired',     label: 'Hired',     color: 'bg-green-500' },
 ];
 
+// Experience buckets — exp values come through as strings like "5y" or "—",
+// so filtering is done against a parsed numeric year count, bucketed into
+// ranges rather than an exact match.
+const EXPERIENCE_BUCKETS = [
+  { id: '0-2',  label: '0–2 years',   min: 0,  max: 2 },
+  { id: '3-5',  label: '3–5 years',   min: 3,  max: 5 },
+  { id: '6-10', label: '6–10 years',  min: 6,  max: 10 },
+  { id: '10+',  label: '10+ years',   min: 11, max: Infinity },
+];
+
 const ROWS_PER_PAGE = 15;
 
 /* ─────────────────────────────────────────
@@ -29,7 +39,7 @@ function buildRows({ candidates, job, stages }) {
   if (candidates?.length > 0) {
     return candidates.map((c) => {
       const stageId = c.stage_id ?? c.latest_stage ?? 'applied';
-      const stage = stageMap[stageId] ?? { id: stageId, label: stageId, color: 'bg-slate-400' };
+      const stage = stageMap[stageId] ?? { id: stageId, label: String(stageId ?? 'Unknown'), color: 'bg-slate-400' };
       return {
         id:       c.id ?? c.applicant_id,
         raw:      c,
@@ -79,6 +89,14 @@ function buildRows({ candidates, job, stages }) {
   return rows;
 }
 
+// Pulls the leading number out of an exp string ("5y" -> 5, "—" -> null).
+function parseExpYears(exp) {
+  if (typeof exp !== 'string') return null;
+  const match = exp.match(/\d+(\.\d+)?/);
+  if (!match) return null;
+  return parseFloat(match[0]);
+}
+
 function StagePill({ label, color }) {
   return (
     <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-muted text-xs font-semibold text-foreground whitespace-nowrap">
@@ -120,6 +138,7 @@ export default function PipelineTable({
 }) {
   const [search, setSearch] = useState('');
   const [stageFilter, setStageFilter] = useState('all');
+  const [expFilter, setExpFilter] = useState('all');
   const [page, setPage] = useState(1);
 
   const resolvedStages = (stages?.length > 0)
@@ -132,7 +151,7 @@ export default function PipelineTable({
   );
 
   const totalHired = useMemo(
-    () => rows.filter((r) => r.stageLabel?.toLowerCase() === 'hired').length,
+    () => rows.filter((r) => String(r.stageLabel ?? '').toLowerCase() === 'hired').length,
     [rows]
   );
 
@@ -147,12 +166,19 @@ export default function PipelineTable({
     const q = search.trim().toLowerCase();
     return rows.filter((r) => {
       const matchesSearch = !q ||
-        r.name?.toLowerCase().includes(q) ||
-        r.role?.toLowerCase().includes(q);
+        r.name?.toLowerCase().includes(q)
       const matchesStage = stageFilter === 'all' || String(r.stageId) === String(stageFilter);
-      return matchesSearch && matchesStage;
+
+      let matchesExp = true;
+      if (expFilter !== 'all') {
+        const bucket = EXPERIENCE_BUCKETS.find((b) => b.id === expFilter);
+        const years = parseExpYears(r.exp);
+        matchesExp = bucket && years != null && years >= bucket.min && years <= bucket.max;
+      }
+
+      return matchesSearch && matchesStage && matchesExp;
     });
-  }, [rows, search, stageFilter]);
+  }, [rows, search, stageFilter, expFilter]);
 
   const totalPages = Math.max(1, Math.ceil(filteredRows.length / ROWS_PER_PAGE));
   const currentPage = Math.min(page, totalPages);
@@ -164,7 +190,7 @@ export default function PipelineTable({
   return (
     <div className="space-y-3">
 
-      {/* Search + stage filter */}
+      {/* Search + stage filter + experience filter */}
       <div className="flex items-center gap-2.5 flex-wrap">
         <div className="relative flex-1 min-w-[220px] max-w-sm">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
@@ -184,6 +210,16 @@ export default function PipelineTable({
           <option value="all">All stages</option>
           {resolvedStages.map((s) => (
             <option key={s.id} value={s.id}>{s.label}</option>
+          ))}
+        </select>
+        <select
+          value={expFilter}
+          onChange={(e) => { setExpFilter(e.target.value); setPage(1); }}
+          className="px-3 py-2 border rounded-lg text-sm focus:outline-none focus:ring-1 focus:ring-primary"
+        >
+          <option value="all">All experience</option>
+          {EXPERIENCE_BUCKETS.map((b) => (
+            <option key={b.id} value={b.id}>{b.label}</option>
           ))}
         </select>
       </div>
