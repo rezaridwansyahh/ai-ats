@@ -374,9 +374,9 @@ class ScreeningModel {
         COUNT(*) FILTER (WHERE ce.engine='ready') AS ready
       FROM core_job cj
       LEFT JOIN candidate_engine ce ON ce.job_id = cj.id
-      WHERE cj.company_id = $1
+      WHERE cj.company_id = $1 AND cj.status = 'Active'
       GROUP BY cj.id, cj.job_title, cj.status
-      ORDER BY cj.status = 'Active' DESC, cj.id ASC
+      ORDER BY cj.id ASC
       `,
       [company_id]
     );

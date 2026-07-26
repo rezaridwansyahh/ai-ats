@@ -48,9 +48,12 @@ export default function JobStagesStep({ selectedJob, onPipelineChange }) {
   // Guards the debounced auto-save from firing on programmatic state updates
   // (initial load + the post-save id-sync), so we only persist real user edits.
   const skipAutoSaveRef = useRef(true);
-  // Set to true when the pipeline loads empty so the first template is
-  // auto-selected once template data arrives (handles the load-order race).
+  // Set to true when the pipeline loads empty before templates have arrived,
+  // so the template effect picks up the auto-select once it resolves.
   const autoSelectRef = useRef(false);
+  // Mirrors the `templates` state but readable inside any effect closure
+  // without stale-closure issues (refs are always current).
+  const templatesRef = useRef([]);
   const [stages, setStages] = useState([]);
   const [loadingStages, setLoadingStages] = useState(false);
   const [savingStages, setSavingStages] = useState(false);
@@ -66,6 +69,28 @@ export default function JobStagesStep({ selectedJob, onPipelineChange }) {
   // True when the job is published — pipeline config is read-only.
   const isPipelineLocked = selectedJob?.status && selectedJob.status !== 'Draft';
 
+  // Returns the template that should be auto-selected for new jobs.
+  // Priority:
+  //   1. Lowest sort_order (works after DB migration / reseed)
+  //   2. Template whose name includes "IT Dev" (works on pre-migration DB)
+  //   3. First item in list
+  const pickDefaultTemplate = (list) => {
+    if (!list || list.length === 0) return null;
+    const hasSortOrder = list.some(t => t.sort_order != null);
+    if (hasSortOrder) {
+      return [...list].sort((a, b) => {
+        const ao = a.sort_order ?? 999;
+        const bo = b.sort_order ?? 999;
+        return ao !== bo ? ao - bo : a.id - b.id;
+      })[0];
+    }
+    // Pre-migration fallback: find IT Dev by name
+    return (
+      list.find(t => /it\s*dev/i.test(t.name)) ||
+      list[0]
+    );
+  };
+
   // ── Load categories & templates on mount ──
   useEffect(() => {
     getStageCategories()
@@ -76,12 +101,27 @@ export default function JobStagesStep({ selectedJob, onPipelineChange }) {
     getTemplateStages()
       .then(res => {
         const data = res.data.data || [];
+        templatesRef.current = data; // always keep ref current
         setTemplates(data);
         // If the pipeline already loaded empty (race: pipeline beat templates),
-        // auto-select the first template now that we have the list.
+        // auto-select the default template now that we have the list.
         if (autoSelectRef.current && data.length > 0) {
           autoSelectRef.current = false;
-          handleTemplateSelect(data[0].id);
+          const def = pickDefaultTemplate(data);
+          if (def) {
+            handleTemplateSelect(def.id);
+            // skipAutoSaveRef is still true from the pipeline load, so the
+            // debounced auto-save will be suppressed.  Persist the template
+            // association directly so createFromApplicant can find it.
+            if (selectedJob?.id) {
+              saveJobPipeline(selectedJob.id, { stages: null, templateId: def.id })
+                .then((res) => {
+                  const saved = res?.data?.data?.stages;
+                  onPipelineChange?.({ hasStages: Array.isArray(saved) && saved.length > 0 });
+                })
+                .catch(() => {});
+            }
+          }
         }
       })
       .catch(() => {})
@@ -128,9 +168,27 @@ export default function JobStagesStep({ selectedJob, onPipelineChange }) {
           setIsCustom(false);
           setStages([]);
           nextIdRef.current = 1;
-          if (templates.length > 0) {
-            handleTemplateSelect(templates[0].id);
+          // Use templatesRef (not templates state) — the state closure is stale
+          // here because this effect only re-runs on selectedJob.id change,
+          // not on templates load. The ref always holds the latest value.
+          const availableTemplates = templatesRef.current;
+          if (availableTemplates.length > 0) {
+            const def = pickDefaultTemplate(availableTemplates);
+            if (def) {
+              handleTemplateSelect(def.id);
+              // skipAutoSaveRef was just set to true (loaded data), so the
+              // debounced auto-save will be suppressed for this state change.
+              // Call saveJobPipeline directly so the template is persisted to DB
+              // and createFromApplicant can place the candidate in the first stage.
+              saveJobPipeline(selectedJob.id, { stages: null, templateId: def.id })
+                .then((res) => {
+                  const saved = res?.data?.data?.stages;
+                  onPipelineChange?.({ hasStages: Array.isArray(saved) && saved.length > 0 });
+                })
+                .catch(() => {});
+            }
           } else {
+            // Templates haven't loaded yet — flag for the template effect to pick up.
             autoSelectRef.current = true;
           }
         }

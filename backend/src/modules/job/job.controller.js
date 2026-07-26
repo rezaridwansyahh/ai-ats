@@ -41,7 +41,7 @@ class JobController {
 
   async create(req, res) {
     try {
-      const job = await jobService.create(req.body);
+      const job = await jobService.create({ ...req.body, company_id: req.user?.company_id });
       res.status(201).json({ message: 'Job created', job });
     } catch (err) {
       res.status(err.status || 500).json({ message: err.message });
