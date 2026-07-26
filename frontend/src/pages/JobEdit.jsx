@@ -351,6 +351,18 @@ export default function JobEditPage() {
     : `Edit Job · ${form?.job_title || `#${idParam}`}`;
   const isPublished = job?.status && job.status !== 'Draft';
 
+  // Step navigation — shared by the bottom pill row and the per-card header controls.
+  const goPrevStep = () => {
+    setStep((s) => Math.max(0, s - 1));
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
+  const goNextStep = () => {
+    setStep((s) => Math.min(SECTIONS.length - 1, s + 1));
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
+  const isFirstStep = step === 0;
+  const isLastStep = step === SECTIONS.length - 1;
+
   return (
     <>
       {/* Sticky header — sibling of (not nested inside) the padded content wrapper
@@ -509,60 +521,39 @@ export default function JobEditPage() {
               </Card>
             )}
 
-            {/* STEP PAGINATION — numbered paginator with caption below */}
+            {/* STEP PAGINATION — numbered paginator with caption below.
+                Previous/Next now live in each card's header; this row keeps
+                just the page pills so users can still jump to any step. */}
             <div className="border-t border-border/60 pt-4 space-y-2">
               <div className="flex items-center justify-center gap-2.5">
-  {/* Prev button */}
-  <Button
-    variant="outline"
-    size="sm"
-    className="text-xs mr-1"
-    disabled={step === 0}
-    onClick={() => { setStep((s) => Math.max(0, s - 1)); window.scrollTo({ top: 0, behavior: 'smooth' }); }}
-  >
-    <ArrowLeft className="h-3.5 w-3.5 mr-1" /> Previous
-  </Button>
-
-  {/* Numbered page pills */}
-  {SECTIONS.map((s, i) => {
-    const active = step === i;
-    const missing = s.id === 'basics'
-      ? missingRequired.filter((k) => REQUIRED_BASICS.includes(k)).length
-      : s.id === 'jd'
-        ? missingRequired.filter((k) => REQUIRED_JD.includes(k)).length
-        : s.id === 'pipeline'
-          ? (hasStages ? 0 : 1)
-          : 0;
-    return (
-      <button
-        key={s.id}
-        type="button"
-        title={s.label}
-        onClick={() => { setStep(i); window.scrollTo({ top: 0, behavior: 'smooth' }); }}
-        className={`h-8 w-8 rounded-md text-xs font-semibold flex items-center justify-center transition-colors ${
-          active
-            ? 'bg-primary text-primary-foreground'
-            : missing > 0
-              ? 'border border-amber-300 text-amber-700 hover:bg-amber-50'
-              : 'border border-border text-muted-foreground hover:bg-muted/60'
-        }`}
-      >
-        {i + 1}
-      </button>
-    );
-  })}
-
-  {/* Next button */}
-  <Button
-    variant="outline"
-    size="sm"
-    className="text-xs ml-1"
-    disabled={step === SECTIONS.length - 1}
-    onClick={() => { setStep((s) => Math.min(SECTIONS.length - 1, s + 1)); window.scrollTo({ top: 0, behavior: 'smooth' }); }}
-  >
-    Next <ArrowRight className="h-3.5 w-3.5 ml-1" />
-  </Button>
-</div>
+                {SECTIONS.map((s, i) => {
+                  const active = step === i;
+                  const missing = s.id === 'basics'
+                    ? missingRequired.filter((k) => REQUIRED_BASICS.includes(k)).length
+                    : s.id === 'jd'
+                      ? missingRequired.filter((k) => REQUIRED_JD.includes(k)).length
+                      : s.id === 'pipeline'
+                        ? (hasStages ? 0 : 1)
+                        : 0;
+                  return (
+                    <button
+                      key={s.id}
+                      type="button"
+                      title={s.label}
+                      onClick={() => { setStep(i); window.scrollTo({ top: 0, behavior: 'smooth' }); }}
+                      className={`h-8 w-8 rounded-md text-xs font-semibold flex items-center justify-center transition-colors ${
+                        active
+                          ? 'bg-primary text-primary-foreground'
+                          : missing > 0
+                            ? 'border border-amber-300 text-amber-700 hover:bg-amber-50'
+                            : 'border border-border text-muted-foreground hover:bg-muted/60'
+                      }`}
+                    >
+                      {i + 1}
+                    </button>
+                  );
+                })}
+              </div>
 
               {/* Caption */}
               <p className="text-center text-[11px] text-muted-foreground">
@@ -677,6 +668,32 @@ export default function JobEditPage() {
         </div>
       </div>
     </>
+  );
+}
+
+/* ───── Shared Previous/Next control, placed in each section's CardHeader ───── */
+function StepNavButtons({ onPrev, onNext, disablePrev, disableNext }) {
+  return (
+    <div className="flex items-center gap-2 shrink-0">
+      <Button
+        variant="outline"
+        size="sm"
+        className="text-xs"
+        disabled={disablePrev}
+        onClick={onPrev}
+      >
+        <ArrowLeft className="h-3.5 w-3.5 mr-1" /> Previous
+      </Button>
+      <Button
+        variant="outline"
+        size="sm"
+        className="text-xs"
+        disabled={disableNext}
+        onClick={onNext}
+      >
+        Next <ArrowRight className="h-3.5 w-3.5 ml-1" />
+      </Button>
+    </div>
   );
 }
 

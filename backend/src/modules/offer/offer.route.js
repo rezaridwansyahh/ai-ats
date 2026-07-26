@@ -151,4 +151,9 @@ router.post( '/:offer_id/approval', authToken, checkPermission('Offer & Onboard'
 router.post( '/:offer_id/approval/setup', authToken, checkPermission('Offer & Onboard', 'Offer & Contract', 'update'), OfferController.setupApprovalChain);
 router.post( '/:offer_id/approval/:step_index/decide', authToken, checkPermission('Offer & Onboard', 'Offer & Contract', 'update'), OfferController.decideApprovalStep);
 
+router.get( '/:offer_id/send-history', authToken, checkPermission('Offer & Onboard', 'Offer & Contract', 'read'), OfferController.getSendHistory);
+ 
+router.post( '/:offer_id/resend', authToken, checkPermission('Offer & Onboard', 'Offer & Contract', 'update'), OfferController.resendOffer);
+router.post( '/:offer_id/revoke', authToken, checkPermission('Offer & Onboard', 'Offer & Contract', 'update'), OfferController.revokeOffer);
+
 export default router;

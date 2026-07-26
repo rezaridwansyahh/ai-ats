@@ -533,7 +533,18 @@ class OfferService {
     if (approvalStatus !== 'approved') {
       throw { status: 400, message: 'Offer must be approved before it can be sent' };
     }
-  
+
+
+    const expiryDays = offer.metadata?.dispatch?.portal_expiry_days || 7;
+    const expiresAt = new Date(Date.now() + expiryDays * 24 * 60 * 60 * 1000);
+
+    const send = await OfferModel.createOfferSend({
+      offer_id,
+      token_expires_at: expiresAt,
+      document: offer.metadata.draft_document,
+      sent_by: user_id,
+    });
+
     await OfferModel.updateOfferStatus(offer_id, 'sent', {
       sent_at: new Date(),
       sent_by: user_id
@@ -541,9 +552,67 @@ class OfferService {
   
     return {
       message: 'Offer letter sent successfully',
-      // pdf_url
+      token: send.token,
+      token_expires_at: send.token_expires_at,
     };
-  }  
+  }
+
+  async resendOffer(offer_id, company_id, user_id) {
+    const offer = await OfferModel.getOfferById(offer_id, company_id);
+
+    if (!offer) {
+      throw { status: 404, message: 'Offer not found' };
+    }
+    if (!['sent', 'negotiating'].includes(offer.offer_status)) {
+      throw { status: 400, message: 'Can only resend offers that are sent or negotiating' };
+    }
+
+    await OfferModel.revokeActiveOfferSends(offer_id, user_id, 'Resent by recruiter');
+
+    const expiryDays = offer.metadata?.dispatch?.portal_expiry_days || 7;
+    const expiresAt = new Date(Date.now() + expiryDays * 24 * 60 * 60 * 1000);
+
+    const send = await OfferModel.createOfferSend({
+      offer_id,
+      token_expires_at: expiresAt,
+      document: offer.metadata?.draft_document || {},
+      sent_by: user_id,
+    });
+
+    return {
+      message: 'Offer resent successfully',
+      token: send.token,
+      token_expires_at: send.token_expires_at,
+    };
+  }
+
+  async revokeOffer(offer_id, company_id, user_id, reason) {
+    const offer = await OfferModel.getOfferById(offer_id, company_id);
+    if (!offer) {
+      throw { status: 404, message: 'Offer not found' };
+    }
+
+    const history = await OfferModel.getOfferSendHistory(offer_id);
+    const latest = history[0];
+    if (latest?.status === 'signed') {
+      throw { status: 409, message: 'Offer has been signed and cannot be revoked.' };
+    }
+
+    const revoked = await OfferModel.revokeActiveOfferSends(offer_id, user_id, reason || 'Revoked by recruiter');
+    if (!revoked.length) {
+      throw { status: 400, message: 'No active send to revoke' };
+    }
+
+    return { message: 'Offer link revoked' };
+  }
+
+  async getSendHistory(offer_id, company_id) {
+    const offer = await OfferModel.getOfferById(offer_id, company_id);
+    if (!offer) {
+      throw { status: 404, message: 'Offer not found' };
+    }
+    return OfferModel.getOfferSendHistory(offer_id);
+  }
 
   async setupApprovalChain(offer_id, steps, company_id, user_id) {
     const offer = await OfferModel.getOfferById(offer_id, company_id);

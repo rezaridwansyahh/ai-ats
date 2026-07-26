@@ -11,7 +11,7 @@ import { PageHeader } from '@/components/common';
 import { TablePagination } from '@/components/shared/TablePagination';
 import { getInitials } from '@/lib/batteries';
 
-import offerAPI from '@/api/offer.api';
+import { getWorkboard } from '@/api/offer.api';
 
 const STATUS_META = {
   draft:       { label: 'Draft',       color: 'bg-slate-100 text-slate-700'     },
@@ -62,7 +62,7 @@ export default function OfferWorkboard() {
     setLoading(true);
     setError(null);
     try {
-      const res = await offerAPI.getWorkboard();
+      const res = await getWorkboard();
       setOffers(res.data?.offers || []);
     } catch (err) {
       setError(err.response?.data?.message || err.message || 'Failed to load workboard');
@@ -73,7 +73,6 @@ export default function OfferWorkboard() {
 
   useEffect(() => { loadWorkboard(); }, []);
 
-  // Positions rail derived from the offers themselves — one row per job_id
   const positions = useMemo(() => {
     const map = new Map();
     for (const o of offers) {
@@ -131,7 +130,6 @@ export default function OfferWorkboard() {
   return (
     <div className="space-y-5 p-6">
 
-      {/* Header */}
       <div className="flex items-start justify-between gap-3 flex-wrap">
         <PageHeader
           title="Offer &"
@@ -150,7 +148,6 @@ export default function OfferWorkboard() {
         </div>
       )}
 
-      {/* Status chip strip */}
       <Card>
         <CardContent className="py-4">
           <div className="flex items-center gap-3 flex-wrap">
@@ -186,10 +183,8 @@ export default function OfferWorkboard() {
         </CardContent>
       </Card>
 
-      {/* Two-column layout */}
       <div className="grid grid-cols-1 md:grid-cols-[240px_1fr] gap-4">
 
-        {/* Positions rail */}
         <Card className="self-start">
           <CardHeader className="pb-2">
             <CardTitle className="text-xs uppercase tracking-wide text-muted-foreground">
@@ -243,7 +238,6 @@ export default function OfferWorkboard() {
           </CardContent>
         </Card>
 
-        {/* Candidates panel */}
         <Card>
           <CardHeader className="pb-3 space-y-3">
             <CardTitle className="text-sm">

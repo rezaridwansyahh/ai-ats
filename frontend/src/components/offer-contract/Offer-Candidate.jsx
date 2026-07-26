@@ -4,6 +4,7 @@ import {
   ArrowLeft, Loader2, AlertTriangle, Check, ChevronRight, X,
   FileText, Pencil, Wallet, Send, FileSignature, Plus, Trash2,
   MessageSquareText, PenLine, ShieldCheck, ThumbsDown, Clock, Circle,
+  Copy, Sparkles, RefreshCw, Ban, XCircle,
 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -12,7 +13,14 @@ import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { getInitials } from '@/lib/batteries';
 
-import offerAPI from '@/api/offer.api';
+import {
+  getOfferById, updateCompensation,
+  getSlipGaji, recordSlipGaji, skipSlipGaji, reviewSlipGaji,
+  getApproval, submitApproval, setupApprovalChain, decideApprovalStep,
+  sendOfferLetter, resendOffer, revokeOffer, getSendHistory,
+  respondToNegotiation,
+  generateContract, sendContract,
+} from '@/api/offer.api';
 
 const SUBSTAGES = [
   { key: 'intake',   number: 1, label: 'Intake',   sub: 'slip gaji'     },
@@ -163,7 +171,7 @@ function IntakeSection({ offer, offerId, setBanner, setError }) {
   const load = useCallback(async () => {
     setLoading(true);
     try {
-      const res = await offerAPI.getSlipGaji(offerId);
+      const res = await getSlipGaji(offerId);
       setSlipGaji(res.data || { status: 'not_recorded' });
     } catch (err) {
       setError(err.response?.data?.message || err.message || 'Failed to load slip gaji');
@@ -204,7 +212,7 @@ function IntakeSection({ offer, offerId, setBanner, setError }) {
     setSaving(true);
     setError(null);
     try {
-      const res = await offerAPI.recordSlipGaji(offerId, cleaned, expectedSalary ? Number(expectedSalary) : null);
+      const res = await recordSlipGaji(offerId, cleaned, expectedSalary ? Number(expectedSalary) : null);
       setSlipGaji(res.data?.slip_gaji);
       setEditing(false);
       setReviewNote('');
@@ -220,7 +228,7 @@ function IntakeSection({ offer, offerId, setBanner, setError }) {
     setSaving(true);
     setError(null);
     try {
-      const res = await offerAPI.skipSlipGaji(offerId, skipReason || null);
+      const res = await skipSlipGaji(offerId, skipReason || null);
       setSlipGaji(res.data?.slip_gaji);
       setShowSkip(false);
       setBanner({ ok: true, text: 'Slip gaji step skipped.' });
@@ -235,7 +243,7 @@ function IntakeSection({ offer, offerId, setBanner, setError }) {
     setSaving(true);
     setError(null);
     try {
-      const res = await offerAPI.reviewSlipGaji(offerId, reviewNote);
+      const res = await reviewSlipGaji(offerId, reviewNote);
       setSlipGaji(res.data?.slip_gaji);
       setBanner({ ok: true, text: 'Review recorded.' });
     } catch (err) {
@@ -529,7 +537,7 @@ function BuildSection({ offer, setOffer, setBanner, setError, onAdvance }) {
     setSaving(true);
     setError(null);
     try {
-      const res = await offerAPI.updateCompensation(offer.id, {
+      const res = await updateCompensation(offer.id, {
         base_salary: Number(baseSalary),
         allowances: toObject(allowances),
         bonus_structure: toObject(bonuses),
@@ -716,7 +724,7 @@ function ApproveSection({ offer, offerId, setOffer, setBanner, setError, onAdvan
   const load = useCallback(async () => {
     setLoading(true);
     try {
-      const res = await offerAPI.getApproval(offerId);
+      const res = await getApproval(offerId);
       setApproval(res.data || { status: 'not_started', steps: [] });
     } catch (err) {
       setError(err.response?.data?.message || err.message || 'Failed to load approval chain');
@@ -750,7 +758,7 @@ function ApproveSection({ offer, offerId, setOffer, setBanner, setError, onAdvan
     setSaving(true);
     setError(null);
     try {
-      const res = await offerAPI.setupApprovalChain(offerId, cleaned);
+      const res = await setupApprovalChain(offerId, cleaned);
       setApproval(res.data?.approval);
       setOffer((prev) => ({ ...prev, metadata: { ...(prev.metadata || {}), approval: res.data?.approval } }));
       setEditingChain(false);
@@ -768,7 +776,7 @@ function ApproveSection({ offer, offerId, setOffer, setBanner, setError, onAdvan
     setSaving(true);
     setError(null);
     try {
-      const res = await offerAPI.decideApprovalStep(offerId, activeIndex, decision, note || null);
+      const res = await decideApprovalStep(offerId, activeIndex, decision, note || null);
       setApproval(res.data?.approval);
       setOffer((prev) => ({ ...prev, metadata: { ...(prev.metadata || {}), approval: res.data?.approval } }));
       setNote('');
@@ -955,25 +963,157 @@ function ApproveSection({ offer, offerId, setOffer, setBanner, setError, onAdvan
   );
 }
 
+/* Send Section — portal-link lifecycle, same shape as BackgroundCheck-Candidate's ConsentSection */
+
+function GenerateLinkRow({ onGenerate, generating, label = 'Generate link' }) {
+  return (
+    <div className="rounded-lg border border-dashed bg-muted/20 p-3 flex items-center justify-between gap-3 flex-wrap">
+      <div className="min-w-0">
+        <p className="text-[10px] font-bold tracking-widest uppercase text-muted-foreground">
+          Portal link
+        </p>
+        <p className="text-[11px] text-muted-foreground mt-0.5">
+          Generate a portal link for the candidate to review and respond.
+        </p>
+      </div>
+      <Button size="sm" onClick={onGenerate} disabled={generating} className="shrink-0">
+        {generating
+          ? <><Loader2 className="h-3.5 w-3.5 animate-spin mr-1.5" /> Generating…</>
+          : <><Sparkles className="h-3.5 w-3.5 mr-1.5" /> {label}</>}
+      </Button>
+    </div>
+  );
+}
+
+function PortalLinkRow({ url, expiresAt, sentAt, onRegenerate, onRevoke, generating }) {
+  const [copied, setCopied] = useState(false);
+
+  const handleCopy = async () => {
+    try {
+      await navigator.clipboard.writeText(url);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 1500);
+    } catch {}
+  };
+
+  return (
+    <div className="rounded-lg border bg-muted/30 p-3 space-y-2">
+      <div className="flex items-center justify-between gap-2 flex-wrap">
+        <p className="text-[10px] font-bold tracking-widest uppercase text-muted-foreground">
+          Portal link · offer token
+        </p>
+        <span className="text-[10px] text-muted-foreground">Expires {fmtDate(expiresAt)}</span>
+      </div>
+      <div className="flex items-center gap-2">
+        <code className="flex-1 truncate text-[11px] font-mono text-foreground bg-background border rounded px-2 py-1.5">
+          {url}
+        </code>
+        <Button size="sm" variant="outline" className="h-7 text-xs shrink-0" onClick={handleCopy}>
+          {copied ? <><Check className="h-3 w-3 mr-1" /> Copied</> : <><Copy className="h-3 w-3 mr-1" /> Copy</>}
+        </Button>
+        <Button
+          size="sm" variant="outline" className="h-7 text-xs shrink-0"
+          onClick={onRegenerate} disabled={generating} title="Regenerate link"
+        >
+          <RefreshCw className="h-3 w-3" />
+        </Button>
+        <Button
+          size="sm" variant="outline"
+          className="h-7 text-xs shrink-0 text-rose-600 hover:text-rose-700 hover:bg-rose-50 border-rose-200"
+          onClick={onRevoke}
+        >
+          <Ban className="h-3 w-3 mr-1" /> Revoke
+        </Button>
+      </div>
+      <p className="text-[10px] text-muted-foreground">sent {fmtDate(sentAt)}</p>
+    </div>
+  );
+}
+
+function daysUntil(dateStr) {
+  if (!dateStr) return null;
+  const diffMs = new Date(dateStr).getTime() - Date.now();
+  return Math.max(0, Math.ceil(diffMs / (24 * 60 * 60 * 1000)));
+}
+
 function SendSection({ offer, setOffer, setBanner, setError, onAdvance }) {
+  const [history, setHistory] = useState([]);
+  const [loadingHistory, setLoadingHistory] = useState(true);
   const [sending, setSending] = useState(false);
+  const [regenerating, setRegenerating] = useState(false);
+  const [revoking, setRevoking] = useState(false);
+  const [showRevoke, setShowRevoke] = useState(false);
+  const [revokeReason, setRevokeReason] = useState('');
+
   const [responding, setResponding] = useState(false);
   const [responseMsg, setResponseMsg] = useState('');
   const [responseType, setResponseType] = useState('accept');
 
   const isApproved = offer.metadata?.approval?.status === 'approved';
 
-  const handleSend = async () => {
+  const loadHistory = useCallback(async () => {
+    setLoadingHistory(true);
+    try {
+      const res = await getSendHistory(offer.id);
+      setHistory(res.data || []);
+    } catch {
+      // not sent yet
+    } finally {
+      setLoadingHistory(false);
+    }
+  }, [offer.id]);
+
+  useEffect(() => { loadHistory(); }, [loadHistory]);
+
+  const latestSend  = history[0] || null;
+  const isSigned    = latestSend?.status === 'signed';
+  const isRevoked   = !isSigned && !!latestSend?.revoked_at;
+  const isActive    = latestSend?.status === 'sent' && !latestSend?.revoked_at;
+  const portalUrl   = isActive ? `${window.location.origin}/offer/send/${latestSend.token}` : null;
+  const expiryDaysLeft = isActive ? daysUntil(latestSend.token_expires_at) : null;
+
+  const handleGenerate = async () => {
     setSending(true);
     setError(null);
     try {
-      await offerAPI.sendOfferLetter(offer.id);
+      await sendOfferLetter(offer.id);
       setOffer((prev) => ({ ...prev, offer_status: 'sent' }));
-      setBanner({ ok: true, text: 'Offer letter sent.' });
+      await loadHistory();
+      setBanner({ ok: true, text: 'Offer letter sent — copy the link below to share with the candidate.' });
     } catch (err) {
       setError(err.response?.data?.message || err.message || 'Failed to send offer');
     } finally {
       setSending(false);
+    }
+  };
+
+  const handleRegenerate = async () => {
+    setRegenerating(true);
+    setError(null);
+    try {
+      await resendOffer(offer.id);
+      await loadHistory();
+      setBanner({ ok: true, text: 'Link regenerated — previous link revoked.' });
+    } catch (err) {
+      setError(err.response?.data?.message || err.message || 'Failed to regenerate link');
+    } finally {
+      setRegenerating(false);
+    }
+  };
+
+  const handleRevoke = async () => {
+    setRevoking(true);
+    setError(null);
+    try {
+      await revokeOffer(offer.id, revokeReason || null);
+      await loadHistory();
+      setShowRevoke(false);
+      setRevokeReason('');
+      setBanner({ ok: true, text: 'Offer link revoked.' });
+    } catch (err) {
+      setError(err.response?.data?.message || err.message || 'Revoke failed');
+    } finally {
+      setRevoking(false);
     }
   };
 
@@ -985,7 +1125,7 @@ function SendSection({ offer, setOffer, setBanner, setError, onAdvance }) {
     setResponding(true);
     setError(null);
     try {
-      await offerAPI.respondToNegotiation(offer.id, responseType, responseMsg.trim());
+      await respondToNegotiation(offer.id, responseType, responseMsg.trim());
       setOffer((prev) => ({
         ...prev,
         offer_status: responseType === 'accept' ? 'sent' : responseType === 'decline' ? 'rejected' : prev.offer_status,
@@ -1001,88 +1141,264 @@ function SendSection({ offer, setOffer, setBanner, setError, onAdvance }) {
 
   return (
     <div className="space-y-4">
+
+      {/* Offer letter · portal link — same document-lifecycle pattern as BG Consent card */}
       <Card>
         <CardHeader className="pb-3">
           <div className="flex items-center gap-2">
-            <Send className="h-4 w-4 text-primary shrink-0" />
-            <CardTitle className="text-sm">Offer status</CardTitle>
-            <Badge variant="outline" className={`text-[9px] ml-auto ${STATUS_TONE[offer.offer_status] || ''}`}>
-              {offer.offer_status}
+            <FileText className="h-4 w-4 text-primary shrink-0" />
+            <div className="min-w-0 flex-1">
+              <CardTitle className="text-sm">Offer letter · portal link</CardTitle>
+              <p className="text-[10px] text-muted-foreground mt-0.5">
+                candidate reviews & responds via portal{isSigned ? ' ' : ' · revocable until signed'}
+              </p>
+            </div>
+            <Badge
+              variant="outline"
+              className={`text-[9px] shrink-0 ${
+                isSigned  ? 'border-emerald-300 text-emerald-700 bg-emerald-50'
+                : isRevoked ? 'border-rose-300 text-rose-700 bg-rose-50'
+                : isActive  ? 'border-blue-300 text-blue-700 bg-blue-50'
+                : 'border-border text-muted-foreground'
+              }`}
+            >
+              {isSigned ? 'signed' : isRevoked ? 'revoked' : isActive ? 'sent' : 'not sent'}
             </Badge>
           </div>
         </CardHeader>
         <CardContent className="space-y-3">
-          {offer.offer_status === 'draft' && !isApproved && (
+
+          {!isApproved && !latestSend && (
             <div className="flex items-center gap-2 px-3 py-2 rounded-lg border border-amber-200 bg-amber-50 text-xs text-amber-700">
               <AlertTriangle className="h-4 w-4 shrink-0" /> Offer needs the approval chain completed before it can be sent.
             </div>
           )}
 
-          {offer.offer_status === 'draft' && isApproved && (
-            <Button size="sm" className="text-xs" onClick={handleSend} disabled={sending}>
-              {sending ? <><Loader2 className="h-3.5 w-3.5 mr-1.5 animate-spin" /> Sending…</> : <><Send className="h-3.5 w-3.5 mr-1.5" /> Send offer letter</>}
-            </Button>
+          {isSigned && (
+            <div className="flex items-center gap-2 px-3 py-2 rounded-lg border border-emerald-200 bg-emerald-50 text-xs text-emerald-700">
+              <Check className="h-4 w-4 shrink-0" /> Offer letter signed {fmtDate(latestSend.signed_at)}
+            </div>
+          )}
+          {isRevoked && (
+            <div className="flex items-center gap-2 px-3 py-2 rounded-lg border border-rose-200 bg-rose-50 text-xs text-rose-700">
+              <XCircle className="h-4 w-4 shrink-0" />
+              Link revoked {fmtDate(latestSend.revoked_at)}
+              {latestSend.revocation_reason && (
+                <span className="italic"> — "{latestSend.revocation_reason}"</span>
+              )}
+            </div>
           )}
 
-          {offer.offer_status === 'sent' && (
-            <p className="text-xs text-muted-foreground">Awaiting candidate response.</p>
-          )}
+          {isSigned ? (
+            <div className="rounded-lg border border-dashed bg-emerald-50/50 border-emerald-200 p-3 text-center space-y-0.5">
+              <p className="text-[11px] text-emerald-700 font-semibold flex items-center justify-center gap-1.5">
+                <Check className="h-3.5 w-3.5" /> Signed {fmtDate(latestSend.signed_at)}
+              </p>
+            </div>
+          ) : isActive && portalUrl ? (
+            <PortalLinkRow
+              url={portalUrl}
+              expiresAt={latestSend.token_expires_at}
+              sentAt={latestSend.sent_at}
+              onRegenerate={handleRegenerate}
+              onRevoke={() => { setShowRevoke(true); setRevokeReason(''); }}
+              generating={regenerating}
+            />
+          ) : isApproved ? (
+            <GenerateLinkRow
+              onGenerate={handleGenerate}
+              generating={sending}
+              label={isRevoked ? 'Regenerate link' : 'Generate link'}
+            />
+          ) : null}
 
-          {offer.offer_status === 'negotiating' && offer.negotiations?.length > 0 && (
-            <div className="space-y-3">
-              <div className="rounded-lg border divide-y">
-                {offer.negotiations.map((n) => (
-                  <div key={n.id} className="px-3 py-2 text-xs">
-                    <div className="flex items-center justify-between">
-                      <span className="font-semibold capitalize">{n.initiated_by}</span>
-                      <span className="text-[10px] text-muted-foreground">{fmtDate(n.created_at)}</span>
-                    </div>
-                    <p className="text-muted-foreground mt-0.5">{n.message}</p>
-                    {n.requested_salary && (
-                      <p className="font-mono mt-0.5">{fmtCurrency(n.requested_salary)}</p>
-                    )}
-                  </div>
-                ))}
-              </div>
-
-              <div className="space-y-2 pt-2 border-t">
-                <div className="flex gap-2">
-                  {['accept', 'counter', 'decline'].map((t) => (
-                    <button
-                      key={t}
-                      type="button"
-                      onClick={() => setResponseType(t)}
-                      className={`px-2.5 py-1 rounded-full border text-[10px] font-semibold capitalize ${
-                        responseType === t ? 'bg-primary text-primary-foreground border-primary' : 'border-border text-muted-foreground'
-                      }`}
-                    >
-                      {t}
-                    </button>
-                  ))}
-                </div>
-                <Textarea
-                  placeholder="Response message"
-                  rows={2}
-                  className="text-xs"
-                  value={responseMsg}
-                  onChange={(e) => setResponseMsg(e.target.value)}
-                />
-                <Button size="sm" className="text-xs" onClick={handleRespond} disabled={responding}>
-                  {responding ? <><Loader2 className="h-3.5 w-3.5 mr-1.5 animate-spin" /> Sending…</> : 'Send response'}
+          {showRevoke && isActive && (
+            <div className="space-y-2 p-3 rounded-lg border border-rose-200 bg-rose-50/30">
+              <p className="text-[10px] font-semibold text-rose-700 uppercase tracking-wide">
+                Revoke offer link
+              </p>
+              <Input
+                value={revokeReason}
+                onChange={(e) => setRevokeReason(e.target.value)}
+                placeholder="Reason (optional) — e.g. offer pulled, terms changed"
+                className="text-xs h-8"
+              />
+              <div className="flex gap-2">
+                <Button size="sm" variant="destructive" className="text-xs h-8" onClick={handleRevoke} disabled={revoking}>
+                  {revoking
+                    ? <><Loader2 className="h-3.5 w-3.5 mr-1.5 animate-spin" /> Revoking…</>
+                    : 'Confirm revoke'}
+                </Button>
+                <Button size="sm" variant="ghost" className="text-xs h-8" onClick={() => { setShowRevoke(false); setRevokeReason(''); }}>
+                  Cancel
                 </Button>
               </div>
             </div>
           )}
 
-          {offer.offer_status === 'accepted' && (
-            <div className="flex items-center gap-2 px-3 py-2 rounded-lg border border-emerald-200 bg-emerald-50 text-xs text-emerald-700">
-              <Check className="h-4 w-4 shrink-0" /> Offer accepted — proceed to Contract
-            </div>
-          )}
+        </CardContent>
+      </Card>
 
-          {offer.offer_status === 'rejected' && (
-            <div className="flex items-center gap-2 px-3 py-2 rounded-lg border border-rose-200 bg-rose-50 text-xs text-rose-700">
-              <X className="h-4 w-4 shrink-0" /> Offer rejected
+      {/* Negotiation — separate from portal-link lifecycle above */}
+      {offer.offer_status === 'negotiating' && offer.negotiations?.length > 0 && (
+        <Card>
+          <CardHeader className="pb-2">
+            <CardTitle className="text-xs uppercase tracking-wide text-muted-foreground">
+              Negotiation
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-3">
+            <div className="rounded-lg border divide-y">
+              {offer.negotiations.map((n) => (
+                <div key={n.id} className="px-3 py-2 text-xs">
+                  <div className="flex items-center justify-between">
+                    <span className="font-semibold capitalize">{n.initiated_by}</span>
+                    <span className="text-[10px] text-muted-foreground">{fmtDate(n.created_at)}</span>
+                  </div>
+                  <p className="text-muted-foreground mt-0.5">{n.message}</p>
+                  {n.requested_salary && (
+                    <p className="font-mono mt-0.5">{fmtCurrency(n.requested_salary)}</p>
+                  )}
+                </div>
+              ))}
+            </div>
+
+            <div className="space-y-2 pt-2 border-t">
+              <div className="flex gap-2">
+                {['accept', 'counter', 'decline'].map((t) => (
+                  <button
+                    key={t}
+                    type="button"
+                    onClick={() => setResponseType(t)}
+                    className={`px-2.5 py-1 rounded-full border text-[10px] font-semibold capitalize ${
+                      responseType === t ? 'bg-primary text-primary-foreground border-primary' : 'border-border text-muted-foreground'
+                    }`}
+                  >
+                    {t}
+                  </button>
+                ))}
+              </div>
+              <Textarea
+                placeholder="Response message"
+                rows={2}
+                className="text-xs"
+                value={responseMsg}
+                onChange={(e) => setResponseMsg(e.target.value)}
+              />
+              <Button size="sm" className="text-xs" onClick={handleRespond} disabled={responding}>
+                {responding ? <><Loader2 className="h-3.5 w-3.5 mr-1.5 animate-spin" /> Sending…</> : 'Send response'}
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
+      {offer.offer_status === 'accepted' && (
+        <div className="flex items-center gap-2 px-3 py-2 rounded-lg border border-emerald-200 bg-emerald-50 text-xs text-emerald-700">
+          <Check className="h-4 w-4 shrink-0" /> Offer accepted — proceed to Contract
+        </div>
+      )}
+      {offer.offer_status === 'rejected' && (
+        <div className="flex items-center gap-2 px-3 py-2 rounded-lg border border-rose-200 bg-rose-50 text-xs text-rose-700">
+          <X className="h-4 w-4 shrink-0" /> Offer rejected
+        </div>
+      )}
+
+      {/* Offer document preview — email content + attachment reference, mirrors the wireframe's two-panel layout */}
+      <Card>
+        <CardHeader className="pb-2">
+          <div className="flex items-center justify-between gap-2 flex-wrap">
+            <CardTitle className="text-xs uppercase tracking-wide text-muted-foreground">
+              Send · dispatch preview
+            </CardTitle>
+            <span className="text-[10px] text-muted-foreground">
+              candidate-facing email · signing portal · token-based
+            </span>
+          </div>
+        </CardHeader>
+        <CardContent className="pt-0">
+          {loadingHistory ? (
+            <div className="flex justify-center py-6">
+              <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+
+              {/* Email preview */}
+              <div className="rounded-lg border bg-muted/10 overflow-hidden">
+                <div className="px-4 py-2.5 border-b bg-muted/20">
+                  <p className="text-[10px] font-bold tracking-widest uppercase text-muted-foreground">
+                    Email preview
+                  </p>
+                </div>
+                <div className="px-4 py-3 space-y-2.5 text-[11px] leading-relaxed text-foreground">
+                  <p>Halo {offer.candidate_name || 'Kandidat'},</p>
+                  <p>
+                    Selamat! Kami senang menawarkan posisi{' '}
+                    <strong>{offer.position_title || offer.job_title}</strong>
+                    {offer.net_salary != null && (
+                      <> dengan paket kompensasi total <strong>{fmtCurrency(offer.net_salary)}</strong>/bulan</>
+                    )}.
+                  </p>
+                  {isActive ? (
+                    <>
+                      <p>
+                        Silakan tinjau dan tanda-tangan surat penawaran Anda melalui portal di tautan
+                        di bawah ini. Tautan akan kedaluwarsa dalam {expiryDaysLeft ?? '—'} hari.
+                      </p>
+                      <p className="font-mono text-primary break-all">{portalUrl}</p>
+                    </>
+                  ) : isSigned ? (
+                    <p className="text-emerald-700">Surat penawaran telah ditandatangani.</p>
+                  ) : (
+                    <p className="text-muted-foreground italic">
+                      Belum dikirim — hasilkan tautan portal di atas untuk melihat pratinjau lengkap.
+                    </p>
+                  )}
+                </div>
+              </div>
+
+              {/* Reference info — only real fields, no fabricated template metadata */}
+              <div className="rounded-lg border bg-muted/10 overflow-hidden">
+                <div className="px-4 py-2.5 border-b bg-muted/20">
+                  <p className="text-[10px] font-bold tracking-widest uppercase text-muted-foreground">
+                    Offer reference
+                  </p>
+                </div>
+                <div className="px-4 py-3 space-y-2 text-[11px]">
+                  <div className="flex items-center justify-between">
+                    <span className="text-muted-foreground">Position</span>
+                    <span className="font-medium">{offer.position_title || offer.job_title || '—'}</span>
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <span className="text-muted-foreground">Contract type</span>
+                    <span className="font-mono">{offer.contract_type || '—'}</span>
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <span className="text-muted-foreground">Status</span>
+                    <span className="font-mono">{isSigned ? 'signed' : isRevoked ? 'revoked' : isActive ? 'sent' : 'not sent'}</span>
+                  </div>
+                  {latestSend?.sent_by_name && (
+                    <div className="flex items-center justify-between">
+                      <span className="text-muted-foreground">Sent by</span>
+                      <span>{latestSend.sent_by_name}</span>
+                    </div>
+                  )}
+                  {latestSend?.sent_at && (
+                    <div className="flex items-center justify-between">
+                      <span className="text-muted-foreground">Sent</span>
+                      <span>{fmtDate(latestSend.sent_at)}</span>
+                    </div>
+                  )}
+                  {latestSend?.signed_at && (
+                    <div className="flex items-center justify-between">
+                      <span className="text-muted-foreground">Signed</span>
+                      <span>{fmtDate(latestSend.signed_at)}</span>
+                    </div>
+                  )}
+                </div>
+              </div>
+
             </div>
           )}
         </CardContent>
@@ -1124,7 +1440,7 @@ function ContractSection({ offer, setOffer, setBanner, setError }) {
     setGenerating(true);
     setError(null);
     try {
-      await offerAPI.generateContract(offer.id, contractType, startDate, contractType === 'PKWT' ? endDate : null);
+      await generateContract(offer.id, contractType, startDate, contractType === 'PKWT' ? endDate : null);
       setOffer((prev) => ({ ...prev, contract_status: 'ready' }));
       setBanner({ ok: true, text: 'Contract generated.' });
     } catch (err) {
@@ -1138,7 +1454,7 @@ function ContractSection({ offer, setOffer, setBanner, setError }) {
     setSending(true);
     setError(null);
     try {
-      await offerAPI.sendContract(offer.id);
+      await sendContract(offer.id);
       setOffer((prev) => ({ ...prev, contract_status: 'sent' }));
       setBanner({ ok: true, text: 'Contract sent for signature.' });
     } catch (err) {
@@ -1231,7 +1547,7 @@ export default function OfferCandidatePage() {
     setLoading(true);
     setError(null);
     try {
-      const res = await offerAPI.getOfferById(offerId);
+      const res = await getOfferById(offerId);
       setOffer(res.data || null);
     } catch (err) {
       setError(err.response?.data?.message || err.message || 'Failed to load offer');
