@@ -1,6 +1,6 @@
 export const templateStages = [
-  { id: 1, name: 'Template untuk Akuntan' },
-  { id: 2, name: 'Template untuk IT Dev' },
+  { id: 1, name: 'Template untuk Akuntan', sort_order: 2 },
+  { id: 2, name: 'Template untuk IT Dev',  sort_order: 1 },
 ];
 
 // stage_type_id references recruitment_stage_category.id

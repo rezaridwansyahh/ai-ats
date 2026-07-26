@@ -3,7 +3,7 @@ import getDb from "../../config/postgres.js";
 class TemplateStageModel {
   async getAll() {
     const result = await getDb().query(
-      `SELECT id, name FROM master_template_stage ORDER BY id`
+      `SELECT id, name, sort_order FROM master_template_stage ORDER BY sort_order ASC, id ASC`
     );
     return result.rows;
   }

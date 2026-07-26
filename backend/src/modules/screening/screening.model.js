@@ -374,9 +374,7 @@ class ScreeningModel {
         COUNT(*) FILTER (WHERE ce.engine='ready') AS ready
       FROM core_job cj
       LEFT JOIN candidate_engine ce ON ce.job_id = cj.id
-      left join job_stage js on js.id = ce.latest_stage
-      left join recruitment_stage_category rsc on rsc.id = js.stage_type_id
-      WHERE cj.company_id = $1 and rsc.name = 'Screening & Matching'
+      WHERE cj.company_id = $1
       GROUP BY cj.id, cj.job_title, cj.status
       ORDER BY cj.status = 'Active' DESC, cj.id ASC
       `,
@@ -467,9 +465,7 @@ class ScreeningModel {
         ON s.applicant_id = mc.applicant_id AND s.job_id = mc.job_id
       LEFT JOIN candidate_screening cs ON cs.candidate_id = mc.id
       LEFT JOIN screening_qa sq ON sq.screening_id = cs.id
-      left join job_stage js on js.id = mc.latest_stage
-      left join recruitment_stage_category rsc on rsc.id = js.stage_type_id
-      WHERE mc.job_id = $1 AND mc.applicant_id IS NOT NULL AND rsc.name = 'Screening & Matching'
+      WHERE mc.job_id = $1 AND mc.applicant_id IS NOT NULL
       ORDER BY mc.created_at DESC
       `,
       [job_id]
