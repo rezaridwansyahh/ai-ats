@@ -401,12 +401,11 @@ export default function JobStagesStep({ selectedJob, onPipelineChange }) {
                 <TableHead className="text-[11px] font-bold uppercase tracking-wide text-muted-foreground">
                   Stage Name
                 </TableHead>
-                {isCustom && (
-                  !isPipelineLocked && (
+                {isCustom && !isPipelineLocked && (
                   <TableHead className="w-28 text-center text-[11px] font-bold uppercase tracking-wide text-muted-foreground">
                     Actions
                   </TableHead>
-                  )}
+                )}
               </TableRow>
             </TableHeader>
             <TableBody>
