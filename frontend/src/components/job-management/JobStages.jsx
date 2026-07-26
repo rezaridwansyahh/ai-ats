@@ -2,6 +2,7 @@ import { useState, useEffect, useRef } from 'react';
 import {
   Plus, X, Lock, ArrowUp, ArrowDown, Check,
   Briefcase, MapPin, AlertTriangle, Zap, Clock, Mail, Save, Loader2,
+  ShieldCheck,
 } from 'lucide-react';
 import { getJobPipeline, saveJobPipeline } from '@/api/pipeline.api';
 import { getStageCategories } from '@/api/stage-category.api';
@@ -47,6 +48,9 @@ export default function JobStagesStep({ selectedJob, onPipelineChange }) {
   // Guards the debounced auto-save from firing on programmatic state updates
   // (initial load + the post-save id-sync), so we only persist real user edits.
   const skipAutoSaveRef = useRef(true);
+  // Set to true when the pipeline loads empty so the first template is
+  // auto-selected once template data arrives (handles the load-order race).
+  const autoSelectRef = useRef(false);
   const [stages, setStages] = useState([]);
   const [loadingStages, setLoadingStages] = useState(false);
   const [savingStages, setSavingStages] = useState(false);
@@ -59,6 +63,9 @@ export default function JobStagesStep({ selectedJob, onPipelineChange }) {
   const [selectedTemplateId, setSelectedTemplateId] = useState(null);
   const [loadingTemplates, setLoadingTemplates] = useState(false);
 
+  // True when the job is published — pipeline config is read-only.
+  const isPipelineLocked = selectedJob?.status && selectedJob.status !== 'Draft';
+
   // ── Load categories & templates on mount ──
   useEffect(() => {
     getStageCategories()
@@ -67,9 +74,19 @@ export default function JobStagesStep({ selectedJob, onPipelineChange }) {
 
     setLoadingTemplates(true);
     getTemplateStages()
-      .then(res => setTemplates(res.data.data))
+      .then(res => {
+        const data = res.data.data || [];
+        setTemplates(data);
+        // If the pipeline already loaded empty (race: pipeline beat templates),
+        // auto-select the first template now that we have the list.
+        if (autoSelectRef.current && data.length > 0) {
+          autoSelectRef.current = false;
+          handleTemplateSelect(data[0].id);
+        }
+      })
       .catch(() => {})
       .finally(() => setLoadingTemplates(false));
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   // ── Load pipeline from API when job changes ──
@@ -105,10 +122,17 @@ export default function JobStagesStep({ selectedJob, onPipelineChange }) {
           setStages(data.stages.map(mapStage));
           nextIdRef.current = Math.max(...data.stages.map(s => s.id)) + 1;
         } else {
+          // No pipeline configured yet (new job). Auto-select the first template
+          // (IT Dev after sort_order fix). If templates haven't loaded yet,
+          // set the flag so the template effect picks it up when it resolves.
           setIsCustom(false);
-          setSelectedTemplateId(null);
           setStages([]);
           nextIdRef.current = 1;
+          if (templates.length > 0) {
+            handleTemplateSelect(templates[0].id);
+          } else {
+            autoSelectRef.current = true;
+          }
         }
 
         // Notify parent: server-confirmed stage presence, NOT local edits.
@@ -133,9 +157,10 @@ export default function JobStagesStep({ selectedJob, onPipelineChange }) {
 
   // ── Auto-save pipeline (debounced) once it's in a valid, user-edited state ──
   // skipAutoSaveRef suppresses the initial load and the post-save id-sync.
+  // Locked jobs (Active / Expired etc.) never auto-save — their pipeline is read-only.
   useEffect(() => {
     if (skipAutoSaveRef.current) { skipAutoSaveRef.current = false; return; }
-    if (!selectedJob?.id || !canSave) return;
+    if (!selectedJob?.id || !canSave || isPipelineLocked) return;
     const t = setTimeout(() => { handleSave(); }, 1200);
     return () => clearTimeout(t);
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -323,7 +348,7 @@ export default function JobStagesStep({ selectedJob, onPipelineChange }) {
               <Select
                 value={selectedTemplateId ? String(selectedTemplateId) : ''}
                 onValueChange={handleTemplateSelect}
-                disabled={isCustom || loadingTemplates}
+                disabled={isCustom || loadingTemplates || isPipelineLocked}
               >
                 <SelectTrigger className="h-9 text-xs w-[220px]">
                   <SelectValue placeholder="Select a template..." />
@@ -344,11 +369,23 @@ export default function JobStagesStep({ selectedJob, onPipelineChange }) {
                 id="custom-pipeline"
                 checked={isCustom}
                 onCheckedChange={handleCustomToggle}
+                disabled={isPipelineLocked}
               />
-              <label htmlFor="custom-pipeline" className="text-xs font-semibold cursor-pointer">
+              <label
+                htmlFor="custom-pipeline"
+                className={`text-xs font-semibold ${isPipelineLocked ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'}`}
+              >
                 Custom Pipeline
               </label>
             </div>
+
+            {/* Lock notice for Active jobs */}
+            {isPipelineLocked && (
+              <span className="inline-flex items-center gap-1.5 text-[11px] text-amber-600 font-medium">
+                <ShieldCheck className="h-3.5 w-3.5" />
+                Pipeline is locked — job is {selectedJob.status}
+              </span>
+            )}
           </div>
         </CardHeader>
         <CardContent className="p-0">
@@ -365,10 +402,11 @@ export default function JobStagesStep({ selectedJob, onPipelineChange }) {
                   Stage Name
                 </TableHead>
                 {isCustom && (
+                  !isPipelineLocked && (
                   <TableHead className="w-28 text-center text-[11px] font-bold uppercase tracking-wide text-muted-foreground">
                     Actions
                   </TableHead>
-                )}
+                  )}
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -380,7 +418,7 @@ export default function JobStagesStep({ selectedJob, onPipelineChange }) {
                     </span>
                   </TableCell>
                   <TableCell>
-                    {isCustom ? (
+                    {isCustom && !isPipelineLocked ? (
                       <Select
                         value={String(stage.stage_type_id)}
                         onValueChange={v => {
@@ -403,7 +441,7 @@ export default function JobStagesStep({ selectedJob, onPipelineChange }) {
                     )}
                   </TableCell>
                   <TableCell>
-                    {isCustom ? (
+                    {isCustom && !isPipelineLocked ? (
                       <Input
                         value={stage.name}
                         onChange={e => updateStage(stage.id, 'name', e.target.value)}
@@ -414,7 +452,7 @@ export default function JobStagesStep({ selectedJob, onPipelineChange }) {
                       <span className="text-xs">{stage.name}</span>
                     )}
                   </TableCell>
-                  {isCustom && (
+                  {isCustom && !isPipelineLocked && (
                     <TableCell className="text-center">
                       <div className="flex items-center justify-center gap-1">
                         <Button
@@ -452,8 +490,8 @@ export default function JobStagesStep({ selectedJob, onPipelineChange }) {
                 </TableRow>
               ))}
 
-              {/* Add Stage (custom mode only) */}
-              {isCustom && (
+              {/* Add Stage (custom mode only, not locked) */}
+              {isCustom && !isPipelineLocked && (
                 <TableRow className="hover:bg-primary/5 cursor-pointer border-border/40" onClick={addStage}>
                   <TableCell colSpan={4} className="text-center py-3">
                     <span className="text-xs font-semibold text-primary">
