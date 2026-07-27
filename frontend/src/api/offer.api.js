@@ -85,10 +85,6 @@ export const setupApprovalChain = (offerId, steps) => api.post(`/offer/${offerId
 
 export const decideApprovalStep = (offerId, stepIndex, decision, note) => api.post(`/offer/${offerId}/approval/${stepIndex}/decide`, { decision, note });
 
-export const getOfferLetterDraft = (offerId) => api.get(`/offer/${offerId}/offer-letter`);
+export const getOfferLetterFields = (offerId) => api.get(`/offer/${offerId}/offer-letter/fields`);
 
-export const saveOfferLetterDraft = (offerId, body) => api.put(`/offer/${offerId}/offer-letter`, { body });
-
-export const downloadOfferLetterPdf = (offerId) => api.get(`/offer/${offerId}/offer-letter/download/pdf`, { responseType: 'blob' });
-
-export const downloadOfferLetterDocx = (offerId) => api.get(`/offer/${offerId}/offer-letter/download/docx`, { responseType: 'blob' });
+export const saveOfferLetterData = (offerId, data) => api.put(`/offer/${offerId}/offer-letter/data`, data);

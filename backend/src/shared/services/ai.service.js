@@ -1,7 +1,6 @@
 import OpenAI from 'openai';
 import { normalizeSkills } from '../../modules/screening/skill-normalizer.js';
 import companyUsageService from '../../modules/company-usage/company-usage.service.js';
-import { OFFER_LETTER_TEMPLATE_TEXT } from '../../shared/services/document-renderer.service.js';
 
 console.log("testing: ", process.env.OPENAI_API_KEY);
 const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
@@ -757,63 +756,6 @@ Return STRICT JSON:
 
     return { claims };
   }
-
-
-  async generateOfferLetterDraft(offer, context = {}) {
-    if (!offer || typeof offer !== 'object') {
-      throw new Error('generateOfferLetterDraft: offer is required');
-    }
-
-    await companyUsageService.checkBudgetOrThrow(context.company_id);
-
-    // Only pass along data that actually exists on this offer — nothing assumed,
-    // nothing required. Every company's real letter may reference fields this
-    // list doesn't even have.
-    const knownData = {
-      candidate_name: offer.candidate_name || null,
-      company_name: offer.company_name || null,
-      position_title: offer.position_title || offer.job_title || null,
-      contract_type: offer.contract_type || null,
-      base_salary: offer.base_salary || null,
-      net_salary: offer.net_salary || null,
-      allowances: offer.allowances || null,
-      bonus_structure: offer.bonus_structure || null,
-    };
-
-    const prompt = `You are drafting a formal employment offer letter for an HR system. Use the REFERENCE TEMPLATE below for structure, section order, and tone — it's an example of a real approved letter format.
-
-    REFERENCE TEMPLATE:
-    """
-    ${OFFER_LETTER_TEMPLATE_TEXT}
-    """
-
-    KNOWN OFFER DATA (only use what's listed here — nothing else is confirmed):
-    ${JSON.stringify(knownData, null, 2)}
-
-    RULES:
-    - Wherever the template has a placeholder and KNOWN OFFER DATA has a matching non-null value, substitute the real value directly into the prose.
-    - Wherever a template placeholder has NO matching data above, leave a clearly marked placeholder like "[FIELD NOT PROVIDED]" in that spot — do NOT guess, estimate, or invent a value. This is a legal document.
-    - Do not add, remove, or reorder sections from the reference template.
-    - Output valid semantic HTML only: <h2> for section headings, <p> for paragraphs, <ul>/<li> for lists. No <html>/<head>/<body> wrapper, no commentary — return ONLY the HTML fragment.`;
-
-    const response = await openai.chat.completions.create({
-      model: SCORING_MODEL,
-      messages: [{ role: 'user', content: prompt }],
-      temperature: 0.1,
-    });
-
-    await this._logUsage({
-      context,
-      model: SCORING_MODEL,
-      operation: 'generate_offer_letter_draft',
-      usage: response.usage,
-      request_id: response.id,
-      metadata: { offer_id: context.metadata?.offer_id || null },
-    });
-
-    return (response.choices[0]?.message?.content || '').trim();
-  }
-
 
 }
 

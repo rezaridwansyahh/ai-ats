@@ -1,7 +1,7 @@
 import OfferModel from './offer.model.js';
 import CompensationEngine from '../../shared/services/compensation-engine.js';
-import AIService from '../ai/ai.service.js';
-import { renderHtmlToPdf, renderHtmlToDocx } from '../../shared/services/document-renderer.service.js';
+import OfferTemplateModel from '../offer-template/offer-template.model.js';
+
 // import fs from 'fs'; 
 
 function computeApprovalStatus(steps) {
@@ -353,7 +353,6 @@ class OfferService {
     const send = await OfferModel.createOfferSend({
       offer_id,
       token_expires_at: expiresAt,
-      document: offer.metadata?.offer_letter || {},
       sent_by: user_id,
     });
 
@@ -377,7 +376,6 @@ class OfferService {
     const send = await OfferModel.createOfferSend({
       offer_id,
       token_expires_at: expiresAt,
-      document: offer.metadata?.offer_letter || {},
       sent_by: user_id,
     });
 
@@ -466,57 +464,48 @@ class OfferService {
     const metadata = await OfferModel.mergeMetadata(offer_id, { approval });
     return { approval: metadata.approval, message: `Step ${decision}` };
   }
-
-  // ---- Offer letter draft — Path B: fully editable HTML, per-offer, AI-seeded ----
-
-  async getOfferLetterDraft(offer_id, company_id) {
+  
+  async getOfferLetterFields(offer_id, company_id) {
     const offer = await OfferModel.getOfferById(offer_id, company_id);
     if (!offer) throw { status: 404, message: 'Offer not found' };
 
-    const existing = offer.metadata?.offer_letter?.body;
-    if (existing) {
-      return { body: existing, generated: false };
+    const template = await OfferTemplateModel.getByCompanyId(company_id);
+    if (!template) {
+      return { has_template: false, fields: [], values: {} };
     }
 
-    const html = await AIService.generateOfferLetterDraft(offer, {
-      company_id,
-      metadata: { offer_id },
-    });
-
-    const metadata = await OfferModel.mergeMetadata(offer_id, {
-      offer_letter: { body: html, generated_at: new Date(), edited: false },
-    });
-
-    return { body: metadata.offer_letter.body, generated: true };
+    return {
+      has_template: true,
+      fields: template.fields || [],
+      values: offer.metadata?.offer_letter_data || {},
+    };
   }
 
-  async saveOfferLetterDraft(offer_id, html, company_id) {
+  async saveOfferLetterData(offer_id, data, company_id) {
     const offer = await OfferModel.getOfferById(offer_id, company_id);
     if (!offer) throw { status: 404, message: 'Offer not found' };
-    if (typeof html !== 'string' || !html.trim()) {
-      throw { status: 400, message: 'Letter body is required' };
+
+    const template = await OfferTemplateModel.getByCompanyId(company_id);
+    if (!template) {
+      throw { status: 400, message: 'Upload your company\'s offer letter template in Settings before filling this in' };
     }
 
+    if (!data || typeof data !== 'object') {
+      throw { status: 400, message: 'Field values are required' };
+    }
+
+    const allowedFields = new Set(template.fields || []);
+    const cleaned = {};
+    for (const [key, value] of Object.entries(data)) {
+      if (allowedFields.has(key)) cleaned[key] = value;
+    }
+
+    const existing = offer.metadata?.offer_letter_data || {};
     const metadata = await OfferModel.mergeMetadata(offer_id, {
-      offer_letter: { body: html, updated_at: new Date(), edited: true },
+      offer_letter_data: { ...existing, ...cleaned },
     });
-    return metadata.offer_letter;
-  }
 
-  async downloadOfferLetterPdf(offer_id, company_id) {
-    const offer = await OfferModel.getOfferById(offer_id, company_id);
-    if (!offer) throw { status: 404, message: 'Offer not found' };
-    const html = offer.metadata?.offer_letter?.body;
-    if (!html) throw { status: 400, message: 'No offer letter draft yet — open Review first to generate one' };
-    return renderHtmlToPdf(html);
-  }
-
-  async downloadOfferLetterDocx(offer_id, company_id) {
-    const offer = await OfferModel.getOfferById(offer_id, company_id);
-    if (!offer) throw { status: 404, message: 'Offer not found' };
-    const html = offer.metadata?.offer_letter?.body;
-    if (!html) throw { status: 400, message: 'No offer letter draft yet — open Review first to generate one' };
-    return renderHtmlToDocx(html);
+    return { offer_letter_data: metadata.offer_letter_data, message: 'Offer letter data saved' };
   }
 
   /* ---------------------------------------------------------------------

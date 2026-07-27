@@ -324,57 +324,26 @@ class OfferController {
     }
   }
 
-  // ---- Offer letter draft ----
-
-  async getOfferLetterDraft(req, res) {
+  async getOfferLetterFields(req, res) {
     try {
       const { offer_id } = req.params;
       const { company_id } = req.user;
-      const result = await OfferService.getOfferLetterDraft(offer_id, company_id);
+      const result = await OfferService.getOfferLetterFields(offer_id, company_id);
       res.json(result);
     } catch (error) {
-      console.error('Error in getOfferLetterDraft:', error);
+      console.error('Error in getOfferLetterFields:', error);
       res.status(error.status || 500).json({ message: error.message });
     }
   }
 
-  async saveOfferLetterDraft(req, res) {
+  async saveOfferLetterData(req, res) {
     try {
       const { offer_id } = req.params;
       const { company_id } = req.user;
-      const { body } = req.body;
-      const result = await OfferService.saveOfferLetterDraft(offer_id, body, company_id);
+      const result = await OfferService.saveOfferLetterData(offer_id, req.body, company_id);
       res.json(result);
     } catch (error) {
-      console.error('Error in saveOfferLetterDraft:', error);
-      res.status(error.status || 500).json({ message: error.message });
-    }
-  }
-
-  async downloadOfferLetterPdf(req, res) {
-    try {
-      const { offer_id } = req.params;
-      const { company_id } = req.user;
-      const buffer = await OfferService.downloadOfferLetterPdf(offer_id, company_id);
-      res.setHeader('Content-Type', 'application/pdf');
-      res.setHeader('Content-Disposition', `attachment; filename="offer_letter_${offer_id}.pdf"`);
-      res.send(buffer);
-    } catch (error) {
-      console.error('Error in downloadOfferLetterPdf:', error);
-      res.status(error.status || 500).json({ message: error.message });
-    }
-  }
-
-  async downloadOfferLetterDocx(req, res) {
-    try {
-      const { offer_id } = req.params;
-      const { company_id } = req.user;
-      const buffer = await OfferService.downloadOfferLetterDocx(offer_id, company_id);
-      res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document');
-      res.setHeader('Content-Disposition', `attachment; filename="offer_letter_${offer_id}.docx"`);
-      res.send(buffer);
-    } catch (error) {
-      console.error('Error in downloadOfferLetterDocx:', error);
+      console.error('Error in saveOfferLetterData:', error);
       res.status(error.status || 500).json({ message: error.message });
     }
   }

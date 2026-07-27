@@ -3,8 +3,8 @@ import { useNavigate, useParams } from 'react-router-dom';
 import {
   ArrowLeft, Loader2, AlertTriangle, Check, ChevronRight, X,
   FileText, Pencil, Wallet, Send, FileSignature, Plus, Trash2,
-  MessageSquareText, PenLine, ShieldCheck, ThumbsDown, Clock, Circle,
-  Copy, Sparkles, RefreshCw, Ban, XCircle,
+  MessageSquareText, ShieldCheck, ThumbsDown, Clock, Circle,
+  Copy, Sparkles, RefreshCw, Ban, XCircle, Download, Upload, PenLine,
 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -20,14 +20,17 @@ import {
   sendOfferLetter, resendOffer, revokeOffer, getSendHistory,
   respondToNegotiation,
   generateContract, sendContract,
+  getOfferLetterFields, saveOfferLetterData,
 } from '@/api/offer.api';
 
+import { getOfferTemplate } from '@/api/offer-template.api';
+
 const SUBSTAGES = [
-  { key: 'intake',   number: 1, label: 'Intake',   sub: 'slip gaji'     },
-  { key: 'build',    number: 2, label: 'Build',    sub: 'compensation'  },
-  { key: 'approve',  number: 3, label: 'Approve',  sub: 'chain'         },
-  { key: 'send',     number: 4, label: 'Send',     sub: 'negotiate'     },
-  { key: 'contract', number: 5, label: 'Contract', sub: 'sign'          },
+  { key: 'intake',   number: 1, label: 'Intake',   sub: 'slip gaji'                 },
+  { key: 'build',    number: 2, label: 'Build',    sub: 'compensation'              },
+  { key: 'review',   number: 3, label: 'Review',   sub: 'summary · letter · approval' },
+  { key: 'send',     number: 4, label: 'Send',     sub: 'negotiate'                 },
+  { key: 'contract', number: 5, label: 'Contract', sub: 'sign'                      },
 ];
 
 const STATUS_TONE = {
@@ -65,6 +68,15 @@ function fmtDate(d) {
   try {
     return new Date(d).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' });
   } catch { return '—'; }
+}
+
+function downloadBlob(blobResponse, filename) {
+  const url = window.URL.createObjectURL(new Blob([blobResponse.data]));
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = filename;
+  a.click();
+  window.URL.revokeObjectURL(url);
 }
 
 function SubStageStepper({ activeSection, onSelect }) {
@@ -147,7 +159,7 @@ function CandidateCard({ offer }) {
   );
 }
 
-/* Intake Section — slip gaji, manual line-item entry, editable after saving */
+/* Intake Section — slip gaji, manual line-item entry, editable after saving, skippable */
 
 const DEFAULT_ROWS = [
   { label: 'Gaji Pokok', amount: '' },
@@ -494,6 +506,121 @@ function MoneyRow({ row, onLabelChange, onAmountChange, onRemove, disabled, labe
   );
 }
 
+/* Company template gate + dynamic <<field>> inputs, used inside Build */
+
+function TemplateGateCard({ template, loading }) {
+  if (loading) {
+    return (
+      <div className="flex justify-center py-6">
+        <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
+      </div>
+    );
+  }
+
+  if (!template) {
+    return (
+      <Card className="border-amber-200 bg-amber-50/40">
+        <CardContent className="p-4 flex items-center justify-between gap-3 flex-wrap">
+          <div className="min-w-0">
+            <p className="text-sm font-semibold text-amber-800">No offer letter template uploaded</p>
+            <p className="text-xs text-amber-700 mt-0.5">
+              Upload your company's offer letter template (.docx) in Settings before building this offer.
+            </p>
+          </div>
+          <Button size="sm" className="text-xs shrink-0" asChild>
+            <a href="/settings">Go to Settings</a>
+          </Button>
+        </CardContent>
+      </Card>
+    );
+  }
+
+  return (
+    <Card>
+      <CardContent className="p-3 flex items-center gap-2 text-xs text-muted-foreground">
+        <FileText className="h-3.5 w-3.5 shrink-0" />
+        Using company template · {template.fields?.length || 0} field{template.fields?.length === 1 ? '' : 's'} detected
+      </CardContent>
+    </Card>
+  );
+}
+
+function TemplateFieldsPart({ offer, setBanner, setError }) {
+  const [template, setTemplate] = useState(null);
+  const [fields, setFields] = useState([]);
+  const [values, setValues] = useState({});
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
+
+  const load = useCallback(async () => {
+    setLoading(true);
+    try {
+      const [templateRes, fieldsRes] = await Promise.all([
+        getOfferTemplate(),
+        getOfferLetterFields(offer.id),
+      ]);
+      setTemplate(templateRes.data?.template || null);
+      setFields(fieldsRes.data?.fields || []);
+      setValues(fieldsRes.data?.values || {});
+    } catch (err) {
+      setError(err.response?.data?.message || err.message || 'Failed to load offer letter fields');
+    } finally {
+      setLoading(false);
+    }
+  }, [offer.id]);
+
+  useEffect(() => { load(); }, [load]);
+
+  const updateValue = (key, value) => setValues((prev) => ({ ...prev, [key]: value }));
+
+  const handleSave = async () => {
+    setSaving(true);
+    setError(null);
+    try {
+      await saveOfferLetterData(offer.id, values);
+      setBanner({ ok: true, text: 'Offer letter fields saved.' });
+    } catch (err) {
+      setError(err.response?.data?.message || err.message || 'Failed to save offer letter fields');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  return (
+    <div className="space-y-3">
+      <TemplateGateCard template={template} loading={loading} />
+
+      {!loading && template && fields.length > 0 && (
+        <Card>
+          <CardHeader className="pb-2">
+            <CardTitle className="text-sm">Offer letter fields</CardTitle>
+            <p className="text-[10px] text-muted-foreground mt-0.5">
+              From your company's template — these fill in the {'<<placeholders>>'} when the letter is generated
+            </p>
+          </CardHeader>
+          <CardContent className="space-y-2">
+            {fields.map((field) => (
+              <div key={field} className="space-y-1">
+                <label className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
+                  {field}
+                </label>
+                <Input
+                  className="text-xs h-8"
+                  value={values[field] || ''}
+                  onChange={(e) => updateValue(field, e.target.value)}
+                />
+              </div>
+            ))}
+            <Button size="sm" className="text-xs" onClick={handleSave} disabled={saving}>
+              {saving ? <><Loader2 className="h-3.5 w-3.5 mr-1.5 animate-spin" /> Saving…</> : <><Check className="h-3.5 w-3.5 mr-1.5" /> Save fields</>}
+            </Button>
+          </CardContent>
+        </Card>
+      )}
+    </div>
+  );
+}
+
 function BuildSection({ offer, setOffer, setBanner, setError, onAdvance }) {
   const [baseSalary, setBaseSalary] = useState(offer.base_salary || '');
   const [allowances, setAllowances] = useState(
@@ -553,6 +680,8 @@ function BuildSection({ offer, setOffer, setBanner, setError, onAdvance }) {
 
   return (
     <div className="space-y-4">
+      <TemplateFieldsPart offer={offer} setBanner={setBanner} setError={setError} />
+
       <Card>
         <CardHeader className="pb-3">
           <div className="flex items-center gap-2">
@@ -681,10 +810,10 @@ function BuildSection({ offer, setOffer, setBanner, setError, onAdvance }) {
 
       <div className="flex items-center justify-between gap-3 pt-2 border-t">
         <p className="text-[10px] text-muted-foreground">
-          {offer.offer_status === 'draft' ? 'Set up the approval chain once compensation is finalized' : 'Offer already sent'}
+          {offer.offer_status === 'draft' ? 'Review the offer once compensation is finalized' : 'Offer already sent'}
         </p>
-        <Button size="sm" variant="outline" className="text-xs" onClick={() => onAdvance('approve')}>
-          <ChevronRight className="h-3.5 w-3.5 mr-1" /> Go to Approve
+        <Button size="sm" variant="outline" className="text-xs" onClick={() => onAdvance('review')}>
+          <ChevronRight className="h-3.5 w-3.5 mr-1" /> Go to Review
         </Button>
       </div>
     </div>
@@ -959,6 +1088,241 @@ function ApproveSection({ offer, offerId, setOffer, setBanner, setError, onAdvan
           </Button>
         </div>
       )}
+    </div>
+  );
+}
+
+/* Review Section — A. Data summary (intake + full compensation breakdown) · B. Offer letter values · C. Approval */
+
+function DataSummaryPart({ offer }) {
+  const slipGaji = offer.metadata?.intake?.slip_gaji;
+  const isIntakeSkipped = slipGaji?.status === 'skipped';
+  const hasIntake = slipGaji?.status === 'recorded';
+
+  return (
+    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+      <Card>
+        <CardHeader className="pb-2">
+          <CardTitle className="text-sm flex items-center gap-2">
+            <Wallet className="h-4 w-4 text-primary" /> Intake summary
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-2 text-xs">
+          {isIntakeSkipped ? (
+            <Badge variant="outline" className="text-[9px]">
+              skipped{slipGaji.skip_reason ? ` — ${slipGaji.skip_reason}` : ''}
+            </Badge>
+          ) : hasIntake ? (
+            <>
+              {slipGaji.line_items.map((item, i) => (
+                <div key={i} className="flex items-center justify-between">
+                  <span className="text-muted-foreground">{item.label}</span>
+                  <span className="font-mono">{fmtCurrency(item.amount)}</span>
+                </div>
+              ))}
+              <div className="flex items-center justify-between pt-1 border-t font-semibold">
+                <span>Total</span>
+                <span className="font-mono">{fmtCurrency(slipGaji.total)}</span>
+              </div>
+            </>
+          ) : (
+            <p className="text-muted-foreground italic">Not recorded yet.</p>
+          )}
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader className="pb-2">
+          <CardTitle className="text-sm flex items-center gap-2">
+            <Wallet className="h-4 w-4 text-primary" /> Compensation breakdown
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-2 text-xs">
+          {offer.base_salary != null ? (
+            <>
+              <div className="flex items-center justify-between">
+                <span className="text-muted-foreground">Base salary</span>
+                <span className="font-mono">{fmtCurrency(offer.base_salary)}</span>
+              </div>
+              <div className="flex items-center justify-between">
+                <span className="text-muted-foreground">Gross salary</span>
+                <span className="font-mono">{fmtCurrency(offer.gross_salary)}</span>
+              </div>
+              <div className="flex items-center justify-between">
+                <span className="text-muted-foreground">PPh 21</span>
+                <span className="font-mono">− {fmtCurrency(offer.pph21)}</span>
+              </div>
+              <div className="flex items-center justify-between">
+                <span className="text-muted-foreground">BPJS Kesehatan</span>
+                <span className="font-mono">− {fmtCurrency(offer.bpjs_kesehatan)}</span>
+              </div>
+              <div className="flex items-center justify-between">
+                <span className="text-muted-foreground">BPJS Ketenagakerjaan</span>
+                <span className="font-mono">− {fmtCurrency(offer.bpjs_ketenagakerjaan)}</span>
+              </div>
+              <div className="flex items-center justify-between pt-1 border-t font-semibold">
+                <span>Net salary</span>
+                <span className="font-mono">{fmtCurrency(offer.net_salary)}</span>
+              </div>
+            </>
+          ) : (
+            <p className="text-muted-foreground italic">Not built yet.</p>
+          )}
+        </CardContent>
+      </Card>
+    </div>
+  );
+}
+
+/* Offer letter values — editable in Review too, since mail-merge fields can change
+   right up until the letter is sent. Download/upload of the actual merged .docx is
+   noted as a placeholder — it needs a document-merge endpoint that doesn't exist yet. */
+
+function OfferLetterSummaryPart({ offer, setBanner, setError }) {
+  const [fields, setFields] = useState([]);
+  const [values, setValues] = useState({});
+  const [loading, setLoading] = useState(true);
+  const [editing, setEditing] = useState(false);
+  const [saving, setSaving] = useState(false);
+
+  const load = useCallback(async () => {
+    setLoading(true);
+    try {
+      const res = await getOfferLetterFields(offer.id);
+      setFields(res.data?.fields || []);
+      setValues(res.data?.values || {});
+    } catch (err) {
+      setError(err.response?.data?.message || err.message || 'Failed to load offer letter fields');
+    } finally {
+      setLoading(false);
+    }
+  }, [offer.id]);
+
+  useEffect(() => { load(); }, [load]);
+
+  const updateValue = (key, value) => setValues((prev) => ({ ...prev, [key]: value }));
+
+  const handleSave = async () => {
+    setSaving(true);
+    setError(null);
+    try {
+      await saveOfferLetterData(offer.id, values);
+      setEditing(false);
+      setBanner({ ok: true, text: 'Offer letter fields saved.' });
+    } catch (err) {
+      setError(err.response?.data?.message || err.message || 'Failed to save offer letter fields');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  if (loading) {
+    return (
+      <div className="flex justify-center py-6">
+        <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
+      </div>
+    );
+  }
+
+  return (
+    <Card>
+      <CardHeader className="pb-2">
+        <div className="flex items-center gap-2">
+          <FileText className="h-4 w-4 text-primary shrink-0" />
+          <div className="min-w-0 flex-1">
+            <CardTitle className="text-sm">Offer letter values</CardTitle>
+            <p className="text-[10px] text-muted-foreground mt-0.5">
+              Merged into your company's template — {editing ? 'edit and save below' : 'click Edit to change'}
+            </p>
+          </div>
+          {!editing && (
+            <Button size="sm" variant="outline" className="text-xs h-7" onClick={() => setEditing(true)}>
+              <Pencil className="h-3 w-3 mr-1.5" /> Edit
+            </Button>
+          )}
+        </div>
+      </CardHeader>
+      <CardContent className="space-y-2">
+        {fields.length === 0 ? (
+          <p className="text-muted-foreground italic text-xs">No template fields to review yet.</p>
+        ) : editing ? (
+          <>
+            {fields.map((field) => (
+              <div key={field} className="space-y-1">
+                <label className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
+                  {field}
+                </label>
+                <Input
+                  className="text-xs h-8"
+                  value={values[field] || ''}
+                  onChange={(e) => updateValue(field, e.target.value)}
+                />
+              </div>
+            ))}
+            <div className="flex gap-2 pt-1">
+              <Button size="sm" className="text-xs" onClick={handleSave} disabled={saving}>
+                {saving ? <><Loader2 className="h-3.5 w-3.5 mr-1.5 animate-spin" /> Saving…</> : <><Check className="h-3.5 w-3.5 mr-1.5" /> Save</>}
+              </Button>
+              <Button size="sm" variant="ghost" className="text-xs" onClick={() => { setEditing(false); load(); }} disabled={saving}>
+                Cancel
+              </Button>
+            </div>
+          </>
+        ) : (
+          <div className="space-y-1.5 text-xs">
+            {fields.map((field) => (
+              <div key={field} className="flex items-center justify-between gap-3">
+                <span className="text-muted-foreground">{field}</span>
+                <span className="font-mono truncate max-w-[60%] text-right">{values[field] || '—'}</span>
+              </div>
+            ))}
+          </div>
+        )}
+
+        <div className="flex items-center gap-2 pt-2 border-t">
+          <Button size="sm" variant="outline" className="text-xs" disabled title="Requires the document-merge endpoint to be built">
+            <Download className="h-3.5 w-3.5 mr-1.5" /> Download merged letter
+          </Button>
+          <Button size="sm" variant="outline" className="text-xs" disabled title="Requires the document-merge endpoint to be built">
+            <Upload className="h-3.5 w-3.5 mr-1.5" /> Upload signed version
+          </Button>
+        </div>
+        <p className="text-[10px] text-muted-foreground italic">
+          Download/upload of the actual merged document isn't wired up yet — the fields above are saved, but generating the real .docx/PDF needs a merge endpoint on the backend.
+        </p>
+      </CardContent>
+    </Card>
+  );
+}
+
+function ReviewSection({ offer, offerId, setOffer, setBanner, setError, onAdvance }) {
+  return (
+    <div className="space-y-5">
+
+      <div>
+        <p className="text-[10px] font-bold tracking-widest uppercase text-muted-foreground mb-2">
+          A. Data summary
+        </p>
+        <DataSummaryPart offer={offer} />
+      </div>
+
+      <div>
+        <p className="text-[10px] font-bold tracking-widest uppercase text-muted-foreground mb-2">
+          B. Offer letter
+        </p>
+        <OfferLetterSummaryPart offer={offer} setBanner={setBanner} setError={setError} />
+      </div>
+
+      <div>
+        <p className="text-[10px] font-bold tracking-widest uppercase text-muted-foreground mb-2">
+          C. Approval
+        </p>
+        <ApproveSection
+          offer={offer} offerId={offerId} setOffer={setOffer}
+          setBanner={setBanner} setError={setError} onAdvance={onAdvance}
+        />
+      </div>
+
     </div>
   );
 }
@@ -1640,8 +2004,8 @@ export default function OfferCandidatePage() {
             {activeSection === 'build' && (
               <BuildSection offer={offer} setOffer={setOffer} setBanner={setBanner} setError={setError} onAdvance={setActiveSection} />
             )}
-            {activeSection === 'approve' && (
-              <ApproveSection offer={offer} offerId={offer.id} setOffer={setOffer} setBanner={setBanner} setError={setError} onAdvance={setActiveSection} />
+            {activeSection === 'review' && (
+              <ReviewSection offer={offer} offerId={offer.id} setOffer={setOffer} setBanner={setBanner} setError={setError} onAdvance={setActiveSection} />
             )}
             {activeSection === 'send' && (
               <SendSection offer={offer} setOffer={setOffer} setBanner={setBanner} setError={setError} onAdvance={setActiveSection} />

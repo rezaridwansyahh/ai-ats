@@ -157,6 +157,10 @@ router.get( '/:offer_id/send-history', authToken, checkPermission('Offer & Onboa
 router.post( '/:offer_id/resend', authToken, checkPermission('Offer & Onboard', 'Offer & Contract', 'update'), OfferController.resendOffer);
 router.post( '/:offer_id/revoke', authToken, checkPermission('Offer & Onboard', 'Offer & Contract', 'update'), OfferController.revokeOffer);
 
+router.get( '/:offer_id/offer-letter/fields', authToken, checkPermission('Offer & Onboard', 'Offer & Contract', 'read'), OfferController.getOfferLetterFields);
+
+router.put( '/:offer_id/offer-letter/data', authToken, checkPermission('Offer & Onboard', 'Offer & Contract', 'update'), OfferController.saveOfferLetterData);
+
 /*
 router.get( '/:offer_id/document', authToken, checkPermission('Offer & Onboard', 'Offer & Contract', 'read'), OfferController.getOfferDocument);
 
@@ -164,9 +168,5 @@ router.post( '/:offer_id/document/upload', authToken, checkPermission('Offer & O
 router.post( '/:offer_id/document/print', authToken, checkPermission('Offer & Onboard', 'Offer & Contract', 'update'), OfferController.markOfferPrinted);
 */
 
-router.get('/:offer_id/offer-letter', authToken, checkPermission('Offer & Onboard', 'Offer & Contract', 'read'), OfferController.getOfferLetterDraft);
-router.put('/:offer_id/offer-letter', authToken, checkPermission('Offer & Onboard', 'Offer & Contract', 'update'), OfferController.saveOfferLetterDraft);
-router.get('/:offer_id/offer-letter/download/pdf', authToken, checkPermission('Offer & Onboard', 'Offer & Contract', 'read'), OfferController.downloadOfferLetterPdf);
-router.get('/:offer_id/offer-letter/download/docx', authToken, checkPermission('Offer & Onboard', 'Offer & Contract', 'read'), OfferController.downloadOfferLetterDocx);
 
 export default router;

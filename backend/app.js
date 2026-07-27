@@ -48,6 +48,7 @@ import portalBg from "./src/modules/portal-bg/portal-bg.route.js"
 import offer from "./src/modules/offer/offer.route.js"
 import onboarding from "./src/modules/onboarding/onboarding.route.js"
 import portalOffer from "./src/modules/portal-offer/portal-offer.route.js"
+import offerTemplate from "./src/modules/offer-template/offer-template.route.js"
 
 app.use(express.json());
 app.use(cors({
@@ -91,7 +92,8 @@ portal.use("/api/background-check", backgroundCheck);
 portal.use("/api/portal-bg-consent", portalBg);
 portal.use("/api/offer", offer);
 portal.use("/api/onboarding", onboarding);
-portal.use("/api/portal-offer", portalOffer)
+portal.use("/api/portal-offer", portalOffer);
+portal.use("/api/offer-template", offerTemplate);
 app.use("/portal", portal);
 app.use("/api/auth", auth);
 app.use("/api/cookies", cookies);
@@ -128,7 +130,8 @@ app.use("/api/background-check", backgroundCheck);
 app.use("/api/portal-bg-consent", portalBg);
 app.use("/api/offer", offer);
 app.use("/api/onboarding", onboarding);
-app.use("/api/portal-offer", portalOffer)
+app.use("/api/portal-offer", portalOffer);
+app.use("/api/offer-template", offerTemplate);
 
 
 const PORT = process.env.PORT || 3000;
