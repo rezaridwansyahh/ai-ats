@@ -51,9 +51,20 @@ import portalOffer from "./src/modules/portal-offer/portal-offer.route.js"
 import offerTemplate from "./src/modules/offer-template/offer-template.route.js"
 
 app.use(express.json());
+
+const allowedOrigins = process.env.CORS_ORIGIN
+  ? process.env.CORS_ORIGIN.split(',').map(o => o.trim())
+  : null; // null = allow all in dev (no credentials restriction)
+
 app.use(cors({
-  origin: process.env.CORS_ORIGIN ? process.env.CORS_ORIGIN.split(',') : '*',
-  credentials: true
+  origin: allowedOrigins
+    ? (origin, cb) => {
+        // Allow requests with no origin (curl, Postman, server-to-server)
+        if (!origin || allowedOrigins.includes(origin)) return cb(null, true);
+        cb(new Error(`CORS: origin ${origin} not allowed`));
+      }
+    : true, // dev fallback — reflects request origin, works with credentials
+  credentials: true,
 }));
 
 portal.use("/api/auth", auth);

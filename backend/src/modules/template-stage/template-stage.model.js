@@ -2,10 +2,18 @@ import getDb from "../../config/postgres.js";
 
 class TemplateStageModel {
   async getAll() {
-    const result = await getDb().query(
-      `SELECT id, name FROM master_template_stage ORDER BY id`
-    );
-    return result.rows;
+    // Use sort_order if the column exists (post-migration); fall back to id order.
+    try {
+      const result = await getDb().query(
+        `SELECT id, name, sort_order FROM master_template_stage ORDER BY sort_order ASC, id ASC`
+      );
+      return result.rows;
+    } catch {
+      const result = await getDb().query(
+        `SELECT id, name FROM master_template_stage ORDER BY id ASC`
+      );
+      return result.rows;
+    }
   }
 
   async getById(id) {
