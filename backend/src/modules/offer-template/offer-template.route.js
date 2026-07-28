@@ -4,7 +4,7 @@ const router = express.Router();
 import offerTemplateController from './offer-template.controller.js';
 import authToken from '../../shared/middleware/auth.middleware.js';
 import checkPermission from '../../shared/middleware/role.middleware.js';
-import upload from '../../shared/middleware/offer.middleware.js';
+import upload from '../../shared/middleware/offer-template.middleware.js';
 
 router.use(authToken);
 

@@ -23,6 +23,7 @@ import AuditExportSettings from '../components/settings/AuditExportSettings';
 import BillingPlanSettings from '../components/settings/BillingPlanSettings';
 import ProbationTemplatesSettings from '../components/settings/ProbationTemplatesSettings';
 import GeneralSettings from '../components/settings/GeneralSettings';
+import OfferTemplateSettings from '../components/settings/OfferTemplateSettings';
 
 // ── Static Configuration & Mock Data ──
 
@@ -49,6 +50,7 @@ const SETTINGS_NAV = [
   { id: 'integrations', label: 'Integrations', icon: Plug },
   { id: 'notifications', label: 'Notifications', icon: Bell },
   { id: 'candidate-portal', label: 'Candidate Portal', icon: Globe },
+  { id: 'offer-template', label: 'Offer Letter Template', icon: FileText },
   { id: 'compliance', label: 'Compliance', icon: ShieldQuestion, badge: 'OK' },
   { id: 'audit-export', label: 'Audit Export', icon: FileText },
   { id: 'billing', label: 'Billing & Plan', icon: CreditCard },
@@ -202,6 +204,7 @@ const SECTION_COMPONENTS = {
   integrations: IntegrationsSettings,
   notifications: NotificationsSettings,
   'candidate-portal': CandidatePortalSettings,
+  'offer-template': OfferTemplateSettings,
   compliance: ComplianceSettings,
   'audit-export': AuditExportSettings,
   billing: BillingPlanSettings,

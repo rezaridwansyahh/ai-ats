@@ -11,14 +11,19 @@ async function extractFields(filePath) {
     throw { status: 400, message: 'Could not read document.xml from the uploaded .docx file' };
   }
 
+  const mergeFieldMatches = [...documentXml.matchAll(/MERGEFIELD\s+([^\s"<\\]+)/g)];
+  const mergeFields = mergeFieldMatches.map((m) => m[1].trim());
+
   const textOnly = documentXml
     .replace(/<[^>]+>/g, '')
     .replace(/&amp;/g, '&')
     .replace(/&lt;/g, '<')
     .replace(/&gt;/g, '>');
 
-  const matches = [...textOnly.matchAll(/<<\s*([^<>]+?)\s*>>/g)];
-  const fields = [...new Set(matches.map((m) => m[1].trim()))];
+  const literalMatches = [...textOnly.matchAll(/<<\s*([^<>]+?)\s*>>/g)];
+  const literalFields = literalMatches.map((m) => m[1].trim());
+
+  const fields = [...new Set([...mergeFields, ...literalFields])];
 
   return fields;
 }
