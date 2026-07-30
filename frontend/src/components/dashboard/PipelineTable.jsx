@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
-import { Search, MessageCircle, AlertTriangle } from 'lucide-react';
+import { Search, MessageCircle, AlertTriangle, ArrowUp, ArrowDown, ArrowUpDown } from 'lucide-react';
 
 /* ─────────────────────────────────────────
    STAGE DEFINITIONS (fallback — mirrors KanbanBoard)
@@ -140,6 +140,7 @@ export default function PipelineTable({
   const [stageFilter, setStageFilter] = useState('all');
   const [expFilter, setExpFilter] = useState('all');
   const [page, setPage] = useState(1);
+  const [sortDir, setSortDir] = useState(null); // null | 'desc' | 'asc'
 
   const resolvedStages = (stages?.length > 0)
     ? stages.map((s) => ({ id: s.id, label: s.name ?? s.label, color: s.color ?? 'bg-slate-400' }))
@@ -180,9 +181,22 @@ export default function PipelineTable({
     });
   }, [rows, search, stageFilter, expFilter]);
 
-  const totalPages = Math.max(1, Math.ceil(filteredRows.length / ROWS_PER_PAGE));
+  const sortedRows = useMemo(() => {
+    if(!sortDir) return filteredRows;
+    const withYears = filteredRows.map((r) => ({ ...r, _years: parseExpYears(r.exp) }));
+    withYears.sort((a, b) => {
+      // Rows with no parsable experience always sink to the bottom, regardless of direction
+      if (a._years == null && b._years == null) return 0;
+      if (a._years == null) return 1;
+      if (b._years == null) return -1;
+      return sortDir === 'desc' ? b._years - a._years : a._years - b._years;
+    });
+    return withYears;
+  }, [filteredRows, sortDir]);
+
+  const totalPages = Math.max(1, Math.ceil(sortedRows.length / ROWS_PER_PAGE));
   const currentPage = Math.min(page, totalPages);
-  const pagedRows = filteredRows.slice(
+  const pagedRows = sortedRows.slice(
     (currentPage - 1) * ROWS_PER_PAGE,
     currentPage * ROWS_PER_PAGE
   );
@@ -195,14 +209,16 @@ export default function PipelineTable({
         <div className="relative flex-1 min-w-[220px] max-w-sm">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
           <input
+            data-tour="candidate-search"
             type="text"
-            placeholder="Search by name or role..."
+            placeholder="Search by name..."
             value={search}
             onChange={(e) => { setSearch(e.target.value); setPage(1); }}
             className="w-full pl-9 pr-3 py-2 border rounded-lg text-sm focus:outline-none focus:ring-1 focus:ring-primary"
           />
         </div>
         <select
+          data-tour="stage-filter"
           value={stageFilter}
           onChange={(e) => { setStageFilter(e.target.value); setPage(1); }}
           className="px-3 py-2 border rounded-lg text-sm focus:outline-none focus:ring-1 focus:ring-primary"
@@ -213,6 +229,7 @@ export default function PipelineTable({
           ))}
         </select>
         <select
+          data-tour="exp-filter"
           value={expFilter}
           onChange={(e) => { setExpFilter(e.target.value); setPage(1); }}
           className="px-3 py-2 border rounded-lg text-sm focus:outline-none focus:ring-1 focus:ring-primary"
@@ -234,12 +251,27 @@ export default function PipelineTable({
           </div>
         ) : (
           <>
-            <table className="w-full text-sm">
+            <table data-tour="candidate-table" className="w-full text-sm">
               <thead className="bg-muted/40 border-b">
                 <tr className="text-xs font-bold uppercase tracking-wide text-muted-foreground">
                   <th className="px-4 py-3 text-left">Candidate</th>
                   <th className="px-4 py-3 text-left">Stage</th>
-                  <th className="px-4 py-3 text-left">Experience</th>
+                  <th className="px-4 py-3 text-left">
+                    <button
+                      data-tour="sort-experience"
+                      type="button"
+                      onClick={() => {
+                        setSortDir((d) => (d === null ? 'desc' : d === 'desc' ? 'asc' : null));
+                        setPage(1);
+                      }}
+                      className="flex items-center gap-1 hover:text-foreground transition-colors"
+                    >
+                      Experience
+                      {sortDir === 'desc' && <ArrowDown className="h-3 w-3" />}
+                      {sortDir === 'asc' && <ArrowUp className="h-3 w-3" />}
+                      {sortDir === null && <ArrowUpDown className="h-3 w-3 opacity-40" />}
+                    </button>
+                  </th>
                   <th className="px-4 py-3 text-left">Skills</th>
                   <th className="px-4 py-3 text-left">Applied</th>
                 </tr>

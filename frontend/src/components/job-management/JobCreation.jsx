@@ -91,7 +91,7 @@ export default function JobCreation({
     <div className="space-y-5">
       <div className="space-y-3">
         {/* Status tab strip */}
-        <div className="flex items-center gap-1 border-b overflow-x-auto">
+        <div data-tour="job-mgmt-tabs" className="flex items-center gap-1 border-b overflow-x-auto">
           {TABS.map(tab => (
             <button
               key={tab.key}
@@ -116,13 +116,14 @@ export default function JobCreation({
         <div className="flex items-center justify-between gap-3 flex-wrap">
           <div className="flex items-center gap-3 flex-wrap">
             <Input
+              data-tour="job-mgmt-search"
               placeholder="Search by role or job code..."
               value={searchQuery}
               onChange={e => setSearchQuery(e.target.value)}
               className="w-full sm:max-w-[280px] text-xs rounded-lg"
             />
             <Select value={statusFilter} onValueChange={setStatusFilter}>
-              <SelectTrigger className="w-[150px] text-xs rounded-lg"><SelectValue /></SelectTrigger>
+              <SelectTrigger data-tour="job-mgmt-status-filter" className="w-[150px] text-xs rounded-lg"><SelectValue /></SelectTrigger>
               <SelectContent>
                 <SelectItem value="all">All Status</SelectItem>
                 {STATUS_OPTIONS.map(s => <SelectItem key={s} value={s}>{s}</SelectItem>)}
@@ -141,7 +142,7 @@ export default function JobCreation({
         </div>
 
         {/* Table block */}
-        <div className="rounded-2xl border overflow-hidden bg-card shadow-sm">
+        <div data-tour="job-mgmt-table" className="rounded-2xl border overflow-hidden bg-card shadow-sm">
           <div className="overflow-x-auto">
             {loading ? (
               <div className="flex items-center justify-center py-14">

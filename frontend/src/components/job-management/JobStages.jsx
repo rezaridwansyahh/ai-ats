@@ -59,6 +59,11 @@ export default function JobStagesStep({ selectedJob, onPipelineChange }) {
   const [selectedTemplateId, setSelectedTemplateId] = useState(null);
   const [loadingTemplates, setLoadingTemplates] = useState(false);
 
+  // Tracks whether this job's pipeline came back empty
+  const [needsDefaultTemplate, setNeedsDefaultTemplate] = useState(false);
+  // Prevents the default from firing again once the user makes their own choice
+  const defaultAppliedRef = useRef(false);
+
   // ── Load categories & templates on mount ──
   useEffect(() => {
     getStageCategories()
@@ -109,6 +114,7 @@ export default function JobStagesStep({ selectedJob, onPipelineChange }) {
           setSelectedTemplateId(null);
           setStages([]);
           nextIdRef.current = 1;
+          setNeedsDefaultTemplate(true);
         }
 
         // Notify parent: server-confirmed stage presence, NOT local edits.
@@ -143,6 +149,7 @@ export default function JobStagesStep({ selectedJob, onPipelineChange }) {
 
   // ── Template selection handler ──
   const handleTemplateSelect = async (templateId) => {
+    defaultAppliedRef.current = true; //any explicit pick locks out auto default
     const id = Number(templateId);
     setSelectedTemplateId(id);
     try {
@@ -166,8 +173,24 @@ export default function JobStagesStep({ selectedJob, onPipelineChange }) {
     }
   };
 
+  //TAMBAHAN BAYU --> Auto-select "IT" template for brand-new jobs with no pipeline yet.
+  useEffect(() => {
+    if (defaultAppliedRef.current) return;
+    if (!needsDefaultTemplate) return;
+    if (loadingTemplates || templates.length === 0) return;
+
+    const itTemplate = templates.find(
+      (t) => t.name?.trim().toLowerCase().includes('it dev')
+    );
+    if (itTemplate){
+      defaultAppliedRef.current = true;
+      handleTemplateSelect(itTemplate.id);
+    }
+  }, [needsDefaultTemplate, loadingTemplates, templates]);
+
   // ── Custom toggle handler ──
   const handleCustomToggle = (checked) => {
+    defaultAppliedRef.current = true; // switching to custom also locks out the auto-default
     setIsCustom(checked);
     if (!checked && selectedTemplateId) {
       // Switching back to template mode — reload template

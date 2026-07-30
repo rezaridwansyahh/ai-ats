@@ -19,11 +19,6 @@ function formatDate(d) {
   try { return new Date(d).toLocaleDateString(); } catch { return '—'; }
 }
 
-/*
- * Presentational only — receives the already-filtered + paginated `rows`
- * from TalentPoolPage. All filter state and pagination math live there;
- * this component just renders the toolbar form and table for the current page.
- */
 export default function TalentPoolTable({
   rows,
   total,
@@ -55,7 +50,7 @@ export default function TalentPoolTable({
             )}
           </CardTitle>
 
-          <form onSubmit={onSearchSubmit} className="flex items-end gap-2 flex-wrap">
+          <form data-tour="talent-search-form" onSubmit={onSearchSubmit} className="flex items-end gap-2 flex-wrap">
             <FacetInput
               icon={<Briefcase className="h-3 w-3" />}
               placeholder="Position"
@@ -85,7 +80,7 @@ export default function TalentPoolTable({
         )}
 
         <div className="overflow-x-auto">
-          <Table className="table-fixed w-full">
+          <Table data-tour="talent-table" className="table-fixed w-full">
             <TableHeader className="bg-muted/40">
               <TableRow>
                 <TableHead className="w-[20%] text-[10px] font-bold uppercase pl-6">Name</TableHead>
@@ -94,7 +89,7 @@ export default function TalentPoolTable({
                 <TableHead className="w-[14%] text-[10px] font-bold uppercase">Location</TableHead>
                 <TableHead className="w-[10%] text-[10px] font-bold uppercase text-center">Score</TableHead>
                 <TableHead className="w-[8%] text-[10px] font-bold uppercase">Applied</TableHead>
-                <TableHead className="w-[8%] text-[10px] font-bold uppercase text-right pr-6">Action</TableHead>
+                <TableHead data-tour="talent-action-header" className="w-[8%] text-[10px] font-bold uppercase text-right pr-6">Action</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
