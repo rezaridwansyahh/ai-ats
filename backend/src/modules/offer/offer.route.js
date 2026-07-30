@@ -2,6 +2,7 @@ import express from 'express';
 import OfferController from './offer.controller.js';
 import authToken from '../../shared/middleware/auth.middleware.js';
 import checkPermission from '../../shared/middleware/role.middleware.js';
+import upload from '../../shared/middleware/offer.middleware.js';
 
 const router = express.Router();
 
@@ -155,5 +156,17 @@ router.get( '/:offer_id/send-history', authToken, checkPermission('Offer & Onboa
  
 router.post( '/:offer_id/resend', authToken, checkPermission('Offer & Onboard', 'Offer & Contract', 'update'), OfferController.resendOffer);
 router.post( '/:offer_id/revoke', authToken, checkPermission('Offer & Onboard', 'Offer & Contract', 'update'), OfferController.revokeOffer);
+
+router.get( '/:offer_id/offer-letter/fields', authToken, checkPermission('Offer & Onboard', 'Offer & Contract', 'read'), OfferController.getOfferLetterFields);
+
+router.put( '/:offer_id/offer-letter/data', authToken, checkPermission('Offer & Onboard', 'Offer & Contract', 'update'), OfferController.saveOfferLetterData);
+
+/*
+router.get( '/:offer_id/document', authToken, checkPermission('Offer & Onboard', 'Offer & Contract', 'read'), OfferController.getOfferDocument);
+
+router.post( '/:offer_id/document/upload', authToken, checkPermission('Offer & Onboard', 'Offer & Contract', 'update'), upload.single('file'), OfferController.uploadDocument);
+router.post( '/:offer_id/document/print', authToken, checkPermission('Offer & Onboard', 'Offer & Contract', 'update'), OfferController.markOfferPrinted);
+*/
+
 
 export default router;

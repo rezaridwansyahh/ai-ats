@@ -82,6 +82,7 @@ class OfferModel {
         mc.information as candidate_profile,
         cj.job_title,
         cj.job_desc AS job_description,
+        cc.name as company_name,
         comp.id as compensation_id,
         comp.base_salary,
         comp.allowances,
@@ -104,6 +105,7 @@ class OfferModel {
       JOIN master_candidate mc ON co.candidate_id = mc.id
       LEFT JOIN master_applicant ma ON mc.applicant_id = ma.id
       JOIN core_job cj ON co.job_id = cj.id
+      JOIN core_company cc ON co.company_id = cc.id
       LEFT JOIN offer_compensation comp ON co.id = comp.offer_id
       LEFT JOIN offer_contract contract ON co.id = contract.offer_id
       WHERE co.id = $1 AND co.company_id = $2
@@ -414,7 +416,36 @@ class OfferModel {
     return result.rows;
   }
 
+  async upsertOfferDocument(data) {
+    const query = `
+      INSERT INTO offer_document (offer_id, file, method, uploaded_by, uploaded_at)
+      VALUES ($1, $2, $3, $4, NOW())
+      ON CONFLICT (offer_id) DO UPDATE
+      SET file = EXCLUDED.file,
+          method = EXCLUDED.method,
+          uploaded_by = EXCLUDED.uploaded_by,
+          uploaded_at = NOW(),
+          updated_at = NOW()
+      RETURNING *
+    `;
+    const result = await getDb().query(query, [
+      data.offer_id,
+      data.file,
+      data.method,
+      data.uploaded_by || null,
+    ]);
+    return result.rows[0];
+  }
 
+  async getOfferDocument(offer_id) {
+    const result = await getDb().query(`
+      SELECT od.*, mu.username AS uploaded_by_name
+      FROM offer_document od
+      LEFT JOIN master_users mu ON mu.id = od.uploaded_by
+      WHERE od.offer_id = $1
+    `, [offer_id]);
+    return result.rows[0] || null;
+  }  
 }
 
 export default new OfferModel();

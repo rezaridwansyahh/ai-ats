@@ -47,6 +47,8 @@ DROP TABLE IF EXISTS bg_claim CASCADE;
 DROP TABLE IF EXISTS bg_consent CASCADE;
 DROP TABLE IF EXISTS bg_lane CASCADE;
 DROP TABLE IF EXISTS candidate_bg CASCADE;
+DROP TABLE IF EXISTS company_offer_letter CASCADE;
+DROP TABLE IF EXISTS offer_document CASCADE;
 DROP TABLE IF EXISTS offer_send CASCADE;
 DROP TABLE IF EXISTS offer_negotiation CASCADE;
 DROP TABLE IF EXISTS offer_contract CASCADE;
@@ -263,6 +265,7 @@ CREATE TABLE recruitment_stage_category (
 CREATE TABLE master_template_stage (
   id SERIAL PRIMARY KEY,
   name VARCHAR(255) NOT NULL UNIQUE,
+  sort_order INTEGER NOT NULL DEFAULT 0,
   created_at TIMESTAMP NOT NULL DEFAULT NOW(),
   updated_at TIMESTAMP NOT NULL DEFAULT NOW()
 );
@@ -752,6 +755,28 @@ CREATE TABLE offer_send (
   revoked_by INTEGER REFERENCES master_users(id) ON DELETE SET NULL,
   revocation_reason TEXT,
   status VARCHAR(20) NOT NULL DEFAULT 'draft',
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+CREATE TABLE offer_document (
+  id SERIAL PRIMARY KEY,
+  offer_id INTEGER NOT NULL UNIQUE REFERENCES candidate_offer(id) ON DELETE CASCADE,
+  file VARCHAR(255) NOT NULL,
+  method VARCHAR(20) NOT NULL DEFAULT 'upload', -- 'upload' | 'print'
+  uploaded_by INTEGER REFERENCES master_users(id) ON DELETE SET NULL,
+  uploaded_at TIMESTAMPTZ,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+CREATE TABLE company_offer_letter (
+  id SERIAL PRIMARY KEY,
+  company_id INTEGER NOT NULL UNIQUE REFERENCES core_company(id) ON DELETE CASCADE,
+  file VARCHAR(255) NOT NULL,
+  fields JSONB NOT NULL DEFAULT '[]',
+  uploaded_by INTEGER REFERENCES master_users(id) ON DELETE SET NULL,
+  uploaded_at TIMESTAMPTZ,
   created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
   updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );

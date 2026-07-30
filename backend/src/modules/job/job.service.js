@@ -30,11 +30,12 @@ class JobService {
             pay_type, currency, pay_min, pay_max, pay_display,
             company, seniority_level, company_url,
             qualifications, required_skills, preferred_skills, benefits,
-            sla_start_date, sla_end_date } = data;
+            sla_start_date, sla_end_date, company_id } = data;
 
     if (!job_title) throw { status: 400, message: 'job_title is required' };
 
     const fields = {};
+    if (company_id) fields.company_id = company_id;
     if (job_title) fields.job_title = job_title;
     if (job_desc) fields.job_desc = job_desc;
     if (job_location) fields.job_location = job_location;

@@ -1,7 +1,6 @@
 import OfferService from './offer.service.js';
 
 class OfferController {
-  // L1 Workboard - get all offers across jobs
   async getWorkboard(req, res) {
     try {
       const { user_id, company_id } = req.user;
@@ -13,7 +12,6 @@ class OfferController {
     }
   }
 
-  // L2 Position - get offers for specific job
   async getOffersByJob(req, res) {
     try {
       const { job_id } = req.params;
@@ -26,7 +24,6 @@ class OfferController {
     }
   }
 
-  // L3 Candidate - get single offer detail
   async getOfferById(req, res) {
     try {
       const { offer_id } = req.params;
@@ -39,7 +36,6 @@ class OfferController {
     }
   }
 
-  // Create new offer (from BG Check calibration or manual)
   async createOffer(req, res) {
     try {
       const { company_id, user_id } = req.user;
@@ -52,7 +48,6 @@ class OfferController {
     }
   }
 
-  // Update offer compensation
   async updateCompensation(req, res) {
     try {
       const { offer_id } = req.params;
@@ -65,7 +60,6 @@ class OfferController {
     }
   }
 
-  // Generate & send offer letter
   async sendOfferLetter(req, res) {
     try {
       const { offer_id } = req.params;
@@ -78,7 +72,6 @@ class OfferController {
     }
   }
 
-  // Candidate accepts offer (public endpoint)
   async acceptOffer(req, res) {
     try {
       const { offer_id } = req.params;
@@ -91,7 +84,6 @@ class OfferController {
     }
   }
 
-  // Candidate rejects offer (public endpoint)
   async rejectOffer(req, res) {
     try {
       const { offer_id } = req.params;
@@ -104,7 +96,6 @@ class OfferController {
     }
   }
 
-  // Candidate negotiates (public endpoint)
   async negotiateOffer(req, res) {
     try {
       const { offer_id } = req.params;
@@ -117,19 +108,13 @@ class OfferController {
     }
   }
 
-  // Recruiter responds to negotiation
   async respondToNegotiation(req, res) {
     try {
       const { offer_id } = req.params;
       const { company_id, user_id } = req.user;
       const { response_type, response_message, revised_compensation } = req.body;
       const result = await OfferService.respondToNegotiation(
-        offer_id,
-        response_type,
-        response_message,
-        revised_compensation,
-        company_id,
-        user_id
+        offer_id, response_type, response_message, revised_compensation, company_id, user_id
       );
       res.json(result);
     } catch (error) {
@@ -138,7 +123,6 @@ class OfferController {
     }
   }
 
-  // Generate contract (after offer accepted)
   async generateContract(req, res) {
     try {
       const { offer_id } = req.params;
@@ -152,7 +136,6 @@ class OfferController {
     }
   }
 
-  // Send contract for signature
   async sendContract(req, res) {
     try {
       const { offer_id } = req.params;
@@ -165,7 +148,6 @@ class OfferController {
     }
   }
 
-  // Candidate signs contract (public endpoint)
   async signContract(req, res) {
     try {
       const { offer_id } = req.params;
@@ -178,7 +160,6 @@ class OfferController {
     }
   }
 
-  // L4 Calibration - bulk advance to Onboarding
   async bulkAdvanceToOnboarding(req, res) {
     try {
       const { job_id } = req.params;
@@ -192,7 +173,6 @@ class OfferController {
     }
   }
 
-  // Get offer statistics
   async getOfferStats(req, res) {
     try {
       const { job_id } = req.params;
@@ -216,7 +196,7 @@ class OfferController {
       res.status(error.status || 500).json({ message: error.message });
     }
   }
-  
+
   async recordSlipGaji(req, res) {
     try {
       const { offer_id } = req.params;
@@ -229,7 +209,7 @@ class OfferController {
       res.status(error.status || 500).json({ message: error.message });
     }
   }
-  
+
   async skipSlipGaji(req, res) {
     try {
       const { offer_id } = req.params;
@@ -242,7 +222,7 @@ class OfferController {
       res.status(error.status || 500).json({ message: error.message });
     }
   }
-  
+
   async reviewSlipGaji(req, res) {
     try {
       const { offer_id } = req.params;
@@ -254,7 +234,7 @@ class OfferController {
       console.error('Error in reviewSlipGaji:', error);
       res.status(error.status || 500).json({ message: error.message });
     }
-  }  
+  }
 
   async getApproval(req, res) {
     try {
@@ -267,7 +247,7 @@ class OfferController {
       res.status(error.status || 500).json({ message: error.message });
     }
   }
-  
+
   async submitApproval(req, res) {
     try {
       const { offer_id } = req.params;
@@ -279,7 +259,7 @@ class OfferController {
       console.error('Error in submitApproval:', error);
       res.status(error.status || 500).json({ message: error.message });
     }
-  }  
+  }
 
   async setupApprovalChain(req, res) {
     try {
@@ -293,7 +273,7 @@ class OfferController {
       res.status(error.status || 500).json({ message: error.message });
     }
   }
-  
+
   async decideApprovalStep(req, res) {
     try {
       const { offer_id, step_index } = req.params;
@@ -331,7 +311,7 @@ class OfferController {
       res.status(error.status || 500).json({ message: error.message });
     }
   }
-  
+
   async getSendHistory(req, res) {
     try {
       const { offer_id } = req.params;
@@ -343,6 +323,70 @@ class OfferController {
       res.status(error.status || 500).json({ message: error.message });
     }
   }
+
+  async getOfferLetterFields(req, res) {
+    try {
+      const { offer_id } = req.params;
+      const { company_id } = req.user;
+      const result = await OfferService.getOfferLetterFields(offer_id, company_id);
+      res.json(result);
+    } catch (error) {
+      console.error('Error in getOfferLetterFields:', error);
+      res.status(error.status || 500).json({ message: error.message });
+    }
+  }
+
+  async saveOfferLetterData(req, res) {
+    try {
+      const { offer_id } = req.params;
+      const { company_id } = req.user;
+      const result = await OfferService.saveOfferLetterData(offer_id, req.body, company_id);
+      res.json(result);
+    } catch (error) {
+      console.error('Error in saveOfferLetterData:', error);
+      res.status(error.status || 500).json({ message: error.message });
+    }
+  }
+
+  /* Document upload / print — unused in review section
+
+  async uploadDocument(req, res) {
+    try {
+      const { offer_id } = req.params;
+      const { company_id, user_id } = req.user;
+      const result = await OfferService.uploadOfferDocument(offer_id, company_id, user_id, req.file);
+      res.status(201).json(result);
+    } catch (error) {
+      console.error('Error in uploadDocument:', error);
+      res.status(error.status || 500).json({ message: error.message });
+    }
+  }
+
+  async markOfferPrinted(req, res) {
+    try {
+      const { offer_id } = req.params;
+      const { company_id, user_id } = req.user;
+      const result = await OfferService.markOfferPrinted(offer_id, company_id, user_id);
+      res.status(201).json(result);
+    } catch (error) {
+      console.error('Error in markOfferPrinted:', error);
+      res.status(error.status || 500).json({ message: error.message });
+    }
+  }
+
+  async getOfferDocument(req, res) {
+    try {
+      const { offer_id } = req.params;
+      const { company_id } = req.user;
+      const result = await OfferService.getOfferDocument(offer_id, company_id);
+      res.json(result);
+    } catch (error) {
+      console.error('Error in getOfferDocument:', error);
+      res.status(error.status || 500).json({ message: error.message });
+    }
+  }
+
+  ---- end commented block ---- */
 }
 
 export default new OfferController();

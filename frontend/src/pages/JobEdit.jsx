@@ -423,10 +423,9 @@ export default function JobEditPage() {
                 missingRequired={missingRequired}
                 invalidUrlFields={invalidUrlFields}
                 showValidation={validationErrors.length > 0}
-                onPrev={goPrevStep}
-                onNext={goNextStep}
-                isFirstStep={isFirstStep}
-                isLastStep={isLastStep}
+                step={step}
+                totalSteps={SECTIONS.length}
+                onStepChange={(s) => { setStep(s); window.scrollTo({ top: 0, behavior: 'smooth' }); }}
               />
             )}
 
@@ -441,29 +440,36 @@ export default function JobEditPage() {
                 generating={generating}
                 generateError={generateError}
                 canGenerate={!!job?.id}
-                onPrev={goPrevStep}
-                onNext={goNextStep}
-                isFirstStep={isFirstStep}
-                isLastStep={isLastStep}
+                step={step}
+                totalSteps={SECTIONS.length}
+                onStepChange={(s) => { setStep(s); window.scrollTo({ top: 0, behavior: 'smooth' }); }}
               />
             )}
 
             {/* STEP 2 · PIPELINE & AI */}
             {step === 2 && (
               <Card className="py-4 gap-3">
-                <CardHeader>
-                  <div className="flex items-center justify-between gap-3 flex-wrap">
-                    <CardTitle className="text-sm flex items-center gap-2">
-                      <Workflow className="h-4 w-4 text-primary" /> Pipeline & AI
-                      <span className="text-rose-600">*</span>
-                    </CardTitle>
-                    <StepNavButtons
-                      onPrev={goPrevStep}
-                      onNext={goNextStep}
-                      disablePrev={isFirstStep}
-                      disableNext={isLastStep}
-                    />
-                  </div>
+                <CardHeader className="flex flex-row items-center gap-2 pb-2">
+                  <Button
+                    variant="ghost" size="icon"
+                    className="h-7 w-7 shrink-0"
+                    disabled={step === 0}
+                    onClick={() => { setStep((s) => Math.max(0, s - 1)); window.scrollTo({ top: 0, behavior: 'smooth' }); }}
+                  >
+                    <ArrowLeft className="h-4 w-4" />
+                  </Button>
+                  <CardTitle className="text-sm flex items-center gap-2 flex-1 justify-center">
+                    <Workflow className="h-4 w-4 text-primary" /> Pipeline & AI
+                    <span className="text-rose-600">*</span>
+                  </CardTitle>
+                  <Button
+                    variant="ghost" size="icon"
+                    className="h-7 w-7 shrink-0"
+                    disabled={step === SECTIONS.length - 1}
+                    onClick={() => { setStep((s) => Math.min(SECTIONS.length - 1, s + 1)); window.scrollTo({ top: 0, behavior: 'smooth' }); }}
+                  >
+                    <ArrowRight className="h-4 w-4" />
+                  </Button>
                 </CardHeader>
                 <CardContent>
                   {job?.id ? (
@@ -483,18 +489,25 @@ export default function JobEditPage() {
             {/* STEP 3 · POSTING */}
             {step === 3 && (
               <Card className="py-4 gap-3">
-                <CardHeader>
-                  <div className="flex items-center justify-between gap-3 flex-wrap">
-                    <CardTitle className="text-sm flex items-center gap-2">
-                      <Megaphone className="h-4 w-4 text-primary" /> Posting & channels
-                    </CardTitle>
-                    <StepNavButtons
-                      onPrev={goPrevStep}
-                      onNext={goNextStep}
-                      disablePrev={isFirstStep}
-                      disableNext={isLastStep}
-                    />
-                  </div>
+                <CardHeader className="flex flex-row items-center gap-2 pb-2">
+                  <Button
+                    variant="ghost" size="icon"
+                    className="h-7 w-7 shrink-0"
+                    onClick={() => { setStep((s) => Math.max(0, s - 1)); window.scrollTo({ top: 0, behavior: 'smooth' }); }}
+                  >
+                    <ArrowLeft className="h-4 w-4" />
+                  </Button>
+                  <CardTitle className="text-sm flex items-center gap-2 flex-1 justify-center">
+                    <Megaphone className="h-4 w-4 text-primary" /> Posting & channels
+                  </CardTitle>
+                  <Button
+                    variant="ghost" size="icon"
+                    className="h-7 w-7 shrink-0"
+                    disabled={step === SECTIONS.length - 1}
+                    onClick={() => { setStep((s) => Math.min(SECTIONS.length - 1, s + 1)); window.scrollTo({ top: 0, behavior: 'smooth' }); }}
+                  >
+                    <ArrowRight className="h-4 w-4" />
+                  </Button>
                 </CardHeader>
                 <CardContent>
                   {job?.id ? (
@@ -685,10 +698,7 @@ function StepNavButtons({ onPrev, onNext, disablePrev, disableNext }) {
 }
 
 /* ───── Basics section ───── */
-function BasicsSection({
-  form, setField, isLocked, missingRequired, invalidUrlFields, showValidation,
-  onPrev, onNext, isFirstStep, isLastStep,
-}) {
+function BasicsSection({ form, setField, isLocked, missingRequired, invalidUrlFields, showValidation, step = 0, totalSteps = 4, onStepChange }) {
   const isMissing = (k) => showValidation && missingRequired.includes(k);
 
   // Live salary band preview shown beneath the pay fields.
@@ -720,18 +730,26 @@ function BasicsSection({
 
   return (
     <Card className="py-4 gap-3">
-      <CardHeader>
-        <div className="flex items-center justify-between gap-3 flex-wrap">
-          <CardTitle className="text-sm flex items-center gap-2">
-            <Briefcase className="h-4 w-4 text-primary" /> Basics
-          </CardTitle>
-          <StepNavButtons
-            onPrev={onPrev}
-            onNext={onNext}
-            disablePrev={isFirstStep}
-            disableNext={isLastStep}
-          />
-        </div>
+      <CardHeader className="flex flex-row items-center gap-2 pb-2">
+        <Button
+          variant="ghost" size="icon"
+          className="h-7 w-7 shrink-0"
+          disabled={step === 0}
+          onClick={() => onStepChange?.(Math.max(0, step - 1))}
+        >
+          <ArrowLeft className="h-4 w-4" />
+        </Button>
+        <CardTitle className="text-sm flex items-center gap-2 flex-1 justify-center">
+          <Briefcase className="h-4 w-4 text-primary" /> Basics
+        </CardTitle>
+        <Button
+          variant="ghost" size="icon"
+          className="h-7 w-7 shrink-0"
+          disabled={step === totalSteps - 1}
+          onClick={() => onStepChange?.(Math.min(totalSteps - 1, step + 1))}
+        >
+          <ArrowRight className="h-4 w-4" />
+        </Button>
       </CardHeader>
       <CardContent className="space-y-5">
         {/* ── Identity ── */}
@@ -929,7 +947,7 @@ function BasicsSection({
 function JDSection({
   form, setField, missingRequired, showValidation,
   onGenerateAI, generating, generateError, canGenerate,
-  onPrev, onNext, isFirstStep, isLastStep,
+  step = 1, totalSteps = 4, onStepChange,
 }) {
   const isMissing = (k) => showValidation && missingRequired.includes(k);
 
@@ -950,12 +968,20 @@ function JDSection({
 
   return (
     <Card className="py-4 gap-3">
-      <CardHeader>
-        <div className="flex items-center justify-between gap-3 flex-wrap">
-          <CardTitle className="text-sm flex items-center gap-2">
-            <FileText className="h-4 w-4 text-primary" /> Job description
-          </CardTitle>
-          <div className="flex items-center gap-2 flex-wrap">
+      <CardHeader className="pb-2">
+        <div className="flex items-center gap-2">
+          <Button
+            variant="ghost" size="icon"
+            className="h-7 w-7 shrink-0"
+            disabled={step === 0}
+            onClick={() => onStepChange?.(Math.max(0, step - 1))}
+          >
+            <ArrowLeft className="h-4 w-4" />
+          </Button>
+          <div className="flex items-center justify-between gap-3 flex-wrap flex-1">
+            <CardTitle className="text-sm flex items-center gap-2">
+              <FileText className="h-4 w-4 text-primary" /> Job description
+            </CardTitle>
             <Button
               size="sm"
               variant="outline"
@@ -970,13 +996,15 @@ function JDSection({
                 <><Sparkles className="h-3.5 w-3.5 mr-1.5 text-primary" /> AI Generate</>
               )}
             </Button>
-            <StepNavButtons
-              onPrev={onPrev}
-              onNext={onNext}
-              disablePrev={isFirstStep}
-              disableNext={isLastStep}
-            />
           </div>
+          <Button
+            variant="ghost" size="icon"
+            className="h-7 w-7 shrink-0"
+            disabled={step === totalSteps - 1}
+            onClick={() => onStepChange?.(Math.min(totalSteps - 1, step + 1))}
+          >
+            <ArrowRight className="h-4 w-4" />
+          </Button>
         </div>
       </CardHeader>
       <CardContent className="space-y-4">

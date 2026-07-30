@@ -6,8 +6,9 @@ import { fileURLToPath } from 'url';
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
-// Load env
-dotenv.config({ path: path.join(__dirname, '../../', '.env.dev') });
+// Load env — use .env for production, .env.dev for local development
+const envFile = process.env.NODE_ENV === 'production' ? '.env' : '.env.dev';
+dotenv.config({ path: path.join(__dirname, '../../', envFile) });
 
 const setupSqlPath = path.join(__dirname, 'setup.sql');
 const seedScriptPath = path.join(__dirname, 'seeds', 'run-seed.js');

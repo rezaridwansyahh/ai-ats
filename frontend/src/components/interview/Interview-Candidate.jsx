@@ -510,8 +510,14 @@ function ScheduleSection({ interviewId, interview, setInterview, setBanner, setE
         setBanner({ ok: true, text: 'Session updated.' });
       } else {
         const res = await createSchedule(interviewId, { title, description, scheduled_at });
-        setSessions((prev) => [...prev, res.data.schedule]); 
-        setInterview((prev) => ({ ...prev, scheduled_at: res.data.schedule.scheduled_at, status: 'scheduled' }));
+        setSessions((prev) => [...prev, res.data.schedule]);
+        // syncScheduledAt on the backend sets status → 'scheduled'; mirror that here
+        // so the Conduct tab unlocks immediately without a full page reload.
+        setInterview((prev) => ({
+          ...prev,
+          scheduled_at: res.data.schedule.scheduled_at,
+          status: 'scheduled',
+        }));
         setBanner({ ok: true, text: 'Session created.' });
       }
       setShowForm(false);
@@ -541,7 +547,14 @@ function ScheduleSection({ interviewId, interview, setInterview, setBanner, setE
     setDeletingId(sessionId); setError(null);
     try {
       await deleteSchedule(sessionId);
-      setSessions((prev) => prev.filter((s) => s.id !== sessionId));
+      const remaining = sessions.filter((s) => s.id !== sessionId);
+      setSessions(remaining);
+      // Mirror backend syncScheduledAt: if no sessions left → 'ongoing', else stays 'scheduled'
+      setInterview((prev) => ({
+        ...prev,
+        status: remaining.length > 0 ? 'scheduled' : 'ongoing',
+        scheduled_at: remaining.length > 0 ? prev.scheduled_at : null,
+      }));
       setBanner({ ok: true, text: 'Session removed.' });
     } catch (err) { setError(err.response?.data?.message || err.message || 'Delete failed'); }
     finally { setDeletingId(null); }
