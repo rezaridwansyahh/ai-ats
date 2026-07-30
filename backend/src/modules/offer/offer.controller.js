@@ -348,6 +348,44 @@ class OfferController {
     }
   }
 
+  async generateOfferLetterPreview(req, res) {
+    try {
+      const { offer_id } = req.params;
+      const { company_id } = req.user;
+      const result = await OfferService.generateOfferLetterPreview(offer_id, company_id);
+      res.json(result);
+    } catch (error) {
+      console.error('Error in generateOfferLetterPreview:', error);
+      res.status(error.status || 500).json({ message: error.message });
+    }
+  }
+
+  async getOfferLetterFinal(req, res) {
+    try {
+      const { offer_id } = req.params;
+      const { company_id } = req.user;
+      const result = await OfferService.getOfferLetterFinal(offer_id, company_id);
+      res.json(result);
+    } catch (error) {
+      console.error('Error in getOfferLetterFinal:', error);
+      res.status(error.status || 500).json({ message: error.message });
+    }
+  }
+
+  async downloadOfferLetterDocx(req, res) {
+    try {
+      const { offer_id } = req.params;
+      const { company_id } = req.user;
+      const buffer = await OfferService.downloadOfferLetterDocx(offer_id, company_id);
+      res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document');
+      res.setHeader('Content-Disposition', `attachment; filename="offer_letter_${offer_id}.docx"`);
+      res.send(buffer);
+    } catch (error) {
+      console.error('Error in downloadOfferLetterDocx:', error);
+      res.status(error.status || 500).json({ message: error.message });
+    }
+  }
+
   /* Document upload / print — unused in review section
 
   async uploadDocument(req, res) {
