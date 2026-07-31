@@ -6,7 +6,7 @@ import {
   ThumbsUp, ThumbsDown, Pause, MessageSquare,
   Plus, X, Target, Info,
   Send, RefreshCw, Mail, Clock, Pencil,
-  ClipboardList, ChevronDown, ChevronRight, Upload
+  ClipboardList, ChevronDown, ChevronRight, Upload, HelpCircle
 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -35,6 +35,9 @@ import {
 } from '@/components/ui/select';
 
 import { FIXED_KEYS, FIXED_META, DEFAULT_RUBRIC, totalWeight, scoreRecommendation } from '@/components/ai-screening/shared';
+
+import PipelineTour, { usePipelineTour } from '@/components/tours/PipelineTour';
+import { AI_SCREENING_CANDIDATE_STEPS } from '@/components/tours/tourSteps';
 
 /* ─── Engine config (mirrors the spec) ─── */
 const ENGINES = [
@@ -324,9 +327,12 @@ export default function AIScreeningCandidatePage() {
   const [activeEngine, setActiveEngine] = useState('parse');
 
   // Decision drawer state
-  const [decisionDraft, setDecisionDraft] = useState(null); // 'advance' | 'hold' | 'reject' | null
+  const [decisionDraft, setDecisionDraft] = useState(null);
   const [decisionReason, setDecisionReason] = useState('');
   const [saving, setSaving] = useState(false);
+
+  const { run, setRun, markSeen, restart } = usePipelineTour('ai-screening-candidate');
+
 
   const load = async () => {
     setLoading(true);
@@ -413,11 +419,16 @@ export default function AIScreeningCandidatePage() {
     <>
       <div className="sticky top-[52px] z-10 bg-background/95 backdrop-blur-sm -mt-5 -mx-5 px-5 pt-5 pb-4 border-b border-border/60">
         <div className="animate-fade-in-up space-y-3">
-          <Button variant="ghost" size="sm" className="text-xs -ml-2 w-fit" onClick={() => navigate(`/selection/ai-screening/job/${job_id}`)}>
-            <ArrowLeft className="h-3.5 w-3.5 mr-1" /> Back to position
-          </Button>
+          <div className="flex items-center justify-between">
+            <Button data-tour="candidate-back" variant="ghost" size="sm" className="text-xs -ml-2 w-fit" onClick={() => navigate(`/selection/ai-screening/job/${job_id}`)}>
+              <ArrowLeft className="h-3.5 w-3.5 mr-1" /> Back to position
+            </Button>
+            <Button variant="ghost" size="sm" className="text-xs" onClick={restart}>
+              <HelpCircle className="h-3.5 w-3.5 mr-1" /> Take the tour
+            </Button>
+          </div> 
 
-          <div className="flex items-center gap-3 flex-wrap">
+          <div data-tour="candidate-header" className="flex items-center gap-3 flex-wrap">
             <div className="h-11 w-11 rounded-full bg-primary/10 text-primary flex items-center justify-center font-bold flex-shrink-0 text-sm">
               {initials}
             </div>
@@ -455,7 +466,7 @@ export default function AIScreeningCandidatePage() {
             )}
 
             {/* Engine panel (re-animates on each step switch) */}
-            <div key={activeEngine} className="animate-fade-in-up">
+            <div data-tour="candidate-engine-panel" key={activeEngine} className="animate-fade-in-up">
               {activeEngine === 'parse' && (
                 <ParsePanel
                   facets={facets}
@@ -483,24 +494,28 @@ export default function AIScreeningCandidatePage() {
               Stacks below the main column on narrow widths. */}
           <aside>
             <div className="sticky top-[184px] space-y-3">
-              <SidebarAction
-                activeEngine={activeEngine}
-                match={match}
-                qa={qa}
-                scored={scored}
-                parsed={!!facets}
-                overall_score={data.overall_score}
-                onStep={goToStep}
-                candidateName={candidate_name}
-                jobTitle={job_title}
-              />
-              <DecisionCard
-                decision={decision}
-                existingReason={existingReason}
-                locked={decisionLocked}              
-                lockReason={decisionLockReason}      
-                onPick={setDecisionDraft}
-              />
+              <div data-tour="candidate-sidebar-action">
+                <SidebarAction
+                  activeEngine={activeEngine}
+                  match={match}
+                  qa={qa}
+                  scored={scored}
+                  parsed={!!facets}
+                  overall_score={data.overall_score}
+                  onStep={goToStep}
+                  candidateName={candidate_name}
+                  jobTitle={job_title}
+                />
+              </div>
+              <div data-tour="candidate-decision">
+                <DecisionCard
+                  decision={decision}
+                  existingReason={existingReason}
+                  locked={decisionLocked}              
+                  lockReason={decisionLockReason}      
+                  onPick={setDecisionDraft}
+                />
+              </div>
               <StepsNav
                 activeEngine={activeEngine}
                 onStep={goToStep}
@@ -520,6 +535,14 @@ export default function AIScreeningCandidatePage() {
         saving={saving}
         onConfirm={() => handleDecide(decisionDraft)}
         onClose={() => { setDecisionDraft(null); setDecisionReason(''); }}
+      />
+
+      <PipelineTour
+        steps={AI_SCREENING_CANDIDATE_STEPS}
+        tourKey="ai-screening-candidate"
+        run={run}
+        setRun={setRun}
+        markSeen={markSeen}
       />
 
       {/* ── Email Editor Modal ── */}
