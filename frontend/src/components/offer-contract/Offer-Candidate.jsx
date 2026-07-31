@@ -4,7 +4,7 @@ import {
   ArrowLeft, Loader2, AlertTriangle, Check, ChevronRight, X,
   FileText, Pencil, Wallet, Send, FileSignature, Plus, Trash2,
   MessageSquareText, ShieldCheck, ThumbsDown, Clock, Circle,
-  Copy, Sparkles, RefreshCw, Ban, XCircle, Download, Upload, PenLine,
+  Copy, Sparkles, RefreshCw, Ban, XCircle, Download, PenLine,
 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -21,6 +21,7 @@ import {
   respondToNegotiation,
   generateContract, sendContract,
   getOfferLetterFields, saveOfferLetterData,
+  generateOfferLetterPreview, getOfferLetterFinal, downloadOfferLetterDocx,
 } from '@/api/offer.api';
 
 import { getOfferTemplate } from '@/api/offer-template.api';
@@ -506,8 +507,6 @@ function MoneyRow({ row, onLabelChange, onAmountChange, onRemove, disabled, labe
   );
 }
 
-/* Company template gate + dynamic <<field>> inputs, used inside Build */
-
 function TemplateGateCard({ template, loading }) {
   if (loading) {
     return (
@@ -540,6 +539,49 @@ function TemplateGateCard({ template, loading }) {
       <CardContent className="p-3 flex items-center gap-2 text-xs text-muted-foreground">
         <FileText className="h-3.5 w-3.5 shrink-0" />
         Using company template · {template.fields?.length || 0} field{template.fields?.length === 1 ? '' : 's'} detected
+      </CardContent>
+    </Card>
+  );
+}
+
+function CompensationReferenceCard({ offer }) {
+  if (offer.base_salary == null) return null;
+
+  return (
+    <Card className="bg-muted/20">
+      <CardHeader className="pb-2">
+        <CardTitle className="text-xs uppercase tracking-wide text-muted-foreground">
+          Compensation reference · from Build
+        </CardTitle>
+        <p className="text-[10px] text-muted-foreground mt-0.5">
+          Copy these into the matching template field below — nothing here auto-fills.
+        </p>
+      </CardHeader>
+      <CardContent className="space-y-1 text-xs">
+        <div className="flex items-center justify-between">
+          <span className="text-muted-foreground">Base salary</span>
+          <span className="font-mono">{fmtCurrency(offer.base_salary)}</span>
+        </div>
+        <div className="flex items-center justify-between">
+          <span className="text-muted-foreground">Gross salary</span>
+          <span className="font-mono">{fmtCurrency(offer.gross_salary)}</span>
+        </div>
+        <div className="flex items-center justify-between">
+          <span className="text-muted-foreground">PPh 21</span>
+          <span className="font-mono">− {fmtCurrency(offer.pph21)}</span>
+        </div>
+        <div className="flex items-center justify-between">
+          <span className="text-muted-foreground">BPJS Kesehatan</span>
+          <span className="font-mono">− {fmtCurrency(offer.bpjs_kesehatan)}</span>
+        </div>
+        <div className="flex items-center justify-between">
+          <span className="text-muted-foreground">BPJS Ketenagakerjaan</span>
+          <span className="font-mono">− {fmtCurrency(offer.bpjs_ketenagakerjaan)}</span>
+        </div>
+        <div className="flex items-center justify-between pt-1 border-t font-semibold">
+          <span>Net salary</span>
+          <span className="font-mono">{fmtCurrency(offer.net_salary)}</span>
+        </div>
       </CardContent>
     </Card>
   );
@@ -590,12 +632,16 @@ function TemplateFieldsPart({ offer, setBanner, setError }) {
     <div className="space-y-3">
       <TemplateGateCard template={template} loading={loading} />
 
+      {!loading && template && (
+        <CompensationReferenceCard offer={offer} />
+      )}
+
       {!loading && template && fields.length > 0 && (
         <Card>
           <CardHeader className="pb-2">
             <CardTitle className="text-sm">Offer letter fields</CardTitle>
             <p className="text-[10px] text-muted-foreground mt-0.5">
-              From your company's template — these fill in the {'<<placeholders>>'} when the letter is generated
+              From your company's template — these fill in the {'<<placeholders>>'} when the letter is generated. Every field is manual.
             </p>
           </CardHeader>
           <CardContent className="space-y-2">
@@ -1092,7 +1138,7 @@ function ApproveSection({ offer, offerId, setOffer, setBanner, setError, onAdvan
   );
 }
 
-/* Review Section — A. Data summary (intake + full compensation breakdown) · B. Offer letter values · C. Approval */
+/* Review Section — A. Data summary (intake + full compensation breakdown) · B. Offer letter merge preview · C. Approval */
 
 function DataSummaryPart({ offer }) {
   const slipGaji = offer.metadata?.intake?.slip_gaji;
@@ -1174,25 +1220,24 @@ function DataSummaryPart({ offer }) {
   );
 }
 
-/* Offer letter values — editable in Review too, since mail-merge fields can change
-   right up until the letter is sent. Download/upload of the actual merged .docx is
-   noted as a placeholder — it needs a document-merge endpoint that doesn't exist yet. */
+/* Offer letter — real merge preview. Generate/Re-generate pulls the saved field
+   values from Build, runs the actual docx merge on the backend (docxtemplater),
+   converts the result to HTML (mammoth), and shows THAT — not a list of fields.
+   Read-only: the download always matches exactly what's shown here. */
 
 function OfferLetterSummaryPart({ offer, setBanner, setError }) {
-  const [fields, setFields] = useState([]);
-  const [values, setValues] = useState({});
+  const [html, setHtml] = useState(null);
   const [loading, setLoading] = useState(true);
-  const [editing, setEditing] = useState(false);
-  const [saving, setSaving] = useState(false);
+  const [generating, setGenerating] = useState(false);
+  const [downloading, setDownloading] = useState(false);
 
   const load = useCallback(async () => {
     setLoading(true);
     try {
-      const res = await getOfferLetterFields(offer.id);
-      setFields(res.data?.fields || []);
-      setValues(res.data?.values || {});
+      const res = await getOfferLetterFinal(offer.id);
+      setHtml(res.data?.html || null);
     } catch (err) {
-      setError(err.response?.data?.message || err.message || 'Failed to load offer letter fields');
+      setError(err.response?.data?.message || err.message || 'Failed to load offer letter');
     } finally {
       setLoading(false);
     }
@@ -1200,19 +1245,30 @@ function OfferLetterSummaryPart({ offer, setBanner, setError }) {
 
   useEffect(() => { load(); }, [load]);
 
-  const updateValue = (key, value) => setValues((prev) => ({ ...prev, [key]: value }));
-
-  const handleSave = async () => {
-    setSaving(true);
+  const handleGenerate = async () => {
+    setGenerating(true);
     setError(null);
     try {
-      await saveOfferLetterData(offer.id, values);
-      setEditing(false);
-      setBanner({ ok: true, text: 'Offer letter fields saved.' });
+      const res = await generateOfferLetterPreview(offer.id);
+      setHtml(res.data?.html || '');
+      setBanner({ ok: true, text: 'Offer letter merged from your template.' });
     } catch (err) {
-      setError(err.response?.data?.message || err.message || 'Failed to save offer letter fields');
+      setError(err.response?.data?.message || err.message || 'Failed to generate offer letter');
     } finally {
-      setSaving(false);
+      setGenerating(false);
+    }
+  };
+
+  const handleDownload = async () => {
+    setDownloading(true);
+    setError(null);
+    try {
+      const res = await downloadOfferLetterDocx(offer.id);
+      downloadBlob(res, `offer_letter_${offer.id}.docx`);
+    } catch (err) {
+      setError(err.response?.data?.message || err.message || 'Failed to download offer letter');
+    } finally {
+      setDownloading(false);
     }
   };
 
@@ -1224,72 +1280,47 @@ function OfferLetterSummaryPart({ offer, setBanner, setError }) {
     );
   }
 
+  const hasContent = html != null && html !== '';
+
   return (
     <Card>
-      <CardHeader className="pb-2">
+      <CardHeader className="pb-3">
         <div className="flex items-center gap-2">
           <FileText className="h-4 w-4 text-primary shrink-0" />
           <div className="min-w-0 flex-1">
-            <CardTitle className="text-sm">Offer letter values</CardTitle>
+            <CardTitle className="text-sm">Offer letter</CardTitle>
             <p className="text-[10px] text-muted-foreground mt-0.5">
-              Merged into your company's template — {editing ? 'edit and save below' : 'click Edit to change'}
+              {hasContent ? 'Preview of the merged document — from your saved fields' : 'Not generated yet'}
             </p>
           </div>
-          {!editing && (
-            <Button size="sm" variant="outline" className="text-xs h-7" onClick={() => setEditing(true)}>
-              <Pencil className="h-3 w-3 mr-1.5" /> Edit
-            </Button>
-          )}
+          <Button size="sm" variant="outline" className="text-xs h-7" onClick={handleGenerate} disabled={generating}>
+            {generating ? <Loader2 className="h-3.5 w-3.5 mr-1.5 animate-spin" /> : <RefreshCw className="h-3.5 w-3.5 mr-1.5" />}
+            {hasContent ? 'Re-generate' : 'Generate'}
+          </Button>
         </div>
       </CardHeader>
-      <CardContent className="space-y-2">
-        {fields.length === 0 ? (
-          <p className="text-muted-foreground italic text-xs">No template fields to review yet.</p>
-        ) : editing ? (
+      <CardContent className="space-y-3">
+        {!hasContent ? (
+          <div className="py-8 text-center text-xs text-muted-foreground italic">
+            Fill in the offer letter fields in Build, then click Generate to merge them into your template.
+          </div>
+        ) : (
           <>
-            {fields.map((field) => (
-              <div key={field} className="space-y-1">
-                <label className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
-                  {field}
-                </label>
-                <Input
-                  className="text-xs h-8"
-                  value={values[field] || ''}
-                  onChange={(e) => updateValue(field, e.target.value)}
-                />
-              </div>
-            ))}
-            <div className="flex gap-2 pt-1">
-              <Button size="sm" className="text-xs" onClick={handleSave} disabled={saving}>
-                {saving ? <><Loader2 className="h-3.5 w-3.5 mr-1.5 animate-spin" /> Saving…</> : <><Check className="h-3.5 w-3.5 mr-1.5" /> Save</>}
-              </Button>
-              <Button size="sm" variant="ghost" className="text-xs" onClick={() => { setEditing(false); load(); }} disabled={saving}>
-                Cancel
+            <div
+              className="prose prose-sm max-w-none border rounded-lg p-4 bg-muted/10 max-h-[500px] overflow-y-auto"
+              dangerouslySetInnerHTML={{ __html: html }}
+            />
+            <div className="flex gap-2 pt-1 border-t">
+              <Button size="sm" variant="outline" className="text-xs" onClick={handleDownload} disabled={downloading}>
+                {downloading ? <Loader2 className="h-3.5 w-3.5 mr-1.5 animate-spin" /> : <Download className="h-3.5 w-3.5 mr-1.5" />}
+                Download .docx
               </Button>
             </div>
+            <p className="text-[10px] text-muted-foreground italic">
+              If you edit fields in Build after generating, click Re-generate here to refresh this preview and the download.
+            </p>
           </>
-        ) : (
-          <div className="space-y-1.5 text-xs">
-            {fields.map((field) => (
-              <div key={field} className="flex items-center justify-between gap-3">
-                <span className="text-muted-foreground">{field}</span>
-                <span className="font-mono truncate max-w-[60%] text-right">{values[field] || '—'}</span>
-              </div>
-            ))}
-          </div>
         )}
-
-        <div className="flex items-center gap-2 pt-2 border-t">
-          <Button size="sm" variant="outline" className="text-xs" disabled title="Requires the document-merge endpoint to be built">
-            <Download className="h-3.5 w-3.5 mr-1.5" /> Download merged letter
-          </Button>
-          <Button size="sm" variant="outline" className="text-xs" disabled title="Requires the document-merge endpoint to be built">
-            <Upload className="h-3.5 w-3.5 mr-1.5" /> Upload signed version
-          </Button>
-        </div>
-        <p className="text-[10px] text-muted-foreground italic">
-          Download/upload of the actual merged document isn't wired up yet — the fields above are saved, but generating the real .docx/PDF needs a merge endpoint on the backend.
-        </p>
       </CardContent>
     </Card>
   );
