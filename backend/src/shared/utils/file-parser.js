@@ -7,7 +7,8 @@ export async function parseFileToText(file) {
   const ext = file.originalname.toLowerCase();
 
   if (ext.endsWith('.pdf')) {
-    const data = await pdfParse(file.buffer);
+    // Suppress "TT: undefined function: N" warnings from pdf-parse's internal renderer
+    const data = await pdfParse(file.buffer, { verbosityLevel: 0 });
     return data.text;
   }
 

@@ -5,6 +5,7 @@ import AddToJobDialog from '@/components/talent-pool/AddToJobDialog';
 import TalentPoolStats from '@/components/talent-pool/TalentPoolStats';
 import TalentPoolFilterSidebar from '@/components/talent-pool/TalentPoolFilterSidebar';
 import TalentPoolTable from '@/components/talent-pool/TalentPoolTable';
+import CvUploadCard from '@/components/talent-pool/CvUploadCard';
 import { getAllByCompanyWithScore } from '@/api/applicant.api';
 import { PageHeader } from '@/components/common';
 
@@ -249,6 +250,8 @@ export default function TalentPoolPage() {
         applicant={selectedApplicant}
         onSuccess={() => loadApplicants()}
       />
+
+      <CvUploadCard />
 
       <PipelineTour
         steps={TALENT_POOL_STEPS}
