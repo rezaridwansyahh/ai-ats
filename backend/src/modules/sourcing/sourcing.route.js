@@ -3,8 +3,13 @@ const router = express.Router();
 
 import sourcingController from './sourcing.controller.js';
 import authToken from '../../shared/middleware/auth.middleware.js';
+import upload from '../../shared/middleware/upload.middleware.js';
 
 router.use(authToken);
+
+// CV Upload → Talent Pool (synchronous, no queue)
+router.post('/upload-cv', upload.single('file'), sourcingController.uploadCv);
+router.get('/upload-history', sourcingController.getUploadHistory);
 
 // Sourcing
 router.get('/', sourcingController.getAll);

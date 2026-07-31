@@ -17,6 +17,7 @@ DROP TABLE IF EXISTS screening_qa CASCADE;
 DROP TABLE IF EXISTS candidate_screening CASCADE;
 DROP TABLE IF EXISTS candidate_job_score CASCADE;
 DROP TABLE IF EXISTS applicant_job_score CASCADE;  -- orphan cleanup: old name (renamed → candidate_job_score)
+DROP TABLE IF EXISTS cv_upload_batch CASCADE;
 DROP TABLE IF EXISTS master_skill_alias CASCADE;
 DROP TABLE IF EXISTS core_company CASCADE;
 DROP TABLE IF EXISTS mapping_applicant_linkedin CASCADE;
@@ -969,6 +970,22 @@ CREATE INDEX idx_applicant_name_trgm          ON master_applicant USING GIN (nam
 CREATE INDEX idx_applicant_last_position_trgm ON master_applicant USING GIN (last_position gin_trgm_ops);
 CREATE INDEX idx_applicant_education_trgm     ON master_applicant USING GIN (education     gin_trgm_ops);
 CREATE INDEX idx_applicant_address_trgm       ON master_applicant USING GIN (address       gin_trgm_ops);
+
+CREATE TABLE cv_upload_batch (
+  id                 SERIAL PRIMARY KEY,
+  company_id         INTEGER REFERENCES core_company(id) ON DELETE CASCADE,
+  filename           VARCHAR(255) NOT NULL,
+  file_type          VARCHAR(10)  NOT NULL CHECK (file_type IN ('pdf', 'zip')),
+  status             sourcing_status_type NOT NULL DEFAULT 'Pending',
+  total_files        INTEGER DEFAULT 1,
+  processed_files    INTEGER DEFAULT 0,
+  applicant_name     VARCHAR(255),   -- PDF: extracted candidate name
+  applicant_position VARCHAR(255),   -- PDF: extracted last position
+  error_message      TEXT,
+  created_at         TIMESTAMP NOT NULL DEFAULT NOW(),
+  updated_at         TIMESTAMP NOT NULL DEFAULT NOW()
+);
+CREATE INDEX idx_cv_upload_batch_company ON cv_upload_batch (company_id, created_at DESC);
 
 CREATE TABLE master_skill_alias (
   alias        VARCHAR(100) PRIMARY KEY,

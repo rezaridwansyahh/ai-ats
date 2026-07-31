@@ -57,6 +57,30 @@ class SourcingController {
     }
   }
 
+  async uploadCv(req, res) {
+    try {
+      if (!req.file) {
+        return res.status(400).json({ message: 'No file uploaded. Please attach a PDF or ZIP.' });
+      }
+      const companyId = req.user?.company_id || null;
+      const result = await sourcingService.uploadCv(req.file, companyId);
+      res.status(201).json({ message: 'CV parsed and added to talent pool', ...result });
+    } catch (err) {
+      res.status(err.status || 500).json({ message: err.message });
+    }
+  }
+
+  async getUploadHistory(req, res) {
+    try {
+      const companyId = req.user?.company_id || null;
+      const limit = parseInt(req.query.limit) || 50;
+      const history = await sourcingService.getUploadHistory(companyId, limit);
+      res.status(200).json({ message: 'Upload history', history });
+    } catch (err) {
+      res.status(err.status || 500).json({ message: err.message });
+    }
+  }
+
   // ─── Sourcing Recruite ───
 
   async getRecruits(req, res) {

@@ -665,6 +665,109 @@ Return STRICT JSON:
     return parsed.anchors;
   }
 
+  // Extract all candidate fields from CV text in one shot — used for talent pool manual upload.
+  async extractCvForTalentPool(cvText, context = {}) {
+    if (!cvText || typeof cvText !== 'string') {
+      throw new Error('extractCvForTalentPool: cvText is required');
+    }
+
+    await companyUsageService.checkBudgetOrThrow(context.company_id);
+
+    const trimmed = cvText.slice(0, CV_TEXT_LIMIT);
+
+    const prompt = `You are a CV parser. Extract structured data from the CV text below and return STRICT JSON only (no prose, no markdown):
+
+{
+  "name": "The candidate's full name. In almost every CV the name appears on the very first line or as the largest text at the top — before any contact details, email, or phone number. Look at the first 3-5 lines carefully. Return the person's full name (first + last). Return empty string ONLY if no human name can be found anywhere in the document.",
+  "email": "email address or null",
+  "phone": "phone number or null",
+  "last_position": "most recent job title (e.g. 'Senior Frontend Developer'). Use 'Not specified' if not found.",
+  "address": "city or region (e.g. 'Jakarta, Indonesia'). Use 'Not specified' if not found.",
+  "education_summary": "highest degree + school as one concise string (e.g. 'S1 Computer Science, Universitas Indonesia'). Empty string if not found.",
+  "facets": {
+    "job_position": { "current": "string", "category": "string" },
+    "skills": ["string"],
+    "education": [{ "school": "string", "degree": "string", "year": null, "tier": "top|mid|other" }],
+    "experience": {
+      "years_total": 0,
+      "positions": [{ "title": "string", "company": "string", "years": 0 }]
+    }
+  }
+}
+
+Rules:
+- "category" is a coarse role category: "Frontend", "Backend", "Full Stack", "Data", "Product Design", "Mobile", "DevOps", "Product Management", "QA", or "Recruiting".
+- "tier": top (globally renowned e.g. Harvard, MIT, NUS), mid (well-known regional/national), other.
+- Skills should be concise tags (e.g. "React", "PostgreSQL"), not full sentences.
+- If a field is unknown return the sensible default shown above. Do NOT add commentary outside the JSON.
+
+CV:
+"""
+${trimmed}
+"""`;
+
+    const response = await openai.chat.completions.create({
+      model: SCORING_MODEL,
+      messages: [{ role: 'user', content: prompt }],
+      response_format: { type: 'json_object' },
+      temperature: 0.2,
+    });
+
+    await this._logUsage({
+      context,
+      model: SCORING_MODEL,
+      operation: 'extract_cv_talent_pool',
+      usage: response.usage,
+      request_id: response.id,
+      metadata: context.metadata || null,
+    });
+
+    const raw = response.choices[0]?.message?.content || '{}';
+    let parsed;
+    try {
+      parsed = JSON.parse(raw);
+    } catch {
+      throw new Error('extractCvForTalentPool: model returned non-JSON');
+    }
+
+    const rawFacets = parsed.facets || {};
+    const skills = await normalizeSkills(Array.isArray(rawFacets.skills) ? rawFacets.skills : []);
+
+    return {
+      name:              typeof parsed.name === 'string' ? parsed.name.trim() : '',
+      email:             typeof parsed.email === 'string' && parsed.email.trim() ? parsed.email.trim() : null,
+      phone:             typeof parsed.phone === 'string' && parsed.phone.trim() ? parsed.phone.trim() : null,
+      last_position:     typeof parsed.last_position === 'string' && parsed.last_position.trim() ? parsed.last_position.trim() : 'Not specified',
+      address:           typeof parsed.address === 'string' && parsed.address.trim() ? parsed.address.trim() : 'Not specified',
+      education_summary: typeof parsed.education_summary === 'string' ? parsed.education_summary.trim() : '',
+      facets: {
+        job_position: {
+          current:  typeof rawFacets.job_position?.current === 'string'  ? rawFacets.job_position.current  : '',
+          category: typeof rawFacets.job_position?.category === 'string' ? rawFacets.job_position.category : '',
+        },
+        skills,
+        education: Array.isArray(rawFacets.education)
+          ? rawFacets.education.map((e) => ({
+              school: typeof e.school === 'string' ? e.school : '',
+              degree: typeof e.degree === 'string' ? e.degree : '',
+              year:   Number.isFinite(Number(e.year)) ? Number(e.year) : null,
+              tier:   ['top', 'mid', 'other'].includes(e.tier) ? e.tier : 'other',
+            }))
+          : [],
+        experience: {
+          years_total: safeNumber(rawFacets.experience?.years_total, 0, 60) ?? 0,
+          positions: Array.isArray(rawFacets.experience?.positions)
+            ? rawFacets.experience.positions.map((p) => ({
+                title:   typeof p.title   === 'string' ? p.title   : '',
+                company: typeof p.company === 'string' ? p.company : '',
+                years:   safeNumber(p.years, 0, 60) ?? 0,
+              }))
+            : [],
+        },
+      },
+    };
+  }
+
   async extractBgClaims(information, job_title, context = {}) {
     if (!information || typeof information !== 'object') {
       throw new Error('extractBgClaims: information is required');

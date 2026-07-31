@@ -77,6 +77,40 @@ class SourcingModel {
     return result.rows[0].next_id;
   }
 
+  // ─── CV Upload Batch ───
+
+  async createBatch({ company_id, filename, file_type }) {
+    const result = await getDb().query(`
+      INSERT INTO cv_upload_batch (company_id, filename, file_type, status)
+      VALUES ($1, $2, $3, 'Processing')
+      RETURNING *
+    `, [company_id || null, filename, file_type]);
+    return result.rows[0];
+  }
+
+  async updateBatch(id, fields) {
+    const keys = Object.keys(fields);
+    const values = Object.values(fields);
+    const setClause = keys.map((k, i) => `"${k}" = $${i + 1}`).join(', ');
+    const result = await getDb().query(`
+      UPDATE cv_upload_batch
+      SET ${setClause}, updated_at = NOW()
+      WHERE id = $${keys.length + 1}
+      RETURNING *
+    `, [...values, id]);
+    return result.rows[0];
+  }
+
+  async getBatchesByCompany(company_id, limit = 50) {
+    const result = await getDb().query(`
+      SELECT * FROM cv_upload_batch
+      WHERE company_id = $1
+      ORDER BY created_at DESC
+      LIMIT $2
+    `, [company_id, limit]);
+    return result.rows;
+  }
+
   static async bulkInsert(candidates) {
     if (!candidates.length) return;
 
