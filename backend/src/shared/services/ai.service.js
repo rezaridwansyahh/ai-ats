@@ -34,7 +34,7 @@ class AIService {
     });
   }
 
-  buildPrompt(formFields, fileText) {
+  buildPrompt(formFields, { withAttachment = false } = {}) {
     let prompt = `You are an expert HR recruiter. Generate a professional job description and qualifications based on the following information.\n\n`;
 
     prompt += `## Job Details\n`;
@@ -48,9 +48,8 @@ class AIService {
       prompt += `- Salary Range: ${formFields.currency || ''} ${formFields.pay_min} - ${formFields.pay_max} (${formFields.pay_type || ''})\n`;
     }
 
-    if (fileText) {
-      prompt += `\n## Reference Document (CV/Job Spec)\n${fileText.slice(0, 4000)}\n`;
-      prompt += `\nUse the document above as reference to tailor the job description and required qualifications.\n`;
+    if (withAttachment) {
+      prompt += `\nA reference document (CV or job spec) is attached. Use it to tailor the job description and required qualifications.\n`;
     }
 
     prompt += `\nIMPORTANT: You MUST structure your response using these EXACT tags. Do NOT omit them:\n\n`;
@@ -60,26 +59,56 @@ class AIService {
     return prompt;
   }
 
-  async *generateStream(formFields, fileText, context = {}) {
+  // fileInput is a multer file object { buffer, originalname } or null
+  async *generateStream(formFields, fileInput, context = {}) {
     // Task 6.12: Check AI budget before OpenAI call
     await companyUsageService.checkBudgetOrThrow(context.company_id);
 
-    const prompt = this.buildPrompt(formFields, fileText);
+    // Upload reference file to OpenAI if provided — avoids local pdf-parse dependency
+    let uploadedFile = null;
+    if (fileInput?.buffer) {
+      const mimeType = fileInput.originalname?.toLowerCase().endsWith('.pdf') ? 'application/pdf'
+        : fileInput.originalname?.toLowerCase().endsWith('.docx') ? 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'
+        : 'text/plain';
+      try {
+        uploadedFile = await openai.files.create({
+          file: new File([fileInput.buffer], fileInput.originalname || 'document', { type: mimeType }),
+          purpose: 'user_data',
+        });
+      } catch {
+        // Non-fatal: proceed without the attachment if upload fails
+        uploadedFile = null;
+      }
+    }
+
+    const promptText = this.buildPrompt(formFields, { withAttachment: !!uploadedFile });
+
+    const messageContent = uploadedFile
+      ? [
+          { type: 'file', file: { file_id: uploadedFile.id } },
+          { type: 'text', text: promptText },
+        ]
+      : promptText;
 
     const stream = await openai.chat.completions.create({
       model: STREAM_MODEL,
-      messages: [{ role: 'user', content: prompt }],
+      messages: [{ role: 'user', content: messageContent }],
       stream: true,
       stream_options: { include_usage: true },
     });
 
     let usage = null;
     let request_id = null;
-    for await (const chunk of stream) {
-      if (chunk.id && !request_id) request_id = chunk.id;
-      if (chunk.usage) usage = chunk.usage;
-      const text = chunk.choices?.[0]?.delta?.content;
-      if (text) yield text;
+    try {
+      for await (const chunk of stream) {
+        if (chunk.id && !request_id) request_id = chunk.id;
+        if (chunk.usage) usage = chunk.usage;
+        const text = chunk.choices?.[0]?.delta?.content;
+        if (text) yield text;
+      }
+    } finally {
+      // Clean up uploaded file after streaming completes or errors
+      if (uploadedFile) openai.files.delete(uploadedFile.id).catch(() => {});
     }
 
     await this._logUsage({
@@ -186,6 +215,109 @@ ${trimmed}
     };
 
     return facets;
+  }
+
+  // Same as extractFacets but accepts a raw file buffer — uploads to OpenAI for OCR
+  // so pdf-parse is not needed. Accepts any PDF/DOCX/TXT buffer.
+  async extractFacetsFromFile(fileBuffer, filename, context = {}) {
+    if (!Buffer.isBuffer(fileBuffer) || fileBuffer.length === 0) {
+      throw new Error('extractFacetsFromFile: fileBuffer is required');
+    }
+
+    await companyUsageService.checkBudgetOrThrow(context.company_id);
+
+    const prompt = `You are a CV parser. Use OCR to read the entire document including sidebars and columns. Extract structured facets and return STRICT JSON only (no prose, no markdown):
+
+{
+  "job_position": { "current": string, "category": string },
+  "skills": string[],
+  "education": [
+    { "school": string, "degree": string, "year": number|null, "tier": "top"|"mid"|"other" }
+  ],
+  "experience": {
+    "years_total": number,
+    "positions": [ { "title": string, "company": string, "years": number } ]
+  }
+}
+
+Rules:
+- "category": coarse role — "Frontend", "Backend", "Full Stack", "Data", "Product Design", "Mobile", "DevOps", "Product Management", "QA", "Recruiting".
+- "tier": top (globally renowned e.g. Harvard, MIT, NUS), mid (well-known regional/national), other.
+- Skills: concise tags (e.g. "React", "PostgreSQL"), not sentences.
+- Unknown fields: return sensible defaults ("" for strings, 0 for numbers, [] for arrays). No commentary.`;
+
+    const mimeType = filename.toLowerCase().endsWith('.pdf') ? 'application/pdf'
+      : filename.toLowerCase().endsWith('.docx') ? 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'
+      : 'text/plain';
+
+    let uploadedFile;
+    try {
+      uploadedFile = await openai.files.create({
+        file: new File([fileBuffer], filename, { type: mimeType }),
+        purpose: 'user_data',
+      });
+    } catch (err) {
+      throw new Error(`extractFacetsFromFile: file upload failed — ${err.message}`);
+    }
+
+    let response;
+    try {
+      response = await openai.chat.completions.create({
+        model: SCORING_MODEL,
+        messages: [{
+          role: 'user',
+          content: [
+            { type: 'file', file: { file_id: uploadedFile.id } },
+            { type: 'text', text: prompt },
+          ],
+        }],
+        response_format: { type: 'json_object' },
+        temperature: 0.2,
+      });
+    } finally {
+      openai.files.delete(uploadedFile.id).catch(() => {});
+    }
+
+    await this._logUsage({
+      context,
+      model: SCORING_MODEL,
+      operation: 'extract_facets_file',
+      usage: response.usage,
+      request_id: response.id,
+      metadata: context.metadata || null,
+    });
+
+    const raw = response.choices[0]?.message?.content || '{}';
+    let parsed;
+    try { parsed = JSON.parse(raw); } catch { throw new Error('extractFacetsFromFile: model returned non-JSON'); }
+
+    const skills = await normalizeSkills(Array.isArray(parsed.skills) ? parsed.skills : []);
+
+    return {
+      job_position: {
+        current:  typeof parsed.job_position?.current  === 'string' ? parsed.job_position.current  : '',
+        category: typeof parsed.job_position?.category === 'string' ? parsed.job_position.category : '',
+      },
+      skills,
+      education: Array.isArray(parsed.education)
+        ? parsed.education.filter((e) => e && typeof e === 'object').map((e) => ({
+            school: typeof e.school === 'string' ? e.school : '',
+            degree: typeof e.degree === 'string' ? e.degree : '',
+            year:   Number.isFinite(Number(e.year)) ? Number(e.year) : null,
+            tier:   ['top', 'mid', 'other'].includes(e.tier) ? e.tier : 'other',
+          }))
+        : [],
+      experience: {
+        years_total: safeNumber(parsed.experience?.years_total, 0, 60) ?? 0,
+        positions: Array.isArray(parsed.experience?.positions)
+          ? parsed.experience.positions.filter((p) => p && typeof p === 'object').map((p) => ({
+              title:   typeof p.title   === 'string' ? p.title   : '',
+              company: typeof p.company === 'string' ? p.company : '',
+              years:   safeNumber(p.years, 0, 60) ?? 0,
+            }))
+          : [],
+      },
+    };
   }
 
   // Layer 2 — score an applicant's facets against a specific job.
@@ -665,20 +797,20 @@ Return STRICT JSON:
     return parsed.anchors;
   }
 
-  // Extract all candidate fields from CV text in one shot — used for talent pool manual upload.
-  async extractCvForTalentPool(cvText, context = {}) {
-    if (!cvText || typeof cvText !== 'string') {
-      throw new Error('extractCvForTalentPool: cvText is required');
+  // Extract all candidate fields from a CV PDF file — uploads directly to OpenAI for OCR.
+  // Accepts a Buffer (fileBuffer) + filename string instead of pre-parsed text,
+  // so pdf-parse is not needed and layout/font issues can't corrupt the data.
+  async extractCvForTalentPool(fileBuffer, filename, context = {}) {
+    if (!Buffer.isBuffer(fileBuffer) || fileBuffer.length === 0) {
+      throw new Error('extractCvForTalentPool: fileBuffer is required');
     }
 
     await companyUsageService.checkBudgetOrThrow(context.company_id);
 
-    const trimmed = cvText.slice(0, CV_TEXT_LIMIT);
-
-    const prompt = `You are a CV parser. Extract structured data from the CV text below and return STRICT JSON only (no prose, no markdown):
+    const prompt = `You are a CV / resume parser. Use OCR to read every part of this PDF — including headers, sidebars, columns, and any scanned text. Extract structured data and return STRICT JSON only (no prose, no markdown fences):
 
 {
-  "name": "The candidate's full name. In almost every CV the name appears on the very first line or as the largest text at the top — before any contact details, email, or phone number. Look at the first 3-5 lines carefully. Return the person's full name (first + last). Return empty string ONLY if no human name can be found anywhere in the document.",
+  "name": "The candidate's full name. It is almost always the largest text at the very top of the first page, before contact details. Return first + last name. Empty string ONLY if truly not found anywhere.",
   "email": "email address or null",
   "phone": "phone number or null",
   "last_position": "most recent job title (e.g. 'Senior Frontend Developer'). Use 'Not specified' if not found.",
@@ -696,22 +828,40 @@ Return STRICT JSON:
 }
 
 Rules:
-- "category" is a coarse role category: "Frontend", "Backend", "Full Stack", "Data", "Product Design", "Mobile", "DevOps", "Product Management", "QA", or "Recruiting".
+- "category": coarse role — "Frontend", "Backend", "Full Stack", "Data", "Product Design", "Mobile", "DevOps", "Product Management", "QA", or "Recruiting".
 - "tier": top (globally renowned e.g. Harvard, MIT, NUS), mid (well-known regional/national), other.
-- Skills should be concise tags (e.g. "React", "PostgreSQL"), not full sentences.
-- If a field is unknown return the sensible default shown above. Do NOT add commentary outside the JSON.
+- Skills: concise tags only (e.g. "React", "PostgreSQL"), not full sentences.
+- Return sensible defaults for unknown fields. No commentary outside the JSON.`;
 
-CV:
-"""
-${trimmed}
-"""`;
+    // Upload PDF to OpenAI Files API so the model can OCR it directly
+    let uploadedFile;
+    try {
+      uploadedFile = await openai.files.create({
+        file: new File([fileBuffer], filename, { type: 'application/pdf' }),
+        purpose: 'user_data',
+      });
+    } catch (err) {
+      throw new Error(`extractCvForTalentPool: file upload failed — ${err.message}`);
+    }
 
-    const response = await openai.chat.completions.create({
-      model: SCORING_MODEL,
-      messages: [{ role: 'user', content: prompt }],
-      response_format: { type: 'json_object' },
-      temperature: 0.2,
-    });
+    let response;
+    try {
+      response = await openai.chat.completions.create({
+        model: SCORING_MODEL,
+        messages: [{
+          role: 'user',
+          content: [
+            { type: 'file', file: { file_id: uploadedFile.id } },
+            { type: 'text', text: prompt },
+          ],
+        }],
+        response_format: { type: 'json_object' },
+        temperature: 0.2,
+      });
+    } finally {
+      // Always clean up the uploaded file — fire and forget
+      openai.files.delete(uploadedFile.id).catch(() => {});
+    }
 
     await this._logUsage({
       context,

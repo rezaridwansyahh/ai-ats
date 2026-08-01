@@ -79,12 +79,12 @@ class SourcingModel {
 
   // ─── CV Upload Batch ───
 
-  async createBatch({ company_id, filename, file_type }) {
+  async createBatch({ company_id, filename, file_type, total_files = 1 }) {
     const result = await getDb().query(`
-      INSERT INTO cv_upload_batch (company_id, filename, file_type, status)
-      VALUES ($1, $2, $3, 'Processing')
+      INSERT INTO cv_upload_batch (company_id, filename, file_type, status, total_files)
+      VALUES ($1, $2, $3, 'Processing', $4)
       RETURNING *
-    `, [company_id || null, filename, file_type]);
+    `, [company_id || null, filename, file_type, total_files]);
     return result.rows[0];
   }
 
