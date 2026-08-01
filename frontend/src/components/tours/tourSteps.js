@@ -202,3 +202,81 @@ export const TALENT_POOL_STEPS = [
     skipBeacon: true,
   },
 ];
+
+/* ── AI Screening workboard: /selection/ai-screening ── */
+export const AI_SCREENING_WORKBOARD_STEPS = [
+  {
+    target: '[data-tour="screening-page-header"]',
+    title: 'Welcome to AI Screening',
+    content: 'Every candidate moving through Parse, Match, and Q&A across all your open jobs, in one place.',
+    placement: 'bottom',
+    skipBeacon: true,
+  },
+  {
+    target: '[data-tour="screening-stage-chips"]',
+    title: 'Filter by stage',
+    content: 'Click any stage \u2014 Parse, Match, Q&A, or Ready \u2014 to see only candidates currently at that step.',
+    placement: 'bottom',
+    skipBeacon: true,
+  },
+  {
+    target: '[data-tour="screening-positions-rail"]',
+    title: 'Browse by position',
+    content: 'Pick a specific job to narrow the candidate list down to just that role.',
+    placement: 'right',
+    skipBeacon: true,
+  },
+  {
+    target: '[data-tour="screening-search"]',
+    title: 'Search candidates',
+    content: 'Look up anyone by name, last position, or job title.',
+    placement: 'bottom',
+    skipBeacon: true,
+  },
+  {
+    target: '[data-tour="screening-candidate-list"]',
+    title: 'Open a candidate',
+    content: 'Click any candidate to open their screening profile and move them through Parse, Match, and Q&A.',
+    placement: 'top',
+    skipBeacon: true,
+  },
+]
+
+/* ── AI Screening candidate detail: /selection/ai-screening/candidate/:candidateId ── */
+export const AI_SCREENING_CANDIDATE_STEPS = [
+  {
+    target: '[data-tour="candidate-back"]',
+    title: 'Heads up',
+    content: 'This takes you back to this candidate\u2019s job screening page.',
+    placement: 'bottom',
+    skipBeacon: true,
+  },
+  {
+    target: '[data-tour="candidate-header"]',
+    title: 'Candidate overview',
+    content: 'Their name, the role they applied for, and the current decision status if one has been made.',
+    placement: 'bottom',
+    skipBeacon: true,
+  },
+  {
+    target: '[data-tour="candidate-engine-panel"]',
+    title: 'Three steps: Parse, Match, Q&A',
+    content: 'This panel walks through each stage \u2014 extracting the CV, scoring fit against the job, then sending follow-up questions.',
+    placement: 'top',
+    skipBeacon: true,
+  },
+  {
+    target: '[data-tour="candidate-sidebar-action"]',
+    title: 'Your next action',
+    content: 'This card always shows exactly what to do next for the step you\u2019re on.',
+    placement: 'left',
+    skipBeacon: true,
+  },
+  {
+    target: '[data-tour="candidate-decision"]',
+    title: 'Make a decision',
+    content: 'Once the candidate has responded to Q&A, you can Advance, Hold, or Reject them here.',
+    placement: 'left',
+    skipBeacon: true,
+  },
+];

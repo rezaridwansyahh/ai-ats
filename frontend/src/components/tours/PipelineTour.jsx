@@ -63,6 +63,7 @@ export default function PipelineTour({ steps, tourKey, run, setRun, markSeen }) 
       run={run}
       continuous
       scrollToFirstStep
+      debug
       onEvent={handleEvent}
       options={{
         showProgress: true,

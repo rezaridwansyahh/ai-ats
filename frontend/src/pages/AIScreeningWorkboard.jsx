@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Sparkles, AlertTriangle, Loader2, RotateCw, Search } from 'lucide-react';
+import { Sparkles, AlertTriangle, Loader2, RotateCw, Search, HelpCircle } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -11,6 +11,9 @@ import { getInitials } from '@/lib/batteries';
 import { getWorkboard, getLaneCandidates } from '@/api/screening.api';
 
 import { PageHeader } from '@/components/common';
+
+import PipelineTour, { usePipelineTour } from '@/components/tours/PipelineTour';
+import { AI_SCREENING_WORKBOARD_STEPS } from '@/components/tours/tourSteps';
 
 // Sub-stage chip + pill styling. q&a kept for parity (engine not built → always 0).
 const STAGE_META = {
@@ -49,6 +52,8 @@ export default function AIScreeningWorkboard() {
   const [search, setSearch] = useState('');
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(25);
+
+  const { run, setRun, markSeen, restart } = usePipelineTour('ai-screening-workboard')
 
   const loadWorkboard = async () => {
     setLoading(true);
@@ -134,23 +139,20 @@ export default function AIScreeningWorkboard() {
   return (
     <div className="space-y-5 p-6">
       {/* Header */}
-      <div className="flex items-start justify-between gap-3 flex-wrap">
-        {/* <div>
-          <h1 className="text-2xl font-bold tracking-tight flex items-center gap-2">
-            <Sparkles className="h-5 w-5 text-primary" /> AI Screening
-          </h1>
-          <p className="text-sm text-muted-foreground mt-0.5">
-            {activePositions} active position{activePositions === 1 ? '' : 's'} · {totalCandidates} candidate{totalCandidates === 1 ? '' : 's'} being screened
-          </p>
-        </div> */}
+      <div data-tour="screening-page-header" className="flex items-start justify-between gap-3 flex-wrap">
         <PageHeader
           title="AI"
           highlight="Screening"
           subtitle={`${activePositions} active position${activePositions === 1 ? '' : 's'} · ${totalCandidates} candidate${totalCandidates === 1 ? '' : 's'} being screened`}
         />
-        <Button variant="outline" size="sm" onClick={loadWorkboard} className="text-xs">
-          <RotateCw className="h-3.5 w-3.5 mr-1.5" /> Refresh
-        </Button>
+        <div className="flex items-center gap-2">
+          <Button variant="ghost" size="sm" className="text-xs" onClick={restart}>
+            <HelpCircle className="h-3.5 w-3.5 mr-1" /> Take the tour
+          </Button>
+          <Button variant="outline" size="sm" onClick={loadWorkboard} className="text-xs">
+            <RotateCw className="h-3.5 w-3.5 mr-1.5" /> Refresh
+          </Button>
+        </div>
       </div>
 
       {error && (
@@ -161,7 +163,7 @@ export default function AIScreeningWorkboard() {
       )}
 
       {/* Sub-stage chip strip */}
-      <Card>
+      <Card data-tour="screening-stage-chips">
         <CardContent className="py-4">
           <div className="flex items-center gap-3 flex-wrap">
             <span className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wide">
@@ -199,7 +201,7 @@ export default function AIScreeningWorkboard() {
       {/* Two-column: positions rail + candidates panel */}
       <div className="grid grid-cols-1 md:grid-cols-[240px_1fr] gap-4">
         {/* Positions rail */}
-        <Card className="self-start">
+        <Card data-tour="screening-positions-rail" className="self-start">
           <CardHeader className="pb-2">
             <CardTitle className="text-xs uppercase tracking-wide text-muted-foreground">
               Positions · {positions.length}
@@ -271,7 +273,7 @@ export default function AIScreeningWorkboard() {
                 </Button>
               )}
             </CardTitle>
-            <div className="relative max-w-sm">
+            <div data-tour="screening-search" className="relative max-w-sm">
               <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
               <Input
                 placeholder="Search name, position, or job…"
@@ -292,7 +294,7 @@ export default function AIScreeningWorkboard() {
               </div>
             ) : (
               <>
-                <div className="space-y-2">
+                <div data-tour="screening-candidate-list" className="space-y-2">
                   {paged.map((c) => {
                     const name = c.applicant_name || `#${c.applicant_id}`;
                     const meta = STAGE_META[c.engine] || { label: c.engine, color: 'bg-muted text-muted-foreground' };
@@ -339,6 +341,13 @@ export default function AIScreeningWorkboard() {
           </CardContent>
         </Card>
       </div>
+      <PipelineTour
+        steps={AI_SCREENING_WORKBOARD_STEPS}
+        tourKey="ai-screening-workboard"
+        run={run}
+        setRun={setRun}
+        markSeen={markSeen}
+      />
     </div>
   );
 }
