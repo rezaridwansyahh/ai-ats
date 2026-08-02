@@ -1,9 +1,12 @@
+import fs from 'fs';
+import os from 'os';
+import path from 'path';
 import SourcingModel from './sourcing.model.js';
 import SourcingRecruiteModel from './sourcing-recruite.model.js';
 import linkedinProducer from '../../bullmq/linkedin/linkedin.producer.js';
+import cvProducer from '../../bullmq/cv/cv.producer.js';
 import JobSourceModel from '../job-source/job-source.model.js';
 import ApplicantModel from '../applicant/applicant.model.js';
-import { parseFileToText } from '../../shared/utils/file-parser.js';
 import aiService from '../../shared/services/ai.service.js';
 
 class SourcingService {
@@ -176,45 +179,31 @@ class SourcingService {
   // ─── CV Upload (Talent Pool) ───
 
   async uploadCv(file, companyId) {
-    const fileType = file.originalname.toLowerCase().endsWith('.zip') ? 'zip' : 'pdf';
+    const isZip = file.originalname.toLowerCase().endsWith('.zip');
+    const fileType = isZip ? 'zip' : 'pdf';
 
-    // 1. Create batch tracking row (status = Processing)
+    if (isZip) {
+      return await this._uploadZip(file, companyId);
+    }
+
+    // ── Single PDF flow ───────────────────────────────────────────────────────
     const batch = await SourcingModel.createBatch({
-      company_id: companyId || null,
-      filename:   file.originalname,
-      file_type:  fileType,
+      company_id:  companyId || null,
+      filename:    file.originalname,
+      file_type:   fileType,
+      total_files: 1,
     });
 
     try {
-      // 2. Parse file text
-      const cvText = await parseFileToText(file);
-      if (!cvText || !cvText.trim()) {
-        await SourcingModel.updateBatch(batch.id, { status: 'Failed', error_message: 'Could not extract text from the uploaded file' });
-        throw { status: 400, message: 'Could not extract text from the uploaded PDF' };
-      }
+      // Send PDF buffer directly to OpenAI — no local text extraction needed
+      const extracted = await aiService.extractCvForTalentPool(file.buffer, file.originalname, { company_id: companyId });
 
-      // 3. AI: extract candidate fields + facets in one call
-      const extracted = await aiService.extractCvForTalentPool(cvText, { company_id: companyId });
-
-      // Fallback: derive name from filename if AI couldn't detect it
       const candidateName = extracted.name ||
-        file.originalname
-          .replace(/\.pdf$/i, '')
-          .replace(/[-_]/g, ' ')
-          .trim() ||
+        file.originalname.replace(/\.pdf$/i, '').replace(/[-_]/g, ' ').trim() ||
         'Unknown Candidate';
 
-      // 4. Create internal core_job_sourcing record
-      const sourcing = await JobSourceModel.create(
-        null,
-        null,
-        'internal',
-        extracted.last_position || 'Manual Upload',
-        'Active',
-        null
-      );
+      const sourcing = await JobSourceModel.create(null, null, 'internal', extracted.last_position || 'Manual Upload', 'Active', null);
 
-      // 5. Insert applicant linked to the new sourcing + company
       const applicant = await ApplicantModel.create({
         job_sourcing_id: sourcing.id,
         company_id:      companyId || null,
@@ -228,7 +217,6 @@ class SourcingService {
         attachment:      null,
       });
 
-      // 6. Mark batch as Done, store candidate info for history display
       await SourcingModel.updateBatch(batch.id, {
         status:             'Done',
         processed_files:    1,
@@ -238,15 +226,29 @@ class SourcingService {
 
       return { applicant: { ...applicant, name: candidateName }, sourcing, batch };
     } catch (err) {
-      // Only update batch if not already marked failed above (status 400 = empty text)
-      if (err.status !== 400) {
-        await SourcingModel.updateBatch(batch.id, {
-          status:        'Failed',
-          error_message: err.message || 'Unknown error',
-        });
-      }
+      await SourcingModel.updateBatch(batch.id, { status: 'Failed', error_message: err.message || 'Unknown error' });
       throw err;
     }
+  }
+
+  // ── ZIP: save to temp file, enqueue, return immediately ─────────────────
+  async _uploadZip(file, companyId) {
+    // Write buffer to a temp file so the worker can read it outside the request
+    const tempFilePath = path.join(os.tmpdir(), `cv-zip-${Date.now()}-${Math.random().toString(36).slice(2)}.zip`);
+    fs.writeFileSync(tempFilePath, file.buffer);
+
+    // Create batch row with status Processing — worker will update it
+    const batch = await SourcingModel.createBatch({
+      company_id:  companyId || null,
+      filename:    file.originalname,
+      file_type:   'zip',
+      total_files: 1, // worker will update once it knows the real count
+    });
+
+    // Enqueue and return immediately — no waiting
+    await cvProducer.processZip({ batchId: batch.id, tempFilePath, companyId: companyId || null });
+
+    return { batch, queued: true };
   }
 
   async getUploadHistory(companyId, limit = 50) {

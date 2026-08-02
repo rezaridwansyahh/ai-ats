@@ -66,7 +66,8 @@ class SourcingController {
       const result = await sourcingService.uploadCv(req.file, companyId);
       res.status(201).json({ message: 'CV parsed and added to talent pool', ...result });
     } catch (err) {
-      res.status(err.status || 500).json({ message: err.message });
+      console.error('[uploadCv] error:', err);
+      res.status(err.status || 500).json({ message: err.message || 'Internal server error' });
     }
   }
 
