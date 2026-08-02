@@ -5,7 +5,8 @@ import { PageHeader } from '@/components/common';
 import { Button } from '@/components/ui/button';
 import { HelpCircle } from 'lucide-react';
 import { getCandidatePipelineSummary, getCandidatesByJobId } from '@/api/candidate.api';
-
+import { useEffect, useMemo, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import PipelineTour, { usePipelineTour } from '@/components/tours/PipelineTour';
 import { PSYCH_ASSESSMENT_STEPS } from '@/components/tours/tourSteps';
 // Real-data Report page.
