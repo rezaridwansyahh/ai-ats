@@ -27,7 +27,7 @@ import {
   getSchedules, createSchedule, updateSchedule,
   confirmSchedule, unconfirmSchedule, deleteSchedule,
   recordOutcome, clearOutcome,
-  getScorecard, saveScorecard, deleteScorecard,
+  getPackOutcome,
   getDecideByJob, bulkDecide, resetDecision, getInterviewByCandidateId
 } from '@/api/interview.api';
 
@@ -186,18 +186,14 @@ export default function InterviewCandidatePage() {
     status, scheduled_at, last_position, address, education_text,
   } = interview;
 
-  // ← must be HERE, before return:
   const isScheduled  = ['scheduled', 'interviewed', 'no_show', 'reschedule', 'done'].includes(status);
   const hasConducted = ['interviewed', 'no_show', 'reschedule', 'done'].includes(status);
-  const hasEvaluated = status === 'done';
 
   const canGoStep = (key) => {
-    if (key === 'prep')     return true;
     if (key === 'schedule') return true;
-    if (key === 'conduct')  return isScheduled;
-    if (key === 'evaluate') return hasConducted;
-    if (key === 'decide')   return hasEvaluated;
-    return false;
+    if (key === 'result')   return isScheduled;    // unlocks once session confirmed
+    if (key === 'decide')   return hasConducted;   // unlocks once outcome recorded
+    return true;
   };
 
   const statusMeta = STATUS_META[status] || { label: status, color: 'bg-muted text-muted-foreground' };
@@ -272,7 +268,7 @@ export default function InterviewCandidatePage() {
             </div>
 
             {activeSection === 'schedule' && <ScheduleSection interviewId={interviewId} interview={interview} setInterview={setInterview} setBanner={setBanner} setError={setError} />}
-            {activeSection === 'result'   && <ResultSection   interview={interview} prep={prep} interviewId={interviewId} setBanner={setBanner} setError={setError} reload={load} />}
+            {activeSection === 'result'   && <ResultSection   interview={interview} prep={prep} interviewId={interviewId} />}
             {activeSection === 'decide'   && <DecideSection   interviewId={interviewId} interview={interview} setInterview={setInterview} setBanner={setBanner} setError={setError} />}
           </div>
 
@@ -1995,16 +1991,12 @@ function CandidateCard({ last_position, address, education_text }) {
 function StepsNav({ activeSection, onStep, status, interview }) {
   const isScheduled  = ['scheduled', 'interviewed', 'no_show', 'reschedule', 'done'].includes(status);
   const hasConducted = ['interviewed', 'no_show', 'reschedule', 'done'].includes(status);
-  const hasEvaluated = status === 'done';
-  const isDecidable  = status === 'done';
   const hasDecided   = interview?.decision && interview.decision !== 'pending';
 
   const stepState = (key) => {
-    if (key === 'prep')     return isScheduled  ? 'done'   : 'active';
-    if (key === 'schedule') return hasConducted ? 'done'   : isScheduled  ? 'active' : 'pending';
-    if (key === 'conduct')  return hasEvaluated ? 'done'   : isScheduled ? 'active' : 'pending';
-    if (key === 'evaluate') return hasDecided   ? 'done'   : hasConducted ? 'active' : 'pending';
-    if (key === 'decide')   return isDecidable ? 'active'  : 'soon';
+    if (key === 'schedule') return hasConducted ? 'done'  : isScheduled   ? 'active' : 'active';
+    if (key === 'result')   return hasDecided   ? 'done'  : hasConducted  ? 'active' : isScheduled ? 'active' : 'pending';
+    if (key === 'decide')   return hasDecided   ? 'done'  : hasConducted  ? 'active' : 'pending';
     return 'soon';
   };
 
@@ -2063,60 +2055,25 @@ function StepsNav({ activeSection, onStep, status, interview }) {
 
 // ── Result Section ────────────────────────────────────────────────────────────
 
-function ResultSection({ interview, prep, interviewId, setBanner, setError, reload }) {
-  const [scorecard, setScorecard]       = useState(null);
-  const [loadingCard, setLoadingCard]   = useState(true);
-  const [savingCard, setSavingCard]     = useState(false);
-  const [scores, setScores]             = useState({});
-  const [recommendation, setRecommendation] = useState('');
-  const [strengths, setStrengths]       = useState('');
-  const [concerns, setConcerns]         = useState('');
+function ResultSection({ interview, prep, interviewId }) {
+  const [outcome, setOutcome]     = useState(undefined); // undefined = loading
+  const [loading, setLoading]     = useState(true);
 
   useEffect(() => {
     if (!interviewId) return;
-    setLoadingCard(true);
-    getScorecard(interviewId)
-      .then((res) => {
-        const card = res.data?.scorecard || null;
-        setScorecard(card);
-        if (card) {
-          setScores(card.competency_scores || {});
-          setRecommendation(card.recommendation || '');
-          setStrengths(card.standout_strengths || '');
-          setConcerns(card.concerns || '');
-        }
-      })
-      .catch(() => setScorecard(null))
-      .finally(() => setLoadingCard(false));
+    setLoading(true);
+    getPackOutcome(interviewId)
+      .then((res) => setOutcome(res.data?.outcome || null))
+      .catch(() => setOutcome(null))
+      .finally(() => setLoading(false));
   }, [interviewId]);
 
-  const resultState = interview?.result_state ||
-    (['interviewed', 'no_show', 'reschedule'].includes(interview?.status) ? 'waiting' : null);
-
   const rubricItems = prep?.rubric_items || [];
-  const submitted = scorecard && !scorecard.is_draft;
+  const scores      = outcome?.scores || {};
+  const rec         = outcome?.recommendation;
+  const recMeta     = RECOMMENDATION_OPTIONS.find((r) => r.value === rec);
 
-  async function handleSave(isDraft) {
-    setSavingCard(true);
-    setError(null);
-    try {
-      await saveScorecard(interviewId, {
-        competency_scores: scores,
-        recommendation,
-        standout_strengths: strengths,
-        concerns,
-        is_draft: isDraft,
-      });
-      setBanner({ ok: true, text: isDraft ? 'Scorecard saved as draft.' : 'Scorecard submitted.' });
-      reload();
-    } catch (err) {
-      setError(err.response?.data?.message || err.message || 'Failed to save scorecard.');
-    } finally {
-      setSavingCard(false);
-    }
-  }
-
-  if (loadingCard) {
+  if (loading) {
     return (
       <div className="flex justify-center py-12">
         <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
@@ -2124,143 +2081,134 @@ function ResultSection({ interview, prep, interviewId, setBanner, setError, relo
     );
   }
 
+  // No outcome yet — show state based on interview status
+  if (!outcome) {
+    const status = interview?.status;
+    const isInPack = ['scheduled', 'ongoing'].includes(status);
+    return (
+      <Card>
+        <CardContent className="py-14 text-center space-y-2">
+          <div className="h-10 w-10 rounded-full bg-muted flex items-center justify-center mx-auto">
+            <Clock className="h-5 w-5 text-muted-foreground" />
+          </div>
+          <p className="text-sm font-semibold">
+            {isInPack ? 'Waiting for interviewer' : 'No scores yet'}
+          </p>
+          <p className="text-xs text-muted-foreground max-w-xs mx-auto">
+            {isInPack
+              ? 'The interviewer has been sent a pack link. Scores will appear here once they submit.'
+              : 'Create an interview pack link from the position setup → Interview Link tab and send it to the interviewer.'}
+          </p>
+        </CardContent>
+      </Card>
+    );
+  }
+
   return (
     <div className="space-y-4">
-      {/* State banner */}
-      {resultState === 'waiting' && !scorecard && (
-        <div className="flex items-start gap-3 px-4 py-3 rounded-lg border border-amber-200 bg-amber-50 text-sm text-amber-700">
-          <Clock className="h-4 w-4 shrink-0 mt-0.5" />
-          <div>
-            <p className="font-semibold">Waiting to Score</p>
-            <p className="text-xs mt-0.5">
-              This candidate is ready to be scored. Go to the position setup → Interview Link tab to
-              create a scoring link and include this candidate.
-            </p>
-          </div>
+      {/* Submitted by banner */}
+      <div className="flex items-center gap-3 px-4 py-3 rounded-lg border border-emerald-200 bg-emerald-50 text-sm text-emerald-700">
+        <CheckCircle2 className="h-4 w-4 shrink-0" />
+        <div>
+          <span className="font-semibold">Scores submitted</span>
+          {outcome.interviewer_name && <span> by {outcome.interviewer_name}</span>}
+          {outcome.submitted_at && (
+            <span className="text-[11px] text-emerald-600 ml-1">
+              · {new Date(outcome.submitted_at).toLocaleDateString('en-AU', { day: 'numeric', month: 'short', year: 'numeric' })}
+            </span>
+          )}
+          {outcome.pack_title && (
+            <span className="text-[11px] text-emerald-600 ml-1">· {outcome.pack_title}</span>
+          )}
         </div>
-      )}
-      {resultState === 'in_pack' && !submitted && (
-        <div className="flex items-start gap-3 px-4 py-3 rounded-lg border border-blue-200 bg-blue-50 text-sm text-blue-700">
-          <Link className="h-4 w-4 shrink-0 mt-0.5" />
-          <div>
-            <p className="font-semibold">In Interview Pack</p>
-            <p className="text-xs mt-0.5">
-              This candidate has been added to an interview pack. Scores will appear here once the
-              interviewer submits.
-            </p>
-          </div>
-        </div>
-      )}
-      {submitted && (
-        <div className="flex items-center gap-2 px-4 py-3 rounded-lg border border-emerald-200 bg-emerald-50 text-sm text-emerald-700">
-          <CheckCircle2 className="h-4 w-4 shrink-0" />
-          Scorecard submitted — scores are locked.
+      </div>
+
+      {/* Weighted total */}
+      {outcome.weighted_total != null && (
+        <div className="flex items-center gap-3 px-4 py-3 rounded-lg border bg-muted/30">
+          <Star className="h-4 w-4 text-primary shrink-0" />
+          <span className="text-sm font-semibold">
+            Weighted Score: <span className="text-primary">{Number(outcome.weighted_total).toFixed(2)}</span>
+            <span className="text-xs font-normal text-muted-foreground"> / 7.00</span>
+          </span>
         </div>
       )}
 
-      {/* Competency scores */}
-      {rubricItems.length > 0 ? (
+      {/* Competency scores — read-only */}
+      {rubricItems.length > 0 && (
         <Card>
-          <CardHeader>
+          <CardHeader className="pb-3">
             <CardTitle className="text-sm">Competency Scores</CardTitle>
           </CardHeader>
-          <CardContent className="space-y-5">
+          <CardContent className="space-y-4">
             {rubricItems.map((item) => {
-              const code = item.competency_code || item.name || item.label;
-              const label = item.competency_name || item.label || code;
-              const current = scores[code];
+              const code    = item.competency_code || item.name || item.label;
+              const label   = item.competency_name || item.label || code;
+              const score   = scores[code];
               return (
-                <div key={code} className="space-y-1.5">
-                  <div className="flex items-center justify-between">
-                    <p className="text-sm font-medium">{label}</p>
-                    <span className="text-[10px] text-muted-foreground border border-border rounded px-1.5 py-0.5">
-                      weight {item.weight ?? 1}
-                    </span>
+                <div key={code}>
+                  <div className="flex items-center justify-between mb-1.5">
+                    <p className="text-xs font-medium">{label}</p>
+                    <div className="flex items-center gap-2">
+                      <span className="text-[10px] text-muted-foreground">weight {item.weight ?? 1}×</span>
+                      {score != null
+                        ? <span className="text-xs font-bold text-primary">{score} / 7</span>
+                        : <span className="text-[10px] text-muted-foreground italic">not scored</span>}
+                    </div>
                   </div>
-                  <div className="flex items-center gap-1.5">
+                  <div className="flex items-center gap-1">
                     {[1, 2, 3, 4, 5, 6, 7].map((v) => (
-                      <button
+                      <div
                         key={v}
-                        type="button"
-                        disabled={submitted}
-                        onClick={() => !submitted && setScores((s) => ({ ...s, [code]: v }))}
-                        className={`h-8 w-8 rounded-full text-xs font-bold border transition-colors shrink-0 ${
-                          current === v
+                        className={`h-7 w-7 rounded-full flex items-center justify-center text-[11px] font-bold border shrink-0 ${
+                          score === v
                             ? 'bg-primary text-primary-foreground border-primary'
-                            : submitted
-                              ? 'bg-muted text-muted-foreground border-border opacity-50 cursor-not-allowed'
-                              : 'bg-muted text-foreground border-border hover:bg-muted/80 cursor-pointer'
+                            : 'bg-muted/40 text-muted-foreground border-border'
                         }`}
                       >
                         {v}
-                      </button>
+                      </div>
                     ))}
-                    {current && !submitted && (
-                      <button
-                        type="button"
-                        onClick={() => setScores((s) => { const n = { ...s }; delete n[code]; return n; })}
-                        className="text-[10px] text-muted-foreground hover:text-foreground ml-1 underline"
-                      >
-                        clear
-                      </button>
-                    )}
                   </div>
                 </div>
               );
             })}
           </CardContent>
         </Card>
-      ) : (
+      )}
+
+      {/* Recommendation */}
+      {rec && recMeta && (
         <Card>
-          <CardContent className="py-6 text-xs text-muted-foreground italic">
-            No rubric configured for this position. Set up rubric in the position setup first.
+          <CardHeader className="pb-3"><CardTitle className="text-sm">Recommendation</CardTitle></CardHeader>
+          <CardContent>
+            <div className={`inline-flex items-center gap-2 px-4 py-2 rounded-lg border text-sm font-semibold ${recMeta.color}`}>
+              <recMeta.icon className="h-4 w-4" /> {recMeta.label}
+            </div>
           </CardContent>
         </Card>
       )}
 
-      {/* Recommendation + notes */}
-      <Card>
-        <CardHeader><CardTitle className="text-sm">Recommendation</CardTitle></CardHeader>
-        <CardContent className="space-y-4">
-          <div className="grid grid-cols-2 gap-2">
-            {RECOMMENDATION_OPTIONS.map(({ value, label, icon: Icon, color }) => (
-              <button
-                key={value}
-                type="button"
-                disabled={submitted}
-                onClick={() => !submitted && setRecommendation((r) => r === value ? '' : value)}
-                className={`flex items-center gap-2 px-3 py-2 rounded-lg border text-sm font-medium transition-all ${
-                  recommendation === value
-                    ? color
-                    : submitted
-                      ? 'opacity-50 cursor-not-allowed bg-muted text-muted-foreground border-border'
-                      : 'border-border text-muted-foreground hover:bg-muted/50 cursor-pointer'
-                }`}
-              >
-                <Icon className="h-4 w-4" /> {label}
-              </button>
-            ))}
-          </div>
-          <div className="space-y-1.5">
-            <label className="text-xs font-medium">Strengths</label>
-            <Textarea rows={3} disabled={submitted} placeholder="Key strengths observed…" value={strengths} onChange={(e) => setStrengths(e.target.value)} />
-          </div>
-          <div className="space-y-1.5">
-            <label className="text-xs font-medium">Concerns</label>
-            <Textarea rows={3} disabled={submitted} placeholder="Concerns or red flags…" value={concerns} onChange={(e) => setConcerns(e.target.value)} />
-          </div>
-          {!submitted && (
-            <div className="flex gap-2 pt-1">
-              <Button variant="outline" size="sm" onClick={() => handleSave(true)} disabled={savingCard}>
-                {savingCard ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : 'Save Draft'}
-              </Button>
-              <Button size="sm" onClick={() => handleSave(false)} disabled={savingCard}>
-                {savingCard ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : 'Submit Scorecard'}
-              </Button>
-            </div>
-          )}
-        </CardContent>
-      </Card>
+      {/* Strengths & Concerns */}
+      {(outcome.strengths || outcome.concerns) && (
+        <Card>
+          <CardHeader className="pb-3"><CardTitle className="text-sm">Interviewer Notes</CardTitle></CardHeader>
+          <CardContent className="space-y-3">
+            {outcome.strengths && (
+              <div>
+                <p className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground mb-1">Strengths</p>
+                <p className="text-xs leading-relaxed">{outcome.strengths}</p>
+              </div>
+            )}
+            {outcome.concerns && (
+              <div>
+                <p className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground mb-1">Concerns</p>
+                <p className="text-xs leading-relaxed">{outcome.concerns}</p>
+              </div>
+            )}
+          </CardContent>
+        </Card>
+      )}
     </div>
   );
 }

@@ -43,6 +43,8 @@ export const updateCandidateQuestions = (interview_id, custom_questions) =>
 
 export const clearOutcome = (schedule_id) => api.delete(`/interview/schedules/${schedule_id}/outcome`);
 
+export const getPackOutcome = (interview_id) => api.get(`/interview/${interview_id}/pack-outcome`);
+
 export const getScorecard = (interview_id) => api.get(`/interview/${interview_id}/scorecard`);
 
 export const saveScorecard = (interview_id, payload) => api.put(`/interview/${interview_id}/scorecard`, payload);

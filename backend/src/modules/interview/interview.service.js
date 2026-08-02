@@ -559,6 +559,11 @@ class InterviewService {
     return await interviewPackModel.getByJob(job_id);
   }
 
+  async getPackOutcome(interview_id, { company_id = null } = {}) {
+    if (!interview_id) throw { status: 400, message: 'interview_id is required' };
+    return await interviewModel.getPackOutcomeForInterview(interview_id);
+  }
+
   async updateRubric(job_id, rubric_items, { company_id = null } = {}) {
     if (!job_id) throw { status: 400, message: 'job_id is required' };
     if (!Array.isArray(rubric_items) || rubric_items.length === 0) {

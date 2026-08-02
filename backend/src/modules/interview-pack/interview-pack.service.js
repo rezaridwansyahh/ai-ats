@@ -219,7 +219,8 @@ class InterviewPackService {
 
   /**
    * Submit the pack — locks it as submitted.
-   * Does NOT require all candidates to have outcomes (real-world flexibility).
+   * Also updates candidate_interview.status → 'interviewed' for each scored candidate,
+   * so the Result / Decide tabs unlock on the admin candidate detail page.
    */
   async submit(token) {
     if (!token) throw { status: 400, message: 'token is required' };
@@ -232,6 +233,27 @@ class InterviewPackService {
 
     const submitted = await interviewPackModel.submit(token);
     if (!submitted) throw { status: 500, message: 'Failed to submit interview pack' };
+
+    // Promote candidate_interview status to 'interviewed' for every scored candidate.
+    // Only advances status — never goes backwards (keeps no_show / done / cancelled intact).
+    const scoredCandidates = (pack.candidates || []).filter((c) => c.outcome_id != null);
+    if (scoredCandidates.length > 0) {
+      const db = getDb();
+      for (const c of scoredCandidates) {
+        await db.query(
+          `UPDATE candidate_interview ci
+              SET status     = 'interviewed',
+                  updated_at = NOW()
+             FROM master_candidate mc
+            WHERE ci.candidate_id = mc.id
+              AND mc.applicant_id  = $1
+              AND ci.job_id        = $2
+              AND ci.status NOT IN ('interviewed', 'no_show', 'reschedule', 'done', 'cancelled')`,
+          [c.applicant_id, pack.job_id]
+        );
+      }
+    }
+
     return submitted;
   }
 

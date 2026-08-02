@@ -634,6 +634,29 @@ class InterviewModel {
     return result.rows[0] || null;
   }
 
+  async getPackOutcomeForInterview(interview_id) {
+    const result = await getDb().query(
+      `SELECT
+         ipo.*,
+         ip.title           AS pack_title,
+         ip.interviewer_name,
+         ip.submitted_at,
+         ip.token           AS pack_token,
+         ip.status          AS pack_status
+       FROM candidate_interview ci
+       JOIN master_candidate mc         ON mc.id  = ci.candidate_id
+       JOIN interview_pack_candidate ipc ON ipc.applicant_id = mc.applicant_id
+       JOIN interview_pack ip           ON ip.id  = ipc.pack_id
+                                        AND ip.job_id = ci.job_id
+       JOIN interview_pack_outcome ipo  ON ipo.pack_candidate_id = ipc.id
+       WHERE ci.id = $1
+       ORDER BY ipo.updated_at DESC
+       LIMIT 1`,
+      [interview_id]
+    );
+    return result.rows[0] || null;
+  }
+
   async getInterviewsByJobWithSubStage(job_id) {
     const result = await getDb().query(
       `SELECT

@@ -11,6 +11,7 @@ router.get('/workboard', interviewController.getWorkboard);
 router.get('/by-candidate/:candidate_id', interviewController.getInterviewByCandidateId);
 
 // Schedule-related routes (must be before /:interview_id)
+router.get( '/:interview_id/pack-outcome', interviewController.getPackOutcome);
 router.get( '/:interview_id/schedules', interviewController.getSchedules);
 router.post('/:interview_id/schedules', interviewController.createSchedule);
 router.get( '/:interview_id/scorecard',interviewController.getScorecard);

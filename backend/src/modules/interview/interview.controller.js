@@ -82,6 +82,18 @@ class InterviewController {
     }
   }
 
+  async getPackOutcome(req, res) {
+    try {
+      const interview_id = Number(req.params.interview_id);
+      const result = await interviewService.getPackOutcome(interview_id, {
+        company_id: req.user?.company_id || null,
+      });
+      res.status(200).json({ message: 'Pack outcome fetched', outcome: result });
+    } catch (err) {
+      res.status(err.status || 500).json({ message: err.message });
+    }
+  }
+
   async updateStatus(req, res) {
     try {
       const interview_id = Number(req.params.interview_id);
