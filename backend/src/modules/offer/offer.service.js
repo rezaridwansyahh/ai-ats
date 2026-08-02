@@ -1,7 +1,7 @@
 import OfferModel from './offer.model.js';
 import CompensationEngine from '../../shared/services/compensation-engine.js';
 import OfferTemplateModel from '../offer-template/offer-template.model.js';
-import { mergeOfferLetter } from '../../shared/services/document-merge.js';
+import { mergeOfferLetter, htmlToDocxBuffer } from '../../shared/services/document-merge.js';
 import mammoth from 'mammoth';
 
 // import fs from 'fs'; 
@@ -519,12 +519,14 @@ class OfferService {
     const saved = offer.metadata?.offer_letter_data || {};
     const fieldValues = {};
     for (const field of template.fields || []) {
-      fieldValues[field] = saved[field] || '';
+      fieldValues[field] = saved[field]?.trim()
+        ? saved[field]
+        : `[${field.replace(/_/g, ' ')} — not filled in]`;
     }
 
     let docxBuffer;
     try {
-      docxBuffer = mergeOfferLetter({ templatePath: template.file, fieldValues });
+      docxBuffer = await mergeOfferLetter({ templatePath: template.file, fieldValues });
     } catch (err) {
       throw { status: 400, message: 'Failed to merge template — check the uploaded file is a valid .docx' };
     }
@@ -532,7 +534,7 @@ class OfferService {
     const { value: html } = await mammoth.convertToHtml({ buffer: docxBuffer });
 
     await OfferModel.mergeMetadata(offer_id, {
-      offer_letter_final: { html, generated_at: new Date() },
+      offer_letter_final: { html, edited: false, generated_at: new Date() },
     });
 
     return { html, message: 'Offer letter generated from template' };
@@ -548,16 +550,35 @@ class OfferService {
     const offer = await OfferModel.getOfferById(offer_id, company_id);
     if (!offer) throw { status: 404, message: 'Offer not found' };
 
+    const final = offer.metadata?.offer_letter_final;
+    if (final?.edited && final?.html) {
+      return htmlToDocxBuffer(final.html);
+    }
+
     const template = await OfferTemplateModel.getByCompanyId(company_id);
     if (!template) throw { status: 400, message: 'No template uploaded' };
 
     const saved = offer.metadata?.offer_letter_data || {};
     const fieldValues = {};
     for (const field of template.fields || []) {
-      fieldValues[field] = saved[field] || '';
+      fieldValues[field] = saved[field]?.trim()
+        ? saved[field]
+        : `[${field.replace(/_/g, ' ')} — not filled in]`;
     }
 
     return mergeOfferLetter({ templatePath: template.file, fieldValues });
+  }
+
+  async saveOfferLetterFinal(offer_id, html, company_id) {
+    const offer = await OfferModel.getOfferById(offer_id, company_id);
+    if (!offer) throw { status: 404, message: 'Offer not found' };
+    if (typeof html !== 'string' || !html.trim()) {
+      throw { status: 400, message: 'Letter content is required' };
+    }
+    const metadata = await OfferModel.mergeMetadata(offer_id, {
+      offer_letter_final: { html, edited: true, updated_at: new Date() },
+    });
+    return metadata.offer_letter_final;
   }
 
 

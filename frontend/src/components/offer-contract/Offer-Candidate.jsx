@@ -1,10 +1,10 @@
-import { useState, useEffect, useCallback } from 'react';
-import { useNavigate, useParams } from 'react-router-dom';
+import { useState, useEffect, useCallback, useRef } from 'react';
+import { useNavigate, useParams, Link } from 'react-router-dom';
 import {
   ArrowLeft, Loader2, AlertTriangle, Check, ChevronRight, X,
   FileText, Pencil, Wallet, Send, FileSignature, Plus, Trash2,
-  MessageSquareText, ShieldCheck, ThumbsDown, Clock, Circle,
-  Copy, Sparkles, RefreshCw, Ban, XCircle, Download, PenLine,
+  MessageSquareText, PenLine, ShieldCheck, ThumbsDown, Clock, Circle,
+  Copy, Sparkles, RefreshCw, Ban, XCircle, Download, Settings as SettingsIcon,
 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -21,9 +21,9 @@ import {
   respondToNegotiation,
   generateContract, sendContract,
   getOfferLetterFields, saveOfferLetterData,
-  generateOfferLetterPreview, getOfferLetterFinal, downloadOfferLetterDocx,
+  generateOfferLetterPreview, getOfferLetterFinal, saveOfferLetterFinal,
+  downloadOfferLetterDocx,
 } from '@/api/offer.api';
-
 import { getOfferTemplate } from '@/api/offer-template.api';
 
 const SUBSTAGES = [
@@ -160,7 +160,7 @@ function CandidateCard({ offer }) {
   );
 }
 
-/* Intake Section — slip gaji, manual line-item entry, editable after saving, skippable */
+/* Intake Section — slip gaji, manual line-item entry, editable after saving */
 
 const DEFAULT_ROWS = [
   { label: 'Gaji Pokok', amount: '' },
@@ -170,7 +170,7 @@ const DEFAULT_ROWS = [
   { label: 'Lain-lain', amount: '' },
 ];
 
-function IntakeSection({ offer, offerId, setBanner, setError }) {
+function IntakeSection({ offer, offerId, setOffer, setBanner, setError }) {
   const [slipGaji, setSlipGaji] = useState(null);
   const [loading, setLoading]   = useState(true);
   const [saving, setSaving]     = useState(false);
@@ -227,6 +227,10 @@ function IntakeSection({ offer, offerId, setBanner, setError }) {
     try {
       const res = await recordSlipGaji(offerId, cleaned, expectedSalary ? Number(expectedSalary) : null);
       setSlipGaji(res.data?.slip_gaji);
+      setOffer((prev) => ({
+        ...prev,
+        metadata: { ...(prev.metadata || {}), intake: { ...(prev.metadata?.intake || {}), slip_gaji: res.data?.slip_gaji } },
+      }));
       setEditing(false);
       setReviewNote('');
       setBanner({ ok: true, text: editing ? 'Slip gaji updated.' : 'Slip gaji saved.' });
@@ -243,6 +247,10 @@ function IntakeSection({ offer, offerId, setBanner, setError }) {
     try {
       const res = await skipSlipGaji(offerId, skipReason || null);
       setSlipGaji(res.data?.slip_gaji);
+      setOffer((prev) => ({
+        ...prev,
+        metadata: { ...(prev.metadata || {}), intake: { ...(prev.metadata?.intake || {}), slip_gaji: res.data?.slip_gaji } },
+      }));
       setShowSkip(false);
       setBanner({ ok: true, text: 'Slip gaji step skipped.' });
     } catch (err) {
@@ -258,6 +266,10 @@ function IntakeSection({ offer, offerId, setBanner, setError }) {
     try {
       const res = await reviewSlipGaji(offerId, reviewNote);
       setSlipGaji(res.data?.slip_gaji);
+      setOffer((prev) => ({
+        ...prev,
+        metadata: { ...(prev.metadata || {}), intake: { ...(prev.metadata?.intake || {}), slip_gaji: res.data?.slip_gaji } },
+      }));
       setBanner({ ok: true, text: 'Review recorded.' });
     } catch (err) {
       setError(err.response?.data?.message || err.message || 'Failed to save review');
@@ -502,166 +514,6 @@ function MoneyRow({ row, onLabelChange, onAmountChange, onRemove, disabled, labe
         <button type="button" onClick={onRemove} className="shrink-0 text-muted-foreground hover:text-rose-600">
           <Trash2 className="h-3.5 w-3.5" />
         </button>
-      )}
-    </div>
-  );
-}
-
-function TemplateGateCard({ template, loading }) {
-  if (loading) {
-    return (
-      <div className="flex justify-center py-6">
-        <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
-      </div>
-    );
-  }
-
-  if (!template) {
-    return (
-      <Card className="border-amber-200 bg-amber-50/40">
-        <CardContent className="p-4 flex items-center justify-between gap-3 flex-wrap">
-          <div className="min-w-0">
-            <p className="text-sm font-semibold text-amber-800">No offer letter template uploaded</p>
-            <p className="text-xs text-amber-700 mt-0.5">
-              Upload your company's offer letter template (.docx) in Settings before building this offer.
-            </p>
-          </div>
-          <Button size="sm" className="text-xs shrink-0" asChild>
-            <a href="/settings">Go to Settings</a>
-          </Button>
-        </CardContent>
-      </Card>
-    );
-  }
-
-  return (
-    <Card>
-      <CardContent className="p-3 flex items-center gap-2 text-xs text-muted-foreground">
-        <FileText className="h-3.5 w-3.5 shrink-0" />
-        Using company template · {template.fields?.length || 0} field{template.fields?.length === 1 ? '' : 's'} detected
-      </CardContent>
-    </Card>
-  );
-}
-
-function CompensationReferenceCard({ offer }) {
-  if (offer.base_salary == null) return null;
-
-  return (
-    <Card className="bg-muted/20">
-      <CardHeader className="pb-2">
-        <CardTitle className="text-xs uppercase tracking-wide text-muted-foreground">
-          Compensation reference · from Build
-        </CardTitle>
-        <p className="text-[10px] text-muted-foreground mt-0.5">
-          Copy these into the matching template field below — nothing here auto-fills.
-        </p>
-      </CardHeader>
-      <CardContent className="space-y-1 text-xs">
-        <div className="flex items-center justify-between">
-          <span className="text-muted-foreground">Base salary</span>
-          <span className="font-mono">{fmtCurrency(offer.base_salary)}</span>
-        </div>
-        <div className="flex items-center justify-between">
-          <span className="text-muted-foreground">Gross salary</span>
-          <span className="font-mono">{fmtCurrency(offer.gross_salary)}</span>
-        </div>
-        <div className="flex items-center justify-between">
-          <span className="text-muted-foreground">PPh 21</span>
-          <span className="font-mono">− {fmtCurrency(offer.pph21)}</span>
-        </div>
-        <div className="flex items-center justify-between">
-          <span className="text-muted-foreground">BPJS Kesehatan</span>
-          <span className="font-mono">− {fmtCurrency(offer.bpjs_kesehatan)}</span>
-        </div>
-        <div className="flex items-center justify-between">
-          <span className="text-muted-foreground">BPJS Ketenagakerjaan</span>
-          <span className="font-mono">− {fmtCurrency(offer.bpjs_ketenagakerjaan)}</span>
-        </div>
-        <div className="flex items-center justify-between pt-1 border-t font-semibold">
-          <span>Net salary</span>
-          <span className="font-mono">{fmtCurrency(offer.net_salary)}</span>
-        </div>
-      </CardContent>
-    </Card>
-  );
-}
-
-function TemplateFieldsPart({ offer, setBanner, setError }) {
-  const [template, setTemplate] = useState(null);
-  const [fields, setFields] = useState([]);
-  const [values, setValues] = useState({});
-  const [loading, setLoading] = useState(true);
-  const [saving, setSaving] = useState(false);
-
-  const load = useCallback(async () => {
-    setLoading(true);
-    try {
-      const [templateRes, fieldsRes] = await Promise.all([
-        getOfferTemplate(),
-        getOfferLetterFields(offer.id),
-      ]);
-      setTemplate(templateRes.data?.template || null);
-      setFields(fieldsRes.data?.fields || []);
-      setValues(fieldsRes.data?.values || {});
-    } catch (err) {
-      setError(err.response?.data?.message || err.message || 'Failed to load offer letter fields');
-    } finally {
-      setLoading(false);
-    }
-  }, [offer.id]);
-
-  useEffect(() => { load(); }, [load]);
-
-  const updateValue = (key, value) => setValues((prev) => ({ ...prev, [key]: value }));
-
-  const handleSave = async () => {
-    setSaving(true);
-    setError(null);
-    try {
-      await saveOfferLetterData(offer.id, values);
-      setBanner({ ok: true, text: 'Offer letter fields saved.' });
-    } catch (err) {
-      setError(err.response?.data?.message || err.message || 'Failed to save offer letter fields');
-    } finally {
-      setSaving(false);
-    }
-  };
-
-  return (
-    <div className="space-y-3">
-      <TemplateGateCard template={template} loading={loading} />
-
-      {!loading && template && (
-        <CompensationReferenceCard offer={offer} />
-      )}
-
-      {!loading && template && fields.length > 0 && (
-        <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm">Offer letter fields</CardTitle>
-            <p className="text-[10px] text-muted-foreground mt-0.5">
-              From your company's template — these fill in the {'<<placeholders>>'} when the letter is generated. Every field is manual.
-            </p>
-          </CardHeader>
-          <CardContent className="space-y-2">
-            {fields.map((field) => (
-              <div key={field} className="space-y-1">
-                <label className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
-                  {field}
-                </label>
-                <Input
-                  className="text-xs h-8"
-                  value={values[field] || ''}
-                  onChange={(e) => updateValue(field, e.target.value)}
-                />
-              </div>
-            ))}
-            <Button size="sm" className="text-xs" onClick={handleSave} disabled={saving}>
-              {saving ? <><Loader2 className="h-3.5 w-3.5 mr-1.5 animate-spin" /> Saving…</> : <><Check className="h-3.5 w-3.5 mr-1.5" /> Save fields</>}
-            </Button>
-          </CardContent>
-        </Card>
       )}
     </div>
   );
@@ -1138,7 +990,7 @@ function ApproveSection({ offer, offerId, setOffer, setBanner, setError, onAdvan
   );
 }
 
-/* Review Section — A. Data summary (intake + full compensation breakdown) · B. Offer letter merge preview · C. Approval */
+/* Review Section — A. Data summary · B. Offer letter · C. Approval */
 
 function DataSummaryPart({ offer }) {
   const slipGaji = offer.metadata?.intake?.slip_gaji;
@@ -1180,7 +1032,7 @@ function DataSummaryPart({ offer }) {
       <Card>
         <CardHeader className="pb-2">
           <CardTitle className="text-sm flex items-center gap-2">
-            <Wallet className="h-4 w-4 text-primary" /> Compensation breakdown
+            <Wallet className="h-4 w-4 text-primary" /> Build summary
           </CardTitle>
         </CardHeader>
         <CardContent className="space-y-2 text-xs">
@@ -1193,18 +1045,6 @@ function DataSummaryPart({ offer }) {
               <div className="flex items-center justify-between">
                 <span className="text-muted-foreground">Gross salary</span>
                 <span className="font-mono">{fmtCurrency(offer.gross_salary)}</span>
-              </div>
-              <div className="flex items-center justify-between">
-                <span className="text-muted-foreground">PPh 21</span>
-                <span className="font-mono">− {fmtCurrency(offer.pph21)}</span>
-              </div>
-              <div className="flex items-center justify-between">
-                <span className="text-muted-foreground">BPJS Kesehatan</span>
-                <span className="font-mono">− {fmtCurrency(offer.bpjs_kesehatan)}</span>
-              </div>
-              <div className="flex items-center justify-between">
-                <span className="text-muted-foreground">BPJS Ketenagakerjaan</span>
-                <span className="font-mono">− {fmtCurrency(offer.bpjs_ketenagakerjaan)}</span>
               </div>
               <div className="flex items-center justify-between pt-1 border-t font-semibold">
                 <span>Net salary</span>
@@ -1220,16 +1060,157 @@ function DataSummaryPart({ offer }) {
   );
 }
 
-/* Offer letter — real merge preview. Generate/Re-generate pulls the saved field
-   values from Build, runs the actual docx merge on the backend (docxtemplater),
-   converts the result to HTML (mammoth), and shows THAT — not a list of fields.
-   Read-only: the download always matches exactly what's shown here. */
+function TemplateGateCard({ template, loading }) {
+  if (loading) {
+    return (
+      <div className="flex justify-center py-6">
+        <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
+      </div>
+    );
+  }
+
+  if (!template) {
+    return (
+      <Card className="border-amber-200 bg-amber-50/40">
+        <CardContent className="p-4 flex items-center justify-between gap-3 flex-wrap">
+          <div className="min-w-0">
+            <p className="text-sm font-semibold text-amber-800">No offer letter template uploaded</p>
+            <p className="text-xs text-amber-700 mt-0.5">
+              Upload your company's offer letter template (.docx) in Settings before building this offer.
+            </p>
+          </div>
+          <Button size="sm" className="text-xs shrink-0" asChild>
+            <Link to="/settings" state={{ section: 'offer-template' }}>
+              <SettingsIcon className="h-3.5 w-3.5 mr-1.5" /> Go to Settings
+            </Link>
+          </Button>
+        </CardContent>
+      </Card>
+    );
+  }
+
+  return (
+    <Card>
+      <CardContent className="p-3 flex items-center justify-between gap-3 flex-wrap text-xs">
+        <span className="flex items-center gap-2 text-muted-foreground">
+          <FileText className="h-3.5 w-3.5 shrink-0" />
+          Using company template · {template.fields?.length || 0} field{template.fields?.length === 1 ? '' : 's'} detected
+        </span>
+        <Link
+          to="/settings"
+          state={{ section: 'offer-template' }}
+          className="text-primary hover:underline shrink-0"
+        >
+          Want to upload a different template? Go to Settings →
+        </Link>
+      </CardContent>
+    </Card>
+  );
+}
+
+function TemplateFieldsPart({ offer, setBanner, setError }) {
+  const [template, setTemplate] = useState(null);
+  const [fields, setFields] = useState([]);
+  const [values, setValues] = useState({});
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
+
+  const load = useCallback(async () => {
+    setLoading(true);
+    try {
+      const [templateRes, fieldsRes] = await Promise.all([
+        getOfferTemplate(),
+        getOfferLetterFields(offer.id),
+      ]);
+      setTemplate(templateRes.data?.template || null);
+      setFields(fieldsRes.data?.fields || []);
+      setValues(fieldsRes.data?.values || {});
+    } catch (err) {
+      setError(err.response?.data?.message || err.message || 'Failed to load offer letter fields');
+    } finally {
+      setLoading(false);
+    }
+  }, [offer.id]);
+
+  useEffect(() => { load(); }, [load]);
+
+  const updateValue = (key, value) => setValues((prev) => ({ ...prev, [key]: value }));
+
+  const handleSave = async () => {
+    setSaving(true);
+    setError(null);
+    try {
+      await saveOfferLetterData(offer.id, values);
+      setBanner({ ok: true, text: 'Offer letter fields saved.' });
+    } catch (err) {
+      setError(err.response?.data?.message || err.message || 'Failed to save offer letter fields');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  return (
+    <div className="space-y-3">
+      <TemplateGateCard template={template} loading={loading} />
+
+      {!loading && template && offer.base_salary != null && (
+        <Card className="bg-muted/20">
+          <CardHeader className="pb-2">
+            <CardTitle className="text-xs uppercase tracking-wide text-muted-foreground">
+              Compensation reference · from this section
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-1 text-xs">
+            <div className="flex justify-between"><span className="text-muted-foreground">Base salary</span><span className="font-mono">{fmtCurrency(offer.base_salary)}</span></div>
+            <div className="flex justify-between"><span className="text-muted-foreground">Gross salary</span><span className="font-mono">{fmtCurrency(offer.gross_salary)}</span></div>
+            <div className="flex justify-between"><span className="text-muted-foreground">PPh 21</span><span className="font-mono">{fmtCurrency(offer.pph21)}</span></div>
+            <div className="flex justify-between"><span className="text-muted-foreground">BPJS Kesehatan</span><span className="font-mono">{fmtCurrency(offer.bpjs_kesehatan)}</span></div>
+            <div className="flex justify-between"><span className="text-muted-foreground">BPJS Ketenagakerjaan</span><span className="font-mono">{fmtCurrency(offer.bpjs_ketenagakerjaan)}</span></div>
+            <div className="flex justify-between font-semibold border-t pt-1"><span>Net salary</span><span className="font-mono">{fmtCurrency(offer.net_salary)}</span></div>
+          </CardContent>
+        </Card>
+      )}
+
+      {!loading && template && fields.length > 0 && (
+        <Card>
+          <CardHeader className="pb-2">
+            <CardTitle className="text-sm">Offer letter fields</CardTitle>
+            <p className="text-[10px] text-muted-foreground mt-0.5">
+              From your company's template — type the value for each {'<<field>>'} manually. Copy figures from the
+              reference above if your template needs a salary amount.
+            </p>
+          </CardHeader>
+          <CardContent className="space-y-2">
+            {fields.map((field) => (
+              <div key={field} className="space-y-1">
+                <label className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
+                  {field}
+                </label>
+                <Input
+                  className="text-xs h-8"
+                  value={values[field] || ''}
+                  onChange={(e) => updateValue(field, e.target.value)}
+                />
+              </div>
+            ))}
+            <Button size="sm" className="text-xs" onClick={handleSave} disabled={saving}>
+              {saving ? <><Loader2 className="h-3.5 w-3.5 mr-1.5 animate-spin" /> Saving…</> : <><Check className="h-3.5 w-3.5 mr-1.5" /> Save fields</>}
+            </Button>
+          </CardContent>
+        </Card>
+      )}
+    </div>
+  );
+}
 
 function OfferLetterSummaryPart({ offer, setBanner, setError }) {
   const [html, setHtml] = useState(null);
   const [loading, setLoading] = useState(true);
   const [generating, setGenerating] = useState(false);
   const [downloading, setDownloading] = useState(false);
+  const [editing, setEditing] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const editableRef = useRef(null);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -1244,6 +1225,13 @@ function OfferLetterSummaryPart({ offer, setBanner, setError }) {
   }, [offer.id]);
 
   useEffect(() => { load(); }, [load]);
+
+  useEffect(() => {
+    if (editing && editableRef.current) {
+      editableRef.current.innerHTML = html || '';
+      editableRef.current.focus();
+    }
+  }, [editing]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const handleGenerate = async () => {
     setGenerating(true);
@@ -1272,12 +1260,26 @@ function OfferLetterSummaryPart({ offer, setBanner, setError }) {
     }
   };
 
+  const startEdit = () => setEditing(true);
+
+  const handleSaveEdit = async () => {
+    const currentHtml = editableRef.current?.innerHTML || '';
+    setSaving(true);
+    setError(null);
+    try {
+      const res = await saveOfferLetterFinal(offer.id, currentHtml);
+      setHtml(res.data?.html || currentHtml);
+      setEditing(false);
+      setBanner({ ok: true, text: 'Preview text saved — note the .docx download still reflects the original merge, not this edit.' });
+    } catch (err) {
+      setError(err.response?.data?.message || err.message || 'Failed to save edits');
+    } finally {
+      setSaving(false);
+    }
+  };
+
   if (loading) {
-    return (
-      <div className="flex justify-center py-6">
-        <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
-      </div>
-    );
+    return <div className="flex justify-center py-6"><Loader2 className="h-4 w-4 animate-spin text-muted-foreground" /></div>;
   }
 
   const hasContent = html != null && html !== '';
@@ -1290,20 +1292,42 @@ function OfferLetterSummaryPart({ offer, setBanner, setError }) {
           <div className="min-w-0 flex-1">
             <CardTitle className="text-sm">Offer letter</CardTitle>
             <p className="text-[10px] text-muted-foreground mt-0.5">
-              {hasContent ? 'Preview of the merged document — from your saved fields' : 'Not generated yet'}
+              {editing ? 'Editing preview text — the download stays as the original merge' : hasContent ? 'Preview of the merged document' : 'Not generated yet'}
             </p>
           </div>
-          <Button size="sm" variant="outline" className="text-xs h-7" onClick={handleGenerate} disabled={generating}>
+          {hasContent && !editing && (
+            <Button size="sm" variant="outline" className="text-xs h-7" onClick={startEdit}>
+              <Pencil className="h-3 w-3 mr-1.5" /> Edit
+            </Button>
+          )}
+          <Button size="sm" variant="outline" className="text-xs h-7" onClick={handleGenerate} disabled={generating || editing}>
             {generating ? <Loader2 className="h-3.5 w-3.5 mr-1.5 animate-spin" /> : <RefreshCw className="h-3.5 w-3.5 mr-1.5" />}
             {hasContent ? 'Re-generate' : 'Generate'}
           </Button>
         </div>
       </CardHeader>
       <CardContent className="space-y-3">
-        {!hasContent ? (
+        {!hasContent && !editing ? (
           <div className="py-8 text-center text-xs text-muted-foreground italic">
-            Fill in the offer letter fields in Build, then click Generate to merge them into your template.
+            Fill in the fields above, then click Generate to merge them into your template.
           </div>
+        ) : editing ? (
+          <>
+            <div
+              ref={editableRef}
+              className="prose prose-sm max-w-none border rounded-lg p-4 min-h-[300px] focus:outline-none"
+              contentEditable
+              suppressContentEditableWarning
+            />
+            <div className="flex gap-2">
+              <Button size="sm" className="text-xs" onClick={handleSaveEdit} disabled={saving}>
+                {saving ? <><Loader2 className="h-3.5 w-3.5 mr-1.5 animate-spin" /> Saving…</> : <><Check className="h-3.5 w-3.5 mr-1.5" /> Save</>}
+              </Button>
+              <Button size="sm" variant="ghost" className="text-xs" onClick={() => setEditing(false)} disabled={saving}>
+                Cancel
+              </Button>
+            </div>
+          </>
         ) : (
           <>
             <div
@@ -1316,9 +1340,6 @@ function OfferLetterSummaryPart({ offer, setBanner, setError }) {
                 Download .docx
               </Button>
             </div>
-            <p className="text-[10px] text-muted-foreground italic">
-              If you edit fields in Build after generating, click Re-generate here to refresh this preview and the download.
-            </p>
           </>
         )}
       </CardContent>
@@ -2030,7 +2051,7 @@ export default function OfferCandidatePage() {
         <div className="grid grid-cols-1 lg:grid-cols-[minmax(0,1fr)_220px] gap-6">
           <div className="min-w-0">
             {activeSection === 'intake' && (
-              <IntakeSection offer={offer} offerId={offer.id} setBanner={setBanner} setError={setError} />
+              <IntakeSection offer={offer} offerId={offer.id} setOffer={setOffer} setBanner={setBanner} setError={setError} />
             )}
             {activeSection === 'build' && (
               <BuildSection offer={offer} setOffer={setOffer} setBanner={setBanner} setError={setError} onAdvance={setActiveSection} />

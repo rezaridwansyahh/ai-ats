@@ -94,3 +94,5 @@ export const generateOfferLetterPreview = (offerId) => api.post(`/offer/${offerI
 export const getOfferLetterFinal = (offerId) => api.get(`/offer/${offerId}/offer-letter/final`);
 
 export const downloadOfferLetterDocx = (offerId) => api.get(`/offer/${offerId}/offer-letter/download/docx`, { responseType: 'blob' });
+
+export const saveOfferLetterFinal = (offerId, html) => api.put(`/offer/${offerId}/offer-letter/final`, { html });

@@ -386,6 +386,20 @@ class OfferController {
     }
   }
 
+  async saveOfferLetterFinal(req, res) {
+    try {
+      const { offer_id } = req.params;
+      const { company_id } = req.user;
+      const { html } = req.body;
+      const result = await OfferService.saveOfferLetterFinal(offer_id, html, company_id);
+      res.json(result);
+    } catch (error) {
+      console.error('Error in saveOfferLetterFinal:', error);
+      res.status(error.status || 500).json({ message: error.message });
+    }
+  }
+
+
   /* Document upload / print — unused in review section
 
   async uploadDocument(req, res) {

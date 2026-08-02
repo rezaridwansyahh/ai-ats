@@ -2,6 +2,7 @@ import fs from 'fs';
 import JSZip from 'jszip';
 import PizZip from 'pizzip';
 import Docxtemplater from 'docxtemplater';
+import HTMLtoDOCX from 'html-to-docx';
 
 export function flattenMergeFields(xml) {
   const runRegex = /<w:r\b[^>]*>[\s\S]*?<\/w:r>/g;
@@ -53,6 +54,26 @@ export function flattenMergeFields(xml) {
 }
 
 const ILLEGAL_XML_CHARS = /[^\x09\x0A\x0D\x20-\uD7FF\uE000-\uFFFD]/g;
+
+function finalizeDocxBuffer(buffer) {
+  const zip = new PizZip(buffer);
+  const documentXml = zip.file('word/document.xml').asText();
+  const cleaned = documentXml.replace(ILLEGAL_XML_CHARS, '');
+
+  const fixed = new PizZip();
+  fixed.file('[Content_Types].xml', zip.file('[Content_Types].xml').asUint8Array());
+  for (const name of Object.keys(zip.files)) {
+    if (zip.files[name].dir) continue;
+    if (name === '[Content_Types].xml') continue;
+    if (name === 'word/document.xml') {
+      fixed.file(name, cleaned);
+    } else {
+      fixed.file(name, zip.file(name).asUint8Array());
+    }
+  }
+  return fixed.generate({ type: 'nodebuffer' });
+}
+
 function sanitizeXml(xml) {
   return xml.replace(ILLEGAL_XML_CHARS, '');
 }
@@ -100,5 +121,10 @@ export async function mergeOfferLetter({ templatePath, fieldValues }) {
   doc.render(sanitizeFieldValues(fieldValues));
 
   const mergedBuffer = doc.getZip().generate({ type: 'nodebuffer' });
-  return reorderZipEntries(mergedBuffer);
+  return finalizeDocxBuffer(mergedBuffer);
+}
+
+export async function htmlToDocxBuffer(html) {
+  const buffer = await HTMLtoDOCX(html, null, { table: { row: { cantSplit: true } } });
+  return finalizeDocxBuffer(buffer);
 }

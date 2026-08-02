@@ -165,6 +165,7 @@ router.get('/:offer_id/offer-letter/final', authToken, checkPermission('Offer & 
 router.get('/:offer_id/offer-letter/download/docx', authToken, checkPermission('Offer & Onboard', 'Offer & Contract', 'read'), OfferController.downloadOfferLetterDocx);
 
 router.post('/:offer_id/offer-letter/preview', authToken, checkPermission('Offer & Onboard', 'Offer & Contract', 'update'), OfferController.generateOfferLetterPreview);
+router.put('/:offer_id/offer-letter/final', authToken, checkPermission('Offer & Onboard', 'Offer & Contract', 'update'), OfferController.saveOfferLetterFinal);
 
 /*
 router.get( '/:offer_id/document', authToken, checkPermission('Offer & Onboard', 'Offer & Contract', 'read'), OfferController.getOfferDocument);
