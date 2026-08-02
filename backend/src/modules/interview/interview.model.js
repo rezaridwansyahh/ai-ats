@@ -173,29 +173,45 @@ class InterviewModel {
          COUNT(*) FILTER (WHERE ci.status = 'interviewed')             AS interviewed,
          COUNT(*) FILTER (WHERE ci.status = 'no_show')                 AS no_show,
          COUNT(*) FILTER (WHERE ci.status = 'reschedule')              AS reschedule,
-         COUNT(*) FILTER (WHERE ci.status = 'done')                    AS done
+         COUNT(*) FILTER (WHERE ci.status = 'done')                    AS done,
+         COUNT(*) FILTER (WHERE ci.status IN ('ongoing','scheduled'))   AS schedule_count,
+         COUNT(*) FILTER (WHERE ci.status IN ('interviewed','no_show','reschedule')) AS result_count,
+         COUNT(*) FILTER (WHERE ci.status = 'done')                    AS decide_count,
+         ipp.pack_token,
+         (
+           ipp.rubric_items IS NOT NULL
+           AND jsonb_array_length(ipp.rubric_items) > 0
+           AND ipp.questions IS NOT NULL
+           AND jsonb_array_length(ipp.questions) > 0
+         ) AS prep_ready
        FROM core_job cj
        LEFT JOIN candidate_interview ci ON ci.job_id = cj.id
-       left join master_candidate mc on mc.id = ci.candidate_id
-       left join job_stage js on js.id = mc.latest_stage
-       left join recruitment_stage_category rsc on rsc.id = js.stage_type_id
-       WHERE cj.company_id = $1 and rsc.name = 'Interview'
-       GROUP BY cj.id, cj.job_title, cj.status
+       LEFT JOIN master_candidate mc ON mc.id = ci.candidate_id
+       LEFT JOIN job_stage js ON js.id = mc.latest_stage
+       LEFT JOIN recruitment_stage_category rsc ON rsc.id = js.stage_type_id
+       LEFT JOIN interview_position_prep ipp ON ipp.job_id = cj.id
+       WHERE cj.company_id = $1 AND rsc.name = 'Interview'
+       GROUP BY cj.id, cj.job_title, cj.status, ipp.pack_token, ipp.rubric_items, ipp.questions
        ORDER BY cj.status = 'Active' DESC, cj.id ASC`,
       [company_id]
     );
 
     const positions = positionRows.rows.map((r) => ({
-      job_id:      r.job_id,
-      job_title:   r.job_title,
-      status:      r.status,
-      total:       Number(r.total),
-      ongoing:     Number(r.ongoing),
-      scheduled:   Number(r.scheduled),
-      interviewed: Number(r.interviewed),
-      no_show:     Number(r.no_show),
-      reschedule:  Number(r.reschedule),
-      done:        Number(r.done),
+      job_id:         r.job_id,
+      job_title:      r.job_title,
+      status:         r.status,
+      total:          Number(r.total),
+      ongoing:        Number(r.ongoing),
+      scheduled:      Number(r.scheduled),
+      interviewed:    Number(r.interviewed),
+      no_show:        Number(r.no_show),
+      reschedule:     Number(r.reschedule),
+      done:           Number(r.done),
+      schedule_count: Number(r.schedule_count),
+      result_count:   Number(r.result_count),
+      decide_count:   Number(r.decide_count),
+      pack_token:     r.pack_token || null,
+      prep_ready:     r.prep_ready === true || r.prep_ready === 'true',
     }));
 
     const counts = positions.reduce(
@@ -605,6 +621,71 @@ class InterviewModel {
       WHERE id = $2`,
       [JSON.stringify(custom_questions ?? []), interview_id]
     );
+  }
+
+  async storePrepPackToken(job_id, pack_token) {
+    const result = await getDb().query(
+      `UPDATE interview_position_prep
+          SET pack_token = $2, updated_at = NOW()
+        WHERE job_id = $1
+        RETURNING *`,
+      [job_id, pack_token]
+    );
+    return result.rows[0] || null;
+  }
+
+  async getInterviewsByJobWithSubStage(job_id) {
+    const result = await getDb().query(
+      `SELECT
+         ci.id              AS interview_id,
+         ci.candidate_id,
+         ci.job_id,
+         ci.status,
+         ci.scheduled_at,
+         ci.decision,
+         mc.name            AS candidate_name,
+         mc.last_position,
+         mc.address,
+         mc.applicant_id,
+         CASE
+           WHEN ci.status IN ('ongoing','scheduled') THEN 'schedule'
+           WHEN ci.status IN ('interviewed','no_show','reschedule') THEN 'result'
+           WHEN ci.status = 'done' THEN 'decide'
+           ELSE 'schedule'
+         END AS sub_stage,
+         CASE
+           WHEN ci.status NOT IN ('interviewed','no_show','reschedule') THEN NULL
+           WHEN scored_pack.id IS NOT NULL THEN 'scored'
+           WHEN open_pack.id   IS NOT NULL THEN 'in_pack'
+           ELSE 'waiting'
+         END AS result_state,
+         open_pack.id    AS pack_id,
+         open_pack.token AS pack_token
+       FROM candidate_interview ci
+       JOIN master_candidate mc ON mc.id = ci.candidate_id
+       LEFT JOIN LATERAL (
+         SELECT ip.id, ip.token
+         FROM interview_pack_candidate ipc
+         JOIN interview_pack ip ON ip.id = ipc.pack_id
+         WHERE ipc.applicant_id = mc.applicant_id
+           AND ip.job_id = ci.job_id
+           AND ip.status = 'open'
+         LIMIT 1
+       ) open_pack ON true
+       LEFT JOIN LATERAL (
+         SELECT ip.id
+         FROM interview_pack_candidate ipc
+         JOIN interview_pack ip ON ip.id = ipc.pack_id
+         JOIN interview_pack_outcome ipo ON ipo.pack_candidate_id = ipc.id
+         WHERE ipc.applicant_id = mc.applicant_id
+           AND ip.job_id = ci.job_id
+         LIMIT 1
+       ) scored_pack ON true
+       WHERE ci.job_id = $1
+       ORDER BY ci.created_at ASC`,
+      [job_id]
+    );
+    return result.rows;
   }
 
   async getPrepContext(job_id) {

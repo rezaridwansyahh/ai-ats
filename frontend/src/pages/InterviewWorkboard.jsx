@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { CalendarCheck, AlertTriangle, Loader2, RotateCw, Search } from 'lucide-react';
+import { CalendarCheck, AlertTriangle, Loader2, RotateCw, Search, Settings } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -9,13 +9,30 @@ import { TablePagination } from '@/components/shared/TablePagination';
 import { getInitials } from '@/lib/batteries';
 import { PageHeader } from '@/components/common';
 
-import { getWorkboard, getInterviewsByJob, getInterviewByCandidateId } from '@/api/interview.api';
+import { getWorkboard, getInterviewsByJobSubStage } from '@/api/interview.api';
+
+// Sub-stage chip + pill styling
+const STAGE_META = {
+  schedule: { label: 'Schedule', color: 'bg-violet-100 text-violet-700',   dot: 'bg-violet-500' },
+  result:   { label: 'Result',   color: 'bg-amber-100 text-amber-700',     dot: 'bg-amber-500' },
+  decide:   { label: 'Decide',   color: 'bg-emerald-100 text-emerald-700', dot: 'bg-emerald-500' },
+};
 
 const STATUS_META = {
-  ongoing:   { label: 'Ongoing',   color: 'bg-blue-100 text-blue-700'      },
-  scheduled: { label: 'Scheduled', color: 'bg-violet-100 text-violet-700'  },
-  done:      { label: 'Done',      color: 'bg-emerald-100 text-emerald-700' },
+  ongoing:     { label: 'Ongoing',     color: 'bg-blue-100 text-blue-700'       },
+  scheduled:   { label: 'Scheduled',   color: 'bg-violet-100 text-violet-700'   },
+  interviewed: { label: 'Interviewed', color: 'bg-emerald-100 text-emerald-700' },
+  no_show:     { label: 'No Show',     color: 'bg-rose-100 text-rose-700'       },
+  reschedule:  { label: 'Reschedule',  color: 'bg-amber-100 text-amber-700'     },
+  done:        { label: 'Done',        color: 'bg-emerald-100 text-emerald-700' },
 };
+
+function toSubStage(status) {
+  if (['ongoing', 'scheduled'].includes(status)) return 'schedule';
+  if (['interviewed', 'no_show', 'reschedule'].includes(status)) return 'result';
+  if (status === 'done') return 'decide';
+  return 'schedule';
+}
 
 function jobStatusTone(status) {
   switch ((status || '').toLowerCase()) {
@@ -36,16 +53,16 @@ function jobStatusTone(status) {
 export default function InterviewWorkboard() {
   const navigate = useNavigate();
 
-  const [positions, setPositions]   = useState([]);
-  const [interviews, setInterviews] = useState([]);
-  const [loading, setLoading]       = useState(true);
-  const [error, setError]           = useState(null);
+  const [positions, setPositions]           = useState([]);
+  const [interviews, setInterviews]         = useState([]);
+  const [loading, setLoading]               = useState(true);
+  const [error, setError]                   = useState(null);
 
-  const [activeJob, setActiveJob] = useState('');
-  const [activeStatus, setActiveStatus] = useState(null);
-  const [search, setSearch]             = useState('');
-  const [page, setPage]                 = useState(1);
-  const [pageSize, setPageSize]         = useState(25);
+  const [activeJob, setActiveJob]           = useState('');
+  const [activeSubStage, setActiveSubStage] = useState(null);
+  const [search, setSearch]                 = useState('');
+  const [page, setPage]                     = useState(1);
+  const [pageSize, setPageSize]             = useState(25);
 
   const loadWorkboard = async () => {
     setLoading(true);
@@ -57,14 +74,19 @@ export default function InterviewWorkboard() {
 
       const results = await Promise.all(
         pos.map((p) =>
-          getInterviewsByJob(p.job_id)
+          getInterviewsByJobSubStage(p.job_id)
             .then((r) => ({ p, rows: r.data?.interviews || [] }))
             .catch(() => ({ p, rows: [] }))
         )
       );
       setInterviews(
         results.flatMap(({ p, rows }) =>
-          rows.map((i) => ({ ...i, job_title: p.job_title }))
+          rows.map((i) => ({
+            ...i,
+            job_title: p.job_title,
+            job_id: p.job_id,
+            sub_stage: i.sub_stage || toSubStage(i.status),
+          }))
         )
       );
     } catch (err) {
@@ -76,15 +98,36 @@ export default function InterviewWorkboard() {
 
   useEffect(() => { loadWorkboard(); }, []);
 
-  const statusCounts = useMemo(() => {
-    const c = { ongoing: 0, scheduled: 0, done: 0 };
-    for (const i of interviews) if (c[i.status] != null) c[i.status]++;
+  // Compute sub-stage counts from interview data
+  const subStageCounts = useMemo(() => {
+    const c = { schedule: 0, result: 0, decide: 0 };
+    for (const i of interviews) {
+      const ss = i.sub_stage || toSubStage(i.status);
+      if (c[ss] != null) c[ss]++;
+    }
     return c;
   }, [interviews]);
 
+  // Per-position sub-stage counts (for rail pills)
+  const positionSubStageCounts = useMemo(() => {
+    const map = {};
+    for (const i of interviews) {
+      const jid = i.job_id;
+      if (!map[jid]) map[jid] = { schedule: 0, result: 0, decide: 0 };
+      const ss = i.sub_stage || toSubStage(i.status);
+      if (map[jid][ss] != null) map[jid][ss]++;
+    }
+    return map;
+  }, [interviews]);
+
+  const displayInterviews = useMemo(() => {
+    if (activeJob === '') return interviews;
+    return interviews.filter((i) => i.job_id === activeJob.job_id);
+  }, [interviews, activeJob]);
+
   const filtered = useMemo(() => {
-    let list = interviews;
-    if (activeStatus) list = list.filter((i) => i.status === activeStatus);
+    let list = displayInterviews;
+    if (activeSubStage) list = list.filter((i) => (i.sub_stage || toSubStage(i.status)) === activeSubStage);
     const q = search.trim().toLowerCase();
     if (q) {
       list = list.filter((i) =>
@@ -94,7 +137,7 @@ export default function InterviewWorkboard() {
       );
     }
     return list;
-  }, [interviews, activeStatus, search]);
+  }, [displayInterviews, activeSubStage, search]);
 
   const totalPages  = Math.max(1, Math.ceil(filtered.length / pageSize));
   const pageClamped = Math.min(page, totalPages);
@@ -105,22 +148,17 @@ export default function InterviewWorkboard() {
     ['active', 'open', 'running'].includes((p.status || '').toLowerCase())
   ).length;
 
-  const toggleStatus = (status) => {
-    setActiveStatus((cur) => (cur === status ? null : status));
+  const toggleSubStage = (stage) => {
+    setActiveSubStage((cur) => (cur === stage ? null : stage));
     setPage(1);
   };
 
-  const resetView = () => { setActiveStatus(null); setSearch(''); setPage(1); setActiveJob('');};
-
-  const openInterview = async (i) => {
-    try {
-      navigate(`/selection/interview/candidate/${i.candidate_id}`);
-    } catch (err) {
-      setError(err.response?.data?.message || err.message || 'Failed to open interview');
-    }
+  const resetView = () => {
+    setActiveSubStage(null);
+    setSearch('');
+    setPage(1);
+    setActiveJob('');
   };
-
-  const handleChangeJob = (position) => setActiveJob(position)
 
   return (
     <div className="space-y-5 p-6">
@@ -128,7 +166,7 @@ export default function InterviewWorkboard() {
       <div className="flex items-start justify-between gap-3 flex-wrap">
         <PageHeader
           title="Interview"
-          highlight="Workboard."
+          highlight="Workboard"
           subtitle={`${activePositions} active position${activePositions === 1 ? '' : 's'} · ${totalInterviews} candidate${totalInterviews === 1 ? '' : 's'} in interview`}
         />
         <Button variant="outline" size="sm" onClick={loadWorkboard} className="text-xs">
@@ -143,22 +181,22 @@ export default function InterviewWorkboard() {
         </div>
       )}
 
-      {/* Status chip strip */}
+      {/* Sub-stage chip strip */}
       <Card>
         <CardContent className="py-4">
           <div className="flex items-center gap-3 flex-wrap">
             <span className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wide">
-              By status · click to filter
+              By sub-stage · click to filter
             </span>
-            {['ongoing', 'scheduled', 'done'].map((status) => {
-              const meta   = STATUS_META[status];
-              const count  = statusCounts[status] || 0;
-              const active = activeStatus === status;
+            {['schedule', 'result', 'decide'].map((stage) => {
+              const meta  = STAGE_META[stage];
+              const count = subStageCounts[stage] || 0;
+              const active = activeSubStage === stage;
               return (
                 <button
-                  key={status}
+                  key={stage}
                   type="button"
-                  onClick={() => toggleStatus(status)}
+                  onClick={() => toggleSubStage(stage)}
                   className={`inline-flex items-center gap-2 px-3 py-1.5 rounded-full border text-xs font-semibold transition-colors ${
                     active
                       ? 'bg-primary text-primary-foreground border-primary'
@@ -170,7 +208,7 @@ export default function InterviewWorkboard() {
                 </button>
               );
             })}
-            {activeStatus && (
+            {activeSubStage && (
               <Button variant="ghost" size="sm" onClick={resetView} className="text-xs text-muted-foreground">
                 Clear
               </Button>
@@ -179,9 +217,8 @@ export default function InterviewWorkboard() {
         </CardContent>
       </Card>
 
-      {/* Two-column layout */}
+      {/* Two-column: positions rail + candidates panel */}
       <div className="grid grid-cols-1 md:grid-cols-[240px_1fr] gap-4">
-
         {/* Positions rail */}
         <Card className="self-start">
           <CardHeader className="pb-2">
@@ -202,60 +239,98 @@ export default function InterviewWorkboard() {
                   type="button"
                   onClick={resetView}
                   className={[
-                    "w-full flex items-center justify-between px-3 py-2 rounded-md text-xs font-semibold",
-                    (activeJob === "")
+                    'w-full flex items-center justify-between px-3 py-2 rounded-md text-xs font-semibold',
+                    activeJob === ''
                       ? 'bg-primary/10 text-primary'
-                      : 'text-muted-foreground hover:bg-muted/60 text-foreground'
-                  ].join(" ")}
+                      : 'text-muted-foreground hover:bg-muted/60 text-foreground',
+                  ].join(' ')}
                 >
                   <span>All positions</span>
                   <span className="font-mono text-[10px]">{totalInterviews}</span>
                 </button>
                 <div className="space-y-0.5 mt-1">
-                  {positions.map((p) => (
-                    <button
-                      key={p.job_id}
-                      type="button"
-                      onClick={() => handleChangeJob(p)}
-                      className={[
-                        "w-full flex items-center justify-between gap-2 px-3 py-2 rounded-md text-xs",
-                        (activeJob.job_id === p.job_id)
-                          ? 'bg-primary/10 text-primary'
-                          : 'text-muted-foreground hover:bg-muted/60 text-foreground',
-                      ].join(" ")}
-                    >
-                      <span className="truncate text-left flex items-center gap-1.5 min-w-0">
-                        <span className="truncate">{p.job_title}</span>
-                        {p.status && (
-                          <Badge
-                            variant="outline"
-                            className={`text-[8px] uppercase tracking-wide shrink-0 ${jobStatusTone(p.status)}`}
-                          >
-                            {p.status}
-                          </Badge>
-                        )}
-                      </span>
-                      <span className="font-mono text-[10px] text-muted-foreground shrink-0">{p.total}</span>
-                    </button>
-                  ))}
+                  {positions.map((p) => {
+                    const counts = positionSubStageCounts[p.job_id] || { schedule: 0, result: 0, decide: 0 };
+                    const isActive = activeJob.job_id === p.job_id;
+                    return (
+                      <div key={p.job_id} className="relative group">
+                        <button
+                          type="button"
+                          onClick={() => setActiveJob(p)}
+                          className={[
+                            'w-full flex flex-col gap-1.5 px-3 py-2.5 rounded-md text-xs pr-8',
+                            isActive
+                              ? 'bg-primary/10 text-primary'
+                              : 'text-muted-foreground hover:bg-muted/60 text-foreground',
+                          ].join(' ')}
+                        >
+                          {/* Title row */}
+                          <span className="flex items-center gap-1.5 min-w-0">
+                            {/* Prep status dot */}
+                            <span
+                              className={`shrink-0 h-1.5 w-1.5 rounded-full ${
+                                p.prep_ready ? 'bg-emerald-500' : 'bg-amber-400'
+                              }`}
+                              title={p.prep_ready ? 'Pack ready' : 'Setup incomplete'}
+                            />
+                            <span className="truncate font-semibold">{p.job_title}</span>
+                            {p.status && (
+                              <Badge
+                                variant="outline"
+                                className={`text-[8px] uppercase tracking-wide shrink-0 ${jobStatusTone(p.status)}`}
+                              >
+                                {p.status}
+                              </Badge>
+                            )}
+                          </span>
+                          {/* Sub-stage mini pills */}
+                          <span className="flex items-center gap-1 flex-wrap">
+                            {[
+                              { key: 'schedule', color: 'bg-violet-100 text-violet-700' },
+                              { key: 'result',   color: 'bg-amber-100 text-amber-700' },
+                              { key: 'decide',   color: 'bg-emerald-100 text-emerald-700' },
+                            ].map(({ key, color }) => (
+                              <span
+                                key={key}
+                                className={`inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded text-[9px] font-semibold ${color}`}
+                              >
+                                <span className="font-mono">{counts[key] || 0}</span>
+                                <span className="capitalize">{key.slice(0, 3)}</span>
+                              </span>
+                            ))}
+                          </span>
+                        </button>
+
+                        {/* Gear icon — navigates to job setup page */}
+                        <button
+                          type="button"
+                          onClick={(e) => { e.stopPropagation(); navigate(`/selection/interview/job/${p.job_id}`); }}
+                          title="Position setup"
+                          className="absolute top-2 right-1.5 h-6 w-6 flex items-center justify-center rounded text-muted-foreground hover:text-foreground hover:bg-muted/60 opacity-0 group-hover:opacity-100 transition-opacity"
+                        >
+                          <Settings className="h-3.5 w-3.5" />
+                        </button>
+                      </div>
+                    );
+                  })}
                 </div>
               </>
             )}
           </CardContent>
         </Card>
 
-        {/* Interviews panel */}
+        {/* Candidates panel */}
         <Card>
           <CardHeader className="pb-3 space-y-3">
             <CardTitle className="text-sm gap-3 flex items-center h-[40px]">
-              {activeJob === '' ? "All candidates" : `${activeJob.job_title}`}
-              <span className="ml-2 text-[11px] font-normal text-muted-foreground">
-                {/* {filtered.length} {activeStatus ? `at ${STAGE_META[activeStatus].label}` : 'total'} */}
-                {filtered.length} {activeStatus ? `at ${STATUS_META[activeStatus].label}` : 'total'}
+              <CalendarCheck className="h-4 w-4 text-primary shrink-0" />
+              {activeJob === '' ? 'All candidates' : activeJob.job_title}
+              <span className="ml-1 text-[11px] font-normal text-muted-foreground">
+                {filtered.length} {activeSubStage ? `at ${STAGE_META[activeSubStage]?.label}` : 'total'}
               </span>
               {activeJob !== '' && (
-                <Button variant="outline" size="sm" onClick={() => navigate(`/selection/interview/job/${activeJob.job_id}`)}>
-                  Open Detail
+                <Button variant="outline" size="sm" className="text-xs" onClick={() => navigate(`/selection/interview/job/${activeJob.job_id}`)}>
+                  <Settings className="h-3.5 w-3.5 mr-1.5" /> Setup
                 </Button>
               )}
             </CardTitle>
@@ -272,7 +347,7 @@ export default function InterviewWorkboard() {
           <CardContent>
             {loading ? (
               <div className="text-center py-10 text-xs text-muted-foreground">
-                <Loader2 className="h-4 w-4 animate-spin inline mr-1.5" />Loading interviews…
+                <Loader2 className="h-4 w-4 animate-spin inline mr-1.5" />Loading candidates…
               </div>
             ) : filtered.length === 0 ? (
               <div className="text-center py-10 text-xs text-muted-foreground">
@@ -284,12 +359,14 @@ export default function InterviewWorkboard() {
               <>
                 <div className="space-y-2">
                   {paged.map((i) => {
-                    const name = i.candidate_name || `#${i.candidate_id}`;
-                    const meta = STATUS_META[i.status] || { label: i.status, color: 'bg-muted text-muted-foreground' };
+                    const name     = i.candidate_name || `#${i.candidate_id}`;
+                    const subStage = i.sub_stage || toSubStage(i.status);
+                    const stageMeta  = STAGE_META[subStage] || { label: subStage, color: 'bg-muted text-muted-foreground' };
+                    const statusMeta = STATUS_META[i.status] || { label: i.status, color: 'bg-muted text-muted-foreground' };
                     return (
                       <div
-                        key={`${i.job_id}-${i.candidate_id}-${i.round_number}`}
-                        onClick={() => openInterview(i)}
+                        key={`${i.job_id}-${i.candidate_id}-${i.interview_id}`}
+                        onClick={() => navigate(`/selection/interview/candidate/${i.candidate_id}`)}
                         className="flex items-center justify-between gap-3 p-3 border rounded-lg transition-colors hover:bg-muted/30 cursor-pointer"
                       >
                         <div className="flex items-center gap-3 min-w-0 flex-1">
@@ -307,18 +384,13 @@ export default function InterviewWorkboard() {
                           </div>
                         </div>
                         <div className="flex items-center gap-2 shrink-0">
-                          {i.round_number && (
-                            <span className="text-[10px] font-mono text-muted-foreground bg-muted px-1.5 py-0.5 rounded">
-                              R{i.round_number}
-                            </span>
-                          )}
-                          {i.scheduled_at && (
-                            <span className="text-[10px] text-muted-foreground">
-                              {new Date(i.scheduled_at).toLocaleDateString()}
-                            </span>
-                          )}
-                          <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-semibold ${meta.color}`}>
-                            {meta.label}
+                          {/* Sub-stage chip */}
+                          <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-semibold ${stageMeta.color}`}>
+                            {stageMeta.label}
+                          </span>
+                          {/* Status badge */}
+                          <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-semibold ${statusMeta.color}`}>
+                            {statusMeta.label}
                           </span>
                         </div>
                       </div>
@@ -340,6 +412,7 @@ export default function InterviewWorkboard() {
           </CardContent>
         </Card>
       </div>
+
     </div>
   );
 }

@@ -28,6 +28,8 @@ router.get( '/calibration/:job_id', interviewController.getCalibration);
 router.post('/calibration/:job_id/batch', interviewController.batchDecide);
 
 // Job/Prep routes (must be before /:interview_id)
+router.post('/job/:job_id/prep/generate-link', interviewController.generatePackLink);
+router.get('/job/:job_id/packs', interviewController.getPacksByJob);
 router.get('/job/:job_id', interviewController.getInterviewsByJob);
 router.get('/job/:job_id/prep', interviewController.getPrep);
 router.get( '/job/:job_id/decide', interviewController.getDecideByJob);

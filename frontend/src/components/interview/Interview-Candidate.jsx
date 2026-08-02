@@ -5,7 +5,7 @@ import {
   Plus, X, Pencil, Briefcase, MapPin, Lock, CalendarCheck,
   ClipboardList, Clock, Users, Trash2, Calendar as CalendarIcon,
   MessageSquare, CheckCircle2, XCircle, RefreshCw, Star,
-  ThumbsUp, ThumbsDown,
+  ThumbsUp, ThumbsDown, Link,
 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -88,10 +88,8 @@ const REJECT_REASONS = [
 ];
 
 const SECTIONS = [
-  { key: 'prep',     label: 'Prep',     icon: ClipboardList },
   { key: 'schedule', label: 'Schedule', icon: CalendarCheck },
-  { key: 'conduct',  label: 'Conduct',  icon: Users         },
-  { key: 'evaluate', label: 'Evaluate', icon: Star          },
+  { key: 'result',   label: 'Result',   icon: Star          },
   { key: 'decide',   label: 'Decide',   icon: Check         },
 ];
 
@@ -139,7 +137,7 @@ export default function InterviewCandidatePage() {
   const [loading, setLoading]     = useState(true);
   const [error, setError]         = useState(null);
   const [banner, setBanner]       = useState(null);
-  const [activeSection, setActiveSection] = useState('prep');
+  const [activeSection, setActiveSection] = useState('schedule');
 
   const load = useCallback(async () => {
     if (!candidateIdNum) return;
@@ -273,10 +271,8 @@ export default function InterviewCandidatePage() {
               ))}
             </div>
 
-            {activeSection === 'prep' && <PrepSection jobId={job_id} interviewId={interviewId} prep={prep} customQuestions={interview?.custom_questions || []} setPrep={setPrep} setBanner={setBanner} setError={setError} navigate={navigate} />}
             {activeSection === 'schedule' && <ScheduleSection interviewId={interviewId} interview={interview} setInterview={setInterview} setBanner={setBanner} setError={setError} />}
-            {activeSection === 'conduct'  && <ConductSection  interviewId={interviewId} interview={interview} setInterview={setInterview} setBanner={setBanner} setError={setError} prep={prep} />}
-            {activeSection === 'evaluate' && <EvaluateSection interviewId={interviewId} interview={interview} setInterview={setInterview} prep={prep} setBanner={setBanner} setError={setError} />}
+            {activeSection === 'result'   && <ResultSection   interview={interview} prep={prep} interviewId={interviewId} setBanner={setBanner} setError={setError} reload={load} />}
             {activeSection === 'decide'   && <DecideSection   interviewId={interviewId} interview={interview} setInterview={setInterview} setBanner={setBanner} setError={setError} />}
           </div>
 
@@ -482,6 +478,8 @@ function ScheduleSection({ interviewId, interview, setInterview, setBanner, setE
   const [confirmNote, setConfirmNote]         = useState('');
   const [confirmingId, setConfirmingId]       = useState(null);
   const [deletingId, setDeletingId]           = useState(null);
+  const [recordingId, setRecordingId]         = useState(null);
+  const [outcomeNote, setOutcomeNote]         = useState('');
 
   const loadSessions = useCallback(async () => {
     setLoadingSessions(true);
@@ -560,6 +558,31 @@ function ScheduleSection({ interviewId, interview, setInterview, setBanner, setE
     finally { setDeletingId(null); }
   };
 
+  const handleRecordOutcome = async (sessionId, status) => {
+    setRecordingId(sessionId); setError(null); setBanner(null);
+    try {
+      const res = await recordOutcome(sessionId, { status, outcome_note: outcomeNote || undefined });
+      setSessions((prev) => prev.map((s) => s.id === sessionId ? res.data.schedule : s));
+      setInterview((prev) => ({ ...prev, status }));
+      setBanner({ ok: true, text: `Outcome recorded: ${status.replace('_', ' ')}.` });
+      setOutcomeNote('');
+    } catch (err) {
+      setError(err.response?.data?.message || err.message || 'Failed to record outcome');
+    } finally { setRecordingId(null); }
+  };
+
+  const handleClearOutcome = async (sessionId) => {
+    setError(null); setBanner(null);
+    try {
+      const res = await clearOutcome(sessionId);
+      setSessions((prev) => prev.map((s) => s.id === sessionId ? res.data.schedule : s));
+      setInterview((prev) => ({ ...prev, status: 'scheduled' }));
+      setBanner({ ok: true, text: 'Outcome cleared.' });
+    } catch (err) {
+      setError(err.response?.data?.message || err.message || 'Failed to clear outcome');
+    }
+  };
+
   const canAdd = sessions.length < MAX_SESSIONS;
 
   return (
@@ -628,12 +651,17 @@ function ScheduleSection({ interviewId, interview, setInterview, setBanner, setE
               sessionNumber={idx + 1}
               confirmNote={confirmNote}
               setConfirmNote={setConfirmNote}
+              outcomeNote={outcomeNote}
+              setOutcomeNote={setOutcomeNote}
               confirmingId={confirmingId}
+              recordingId={recordingId}
               deletingId={deletingId}
               onEdit={() => openEditForm(session)}
               onConfirm={() => handleConfirm(session)}
               onUnconfirm={() => handleUnconfirm(session.id)}
               onDelete={() => handleDelete(session.id)}
+              onRecordOutcome={(status) => handleRecordOutcome(session.id, status)}
+              onClearOutcome={() => handleClearOutcome(session.id)}
             />
           ))}
         </div>
@@ -650,22 +678,33 @@ function ScheduleSection({ interviewId, interview, setInterview, setBanner, setE
 
 // ─── SessionCard ─────────────────────────────────────────────────────────────
 
-function SessionCard({ session, sessionNumber, confirmNote, setConfirmNote, confirmingId, deletingId, onEdit, onConfirm, onUnconfirm, onDelete }) {
+function SessionCard({
+  session, sessionNumber,
+  confirmNote, setConfirmNote,
+  outcomeNote, setOutcomeNote,
+  confirmingId, recordingId, deletingId,
+  onEdit, onConfirm, onUnconfirm, onDelete,
+  onRecordOutcome, onClearOutcome,
+}) {
   const [showConfirmInput, setShowConfirmInput] = useState(false);
+  const [showOutcomePanel, setShowOutcomePanel] = useState(false);
+
   const isConfirmed  = session.confirmed;
   const isConfirming = confirmingId === session.id;
-  const isDeleting   = deletingId === session.id;
+  const isRecording  = recordingId  === session.id;
+  const isDeleting   = deletingId   === session.id;
   const hasOutcome   = !!session.status && session.status !== 'ongoing';
   const outcomeMeta  = hasOutcome ? OUTCOME_OPTIONS.find((o) => o.value === session.status) : null;
 
+  const cardBorder = hasOutcome && session.status === 'interviewed' ? 'border-emerald-200 bg-emerald-50/20'
+    : hasOutcome && session.status === 'no_show'    ? 'border-rose-200 bg-rose-50/20'
+    : hasOutcome && session.status === 'reschedule' ? 'border-amber-200 bg-amber-50/20'
+    : isConfirmed ? 'border-emerald-200 bg-emerald-50/20' : '';
+
   return (
-    <Card className={`transition-colors ${
-      hasOutcome && session.status === 'interviewed' ? 'border-emerald-200 bg-emerald-50/20'
-      : hasOutcome && session.status === 'no_show'   ? 'border-rose-200 bg-rose-50/20'
-      : hasOutcome && session.status === 'reschedule'? 'border-amber-200 bg-amber-50/20'
-      : isConfirmed ? 'border-emerald-200 bg-emerald-50/20' : ''
-    }`}>
+    <Card className={`transition-colors ${cardBorder}`}>
       <CardContent className="p-4 space-y-3">
+        {/* ── Header row ── */}
         <div className="flex items-start justify-between gap-3">
           <div className="flex items-start gap-3 min-w-0 flex-1">
             <div className={`h-7 w-7 rounded-full flex items-center justify-center text-[11px] font-bold shrink-0 ${
@@ -683,7 +722,11 @@ function SessionCard({ session, sessionNumber, confirmNote, setConfirmNote, conf
                   <CalendarIcon className="h-3 w-3" />{fmt(session.scheduled_at)} · {fmtTime(session.scheduled_at)}
                 </span>
                 {hasOutcome && outcomeMeta ? (
-                  <Badge variant="outline" className={`text-[9px] ${session.status === 'interviewed' ? 'border-emerald-300 text-emerald-700 bg-emerald-50' : session.status === 'no_show' ? 'border-rose-300 text-rose-700 bg-rose-50' : 'border-amber-300 text-amber-700 bg-amber-50'}`}>{outcomeMeta.label}</Badge>
+                  <Badge variant="outline" className={`text-[9px] ${
+                    session.status === 'interviewed' ? 'border-emerald-300 text-emerald-700 bg-emerald-50'
+                    : session.status === 'no_show'   ? 'border-rose-300 text-rose-700 bg-rose-50'
+                    : 'border-amber-300 text-amber-700 bg-amber-50'
+                  }`}>{outcomeMeta.label}</Badge>
                 ) : isConfirmed ? (
                   <Badge variant="outline" className="text-[9px] border-emerald-300 text-emerald-700 bg-emerald-50">Confirmed</Badge>
                 ) : (
@@ -691,15 +734,60 @@ function SessionCard({ session, sessionNumber, confirmNote, setConfirmNote, conf
                 )}
               </div>
               {session.description && <p className="text-[10px] text-muted-foreground mt-1">{session.description}</p>}
-              {isConfirmed && session.confirmation_note && <p className="text-[10px] text-emerald-700 mt-1 italic">"{session.confirmation_note}"</p>}
-              {hasOutcome && session.outcome_note && <p className="text-[10px] text-muted-foreground mt-1 italic">Note: {session.outcome_note}</p>}
+              {isConfirmed && session.confirmation_note && (
+                <p className="text-[10px] text-emerald-700 mt-1 italic">"{session.confirmation_note}"</p>
+              )}
+              {hasOutcome && session.outcome_note && (
+                <p className="text-[10px] text-muted-foreground mt-1 italic">Note: {session.outcome_note}</p>
+              )}
             </div>
           </div>
+
+          {/* ── Action buttons ── */}
           <div className="flex items-center gap-1 shrink-0">
-            {!isConfirmed && !hasOutcome && <Button size="icon" variant="ghost" className="h-7 w-7" onClick={onEdit} title="Edit"><Pencil className="h-3.5 w-3.5 text-muted-foreground" /></Button>}
-            {isConfirmed
-              ? (!hasOutcome && <Button size="sm" variant="outline" className="h-7 text-xs text-amber-700 border-amber-300 hover:bg-amber-50" onClick={onUnconfirm}>Unconfirm</Button>)
-              : <Button size="sm" className="h-7 text-xs bg-emerald-600 hover:bg-emerald-700" onClick={() => setShowConfirmInput(!showConfirmInput)}>Confirm</Button>}
+            {/* Edit — only when unconfirmed + no outcome */}
+            {!isConfirmed && !hasOutcome && (
+              <Button size="icon" variant="ghost" className="h-7 w-7" onClick={onEdit} title="Edit">
+                <Pencil className="h-3.5 w-3.5 text-muted-foreground" />
+              </Button>
+            )}
+
+            {/* Confirmed state: show "Record outcome" or "Clear outcome" */}
+            {isConfirmed && !hasOutcome && (
+              <Button
+                size="sm"
+                className="h-7 text-xs bg-primary hover:bg-primary/90"
+                onClick={() => setShowOutcomePanel((v) => !v)}
+              >
+                <CheckCircle2 className="h-3.5 w-3.5 mr-1" /> Record outcome
+              </Button>
+            )}
+            {hasOutcome && (
+              <Button
+                size="sm"
+                variant="outline"
+                className="h-7 text-xs"
+                onClick={() => setShowOutcomePanel((v) => !v)}
+              >
+                <Pencil className="h-3 w-3 mr-1" /> {showOutcomePanel ? 'Cancel' : 'Edit outcome'}
+              </Button>
+            )}
+
+            {/* Unconfirm — only when confirmed + no outcome */}
+            {isConfirmed && !hasOutcome && (
+              <Button size="sm" variant="outline" className="h-7 text-xs text-amber-700 border-amber-300 hover:bg-amber-50" onClick={onUnconfirm}>
+                Unconfirm
+              </Button>
+            )}
+
+            {/* Confirm — when not yet confirmed */}
+            {!isConfirmed && !hasOutcome && (
+              <Button size="sm" className="h-7 text-xs bg-emerald-600 hover:bg-emerald-700" onClick={() => setShowConfirmInput(!showConfirmInput)}>
+                Confirm
+              </Button>
+            )}
+
+            {/* Delete — only when unconfirmed + no outcome */}
             {!isConfirmed && !hasOutcome && (
               <Button size="icon" variant="ghost" className="h-7 w-7 text-rose-500 hover:text-rose-600 hover:bg-rose-50" onClick={onDelete} disabled={isDeleting} title="Delete">
                 {isDeleting ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Trash2 className="h-3.5 w-3.5" />}
@@ -707,13 +795,60 @@ function SessionCard({ session, sessionNumber, confirmNote, setConfirmNote, conf
             )}
           </div>
         </div>
+
+        {/* ── Confirm input panel ── */}
         {showConfirmInput && !isConfirmed && (
           <div className="flex items-center gap-2 pt-2 border-t">
-            <Input value={confirmNote} onChange={(e) => setConfirmNote(e.target.value)} placeholder="How was it confirmed? (e.g. via WhatsApp)…" className="text-xs h-8 flex-1" />
+            <Input
+              value={confirmNote}
+              onChange={(e) => setConfirmNote(e.target.value)}
+              placeholder="How was it confirmed? (e.g. via WhatsApp)…"
+              className="text-xs h-8 flex-1"
+            />
             <Button size="sm" className="h-8 text-xs bg-emerald-600 hover:bg-emerald-700" onClick={() => { onConfirm(); setShowConfirmInput(false); }} disabled={isConfirming}>
               {isConfirming ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Check className="h-3.5 w-3.5 mr-1" />} Done
             </Button>
             <Button size="sm" variant="ghost" className="h-8 text-xs" onClick={() => setShowConfirmInput(false)}>Cancel</Button>
+          </div>
+        )}
+
+        {/* ── Outcome recording panel (shown when confirmed or editing existing outcome) ── */}
+        {showOutcomePanel && (
+          <div className="pt-3 border-t space-y-3">
+            <p className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wide">What was the outcome?</p>
+            <div className="flex flex-wrap gap-2">
+              {OUTCOME_OPTIONS.map(({ value, label, icon: Icon, color }) => (
+                <button
+                  key={value}
+                  type="button"
+                  disabled={isRecording}
+                  onClick={() => { onRecordOutcome(value); setShowOutcomePanel(false); }}
+                  className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border text-xs font-semibold transition-colors hover:opacity-80 ${
+                    hasOutcome && session.status === value
+                      ? 'bg-primary text-primary-foreground border-primary'
+                      : 'bg-background border-border text-foreground hover:bg-muted/40'
+                  } ${isRecording ? 'opacity-50 cursor-not-allowed' : ''}`}
+                >
+                  {isRecording ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Icon className={`h-3.5 w-3.5 ${color}`} />}
+                  {label}
+                </button>
+              ))}
+            </div>
+            <Input
+              value={outcomeNote}
+              onChange={(e) => setOutcomeNote(e.target.value)}
+              placeholder="Optional note about this outcome…"
+              className="text-xs h-8"
+            />
+            {hasOutcome && (
+              <button
+                type="button"
+                onClick={() => { onClearOutcome(); setShowOutcomePanel(false); }}
+                className="text-[11px] text-rose-600 hover:underline inline-flex items-center gap-1"
+              >
+                <X className="h-3 w-3" /> Clear outcome
+              </button>
+            )}
           </div>
         )}
       </CardContent>
@@ -1923,5 +2058,209 @@ function StepsNav({ activeSection, onStep, status, interview }) {
         })}
       </CardContent>
     </Card>
+  );
+}
+
+// ── Result Section ────────────────────────────────────────────────────────────
+
+function ResultSection({ interview, prep, interviewId, setBanner, setError, reload }) {
+  const [scorecard, setScorecard]       = useState(null);
+  const [loadingCard, setLoadingCard]   = useState(true);
+  const [savingCard, setSavingCard]     = useState(false);
+  const [scores, setScores]             = useState({});
+  const [recommendation, setRecommendation] = useState('');
+  const [strengths, setStrengths]       = useState('');
+  const [concerns, setConcerns]         = useState('');
+
+  useEffect(() => {
+    if (!interviewId) return;
+    setLoadingCard(true);
+    getScorecard(interviewId)
+      .then((res) => {
+        const card = res.data?.scorecard || null;
+        setScorecard(card);
+        if (card) {
+          setScores(card.competency_scores || {});
+          setRecommendation(card.recommendation || '');
+          setStrengths(card.standout_strengths || '');
+          setConcerns(card.concerns || '');
+        }
+      })
+      .catch(() => setScorecard(null))
+      .finally(() => setLoadingCard(false));
+  }, [interviewId]);
+
+  const resultState = interview?.result_state ||
+    (['interviewed', 'no_show', 'reschedule'].includes(interview?.status) ? 'waiting' : null);
+
+  const rubricItems = prep?.rubric_items || [];
+  const submitted = scorecard && !scorecard.is_draft;
+
+  async function handleSave(isDraft) {
+    setSavingCard(true);
+    setError(null);
+    try {
+      await saveScorecard(interviewId, {
+        competency_scores: scores,
+        recommendation,
+        standout_strengths: strengths,
+        concerns,
+        is_draft: isDraft,
+      });
+      setBanner({ ok: true, text: isDraft ? 'Scorecard saved as draft.' : 'Scorecard submitted.' });
+      reload();
+    } catch (err) {
+      setError(err.response?.data?.message || err.message || 'Failed to save scorecard.');
+    } finally {
+      setSavingCard(false);
+    }
+  }
+
+  if (loadingCard) {
+    return (
+      <div className="flex justify-center py-12">
+        <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-4">
+      {/* State banner */}
+      {resultState === 'waiting' && !scorecard && (
+        <div className="flex items-start gap-3 px-4 py-3 rounded-lg border border-amber-200 bg-amber-50 text-sm text-amber-700">
+          <Clock className="h-4 w-4 shrink-0 mt-0.5" />
+          <div>
+            <p className="font-semibold">Waiting to Score</p>
+            <p className="text-xs mt-0.5">
+              This candidate is ready to be scored. Go to the position setup → Interview Link tab to
+              create a scoring link and include this candidate.
+            </p>
+          </div>
+        </div>
+      )}
+      {resultState === 'in_pack' && !submitted && (
+        <div className="flex items-start gap-3 px-4 py-3 rounded-lg border border-blue-200 bg-blue-50 text-sm text-blue-700">
+          <Link className="h-4 w-4 shrink-0 mt-0.5" />
+          <div>
+            <p className="font-semibold">In Interview Pack</p>
+            <p className="text-xs mt-0.5">
+              This candidate has been added to an interview pack. Scores will appear here once the
+              interviewer submits.
+            </p>
+          </div>
+        </div>
+      )}
+      {submitted && (
+        <div className="flex items-center gap-2 px-4 py-3 rounded-lg border border-emerald-200 bg-emerald-50 text-sm text-emerald-700">
+          <CheckCircle2 className="h-4 w-4 shrink-0" />
+          Scorecard submitted — scores are locked.
+        </div>
+      )}
+
+      {/* Competency scores */}
+      {rubricItems.length > 0 ? (
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-sm">Competency Scores</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-5">
+            {rubricItems.map((item) => {
+              const code = item.competency_code || item.name || item.label;
+              const label = item.competency_name || item.label || code;
+              const current = scores[code];
+              return (
+                <div key={code} className="space-y-1.5">
+                  <div className="flex items-center justify-between">
+                    <p className="text-sm font-medium">{label}</p>
+                    <span className="text-[10px] text-muted-foreground border border-border rounded px-1.5 py-0.5">
+                      weight {item.weight ?? 1}
+                    </span>
+                  </div>
+                  <div className="flex items-center gap-1.5">
+                    {[1, 2, 3, 4, 5, 6, 7].map((v) => (
+                      <button
+                        key={v}
+                        type="button"
+                        disabled={submitted}
+                        onClick={() => !submitted && setScores((s) => ({ ...s, [code]: v }))}
+                        className={`h-8 w-8 rounded-full text-xs font-bold border transition-colors shrink-0 ${
+                          current === v
+                            ? 'bg-primary text-primary-foreground border-primary'
+                            : submitted
+                              ? 'bg-muted text-muted-foreground border-border opacity-50 cursor-not-allowed'
+                              : 'bg-muted text-foreground border-border hover:bg-muted/80 cursor-pointer'
+                        }`}
+                      >
+                        {v}
+                      </button>
+                    ))}
+                    {current && !submitted && (
+                      <button
+                        type="button"
+                        onClick={() => setScores((s) => { const n = { ...s }; delete n[code]; return n; })}
+                        className="text-[10px] text-muted-foreground hover:text-foreground ml-1 underline"
+                      >
+                        clear
+                      </button>
+                    )}
+                  </div>
+                </div>
+              );
+            })}
+          </CardContent>
+        </Card>
+      ) : (
+        <Card>
+          <CardContent className="py-6 text-xs text-muted-foreground italic">
+            No rubric configured for this position. Set up rubric in the position setup first.
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Recommendation + notes */}
+      <Card>
+        <CardHeader><CardTitle className="text-sm">Recommendation</CardTitle></CardHeader>
+        <CardContent className="space-y-4">
+          <div className="grid grid-cols-2 gap-2">
+            {RECOMMENDATION_OPTIONS.map(({ value, label, icon: Icon, color }) => (
+              <button
+                key={value}
+                type="button"
+                disabled={submitted}
+                onClick={() => !submitted && setRecommendation((r) => r === value ? '' : value)}
+                className={`flex items-center gap-2 px-3 py-2 rounded-lg border text-sm font-medium transition-all ${
+                  recommendation === value
+                    ? color
+                    : submitted
+                      ? 'opacity-50 cursor-not-allowed bg-muted text-muted-foreground border-border'
+                      : 'border-border text-muted-foreground hover:bg-muted/50 cursor-pointer'
+                }`}
+              >
+                <Icon className="h-4 w-4" /> {label}
+              </button>
+            ))}
+          </div>
+          <div className="space-y-1.5">
+            <label className="text-xs font-medium">Strengths</label>
+            <Textarea rows={3} disabled={submitted} placeholder="Key strengths observed…" value={strengths} onChange={(e) => setStrengths(e.target.value)} />
+          </div>
+          <div className="space-y-1.5">
+            <label className="text-xs font-medium">Concerns</label>
+            <Textarea rows={3} disabled={submitted} placeholder="Concerns or red flags…" value={concerns} onChange={(e) => setConcerns(e.target.value)} />
+          </div>
+          {!submitted && (
+            <div className="flex gap-2 pt-1">
+              <Button variant="outline" size="sm" onClick={() => handleSave(true)} disabled={savingCard}>
+                {savingCard ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : 'Save Draft'}
+              </Button>
+              <Button size="sm" onClick={() => handleSave(false)} disabled={savingCard}>
+                {savingCard ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : 'Submit Scorecard'}
+              </Button>
+            </div>
+          )}
+        </CardContent>
+      </Card>
+    </div>
   );
 }

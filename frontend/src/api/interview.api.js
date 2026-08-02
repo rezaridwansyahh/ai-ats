@@ -58,3 +58,12 @@ export const resetDecision = (jobId, interviewId) => api.delete(`/interview/job/
 export const getCalibration = (job_id) => api.get(`/interview/calibration/${job_id}`);
 
 export const batchDecide = (job_id, decisions) => api.post(`/interview/calibration/${job_id}/batch`, { decisions });
+
+export const generatePackLink = (job_id, data) => api.post(`/interview/job/${job_id}/prep/generate-link`, data);
+export const getPacksByJob = (job_id) => api.get(`/interview/job/${job_id}/packs`);
+
+export const getInterviewsByJobSubStage = (job_id) => api.get(`/interview/job/${job_id}`);
+
+export const recordDecision = (interview_id, data) => api.post(`/interview/${interview_id}/decide`, data);
+
+export const undoDecision = (interview_id) => api.delete(`/interview/${interview_id}/decide`);
