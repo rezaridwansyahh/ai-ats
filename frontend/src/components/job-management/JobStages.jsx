@@ -54,6 +54,9 @@ export default function JobStagesStep({ selectedJob, onPipelineChange }) {
   // Mirrors the `templates` state but readable inside any effect closure
   // without stale-closure issues (refs are always current).
   const templatesRef = useRef([]);
+  // True once any template has been auto- or manually-applied, so the
+  // auto-default effect below never overrides a real choice.
+  const defaultAppliedRef = useRef(false);
   const [stages, setStages] = useState([]);
   const [loadingStages, setLoadingStages] = useState(false);
   const [savingStages, setSavingStages] = useState(false);
@@ -250,6 +253,8 @@ export default function JobStagesStep({ selectedJob, onPipelineChange }) {
     }
   };
 
+  const needsDefaultTemplate = !isCustom && !selectedTemplateId && stages.length === 0 && !loadingStages;
+  
   //TAMBAHAN BAYU --> Auto-select "IT" template for brand-new jobs with no pipeline yet.
   useEffect(() => {
     if (defaultAppliedRef.current) return;

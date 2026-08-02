@@ -1,11 +1,13 @@
-import { useEffect, useMemo, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
 import JobsSidebar from '@/components/report/JobsSidebar';
 import CandidatesPanel from '@/components/report/CandidatesPanel';
 import StepFilterBar from '@/components/report/StepFilterBar';
 import { PageHeader } from '@/components/common';
+import { Button } from '@/components/ui/button';
+import { HelpCircle } from 'lucide-react';
 import { getCandidatePipelineSummary, getCandidatesByJobId } from '@/api/candidate.api';
 
+import PipelineTour, { usePipelineTour } from '@/components/tours/PipelineTour';
+import { PSYCH_ASSESSMENT_STEPS } from '@/components/tours/tourSteps';
 // Real-data Report page.
 // - Left rail: GET /candidate-pipeline/summary → [{ job_id, job_title, total }]
 // - Right panel: GET /candidate-pipeline/job/:job_id → candidate rows for the selected job
@@ -23,6 +25,8 @@ export default function PsychAssesmentPage() {
 
   // Step filter (Setup / Take / Score & Decide) — null = no filter.
   const [activeStep, setActiveStep] = useState(null);
+
+  const { run, setRun, markSeen, restart } = usePipelineTour('psych-assessment');
 
   // Initial summary fetch — also seeds the selected job.
   useEffect(() => {
@@ -103,31 +107,39 @@ export default function PsychAssesmentPage() {
 
   return (
     <div className="space-y-5 p-6">
-      <PageHeader
-        title="Psych"
-        highlight="Assessment"
-        subtitle="Pick a position to review its candidates and assessment status."
-      />
+      <div data-tour="psych-page-header" className="flex items-start justify-between gap-3 flex-wrap">
+        <PageHeader
+          title="Psych"
+          highlight="Assessment"
+          subtitle="Pick a position to review its candidates and assessment status."
+        />
+        <Button variant="ghost" size="sm" className="text-xs" onClick={restart}>
+          <HelpCircle className="h-3.5 w-3.5 mr-1" /> Take the tour
+        </Button>
+      </div>
 
       {jobsError ? (
         <div className="rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-xs text-red-600">
           {jobsError}
         </div>
       ) : null}
-
-      <StepFilterBar
-        counts={stepCounts}
-        activeStep={activeStep}
-        onChange={setActiveStep}
-      />
+      <div data-tour="psych-step-filter">
+        <StepFilterBar
+          counts={stepCounts}
+          activeStep={activeStep}
+          onChange={setActiveStep}
+        />
+      </div>
 
       <div className="grid grid-cols-1 md:grid-cols-[220px_1fr] gap-4">
-        <JobsSidebar
-          jobs={jobs}
-          loading={jobsLoading}
-          selectedJobId={selectedJobId}
-          onSelectJob={setSelectedJobId}
-        />
+        <div data-tour="psych-positions-rail">
+          <JobsSidebar
+            jobs={jobs}
+            loading={jobsLoading}
+            selectedJobId={selectedJobId}
+            onSelectJob={setSelectedJobId}
+          />
+        </div>
         <CandidatesPanel
           key={selectedJobId ?? 'none'}
           jobTitle={selectedJob?.job_title ?? '—'}
@@ -137,6 +149,14 @@ export default function PsychAssesmentPage() {
           onSelectCandidate={handleSelectCandidate}
         />
       </div>
+
+      <PipelineTour 
+        steps={PSYCH_ASSESSMENT_STEPS}
+        tourKey="psych-assessment"
+        run={run}
+        setRun={setRun}
+        markSeen={markSeen}
+      />
     </div>
   );
 }

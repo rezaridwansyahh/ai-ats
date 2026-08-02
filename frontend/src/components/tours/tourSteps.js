@@ -3,6 +3,7 @@
 // skipBeacon: true is set on every step (react-joyride v3 field name — was
 // `disableBeacon` in v2) so tooltips appear immediately, no click needed.
 
+
 /* ── Candidate Pipeline list page: /candidate-pipeline ── */
 export const PIPELINE_LIST_STEPS = [
   {
@@ -277,6 +278,84 @@ export const AI_SCREENING_CANDIDATE_STEPS = [
     title: 'Make a decision',
     content: 'Once the candidate has responded to Q&A, you can Advance, Hold, or Reject them here.',
     placement: 'left',
+    skipBeacon: true,
+  },
+];
+
+/* ── Background Check workboard: /selection/background-check ── */
+export const BG_CHECK_WORKBOARD_STEPS =[
+  {
+    target: '[data-tour="bgcheck-page-header"]',
+    title: 'Welcome to Background Check',
+    content: 'Every candidate moving through claims verification, consent, and the final verdict, across all your open jobs.',
+    placement: 'bottom',
+    skipBeacon: true,
+  },
+  {
+    target: '[data-tour="bgcheck-status-chips"]',
+    title: 'Filter by stage',
+    content: 'Click any stage \u2014 Claims, Consent, Tracker, Verdict, or Ready \u2014 to see only candidates currently at that step.',
+    placement: 'bottom',
+    skipBeacon: true
+  },
+  {
+    target: '[data-tour="bgcheck-positions-rail"]',
+    title: 'Browse by position',
+    content: 'Click a job to open its own background check board.',
+    placement: 'right',
+    skipBeacon: true,
+  },
+  {
+    target: '[data-tour="bgcheck-search"]',
+    title: 'Search candidates',
+    content: 'Look up anyone by name, last position, or job title',
+    placement: 'bottom',
+    skipBeacon: true,
+  },
+  {
+    target: '[data-tour="bgcheck-candidate-list"]',
+    title: 'Open a candidate',
+    content: 'Click any candidate to open their background check details.',
+    placement: 'top',
+    skipBeacon: true,
+  },
+];
+
+/* ── Psych Assessment page: /selection/psych-assessment ── */
+export const PSYCH_ASSESSMENT_STEPS = [
+  {
+    target: '[data-tour="psych-page-header"]',
+    title: 'Welcome to Psych Assesment',
+    content: 'Track every candidate through Setup, Take, and Score & Decide across all your open jobs.',
+    placement: 'bottom',
+    skipBeacon: true,
+  },
+  {
+    target: '[data-tour="psych-step-filter"]',
+    title: 'Filter by step',
+    content: 'Click Setup, Take, or Score & Decide to see only candidates currently at that step.',
+    placement: 'bottom',
+    skipBeacon: true,
+  },
+  {
+    target: '[data-tour="psych-positions-rail"]',
+    title: 'Browse by position',
+    content: 'Pick a job to see just its candidates.',
+    placement: 'right',
+    skipBeacon: true,
+  },
+  {
+    target: '[data-tour="psych-search"]',
+    title: 'Search candidates',
+    content: 'Look up anyone by name, role, or email.',
+    placement: 'bottom',
+    skipBeacon: true,
+  },
+  {
+    target: '[data-tour="psych-candidate-list"]',
+    title: 'Open a candidate',
+    content: 'Click any candidate to review or continue their psychological assessment.',
+    placement: 'top',
     skipBeacon: true,
   },
 ];

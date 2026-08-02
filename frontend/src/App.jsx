@@ -52,12 +52,14 @@ import OnboardingPage from "./pages/Onboarding"
 import OnboardingWorkboard from "./pages/OnboardingWorkboard"
 import ReportsPage from "./pages/Reports"
 
+import { EndToEndTourProvider } from '@/components/tours/EndToEndTour';
 import { Toaster } from '@/components/ui/sonner';
 import MedicalAssessmentPage from "./pages/MedicalAssessment"
 
 function App() {
   return (
     <>
+    <EndToEndTourProvider>
       <Routes>
         <Route path="/" element={<LoginPage />} />
         <Route path="/login" element={<LoginPage />} />
@@ -136,6 +138,7 @@ function App() {
         <Route path="*" element={<ComingSoonPage />} />
         </Route>
       </Routes>
+      </EndToEndTourProvider>
       <Toaster />
     </>
   )

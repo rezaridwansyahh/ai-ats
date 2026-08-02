@@ -63,7 +63,6 @@ export default function PipelineTour({ steps, tourKey, run, setRun, markSeen }) 
       run={run}
       continuous
       scrollToFirstStep
-      debug
       onEvent={handleEvent}
       options={{
         showProgress: true,
@@ -93,14 +92,18 @@ export default function PipelineTour({ steps, tourKey, run, setRun, markSeen }) 
           borderRadius: 8,
           fontSize: 12,
           padding: '8px 14px',
+          outline: 'none',
+          boxShadow: '0 0 0 2px rgba(15, 118, 110, 0.3)',
         },
         buttonBack: {
           fontSize: 12,
           color: '#6b7280',
+          outline: 'none',
         },
         buttonSkip: {
           fontSize: 12,
           color: '#6b7280',
+          outline: 'none',
         },
       }}
     />
