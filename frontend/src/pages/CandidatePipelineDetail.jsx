@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
-import { ArrowLeft, Loader2, AlertTriangle, Building2, MapPin } from 'lucide-react';
+import { ArrowLeft, Loader2, AlertTriangle, Building2, MapPin, HelpCircle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 
 import { getJobById } from '@/api/job.api';
@@ -11,6 +11,9 @@ import { StatusBadge } from '@/components/common';
 
 import PipelineTable from '@/components/dashboard/PipelineTable';
 
+import PipelineTour, { usePipelineTour } from '@/components/tours/PipelineTour';
+import { PIPELINE_DETAIL_STEPS } from '@/components/tours/tourSteps';
+
 export default function CandidatePipelineDetailPage() {
   const navigate = useNavigate();
   const { id } = useParams();
@@ -20,6 +23,8 @@ export default function CandidatePipelineDetailPage() {
   const [stages, setStages]         = useState([]);
   const [candidates, setCandidates] = useState([]);
   const [summary, setSummary]       = useState({ totalInPipeline: 0, totalHired: 0 });
+
+  const { run, setRun, markSeen, restart } = usePipelineTour('pipeline-detail');
 
   // ── Load job ──
   useEffect(() => {
@@ -57,35 +62,35 @@ export default function CandidatePipelineDetailPage() {
 
   // ── Load candidates ──
 
-useEffect(() => {
-  let cancelled = false;
-  (async () => {
-    try {
-      const res = await getCandidatesByJobId(id);
-      const list = Array.isArray(res.data?.pipelines) ? res.data.pipelines : [];
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      try {
+        const res = await getCandidatesByJobId(id);
+        const list = Array.isArray(res.data?.pipelines) ? res.data.pipelines : [];
 
-      const mapped = list.map((c) => ({
-        id: c.id,
-        applicant_id: c.id,
-        name: c.candidate_name,
-        role: c.information?.job_position?.current ?? c.last_position,
-        experience: c.information?.experience?.years_total
-          ? `${c.information.experience.years_total}y`
-          : '—',
-        skills: c.information?.skills ?? [],
-        stage_id: c.latest_stage,
-        // give all candidates the same "city" so they group into one section
-        city_id: job?.job_title ?? 'all',
-        city_name: job?.job_title ?? 'Candidates',
-      }));
+        const mapped = list.map((c) => ({
+          id: c.id,
+          applicant_id: c.id,
+          name: c.candidate_name,
+          role: c.information?.job_position?.current ?? c.last_position,
+          experience: c.information?.experience?.years_total
+            ? `${c.information.experience.years_total}y`
+            : '—',
+          skills: c.information?.skills ?? [],
+          stage_id: c.latest_stage,
+          // give all candidates the same "city" so they group into one section
+          city_id: job?.job_title ?? 'all',
+          city_name: job?.job_title ?? 'Candidates',
+        }));
 
-      if (!cancelled) setCandidates(mapped);
-    } catch {
-      if (!cancelled) setCandidates([]);
-    }
-  })();
-  return () => { cancelled = true; };
-}, [id, job]);
+        if (!cancelled) setCandidates(mapped);
+      } catch {
+        if (!cancelled) setCandidates([]);
+      }
+    })();
+    return () => { cancelled = true; };
+  }, [id, job]);
 
   useDynamicBreadcrumb(job?.job_title);
 
@@ -130,12 +135,16 @@ useEffect(() => {
       <div className="sticky top-[52px] z-10 bg-background/95 backdrop-blur-sm -mt-5 -mx-5 px-5 pt-5 pb-5 border-b border-border/60 space-y-3">
         <div className="flex items-center justify-between gap-3 flex-wrap">
           <Button
+            data-tour="back-to-pipeline"
             variant="ghost"
             size="sm"
             className="text-xs"
             onClick={() => navigate('/candidate-pipeline')}
           >
             <ArrowLeft className="h-3.5 w-3.5 mr-1" /> Back to Pipeline
+          </Button>
+          <Button variant="ghost" size="sm" className="text-xs" onClick={restart}>
+            <HelpCircle className="h-3.5 w-3.5 mr-1" /> Take the tour
           </Button>
         </div>
 
@@ -152,7 +161,7 @@ useEffect(() => {
               dot
             />
           </div>
-          <div className="text-xs text-muted-foreground flex flex-wrap items-center gap-x-3 gap-y-1">
+          <div data-tour="job-summary" className="text-xs text-muted-foreground flex flex-wrap items-center gap-x-3 gap-y-1">
             {job.company && <span className="flex items-center gap-1"><Building2 className="h-3 w-3" /> {job.company}</span>}
             {job.job_location && <span className="flex items-center gap-1"><MapPin className="h-3 w-3" /> {job.job_location}</span>}
             <span className="font-mono">
@@ -174,6 +183,14 @@ useEffect(() => {
           onSummaryChange={setSummary}
         />
       </div>
+
+      <PipelineTour
+        steps={PIPELINE_DETAIL_STEPS}
+        tourKey="pipeline-detail"
+        run={run}
+        setRun={setRun}
+        markSeen={markSeen}
+      />
     </>
   );
 }

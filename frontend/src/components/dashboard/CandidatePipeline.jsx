@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Loader2 } from 'lucide-react';
+import { Loader2, HelpCircle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import {
@@ -13,6 +13,10 @@ import {
 } from '@/lib/job-display';
 import { PageHeader, StatusBadge } from '@/components/common';
 
+//NEW IMPORT TOUR
+import PipelineTour, { usePipelineTour } from '@/components/tours/PipelineTour';
+import { PIPELINE_LIST_STEPS } from '@/components/tours/tourSteps';
+
 const PAGE_SIZE = 5;
 
 export default function CandidatePipeline() {
@@ -21,6 +25,8 @@ export default function CandidatePipeline() {
   const [jobsLoading, setJobsLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
   const [page, setPage] = useState(1);
+
+  const { run, setRun, markSeen, restart } = usePipelineTour('pipeline-list');
 
   useEffect(() => {
     let cancelled = false;
@@ -56,11 +62,26 @@ export default function CandidatePipeline() {
     <div className="space-y-5 animate-fade-in-up">
 
       {/* ── Page header ── */}
-      <PageHeader
-        title="Candidate"
-        highlight="Pipeline"
-        subtitle="8-stage pipeline across the org. Click a job to view its candidates by stage."
+      <div className="flex items-center justify-between gap-3 flex-wrap">
+        <PageHeader
+          title="Candidate"
+          highlight="Pipeline"
+          subtitle="8-stage pipeline across the org. Click a job to view its candidates by stage."
+        />
+        <Button variant="ghost" size="sm" className="text-xs" onClick={restart}>
+          <HelpCircle className="h-3.5 w-3.5 mr-1" /> Take the tour
+        </Button>
+      </div>
+
+      {/* Pipeline Tour */}
+      <PipelineTour
+        steps={PIPELINE_LIST_STEPS}
+        tourKey="pipeline-list"
+        run={run}
+        setRun={setRun}
+        markSeen={markSeen}
       />
+
 
       {/* ── Job selector ── */}
       <div className="space-y-3">
@@ -72,6 +93,7 @@ export default function CandidatePipeline() {
             </p>
           </div>
           <Input
+            data-tour="job-search"
             placeholder="Search jobs..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
@@ -81,7 +103,7 @@ export default function CandidatePipeline() {
         </div>
 
         {/* Table */}
-        <div className="rounded-xl border overflow-hidden bg-card">
+        <div data-tour="job-table" className="rounded-xl border overflow-hidden bg-card">
           <div className="overflow-x-auto">
             {jobsLoading ? (
               <div className="flex items-center justify-center py-10">
@@ -102,7 +124,7 @@ export default function CandidatePipeline() {
                     <TableHead className="text-[10px] font-bold uppercase w-[160px]">Location</TableHead>
                     <TableHead className="text-[10px] font-bold uppercase w-[200px]">Salary</TableHead>
                     <TableHead className="text-[10px] font-bold uppercase w-[110px]">Status</TableHead>
-                    <TableHead className="text-[10px] font-bold uppercase w-[200px]">Activity</TableHead>
+                    <TableHead data-tour="job-activity-header" className="text-[10px] font-bold uppercase w-[200px]">Activity</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>

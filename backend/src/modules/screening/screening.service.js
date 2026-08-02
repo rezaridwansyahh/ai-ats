@@ -3,12 +3,12 @@ import jobModel from '../job/job.model.js';
 import CandidatePipelineService from '../candidate-pipeline/candidate-pipeline.service.js';
 import automationModel from '../automation-setting/automation.model.js';
 import aiService from '../../shared/services/ai.service.js';
-import { parseFileToText } from '../../shared/utils/file-parser.js';
 import { sendQuestionsEmail } from '../../shared/services/candidate-mailer.js';
 import { getApplicationFormTemplate } from './screening-applicationForm.js';
 
 class ScreeningService {
   // Layer 1 — extract facets from a CV file (multer file object).
+  // Sends the file buffer directly to OpenAI — no local pdf-parse needed.
   async extractFacetsFromFile(applicant_id, file, context = {}) {
     if (!applicant_id) throw { status: 400, message: 'applicant_id is required' };
     if (!file) throw { status: 400, message: 'cv file is required' };
@@ -16,17 +16,20 @@ class ScreeningService {
     const applicant = await screeningModel.getApplicant(applicant_id);
     if (!applicant) throw { status: 404, message: 'Applicant not found' };
 
-    let cvText;
+    const aiContext = {
+      ...context,
+      metadata: { applicant_id, ...(context.metadata || {}) },
+    };
+
+    let facets;
     try {
-      cvText = await parseFileToText(file);
+      facets = await aiService.extractFacetsFromFile(file.buffer, file.originalname, aiContext);
     } catch (err) {
-      throw { status: 400, message: `Failed to parse CV: ${err.message}` };
-    }
-    if (!cvText || !cvText.trim()) {
-      throw { status: 400, message: 'CV is empty after parsing' };
+      throw { status: 400, message: `Failed to extract CV: ${err.message}` };
     }
 
-    return this._extractAndStore(applicant_id, cvText, context);
+    const updated = await screeningModel.setApplicantInformation(applicant_id, facets);
+    return { applicant: updated, facets };
   }
 
   // Layer 1 — extract facets from raw text (useful when CV text is already available).
@@ -38,10 +41,6 @@ class ScreeningService {
     const applicant = await screeningModel.getApplicant(applicant_id);
     if (!applicant) throw { status: 404, message: 'Applicant not found' };
 
-    return this._extractAndStore(applicant_id, cvText, context);
-  }
-
-  async _extractAndStore(applicant_id, cvText, context = {}) {
     const aiContext = {
       ...context,
       metadata: { applicant_id, ...(context.metadata || {}) },

@@ -37,7 +37,7 @@ export default function CandidatesPanel({ jobTitle, candidates, loading, error, 
           </p>
         </div>
 
-        <div className="relative max-w-sm">
+        <div data-tour="psych-search" className="relative max-w-sm">
           <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
           <Input
             placeholder="Search name, role, or email..."
@@ -63,7 +63,7 @@ export default function CandidatesPanel({ jobTitle, candidates, loading, error, 
           </div>
         ) : (
           <>
-            <div className="space-y-2">
+            <div data-tour="psych-candidate-list" className="space-y-2">
               {paginated.map((c) => {
                 const name  = c.candidate_name  || c.name || '—';
                 const role  = c.last_position   || '—';

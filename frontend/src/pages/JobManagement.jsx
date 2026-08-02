@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Plus, Download } from 'lucide-react';
+import { Plus, Download, HelpCircle, Sparkles } from 'lucide-react';
 import { getJobs, deleteJob } from '@/api/job.api';
 import JobCreation from '@/components/job-management/JobCreation';
 import JobWizard from '@/components/job-management/JobWizard';
@@ -8,10 +8,17 @@ import AutomationMatrix from '@/components/job-management/AutomationMatrix';
 import { PageHeader } from '@/components/common';
 import { Button } from '@/components/ui/button';
 
+import PipelineTour, { usePipelineTour } from '@/components/tours/PipelineTour';
+import { JOB_MANAGEMENT_LIST_STEPS } from '@/components/tours/tourSteps';
+import { useEndToEndTour } from '@/components/tours/EndToEndTour';
+
 export default function JobManagementPage() {
   const navigate = useNavigate();
   const [jobs, setJobs] = useState([]);
   const [loading, setLoading] = useState(true);
+
+  const { run, setRun, markSeen, restart } = usePipelineTour('job-management-list');
+  const { start: startFullWalkthrough } = useEndToEndTour();
 
   const fetchJobs = useCallback(async () => {
     setLoading(true);
@@ -44,7 +51,6 @@ export default function JobManagementPage() {
     await fetchJobs();
   };
 
-  // TODO: wire to a real export endpoint once available. Currently a stub.
   const handleExport = () => {
     console.warn('Export not yet wired to backend.');
   };
@@ -59,28 +65,30 @@ export default function JobManagementPage() {
 
   return (
     <div className="space-y-8 p-6">
-      {/* Strategy wizard + automation matrix — UI-only, no backend yet.
-          See TODOs inside JobWizard.jsx / AutomationMatrix.jsx. */}
       <JobWizard />
       <AutomationMatrix />
 
-      {/* Real job list surface */}
       <div className="space-y-6">
         <PageHeader
           title="Job"
           highlight="Management"
           subtitle="All open requisitions. Click a Draft row to continue editing, or any other row to view its detail."
         >
+          <Button variant="ghost" size="sm" className="text-xs" onClick={restart}>
+            <HelpCircle className="h-3.5 w-3.5 mr-1" /> Take the tour
+          </Button>
+          <Button variant="outline" size="sm" className="text-xs" onClick={startFullWalkthrough}>
+            <Sparkles className="h-3.5 w-3.5 mr-1" /> Start Full Walkthrough
+          </Button>
           <Button variant="outline" size="sm" className="rounded-lg" onClick={handleExport}>
             <Download className="h-4 w-4 mr-1.5" /> Export
           </Button>
-          <Button size="sm" className="rounded-lg" onClick={handleNewJob}>
+          <Button data-tour="job-mgmt-create-btn" size="sm" className="rounded-lg" onClick={handleNewJob}>
             <Plus className="h-4 w-4 mr-1.5" /> Create new job
           </Button>
         </PageHeader>
 
-        {/* Stat cards — real numbers only, no fabricated trend data */}
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+        <div data-tour="job-mgmt-stats" className="grid grid-cols-2 md:grid-cols-4 gap-3">
           <StatCard label="Total Applicants" value={stats.totalApplicants} caption="Across all jobs" />
           <StatCard label="Jobs Posted" value={stats.jobsPosted} caption="All statuses" />
           <StatCard label="Open Jobs" value={stats.openJobs} caption="Active or Running" />
@@ -94,6 +102,14 @@ export default function JobManagementPage() {
           onSelectJob={handleSelectJob}
         />
       </div>
+
+      <PipelineTour
+        steps={JOB_MANAGEMENT_LIST_STEPS}
+        tourKey="job-management-list"
+        run={run}
+        setRun={setRun}
+        markSeen={markSeen}
+      />
     </div>
   );
 }

@@ -1,7 +1,8 @@
 import "./src/config/env.js"; // must be first
 
-import "./src/bullmq/seek/seek.worker.js"; // ✅ add this
+import "./src/bullmq/seek/seek.worker.js";
 import "./src/bullmq/linkedin/linkedin.worker.js";
+import "./src/bullmq/cv/cv.worker.js";
 
 import express from "express";
 import cors from 'cors';
@@ -49,6 +50,8 @@ import offer from "./src/modules/offer/offer.route.js"
 import onboarding from "./src/modules/onboarding/onboarding.route.js"
 import portalOffer from "./src/modules/portal-offer/portal-offer.route.js"
 import offerTemplate from "./src/modules/offer-template/offer-template.route.js"
+import interviewPack from "./src/modules/interview-pack/interview-pack.route.js"
+import portalInterview from "./src/modules/portal-interview/portal-interview.route.js"
 
 app.use(express.json());
 
@@ -105,6 +108,8 @@ portal.use("/api/offer", offer);
 portal.use("/api/onboarding", onboarding);
 portal.use("/api/portal-offer", portalOffer);
 portal.use("/api/offer-template", offerTemplate);
+portal.use("/api/interview-pack", interviewPack);
+portal.use("/api/portal-interview", portalInterview);
 app.use("/portal", portal);
 app.use("/api/auth", auth);
 app.use("/api/cookies", cookies);
@@ -143,6 +148,8 @@ app.use("/api/offer", offer);
 app.use("/api/onboarding", onboarding);
 app.use("/api/portal-offer", portalOffer);
 app.use("/api/offer-template", offerTemplate);
+app.use("/api/interview-pack", interviewPack);
+app.use("/api/portal-interview", portalInterview);
 
 
 const PORT = process.env.PORT || 3000;

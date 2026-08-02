@@ -11,6 +11,7 @@ router.get('/workboard', interviewController.getWorkboard);
 router.get('/by-candidate/:candidate_id', interviewController.getInterviewByCandidateId);
 
 // Schedule-related routes (must be before /:interview_id)
+router.get( '/:interview_id/pack-outcome', interviewController.getPackOutcome);
 router.get( '/:interview_id/schedules', interviewController.getSchedules);
 router.post('/:interview_id/schedules', interviewController.createSchedule);
 router.get( '/:interview_id/scorecard',interviewController.getScorecard);
@@ -28,6 +29,8 @@ router.get( '/calibration/:job_id', interviewController.getCalibration);
 router.post('/calibration/:job_id/batch', interviewController.batchDecide);
 
 // Job/Prep routes (must be before /:interview_id)
+router.post('/job/:job_id/prep/generate-link', interviewController.generatePackLink);
+router.get('/job/:job_id/packs', interviewController.getPacksByJob);
 router.get('/job/:job_id', interviewController.getInterviewsByJob);
 router.get('/job/:job_id/prep', interviewController.getPrep);
 router.get( '/job/:job_id/decide', interviewController.getDecideByJob);

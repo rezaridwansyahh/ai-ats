@@ -1,6 +1,5 @@
 import jobService from './job.service.js';
 import aiService from '../../shared/services/ai.service.js';
-import { parseFileToText } from '../../shared/utils/file-parser.js';
 
 class JobController {
   async getAll(req, res) {
@@ -106,17 +105,12 @@ class JobController {
       res.setHeader('Cache-Control', 'no-cache');
       res.setHeader('Connection', 'keep-alive');
 
-      let fileText = null;
-
-      if (req.file) {
-        fileText = await parseFileToText(req.file);
-      }
-
       const aiContext = {
         company_id: req.user?.company_id ?? null,
         user_id:    req.user?.user_id    ?? null,
       };
-      for await (const chunk of aiService.generateStream(form, fileText, aiContext)) {
+      // Pass the multer file object directly — generateStream uploads to OpenAI for OCR
+      for await (const chunk of aiService.generateStream(form, req.file || null, aiContext)) {
         res.write(`data: ${JSON.stringify({ text: chunk })}\n\n`);
       }
 
