@@ -1,6 +1,8 @@
 import OfferModel from './offer.model.js';
 import CompensationEngine from '../../shared/services/compensation-engine.js';
 import OfferTemplateModel from '../offer-template/offer-template.model.js';
+import { mergeOfferLetter, htmlToDocxBuffer } from '../../shared/services/document-merge.js';
+import mammoth from 'mammoth';
 
 // import fs from 'fs'; 
 
@@ -470,15 +472,15 @@ class OfferService {
     if (!offer) throw { status: 404, message: 'Offer not found' };
 
     const template = await OfferTemplateModel.getByCompanyId(company_id);
-    if (!template) {
-      return { has_template: false, fields: [], values: {} };
+    if (!template) return { has_template: false, fields: [], values: {} };
+
+    const saved = offer.metadata?.offer_letter_data || {};
+    const values = {};
+    for (const field of template.fields || []) {
+      values[field] = saved[field] || '';
     }
 
-    return {
-      has_template: true,
-      fields: template.fields || [],
-      values: offer.metadata?.offer_letter_data || {},
-    };
+    return { has_template: true, fields: template.fields || [], values };
   }
 
   async saveOfferLetterData(offer_id, data, company_id) {
@@ -487,9 +489,8 @@ class OfferService {
 
     const template = await OfferTemplateModel.getByCompanyId(company_id);
     if (!template) {
-      throw { status: 400, message: 'Upload your company\'s offer letter template in Settings before filling this in' };
+      throw { status: 400, message: "Upload your company's offer letter template in Settings before filling this in" };
     }
-
     if (!data || typeof data !== 'object') {
       throw { status: 400, message: 'Field values are required' };
     }
@@ -505,8 +506,81 @@ class OfferService {
       offer_letter_data: { ...existing, ...cleaned },
     });
 
-    return { offer_letter_data: metadata.offer_letter_data, message: 'Offer letter data saved' };
+    return { offer_letter_data: metadata.offer_letter_data, message: 'Offer letter fields saved' };
   }
+  
+  async generateOfferLetterPreview(offer_id, company_id) {
+    const offer = await OfferModel.getOfferById(offer_id, company_id);
+    if (!offer) throw { status: 404, message: 'Offer not found' };
+
+    const template = await OfferTemplateModel.getByCompanyId(company_id);
+    if (!template) throw { status: 400, message: "Upload your company's offer letter template in Settings first" };
+
+    const saved = offer.metadata?.offer_letter_data || {};
+    const fieldValues = {};
+    for (const field of template.fields || []) {
+      fieldValues[field] = saved[field]?.trim()
+        ? saved[field]
+        : `[${field.replace(/_/g, ' ')} — not filled in]`;
+    }
+
+    let docxBuffer;
+    try {
+      docxBuffer = await mergeOfferLetter({ templatePath: template.file, fieldValues });
+    } catch (err) {
+      throw { status: 400, message: 'Failed to merge template — check the uploaded file is a valid .docx' };
+    }
+
+    const { value: html } = await mammoth.convertToHtml({ buffer: docxBuffer });
+
+    await OfferModel.mergeMetadata(offer_id, {
+      offer_letter_final: { html, edited: false, generated_at: new Date() },
+    });
+
+    return { html, message: 'Offer letter generated from template' };
+  }
+
+  async getOfferLetterFinal(offer_id, company_id) {
+    const offer = await OfferModel.getOfferById(offer_id, company_id);
+    if (!offer) throw { status: 404, message: 'Offer not found' };
+    return offer.metadata?.offer_letter_final || null;
+  }
+
+  async downloadOfferLetterDocx(offer_id, company_id) {
+    const offer = await OfferModel.getOfferById(offer_id, company_id);
+    if (!offer) throw { status: 404, message: 'Offer not found' };
+
+    const final = offer.metadata?.offer_letter_final;
+    if (final?.edited && final?.html) {
+      return htmlToDocxBuffer(final.html);
+    }
+
+    const template = await OfferTemplateModel.getByCompanyId(company_id);
+    if (!template) throw { status: 400, message: 'No template uploaded' };
+
+    const saved = offer.metadata?.offer_letter_data || {};
+    const fieldValues = {};
+    for (const field of template.fields || []) {
+      fieldValues[field] = saved[field]?.trim()
+        ? saved[field]
+        : `[${field.replace(/_/g, ' ')} — not filled in]`;
+    }
+
+    return mergeOfferLetter({ templatePath: template.file, fieldValues });
+  }
+
+  async saveOfferLetterFinal(offer_id, html, company_id) {
+    const offer = await OfferModel.getOfferById(offer_id, company_id);
+    if (!offer) throw { status: 404, message: 'Offer not found' };
+    if (typeof html !== 'string' || !html.trim()) {
+      throw { status: 400, message: 'Letter content is required' };
+    }
+    const metadata = await OfferModel.mergeMetadata(offer_id, {
+      offer_letter_final: { html, edited: true, updated_at: new Date() },
+    });
+    return metadata.offer_letter_final;
+  }
+
 
   /* ---------------------------------------------------------------------
    * Document upload / print —  unused in review section
