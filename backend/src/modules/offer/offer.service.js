@@ -1,10 +1,9 @@
 import OfferModel from './offer.model.js';
 import CompensationEngine from '../../shared/services/compensation-engine.js';
 import OfferTemplateModel from '../offer-template/offer-template.model.js';
-import { mergeOfferLetter, htmlToDocxBuffer } from '../../shared/services/document-merge.js';
+import { mergeOfferLetter, htmlToDocxBuffer, convertHtmlToPdf } from '../../shared/services/document-merge.js';
 import mammoth from 'mammoth';
-
-// import fs from 'fs'; 
+import fs from 'fs'; 
 
 function computeApprovalStatus(steps) {
   if (!steps || steps.length === 0) return 'not_started';
@@ -569,6 +568,18 @@ class OfferService {
     return mergeOfferLetter({ templatePath: template.file, fieldValues });
   }
 
+  async downloadOfferLetterPdf(offer_id, company_id) {
+    const offer = await OfferModel.getOfferById(offer_id, company_id);
+    if (!offer) throw { status: 404, message: 'Offer not found' };
+
+    const final = offer.metadata?.offer_letter_final;
+    if (!final?.html) {
+      throw { status: 400, message: 'Generate the offer letter preview before downloading a PDF' };
+    }
+
+    return convertHtmlToPdf(final.html);
+  }
+
   async saveOfferLetterFinal(offer_id, html, company_id) {
     const offer = await OfferModel.getOfferById(offer_id, company_id);
     if (!offer) throw { status: 404, message: 'Offer not found' };
@@ -581,11 +592,6 @@ class OfferService {
     return metadata.offer_letter_final;
   }
 
-
-  /* ---------------------------------------------------------------------
-   * Document upload / print —  unused in review section
-   * ---------------------------------------------------------------------
-
   async uploadOfferDocument(offer_id, company_id, user_id, file) {
     const offer = await OfferModel.getOfferById(offer_id, company_id);
 
@@ -594,10 +600,9 @@ class OfferService {
       throw { status: 404, message: 'Offer not found' };
     }
 
-    const approvalStatus = offer.metadata?.approval?.status;
-    if (approvalStatus !== 'approved') {
+    if (!offer.metadata?.offer_letter_final) {
       if (file?.path) fs.unlink(file.path, () => {});
-      throw { status: 400, message: 'Offer must clear the approval chain before uploading a document' };
+      throw { status: 400, message: 'Generate the offer letter preview before uploading the finalized document' };
     }
 
     if (!file) {
@@ -621,34 +626,6 @@ class OfferService {
     return { document: doc, message: 'Document uploaded' };
   }
 
-  async markOfferPrinted(offer_id, company_id, user_id) {
-    const offer = await OfferModel.getOfferById(offer_id, company_id);
-    if (!offer) {
-      throw { status: 404, message: 'Offer not found' };
-    }
-
-    const approvalStatus = offer.metadata?.approval?.status;
-    if (approvalStatus !== 'approved') {
-      throw { status: 400, message: 'Offer must clear the approval chain before proceeding' };
-    }
-
-    const existing = await OfferModel.getOfferDocument(offer_id);
-    if (existing?.file) {
-      fs.unlink(existing.file, (err) => {
-        if (err) console.error('Failed to remove previous offer document:', err);
-      });
-    }
-
-    const doc = await OfferModel.upsertOfferDocument({
-      offer_id,
-      file: null,
-      method: 'print',
-      uploaded_by: user_id,
-    });
-
-    return { document: doc, message: 'Marked as printed — proceeding without an uploaded file' };
-  }
-
   async getOfferDocument(offer_id, company_id) {
     const offer = await OfferModel.getOfferById(offer_id, company_id);
     if (!offer) {
@@ -657,7 +634,33 @@ class OfferService {
     return OfferModel.getOfferDocument(offer_id);
   }
 
-  --------------------------------------------------------------------- */
+  // async markOfferPrinted(offer_id, company_id, user_id) {
+  //   const offer = await OfferModel.getOfferById(offer_id, company_id);
+  //   if (!offer) {
+  //     throw { status: 404, message: 'Offer not found' };
+  //   }
+
+  //   const approvalStatus = offer.metadata?.approval?.status;
+  //   if (approvalStatus !== 'approved') {
+  //     throw { status: 400, message: 'Offer must clear the approval chain before proceeding' };
+  //   }
+
+  //   const existing = await OfferModel.getOfferDocument(offer_id);
+  //   if (existing?.file) {
+  //     fs.unlink(existing.file, (err) => {
+  //       if (err) console.error('Failed to remove previous offer document:', err);
+  //     });
+  //   }
+
+  //   const doc = await OfferModel.upsertOfferDocument({
+  //     offer_id,
+  //     file: null,
+  //     method: 'print',
+  //     uploaded_by: user_id,
+  //   });
+
+  //   return { document: doc, message: 'Marked as printed — proceeding without an uploaded file' };
+  // }
 
 }
 

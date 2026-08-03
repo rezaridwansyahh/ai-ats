@@ -5,6 +5,7 @@ import {
   FileText, Pencil, Wallet, Send, FileSignature, Plus, Trash2,
   MessageSquareText, PenLine, ShieldCheck, ThumbsDown, Clock, Circle,
   Copy, Sparkles, RefreshCw, Ban, XCircle, Download, Settings as SettingsIcon,
+  Upload, FileCheck2,
 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -22,7 +23,8 @@ import {
   generateContract, sendContract,
   getOfferLetterFields, saveOfferLetterData,
   generateOfferLetterPreview, getOfferLetterFinal, saveOfferLetterFinal,
-  downloadOfferLetterDocx,
+  downloadOfferLetterDocx, downloadOfferLetterPdf,
+  getOfferDocument, uploadOfferDocument,
 } from '@/api/offer.api';
 import { getOfferTemplate } from '@/api/offer-template.api';
 
@@ -30,7 +32,7 @@ const SUBSTAGES = [
   { key: 'intake',   number: 1, label: 'Intake',   sub: 'slip gaji'                 },
   { key: 'build',    number: 2, label: 'Build',    sub: 'compensation'              },
   { key: 'review',   number: 3, label: 'Review',   sub: 'summary · letter · approval' },
-  { key: 'send',     number: 4, label: 'Send',     sub: 'negotiate'                 },
+  { key: 'send',     number: 4, label: 'Send',     sub: 'document · negotiate'      },
   { key: 'contract', number: 5, label: 'Contract', sub: 'sign'                      },
 ];
 
@@ -1203,11 +1205,12 @@ function TemplateFieldsPart({ offer, setBanner, setError }) {
   );
 }
 
-function OfferLetterSummaryPart({ offer, setBanner, setError }) {
+function OfferLetterSummaryPart({ offer, setOffer, setBanner, setError }) {
   const [html, setHtml] = useState(null);
   const [loading, setLoading] = useState(true);
   const [generating, setGenerating] = useState(false);
   const [downloading, setDownloading] = useState(false);
+  const [downloadingPdf, setDownloadingPdf] = useState(false);
   const [editing, setEditing] = useState(false);
   const [saving, setSaving] = useState(false);
   const editableRef = useRef(null);
@@ -1239,6 +1242,13 @@ function OfferLetterSummaryPart({ offer, setBanner, setError }) {
     try {
       const res = await generateOfferLetterPreview(offer.id);
       setHtml(res.data?.html || '');
+      setOffer((prev) => ({
+        ...prev,
+        metadata: {
+          ...(prev.metadata || {}),
+          offer_letter_final: { html: res.data?.html, edited: false, generated_at: new Date() },
+        },
+      }));
       setBanner({ ok: true, text: 'Offer letter merged from your template.' });
     } catch (err) {
       setError(err.response?.data?.message || err.message || 'Failed to generate offer letter');
@@ -1260,6 +1270,19 @@ function OfferLetterSummaryPart({ offer, setBanner, setError }) {
     }
   };
 
+  const handleDownloadPdf = async () => {
+    setDownloadingPdf(true);
+    setError(null);
+    try {
+      const res = await downloadOfferLetterPdf(offer.id);
+      downloadBlob(res, `offer_letter_${offer.id}.pdf`);
+    } catch (err) {
+      setError(err.response?.data?.message || err.message || 'Failed to download PDF');
+    } finally {
+      setDownloadingPdf(false);
+    }
+  };
+
   const startEdit = () => setEditing(true);
 
   const handleSaveEdit = async () => {
@@ -1269,8 +1292,12 @@ function OfferLetterSummaryPart({ offer, setBanner, setError }) {
     try {
       const res = await saveOfferLetterFinal(offer.id, currentHtml);
       setHtml(res.data?.html || currentHtml);
+      setOffer((prev) => ({
+        ...prev,
+        metadata: { ...(prev.metadata || {}), offer_letter_final: res.data },
+      }));
       setEditing(false);
-      setBanner({ ok: true, text: 'Preview text saved — note the .docx download still reflects the original merge, not this edit.' });
+      setBanner({ ok: true, text: 'Preview text saved — note the downloads still reflect the original merge, not this edit.' });
     } catch (err) {
       setError(err.response?.data?.message || err.message || 'Failed to save edits');
     } finally {
@@ -1339,6 +1366,10 @@ function OfferLetterSummaryPart({ offer, setBanner, setError }) {
                 {downloading ? <Loader2 className="h-3.5 w-3.5 mr-1.5 animate-spin" /> : <Download className="h-3.5 w-3.5 mr-1.5" />}
                 Download .docx
               </Button>
+              <Button size="sm" variant="outline" className="text-xs" onClick={handleDownloadPdf} disabled={downloadingPdf}>
+                {downloadingPdf ? <Loader2 className="h-3.5 w-3.5 mr-1.5 animate-spin" /> : <Download className="h-3.5 w-3.5 mr-1.5" />}
+                Download .pdf
+              </Button>
             </div>
           </>
         )}
@@ -1362,7 +1393,7 @@ function ReviewSection({ offer, offerId, setOffer, setBanner, setError, onAdvanc
         <p className="text-[10px] font-bold tracking-widest uppercase text-muted-foreground mb-2">
           B. Offer letter
         </p>
-        <OfferLetterSummaryPart offer={offer} setBanner={setBanner} setError={setError} />
+        <OfferLetterSummaryPart offer={offer} setOffer={setOffer} setBanner={setBanner} setError={setError} />
       </div>
 
       <div>
@@ -1379,7 +1410,86 @@ function ReviewSection({ offer, offerId, setOffer, setBanner, setError, onAdvanc
   );
 }
 
-/* Send Section — portal-link lifecycle, same shape as BackgroundCheck-Candidate's ConsentSection */
+/* Send Section — document upload gate + portal-link lifecycle */
+
+function OfferDocumentUploadPart({ offer, offerId, hasLetterGenerated, document, setDocument, setBanner, setError }) {
+  const [uploading, setUploading] = useState(false);
+  const fileInputRef = useRef(null);
+
+  const handleFileSelect = async (e) => {
+    const file = e.target.files?.[0];
+    e.target.value = ''; // allow re-selecting the same file
+    if (!file) return;
+
+    setUploading(true);
+    setError(null);
+    try {
+      const formData = new FormData();
+      formData.append('file', file);
+      const res = await uploadOfferDocument(offerId, formData);
+      setDocument(res.data.document);
+      setBanner({ ok: true, text: 'Finalized offer letter uploaded.' });
+    } catch (err) {
+      setError(err.response?.data?.message || err.message || 'Failed to upload document');
+    } finally {
+      setUploading(false);
+    }
+  };
+
+  if (!hasLetterGenerated) return null;
+
+  return (
+    <Card>
+      <CardHeader className="pb-3">
+        <div className="flex items-center gap-2">
+          <Upload className="h-4 w-4 text-primary shrink-0" />
+          <div className="min-w-0 flex-1">
+            <CardTitle className="text-sm">Upload finalized offer letter</CardTitle>
+            <p className="text-[10px] text-muted-foreground mt-0.5">
+              Download from Review, finalize it your side, then upload the signed-off .docx or .pdf here — required before generating a portal link.
+            </p>
+          </div>
+          {document && (
+            <Badge variant="outline" className="text-[9px] shrink-0 border-emerald-300 text-emerald-700 bg-emerald-50">
+              uploaded
+            </Badge>
+          )}
+        </div>
+      </CardHeader>
+      <CardContent className="space-y-2">
+        {document ? (
+          <div className="flex items-center justify-between gap-2 px-3 py-2 rounded-lg border bg-muted/20 text-xs">
+            <span className="flex items-center gap-2 text-muted-foreground truncate">
+              <FileCheck2 className="h-3.5 w-3.5 shrink-0" />
+              {document.file?.split('/').pop() || 'Uploaded file'}
+            </span>
+            <span className="text-[10px] text-muted-foreground shrink-0">{fmtDate(document.uploaded_at)}</span>
+          </div>
+        ) : (
+          <div className="flex items-center gap-2 px-3 py-2 rounded-lg border border-amber-200 bg-amber-50 text-xs text-amber-700">
+            <AlertTriangle className="h-4 w-4 shrink-0" /> No finalized document uploaded yet.
+          </div>
+        )}
+        <input
+          ref={fileInputRef}
+          type="file"
+          accept=".docx,.pdf"
+          className="hidden"
+          onChange={handleFileSelect}
+        />
+        <Button
+          size="sm" variant="outline" className="text-xs"
+          onClick={() => fileInputRef.current?.click()}
+          disabled={uploading}
+        >
+          {uploading
+            ? <><Loader2 className="h-3.5 w-3.5 mr-1.5 animate-spin" /> Uploading…</>
+            : <><Upload className="h-3.5 w-3.5 mr-1.5" /> {document ? 'Replace file' : 'Upload file'}</>}
+        </Button>
+      </CardContent>
+    </Card>
+  );
+}
 
 function GenerateLinkRow({ onGenerate, generating, label = 'Generate link' }) {
   return (
@@ -1465,7 +1575,12 @@ function SendSection({ offer, setOffer, setBanner, setError, onAdvance }) {
   const [responseMsg, setResponseMsg] = useState('');
   const [responseType, setResponseType] = useState('accept');
 
+  const [document, setDocument] = useState(null);
+  const [loadingDocument, setLoadingDocument] = useState(true);
+
   const isApproved = offer.metadata?.approval?.status === 'approved';
+  const hasLetterGenerated = offer.metadata?.offer_letter_final != null;
+  const hasDocument = !!document;
 
   const loadHistory = useCallback(async () => {
     setLoadingHistory(true);
@@ -1479,7 +1594,20 @@ function SendSection({ offer, setOffer, setBanner, setError, onAdvance }) {
     }
   }, [offer.id]);
 
+  const loadDocument = useCallback(async () => {
+    setLoadingDocument(true);
+    try {
+      const res = await getOfferDocument(offer.id);
+      setDocument(res.data || null);
+    } catch {
+      setDocument(null);
+    } finally {
+      setLoadingDocument(false);
+    }
+  }, [offer.id]);
+
   useEffect(() => { loadHistory(); }, [loadHistory]);
+  useEffect(() => { loadDocument(); }, [loadDocument]);
 
   const latestSend  = history[0] || null;
   const isSigned    = latestSend?.status === 'signed';
@@ -1558,6 +1686,17 @@ function SendSection({ offer, setOffer, setBanner, setError, onAdvance }) {
   return (
     <div className="space-y-4">
 
+      {/* Document upload — required before a portal link can be generated */}
+      <OfferDocumentUploadPart
+        offer={offer}
+        offerId={offer.id}
+        hasLetterGenerated={hasLetterGenerated}
+        document={document}
+        setDocument={setDocument}
+        setBanner={setBanner}
+        setError={setError}
+      />
+
       {/* Offer letter · portal link — same document-lifecycle pattern as BG Consent card */}
       <Card>
         <CardHeader className="pb-3">
@@ -1583,6 +1722,18 @@ function SendSection({ offer, setOffer, setBanner, setError, onAdvance }) {
           </div>
         </CardHeader>
         <CardContent className="space-y-3">
+
+          {!hasLetterGenerated && (
+            <div className="flex items-center gap-2 px-3 py-2 rounded-lg border border-amber-200 bg-amber-50 text-xs text-amber-700">
+              <AlertTriangle className="h-4 w-4 shrink-0" /> Generate the offer letter in Review before sending.
+            </div>
+          )}
+
+          {hasLetterGenerated && !hasDocument && !latestSend && !loadingDocument && (
+            <div className="flex items-center gap-2 px-3 py-2 rounded-lg border border-amber-200 bg-amber-50 text-xs text-amber-700">
+              <AlertTriangle className="h-4 w-4 shrink-0" /> Upload the finalized offer letter above before generating a portal link.
+            </div>
+          )}
 
           {!isApproved && !latestSend && (
             <div className="flex items-center gap-2 px-3 py-2 rounded-lg border border-amber-200 bg-amber-50 text-xs text-amber-700">
@@ -1620,7 +1771,7 @@ function SendSection({ offer, setOffer, setBanner, setError, onAdvance }) {
               onRevoke={() => { setShowRevoke(true); setRevokeReason(''); }}
               generating={regenerating}
             />
-          ) : isApproved ? (
+          ) : isApproved && hasDocument ? (
             <GenerateLinkRow
               onGenerate={handleGenerate}
               generating={sending}

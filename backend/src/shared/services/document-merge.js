@@ -3,6 +3,7 @@ import JSZip from 'jszip';
 import PizZip from 'pizzip';
 import Docxtemplater from 'docxtemplater';
 import HTMLtoDOCX from 'html-to-docx';
+import puppeteer from 'puppeteer';
 
 export function flattenMergeFields(xml) {
   const runRegex = /<w:r\b[^>]*>[\s\S]*?<\/w:r>/g;
@@ -127,4 +128,34 @@ export async function mergeOfferLetter({ templatePath, fieldValues }) {
 export async function htmlToDocxBuffer(html) {
   const buffer = await HTMLtoDOCX(html, null, { table: { row: { cantSplit: true } } });
   return finalizeDocxBuffer(buffer);
+}
+
+export async function convertHtmlToPdf(html) {
+  const browser = await puppeteer.launch({
+    headless: 'new',
+    args: ['--no-sandbox', '--disable-setuid-sandbox'],
+  });
+  try {
+    const page = await browser.newPage();
+    const wrapped = `
+      <html>
+        <head>
+          <meta charset="utf-8" />
+          <style>
+            body { font-family: 'Times New Roman', serif; font-size: 12pt; line-height: 1.5; padding: 0 8mm; }
+          </style>
+        </head>
+        <body>${html}</body>
+      </html>
+    `;
+    await page.setContent(wrapped, { waitUntil: 'networkidle0' });
+    const pdfBuffer = await page.pdf({
+      format: 'A4',
+      printBackground: true,
+      margin: { top: '20mm', bottom: '20mm', left: '15mm', right: '15mm' },
+    });
+    return pdfBuffer;
+  } finally {
+    await browser.close();
+  }
 }

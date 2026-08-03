@@ -96,3 +96,9 @@ export const getOfferLetterFinal = (offerId) => api.get(`/offer/${offerId}/offer
 export const downloadOfferLetterDocx = (offerId) => api.get(`/offer/${offerId}/offer-letter/download/docx`, { responseType: 'blob' });
 
 export const saveOfferLetterFinal = (offerId, html) => api.put(`/offer/${offerId}/offer-letter/final`, { html });
+
+export const downloadOfferLetterPdf = (offerId) => api.get(`/offer/${offerId}/offer-letter/download/pdf`, { responseType: 'blob' });
+
+export const getOfferDocument = (offerId) => api.get(`/offer/${offerId}/document`);
+
+export const uploadOfferDocument = (offerId, formData) => api.post(`/offer/${offerId}/document/upload`, formData, {  headers: { 'Content-Type': 'multipart/form-data' }, });
