@@ -3,6 +3,8 @@ import jobModel from '../job/job.model.js';
 import aiService from '../../shared/services/ai.service.js';
 import interviewPackService from '../interview-pack/interview-pack.service.js';
 import interviewPackModel from '../interview-pack/interview-pack.model.js';
+import candidatePipelineService from '../candidate-pipeline/candidate-pipeline.service.js';
+import getDb from '../../config/postgres.js';
 
 const DEFAULT_RUBRIC_ITEMS = [
   { competency_code: 'HRD-01', competency_name: 'Leadership',                           weight: 1 },
@@ -427,7 +429,39 @@ class InterviewService {
         if (!validRejectReasons.includes(d.reject_reason)) throw { status: 400, message: `invalid reject_reason: ${d.reject_reason}` };
       }
     }
-    return await interviewModel.bulkDecide(job_id, decisions, decided_by);
+    const result = await interviewModel.bulkDecide(job_id, decisions, decided_by);
+
+    // For every candidate marked 'advanced', advance their pipeline stage.
+    // This moves latest_stage → next stage (Background Check) and auto-creates
+    // the candidate_bg row via the side-effect in candidatePipelineService.addStage.
+    const advancedIds = decisions
+      .filter((d) => d.decision === 'advanced')
+      .map((d) => d.candidateInterviewId);
+
+    if (advancedIds.length > 0) {
+      const rows = await getDb().query(
+        `SELECT ci.id, ci.candidate_id
+           FROM candidate_interview ci
+          WHERE ci.id = ANY($1::int[])`,
+        [advancedIds]
+      );
+      for (const row of rows.rows) {
+        const cand = await getDb().query(
+          `SELECT latest_stage FROM master_candidate WHERE id = $1`,
+          [row.candidate_id]
+        );
+        const latestStage = cand.rows[0]?.latest_stage;
+        if (latestStage) {
+          candidatePipelineService.addStage(row.candidate_id, latestStage, 'advanced')
+            .catch((err) => console.error(
+              `Failed to advance pipeline for candidate ${row.candidate_id}:`,
+              err?.message || err
+            ));
+        }
+      }
+    }
+
+    return result;
   }
 
   async resetDecision(job_id, candidateInterviewId, { company_id = null } = {}) {
