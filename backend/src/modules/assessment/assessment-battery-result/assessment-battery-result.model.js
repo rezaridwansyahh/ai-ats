@@ -28,7 +28,7 @@ const RESULT_SELECT = `
          map.name AS assessment_name
   FROM core_applicant_assessment caa
   JOIN master_candidate mc ON mc.id = caa.candidate_id
-  JOIN master_applicant map ON map.id = mc.id
+  LEFT JOIN master_applicant map ON map.id = mc.applicant_id
   LEFT JOIN master_assessment ma ON ma.id = caa.assessment_id
 `;
 
