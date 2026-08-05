@@ -1,6 +1,10 @@
 import interviewModel from './interview.model.js';
 import jobModel from '../job/job.model.js';
 import aiService from '../../shared/services/ai.service.js';
+import interviewPackService from '../interview-pack/interview-pack.service.js';
+import interviewPackModel from '../interview-pack/interview-pack.model.js';
+import candidatePipelineService from '../candidate-pipeline/candidate-pipeline.service.js';
+import getDb from '../../config/postgres.js';
 
 const DEFAULT_RUBRIC_ITEMS = [
   { competency_code: 'HRD-01', competency_name: 'Leadership',                           weight: 1 },
@@ -425,7 +429,39 @@ class InterviewService {
         if (!validRejectReasons.includes(d.reject_reason)) throw { status: 400, message: `invalid reject_reason: ${d.reject_reason}` };
       }
     }
-    return await interviewModel.bulkDecide(job_id, decisions, decided_by);
+    const result = await interviewModel.bulkDecide(job_id, decisions, decided_by);
+
+    // For every candidate marked 'advanced', advance their pipeline stage.
+    // This moves latest_stage → next stage (Background Check) and auto-creates
+    // the candidate_bg row via the side-effect in candidatePipelineService.addStage.
+    const advancedIds = decisions
+      .filter((d) => d.decision === 'advanced')
+      .map((d) => d.candidateInterviewId);
+
+    if (advancedIds.length > 0) {
+      const rows = await getDb().query(
+        `SELECT ci.id, ci.candidate_id
+           FROM candidate_interview ci
+          WHERE ci.id = ANY($1::int[])`,
+        [advancedIds]
+      );
+      for (const row of rows.rows) {
+        const cand = await getDb().query(
+          `SELECT latest_stage FROM master_candidate WHERE id = $1`,
+          [row.candidate_id]
+        );
+        const latestStage = cand.rows[0]?.latest_stage;
+        if (latestStage) {
+          candidatePipelineService.addStage(row.candidate_id, latestStage, 'advanced')
+            .catch((err) => console.error(
+              `Failed to advance pipeline for candidate ${row.candidate_id}:`,
+              err?.message || err
+            ));
+        }
+      }
+    }
+
+    return result;
   }
 
   async resetDecision(job_id, candidateInterviewId, { company_id = null } = {}) {
@@ -496,6 +532,70 @@ class InterviewService {
     });
 
     return await interviewModel.batchRecordDecisions(mapped, company_id);
+  }
+
+  async getInterviewsByJobWithSubStage(job_id, { company_id = null } = {}) {
+    if (!job_id) throw { status: 400, message: 'job_id is required' };
+    return await interviewModel.getInterviewsByJobWithSubStage(job_id);
+  }
+
+  async generatePackLink(job_id, { company_id = null, user_id = null, candidates = [], title = null, interviewer_name = null } = {}) {
+    if (!job_id) throw { status: 400, message: 'job_id is required' };
+    if (!Array.isArray(candidates) || candidates.length === 0) {
+      throw { status: 400, message: 'At least one candidate must be selected.' };
+    }
+    if (!interviewer_name || !String(interviewer_name).trim()) {
+      throw { status: 400, message: 'interviewer_name is required.' };
+    }
+
+    // Validate prep exists with rubric + questions
+    const prep = await interviewModel.getPrepByJob(job_id);
+    if (!prep) throw { status: 400, message: 'Setup not complete. Please configure rubric and questions first.' };
+    if (!prep.rubric_items || prep.rubric_items.length === 0) {
+      throw { status: 400, message: 'Rubric must be configured before generating a link.' };
+    }
+    if (!prep.questions || prep.questions.length === 0) {
+      throw { status: 400, message: 'Questions must be configured before generating a link.' };
+    }
+
+    // Build rubric_snapshot from prep rubric_items
+    const rubric_snapshot = {
+      custom_criteria: prep.rubric_items.map((item) => ({
+        description: item.label || item.competency_code || item.name || String(item),
+        weight: Number(item.weight) || 1,
+      })),
+    };
+
+    const job = await jobModel.getById(job_id);
+
+    const packData = {
+      company_id: company_id || job?.company_id || null,
+      job_id,
+      title: title || `Interview Pack — ${job?.job_title || 'Position'}`,
+      interviewer_name: String(interviewer_name).trim(),
+      rubric_snapshot,
+      candidates: candidates.map((c, i) => ({
+        applicant_id: c.applicant_id,
+        sort_order: c.sort_order ?? i,
+      })),
+    };
+
+    const pack = await interviewPackService.create(packData, user_id);
+
+    return {
+      pack,
+      portal_link: `/interview/${pack.token}`,
+    };
+  }
+
+  async getPacksByJob(job_id, { company_id = null } = {}) {
+    if (!job_id) throw { status: 400, message: 'job_id is required' };
+    return await interviewPackModel.getByJob(job_id);
+  }
+
+  async getPackOutcome(interview_id, { company_id = null } = {}) {
+    if (!interview_id) throw { status: 400, message: 'interview_id is required' };
+    return await interviewModel.getPackOutcomeForInterview(interview_id);
   }
 
   async updateRubric(job_id, rubric_items, { company_id = null } = {}) {

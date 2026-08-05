@@ -3,7 +3,7 @@ import { useNavigate, useParams } from 'react-router-dom';
 import {
   ArrowLeft, Loader2, AlertTriangle, Wand2, RotateCw,
   Lock, Unlock, Plus, X, Pencil, Check, ChevronRight,
-  CalendarCheck, Users, ClipboardList,
+  CalendarCheck, Users, ClipboardList, Link2, Copy,
 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -25,6 +25,8 @@ import {
   updateQuestions,
   updateRubric,
   generateAnchors,
+  generatePackLink,
+  getPacksByJob,
 } from '@/api/interview.api';
 
 const COMPETENCY_CODES = ['HRD-01', 'HRD-02', 'HRD-03', 'HRD-04', 'HRD-05', 'HRD-06'];
@@ -55,6 +57,7 @@ const SECTIONS = [
   { key: 'candidates', label: 'Candidates',  icon: Users },
   { key: 'rubric',     label: 'Rubric',      icon: CalendarCheck },
   { key: 'questions',  label: 'Questions',   icon: ClipboardList },
+  { key: 'link',       label: 'Interview Link', icon: Link2 },
 ];
 
 const NUM_Q_OPTIONS = [3, 5, 6, 8, 10, 12, 15];
@@ -97,6 +100,12 @@ export default function InterviewJobPage() {
 
   const rubricReady = !!prep?.rubric_items?.length &&
     prep.rubric_items.every((it) => it.anchor_1?.trim() && it.anchor_7?.trim());
+
+  // Candidates eligible for a pack: any active interview stage (confirmed session or outcome recorded),
+  // not yet assigned to an open pack, and not already decided.
+  const waitingCandidates = interviews.filter(
+    (i) => ['scheduled', 'interviewed', 'no_show', 'reschedule'].includes(i.status) && !i.pack_id
+  );
 
   const load = useCallback(async () => {
     if (!jobId) return;
@@ -186,7 +195,8 @@ export default function InterviewJobPage() {
       {/* section tabs */}
       <div className="flex gap-1 border-b border-border/60">
         {SECTIONS.map(({ key, label, icon: Icon }) => {
-          const blocked = key === 'questions' && !rubricReady;
+          const blocked = (key === 'questions' && !rubricReady) ||
+                          (key === 'link' && (!prep?.rubric_items?.length || !prep?.questions?.length));
           return (
             <button
               key={key}
@@ -234,6 +244,14 @@ export default function InterviewJobPage() {
           setBanner={setBanner}
           setError={setError}
           hasSubmittedScorecards={interviews.some((i) => i.status === 'done')}
+        />
+      )}
+      {activeSection === 'link' && (
+        <LinkSection
+          jobId={jobId}
+          waitingCandidates={waitingCandidates}
+          setBanner={setBanner}
+          setError={setError}
         />
       )}
     </div>
@@ -795,6 +813,204 @@ function RubricSection({ jobId, prep, setPrep, setBanner, setError, hasSubmitted
           })}
         </CardContent>
       </Card>
+    </div>
+  );
+}
+
+// ── Link Section ──────────────────────────────────────────────────────────────
+
+function LinkSection({ jobId, waitingCandidates = [], setBanner, setError }) {
+  const [packs, setPacks]             = useState([]);
+  const [loadingPacks, setLoadingPacks] = useState(true);
+  const [showForm, setShowForm]       = useState(false);
+  const [generating, setGenerating]   = useState(false);
+  const [copiedId, setCopiedId]       = useState(null);
+
+  const [interviewerName, setInterviewerName] = useState('');
+  const [packTitle, setPackTitle]             = useState('');
+  const [selectedIds, setSelectedIds]         = useState(new Set());
+
+  const loadPacks = useCallback(async () => {
+    setLoadingPacks(true);
+    try {
+      const res = await getPacksByJob(jobId);
+      setPacks(res.data?.packs || []);
+    } catch {
+      setPacks([]);
+    } finally {
+      setLoadingPacks(false);
+    }
+  }, [jobId]);
+
+  useEffect(() => { loadPacks(); }, [loadPacks]);
+
+  function toggleCandidate(applicantId) {
+    setSelectedIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(applicantId)) next.delete(applicantId);
+      else next.add(applicantId);
+      return next;
+    });
+  }
+
+  async function handleGenerate() {
+    if (!interviewerName.trim() || selectedIds.size === 0) return;
+    setGenerating(true);
+    setError(null);
+    try {
+      const candidates = waitingCandidates
+        .filter((c) => selectedIds.has(c.applicant_id))
+        .map((c, i) => ({ applicant_id: c.applicant_id, sort_order: i }));
+      await generatePackLink(jobId, {
+        interviewer_name: interviewerName.trim(),
+        title: packTitle.trim() || undefined,
+        candidates,
+      });
+      setBanner({ ok: true, text: 'Interview pack link created successfully.' });
+      setShowForm(false);
+      setInterviewerName('');
+      setPackTitle('');
+      setSelectedIds(new Set());
+      loadPacks();
+    } catch (err) {
+      setError(err.response?.data?.message || err.message || 'Failed to generate link.');
+    } finally {
+      setGenerating(false);
+    }
+  }
+
+  function copyLink(pack) {
+    const url = `${window.location.origin}/interview/${pack.token}`;
+    navigator.clipboard.writeText(url).then(() => {
+      setCopiedId(pack.id);
+      setTimeout(() => setCopiedId(null), 2000);
+    });
+  }
+
+  return (
+    <div className="space-y-4">
+      <div className="flex items-start justify-between gap-3 flex-wrap">
+        <div>
+          <h3 className="text-sm font-semibold flex items-center gap-2">
+            <Link2 className="h-4 w-4 text-primary" /> Interview Pack Links
+          </h3>
+          <p className="text-xs text-muted-foreground mt-0.5">
+            Generate secure links for interviewers. Each link covers a selected set of candidates.
+          </p>
+        </div>
+        {!showForm && (
+          <Button size="sm" onClick={() => setShowForm(true)} disabled={waitingCandidates.length === 0}>
+            <Plus className="h-3.5 w-3.5 mr-1.5" /> Create Pack Link
+          </Button>
+        )}
+      </div>
+
+      {waitingCandidates.length === 0 && !showForm && (
+        <p className="text-xs text-muted-foreground italic">
+          No candidates available. Candidates appear here once their interview session is confirmed (status: Scheduled or later).
+        </p>
+      )}
+
+      {/* Create form */}
+      {showForm && (
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-sm">New Interview Pack</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <div className="space-y-1.5">
+                <label className="text-xs font-medium">Interviewer Name <span className="text-rose-500">*</span></label>
+                <Input placeholder="e.g. John Smith" value={interviewerName} onChange={(e) => setInterviewerName(e.target.value)} className="h-8 text-xs" />
+              </div>
+              <div className="space-y-1.5">
+                <label className="text-xs font-medium">Pack Title <span className="text-muted-foreground">(optional)</span></label>
+                <Input placeholder="e.g. Round 1 Interview" value={packTitle} onChange={(e) => setPackTitle(e.target.value)} className="h-8 text-xs" />
+              </div>
+            </div>
+
+            <div className="space-y-1.5">
+              <label className="text-xs font-medium">Select Candidates <span className="text-rose-500">*</span></label>
+              {waitingCandidates.length === 0 ? (
+                <p className="text-xs text-muted-foreground italic py-2">No candidates available. Confirm a session in the candidate's Schedule tab first.</p>
+              ) : (
+                <div className="border border-border rounded-lg divide-y divide-border max-h-48 overflow-y-auto">
+                  {waitingCandidates.map((c) => (
+                    <label key={c.applicant_id} className="flex items-center gap-3 px-3 py-2.5 hover:bg-muted/30 cursor-pointer">
+                      <input
+                        type="checkbox"
+                        checked={selectedIds.has(c.applicant_id)}
+                        onChange={() => toggleCandidate(c.applicant_id)}
+                        className="h-4 w-4 rounded border-border"
+                      />
+                      <div className="min-w-0">
+                        <p className="text-xs font-semibold truncate">{c.candidate_name || `Candidate #${c.candidate_id}`}</p>
+                        {c.last_position && <p className="text-[10px] text-muted-foreground truncate">{c.last_position}</p>}
+                      </div>
+                    </label>
+                  ))}
+                </div>
+              )}
+              <p className="text-[10px] text-muted-foreground">{selectedIds.size} of {waitingCandidates.length} selected</p>
+            </div>
+
+            <div className="flex gap-2">
+              <Button size="sm" onClick={handleGenerate} disabled={generating || !interviewerName.trim() || selectedIds.size === 0}>
+                {generating
+                  ? <><Loader2 className="h-3.5 w-3.5 animate-spin mr-1.5" /> Generating…</>
+                  : <><Link2 className="h-3.5 w-3.5 mr-1.5" /> Generate Link</>}
+              </Button>
+              <Button variant="outline" size="sm" onClick={() => setShowForm(false)} disabled={generating}>Cancel</Button>
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Existing packs */}
+      {loadingPacks ? (
+        <div className="flex justify-center py-6"><Loader2 className="h-4 w-4 animate-spin text-muted-foreground" /></div>
+      ) : packs.length === 0 ? (
+        <Card>
+          <CardContent className="py-8 text-center text-xs text-muted-foreground italic">
+            No interview pack links yet. Create one above.
+          </CardContent>
+        </Card>
+      ) : (
+        <div className="space-y-2">
+          {packs.map((pack) => (
+            <Card key={pack.id}>
+              <CardContent className="p-4">
+                <div className="flex items-start justify-between gap-3">
+                  <div className="min-w-0 flex-1">
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <p className="text-sm font-semibold truncate">{pack.title || 'Interview Pack'}</p>
+                      <span className={`inline-flex items-center px-2 py-0.5 rounded-full border text-[10px] font-semibold capitalize ${
+                        pack.status === 'submitted'
+                          ? 'bg-emerald-50 text-emerald-600 border-emerald-200'
+                          : 'bg-blue-50 text-blue-600 border-blue-200'
+                      }`}>
+                        {pack.status || 'open'}
+                      </span>
+                    </div>
+                    <p className="text-xs text-muted-foreground mt-1">
+                      Interviewer: {pack.interviewer_name} · {pack.candidate_count} candidate{pack.candidate_count !== 1 ? 's' : ''}
+                      {pack.scored_count > 0 && ` · ${pack.scored_count} scored`}
+                    </p>
+                    <p className="text-[10px] text-muted-foreground mt-0.5 font-mono truncate">
+                      {window.location.origin}/interview/{pack.token}
+                    </p>
+                  </div>
+                  <Button variant="outline" size="sm" className="shrink-0" onClick={() => copyLink(pack)}>
+                    {copiedId === pack.id
+                      ? <><Check className="h-3.5 w-3.5 mr-1.5 text-emerald-600" /> Copied</>
+                      : <><Copy className="h-3.5 w-3.5 mr-1.5" /> Copy Link</>}
+                  </Button>
+                </div>
+              </CardContent>
+            </Card>
+          ))}
+        </div>
+      )}
     </div>
   );
 }

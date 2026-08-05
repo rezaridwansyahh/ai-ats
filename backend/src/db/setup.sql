@@ -592,6 +592,7 @@ CREATE TABLE interview_position_prep (
   company_id INTEGER REFERENCES core_company(id) ON DELETE CASCADE,
   questions JSONB NOT NULL,
   rubric_items JSONB NOT NULL,
+  pack_token VARCHAR(64) DEFAULT NULL,
   created_by INTEGER REFERENCES master_users(id) ON DELETE SET NULL,
   created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
   updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
@@ -1059,3 +1060,56 @@ CREATE TABLE assessment_sessions(
   created_at TIMESTAMP NOT NULL DEFAULT NOW(),
   updated_at TIMESTAMP NOT NULL DEFAULT NOW()
 );
+
+-- ── Interview Pack ──────────────────────────────────────────────────────────
+DROP TABLE IF EXISTS interview_pack_outcome CASCADE;
+DROP TABLE IF EXISTS interview_pack_candidate CASCADE;
+DROP TABLE IF EXISTS interview_pack CASCADE;
+
+CREATE TABLE interview_pack (
+  id                SERIAL PRIMARY KEY,
+  company_id        INTEGER REFERENCES core_company(id) ON DELETE CASCADE,
+  job_id            INTEGER NOT NULL REFERENCES core_job(id) ON DELETE CASCADE,
+  title             VARCHAR(255) NOT NULL DEFAULT 'Interview Round',
+  batch_code        VARCHAR(50),
+  interviewer_name  VARCHAR(255) NOT NULL,
+  window_start      DATE,
+  window_end        DATE,
+  token             UUID NOT NULL UNIQUE DEFAULT gen_random_uuid(),
+  status            VARCHAR(20) NOT NULL DEFAULT 'open' CHECK (status IN ('open', 'submitted')),
+  rubric_snapshot   JSONB NOT NULL,
+  submitted_at      TIMESTAMP,
+  created_by        INTEGER REFERENCES master_users(id) ON DELETE SET NULL,
+  created_at        TIMESTAMP NOT NULL DEFAULT NOW(),
+  updated_at        TIMESTAMP NOT NULL DEFAULT NOW()
+);
+CREATE INDEX idx_interview_pack_company ON interview_pack(company_id, created_at DESC);
+CREATE INDEX idx_interview_pack_job     ON interview_pack(job_id);
+CREATE INDEX idx_interview_pack_token   ON interview_pack(token);
+
+CREATE TABLE interview_pack_candidate (
+  id              SERIAL PRIMARY KEY,
+  pack_id         INTEGER NOT NULL REFERENCES interview_pack(id) ON DELETE CASCADE,
+  applicant_id    INTEGER NOT NULL REFERENCES master_applicant(id) ON DELETE CASCADE,
+  sort_order      INTEGER NOT NULL DEFAULT 0,
+  interview_date  DATE,
+  interview_time  TIME,
+  created_at      TIMESTAMP NOT NULL DEFAULT NOW(),
+  UNIQUE(pack_id, applicant_id)
+);
+CREATE INDEX idx_ipc_pack ON interview_pack_candidate(pack_id, sort_order);
+
+CREATE TABLE interview_pack_outcome (
+  id               SERIAL PRIMARY KEY,
+  pack_id          INTEGER NOT NULL REFERENCES interview_pack(id) ON DELETE CASCADE,
+  pack_candidate_id INTEGER NOT NULL REFERENCES interview_pack_candidate(id) ON DELETE CASCADE,
+  scores           JSONB DEFAULT '{}',
+  weighted_total   NUMERIC(4,2),
+  recommendation   VARCHAR(10) CHECK (recommendation IN ('advance', 'hold', 'reject')),
+  strengths        TEXT,
+  concerns         TEXT,
+  created_at       TIMESTAMP NOT NULL DEFAULT NOW(),
+  updated_at       TIMESTAMP NOT NULL DEFAULT NOW(),
+  UNIQUE(pack_id, pack_candidate_id)
+);
+CREATE INDEX idx_ipo_pack ON interview_pack_outcome(pack_id);

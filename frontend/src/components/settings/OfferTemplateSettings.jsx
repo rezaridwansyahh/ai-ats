@@ -74,41 +74,61 @@ export default function OfferTemplateSettings() {
   const triggerFilePicker = () => fileInputRef.current?.click();
 
   return (
-    <div className="space-y-4">
-      <div>
-        <h2 className="text-2xl font-bold tracking-tight font-serif">Offer Letter Template</h2>
-        <p className="text-sm text-muted-foreground mt-1 max-w-2xl">
-          Upload your company's offer letter as a Word document with <code className="text-xs bg-muted px-1 py-0.5 rounded">{'<<field>>'}</code>{' '}
-          placeholders (e.g. <code className="text-xs bg-muted px-1 py-0.5 rounded">{'<<name>>'}</code>,{' '}
-          <code className="text-xs bg-muted px-1 py-0.5 rounded">{'<<basic_salary_>>'}</code>). Every field found in the
-          document becomes an input recruiters fill in during Build.
-        </p>
-      </div>
+      <div className="space-y-4">
+    <div>
+      <h2 className="text-2xl font-bold tracking-tight font-serif">Offer Letter Template</h2>
+      <p className="text-sm text-muted-foreground mt-1 max-w-2xl">
+        Upload your company's offer letter as a Word document with <code className="text-xs bg-muted px-1 py-0.5 rounded">{'<<field>>'}</code>{' '}
+        placeholders (e.g. <code className="text-xs bg-muted px-1 py-0.5 rounded">{'<<name>>'}</code>,{' '}
+        <code className="text-xs bg-muted px-1 py-0.5 rounded">{'<<basic_salary_>>'}</code>). Every field found in the
+        document becomes an input recruiters fill in during Build.
+      </p>
+    </div>
 
-      <div className="rounded-lg border border-emerald-200 bg-emerald-50/60 px-4 py-3 text-sm text-emerald-900">
-        <span className="font-semibold">{BANNER.title}</span>{' '}
-        <span className="text-emerald-800">{BANNER.body}</span>
-      </div>
+    <div className="rounded-lg border border-emerald-200 bg-emerald-50/60 px-4 py-3 text-sm text-emerald-900">
+      <span className="font-semibold">{BANNER.title}</span>{' '}
+      <span className="text-emerald-800">{BANNER.body}</span>
+    </div>
 
-      {error && (
-        <div className="flex items-center gap-2 px-4 py-3 rounded-lg border border-red-200 bg-red-50 text-sm text-red-600">
-          <AlertTriangle className="h-4 w-4 shrink-0" /> {error}
+    <Card className="bg-muted/20">
+      <CardHeader className="pb-2">
+        <CardTitle className="text-xs uppercase tracking-wide text-muted-foreground">
+          Placeholder syntax
+        </CardTitle>
+      </CardHeader>
+      <CardContent className="space-y-1.5 text-xs text-muted-foreground">
+        <p>Every placeholder needs <strong>double</strong> angle brackets on both sides:</p>
+        <div className="flex items-center gap-4 font-mono">
+          <span className="text-emerald-700">✓ &lt;&lt;name&gt;&gt;</span>
+          <span className="text-rose-600">✗ &lt;name&gt;&gt;</span>
+          <span className="text-rose-600">✗ &lt;&lt;name&gt;</span>
         </div>
-      )}
+      </CardContent>
+    </Card>
 
-      {banner && (
-        <div className="flex items-center gap-2 px-4 py-3 rounded-lg border border-emerald-200 bg-emerald-50 text-sm text-emerald-700">
-          <Check className="h-4 w-4 shrink-0" /> {banner.text}
-        </div>
-      )}
+    {/* NEW — this was missing entirely */}
+    {error && (
+      <div className="flex items-center gap-2 px-4 py-3 rounded-lg border border-red-200 bg-red-50 text-sm text-red-600">
+        <AlertTriangle className="h-4 w-4 shrink-0" /> {error}
+        <button type="button" onClick={() => setError(null)} className="ml-auto">
+          ×
+        </button>
+      </div>
+    )}
 
-      <input
-        ref={fileInputRef}
-        type="file"
-        accept=".docx"
-        onChange={handleFileSelected}
-        className="hidden"
-      />
+    {banner && (
+      <div className="flex items-center gap-2 px-4 py-3 rounded-lg border border-emerald-200 bg-emerald-50 text-sm text-emerald-700">
+        <Check className="h-4 w-4 shrink-0" /> {banner.text}
+      </div>
+    )}
+
+    <input
+      ref={fileInputRef}
+      type="file"
+      accept=".docx"
+      onChange={handleFileSelected}
+      className="hidden"
+    />
 
       {loading ? (
         <Card>

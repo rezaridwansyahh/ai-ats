@@ -351,7 +351,7 @@ class ScreeningModel {
           CASE
             WHEN ma.information IS NULL THEN 'parse'
             WHEN s.id IS NULL          THEN 'match'
-            WHEN sq is null then 'qa'
+            WHEN sq IS NULL            THEN 'qa'
             ELSE 'ready'
           END AS engine
         FROM master_candidate mc
@@ -361,21 +361,26 @@ class ScreeningModel {
           ON s.applicant_id = mc.applicant_id AND s.job_id = mc.job_id
         LEFT JOIN candidate_screening cs ON cs.candidate_id = mc.id
         LEFT JOIN screening_qa sq ON sq.screening_id = cs.id
-        WHERE cj.company_id = $1 AND mc.applicant_id IS NOT NULL
-      ) 
+        LEFT JOIN job_stage js ON js.id = mc.latest_stage
+        LEFT JOIN recruitment_stage_category rsc ON rsc.id = js.stage_type_id
+        WHERE cj.company_id = $1
+          AND mc.applicant_id IS NOT NULL
+          AND rsc.name = 'Screening & Matching'
+      )
       SELECT
-        cj.id                                   AS job_id,
+        cj.id                                          AS job_id,
         cj.job_title,
         cj.status,
-        COUNT(ce.applicant_id)                  AS total,
-        COUNT(*) FILTER (WHERE ce.engine='parse') AS parse,
-        COUNT(*) FILTER (WHERE ce.engine='match') AS match,
-        COUNT(*) FILTER (WHERE ce.engine='qa') AS qa,
-        COUNT(*) FILTER (WHERE ce.engine='ready') AS ready
+        COUNT(ce.applicant_id)                         AS total,
+        COUNT(*) FILTER (WHERE ce.engine = 'parse')    AS parse,
+        COUNT(*) FILTER (WHERE ce.engine = 'match')    AS match,
+        COUNT(*) FILTER (WHERE ce.engine = 'qa')       AS qa,
+        COUNT(*) FILTER (WHERE ce.engine = 'ready')    AS ready
       FROM core_job cj
       LEFT JOIN candidate_engine ce ON ce.job_id = cj.id
       WHERE cj.company_id = $1 AND cj.status = 'Active'
       GROUP BY cj.id, cj.job_title, cj.status
+      HAVING COUNT(ce.applicant_id) > 0
       ORDER BY cj.id ASC
       `,
       [company_id]
@@ -443,29 +448,33 @@ class ScreeningModel {
       SELECT
         mc.id          AS candidate_id,
         mc.job_id,
-        a.name        AS applicant_name,
+        a.name         AS applicant_name,
         a.last_position,
         a.address,
-        a.date        AS applied_at,
+        a.date         AS applied_at,
         a.information IS NOT NULL AS is_parsed,
-        s.id          AS score_id,
+        s.id           AS score_id,
         s.overall_score,
         s.scored_at,
-        cs.id         AS screening_id,
+        cs.id          AS screening_id,
         cs.decision,
         CASE
-          WHEN a.information IS NULL THEN 'parse'
-          WHEN s.id IS NULL          THEN 'match'
+          WHEN a.information IS NULL    THEN 'parse'
+          WHEN s.id IS NULL             THEN 'match'
           WHEN sq.status != 'responded' THEN 'qa'
-          ELSE                            'ready'
+          ELSE                               'ready'
         END AS engine
       FROM master_candidate mc
-      LEFT JOIN master_applicant a   ON a.id = mc.applicant_id
+      LEFT JOIN master_applicant a ON a.id = mc.applicant_id
       LEFT JOIN candidate_job_score s
         ON s.applicant_id = mc.applicant_id AND s.job_id = mc.job_id
       LEFT JOIN candidate_screening cs ON cs.candidate_id = mc.id
       LEFT JOIN screening_qa sq ON sq.screening_id = cs.id
-      WHERE mc.job_id = $1 AND mc.applicant_id IS NOT NULL
+      LEFT JOIN job_stage js ON js.id = mc.latest_stage
+      LEFT JOIN recruitment_stage_category rsc ON rsc.id = js.stage_type_id
+      WHERE mc.job_id = $1
+        AND mc.applicant_id IS NOT NULL
+        AND rsc.name = 'Screening & Matching'
       ORDER BY mc.created_at DESC
       `,
       [job_id]

@@ -1,6 +1,9 @@
 import CandidatePipeline from './candidate-pipeline.model.js';
 import { sendScreeningEmail } from '../../shared/services/candidate-mailer.js';
 import screeningService from '../screening/screening.service.js';
+import getDb from '../../config/postgres.js';
+import interviewModel from '../interview/interview.model.js';
+import backgroundCheckModel from '../background-check/background-check.model.js';
 
 class CandidatePipelineService {
   async getAll() {
@@ -118,17 +121,41 @@ class CandidatePipelineService {
 
   async addStage(candidate_id, job_stage_id, decision) {
     if (!job_stage_id) throw { status: 400, message: 'job_stage_id is required' };
-    
-    const listStages = await CandidatePipeline.getListStages(candidate_id);
-    const currentStagesIndex = listStages.findIndex(s => s.id === job_stage_id)
-    
-    return await CandidatePipeline.addStage(candidate_id, listStages[currentStagesIndex + 1]?.id ? listStages[currentStagesIndex + 1]?.id : listStages[currentStagesIndex].id, decision)
-    
-    // gatau apaan ini -candra
-    // this.ScreeningEmail(pipeline_id, decision).catch((err) =>
-    //   console.error("Failed to send candidate email:", err.message)
-    // );
 
+    const listStages = await CandidatePipeline.getListStages(candidate_id);
+    const currentStagesIndex = listStages.findIndex(s => s.id === job_stage_id);
+    const nextStageId = listStages[currentStagesIndex + 1]?.id
+      ? listStages[currentStagesIndex + 1].id
+      : listStages[currentStagesIndex].id;
+
+    const result = await CandidatePipeline.addStage(candidate_id, nextStageId, decision);
+
+    // Fire side-effects based on the category of the new stage.
+    // Errors here must not roll back the stage advance itself.
+    try {
+      const catRow = await getDb().query(
+        `SELECT rsc.name AS category
+           FROM job_stage js
+           JOIN recruitment_stage_category rsc ON rsc.id = js.stage_type_id
+          WHERE js.id = $1`,
+        [nextStageId]
+      );
+      const category = catRow.rows[0]?.category || '';
+
+      if (category === 'Interview') {
+        // Ensure a candidate_interview row exists so the candidate is visible
+        // in the interview workboard immediately after advancing.
+        await interviewModel.ensureInterviewForCandidate(candidate_id);
+      } else if (category === 'Background Check') {
+        // Ensure a candidate_bg row exists so the candidate is visible
+        // in the background-check workboard.
+        await backgroundCheckModel.getByCandidateId(candidate_id);
+      }
+    } catch (sideEffectErr) {
+      console.error('addStage side-effect error:', sideEffectErr?.message || sideEffectErr);
+    }
+
+    return result;
   }
 
   async getProgress(candidate_id) {

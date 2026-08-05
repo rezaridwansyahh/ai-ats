@@ -348,7 +348,72 @@ class OfferController {
     }
   }
 
-  /* Document upload / print — unused in review section
+  async generateOfferLetterPreview(req, res) {
+    try {
+      const { offer_id } = req.params;
+      const { company_id } = req.user;
+      const result = await OfferService.generateOfferLetterPreview(offer_id, company_id);
+      res.json(result);
+    } catch (error) {
+      console.error('Error in generateOfferLetterPreview:', error);
+      res.status(error.status || 500).json({ message: error.message });
+    }
+  }
+
+  async getOfferLetterFinal(req, res) {
+    try {
+      const { offer_id } = req.params;
+      const { company_id } = req.user;
+      const result = await OfferService.getOfferLetterFinal(offer_id, company_id);
+      res.json(result);
+    } catch (error) {
+      console.error('Error in getOfferLetterFinal:', error);
+      res.status(error.status || 500).json({ message: error.message });
+    }
+  }
+
+  async downloadOfferLetterDocx(req, res) {
+    try {
+      const { offer_id } = req.params;
+      const { company_id } = req.user;
+      const buffer = await OfferService.downloadOfferLetterDocx(offer_id, company_id);
+      res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document');
+      res.setHeader('Content-Disposition', `attachment; filename="offer_letter_${offer_id}.docx"`);
+      res.send(buffer);
+    } catch (error) {
+      console.error('Error in downloadOfferLetterDocx:', error);
+      res.status(error.status || 500).json({ message: error.message });
+    }
+  }
+
+  async saveOfferLetterFinal(req, res) {
+    try {
+      const { offer_id } = req.params;
+      const { company_id } = req.user;
+      const { html } = req.body;
+      const result = await OfferService.saveOfferLetterFinal(offer_id, html, company_id);
+      res.json(result);
+    } catch (error) {
+      console.error('Error in saveOfferLetterFinal:', error);
+      res.status(error.status || 500).json({ message: error.message });
+    }
+  }
+
+  async downloadOfferLetterPdf(req, res) {
+    try {
+      const { offer_id } = req.params;
+      const { company_id } = req.user;
+      const buffer = await OfferService.downloadOfferLetterPdf(offer_id, company_id);
+      res.setHeader('Content-Type', 'application/pdf');
+      res.setHeader('Content-Disposition', `attachment; filename="offer_letter_${offer_id}.pdf"`);
+      res.send(buffer);
+    } catch (error) {
+      console.error('Error in downloadOfferLetterPdf:', error);
+      res.status(error.status || 500).json({ message: error.message });
+    }
+  }
+
+
 
   async uploadDocument(req, res) {
     try {
@@ -358,18 +423,6 @@ class OfferController {
       res.status(201).json(result);
     } catch (error) {
       console.error('Error in uploadDocument:', error);
-      res.status(error.status || 500).json({ message: error.message });
-    }
-  }
-
-  async markOfferPrinted(req, res) {
-    try {
-      const { offer_id } = req.params;
-      const { company_id, user_id } = req.user;
-      const result = await OfferService.markOfferPrinted(offer_id, company_id, user_id);
-      res.status(201).json(result);
-    } catch (error) {
-      console.error('Error in markOfferPrinted:', error);
       res.status(error.status || 500).json({ message: error.message });
     }
   }
@@ -386,7 +439,18 @@ class OfferController {
     }
   }
 
-  ---- end commented block ---- */
+  // async markOfferPrinted(req, res) {
+  //   try {
+  //     const { offer_id } = req.params;
+  //     const { company_id, user_id } = req.user;
+  //     const result = await OfferService.markOfferPrinted(offer_id, company_id, user_id);
+  //     res.status(201).json(result);
+  //   } catch (error) {
+  //     console.error('Error in markOfferPrinted:', error);
+  //     res.status(error.status || 500).json({ message: error.message });
+  //   }
+  // }
+
 }
 
 export default new OfferController();

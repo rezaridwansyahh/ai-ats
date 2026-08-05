@@ -55,6 +55,8 @@ import ReportsPage from "./pages/Reports"
 import { EndToEndTourProvider } from '@/components/tours/EndToEndTour';
 import { Toaster } from '@/components/ui/sonner';
 import MedicalAssessmentPage from "./pages/MedicalAssessment"
+import InterviewPacksPage from "./pages/InterviewPacksPage"
+import InterviewPackPortal from "./pages/portal/InterviewPackPortal"
 
 function App() {
   return (
@@ -70,6 +72,7 @@ function App() {
         <Route path="/qa/:token" element={<QAFollowUpPage />} />
         <Route path="/bg/consent/:token" element={<BackgroundCheckConsentPage />} />
         <Route path="/offer/send/:token" element={<OfferSendPage />} />
+        <Route path="/interview/:token" element={<InterviewPackPortal />} />
 
         {/* All authenticated routes share DashboardLayout */}
         <Route element={<DashboardLayout />}>
@@ -101,6 +104,7 @@ function App() {
           <Route path="/selection/interview/job/:jobId" element={<InterviewJobPage/>} />
           <Route path="/selection/interview/candidate/:candidateId" element={<InterviewCandidatePage />} />
           <Route path="/selection/interview/calibration/:jobId" element={<InterviewCalibration />} />
+          <Route path="/selection/interview-pack" element={<InterviewPacksPage />} />
 
         
         <Route path="/selection/background-check" element={<BackgroundCheckPage />} />

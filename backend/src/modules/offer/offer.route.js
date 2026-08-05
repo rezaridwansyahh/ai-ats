@@ -161,12 +161,16 @@ router.get( '/:offer_id/offer-letter/fields', authToken, checkPermission('Offer 
 
 router.put( '/:offer_id/offer-letter/data', authToken, checkPermission('Offer & Onboard', 'Offer & Contract', 'update'), OfferController.saveOfferLetterData);
 
-/*
+router.get('/:offer_id/offer-letter/final', authToken, checkPermission('Offer & Onboard', 'Offer & Contract', 'read'), OfferController.getOfferLetterFinal);
+router.get('/:offer_id/offer-letter/download/docx', authToken, checkPermission('Offer & Onboard', 'Offer & Contract', 'read'), OfferController.downloadOfferLetterDocx);
+router.get('/:offer_id/offer-letter/download/pdf', authToken, checkPermission('Offer & Onboard', 'Offer & Contract', 'read'), OfferController.downloadOfferLetterPdf);
+
+router.post('/:offer_id/offer-letter/preview', authToken, checkPermission('Offer & Onboard', 'Offer & Contract', 'update'), OfferController.generateOfferLetterPreview);
+router.put('/:offer_id/offer-letter/final', authToken, checkPermission('Offer & Onboard', 'Offer & Contract', 'update'), OfferController.saveOfferLetterFinal);
+
 router.get( '/:offer_id/document', authToken, checkPermission('Offer & Onboard', 'Offer & Contract', 'read'), OfferController.getOfferDocument);
 
 router.post( '/:offer_id/document/upload', authToken, checkPermission('Offer & Onboard', 'Offer & Contract', 'update'), upload.single('file'), OfferController.uploadDocument);
-router.post( '/:offer_id/document/print', authToken, checkPermission('Offer & Onboard', 'Offer & Contract', 'update'), OfferController.markOfferPrinted);
-*/
-
+// router.post( '/:offer_id/document/print', authToken, checkPermission('Offer & Onboard', 'Offer & Contract', 'update'), OfferController.markOfferPrinted);
 
 export default router;

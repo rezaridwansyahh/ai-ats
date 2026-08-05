@@ -1,8 +1,11 @@
 import fs from 'fs';
 import JSZip from 'jszip';
+import PizZip from 'pizzip';
+import Docxtemplater from 'docxtemplater';
 import OfferTemplateModel from './offer-template.model.js';
+import { flattenMergeFields } from '../../shared/services/document-merge.js';
 
-async function extractFields(filePath) {
+async function getFlattenedText(filePath) {
   const buffer = fs.readFileSync(filePath);
   const zip = await JSZip.loadAsync(buffer);
   const documentXml = await zip.file('word/document.xml')?.async('string');
@@ -11,21 +14,46 @@ async function extractFields(filePath) {
     throw { status: 400, message: 'Could not read document.xml from the uploaded .docx file' };
   }
 
-  const mergeFieldMatches = [...documentXml.matchAll(/MERGEFIELD\s+([^\s"<\\]+)/g)];
-  const mergeFields = mergeFieldMatches.map((m) => m[1].trim());
+  return flattenMergeFields(documentXml);
+}
 
-  const textOnly = documentXml
+async function extractFields(flattenedXml) {
+  const textOnly = flattenedXml
     .replace(/<[^>]+>/g, '')
     .replace(/&amp;/g, '&')
     .replace(/&lt;/g, '<')
     .replace(/&gt;/g, '>');
 
-  const literalMatches = [...textOnly.matchAll(/<<\s*([^<>]+?)\s*>>/g)];
-  const literalFields = literalMatches.map((m) => m[1].trim());
+  const matches = [...textOnly.matchAll(/<<\s*([^<>]+?)\s*>>/g)];
+  return [...new Set(matches.map((m) => m[1].trim()))];
+}
 
-  const fields = [...new Set([...mergeFields, ...literalFields])];
+function validateTemplateSyntax(flattenedXml) {
+  const zip = new PizZip();
+  zip.file('word/document.xml', flattenedXml);
+  zip.file('[Content_Types].xml',
+    '<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types"><Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/><Default Extension="xml" ContentType="application/xml"/><Override PartName="/word/document.xml" ContentType="application/vnd.openxmlformats-officedocument.wordprocessingml.document.main+xml"/></Types>'
+  );
 
-  return fields;
+  try {
+    new Docxtemplater(zip, {
+      delimiters: { start: '<<', end: '>>' },
+      paragraphLoop: true,
+      linebreaks: true,
+    });
+    return null;
+  } catch (err) {
+    const rawErrors = err.properties?.errors || [err];
+    return rawErrors.map((e) => {
+      const props = e.properties || {};
+      const decode = (s) => s?.replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/&amp;/g, '&');
+
+      return {
+        message: decode(props.explanation) || e.message, 
+        near: decode(props.context),
+      };
+    });
+  }
 }
 
 class OfferTemplateService {
@@ -38,17 +66,31 @@ class OfferTemplateService {
       throw { status: 400, message: 'No file received' };
     }
 
-    let fields;
+    let flattenedXml;
     try {
-      fields = await extractFields(file.path);
+      flattenedXml = await getFlattenedText(file.path);
     } catch (err) {
       fs.unlink(file.path, () => {});
       throw err.status ? err : { status: 400, message: 'Failed to read the uploaded template' };
     }
 
+    const fields = await extractFields(flattenedXml);
+
     if (fields.length === 0) {
       fs.unlink(file.path, () => {});
-      throw { status: 400, message: 'No <<field>> placeholders were found in this template' };
+      throw { status: 400, message: 'No <<field>> or merge-field placeholders were found in this template' };
+    }
+
+    const syntaxErrors = validateTemplateSyntax(flattenedXml);
+    if (syntaxErrors) {
+      fs.unlink(file.path, () => {});
+      const detail = syntaxErrors
+        .map((e) => (e.near ? `${e.message} (look for "${e.near}" in your document)` : e.message))
+        .join('; ');
+      throw {
+        status: 400,
+        message: `Template has a tag problem: ${detail}. Every placeholder needs matching << and >> — e.g. <<name>>, not <name>> or <<name>.`,
+      };
     }
 
     const existing = await OfferTemplateModel.getByCompanyId(company_id);
@@ -58,6 +100,8 @@ class OfferTemplateService {
       });
     }
 
+    // The file saved to disk is the ORIGINAL upload, untouched — flattening
+    // only ever happens in-memory, for detection here and for merge later.
     const template = await OfferTemplateModel.upsert({
       company_id,
       file: file.path,
