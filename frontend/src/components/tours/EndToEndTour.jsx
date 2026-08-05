@@ -111,9 +111,9 @@ export function EndToEndTourProvider({ children }) {
                 styles={{
                     tooltip: { borderRadius: 12, fontSize: 13, padding: 16 },
                     tooltipTitle: { fontSize: 14, fontWeight: 700},
-                    buttonPrimary: { backgroundColor: '#0f766e', borderRadius: 8, fontSize: 12, padding: '8px-14px' },
-                    buttonBack:{ fontSize: 12, color: '#6b7280'},
-                    buttonSkip: { fontSize: 12, color: '#6b7280'}
+                    buttonPrimary: { backgroundColor: '#0f766e', borderRadius: 8, fontSize: 12, padding: '8px 14px', outline: 'none' },
+                    buttonBack:{ fontSize: 12, color: '#6b7280', outline: 'none'},
+                    buttonSkip: { fontSize: 12, color: '#6b7280', outline: 'none'},
                 }}
               />  
             )}
