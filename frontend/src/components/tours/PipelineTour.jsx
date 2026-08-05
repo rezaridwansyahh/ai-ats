@@ -93,7 +93,6 @@ export default function PipelineTour({ steps, tourKey, run, setRun, markSeen }) 
           fontSize: 12,
           padding: '8px 14px',
           outline: 'none',
-          boxShadow: '0 0 0 2px rgba(15, 118, 110, 0.3)',
         },
         buttonBack: {
           fontSize: 12,

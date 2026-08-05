@@ -86,7 +86,8 @@ class CandidatePipelineController {
 
   async addStage(req, res) {
     try {
-      const result = await candidatePipelineService.addStage(req.params.id, req.body);
+      const { job_stage_id, decision } = req.body;
+      const result = await candidatePipelineService.addStage(req.params.id, job_stage_id, decision);
       res.status(201).json({ message: 'Stage recorded', ...result });
     } catch (err) {
       res.status(err.status || 500).json({ message: err.message });

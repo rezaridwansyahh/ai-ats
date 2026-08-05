@@ -11,6 +11,8 @@ import {
 } from '@/components/ui/table';
 import { uploadCv, getUploadHistory } from '@/api/sourcing.api';
 
+import CvUploadWizard, { useCvUploadWizard } from '@/components/tours/CvUploadWizard';
+
 // ── Status badge config ────────────────────────────────────────────────────
 const STATUS_CONFIG = {
   Processing: {
@@ -51,10 +53,16 @@ export default function CvUploadCard() {
   const [history, setHistory]         = useState([]);
   const [historyLoading, setHistoryLoading] = useState(true);
 
-  // Success modal
+  // Success modal — successData persists (used by the wizard as "upload
+  // succeeded" context), modalOpen controls the Dialog's visibility so we
+  // can tell when the user has actually dismissed it and the history panel
+  // underneath is visible again.
   const [successData, setSuccessData] = useState(null);
+  const [modalOpen, setModalOpen] = useState(false);
 
   const fileInputRef = useRef(null);
+
+  const { run: wizardRun, setRun: setWizardRun, markSeen: markWizardSeen } = useCvUploadWizard();
 
   // ── Fetch history from DB on mount ───────────────────────────────────────
   const fetchHistory = useCallback(async () => {
@@ -123,6 +131,7 @@ export default function CvUploadCard() {
         isZip:         capturedFile.name.toLowerCase().endsWith('.zip'),
         filename:      capturedFile.name,
       });
+      setModalOpen(true);
     } catch (err) {
       const msg = err.response?.data?.message || err.message || 'Upload failed.';
       setFileError(msg);
@@ -135,12 +144,15 @@ export default function CvUploadCard() {
 
   // ── Modal actions ─────────────────────────────────────────────────────────
   const handleReload = () => window.location.reload();
+  // Dismiss without reloading — history is already fresh from fetchHistory()
+  // above, this just reveals it so the wizard's history step can be seen.
+  const handleDismissModal = () => setModalOpen(false);
 
   // ── Render ────────────────────────────────────────────────────────────────
   return (
     <>
       {/* ── Success Modal ── */}
-      <Dialog open={!!successData}>
+      <Dialog open={modalOpen}>
         <DialogContent className="max-w-sm">
           <DialogHeader>
             <div className="flex flex-col items-center gap-3 pt-2 pb-1">
@@ -169,9 +181,12 @@ export default function CvUploadCard() {
             </p>
           </div>
 
-          <DialogFooter className="sm:justify-center">
+          <DialogFooter className="sm:justify-center gap-2">
+            <Button size="sm" variant="outline" className="text-xs px-4" onClick={handleDismissModal}>
+              Keep working
+            </Button>
             <Button size="sm" className="text-xs px-6" onClick={handleReload}>
-              Yes
+              Reload
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -195,6 +210,7 @@ export default function CvUploadCard() {
             {/* ── Left: drop zone + button ── */}
             <div className="flex flex-col gap-3">
               <div
+                data-wizard="cv-dropzone"
                 className={`
                   relative flex flex-col items-center justify-center border-2 border-dashed
                   rounded-lg p-6 cursor-pointer transition-colors min-h-[150px]
@@ -253,6 +269,7 @@ export default function CvUploadCard() {
               )}
 
               <Button
+                data-wizard="cv-upload-btn"
                 size="sm"
                 className="text-xs w-fit"
                 disabled={!file || uploading}
@@ -273,7 +290,7 @@ export default function CvUploadCard() {
             </div>
 
             {/* ── Right: persistent upload history from DB ── */}
-            <div className="flex flex-col">
+            <div className="flex flex-col" data-wizard="cv-history">
               <div className="flex items-center justify-between mb-2">
                 <p className="text-[11px] font-semibold text-muted-foreground">Upload History</p>
                 <button
@@ -369,6 +386,15 @@ export default function CvUploadCard() {
           </div>
         </CardContent>
       </Card>
+
+      <CvUploadWizard
+        file={file}
+        successData={successData}
+        historyVisible={!!successData && !modalOpen}
+        run={wizardRun}
+        setRun={setWizardRun}
+        markSeen={markWizardSeen}
+      />
     </>
   );
 }

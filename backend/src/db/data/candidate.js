@@ -203,4 +203,10 @@ export default [
     },
     date: '2026-04-07 14:20:00', attachment: null, latest_stage: 10,
   },
+  {
+    id: 25, job_id: 2, applicant_id: 20, name: 'email-tester 3', last_position: 'Apapun Gas',
+    address: 'Indonesia', education: "Bachelor's in Information Technology",
+    information: { years_experience: 10, skills: ['Node.js', 'Express'] },
+    date: '2026-03-19 12:50:00', attachment: null, latest_stage: 7,
+  },
 ];

@@ -258,47 +258,27 @@ export default function InterviewWorkboard() {
                           type="button"
                           onClick={() => setActiveJob(p)}
                           className={[
-                            'w-full flex flex-col gap-1.5 px-3 py-2.5 rounded-md text-xs pr-8',
+                            'w-full flex items-center gap-1.5 px-3 py-2.5 rounded-md text-xs pr-8 min-w-0',
                             isActive
                               ? 'bg-primary/10 text-primary'
                               : 'text-muted-foreground hover:bg-muted/60 text-foreground',
                           ].join(' ')}
                         >
-                          {/* Title row */}
-                          <span className="flex items-center gap-1.5 min-w-0">
-                            {/* Prep status dot */}
-                            <span
-                              className={`shrink-0 h-1.5 w-1.5 rounded-full ${
-                                p.prep_ready ? 'bg-emerald-500' : 'bg-amber-400'
-                              }`}
-                              title={p.prep_ready ? 'Pack ready' : 'Setup incomplete'}
-                            />
-                            <span className="truncate font-semibold">{p.job_title}</span>
-                            {p.status && (
-                              <Badge
-                                variant="outline"
-                                className={`text-[8px] uppercase tracking-wide shrink-0 ${jobStatusTone(p.status)}`}
-                              >
-                                {p.status}
-                              </Badge>
-                            )}
-                          </span>
-                          {/* Sub-stage mini pills */}
-                          <span className="flex items-center gap-1 flex-wrap">
-                            {[
-                              { key: 'schedule', color: 'bg-violet-100 text-violet-700' },
-                              { key: 'result',   color: 'bg-amber-100 text-amber-700' },
-                              { key: 'decide',   color: 'bg-emerald-100 text-emerald-700' },
-                            ].map(({ key, color }) => (
-                              <span
-                                key={key}
-                                className={`inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded text-[9px] font-semibold ${color}`}
-                              >
-                                <span className="font-mono">{counts[key] || 0}</span>
-                                <span className="capitalize">{key.slice(0, 3)}</span>
-                              </span>
-                            ))}
-                          </span>
+                          <span
+                            className={`shrink-0 h-1.5 w-1.5 rounded-full ${
+                              p.prep_ready ? 'bg-emerald-500' : 'bg-amber-400'
+                            }`}
+                            title={p.prep_ready ? 'Pack ready' : 'Setup incomplete'}
+                          />
+                          <span className="truncate font-semibold">{p.job_title}</span>
+                          {p.status && (
+                            <Badge
+                              variant="outline"
+                              className={`text-[8px] uppercase tracking-wide shrink-0 ${jobStatusTone(p.status)}`}
+                            >
+                              {p.status}
+                            </Badge>
+                          )}
                         </button>
 
                         {/* Gear icon — navigates to job setup page */}

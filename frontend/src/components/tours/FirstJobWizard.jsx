@@ -1,8 +1,8 @@
-import { useEffect, useRef, useState, useCallback } from "react";
-import { Joyride, STATUS } from "react-joyride";
+import { useEffect, useRef, useState, useCallback } from 'react';
+import { Joyride, STATUS } from 'react-joyride';
 import { Sparkles, X } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
-import { Button } from "@/components/ui/button";
+import { Button } from '@/components/ui/button';
 
 /**
  * FirstJobWizard
@@ -29,26 +29,191 @@ import { Button } from "@/components/ui/button";
 const STORAGE_KEY = 'myralix.tour.seen.first-job-wizard';
 
 const STEPS = [
-    {
-        target: '[data-wizard="job-title"]',
-        title: "Let's create your first job",
-        content: 'Start by typing a job title. We\u2019ll save your draft automatically as you go.',
-        placement: 'bottom',
-        isDone: (ctx) => !!ctx.form?.job_title?.trim(),
-    },
-    {
-        target: '[data-wizards="basics-card"]',
-        title: 'Fill in the basics',
-        content: 'Company, location, work type, seniority, and pay range \u2014 fill these in below. We\u2019ll move on automatically once they\u2019re all set.',
-        placement: 'right',
-        onEnter: (helpers) => helpers.setStep(0),
-        isDone: (ctx) => ctx.missingRequiredBasics.length === 0 && ctx.invalidUrlFields.length === 0,
-    },
-    {
-        target: '[data-wizards="jd-card"]',
-        title: 'Describe the role',
-        content: 'Write a short summary, list responsibilities, and add at least one required skill. Try AI Generate for a head start.',
-        placement: 'right',
-        onEnter: (helpers)
+  {
+    target: '[data-wizard="job-title"]',
+    title: "Let's create your first job",
+    content: 'Start by typing a job title. We\u2019ll save your draft automatically as you go.',
+    placement: 'bottom',
+    isDone: (ctx) => !!ctx.form?.job_title?.trim(),
+  },
+  {
+    target: '[data-wizard="basics-card"]',
+    title: 'Fill in the basics',
+    content: 'Company, location, work type, seniority, and pay range \u2014 fill these in below. We\u2019ll move on automatically once they\u2019re all set.',
+    placement: 'right',
+    onEnter: (helpers) => helpers.setStep(0),
+    isDone: (ctx) => ctx.missingRequiredBasics.length === 0 && ctx.invalidUrlFields.length === 0,
+  },
+  {
+    target: '[data-wizard="jd-card"]',
+    title: 'Describe the role',
+    content: 'Write a short summary, list responsibilities, and add at least one required skill. Try AI Generate for a head start.',
+    placement: 'right',
+    onEnter: (helpers) => helpers.setStep(1),
+    isDone: (ctx) => ctx.missingRequiredJD.length === 0,
+  },
+  {
+    target: '[data-wizard="pipeline-card"]',
+    title: 'Set up your hiring pipeline',
+    content: 'Pick a template or build your own stages \u2014 this is how candidates move through your process.',
+    placement: 'right',
+    onEnter: (helpers) => helpers.setStep(2),
+    isDone: (ctx) => ctx.hasStages,
+  },
+  {
+    target: '[data-wizard="publish-btn"]',
+    title: "You're ready!",
+    content: 'Everything required is filled in. Click Publish job to make it live.',
+    placement: 'left',
+    isDone: (ctx) => ctx.isPublished,
+  },
+];
+
+export function useFirstJobWizard() {
+  const [run, setRun] = useState(false);
+  const [showPrompt, setShowPrompt] = useState(false);
+
+  // Show the opt-in PROMPT (not the wizard itself) on first-ever visit.
+  useEffect(() => {
+    const seen = localStorage.getItem(STORAGE_KEY);
+    if (!seen) {
+      const t = setTimeout(() => setShowPrompt(true), 600);
+      return () => clearTimeout(t);
     }
-]
+  }, []);
+
+  const markSeen = useCallback(() => {
+    localStorage.setItem(STORAGE_KEY, '1');
+  }, []);
+
+  // User clicked "Start guided setup" on the prompt card.
+  const accept = useCallback(() => {
+    setShowPrompt(false);
+    setRun(true);
+  }, []);
+
+  // User clicked "No thanks, I'll explore myself" — dismiss for good.
+  const decline = useCallback(() => {
+    setShowPrompt(false);
+    markSeen();
+  }, [markSeen]);
+
+  // Manually re-trigger the prompt later (e.g. a "Guided setup" button).
+  const restart = useCallback(() => {
+    localStorage.removeItem(STORAGE_KEY);
+    setShowPrompt(true);
+  }, []);
+
+  return { run, setRun, markSeen, restart, showPrompt, accept, decline };
+}
+
+// The opt-in banner shown before the wizard runs. Purely presentational —
+// all state lives in useFirstJobWizard above.
+export function FirstJobWizardPrompt({ onAccept, onDecline }) {
+  return (
+    <Card className="border-primary/30 bg-primary/5">
+      <CardContent className="p-4 flex items-center justify-between gap-4 flex-wrap">
+        <div className="flex items-start gap-3">
+          <div className="h-8 w-8 rounded-full bg-primary/10 text-primary flex items-center justify-center shrink-0">
+            <Sparkles className="h-4 w-4" />
+          </div>
+          <div>
+            <p className="text-sm font-semibold">New here? Let us walk you through creating your first job.</p>
+            <p className="text-xs text-muted-foreground mt-0.5">
+              We'll guide you step by step \u2014 you can skip anytime.
+            </p>
+          </div>
+        </div>
+        <div className="flex items-center gap-2 shrink-0">
+          <Button variant="ghost" size="sm" className="text-xs" onClick={onDecline}>
+            <X className="h-3.5 w-3.5 mr-1" /> No thanks, I'll explore myself
+          </Button>
+          <Button size="sm" className="text-xs" onClick={onAccept}>
+            <Sparkles className="h-3.5 w-3.5 mr-1" /> Start guided setup
+          </Button>
+        </div>
+      </CardContent>
+    </Card>
+  );
+}
+
+export default function FirstJobWizard({
+  form, job, hasStages, isPublished,
+  missingRequiredBasics, missingRequiredJD, invalidUrlFields,
+  setStep,
+  run, setRun, markSeen,
+}) {
+  const [stepIndex, setStepIndex] = useState(0);
+  const enteredRef = useRef(new Set());
+
+  const ctx = { form, job, hasStages, isPublished, missingRequiredBasics, invalidUrlFields };
+
+  useEffect(() => {
+    if (!run) return;
+    const step = STEPS[stepIndex];
+    if (!step || enteredRef.current.has(stepIndex)) return;
+    enteredRef.current.add(stepIndex);
+    step.onEnter?.({ setStep });
+  }, [run, stepIndex, setStep]);
+
+  useEffect(() => {
+    if (!run) return;
+    const step = STEPS[stepIndex];
+    if (!step) return;
+    if (step.isDone(ctx)) {
+      if (stepIndex < STEPS.length - 1) {
+        setStepIndex((i) => i + 1);
+      } else {
+        setRun(false);
+        markSeen();
+      }
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [run, stepIndex, form, job, hasStages, isPublished, missingRequiredBasics, invalidUrlFields]);
+
+  const handleEvent = (data) => {
+    if (data.status === STATUS.SKIPPED) {
+      setRun(false);
+      markSeen();
+    }
+  };
+
+  if (!run) return null;
+
+  return (
+    <Joyride
+      steps={STEPS.map((s) => ({
+        target: s.target,
+        title: s.title,
+        content: s.content,
+        placement: s.placement,
+        skipBeacon: true,
+        spotlightClicks: true,
+        hideFooter: true,
+      }))}
+      stepIndex={stepIndex}
+      run={run}
+      continuous
+      scrollToFirstStep
+      onEvent={handleEvent}
+      options={{
+        showProgress: true,
+        buttons: ['skip'],
+        overlayClickAction: 'close',
+        scrollOffset: 100,
+        primaryColor: '#0f766e',
+        textColor: '#1f2937',
+        backgroundColor: '#ffffff',
+        arrowColor: '#ffffff',
+        overlayColor: 'rgba(15, 23, 42, 0.45)',
+        zIndex: 9999,
+      }}
+      locale={{ skip: 'Skip guided setup' }}
+      styles={{
+        tooltip: { borderRadius: 12, fontSize: 13, padding: 16 },
+        tooltipTitle: { fontSize: 14, fontWeight: 700 },
+        buttonSkip: { fontSize: 12, color: '#6b7280', outline: 'none' },
+      }}
+    />
+  );
+}
