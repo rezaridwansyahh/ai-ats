@@ -1,6 +1,7 @@
-import { useEffect, useState, useCallback } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { Joyride, STATUS } from 'react-joyride';
-
+import { useActionGatedTour } from './useActionGatedTour';
+import { ACTION_GATED_OPTIONS, ACTION_GATED_STYLES } from './tourTheme';
 /**
  * CvUploadWizard
  * -------------------------------------------------------------------------
@@ -76,38 +77,24 @@ export function useCvUploadWizard() {
 }
 
 export default function CvUploadWizard({ file, successData, historyVisible, run, setRun, markSeen }) {
-  const [stepIndex, setStepIndex] = useState(0);
   const ctx = { file, successData, historyVisible };
 
-  useEffect(() => {
-    if (!run) return;
-    const step = STEPS[stepIndex];
-    if (!step) return;
-    if (!step.isDone(ctx)) return;
-
-    const isLastStep = stepIndex === STEPS.length - 1;
-
-    if (!isLastStep) {
-      const nextIsLast = stepIndex + 1 === STEPS.length - 1;
-      // The last step's target (cv-history) sits behind the success modal
-      // right after upload. Advancing the index would make Joyride render
-      // its tooltip immediately — hidden behind the modal overlay — so
-      // hold here until the modal has actually been dismissed.
-      if (nextIsLast && !ctx.historyVisible) return;
-      setStepIndex((i) => i + 1);
-      return;
-    }
-
-    // Last step becomes "done" once historyVisible is true (the success
-    // modal has been dismissed). Give it a beat on screen before
-    // auto-closing instead of instantly dismissing.
-    const t = setTimeout(() => {
-      setRun(false);
-      markSeen();
-    }, FINAL_STEP_DISPLAY_MS);
-    return () => clearTimeout(t);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [run, stepIndex, file, successData, historyVisible]);
+  const { stepIndex } = useActionGatedTour(STEPS, ctx, {
+    run, setRun, markSeen,
+    deps: [file, successData, historyVisible],
+    canAdvanceTo: (nextIndex, ctx) => {
+      const nextIsLast = nextIndex === STEPS.length - 1;
+      // Same reasoning as before: don't advance to the last step (history
+      // panel) until the success modal is dismissed, or its tooltip would
+      // render hidden behind the modal overlay.
+      if (nextIsLast && !ctx.historyVisible) return false;
+      return true;
+    },
+    onComplete: (finish) => {
+      const t = setTimeout(finish, FINAL_STEP_DISPLAY_MS);
+      return () => clearTimeout(t);
+    },
+  });
 
   const handleEvent = (data) => {
     if (data.status === STATUS.SKIPPED) {
@@ -134,24 +121,9 @@ export default function CvUploadWizard({ file, successData, historyVisible, run,
       continuous
       scrollToFirstStep
       onEvent={handleEvent}
-      options={{
-        showProgress: true,
-        buttons: ['skip'],
-        overlayClickAction: 'close',
-        scrollOffset: 100,
-        primaryColor: '#0f766e',
-        textColor: '#1f2937',
-        backgroundColor: '#ffffff',
-        arrowColor: '#ffffff',
-        overlayColor: 'rgba(15, 23, 42, 0.45)',
-        zIndex: 9999,
-      }}
+      options={ACTION_GATED_OPTIONS}
       locale={{ skip: 'Skip' }}
-      styles={{
-        tooltip: { borderRadius: 12, fontSize: 13, padding: 16 },
-        tooltipTitle: { fontSize: 14, fontWeight: 700 },
-        buttonSkip: { fontSize: 12, color: '#6b7280', outline: 'none' },
-      }}
+      styles={ACTION_GATED_STYLES}
     />
   );
 }

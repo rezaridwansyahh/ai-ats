@@ -28,12 +28,17 @@ export const END_TO_END_FLOW = [
         suppressSoloTourKey: 'pipeline-list',
     },
     {
-        route:'/selection/ai-screening',
+        route: '/sourcing/talent-pool',
+        steps: TALENT_POOL_STEPS,
+        suppressSoloTourKey: 'talent-pool',
+    },
+    {
+        route: '/selection/ai-screening',
         steps: AI_SCREENING_WORKBOARD_STEPS,
         suppressSoloTourKey: 'ai-screening-workboard',
     },
     {
-        route: 'selection/psych-assessment',
+        route: '/selection/psych-assessment',
         steps: PSYCH_ASSESSMENT_STEPS,
         suppressSoloTourKey: 'psych-assessment',
     },

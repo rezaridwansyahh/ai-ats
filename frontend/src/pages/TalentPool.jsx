@@ -73,7 +73,7 @@ export default function TalentPoolPage() {
     [activeFilters, minScore]
   );
 
-  // ── Client-side filtering ────────────────────────────────────────
+ // ── Client-side filtering ────────────────────────────────────────
   const filteredRows = useMemo(() => {
     const posQ = activeFilters.position_q.trim().toLowerCase();
     const skQ  = activeFilters.skill_q.trim().toLowerCase();
@@ -109,6 +109,11 @@ export default function TalentPoolPage() {
       }
 
       return true;
+    }).sort((a, b) => {
+      // Newest applicants first
+      const dateA = a.date ? new Date(a.date).getTime() : 0;
+      const dateB = b.date ? new Date(b.date).getTime() : 0;
+      return dateB - dateA;
     });
   }, [allApplicants, activeFilters, minScore]);
 

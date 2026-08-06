@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect, useCallback } from 'react';
-import { Upload, FileText, CheckCircle, AlertCircle, Loader2, X, RefreshCw } from 'lucide-react';
+import { Upload, FileText, CheckCircle, AlertCircle, Loader2, X, RefreshCw, HelpCircle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -62,7 +62,7 @@ export default function CvUploadCard() {
 
   const fileInputRef = useRef(null);
 
-  const { run: wizardRun, setRun: setWizardRun, markSeen: markWizardSeen } = useCvUploadWizard();
+  const { run: wizardRun, setRun: setWizardRun, markSeen: markWizardSeen, restart: restartWizard } = useCvUploadWizard();
 
   // ── Fetch history from DB on mount ───────────────────────────────────────
   const fetchHistory = useCallback(async () => {
@@ -195,13 +195,20 @@ export default function CvUploadCard() {
       {/* ── Main Card ── */}
       <Card>
         <CardHeader className="border-b pb-3">
-          <CardTitle className="text-sm flex items-center gap-2">
-            <Upload className="h-4 w-4 text-primary" />
-            Upload CV to Talent Pool
-          </CardTitle>
-          <p className="text-[11px] text-muted-foreground">
-            PDF — AI extracts candidate info instantly.&nbsp;&nbsp;ZIP — bulk CVs processed in background.
-          </p>
+          <div className="flex items-start justify-between gap-3">
+            <div>
+              <CardTitle className="text-sm flex items-center gap-2">
+                <Upload className="h-4 w-4 text-primary" />
+                Upload CV to Talent Pool
+              </CardTitle>
+              <p className="text-[11px] text-muted-foreground mt-1">
+                PDF — AI extracts candidate info instantly.&nbsp;&nbsp;ZIP — bulk CVs processed in background.
+              </p>
+            </div>
+            <Button variant="ghost" size="sm" className="text-xs shrink-0" onClick={restartWizard}>
+              <HelpCircle className="h-3.5 w-3.5 mr-1" /> Take the tour
+            </Button>
+          </div>
         </CardHeader>
 
         <CardContent className="pt-4">
