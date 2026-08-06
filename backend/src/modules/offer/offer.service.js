@@ -600,11 +600,6 @@ class OfferService {
       throw { status: 404, message: 'Offer not found' };
     }
 
-    if (!offer.metadata?.offer_letter_final) {
-      if (file?.path) fs.unlink(file.path, () => {});
-      throw { status: 400, message: 'Generate the offer letter preview before uploading the finalized document' };
-    }
-
     if (!file) {
       throw { status: 400, message: 'No file received' };
     }

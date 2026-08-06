@@ -74,20 +74,7 @@ export default function AddToJobDialog({ open, onOpenChange, applicant, onSucces
       const res = await addApplicantToJob(applicant.id, selectedJobId);
       const candidateId = res.data.pipeline?.id;
 
-      // NEW: place the candidate into the job's first pipeline stage
-      // so they're actually "in" the pipeline, not just an orphan row.
-      if (candidateId) {
-        try {
-          const pipelineRes = await getJobPipeline(selectedJobId);
-          const firstStage = pipelineRes.data?.data?.stages?.[0];
-          if (firstStage?.id) {
-            await addCandidateStage(candidateId, firstStage.id, null);
-          }
-        } catch (stageErr) {
-          console.warn('Candidate added but could not assign initial stage:', stageErr);
-        }
-      }
-
+      /*
       if (sendInvite && candidateId) {
         try {
           await sendCandidateEmail(candidateId);
@@ -95,6 +82,7 @@ export default function AddToJobDialog({ open, onOpenChange, applicant, onSucces
           console.warn('Candidate added but invitation email failed:', mailErr);
         }
       }
+      */
       onSuccess?.(selectedJobId);
       onOpenChange(false);
     } catch (err) {

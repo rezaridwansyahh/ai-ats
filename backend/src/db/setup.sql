@@ -49,6 +49,7 @@ DROP TABLE IF EXISTS bg_consent CASCADE;
 DROP TABLE IF EXISTS bg_lane CASCADE;
 DROP TABLE IF EXISTS candidate_bg CASCADE;
 DROP TABLE IF EXISTS company_offer_letter CASCADE;
+DROP TABLE IF EXISTS offer_approval CASCADE;
 DROP TABLE IF EXISTS offer_document CASCADE;
 DROP TABLE IF EXISTS offer_send CASCADE;
 DROP TABLE IF EXISTS offer_negotiation CASCADE;
@@ -817,6 +818,25 @@ CREATE TABLE offer_contract (
 
 CREATE INDEX idx_offer_contract_offer ON offer_contract(offer_id);
 CREATE INDEX idx_offer_contract_status ON offer_contract(status);
+
+CREATE TABLE offer_approval (
+  id SERIAL PRIMARY KEY,
+  offer_id INTEGER NOT NULL UNIQUE REFERENCES candidate_offer(id) ON DELETE CASCADE,
+  approver_name VARCHAR(255) NOT NULL,      
+  token UUID NOT NULL UNIQUE DEFAULT gen_random_uuid(),
+  token_expires_at TIMESTAMPTZ,
+  status VARCHAR(20) NOT NULL DEFAULT 'pending' CHECK (status IN ('pending', 'approved', 'rejected')),
+  note TEXT,
+  decided_at TIMESTAMPTZ,
+  decided_by INTEGER REFERENCES master_users(id) ON DELETE SET NULL, 
+  sent_at TIMESTAMPTZ,
+  sent_by INTEGER REFERENCES master_users(id) ON DELETE SET NULL,
+  revoked_at TIMESTAMPTZ,
+  revoked_by INTEGER REFERENCES master_users(id) ON DELETE SET NULL,
+  revocation_reason TEXT,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  updated_at  TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
 
 -- =============================================================================
 -- END OFFER & CONTRACT MODULE
