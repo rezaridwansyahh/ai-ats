@@ -1,11 +1,13 @@
 import api from './axios';
 
-export const createOfferApproval = (offerId, approverName) => api.post(`/offer-pack/${offerId}`, { approver_name: approverName });
-export const getOfferApproval = (offerId) => api.get(`/offer-pack/${offerId}`);
-export const decideOfferApproval = (offerId, decision, note) => api.put(`/offer-pack/${offerId}/decide`, { decision, note });
-export const revokeOfferApproval = (offerId, reason) => api.post(`/offer-pack/${offerId}/revoke`, { reason });
-export const resendOfferApproval = (offerId, approverName) => api.post(`/offer-pack/${offerId}/resend`, { approver_name: approverName });
-export const getOfferApprovalsByJob = (jobId) => api.get(`/offer-pack/job/${jobId}`);
+export const startApprovalChain    = (offerId, steps) => api.post(`/offer-pack/${offerId}/setup`, { steps });
+export const reviseApprovalChain   = (offerId, steps) => api.put(`/offer-pack/${offerId}/revise`, { steps });
+export const getApprovalChain      = (offerId) => api.get(`/offer-pack/${offerId}`);
+export const finalizeApprovalChain = (offerId) => api.post(`/offer-pack/${offerId}/finalize`);
+export const decideApprovalStep    = (offerId, stepId, decision, note) => api.put(`/offer-pack/${offerId}/step/${stepId}/decide`, { decision, note });
+export const getApprovalChainsByJob = (jobId) => api.get(`/offer-pack/job/${jobId}`);
 
-export const getOfferApprovalByToken    = (token) => api.get(`/offer-pack/portal/${token}`);
-export const decideOfferApprovalByToken = (token, decision, note) => api.put(`/offer-pack/portal/${token}/decide`, { decision, note });
+export const getApprovalChainByToken    = (token) => api.get(`/offer-pack/portal/${token}`);
+export const decideApprovalStepByToken  = (token, stepId, decision, note) =>api.put(`/offer-pack/portal/${token}/step/${stepId}/decide`, { decision, note });
+export const downloadApprovalLetterDocx = (token) => api.get(`/offer-pack/portal/${token}/letter/docx`, { responseType: 'blob' });
+export const downloadApprovalLetterPdf  = (token) => api.get(`/offer-pack/portal/${token}/letter/pdf`, { responseType: 'blob' });
