@@ -108,6 +108,18 @@ class InterviewController {
     }
   }
 
+  async reInterview(req, res) {
+    try {
+      const interview_id = Number(req.params.interview_id);
+      const result = await interviewService.reInterview(interview_id, {
+        company_id: req.user?.company_id || null,
+      });
+      res.status(200).json({ message: 'New interview round started', ...result });
+    } catch (err) {
+      res.status(err.status || 500).json({ message: err.message });
+    }
+  }
+
   async getSchedules(req, res) {
     try {
       const interview_id = Number(req.params.interview_id);
