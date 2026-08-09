@@ -45,6 +45,7 @@ import OfferWorkboard from "./pages/OfferWorkboard"
 import OfferJobPage from "./components/offer-contract/Offer-Job";
 import OfferCandidatePage from "./components/offer-contract/Offer-Candidate";
 import OfferSendPage from "./pages/portal/OfferSend"
+import OfferApprovalPage from "./pages/portal/OfferApproval"
 
 //PUNYA BAYU MASIH DUMMY
 import SettingsPage from "./pages/Settings"
@@ -72,6 +73,7 @@ function App() {
         <Route path="/qa/:token" element={<QAFollowUpPage />} />
         <Route path="/bg/consent/:token" element={<BackgroundCheckConsentPage />} />
         <Route path="/offer/send/:token" element={<OfferSendPage />} />
+        <Route path="/offer/approve-view/:token" element={<OfferApprovalPage />} />
         <Route path="/interview/:token" element={<InterviewPackPortal />} />
 
         {/* All authenticated routes share DashboardLayout */}

@@ -821,21 +821,17 @@ CREATE INDEX idx_offer_contract_status ON offer_contract(status);
 
 CREATE TABLE offer_approval (
   id SERIAL PRIMARY KEY,
-  offer_id INTEGER NOT NULL UNIQUE REFERENCES candidate_offer(id) ON DELETE CASCADE,
-  approver_name VARCHAR(255) NOT NULL,      
-  token UUID NOT NULL UNIQUE DEFAULT gen_random_uuid(),
-  token_expires_at TIMESTAMPTZ,
+  offer_id INTEGER NOT NULL REFERENCES candidate_offer(id) ON DELETE CASCADE,
+  step_order INTEGER NOT NULL,
+  role VARCHAR(100) NOT NULL,
+  approver_name VARCHAR(255) NOT NULL,
   status VARCHAR(20) NOT NULL DEFAULT 'pending' CHECK (status IN ('pending', 'approved', 'rejected')),
   note TEXT,
   decided_at TIMESTAMPTZ,
-  decided_by INTEGER REFERENCES master_users(id) ON DELETE SET NULL, 
-  sent_at TIMESTAMPTZ,
-  sent_by INTEGER REFERENCES master_users(id) ON DELETE SET NULL,
-  revoked_at TIMESTAMPTZ,
-  revoked_by INTEGER REFERENCES master_users(id) ON DELETE SET NULL,
-  revocation_reason TEXT,
+  decided_by INTEGER REFERENCES master_users(id) ON DELETE SET NULL,
   created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-  updated_at  TIMESTAMPTZ NOT NULL DEFAULT NOW()
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  UNIQUE (offer_id, step_order)
 );
 
 -- =============================================================================

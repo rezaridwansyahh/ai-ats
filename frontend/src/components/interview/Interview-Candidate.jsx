@@ -28,7 +28,8 @@ import {
   confirmSchedule, unconfirmSchedule, deleteSchedule,
   recordOutcome, clearOutcome,
   getPackOutcome,
-  getDecideByJob, bulkDecide, resetDecision, getInterviewByCandidateId
+  getDecideByJob, bulkDecide, resetDecision, getInterviewByCandidateId,
+  reInterview,
 } from '@/api/interview.api';
 
 const COMPETENCY_CODES = ['HRD-01', 'HRD-02', 'HRD-03', 'HRD-04', 'HRD-05', 'HRD-06'];
@@ -42,13 +43,12 @@ const COMPETENCY_NAMES = {
 };
 
 const STATUS_META = {
-  ongoing:     { label: 'Ongoing',     color: 'bg-blue-100 text-blue-700'       },
-  scheduled:   { label: 'Scheduled',   color: 'bg-violet-100 text-violet-700'   },
-  interviewed: { label: 'Interviewed', color: 'bg-emerald-100 text-emerald-700' },
-  no_show:     { label: 'No Show',     color: 'bg-rose-100 text-rose-700'       },
-  reschedule:  { label: 'Reschedule',  color: 'bg-amber-100 text-amber-700'     },
-  cancelled:   { label: 'Cancelled',   color: 'bg-gray-100 text-gray-600'       },
-  done:        { label: 'Done',        color: 'bg-emerald-100 text-emerald-700' },
+  setup:     { label: 'Setup',     color: 'bg-slate-100 text-slate-700'     },
+  scheduled: { label: 'Scheduled', color: 'bg-violet-100 text-violet-700'   },
+  ongoing:   { label: 'Ongoing',   color: 'bg-blue-100 text-blue-700'       },
+  result:    { label: 'Result',    color: 'bg-amber-100 text-amber-700'     },
+  cancelled: { label: 'Cancelled', color: 'bg-gray-100 text-gray-600'       },
+  done:      { label: 'Done',      color: 'bg-emerald-100 text-emerald-700' },
 };
 
 const OUTCOME_OPTIONS = [
@@ -138,6 +138,7 @@ export default function InterviewCandidatePage() {
   const [error, setError]         = useState(null);
   const [banner, setBanner]       = useState(null);
   const [activeSection, setActiveSection] = useState('schedule');
+  const [reInterviewing, setReInterviewing] = useState(false);
 
   const load = useCallback(async () => {
     if (!candidateIdNum) return;
@@ -186,8 +187,10 @@ export default function InterviewCandidatePage() {
     status, scheduled_at, last_position, address, education_text,
   } = interview;
 
-  const isScheduled  = ['scheduled', 'interviewed', 'no_show', 'reschedule', 'done'].includes(status);
-  const hasConducted = ['interviewed', 'no_show', 'reschedule', 'done'].includes(status);
+  const isScheduled  = ['scheduled', 'ongoing', 'result', 'done'].includes(status);
+  const hasConducted = ['result', 'done'].includes(status);
+  const canReInterview = status === 'result' || status === 'done';
+  const round = interview.round || 1;
 
   const canGoStep = (key) => {
     if (key === 'schedule') return true;
@@ -198,6 +201,22 @@ export default function InterviewCandidatePage() {
 
   const statusMeta = STATUS_META[status] || { label: status, color: 'bg-muted text-muted-foreground' };
   const initials   = (candidate_name || '?').split(/\s+/).map((s) => s[0]).join('').slice(0, 2).toUpperCase();
+
+  const handleReInterview = async () => {
+    if (!interviewId || reInterviewing) return;
+    setReInterviewing(true);
+    setError(null);
+    try {
+      await reInterview(interviewId);
+      setBanner({ ok: true, text: 'New interview round started.' });
+      setActiveSection('schedule');
+      await load();
+    } catch (err) {
+      setError(err.response?.data?.message || err.message || 'Failed to start a new round');
+    } finally {
+      setReInterviewing(false);
+    }
+  };
 
   return (
     <>
@@ -223,9 +242,26 @@ export default function InterviewCandidatePage() {
                 {scheduled_at    && <span>· next session {fmt(scheduled_at)}</span>}
               </div>
             </div>
+            <span className="inline-flex items-center px-2 py-1 rounded-full text-[10px] font-semibold font-mono bg-muted text-muted-foreground border border-border">
+              R{round}
+            </span>
             <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] font-semibold ${statusMeta.color}`}>
               {statusMeta.label}
             </span>
+            {canReInterview && (
+              <Button
+                size="sm"
+                variant="outline"
+                className="text-xs"
+                onClick={handleReInterview}
+                disabled={reInterviewing}
+              >
+                {reInterviewing
+                  ? <Loader2 className="h-3.5 w-3.5 mr-1.5 animate-spin" />
+                  : <RefreshCw className="h-3.5 w-3.5 mr-1.5" />}
+                Interview Again
+              </Button>
+            )}
           </div>
         </div>
       </div>
@@ -543,10 +579,10 @@ function ScheduleSection({ interviewId, interview, setInterview, setBanner, setE
       await deleteSchedule(sessionId);
       const remaining = sessions.filter((s) => s.id !== sessionId);
       setSessions(remaining);
-      // Mirror backend syncScheduledAt: if no sessions left → 'ongoing', else stays 'scheduled'
+      // Mirror backend syncScheduledAt: if no sessions left → 'setup', else stays 'scheduled'
       setInterview((prev) => ({
         ...prev,
-        status: remaining.length > 0 ? 'scheduled' : 'ongoing',
+        status: remaining.length > 0 ? 'scheduled' : 'setup',
         scheduled_at: remaining.length > 0 ? prev.scheduled_at : null,
       }));
       setBanner({ ok: true, text: 'Session removed.' });
@@ -559,7 +595,8 @@ function ScheduleSection({ interviewId, interview, setInterview, setBanner, setE
     try {
       const res = await recordOutcome(sessionId, { status, outcome_note: outcomeNote || undefined });
       setSessions((prev) => prev.map((s) => s.id === sessionId ? res.data.schedule : s));
-      setInterview((prev) => ({ ...prev, status }));
+      // 'reschedule' loops back to Schedule sub-stage; other outcomes move to Result.
+      setInterview((prev) => ({ ...prev, status: status === 'reschedule' ? 'scheduled' : 'result' }));
       setBanner({ ok: true, text: `Outcome recorded: ${status.replace('_', ' ')}.` });
       setOutcomeNote('');
     } catch (err) {
@@ -572,14 +609,20 @@ function ScheduleSection({ interviewId, interview, setInterview, setBanner, setE
     try {
       const res = await clearOutcome(sessionId);
       setSessions((prev) => prev.map((s) => s.id === sessionId ? res.data.schedule : s));
-      setInterview((prev) => ({ ...prev, status: 'scheduled' }));
+      // Session remains confirmed after clearing its outcome.
+      setInterview((prev) => ({ ...prev, status: 'ongoing' }));
       setBanner({ ok: true, text: 'Outcome cleared.' });
     } catch (err) {
       setError(err.response?.data?.message || err.message || 'Failed to clear outcome');
     }
   };
 
-  const canAdd = sessions.length < MAX_SESSIONS;
+  // Mirrors the backend's isScheduleCreationLocked rule: only a fresh round
+  // (no sessions yet) or a 'reschedule' outcome permits adding another
+  // session. Anything else must go through "Interview Again" (new round).
+  const latestSession = sessions[sessions.length - 1];
+  const scheduleLocked = !!latestSession && latestSession.status !== 'reschedule';
+  const canAdd = sessions.length < MAX_SESSIONS && !scheduleLocked;
 
   return (
     <div className="space-y-4">
@@ -590,6 +633,13 @@ function ScheduleSection({ interviewId, interview, setInterview, setBanner, setE
         </div>
         {canAdd && !showForm && <Button size="sm" className="text-xs" onClick={openNewForm}><Plus className="h-3.5 w-3.5 mr-1.5" /> Add session</Button>}
       </div>
+
+      {scheduleLocked && !showForm && (
+        <div className="flex items-center gap-2 px-3 py-2 rounded-lg border border-amber-200 bg-amber-50 text-xs text-amber-700">
+          <MessageSquare className="h-3.5 w-3.5 shrink-0" />
+          A session is already active. Resolve its outcome first, or use "Interview Again" to start a new round.
+        </div>
+      )}
 
       {showForm && (
         <Card className="border-primary/30 bg-primary/5">
@@ -880,7 +930,7 @@ function ConductSection({ interviewId, interview, setInterview, setBanner, setEr
     try {
       const res = await recordOutcome(sessionId, { status, outcome_note: outcomeNote || undefined });
       setSessions((prev) => prev.map((s) => s.id === sessionId ? res.data.schedule : s));
-      setInterview((prev) => ({ ...prev, status }));
+      setInterview((prev) => ({ ...prev, status: status === 'reschedule' ? 'scheduled' : 'result' }));
       setBanner({ ok: true, text: `Outcome recorded: ${status.replace('_', ' ')}.` });
       setOutcomeNote(''); setExpandedId(null);
     } catch (err) { setError(err.response?.data?.message || err.message || 'Failed to record outcome'); }
@@ -893,7 +943,7 @@ function ConductSection({ interviewId, interview, setInterview, setBanner, setEr
     try {
       const res = await recordOutcome(currentSessionId, { status: 'interviewed', outcome_note: detailedNotes || undefined });
       setSessions((prev) => prev.map((s) => s.id === currentSessionId ? res.data.schedule : s));
-      setInterview((prev) => ({ ...prev, status: 'interviewed' }));
+      setInterview((prev) => ({ ...prev, status: 'result' }));
       setBanner({ ok: true, text: 'Interview completed and notes saved.' });
       setShowNotesDialog(false); setCurrentSessionId(null); setDetailedNotes('');
     } catch (err) { setError(err.response?.data?.message || err.message || 'Failed to save notes'); }
@@ -1989,8 +2039,8 @@ function CandidateCard({ last_position, address, education_text }) {
 }
 
 function StepsNav({ activeSection, onStep, status, interview }) {
-  const isScheduled  = ['scheduled', 'interviewed', 'no_show', 'reschedule', 'done'].includes(status);
-  const hasConducted = ['interviewed', 'no_show', 'reschedule', 'done'].includes(status);
+  const isScheduled  = ['scheduled', 'ongoing', 'result', 'done'].includes(status);
+  const hasConducted = ['result', 'done'].includes(status);
   const hasDecided   = interview?.decision && interview.decision !== 'pending';
 
   const stepState = (key) => {

@@ -44,6 +44,7 @@ router.delete('/job/:job_id/decide/:interview_id', interviewController.resetDeci
 // Generic interview routes (LAST to avoid catching specific routes)
 router.get('/:interview_id', interviewController.getInterview);
 router.patch('/:interview_id/status', interviewController.updateStatus);
+router.post('/:interview_id/reinterview', interviewController.reInterview);
 
 router.put('/:interview_id/custom-questions', interviewController.updateCandidateQuestions);
 // Decide routes
