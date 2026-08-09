@@ -46,10 +46,49 @@ class InterviewController {
   async getInterviewsByJob(req, res) {
     try {
       const job_id = Number(req.params.job_id);
-      const rows = await interviewService.getInterviewsByJob(job_id, {
+      const rows = await interviewService.getInterviewsByJobWithSubStage(job_id, {
         company_id: req.user?.company_id || null,
       });
       res.status(200).json({ message: 'Interviews fetched', interviews: rows });
+    } catch (err) {
+      res.status(err.status || 500).json({ message: err.message });
+    }
+  }
+
+  async generatePackLink(req, res) {
+    try {
+      const { job_id } = req.params;
+      const { company_id, id: user_id } = req.user || {};
+      const { candidates, title, interviewer_name } = req.body || {};
+      const result = await interviewService.generatePackLink(job_id, {
+        company_id, user_id, candidates, title, interviewer_name,
+      });
+      res.json({ message: 'Interview pack link generated', ...result });
+    } catch (err) {
+      console.error('InterviewController.generatePackLink:', err);
+      res.status(err.status || 500).json({ message: err.message });
+    }
+  }
+
+  async getPacksByJob(req, res) {
+    try {
+      const { job_id } = req.params;
+      const { company_id } = req.user || {};
+      const packs = await interviewService.getPacksByJob(job_id, { company_id });
+      res.json({ message: 'Packs fetched', packs });
+    } catch (err) {
+      console.error('InterviewController.getPacksByJob:', err);
+      res.status(err.status || 500).json({ message: err.message });
+    }
+  }
+
+  async getPackOutcome(req, res) {
+    try {
+      const interview_id = Number(req.params.interview_id);
+      const result = await interviewService.getPackOutcome(interview_id, {
+        company_id: req.user?.company_id || null,
+      });
+      res.status(200).json({ message: 'Pack outcome fetched', outcome: result });
     } catch (err) {
       res.status(err.status || 500).json({ message: err.message });
     }
@@ -64,6 +103,18 @@ class InterviewController {
         company_id: req.user?.company_id || null,
       });
       res.status(200).json({ message: 'Interview status updated', interview: result });
+    } catch (err) {
+      res.status(err.status || 500).json({ message: err.message });
+    }
+  }
+
+  async reInterview(req, res) {
+    try {
+      const interview_id = Number(req.params.interview_id);
+      const result = await interviewService.reInterview(interview_id, {
+        company_id: req.user?.company_id || null,
+      });
+      res.status(200).json({ message: 'New interview round started', ...result });
     } catch (err) {
       res.status(err.status || 500).json({ message: err.message });
     }

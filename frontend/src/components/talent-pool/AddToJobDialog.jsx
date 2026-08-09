@@ -9,7 +9,8 @@ import { Badge } from '@/components/ui/badge';
 import { Checkbox } from '@/components/ui/checkbox';
 
 import { getJobs } from '@/api/job.api';
-import { addApplicantToJob, getCandidatesByApplicantId, sendCandidateEmail } from '@/api/candidate.api';
+import { getJobPipeline } from '@/api/pipeline.api';
+import { addApplicantToJob, addCandidateStage, getCandidatesByApplicantId, sendCandidateEmail } from '@/api/candidate.api';
 
 const STATUS_COLORS = {
   Draft: 'bg-orange-50 text-orange-600 border-orange-200',
@@ -65,13 +66,15 @@ export default function AddToJobDialog({ open, onOpenChange, applicant, onSucces
     );
   }, [jobs, search]);
 
-  const handleConfirm = async () => {
+ const handleConfirm = async () => {
     if (!applicant?.id || !selectedJobId) return;
     setSubmitting(true);
     setError(null);
     try {
       const res = await addApplicantToJob(applicant.id, selectedJobId);
       const candidateId = res.data.pipeline?.id;
+
+      /*
       if (sendInvite && candidateId) {
         try {
           await sendCandidateEmail(candidateId);
@@ -79,6 +82,7 @@ export default function AddToJobDialog({ open, onOpenChange, applicant, onSucces
           console.warn('Candidate added but invitation email failed:', mailErr);
         }
       }
+      */
       onSuccess?.(selectedJobId);
       onOpenChange(false);
     } catch (err) {

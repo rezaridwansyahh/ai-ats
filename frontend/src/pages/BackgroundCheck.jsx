@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
-  ShieldCheck, AlertTriangle, Loader2, RotateCw, Search,
+  ShieldCheck, AlertTriangle, Loader2, RotateCw, Search, HelpCircle,
 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -12,6 +12,9 @@ import { TablePagination } from '@/components/shared/TablePagination';
 import { getInitials } from '@/lib/batteries';
 
 import { getWorkboard, getBgChecksByJob } from '@/api/background-check.api';
+
+import PipelineTour, { usePipelineTour } from '@/components/tours/PipelineTour';
+import { BG_CHECK_WORKBOARD_STEPS } from '@/components/tours/tourSteps';
 
 const STATUS_META = {
   claims:  { label: 'Claims',  color: 'bg-blue-100 text-blue-700'     },
@@ -50,6 +53,8 @@ export default function BackgroundCheckWorkboard() {
   const [search, setSearch]             = useState('');
   const [page, setPage]                 = useState(1);
   const [pageSize, setPageSize]         = useState(25);
+
+  const { run, setRun, markSeen, restart } = usePipelineTour('bg-check-workboard');
 
   const loadWorkboard = async () => {
     setLoading(true);
@@ -120,16 +125,22 @@ export default function BackgroundCheckWorkboard() {
   return (
     <div className="space-y-5 p-6">
       {/* Header */}
-     <div className="flex items-start justify-between gap-3 flex-wrap">
-      <PageHeader
-        title="Background"
-        highlight="Check"
-        subtitle={`${activePositions} active position${activePositions === 1 ? '' : 's'} · ${totalBgChecks} candidate${totalBgChecks === 1 ? '' : 's'} in background check`}
-      />
-      <Button variant="outline" size="sm" onClick={loadWorkboard} className="text-xs">
-        <RotateCw className="h-3.5 w-3.5 mr-1.5" /> Refresh
-      </Button>
-    </div>
+      <div data-tour="bgcheck-page-header" className="flex items-start justify-between gap-3 flex-wrap">
+        <PageHeader
+          title="Background"
+          highlight="Check"
+          subtitle={`${activePositions} active position${activePositions === 1 ? '' : 's'} · ${totalBgChecks} candidate${totalBgChecks === 1 ? '' : 's'} in background check`}
+        />
+        <div className="flex items-center gap-2">
+          <Button variant="ghost" size="sm" className="text-xs" onClick={restart}>
+            <HelpCircle className="h-3.5 w-3.5 mr-1" /> Take the tour
+          </Button>
+          <Button variant="outline" size="sm" onClick={loadWorkboard} className="text-xs">
+            <RotateCw className="h-3.5 w-3.5 mr-1.5" /> Refresh
+          </Button>
+        </div>
+      </div>
+    
 
       {error && (
         <div className="flex items-center gap-2 px-4 py-3 rounded-lg border border-red-200 bg-red-50 text-sm text-red-600">
@@ -139,7 +150,7 @@ export default function BackgroundCheckWorkboard() {
       )}
 
       {/* Status chip strip */}
-      <Card>
+      <Card data-tour="bgcheck-status-chips">
         <CardContent className="py-4">
           <div className="flex items-center gap-3 flex-wrap">
             <span className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wide">
@@ -178,7 +189,7 @@ export default function BackgroundCheckWorkboard() {
       <div className="grid grid-cols-1 md:grid-cols-[240px_1fr] gap-4">
 
         {/* Positions rail */}
-        <Card className="self-start">
+        <Card data-tour="bgcheck-positions-rail" className="self-start">
           <CardHeader className="pb-2">
             <CardTitle className="text-xs uppercase tracking-wide text-muted-foreground">
               Positions · {positions.length}
@@ -240,7 +251,7 @@ export default function BackgroundCheckWorkboard() {
                 {filtered.length} {activeStatus ? `at ${STATUS_META[activeStatus]?.label}` : 'total'}
               </span>
             </CardTitle>
-            <div className="relative max-w-sm">
+            <div data-tour="bgcheck-search" className="relative max-w-sm">
               <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
               <Input
                 placeholder="Search name, position, or job…"
@@ -263,7 +274,7 @@ export default function BackgroundCheckWorkboard() {
               </div>
             ) : (
               <>
-                <div className="space-y-2">
+                <div data-tour="bgcheck-candidate-list" className="space-y-2">
                   {paged.map((b) => {
                     const name = b.candidate_name || `#${b.candidate_id}`;
                     const meta = STATUS_META[b.status] || { label: b.status, color: 'bg-muted text-muted-foreground' };
@@ -321,6 +332,14 @@ export default function BackgroundCheckWorkboard() {
         </Card>
 
       </div>
+
+      <PipelineTour 
+        steps={BG_CHECK_WORKBOARD_STEPS}
+        tourKey="bg-check-workboard"
+        run={run}
+        setRun={setRun}
+        markSeen={markSeen}
+      />
     </div>
   );
 }

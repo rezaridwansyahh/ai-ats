@@ -45,6 +45,7 @@ import OfferWorkboard from "./pages/OfferWorkboard"
 import OfferJobPage from "./components/offer-contract/Offer-Job";
 import OfferCandidatePage from "./components/offer-contract/Offer-Candidate";
 import OfferSendPage from "./pages/portal/OfferSend"
+import OfferApprovalPage from "./pages/portal/OfferApproval"
 
 //PUNYA BAYU MASIH DUMMY
 import SettingsPage from "./pages/Settings"
@@ -52,12 +53,16 @@ import OnboardingPage from "./pages/Onboarding"
 import OnboardingWorkboard from "./pages/OnboardingWorkboard"
 import ReportsPage from "./pages/Reports"
 
+import { EndToEndTourProvider } from '@/components/tours/EndToEndTour';
 import { Toaster } from '@/components/ui/sonner';
 import MedicalAssessmentPage from "./pages/MedicalAssessment"
+import InterviewPacksPage from "./pages/InterviewPacksPage"
+import InterviewPackPortal from "./pages/portal/InterviewPackPortal"
 
 function App() {
   return (
     <>
+    <EndToEndTourProvider>
       <Routes>
         <Route path="/" element={<LoginPage />} />
         <Route path="/login" element={<LoginPage />} />
@@ -68,6 +73,8 @@ function App() {
         <Route path="/qa/:token" element={<QAFollowUpPage />} />
         <Route path="/bg/consent/:token" element={<BackgroundCheckConsentPage />} />
         <Route path="/offer/send/:token" element={<OfferSendPage />} />
+        <Route path="/offer/approve-view/:token" element={<OfferApprovalPage />} />
+        <Route path="/interview/:token" element={<InterviewPackPortal />} />
 
         {/* All authenticated routes share DashboardLayout */}
         <Route element={<DashboardLayout />}>
@@ -99,6 +106,7 @@ function App() {
           <Route path="/selection/interview/job/:jobId" element={<InterviewJobPage/>} />
           <Route path="/selection/interview/candidate/:candidateId" element={<InterviewCandidatePage />} />
           <Route path="/selection/interview/calibration/:jobId" element={<InterviewCalibration />} />
+          <Route path="/selection/interview-pack" element={<InterviewPacksPage />} />
 
         
         <Route path="/selection/background-check" element={<BackgroundCheckPage />} />
@@ -136,6 +144,7 @@ function App() {
         <Route path="*" element={<ComingSoonPage />} />
         </Route>
       </Routes>
+      </EndToEndTourProvider>
       <Toaster />
     </>
   )

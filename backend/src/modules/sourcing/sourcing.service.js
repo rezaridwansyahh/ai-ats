@@ -1,6 +1,13 @@
+import fs from 'fs';
+import os from 'os';
+import path from 'path';
 import SourcingModel from './sourcing.model.js';
 import SourcingRecruiteModel from './sourcing-recruite.model.js';
 import linkedinProducer from '../../bullmq/linkedin/linkedin.producer.js';
+import cvProducer from '../../bullmq/cv/cv.producer.js';
+import JobSourceModel from '../job-source/job-source.model.js';
+import ApplicantModel from '../applicant/applicant.model.js';
+import aiService from '../../shared/services/ai.service.js';
 
 class SourcingService {
   // ─── Sourcing ───
@@ -167,6 +174,85 @@ class SourcingService {
 
     await SourcingRecruiteModel.delete(id);
     return recruit;
+  }
+
+  // ─── CV Upload (Talent Pool) ───
+
+  async uploadCv(file, companyId) {
+    const isZip = file.originalname.toLowerCase().endsWith('.zip');
+    const fileType = isZip ? 'zip' : 'pdf';
+
+    if (isZip) {
+      return await this._uploadZip(file, companyId);
+    }
+
+    // ── Single PDF flow ───────────────────────────────────────────────────────
+    const batch = await SourcingModel.createBatch({
+      company_id:  companyId || null,
+      filename:    file.originalname,
+      file_type:   fileType,
+      total_files: 1,
+    });
+
+    try {
+      // Send PDF buffer directly to OpenAI — no local text extraction needed
+      const extracted = await aiService.extractCvForTalentPool(file.buffer, file.originalname, { company_id: companyId });
+
+      const candidateName = extracted.name ||
+        file.originalname.replace(/\.pdf$/i, '').replace(/[-_]/g, ' ').trim() ||
+        'Unknown Candidate';
+
+      const sourcing = await JobSourceModel.create(null, null, 'internal', extracted.last_position || 'Manual Upload', 'Active', null);
+
+      const applicant = await ApplicantModel.create({
+        job_sourcing_id: sourcing.id,
+        company_id:      companyId || null,
+        name:            candidateName,
+        email:           extracted.email,
+        last_position:   extracted.last_position,
+        address:         extracted.address,
+        education:       extracted.education_summary,
+        information:     extracted.facets,
+        date:            new Date(),
+        attachment:      null,
+      });
+
+      await SourcingModel.updateBatch(batch.id, {
+        status:             'Done',
+        processed_files:    1,
+        applicant_name:     candidateName,
+        applicant_position: extracted.last_position,
+      });
+
+      return { applicant: { ...applicant, name: candidateName }, sourcing, batch };
+    } catch (err) {
+      await SourcingModel.updateBatch(batch.id, { status: 'Failed', error_message: err.message || 'Unknown error' });
+      throw err;
+    }
+  }
+
+  // ── ZIP: save to temp file, enqueue, return immediately ─────────────────
+  async _uploadZip(file, companyId) {
+    // Write buffer to a temp file so the worker can read it outside the request
+    const tempFilePath = path.join(os.tmpdir(), `cv-zip-${Date.now()}-${Math.random().toString(36).slice(2)}.zip`);
+    fs.writeFileSync(tempFilePath, file.buffer);
+
+    // Create batch row with status Processing — worker will update it
+    const batch = await SourcingModel.createBatch({
+      company_id:  companyId || null,
+      filename:    file.originalname,
+      file_type:   'zip',
+      total_files: 1, // worker will update once it knows the real count
+    });
+
+    // Enqueue and return immediately — no waiting
+    await cvProducer.processZip({ batchId: batch.id, tempFilePath, companyId: companyId || null });
+
+    return { batch, queued: true };
+  }
+
+  async getUploadHistory(companyId, limit = 50) {
+    return await SourcingModel.getBatchesByCompany(companyId, limit);
   }
 }
 

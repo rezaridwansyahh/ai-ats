@@ -54,6 +54,9 @@ export default function JobStagesStep({ selectedJob, onPipelineChange }) {
   // Mirrors the `templates` state but readable inside any effect closure
   // without stale-closure issues (refs are always current).
   const templatesRef = useRef([]);
+  // True once any template has been auto- or manually-applied, so the
+  // auto-default effect below never overrides a real choice.
+  const defaultAppliedRef = useRef(false);
   const [stages, setStages] = useState([]);
   const [loadingStages, setLoadingStages] = useState(false);
   const [savingStages, setSavingStages] = useState(false);
@@ -226,6 +229,7 @@ export default function JobStagesStep({ selectedJob, onPipelineChange }) {
 
   // ── Template selection handler ──
   const handleTemplateSelect = async (templateId) => {
+    defaultAppliedRef.current = true; //any explicit pick locks out auto default
     const id = Number(templateId);
     setSelectedTemplateId(id);
     try {
@@ -249,8 +253,26 @@ export default function JobStagesStep({ selectedJob, onPipelineChange }) {
     }
   };
 
+  const needsDefaultTemplate = !isCustom && !selectedTemplateId && stages.length === 0 && !loadingStages;
+  
+  //TAMBAHAN BAYU --> Auto-select "IT" template for brand-new jobs with no pipeline yet.
+  useEffect(() => {
+    if (defaultAppliedRef.current) return;
+    if (!needsDefaultTemplate) return;
+    if (loadingTemplates || templates.length === 0) return;
+
+    const itTemplate = templates.find(
+      (t) => t.name?.trim().toLowerCase().includes('it dev')
+    );
+    if (itTemplate){
+      defaultAppliedRef.current = true;
+      handleTemplateSelect(itTemplate.id);
+    }
+  }, [needsDefaultTemplate, loadingTemplates, templates]);
+
   // ── Custom toggle handler ──
   const handleCustomToggle = (checked) => {
+    defaultAppliedRef.current = true; // switching to custom also locks out the auto-default
     setIsCustom(checked);
     if (!checked && selectedTemplateId) {
       // Switching back to template mode — reload template

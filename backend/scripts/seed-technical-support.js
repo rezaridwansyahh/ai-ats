@@ -23,6 +23,7 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url));
 // Auto-pick env file: .env for production server, .env.dev for local dev
 const envFile = process.env.NODE_ENV === 'production' ? '.env' : '.env.dev';
 dotenv.config({ path: path.join(__dirname, '../', envFile) });
+
 const DB_URL   = process.env.DATABASEURL;
 const PARSED   = path.join(__dirname, 'parsed-results.json');
 const COMPANY_ID = 1;

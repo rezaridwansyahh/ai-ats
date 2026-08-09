@@ -1,7 +1,8 @@
 import "./src/config/env.js"; // must be first
 
-import "./src/bullmq/seek/seek.worker.js"; // ✅ add this
+import "./src/bullmq/seek/seek.worker.js";
 import "./src/bullmq/linkedin/linkedin.worker.js";
+import "./src/bullmq/cv/cv.worker.js";
 
 import express from "express";
 import cors from 'cors';
@@ -48,11 +49,26 @@ import portalBg from "./src/modules/portal-bg/portal-bg.route.js"
 import offer from "./src/modules/offer/offer.route.js"
 import onboarding from "./src/modules/onboarding/onboarding.route.js"
 import portalOffer from "./src/modules/portal-offer/portal-offer.route.js"
+import offerTemplate from "./src/modules/offer-template/offer-template.route.js"
+import interviewPack from "./src/modules/interview-pack/interview-pack.route.js"
+import portalInterview from "./src/modules/portal-interview/portal-interview.route.js"
+import offerPack from "./src/modules/offer-pack/offer-pack.route.js";
 
 app.use(express.json());
+
+const allowedOrigins = process.env.CORS_ORIGIN
+  ? process.env.CORS_ORIGIN.split(',').map(o => o.trim())
+  : null; // null = allow all in dev (no credentials restriction)
+
 app.use(cors({
-  origin: process.env.CORS_ORIGIN ? process.env.CORS_ORIGIN.split(',') : '*',
-  credentials: true
+  origin: allowedOrigins
+    ? (origin, cb) => {
+        // Allow requests with no origin (curl, Postman, server-to-server)
+        if (!origin || allowedOrigins.includes(origin)) return cb(null, true);
+        cb(new Error(`CORS: origin ${origin} not allowed`));
+      }
+    : true, // dev fallback — reflects request origin, works with credentials
+  credentials: true,
 }));
 
 portal.use("/api/auth", auth);
@@ -91,7 +107,11 @@ portal.use("/api/background-check", backgroundCheck);
 portal.use("/api/portal-bg-consent", portalBg);
 portal.use("/api/offer", offer);
 portal.use("/api/onboarding", onboarding);
-portal.use("/api/portal-offer", portalOffer)
+portal.use("/api/portal-offer", portalOffer);
+portal.use("/api/offer-template", offerTemplate);
+portal.use("/api/interview-pack", interviewPack);
+portal.use("/api/portal-interview", portalInterview);
+portal.use("/api/offer-pack", offerPack)
 app.use("/portal", portal);
 app.use("/api/auth", auth);
 app.use("/api/cookies", cookies);
@@ -128,7 +148,11 @@ app.use("/api/background-check", backgroundCheck);
 app.use("/api/portal-bg-consent", portalBg);
 app.use("/api/offer", offer);
 app.use("/api/onboarding", onboarding);
-app.use("/api/portal-offer", portalOffer)
+app.use("/api/portal-offer", portalOffer);
+app.use("/api/offer-template", offerTemplate);
+app.use("/api/interview-pack", interviewPack);
+app.use("/api/portal-interview", portalInterview);
+app.use("/api/offer-pack", offerPack)
 
 
 const PORT = process.env.PORT || 3000;

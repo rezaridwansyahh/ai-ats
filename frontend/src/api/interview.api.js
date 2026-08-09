@@ -38,10 +38,14 @@ export const deleteSchedule = (schedule_id) => api.delete(`/interview/schedules/
 
 export const recordOutcome = (schedule_id, { status, outcome_note } = {}) => api.post(`/interview/schedules/${schedule_id}/outcome`, { status, outcome_note });
 
+export const reInterview = (interview_id) => api.post(`/interview/${interview_id}/reinterview`);
+
 export const updateCandidateQuestions = (interview_id, custom_questions) =>
   api.put(`/interview/${interview_id}/custom-questions`, { custom_questions });
 
 export const clearOutcome = (schedule_id) => api.delete(`/interview/schedules/${schedule_id}/outcome`);
+
+export const getPackOutcome = (interview_id) => api.get(`/interview/${interview_id}/pack-outcome`);
 
 export const getScorecard = (interview_id) => api.get(`/interview/${interview_id}/scorecard`);
 
@@ -58,3 +62,12 @@ export const resetDecision = (jobId, interviewId) => api.delete(`/interview/job/
 export const getCalibration = (job_id) => api.get(`/interview/calibration/${job_id}`);
 
 export const batchDecide = (job_id, decisions) => api.post(`/interview/calibration/${job_id}/batch`, { decisions });
+
+export const generatePackLink = (job_id, data) => api.post(`/interview/job/${job_id}/prep/generate-link`, data);
+export const getPacksByJob = (job_id) => api.get(`/interview/job/${job_id}/packs`);
+
+export const getInterviewsByJobSubStage = (job_id) => api.get(`/interview/job/${job_id}`);
+
+export const recordDecision = (interview_id, data) => api.post(`/interview/${interview_id}/decide`, data);
+
+export const undoDecision = (interview_id) => api.delete(`/interview/${interview_id}/decide`);

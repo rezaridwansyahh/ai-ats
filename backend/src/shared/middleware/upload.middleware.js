@@ -8,14 +8,17 @@ const fileFilter = (req, file, cb) => {
     'application/pdf',
     'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
     'text/plain',
+    'application/zip',
+    'application/x-zip-compressed',
+    'application/octet-stream', // some OS/browsers send ZIP with this MIME
   ];
-  const allowedExts = ['.pdf', '.docx', '.txt'];
+  const allowedExts = ['.pdf', '.docx', '.txt', '.zip'];
   const ext = path.extname(file.originalname).toLowerCase();
 
   if (allowedTypes.includes(file.mimetype) || allowedExts.includes(ext)) {
     cb(null, true);
   } else {
-    cb(new Error('Only PDF, DOCX, and TXT files are allowed'), false);
+    cb(new Error('Only PDF, DOCX, TXT, and ZIP files are allowed'), false);
   }
 };
 

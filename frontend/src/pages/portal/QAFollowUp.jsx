@@ -75,10 +75,21 @@ function fmtDate(d) {
 }
 
 function isExpired(summary) {
-  if (!summary) return false;
-  if (summary.status === 'expired') return true;
+  if(!summary) return false;
+  if (summary.status === 'Expired') return true;
   if (!summary.expired_at) return false;
   return new Date(summary.expired_at).getTime() < Date.now();
+}
+
+// Reasonable birth year limits (bounds)
+const DOB_MIN_AGE = 15;
+const DOB_MAX_AGE = 100;
+function dobBounds() {
+  const today = new Date();
+  const maxDate = new Date(today.getFullYear() - DOB_MIN_AGE, today.getMonth(), today.getDate());
+  const minDate = new Date(today.getFullYear() - DOB_MAX_AGE, today.getMonth(), today.getDate());
+  const fmt = (d) => d.toISOString().slice(0, 10);
+  return { min: fmt(minDate), max: fmt(maxDate) };
 }
 
 /* ─── Application Form (English labels + client-side schema helpers) ─── */
@@ -279,6 +290,18 @@ export default function QAFollowUpPage() {
             ? 'NIK (KTP) must be exactly 16 digits.'
             : 'Passport number must contain only letters and numbers.'
         );
+        return;
+      }
+    }
+
+    // 1c) Date of birth check
+    const dobVal = formValues.date_of_birth;
+    if (dobVal) {
+      const { min, max } = dobBounds();
+      if(dobVal < min || dobVal > max) {
+        setFieldErrors((cur) => ({ ...cur, date_of_birth: true}));
+        setPortalTab('form');
+        setError(`Date of birth must be between ${min} and ${max}.`);
         return;
       }
     }
@@ -737,6 +760,7 @@ function PortalFormField({ field, value, invalid, onField, onToggle, identityTyp
           placeholder={placeholderFor(field)}
           aria-invalid={invalid}
           className={`h-9 text-sm ${errCls}`}
+          {...(field.type === 'date' ? dobBounds() : {})}
         />
       )}
 

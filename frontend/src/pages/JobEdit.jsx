@@ -23,6 +23,7 @@ import JobPosting from '@/components/job-management/JobPosting';
 
 import { StatusBadge } from '@/components/common';
 import { isValid } from 'date-fns';
+import FirstJobWizard, { useFirstJobWizard, FirstJobWizardPrompt } from '@/components/tours/FirstJobWizard';
 
 const WORK_OPTIONS = ['On-site', 'Hybrid', 'Remote'];
 const WORK_TYPES = ['Full-time', 'Part-time', 'Contract', 'Casual'];
@@ -108,6 +109,11 @@ export default function JobEditPage() {
   // Ref to coalesce auto-save requests
   const savingRef = useRef(false);
   const pendingRef = useRef(false);
+
+  const {
+    run: wizardRun, setRun: setWizardRun, markSeen: markWizardSeen,
+    showPrompt, accept: acceptWizard, decline: declineWizard,
+  } = useFirstJobWizard();
 
   // Load existing job (edit mode) or initialise blank form (create mode)
   useEffect(() => {
@@ -410,6 +416,12 @@ export default function JobEditPage() {
         </div>
       </div>
 
+      {showPrompt && (
+        <div className="pc-6 pt-4">
+          <FirstJobWizardPrompt onAccept={acceptWizard} onDecline={declineWizard} />
+        </div>
+      )}
+
       <div className="px-6 pb-6 pt-4">
         <div className="grid grid-cols-1 lg:grid-cols-[minmax(0,1fr)_240px] gap-6">
           {/* MAIN COLUMN — renders only the active step. */}
@@ -448,7 +460,7 @@ export default function JobEditPage() {
 
             {/* STEP 2 · PIPELINE & AI */}
             {step === 2 && (
-              <Card className="py-4 gap-3">
+              <Card data-wizard="pipeline-card" className="py-4 gap-3">
                 <CardHeader className="flex flex-row items-center gap-2 pb-2">
                   <Button
                     variant="ghost" size="icon"
@@ -571,6 +583,7 @@ export default function JobEditPage() {
                 <SavedIndicator saving={saving} savedAt={savedAt} error={error} />
                 {!isPublished ? (
                   <Button
+                    data-wizard="publish-btn"
                     size="sm"
                     className="text-xs"
                     onClick={handlePublish}
@@ -667,6 +680,20 @@ export default function JobEditPage() {
           </aside>
         </div>
       </div>
+
+      <FirstJobWizard 
+        form={form}
+        job={job}
+        hasStages={hasStages}
+        isPublished={isPublished}
+        missingRequiredBasics={missingRequired.filter((k) => REQUIRED_BASICS.includes(k))}
+        missingRequiredJD={missingRequired.filter((k) => REQUIRED_JD.includes(k))}
+        invalidUrlFields={invalidUrlFields}
+        setStep={setStep}
+        run={wizardRun}
+        setRun={setWizardRun}
+        markSeen={markWizardSeen}
+      />
     </>
   );
 }
@@ -729,7 +756,7 @@ function BasicsSection({ form, setField, isLocked, missingRequired, invalidUrlFi
   }, [form.sla_start_date, form.sla_end_date]);
 
   return (
-    <Card className="py-4 gap-3">
+    <Card data-wizard="basics-card" className="py-4 gap-3">
       <CardHeader className="flex flex-row items-center gap-2 pb-2">
         <Button
           variant="ghost" size="icon"
@@ -759,6 +786,7 @@ function BasicsSection({ form, setField, isLocked, missingRequired, invalidUrlFi
           required missing={isMissing('job_title')}
         >
           <Input
+            data-wizard="job-title"
             value={form.job_title || ''}
             onChange={(e) => setField('job_title', e.target.value)}
             disabled={isLocked('job_title')}
@@ -967,7 +995,7 @@ function JDSection({
   };
 
   return (
-    <Card className="py-4 gap-3">
+    <Card data-wizard="jd-card" className="py-4 gap-3">
       <CardHeader className="pb-2">
         <div className="flex items-center gap-2">
           <Button

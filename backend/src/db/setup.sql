@@ -17,6 +17,7 @@ DROP TABLE IF EXISTS screening_qa CASCADE;
 DROP TABLE IF EXISTS candidate_screening CASCADE;
 DROP TABLE IF EXISTS candidate_job_score CASCADE;
 DROP TABLE IF EXISTS applicant_job_score CASCADE;  -- orphan cleanup: old name (renamed → candidate_job_score)
+DROP TABLE IF EXISTS cv_upload_batch CASCADE;
 DROP TABLE IF EXISTS master_skill_alias CASCADE;
 DROP TABLE IF EXISTS core_company CASCADE;
 DROP TABLE IF EXISTS mapping_applicant_linkedin CASCADE;
@@ -47,6 +48,9 @@ DROP TABLE IF EXISTS bg_claim CASCADE;
 DROP TABLE IF EXISTS bg_consent CASCADE;
 DROP TABLE IF EXISTS bg_lane CASCADE;
 DROP TABLE IF EXISTS candidate_bg CASCADE;
+DROP TABLE IF EXISTS company_offer_letter CASCADE;
+DROP TABLE IF EXISTS offer_approval CASCADE;
+DROP TABLE IF EXISTS offer_document CASCADE;
 DROP TABLE IF EXISTS offer_send CASCADE;
 DROP TABLE IF EXISTS offer_negotiation CASCADE;
 DROP TABLE IF EXISTS offer_contract CASCADE;
@@ -589,6 +593,7 @@ CREATE TABLE interview_position_prep (
   company_id INTEGER REFERENCES core_company(id) ON DELETE CASCADE,
   questions JSONB NOT NULL,
   rubric_items JSONB NOT NULL,
+  pack_token VARCHAR(64) DEFAULT NULL,
   created_by INTEGER REFERENCES master_users(id) ON DELETE SET NULL,
   created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
   updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
@@ -757,6 +762,28 @@ CREATE TABLE offer_send (
   updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
+CREATE TABLE offer_document (
+  id SERIAL PRIMARY KEY,
+  offer_id INTEGER NOT NULL UNIQUE REFERENCES candidate_offer(id) ON DELETE CASCADE,
+  file VARCHAR(255) NOT NULL,
+  method VARCHAR(20) NOT NULL DEFAULT 'upload', -- 'upload' | 'print'
+  uploaded_by INTEGER REFERENCES master_users(id) ON DELETE SET NULL,
+  uploaded_at TIMESTAMPTZ,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+CREATE TABLE company_offer_letter (
+  id SERIAL PRIMARY KEY,
+  company_id INTEGER NOT NULL UNIQUE REFERENCES core_company(id) ON DELETE CASCADE,
+  file VARCHAR(255) NOT NULL,
+  fields JSONB NOT NULL DEFAULT '[]',
+  uploaded_by INTEGER REFERENCES master_users(id) ON DELETE SET NULL,
+  uploaded_at TIMESTAMPTZ,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
 CREATE TABLE offer_negotiation (
   id SERIAL PRIMARY KEY,
   offer_id INTEGER NOT NULL REFERENCES candidate_offer(id) ON DELETE CASCADE,
@@ -791,6 +818,21 @@ CREATE TABLE offer_contract (
 
 CREATE INDEX idx_offer_contract_offer ON offer_contract(offer_id);
 CREATE INDEX idx_offer_contract_status ON offer_contract(status);
+
+CREATE TABLE offer_approval (
+  id SERIAL PRIMARY KEY,
+  offer_id INTEGER NOT NULL REFERENCES candidate_offer(id) ON DELETE CASCADE,
+  step_order INTEGER NOT NULL,
+  role VARCHAR(100) NOT NULL,
+  approver_name VARCHAR(255) NOT NULL,
+  status VARCHAR(20) NOT NULL DEFAULT 'pending' CHECK (status IN ('pending', 'approved', 'rejected')),
+  note TEXT,
+  decided_at TIMESTAMPTZ,
+  decided_by INTEGER REFERENCES master_users(id) ON DELETE SET NULL,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  UNIQUE (offer_id, step_order)
+);
 
 -- =============================================================================
 -- END OFFER & CONTRACT MODULE
@@ -946,6 +988,22 @@ CREATE INDEX idx_applicant_last_position_trgm ON master_applicant USING GIN (las
 CREATE INDEX idx_applicant_education_trgm     ON master_applicant USING GIN (education     gin_trgm_ops);
 CREATE INDEX idx_applicant_address_trgm       ON master_applicant USING GIN (address       gin_trgm_ops);
 
+CREATE TABLE cv_upload_batch (
+  id                 SERIAL PRIMARY KEY,
+  company_id         INTEGER REFERENCES core_company(id) ON DELETE CASCADE,
+  filename           VARCHAR(255) NOT NULL,
+  file_type          VARCHAR(10)  NOT NULL CHECK (file_type IN ('pdf', 'zip')),
+  status             sourcing_status_type NOT NULL DEFAULT 'Pending',
+  total_files        INTEGER DEFAULT 1,
+  processed_files    INTEGER DEFAULT 0,
+  applicant_name     VARCHAR(255),   -- PDF: extracted candidate name
+  applicant_position VARCHAR(255),   -- PDF: extracted last position
+  error_message      TEXT,
+  created_at         TIMESTAMP NOT NULL DEFAULT NOW(),
+  updated_at         TIMESTAMP NOT NULL DEFAULT NOW()
+);
+CREATE INDEX idx_cv_upload_batch_company ON cv_upload_batch (company_id, created_at DESC);
+
 CREATE TABLE master_skill_alias (
   alias        VARCHAR(100) PRIMARY KEY,
   canonical    VARCHAR(100) NOT NULL,
@@ -1018,3 +1076,56 @@ CREATE TABLE assessment_sessions(
   created_at TIMESTAMP NOT NULL DEFAULT NOW(),
   updated_at TIMESTAMP NOT NULL DEFAULT NOW()
 );
+
+-- ── Interview Pack ──────────────────────────────────────────────────────────
+DROP TABLE IF EXISTS interview_pack_outcome CASCADE;
+DROP TABLE IF EXISTS interview_pack_candidate CASCADE;
+DROP TABLE IF EXISTS interview_pack CASCADE;
+
+CREATE TABLE interview_pack (
+  id                SERIAL PRIMARY KEY,
+  company_id        INTEGER REFERENCES core_company(id) ON DELETE CASCADE,
+  job_id            INTEGER NOT NULL REFERENCES core_job(id) ON DELETE CASCADE,
+  title             VARCHAR(255) NOT NULL DEFAULT 'Interview Round',
+  batch_code        VARCHAR(50),
+  interviewer_name  VARCHAR(255) NOT NULL,
+  window_start      DATE,
+  window_end        DATE,
+  token             UUID NOT NULL UNIQUE DEFAULT gen_random_uuid(),
+  status            VARCHAR(20) NOT NULL DEFAULT 'open' CHECK (status IN ('open', 'submitted')),
+  rubric_snapshot   JSONB NOT NULL,
+  submitted_at      TIMESTAMP,
+  created_by        INTEGER REFERENCES master_users(id) ON DELETE SET NULL,
+  created_at        TIMESTAMP NOT NULL DEFAULT NOW(),
+  updated_at        TIMESTAMP NOT NULL DEFAULT NOW()
+);
+CREATE INDEX idx_interview_pack_company ON interview_pack(company_id, created_at DESC);
+CREATE INDEX idx_interview_pack_job     ON interview_pack(job_id);
+CREATE INDEX idx_interview_pack_token   ON interview_pack(token);
+
+CREATE TABLE interview_pack_candidate (
+  id              SERIAL PRIMARY KEY,
+  pack_id         INTEGER NOT NULL REFERENCES interview_pack(id) ON DELETE CASCADE,
+  applicant_id    INTEGER NOT NULL REFERENCES master_applicant(id) ON DELETE CASCADE,
+  sort_order      INTEGER NOT NULL DEFAULT 0,
+  interview_date  DATE,
+  interview_time  TIME,
+  created_at      TIMESTAMP NOT NULL DEFAULT NOW(),
+  UNIQUE(pack_id, applicant_id)
+);
+CREATE INDEX idx_ipc_pack ON interview_pack_candidate(pack_id, sort_order);
+
+CREATE TABLE interview_pack_outcome (
+  id               SERIAL PRIMARY KEY,
+  pack_id          INTEGER NOT NULL REFERENCES interview_pack(id) ON DELETE CASCADE,
+  pack_candidate_id INTEGER NOT NULL REFERENCES interview_pack_candidate(id) ON DELETE CASCADE,
+  scores           JSONB DEFAULT '{}',
+  weighted_total   NUMERIC(4,2),
+  recommendation   VARCHAR(10) CHECK (recommendation IN ('advance', 'hold', 'reject')),
+  strengths        TEXT,
+  concerns         TEXT,
+  created_at       TIMESTAMP NOT NULL DEFAULT NOW(),
+  updated_at       TIMESTAMP NOT NULL DEFAULT NOW(),
+  UNIQUE(pack_id, pack_candidate_id)
+);
+CREATE INDEX idx_ipo_pack ON interview_pack_outcome(pack_id);

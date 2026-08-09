@@ -1,14 +1,9 @@
 import { Users, UserPlus, Briefcase, Calendar } from 'lucide-react';
 import { StatCard } from '@/components/cards/StatCard';
 
-/*
- * Presentational only — receives the already-computed `stats` object from
- * TalentPoolPage (which derives it from the single getAllByCompanyWithScore
- * fetch). No data fetching or calculation happens in here.
- */
 export default function TalentPoolStats({ stats, loading }) {
   return (
-    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+    <div data-tour="talent-stats" className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
       <StatCard
         icon={<Users className="h-4 w-4 text-primary" />}
         iconBg="bg-primary/10"

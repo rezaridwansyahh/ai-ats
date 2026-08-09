@@ -2,18 +2,9 @@ import { Users } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Slider } from '@/components/ui/slider';
 
-// Fixed chip lists — not derived from a live distinct-value query, since the
-// backend doesn't expose one. Ask backend for a `/applicant/facets` endpoint
-// if you want these generated from real data instead of a fixed list.
 const CITY_CHIPS  = ['Jakarta', 'Bandung', 'Surabaya'];
 const SKILL_CHIPS = ['React', 'TypeScript', 'Next.js', 'Node.js', 'Vue', 'JavaScript', 'Tailwind'];
 
-/*
- * Presentational only — all filter state (activeFilters, minScore) and the
- * handlers that change it (onClear, onChipClick, onMinScoreChange) live in
- * TalentPoolPage. This component just renders the current values and calls
- * back up on interaction.
- */
 export default function TalentPoolFilterSidebar({
   totalCount,
   hasActiveFilters,
@@ -31,6 +22,7 @@ export default function TalentPoolFilterSidebar({
         <div>
           <div className="text-[10px] font-bold uppercase text-muted-foreground mb-2">Candidates</div>
           <button
+            data-tour="talent-clear-all"
             onClick={onClearAll}
             className={`w-full flex items-center justify-between px-2.5 py-1.5 rounded-md text-xs transition-colors
               ${!hasActiveFilters ? 'bg-primary/10 text-primary font-semibold' : 'hover:bg-muted/60 text-foreground'}`}
@@ -42,7 +34,7 @@ export default function TalentPoolFilterSidebar({
           </button>
         </div>
 
-        <div>
+        <div data-tour="talent-min-score">
           <div className="flex items-center justify-between mb-2">
             <div className="text-[10px] font-bold uppercase text-muted-foreground">Min Score</div>
             <span className="text-[11px] font-semibold text-primary">{minScore || '0+'}</span>
@@ -63,7 +55,7 @@ export default function TalentPoolFilterSidebar({
           </p>
         </div>
 
-        <div>
+        <div data-tour="talent-city-chips">
           <div className="text-[10px] font-bold uppercase text-muted-foreground mb-2">City</div>
           <div className="flex flex-wrap gap-1.5">
             {CITY_CHIPS.map(city => (
@@ -81,7 +73,7 @@ export default function TalentPoolFilterSidebar({
           </div>
         </div>
 
-        <div>
+        <div data-tour="talent-skill-chips">
           <div className="text-[10px] font-bold uppercase text-muted-foreground mb-2">Skills</div>
           <div className="flex flex-wrap gap-1.5">
             {SKILL_CHIPS.map(skill => (

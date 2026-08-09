@@ -5,7 +5,7 @@ import {
   Plus, X, Pencil, Briefcase, MapPin, Lock, CalendarCheck,
   ClipboardList, Clock, Users, Trash2, Calendar as CalendarIcon,
   MessageSquare, CheckCircle2, XCircle, RefreshCw, Star,
-  ThumbsUp, ThumbsDown,
+  ThumbsUp, ThumbsDown, Link,
 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -27,8 +27,9 @@ import {
   getSchedules, createSchedule, updateSchedule,
   confirmSchedule, unconfirmSchedule, deleteSchedule,
   recordOutcome, clearOutcome,
-  getScorecard, saveScorecard, deleteScorecard,
-  getDecideByJob, bulkDecide, resetDecision, getInterviewByCandidateId
+  getPackOutcome,
+  getDecideByJob, bulkDecide, resetDecision, getInterviewByCandidateId,
+  reInterview,
 } from '@/api/interview.api';
 
 const COMPETENCY_CODES = ['HRD-01', 'HRD-02', 'HRD-03', 'HRD-04', 'HRD-05', 'HRD-06'];
@@ -42,13 +43,12 @@ const COMPETENCY_NAMES = {
 };
 
 const STATUS_META = {
-  ongoing:     { label: 'Ongoing',     color: 'bg-blue-100 text-blue-700'       },
-  scheduled:   { label: 'Scheduled',   color: 'bg-violet-100 text-violet-700'   },
-  interviewed: { label: 'Interviewed', color: 'bg-emerald-100 text-emerald-700' },
-  no_show:     { label: 'No Show',     color: 'bg-rose-100 text-rose-700'       },
-  reschedule:  { label: 'Reschedule',  color: 'bg-amber-100 text-amber-700'     },
-  cancelled:   { label: 'Cancelled',   color: 'bg-gray-100 text-gray-600'       },
-  done:        { label: 'Done',        color: 'bg-emerald-100 text-emerald-700' },
+  setup:     { label: 'Setup',     color: 'bg-slate-100 text-slate-700'     },
+  scheduled: { label: 'Scheduled', color: 'bg-violet-100 text-violet-700'   },
+  ongoing:   { label: 'Ongoing',   color: 'bg-blue-100 text-blue-700'       },
+  result:    { label: 'Result',    color: 'bg-amber-100 text-amber-700'     },
+  cancelled: { label: 'Cancelled', color: 'bg-gray-100 text-gray-600'       },
+  done:      { label: 'Done',      color: 'bg-emerald-100 text-emerald-700' },
 };
 
 const OUTCOME_OPTIONS = [
@@ -88,10 +88,8 @@ const REJECT_REASONS = [
 ];
 
 const SECTIONS = [
-  { key: 'prep',     label: 'Prep',     icon: ClipboardList },
   { key: 'schedule', label: 'Schedule', icon: CalendarCheck },
-  { key: 'conduct',  label: 'Conduct',  icon: Users         },
-  { key: 'evaluate', label: 'Evaluate', icon: Star          },
+  { key: 'result',   label: 'Result',   icon: Star          },
   { key: 'decide',   label: 'Decide',   icon: Check         },
 ];
 
@@ -139,7 +137,8 @@ export default function InterviewCandidatePage() {
   const [loading, setLoading]     = useState(true);
   const [error, setError]         = useState(null);
   const [banner, setBanner]       = useState(null);
-  const [activeSection, setActiveSection] = useState('prep');
+  const [activeSection, setActiveSection] = useState('schedule');
+  const [reInterviewing, setReInterviewing] = useState(false);
 
   const load = useCallback(async () => {
     if (!candidateIdNum) return;
@@ -188,22 +187,36 @@ export default function InterviewCandidatePage() {
     status, scheduled_at, last_position, address, education_text,
   } = interview;
 
-  // ← must be HERE, before return:
-  const isScheduled  = ['scheduled', 'interviewed', 'no_show', 'reschedule', 'done'].includes(status);
-  const hasConducted = ['interviewed', 'no_show', 'reschedule', 'done'].includes(status);
-  const hasEvaluated = status === 'done';
+  const isScheduled  = ['scheduled', 'ongoing', 'result', 'done'].includes(status);
+  const hasConducted = ['result', 'done'].includes(status);
+  const canReInterview = status === 'result' || status === 'done';
+  const round = interview.round || 1;
 
   const canGoStep = (key) => {
-    if (key === 'prep')     return true;
     if (key === 'schedule') return true;
-    if (key === 'conduct')  return isScheduled;
-    if (key === 'evaluate') return hasConducted;
-    if (key === 'decide')   return hasEvaluated;
-    return false;
+    if (key === 'result')   return isScheduled;    // unlocks once session confirmed
+    if (key === 'decide')   return hasConducted;   // unlocks once outcome recorded
+    return true;
   };
 
   const statusMeta = STATUS_META[status] || { label: status, color: 'bg-muted text-muted-foreground' };
   const initials   = (candidate_name || '?').split(/\s+/).map((s) => s[0]).join('').slice(0, 2).toUpperCase();
+
+  const handleReInterview = async () => {
+    if (!interviewId || reInterviewing) return;
+    setReInterviewing(true);
+    setError(null);
+    try {
+      await reInterview(interviewId);
+      setBanner({ ok: true, text: 'New interview round started.' });
+      setActiveSection('schedule');
+      await load();
+    } catch (err) {
+      setError(err.response?.data?.message || err.message || 'Failed to start a new round');
+    } finally {
+      setReInterviewing(false);
+    }
+  };
 
   return (
     <>
@@ -229,9 +242,26 @@ export default function InterviewCandidatePage() {
                 {scheduled_at    && <span>· next session {fmt(scheduled_at)}</span>}
               </div>
             </div>
+            <span className="inline-flex items-center px-2 py-1 rounded-full text-[10px] font-semibold font-mono bg-muted text-muted-foreground border border-border">
+              R{round}
+            </span>
             <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] font-semibold ${statusMeta.color}`}>
               {statusMeta.label}
             </span>
+            {canReInterview && (
+              <Button
+                size="sm"
+                variant="outline"
+                className="text-xs"
+                onClick={handleReInterview}
+                disabled={reInterviewing}
+              >
+                {reInterviewing
+                  ? <Loader2 className="h-3.5 w-3.5 mr-1.5 animate-spin" />
+                  : <RefreshCw className="h-3.5 w-3.5 mr-1.5" />}
+                Interview Again
+              </Button>
+            )}
           </div>
         </div>
       </div>
@@ -273,10 +303,8 @@ export default function InterviewCandidatePage() {
               ))}
             </div>
 
-            {activeSection === 'prep' && <PrepSection jobId={job_id} interviewId={interviewId} prep={prep} customQuestions={interview?.custom_questions || []} setPrep={setPrep} setBanner={setBanner} setError={setError} navigate={navigate} />}
             {activeSection === 'schedule' && <ScheduleSection interviewId={interviewId} interview={interview} setInterview={setInterview} setBanner={setBanner} setError={setError} />}
-            {activeSection === 'conduct'  && <ConductSection  interviewId={interviewId} interview={interview} setInterview={setInterview} setBanner={setBanner} setError={setError} prep={prep} />}
-            {activeSection === 'evaluate' && <EvaluateSection interviewId={interviewId} interview={interview} setInterview={setInterview} prep={prep} setBanner={setBanner} setError={setError} />}
+            {activeSection === 'result'   && <ResultSection   interview={interview} prep={prep} interviewId={interviewId} />}
             {activeSection === 'decide'   && <DecideSection   interviewId={interviewId} interview={interview} setInterview={setInterview} setBanner={setBanner} setError={setError} />}
           </div>
 
@@ -482,6 +510,8 @@ function ScheduleSection({ interviewId, interview, setInterview, setBanner, setE
   const [confirmNote, setConfirmNote]         = useState('');
   const [confirmingId, setConfirmingId]       = useState(null);
   const [deletingId, setDeletingId]           = useState(null);
+  const [recordingId, setRecordingId]         = useState(null);
+  const [outcomeNote, setOutcomeNote]         = useState('');
 
   const loadSessions = useCallback(async () => {
     setLoadingSessions(true);
@@ -549,10 +579,10 @@ function ScheduleSection({ interviewId, interview, setInterview, setBanner, setE
       await deleteSchedule(sessionId);
       const remaining = sessions.filter((s) => s.id !== sessionId);
       setSessions(remaining);
-      // Mirror backend syncScheduledAt: if no sessions left → 'ongoing', else stays 'scheduled'
+      // Mirror backend syncScheduledAt: if no sessions left → 'setup', else stays 'scheduled'
       setInterview((prev) => ({
         ...prev,
-        status: remaining.length > 0 ? 'scheduled' : 'ongoing',
+        status: remaining.length > 0 ? 'scheduled' : 'setup',
         scheduled_at: remaining.length > 0 ? prev.scheduled_at : null,
       }));
       setBanner({ ok: true, text: 'Session removed.' });
@@ -560,7 +590,39 @@ function ScheduleSection({ interviewId, interview, setInterview, setBanner, setE
     finally { setDeletingId(null); }
   };
 
-  const canAdd = sessions.length < MAX_SESSIONS;
+  const handleRecordOutcome = async (sessionId, status) => {
+    setRecordingId(sessionId); setError(null); setBanner(null);
+    try {
+      const res = await recordOutcome(sessionId, { status, outcome_note: outcomeNote || undefined });
+      setSessions((prev) => prev.map((s) => s.id === sessionId ? res.data.schedule : s));
+      // 'reschedule' loops back to Schedule sub-stage; other outcomes move to Result.
+      setInterview((prev) => ({ ...prev, status: status === 'reschedule' ? 'scheduled' : 'result' }));
+      setBanner({ ok: true, text: `Outcome recorded: ${status.replace('_', ' ')}.` });
+      setOutcomeNote('');
+    } catch (err) {
+      setError(err.response?.data?.message || err.message || 'Failed to record outcome');
+    } finally { setRecordingId(null); }
+  };
+
+  const handleClearOutcome = async (sessionId) => {
+    setError(null); setBanner(null);
+    try {
+      const res = await clearOutcome(sessionId);
+      setSessions((prev) => prev.map((s) => s.id === sessionId ? res.data.schedule : s));
+      // Session remains confirmed after clearing its outcome.
+      setInterview((prev) => ({ ...prev, status: 'ongoing' }));
+      setBanner({ ok: true, text: 'Outcome cleared.' });
+    } catch (err) {
+      setError(err.response?.data?.message || err.message || 'Failed to clear outcome');
+    }
+  };
+
+  // Mirrors the backend's isScheduleCreationLocked rule: only a fresh round
+  // (no sessions yet) or a 'reschedule' outcome permits adding another
+  // session. Anything else must go through "Interview Again" (new round).
+  const latestSession = sessions[sessions.length - 1];
+  const scheduleLocked = !!latestSession && latestSession.status !== 'reschedule';
+  const canAdd = sessions.length < MAX_SESSIONS && !scheduleLocked;
 
   return (
     <div className="space-y-4">
@@ -571,6 +633,13 @@ function ScheduleSection({ interviewId, interview, setInterview, setBanner, setE
         </div>
         {canAdd && !showForm && <Button size="sm" className="text-xs" onClick={openNewForm}><Plus className="h-3.5 w-3.5 mr-1.5" /> Add session</Button>}
       </div>
+
+      {scheduleLocked && !showForm && (
+        <div className="flex items-center gap-2 px-3 py-2 rounded-lg border border-amber-200 bg-amber-50 text-xs text-amber-700">
+          <MessageSquare className="h-3.5 w-3.5 shrink-0" />
+          A session is already active. Resolve its outcome first, or use "Interview Again" to start a new round.
+        </div>
+      )}
 
       {showForm && (
         <Card className="border-primary/30 bg-primary/5">
@@ -628,12 +697,17 @@ function ScheduleSection({ interviewId, interview, setInterview, setBanner, setE
               sessionNumber={idx + 1}
               confirmNote={confirmNote}
               setConfirmNote={setConfirmNote}
+              outcomeNote={outcomeNote}
+              setOutcomeNote={setOutcomeNote}
               confirmingId={confirmingId}
+              recordingId={recordingId}
               deletingId={deletingId}
               onEdit={() => openEditForm(session)}
               onConfirm={() => handleConfirm(session)}
               onUnconfirm={() => handleUnconfirm(session.id)}
               onDelete={() => handleDelete(session.id)}
+              onRecordOutcome={(status) => handleRecordOutcome(session.id, status)}
+              onClearOutcome={() => handleClearOutcome(session.id)}
             />
           ))}
         </div>
@@ -650,22 +724,33 @@ function ScheduleSection({ interviewId, interview, setInterview, setBanner, setE
 
 // ─── SessionCard ─────────────────────────────────────────────────────────────
 
-function SessionCard({ session, sessionNumber, confirmNote, setConfirmNote, confirmingId, deletingId, onEdit, onConfirm, onUnconfirm, onDelete }) {
+function SessionCard({
+  session, sessionNumber,
+  confirmNote, setConfirmNote,
+  outcomeNote, setOutcomeNote,
+  confirmingId, recordingId, deletingId,
+  onEdit, onConfirm, onUnconfirm, onDelete,
+  onRecordOutcome, onClearOutcome,
+}) {
   const [showConfirmInput, setShowConfirmInput] = useState(false);
+  const [showOutcomePanel, setShowOutcomePanel] = useState(false);
+
   const isConfirmed  = session.confirmed;
   const isConfirming = confirmingId === session.id;
-  const isDeleting   = deletingId === session.id;
+  const isRecording  = recordingId  === session.id;
+  const isDeleting   = deletingId   === session.id;
   const hasOutcome   = !!session.status && session.status !== 'ongoing';
   const outcomeMeta  = hasOutcome ? OUTCOME_OPTIONS.find((o) => o.value === session.status) : null;
 
+  const cardBorder = hasOutcome && session.status === 'interviewed' ? 'border-emerald-200 bg-emerald-50/20'
+    : hasOutcome && session.status === 'no_show'    ? 'border-rose-200 bg-rose-50/20'
+    : hasOutcome && session.status === 'reschedule' ? 'border-amber-200 bg-amber-50/20'
+    : isConfirmed ? 'border-emerald-200 bg-emerald-50/20' : '';
+
   return (
-    <Card className={`transition-colors ${
-      hasOutcome && session.status === 'interviewed' ? 'border-emerald-200 bg-emerald-50/20'
-      : hasOutcome && session.status === 'no_show'   ? 'border-rose-200 bg-rose-50/20'
-      : hasOutcome && session.status === 'reschedule'? 'border-amber-200 bg-amber-50/20'
-      : isConfirmed ? 'border-emerald-200 bg-emerald-50/20' : ''
-    }`}>
+    <Card className={`transition-colors ${cardBorder}`}>
       <CardContent className="p-4 space-y-3">
+        {/* ── Header row ── */}
         <div className="flex items-start justify-between gap-3">
           <div className="flex items-start gap-3 min-w-0 flex-1">
             <div className={`h-7 w-7 rounded-full flex items-center justify-center text-[11px] font-bold shrink-0 ${
@@ -683,7 +768,11 @@ function SessionCard({ session, sessionNumber, confirmNote, setConfirmNote, conf
                   <CalendarIcon className="h-3 w-3" />{fmt(session.scheduled_at)} · {fmtTime(session.scheduled_at)}
                 </span>
                 {hasOutcome && outcomeMeta ? (
-                  <Badge variant="outline" className={`text-[9px] ${session.status === 'interviewed' ? 'border-emerald-300 text-emerald-700 bg-emerald-50' : session.status === 'no_show' ? 'border-rose-300 text-rose-700 bg-rose-50' : 'border-amber-300 text-amber-700 bg-amber-50'}`}>{outcomeMeta.label}</Badge>
+                  <Badge variant="outline" className={`text-[9px] ${
+                    session.status === 'interviewed' ? 'border-emerald-300 text-emerald-700 bg-emerald-50'
+                    : session.status === 'no_show'   ? 'border-rose-300 text-rose-700 bg-rose-50'
+                    : 'border-amber-300 text-amber-700 bg-amber-50'
+                  }`}>{outcomeMeta.label}</Badge>
                 ) : isConfirmed ? (
                   <Badge variant="outline" className="text-[9px] border-emerald-300 text-emerald-700 bg-emerald-50">Confirmed</Badge>
                 ) : (
@@ -691,15 +780,60 @@ function SessionCard({ session, sessionNumber, confirmNote, setConfirmNote, conf
                 )}
               </div>
               {session.description && <p className="text-[10px] text-muted-foreground mt-1">{session.description}</p>}
-              {isConfirmed && session.confirmation_note && <p className="text-[10px] text-emerald-700 mt-1 italic">"{session.confirmation_note}"</p>}
-              {hasOutcome && session.outcome_note && <p className="text-[10px] text-muted-foreground mt-1 italic">Note: {session.outcome_note}</p>}
+              {isConfirmed && session.confirmation_note && (
+                <p className="text-[10px] text-emerald-700 mt-1 italic">"{session.confirmation_note}"</p>
+              )}
+              {hasOutcome && session.outcome_note && (
+                <p className="text-[10px] text-muted-foreground mt-1 italic">Note: {session.outcome_note}</p>
+              )}
             </div>
           </div>
+
+          {/* ── Action buttons ── */}
           <div className="flex items-center gap-1 shrink-0">
-            {!isConfirmed && !hasOutcome && <Button size="icon" variant="ghost" className="h-7 w-7" onClick={onEdit} title="Edit"><Pencil className="h-3.5 w-3.5 text-muted-foreground" /></Button>}
-            {isConfirmed
-              ? (!hasOutcome && <Button size="sm" variant="outline" className="h-7 text-xs text-amber-700 border-amber-300 hover:bg-amber-50" onClick={onUnconfirm}>Unconfirm</Button>)
-              : <Button size="sm" className="h-7 text-xs bg-emerald-600 hover:bg-emerald-700" onClick={() => setShowConfirmInput(!showConfirmInput)}>Confirm</Button>}
+            {/* Edit — only when unconfirmed + no outcome */}
+            {!isConfirmed && !hasOutcome && (
+              <Button size="icon" variant="ghost" className="h-7 w-7" onClick={onEdit} title="Edit">
+                <Pencil className="h-3.5 w-3.5 text-muted-foreground" />
+              </Button>
+            )}
+
+            {/* Confirmed state: show "Record outcome" or "Clear outcome" */}
+            {isConfirmed && !hasOutcome && (
+              <Button
+                size="sm"
+                className="h-7 text-xs bg-primary hover:bg-primary/90"
+                onClick={() => setShowOutcomePanel((v) => !v)}
+              >
+                <CheckCircle2 className="h-3.5 w-3.5 mr-1" /> Record outcome
+              </Button>
+            )}
+            {hasOutcome && (
+              <Button
+                size="sm"
+                variant="outline"
+                className="h-7 text-xs"
+                onClick={() => setShowOutcomePanel((v) => !v)}
+              >
+                <Pencil className="h-3 w-3 mr-1" /> {showOutcomePanel ? 'Cancel' : 'Edit outcome'}
+              </Button>
+            )}
+
+            {/* Unconfirm — only when confirmed + no outcome */}
+            {isConfirmed && !hasOutcome && (
+              <Button size="sm" variant="outline" className="h-7 text-xs text-amber-700 border-amber-300 hover:bg-amber-50" onClick={onUnconfirm}>
+                Unconfirm
+              </Button>
+            )}
+
+            {/* Confirm — when not yet confirmed */}
+            {!isConfirmed && !hasOutcome && (
+              <Button size="sm" className="h-7 text-xs bg-emerald-600 hover:bg-emerald-700" onClick={() => setShowConfirmInput(!showConfirmInput)}>
+                Confirm
+              </Button>
+            )}
+
+            {/* Delete — only when unconfirmed + no outcome */}
             {!isConfirmed && !hasOutcome && (
               <Button size="icon" variant="ghost" className="h-7 w-7 text-rose-500 hover:text-rose-600 hover:bg-rose-50" onClick={onDelete} disabled={isDeleting} title="Delete">
                 {isDeleting ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Trash2 className="h-3.5 w-3.5" />}
@@ -707,13 +841,60 @@ function SessionCard({ session, sessionNumber, confirmNote, setConfirmNote, conf
             )}
           </div>
         </div>
+
+        {/* ── Confirm input panel ── */}
         {showConfirmInput && !isConfirmed && (
           <div className="flex items-center gap-2 pt-2 border-t">
-            <Input value={confirmNote} onChange={(e) => setConfirmNote(e.target.value)} placeholder="How was it confirmed? (e.g. via WhatsApp)…" className="text-xs h-8 flex-1" />
+            <Input
+              value={confirmNote}
+              onChange={(e) => setConfirmNote(e.target.value)}
+              placeholder="How was it confirmed? (e.g. via WhatsApp)…"
+              className="text-xs h-8 flex-1"
+            />
             <Button size="sm" className="h-8 text-xs bg-emerald-600 hover:bg-emerald-700" onClick={() => { onConfirm(); setShowConfirmInput(false); }} disabled={isConfirming}>
               {isConfirming ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Check className="h-3.5 w-3.5 mr-1" />} Done
             </Button>
             <Button size="sm" variant="ghost" className="h-8 text-xs" onClick={() => setShowConfirmInput(false)}>Cancel</Button>
+          </div>
+        )}
+
+        {/* ── Outcome recording panel (shown when confirmed or editing existing outcome) ── */}
+        {showOutcomePanel && (
+          <div className="pt-3 border-t space-y-3">
+            <p className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wide">What was the outcome?</p>
+            <div className="flex flex-wrap gap-2">
+              {OUTCOME_OPTIONS.map(({ value, label, icon: Icon, color }) => (
+                <button
+                  key={value}
+                  type="button"
+                  disabled={isRecording}
+                  onClick={() => { onRecordOutcome(value); setShowOutcomePanel(false); }}
+                  className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border text-xs font-semibold transition-colors hover:opacity-80 ${
+                    hasOutcome && session.status === value
+                      ? 'bg-primary text-primary-foreground border-primary'
+                      : 'bg-background border-border text-foreground hover:bg-muted/40'
+                  } ${isRecording ? 'opacity-50 cursor-not-allowed' : ''}`}
+                >
+                  {isRecording ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Icon className={`h-3.5 w-3.5 ${color}`} />}
+                  {label}
+                </button>
+              ))}
+            </div>
+            <Input
+              value={outcomeNote}
+              onChange={(e) => setOutcomeNote(e.target.value)}
+              placeholder="Optional note about this outcome…"
+              className="text-xs h-8"
+            />
+            {hasOutcome && (
+              <button
+                type="button"
+                onClick={() => { onClearOutcome(); setShowOutcomePanel(false); }}
+                className="text-[11px] text-rose-600 hover:underline inline-flex items-center gap-1"
+              >
+                <X className="h-3 w-3" /> Clear outcome
+              </button>
+            )}
           </div>
         )}
       </CardContent>
@@ -749,7 +930,7 @@ function ConductSection({ interviewId, interview, setInterview, setBanner, setEr
     try {
       const res = await recordOutcome(sessionId, { status, outcome_note: outcomeNote || undefined });
       setSessions((prev) => prev.map((s) => s.id === sessionId ? res.data.schedule : s));
-      setInterview((prev) => ({ ...prev, status }));
+      setInterview((prev) => ({ ...prev, status: status === 'reschedule' ? 'scheduled' : 'result' }));
       setBanner({ ok: true, text: `Outcome recorded: ${status.replace('_', ' ')}.` });
       setOutcomeNote(''); setExpandedId(null);
     } catch (err) { setError(err.response?.data?.message || err.message || 'Failed to record outcome'); }
@@ -762,7 +943,7 @@ function ConductSection({ interviewId, interview, setInterview, setBanner, setEr
     try {
       const res = await recordOutcome(currentSessionId, { status: 'interviewed', outcome_note: detailedNotes || undefined });
       setSessions((prev) => prev.map((s) => s.id === currentSessionId ? res.data.schedule : s));
-      setInterview((prev) => ({ ...prev, status: 'interviewed' }));
+      setInterview((prev) => ({ ...prev, status: 'result' }));
       setBanner({ ok: true, text: 'Interview completed and notes saved.' });
       setShowNotesDialog(false); setCurrentSessionId(null); setDetailedNotes('');
     } catch (err) { setError(err.response?.data?.message || err.message || 'Failed to save notes'); }
@@ -1858,18 +2039,14 @@ function CandidateCard({ last_position, address, education_text }) {
 }
 
 function StepsNav({ activeSection, onStep, status, interview }) {
-  const isScheduled  = ['scheduled', 'interviewed', 'no_show', 'reschedule', 'done'].includes(status);
-  const hasConducted = ['interviewed', 'no_show', 'reschedule', 'done'].includes(status);
-  const hasEvaluated = status === 'done';
-  const isDecidable  = status === 'done';
+  const isScheduled  = ['scheduled', 'ongoing', 'result', 'done'].includes(status);
+  const hasConducted = ['result', 'done'].includes(status);
   const hasDecided   = interview?.decision && interview.decision !== 'pending';
 
   const stepState = (key) => {
-    if (key === 'prep')     return isScheduled  ? 'done'   : 'active';
-    if (key === 'schedule') return hasConducted ? 'done'   : isScheduled  ? 'active' : 'pending';
-    if (key === 'conduct')  return hasEvaluated ? 'done'   : isScheduled ? 'active' : 'pending';
-    if (key === 'evaluate') return hasDecided   ? 'done'   : hasConducted ? 'active' : 'pending';
-    if (key === 'decide')   return isDecidable ? 'active'  : 'soon';
+    if (key === 'schedule') return hasConducted ? 'done'  : isScheduled   ? 'active' : 'active';
+    if (key === 'result')   return hasDecided   ? 'done'  : hasConducted  ? 'active' : isScheduled ? 'active' : 'pending';
+    if (key === 'decide')   return hasDecided   ? 'done'  : hasConducted  ? 'active' : 'pending';
     return 'soon';
   };
 
@@ -1923,5 +2100,165 @@ function StepsNav({ activeSection, onStep, status, interview }) {
         })}
       </CardContent>
     </Card>
+  );
+}
+
+// ── Result Section ────────────────────────────────────────────────────────────
+
+function ResultSection({ interview, prep, interviewId }) {
+  const [outcome, setOutcome]     = useState(undefined); // undefined = loading
+  const [loading, setLoading]     = useState(true);
+
+  useEffect(() => {
+    if (!interviewId) return;
+    setLoading(true);
+    getPackOutcome(interviewId)
+      .then((res) => setOutcome(res.data?.outcome || null))
+      .catch(() => setOutcome(null))
+      .finally(() => setLoading(false));
+  }, [interviewId]);
+
+  const rubricItems = prep?.rubric_items || [];
+  const scores      = outcome?.scores || {};
+  const rec         = outcome?.recommendation;
+  const recMeta     = RECOMMENDATION_OPTIONS.find((r) => r.value === rec);
+
+  if (loading) {
+    return (
+      <div className="flex justify-center py-12">
+        <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
+      </div>
+    );
+  }
+
+  // No outcome yet — show state based on interview status
+  if (!outcome) {
+    const status = interview?.status;
+    const isInPack = ['scheduled', 'ongoing'].includes(status);
+    return (
+      <Card>
+        <CardContent className="py-14 text-center space-y-2">
+          <div className="h-10 w-10 rounded-full bg-muted flex items-center justify-center mx-auto">
+            <Clock className="h-5 w-5 text-muted-foreground" />
+          </div>
+          <p className="text-sm font-semibold">
+            {isInPack ? 'Waiting for interviewer' : 'No scores yet'}
+          </p>
+          <p className="text-xs text-muted-foreground max-w-xs mx-auto">
+            {isInPack
+              ? 'The interviewer has been sent a pack link. Scores will appear here once they submit.'
+              : 'Create an interview pack link from the position setup → Interview Link tab and send it to the interviewer.'}
+          </p>
+        </CardContent>
+      </Card>
+    );
+  }
+
+  return (
+    <div className="space-y-4">
+      {/* Submitted by banner */}
+      <div className="flex items-center gap-3 px-4 py-3 rounded-lg border border-emerald-200 bg-emerald-50 text-sm text-emerald-700">
+        <CheckCircle2 className="h-4 w-4 shrink-0" />
+        <div>
+          <span className="font-semibold">Scores submitted</span>
+          {outcome.interviewer_name && <span> by {outcome.interviewer_name}</span>}
+          {outcome.submitted_at && (
+            <span className="text-[11px] text-emerald-600 ml-1">
+              · {new Date(outcome.submitted_at).toLocaleDateString('en-AU', { day: 'numeric', month: 'short', year: 'numeric' })}
+            </span>
+          )}
+          {outcome.pack_title && (
+            <span className="text-[11px] text-emerald-600 ml-1">· {outcome.pack_title}</span>
+          )}
+        </div>
+      </div>
+
+      {/* Weighted total */}
+      {outcome.weighted_total != null && (
+        <div className="flex items-center gap-3 px-4 py-3 rounded-lg border bg-muted/30">
+          <Star className="h-4 w-4 text-primary shrink-0" />
+          <span className="text-sm font-semibold">
+            Weighted Score: <span className="text-primary">{Number(outcome.weighted_total).toFixed(2)}</span>
+            <span className="text-xs font-normal text-muted-foreground"> / 7.00</span>
+          </span>
+        </div>
+      )}
+
+      {/* Competency scores — read-only */}
+      {rubricItems.length > 0 && (
+        <Card>
+          <CardHeader className="pb-3">
+            <CardTitle className="text-sm">Competency Scores</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            {rubricItems.map((item) => {
+              const code    = item.competency_code || item.name || item.label;
+              const label   = item.competency_name || item.label || code;
+              const score   = scores[code];
+              return (
+                <div key={code}>
+                  <div className="flex items-center justify-between mb-1.5">
+                    <p className="text-xs font-medium">{label}</p>
+                    <div className="flex items-center gap-2">
+                      <span className="text-[10px] text-muted-foreground">weight {item.weight ?? 1}×</span>
+                      {score != null
+                        ? <span className="text-xs font-bold text-primary">{score} / 7</span>
+                        : <span className="text-[10px] text-muted-foreground italic">not scored</span>}
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-1">
+                    {[1, 2, 3, 4, 5, 6, 7].map((v) => (
+                      <div
+                        key={v}
+                        className={`h-7 w-7 rounded-full flex items-center justify-center text-[11px] font-bold border shrink-0 ${
+                          score === v
+                            ? 'bg-primary text-primary-foreground border-primary'
+                            : 'bg-muted/40 text-muted-foreground border-border'
+                        }`}
+                      >
+                        {v}
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              );
+            })}
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Recommendation */}
+      {rec && recMeta && (
+        <Card>
+          <CardHeader className="pb-3"><CardTitle className="text-sm">Recommendation</CardTitle></CardHeader>
+          <CardContent>
+            <div className={`inline-flex items-center gap-2 px-4 py-2 rounded-lg border text-sm font-semibold ${recMeta.color}`}>
+              <recMeta.icon className="h-4 w-4" /> {recMeta.label}
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Strengths & Concerns */}
+      {(outcome.strengths || outcome.concerns) && (
+        <Card>
+          <CardHeader className="pb-3"><CardTitle className="text-sm">Interviewer Notes</CardTitle></CardHeader>
+          <CardContent className="space-y-3">
+            {outcome.strengths && (
+              <div>
+                <p className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground mb-1">Strengths</p>
+                <p className="text-xs leading-relaxed">{outcome.strengths}</p>
+              </div>
+            )}
+            {outcome.concerns && (
+              <div>
+                <p className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground mb-1">Concerns</p>
+                <p className="text-xs leading-relaxed">{outcome.concerns}</p>
+              </div>
+            )}
+          </CardContent>
+        </Card>
+      )}
+    </div>
   );
 }

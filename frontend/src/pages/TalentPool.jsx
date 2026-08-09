@@ -1,12 +1,16 @@
 import { useState, useEffect, useMemo } from 'react';
-import { Sparkles } from 'lucide-react';
+import { Sparkles, HelpCircle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import AddToJobDialog from '@/components/talent-pool/AddToJobDialog';
 import TalentPoolStats from '@/components/talent-pool/TalentPoolStats';
 import TalentPoolFilterSidebar from '@/components/talent-pool/TalentPoolFilterSidebar';
 import TalentPoolTable from '@/components/talent-pool/TalentPoolTable';
+import CvUploadCard from '@/components/talent-pool/CvUploadCard';
 import { getAllByCompanyWithScore } from '@/api/applicant.api';
 import { PageHeader } from '@/components/common';
+
+import PipelineTour, { usePipelineTour } from '@/components/tours/PipelineTour';
+import { TALENT_POOL_STEPS } from '@/components/tours/tourSteps';
 
 const PAGE_SIZE = 10;
 
@@ -44,6 +48,8 @@ export default function TalentPoolPage() {
   const [dialogOpen, setDialogOpen]               = useState(false);
   const [selectedApplicant, setSelectedApplicant] = useState(null);
 
+  const { run, setRun, markSeen, restart } = usePipelineTour('talent-pool');
+
   // ── One full fetch — includes latest_score per applicant ────────
   const loadApplicants = async () => {
     setLoading(true);
@@ -67,7 +73,7 @@ export default function TalentPoolPage() {
     [activeFilters, minScore]
   );
 
-  // ── Client-side filtering ────────────────────────────────────────
+ // ── Client-side filtering ────────────────────────────────────────
   const filteredRows = useMemo(() => {
     const posQ = activeFilters.position_q.trim().toLowerCase();
     const skQ  = activeFilters.skill_q.trim().toLowerCase();
@@ -103,6 +109,11 @@ export default function TalentPoolPage() {
       }
 
       return true;
+    }).sort((a, b) => {
+      // Newest applicants first
+      const dateA = a.date ? new Date(a.date).getTime() : 0;
+      const dateB = b.date ? new Date(b.date).getTime() : 0;
+      return dateB - dateA;
     });
   }, [allApplicants, activeFilters, minScore]);
 
@@ -188,15 +199,20 @@ export default function TalentPoolPage() {
   return (
     <div className="space-y-5 p-6">
 
-      <div className="flex items-start justify-between gap-4">
+      <div data-tour="talent-pool-header" className="flex items-start justify-between gap-4">
         <PageHeader
           title="Talent"
           highlight="Pool"
           subtitle={`${stats.total} candidates saved. Search by skill, filter by city or score, or browse all.`}
         />
-        <Button size="sm" className="text-xs shrink-0 mt-1" disabled title="Coming soon">
-          <Sparkles className="h-3.5 w-3.5 mr-1.5" /> AI Suggest
-        </Button>
+        <div className="flex items-center gap-2 shrink-0 mt-1">
+          <Button variant="ghost" size="sm" className="text-xs" onClick={restart}>
+            <HelpCircle className="h-3.5 w-3.5 mr-1" /> Take the tour
+          </Button>
+          <Button size="sm" className="text-xs" disabled title="Coming soon">
+            <Sparkles className="h-3.5 w-3.5 mr-1.5" /> AI Suggest
+          </Button>
+        </div>
       </div>
 
       <TalentPoolStats stats={stats} loading={loading} />
@@ -238,6 +254,16 @@ export default function TalentPoolPage() {
         onOpenChange={setDialogOpen}
         applicant={selectedApplicant}
         onSuccess={() => loadApplicants()}
+      />
+
+      <CvUploadCard />
+
+      <PipelineTour
+        steps={TALENT_POOL_STEPS}
+        tourKey="talent-pool"
+        run={run}
+        setRun={setRun}
+        markSeen={markSeen}
       />
     </div>
   );

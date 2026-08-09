@@ -21,28 +21,28 @@ export const sendOfferLetter = (offerId) => api.post(`/offer/${offerId}/send`);
 // Resend — revokes the active send and issues a fresh token
 export const resendOffer = (offerId) => api.post(`/offer/${offerId}/resend`);
 
+// Revoke — revokes the active send without issuing a new one
+export const revokeOffer = (offerId, reason) => api.post(`/offer/${offerId}/revoke`, { reason });
+
 // Send history — every offer_send row for this offer (sent/resent/revoked/signed)
 export const getSendHistory = (offerId) => api.get(`/offer/${offerId}/send-history`);
 
-// Send options — reply-to, portal expiry, auto-reminder policy
-export const getDispatchSettings = (offerId) => api.get(`/offer/${offerId}/dispatch-settings`);
-
-// settings: { reply_to, portal_expiry_days, reminder_policy }
-export const saveDispatchSettings = (offerId, settings) => api.put(`/offer/${offerId}/dispatch-settings`, settings);
-
-// Track sub-stage — combined sends + negotiations + approval timeline
-export const getTrackTimeline = (offerId) => api.get(`/offer/${offerId}/track`);
-
 // Candidate actions (portal - public endpoints)
-export const acceptOffer = (offerId, acceptanceNote) => api.post(`/offer/${offerId}/accept`, { acceptance_note: acceptanceNote });
+export const acceptOffer = (offerId, acceptanceNote) =>
+  api.post(`/offer/${offerId}/accept`, { acceptance_note: acceptanceNote });
 
-export const rejectOffer = (offerId, rejectionReason) => api.post(`/offer/${offerId}/reject`, { rejection_reason: rejectionReason });
+export const rejectOffer = (offerId, rejectionReason) =>
+  api.post(`/offer/${offerId}/reject`, { rejection_reason: rejectionReason });
 
-export const negotiateOffer = (offerId, message, requestedSalary) => api.post(`/offer/${offerId}/negotiate`, {  negotiation_message: message,  requested_salary: requestedSalary });
+export const negotiateOffer = (offerId, message, requestedSalary) =>
+  api.post(`/offer/${offerId}/negotiate`, {
+    negotiation_message: message,
+    requested_salary: requestedSalary
+  });
 
 // Recruiter responds to negotiation
 export const respondToNegotiation = (offerId, responseType, message, revisedCompensation = null) =>
- api.post(`/offer/${offerId}/negotiate/respond`, {
+  api.post(`/offer/${offerId}/negotiate/respond`, {
     response_type: responseType,
     response_message: message,
     revised_compensation: revisedCompensation
@@ -70,18 +70,27 @@ export const getOfferStats = (jobId) => api.get(`/offer/stats/${jobId}`);
 
 export const getSlipGaji = (offerId) => api.get(`/offer/${offerId}/slip-gaji`);
 
-export const recordSlipGaji = (offerId, lineItems) => api.post(`/offer/${offerId}/slip-gaji/record`, { line_items: lineItems });
+export const recordSlipGaji = (offerId, lineItems, expectedSalary = null) =>
+  api.post(`/offer/${offerId}/slip-gaji/record`, { line_items: lineItems, expected_salary: expectedSalary });
 
 export const skipSlipGaji = (offerId, reason) => api.post(`/offer/${offerId}/slip-gaji/skip`, { reason });
 
 export const reviewSlipGaji = (offerId, note) => api.post(`/offer/${offerId}/slip-gaji/review`, { note });
 
-export const getApproval = (offerId) => api.get(`/offer/${offerId}/approval`);
+export const getOfferLetterFields = (offerId) => api.get(`/offer/${offerId}/offer-letter/fields`);
 
-export const submitApproval = (offerId, decision, note) => api.post(`/offer/${offerId}/approval`, { decision, note });
+export const saveOfferLetterData = (offerId, data) => api.put(`/offer/${offerId}/offer-letter/data`, data);
 
-export const setupApprovalChain = (offerId, steps) => api.post(`/offer/${offerId}/approval/setup`, { steps });
+export const generateOfferLetterPreview = (offerId) => api.post(`/offer/${offerId}/offer-letter/preview`);
 
-export const decideApprovalStep = (offerId, stepIndex, decision, note) => api.post(`/offer/${offerId}/approval/${stepIndex}/decide`, { decision, note });
+export const getOfferLetterFinal = (offerId) => api.get(`/offer/${offerId}/offer-letter/final`);
 
-export const revokeOffer = (offerId, reason) => api.post(`/offer/${offerId}/revoke`, { reason });
+export const downloadOfferLetterDocx = (offerId) => api.get(`/offer/${offerId}/offer-letter/download/docx`, { responseType: 'blob' });
+
+export const saveOfferLetterFinal = (offerId, html) => api.put(`/offer/${offerId}/offer-letter/final`, { html });
+
+export const downloadOfferLetterPdf = (offerId) => api.get(`/offer/${offerId}/offer-letter/download/pdf`, { responseType: 'blob' });
+
+export const getOfferDocument = (offerId) => api.get(`/offer/${offerId}/document`);
+
+export const uploadOfferDocument = (offerId, formData) => api.post(`/offer/${offerId}/document/upload`, formData, {  headers: { 'Content-Type': 'multipart/form-data' }, });
