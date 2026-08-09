@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
-import { Check, ChevronLeft, ChevronRight } from 'lucide-react';
+import { Check, ChevronLeft, ChevronRight, HelpCircle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { PageHeader } from '@/components/common';
 import { getJobs } from '@/api/job.api';
@@ -7,6 +7,7 @@ import JobSelection from '@/components/source-management/JobSelection';
 import ListSource from '@/components/source-management/ListSource';
 import SourceSetup from '@/components/source-management/SourceSetup';
 import ListCandidate from '@/components/source-management/ListCandidate';
+import SourceManagementWizard, { useSourceManagementWizard } from '@/components/tours/SourceManagementWizard';
 
 const STEPS = [
   { key: 'selection', label: 'Job Select'    },
@@ -16,10 +17,12 @@ const STEPS = [
 ];
 
 export default function SourceManagementPage() {
-  const [activeStep, setActiveStep] = useState(0);
+ const [activeStep, setActiveStep] = useState(0);
   const [jobs, setJobs]             = useState([]);
   const [loading, setLoading]       = useState(true);
   const [selectedJob, setSelectedJob] = useState(null);
+
+  const { run: wizardRun, setRun: setWizardRun, markSeen: markWizardSeen, restart: restartWizard } = useSourceManagementWizard();
 
   const fetchJobs = useCallback(async () => {
     setLoading(true);
@@ -42,11 +45,16 @@ export default function SourceManagementPage() {
     <div className="space-y-5 p-6">
 
       {/* Header */}
-      <PageHeader
-        title="Source"
-        highlight="Management"
-        subtitle="End-to-end job lifecycle — create, configure stages, publish, source, and manage applicants."
-      />
+      <div className="flex items-start justify-between gap-3 flex-wrap">
+        <PageHeader
+          title="Source"
+          highlight="Management"
+          subtitle="End-to-end job lifecycle — create, configure stages, publish, source, and manage applicants."
+        />
+        <Button variant="ghost" size="sm" className="text-xs" onClick={restartWizard}>
+          <HelpCircle className="h-3.5 w-3.5 mr-1" /> Take the tour
+        </Button>
+      </div>
 
       {/* Stepper */}
       <div className="flex items-center justify-center py-2 border-b pb-5">
@@ -130,6 +138,13 @@ export default function SourceManagementPage() {
       {activeStep === 3 && (
         <ListCandidate selectedJob={selectedJob} />
       )}
+
+      <SourceManagementWizard 
+        activeStep={activeStep}
+        run={wizardRun}
+        setRun={setWizardRun}
+        markSeen={markWizardSeen}
+      />
 
     </div>
   );

@@ -76,7 +76,7 @@ export default function SourceSetupStep({ selectedJob }) {
       </Card>
 
       {/* Content */}
-      <Card>
+      <Card data-tour="source-mgmt-threshold">
         <CardHeader>
           <CardTitle>
             Setup Threshold

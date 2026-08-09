@@ -42,7 +42,7 @@ export default function JobSelectionStep({ jobs, loading, selectedJob, onSelectJ
   return (
     <div className="space-y-5">
       {/* Job List */}
-      <Card>
+      <Card data-tour="source-mgmt-job-list">
         <CardHeader className="pb-3 space-y-3">
           <CardTitle className="text-sm">All Jobs</CardTitle>
           <div className="flex items-center gap-3">

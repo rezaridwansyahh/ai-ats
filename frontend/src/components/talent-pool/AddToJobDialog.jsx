@@ -220,3 +220,101 @@ export default function AddToJobDialog({ open, onOpenChange, applicant, onSucces
     </Dialog>
   );
 }
+
+
+
+
+
+// import { useState, useEffect, useMemo } from "react";
+// import { Loader2, Briefcase, Search, UserPlus, AlertTriangle, Check } from 'lucide-react';
+// import {
+//   Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription,
+// } from '@/components/ui/dialog';
+// import { Button } from '@/components/ui/button';
+// import { Input } from '@/components/ui/input';
+// import { Badge } from '@/components/ui/badge';
+// import { Checkbox } from '@/components/ui/checkbox';
+
+// import { getJobs } from "@/api/job.api";
+// import { addApplicantToJob, getCandidatesByApplicantId } from "@/api/candidate.api";
+
+// const STATUS_COLORS = {
+//   Draft: 'bg-orange-50 text-orange-600 border-orange-200',
+//   Active: 'bg-emerald-50 text-emerald-600 border-emerald-200',
+//   Running: 'bg-blue-50 text-blue-600 border-blue-200',
+//   Expired: 'bg-gray-50 text-gray-500 border-gray-200',
+//   Failed: 'bg-red-50 text-red-500 border-red-200',
+//   Blocked: 'bg-gray-50 text-gray-500 border-gray-200',
+// };
+
+
+// /**
+//  * AddToJobDialog
+//  * -------------------------------------------------------------------------
+//  * Now bulk-capable: accepts `applicants` (an array), not a single `applicant`.
+//  * Callers with just one candidate (the per-row "Add" button) simply pass a
+//  * one-item array — the dialog has one code path, not two.
+//  *
+//  * Because different applicants can already be attached to different jobs,
+//  * "already added" is computed PER JOB across the whole selection:
+//  *   - fully added   (every selected applicant already in that job) → disabled
+//  *   - partially added (some, not all) → still clickable; confirming only
+//  *     adds the ones not yet in that job
+//  *   - none added → normal
+//  *
+//  * Confirming loops over the applicants that still need adding and fires
+//  * one addApplicantToJob call each (in parallel), then reports how many
+//  * succeeded/failed rather than assuming all-or-nothing.
+//  */
+
+// export default function AddToJobDialog({ open, onOpenChange, applicants, onSuccess }) {
+//   const list = useMemo(() => applicants || [], [applicants]);
+
+//   const [jobs, setJobs] = useState([]);
+//   const [existingByApplicant, setExistingByApplicant] = useState(new Map());
+//   const [selectedJobId, setSelectedJobId] = useState(null);
+//   const [search, setSearch] = useState('');
+//   const [loadingJobs, setLoadingJobs] = useState(false);
+//   const [submitting, setSubmitting] = useState(false);
+//   const [error, setError] = useState(null);
+//   const [sendInvite, setSendInvite] = useState(false);
+
+//   useEffect(() => {
+//     if (!open || list.length === 0) return;
+//     setSelectedJobId(null);
+//     setSearch('');
+//     setError(null);
+//     setSendInvite(false);
+
+//     (async () => {
+//       setLoadingJobs(true);
+//       try {
+//         const [jobsRes, ...existingResults] = await Promise.all([
+//           getJobs(),
+//           ...list.map((a) => getCandidatesByApplicantId(a.id)),
+//         ]);
+//         const jobList = jobsRes.data.jobs || jobsRes.data || [];
+//         setJobs(Array.isArray(jobList) ? jobList.filter((j) => j.status === 'Active') : []);
+        
+//         const map = new Map();
+//         list.forEach((a, i) => {})
+//       }
+//     })
+//   })
+// }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

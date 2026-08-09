@@ -944,7 +944,7 @@ function StepPaginator({ activeEngine, onStep, engine, parsed, scored }) {
             <button
               key={eng.key}
               type="button"
-              title={locked ? 'Parse CV first' : eng.label}
+              title={locked ? (i === 1 ? 'Parse CV first' : 'Score this candidate first') : eng.label}
               onClick={() => !locked && onStep(eng.key)}
               disabled={locked}
               className={`h-8 w-8 rounded-md text-xs font-semibold flex items-center justify-center transition-colors disabled:opacity-40 disabled:cursor-not-allowed ${
@@ -1000,7 +1000,7 @@ function StepsNav({ activeEngine, onStep, engine, parsed, scored }) {
               type="button"
               disabled={locked}
               onClick={() => !locked && onStep(eng.key)}
-              title={locked ? 'Parse CV first' : undefined}
+              title={locked ? (idx === 1 ? 'Parse CV first' : 'Score this candidate first') : undefined}
               className={`w-full flex items-center gap-2 px-2 py-1.5 rounded-md text-left transition-colors disabled:opacity-40 disabled:cursor-not-allowed ${
                 active ? 'bg-primary/10 text-primary' : 'hover:bg-muted/50 text-foreground'
               }`}

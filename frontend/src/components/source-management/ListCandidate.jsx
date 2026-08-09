@@ -28,6 +28,7 @@ const DUMMY_APPLICANTS = [
 export default function ListCandidate({ selectedJob }) {
   const [applicants, setApplicants] = useState([]);
   const [loading, setLoading]       = useState(false);
+  const [error, setError]           = useState(null);
 
   const [searchQuery, setSearchQuery]       = useState('');
   const [platformFilter, setPlatformFilter] = useState('all');
@@ -118,7 +119,7 @@ export default function ListCandidate({ selectedJob }) {
       </Card>
 
       {/* Applicants table */}
-      <Card>
+      <Card data-tour="source-mgmt-candidate-table">
         <CardHeader className="pb-3 border-b">
           <div className="flex items-center justify-between gap-3 flex-wrap">
             <CardTitle className="text-sm shrink-0">

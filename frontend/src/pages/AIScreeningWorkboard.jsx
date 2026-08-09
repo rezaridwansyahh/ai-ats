@@ -1,10 +1,13 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Sparkles, AlertTriangle, Loader2, RotateCw, Search, HelpCircle } from 'lucide-react';
+import { Sparkles, AlertTriangle, Loader2, RotateCw, Search, HelpCircle, ChevronRight } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import {
+  Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
+} from '@/components/ui/table';
 import { TablePagination } from '@/components/shared/TablePagination';
 import { getInitials } from '@/lib/batteries';
 
@@ -124,7 +127,9 @@ export default function AIScreeningWorkboard() {
     setPage(1);
   };
 
-  const resetView = () => { setActiveStage(null); setSearch(''); setPage(1); setActiveJob(''); };
+  const resetView = () => {
+    setActiveStage(null); setSearch(''); setPage(1); setActiveJob('');
+  };
 
   const openCandidate = async (c) => {
     try {
@@ -294,36 +299,52 @@ export default function AIScreeningWorkboard() {
               </div>
             ) : (
               <>
-                <div data-tour="screening-candidate-list" className="space-y-2">
-                  {paged.map((c) => {
-                    const name = c.applicant_name || `#${c.applicant_id}`;
-                    const meta = STAGE_META[c.engine] || { label: c.engine, color: 'bg-muted text-muted-foreground' };
-                    return (
-                      <div
-                        key={c.screening_id ?? `${c.job_id}-${c.candidate_id}`}
-                        onClick={() => openCandidate(c)}
-                        className="flex items-center justify-between gap-3 p-3 border rounded-lg transition-colors hover:bg-muted/30 cursor-pointer"
-                      >
-                        <div className="flex items-center gap-3 min-w-0 flex-1">
-                          <div className="h-8 w-8 rounded-full bg-primary/10 text-primary flex items-center justify-center text-[11px] font-bold shrink-0">
-                            {getInitials(name)}
-                          </div>
-                          <div className="min-w-0">
-                            <div className="text-sm font-semibold truncate">{name}</div>
-                            <div className="flex items-center gap-3 mt-1">
-                              {c.last_position && <span className="text-[10px] text-muted-foreground truncate">{c.last_position}</span>}
-                              <span className="text-[10px] text-muted-foreground truncate">{c.job_title || '—'}</span>
-                            </div>
-                          </div>
-                        </div>
-                        <div className="flex items-center gap-3 shrink-0">
-                          <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-semibold ${meta.color}`}>
-                            {meta.label}
-                          </span>
-                        </div>
-                      </div>
-                    );
-                  })}
+                <div data-tour="screening-candidate-list" className="rounded-lg border border-border overflow-hidden">
+                  <Table className="table-fixed w-full">
+                    <TableHeader className="bg-muted/40">
+                      <TableRow>
+                        <TableHead className="w-[30%] text-[10px] font-bold uppercase pl-6">Name</TableHead>
+                        <TableHead className="w-[25%] text-[10px] font-bold uppercase">Last Position</TableHead>
+                        <TableHead className="w-[25%] text-[10px] font-bold uppercase">Job</TableHead>
+                        <TableHead className="w-[20%] text-[10px] font-bold uppercase">Stage</TableHead>
+                        <TableHead className="w-[5%]" />
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {paged.map((c) => {
+                        const key = c.screening_id ?? `${c.job_id}-${c.candidate_id}`;
+                        const name = c.applicant_name || `#${c.applicant_id}`;
+                        const meta = STAGE_META[c.engine] || { label: c.engine, color: 'bg-muted text-muted-foreground' };
+                        return (
+                          <TableRow
+                            key={key}
+                            className="hover:bg-muted/30 transition-colors cursor-pointer"
+                            onClick={() => openCandidate(c)}
+                          >
+                            <TableCell className="text-xs pl-6">
+                              <div className="flex items-center gap-2 min-w-0">
+                                <div className="h-7 w-7 rounded-full bg-primary/10 text-primary flex items-center justify-center text-[10px] font-bold shrink-0">
+                                  {getInitials(name)}
+                                </div>
+                                <span className="font-semibold truncate">{name}</span>
+                              </div>
+                            </TableCell>
+                            <TableCell className="text-xs truncate">
+                              {c.last_position || '—'}
+                            </TableCell>
+                            <TableCell className="text-xs text-muted-foreground truncate">
+                              {c.job_title || '—'}
+                            </TableCell>
+                            <TableCell>
+                              <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-semibold ${meta.color}`}>
+                                {meta.label}
+                              </span>
+                            </TableCell>
+                          </TableRow>
+                        );
+                      })}
+                    </TableBody>
+                  </Table>
                 </div>
 
                 <div className="pt-3">

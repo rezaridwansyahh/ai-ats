@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
-  FileText, AlertTriangle, Loader2, RotateCw, Search,
+  FileText, AlertTriangle, Loader2, RotateCw, Search, HelpCircle,
 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -12,6 +12,9 @@ import { TablePagination } from '@/components/shared/TablePagination';
 import { getInitials } from '@/lib/batteries';
 
 import { getWorkboard } from '@/api/offer.api';
+import PipelineTour, { usePipelineTour } from '@/components/tours/PipelineTour';
+import { OFFER_CONTRACT_WORKBOARD_STEPS } from '@/components/tours/tourSteps';
+
 
 const STATUS_META = {
   draft:       { label: 'Draft',       color: 'bg-slate-100 text-slate-700'     },
@@ -23,6 +26,7 @@ const STATUS_META = {
 };
 
 const CHIP_KEYS = ['draft', 'sent', 'negotiating', 'accepted', 'rejected', 'signed'];
+
 
 function jobStatusTone(status) {
   switch ((status || '').toLowerCase()) {
@@ -57,6 +61,9 @@ export default function OfferWorkboard() {
   const [search, setSearch]             = useState('');
   const [page, setPage]                 = useState(1);
   const [pageSize, setPageSize]         = useState(25);
+
+  const { run, setRun, markSeen, restart } = usePipelineTour('offer-contract-workboard');
+
 
   const loadWorkboard = async () => {
     setLoading(true);
@@ -129,16 +136,20 @@ export default function OfferWorkboard() {
 
   return (
     <div className="space-y-5 p-6">
-
-      <div className="flex items-start justify-between gap-3 flex-wrap">
+      <div data-tour="offer-page-header" className="flex items-start justify-between gap-3 flex-wrap">
         <PageHeader
           title="Offer &"
           highlight="Contract"
           subtitle={`${activePositions} active position${activePositions === 1 ? '' : 's'} · ${totalOffers} candidate${totalOffers === 1 ? '' : 's'} in offer`}
         />
-        <Button variant="outline" size="sm" onClick={loadWorkboard} className="text-xs">
-          <RotateCw className="h-3.5 w-3.5 mr-1.5" /> Refresh
-        </Button>
+        <div className="flex items-center gap-2 shrink-0">
+          <Button variant="ghost" size="sm" className="text-xs" onClick={restart}>
+            <HelpCircle className="h-3.5 w-3.5 mr-1" /> Take the tour
+          </Button>
+          <Button variant="outline" size="sm" onClick={loadWorkboard} className="text-xs">
+            <RotateCw className="h-3.5 w-3.5 mr-1.5" /> Refresh
+          </Button>
+        </div>
       </div>
 
       {error && (
@@ -148,7 +159,7 @@ export default function OfferWorkboard() {
         </div>
       )}
 
-      <Card>
+      <Card data-tour="offer-status-chips">
         <CardContent className="py-4">
           <div className="flex items-center gap-3 flex-wrap">
             <span className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wide">
@@ -185,7 +196,7 @@ export default function OfferWorkboard() {
 
       <div className="grid grid-cols-1 md:grid-cols-[240px_1fr] gap-4">
 
-        <Card className="self-start">
+        <Card data-tour="offer-positions-rail" className="self-start">
           <CardHeader className="pb-2">
             <CardTitle className="text-xs uppercase tracking-wide text-muted-foreground">
               Positions · {positions.length}
@@ -246,7 +257,7 @@ export default function OfferWorkboard() {
                 {filtered.length} {activeStatus ? `at ${STATUS_META[activeStatus]?.label}` : 'total'}
               </span>
             </CardTitle>
-            <div className="relative max-w-sm">
+            <div data-tour="offer-search" className="relative max-w-sm">
               <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
               <Input
                 placeholder="Search name, position, or job…"
@@ -269,7 +280,7 @@ export default function OfferWorkboard() {
               </div>
             ) : (
               <>
-                <div className="space-y-2">
+                <div data-tour="offer-candidate-list" className="space-y-2">
                   {paged.map((o) => {
                     const name = o.candidate_name || `#${o.candidate_id}`;
                     const isSigned = o.contract_status === 'signed';
@@ -331,6 +342,14 @@ export default function OfferWorkboard() {
         </Card>
 
       </div>
+
+      <PipelineTour 
+        steps={OFFER_CONTRACT_WORKBOARD_STEPS}
+        tourKey="offer-contract-workboard"
+        run={run}
+        setRun={setRun}
+        markSeen={markSeen}
+      />
     </div>
   );
 }

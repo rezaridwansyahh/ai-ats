@@ -359,3 +359,60 @@ export const PSYCH_ASSESSMENT_STEPS = [
     skipBeacon: true,
   },
 ];
+
+/* ── Offer & Contract workboard: /selection/offer-contract ── */
+export const OFFER_CONTRACT_WORKBOARD_STEPS = [
+  {
+    target: '[data-tour="offer-page-header"]',
+    title: 'Welcome to Offer & Contract',
+    content: 'Every candidate moving from offer through signed contract, across all your open jobs.',
+    placement: 'bottom',
+    skipBeacon: true,
+  },
+  {
+    target: '[data-tour="offer-status-chips"]',
+    title: 'Filter by status',
+    content: 'Click any status — Draft, Sent, Negotiating, Accepted, Rejected, or Signed — to see only candidates at that stage.',
+    placement: 'bottom',
+    skipBeacon: true,
+  },
+  {
+    target: '[data-tour="offer-positions-rail"]',
+    title: 'Browse by position',
+    content: 'Click a job to open its own offer workboard.',
+    placement: 'right',
+    skipBeacon: true,
+  },
+  {
+    target: '[data-tour="offer-search"]',
+    title: 'Search candidates',
+    content: 'Look up anyone by name, position, or job title.',
+    placement: 'bottom',
+    skipBeacon: true,
+  },
+  {
+    target: '[data-tour="offer-candidate-list"]',
+    title: 'Open a candidate',
+    content: 'Click any candidate to review their remuneration package, offer letter, contract, and e-signature status.',
+    placement: 'top',
+    skipBeacon: true,
+  },
+]
+
+/* ── Offer & Contract candidate detail: /selection/offer-contract/candidate/:id ── */
+export const OFFER_CONTRACT_DETAIL_STEPS = [
+  {
+    target: '[data-tour="offer-job-context"]',
+    title: 'Job snapshot',
+    content: 'A quick look at the role this offer belongs to, and how many hires are still needed.',
+    placement: 'bottom',
+    skipBeacon: true,
+  },
+  {
+    target: '[data-tour="offer-step-rail"]',
+    title: 'Five steps to a signed hire',
+    content: 'Remuneration, Offer Letter, Contract, E-Signature, and Pipeline \u2014 click any step to jump straight to it.',
+    placement: 'bottom',
+    skipBeacon: true,
+  },
+];

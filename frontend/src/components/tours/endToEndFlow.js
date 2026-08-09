@@ -13,7 +13,8 @@ import {
     AI_SCREENING_WORKBOARD_STEPS,
     BG_CHECK_WORKBOARD_STEPS,
     PSYCH_ASSESSMENT_STEPS,
-    //TODO: INTERVIEW_WORKBOARD_STEPS, OFFER_CONTRACT_WORKBOARD_STEPS
+    OFFER_CONTRACT_WORKBOARD_STEPS,
+    //TODO: INTERVIEW_WORKBOARD_STEPS
 } from './tourSteps';
 
 export const END_TO_END_FLOW = [
@@ -49,6 +50,9 @@ export const END_TO_END_FLOW = [
         steps: BG_CHECK_WORKBOARD_STEPS,
         suppressSoloTourKey: 'bg-check-workboard',
     },
-    // TODO: Offer & Contract segment goes here once OfferWorkboard.jsx has a
-    // tour built for it (route: '/selection/offer-contract').
+    {
+        route: '/selection/offer-contract',
+        steps: OFFER_CONTRACT_WORKBOARD_STEPS,
+        suppressSoloTourKey: 'offer-contract-workboard',
+    },
 ];
