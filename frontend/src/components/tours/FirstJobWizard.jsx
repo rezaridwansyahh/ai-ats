@@ -1,9 +1,10 @@
-import { useEffect, useRef, useState, useCallback } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { Joyride, STATUS } from 'react-joyride';
 import { Sparkles, X } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-
+import { useActionGatedTour } from './useActionGatedTour';
+import { ACTION_GATED_OPTIONS, ACTION_GATED_STYLES } from './tourTheme';
 /**
  * FirstJobWizard
  * -------------------------------------------------------------------------
@@ -138,38 +139,19 @@ export function FirstJobWizardPrompt({ onAccept, onDecline }) {
 }
 
 export default function FirstJobWizard({
-  form, job, hasStages, isPublished,
-  missingRequiredBasics, missingRequiredJD, invalidUrlFields,
-  setStep,
-  run, setRun, markSeen,
+  form, job, hasStages, isPublished, missingRequiredBasics,
+  missingRequiredJD, invalidUrlFields, setStep, run, setRun,
+  markSeen
 }) {
-  const [stepIndex, setStepIndex] = useState(0);
-  const enteredRef = useRef(new Set());
-
   const ctx = { form, job, hasStages, isPublished, missingRequiredBasics, invalidUrlFields };
 
-  useEffect(() => {
-    if (!run) return;
-    const step = STEPS[stepIndex];
-    if (!step || enteredRef.current.has(stepIndex)) return;
-    enteredRef.current.add(stepIndex);
-    step.onEnter?.({ setStep });
-  }, [run, stepIndex, setStep]);
-
-  useEffect(() => {
-    if (!run) return;
-    const step = STEPS[stepIndex];
-    if (!step) return;
-    if (step.isDone(ctx)) {
-      if (stepIndex < STEPS.length - 1) {
-        setStepIndex((i) => i + 1);
-      } else {
-        setRun(false);
-        markSeen();
-      }
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [run, stepIndex, form, job, hasStages, isPublished, missingRequiredBasics, invalidUrlFields]);
+  const { stepIndex }= useActionGatedTour(STEPS, ctx, {
+    run, setRun, markSeen,
+    deps: [form, job, hasStages, isPublished, missingRequiredBasics, invalidUrlFields],
+    onStepEnter: (helpers, step) => {
+      step.onEnter?.({ setStep});
+    },
+  });
 
   const handleEvent = (data) => {
     if (data.status === STATUS.SKIPPED) {
@@ -178,7 +160,7 @@ export default function FirstJobWizard({
     }
   };
 
-  if (!run) return null;
+  if(!run) return null;
 
   return (
     <Joyride
@@ -196,24 +178,9 @@ export default function FirstJobWizard({
       continuous
       scrollToFirstStep
       onEvent={handleEvent}
-      options={{
-        showProgress: true,
-        buttons: ['skip'],
-        overlayClickAction: 'close',
-        scrollOffset: 100,
-        primaryColor: '#0f766e',
-        textColor: '#1f2937',
-        backgroundColor: '#ffffff',
-        arrowColor: '#ffffff',
-        overlayColor: 'rgba(15, 23, 42, 0.45)',
-        zIndex: 9999,
-      }}
+      options={ACTION_GATED_OPTIONS}
       locale={{ skip: 'Skip guided setup' }}
-      styles={{
-        tooltip: { borderRadius: 12, fontSize: 13, padding: 16 },
-        tooltipTitle: { fontSize: 14, fontWeight: 700 },
-        buttonSkip: { fontSize: 12, color: '#6b7280', outline: 'none' },
-      }}
+      styles={ACTION_GATED_STYLES}
     />
   );
 }

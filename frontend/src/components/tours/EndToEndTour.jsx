@@ -1,7 +1,9 @@
 import { createContext, useCallback, useContext, useEffect, useRef, useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
-import { Joyride, STATUS } from 'react-joyride';
+import { STATUS } from 'react-joyride';
+import PipelineTour from './PipelineTour';
 import { END_TO_END_FLOW } from './endToEndFlow';
+
 
 const STORAGE_KEY = 'myralix.tour.seen.end-to-end';
 const SETTLE_DELAY = 1200;
@@ -83,39 +85,14 @@ export function EndToEndTourProvider({ children }) {
             {children}
 
             {active && currentSegment && ready && (
-              <Joyride 
+              <PipelineTour
                 steps={currentSegment.steps}
                 run={ready}
-                continuous
-                scrollToFirstStep
                 onEvent={handleEvent}
-                options={{
-                    showProgress: true,
-                    buttons: ['skip', 'back', 'primary'],
-                    overlayClickAction: 'close',
-                    scrollOffset: 100,
-                    primaryColor: '#0f766e',
-                    textColor: '#1f2937',
-                    backgroundColor: '#ffff',
-                    arrowColor: '#ffff',
-                    overlayColor: 'rgba(15, 23, 42, 0.55)',
-                    zIndex: 9999,
-                }}
                 locale={{
-                    back: 'Back',
-                    close: 'Close',
-                    last: segmentIndex <END_TO_END_FLOW.length - 1 ? 'Next page' : 'Done',
-                    next: 'Next',
-                    skip: 'Skip tour',
+                    last: segmentIndex < END_TO_END_FLOW.length - 1 ? 'Next page' : 'Done',
                 }}
-                styles={{
-                    tooltip: { borderRadius: 12, fontSize: 13, padding: 16 },
-                    tooltipTitle: { fontSize: 14, fontWeight: 700},
-                    buttonPrimary: { backgroundColor: '#0f766e', borderRadius: 8, fontSize: 12, padding: '8px 14px', outline: 'none' },
-                    buttonBack:{ fontSize: 12, color: '#6b7280', outline: 'none'},
-                    buttonSkip: { fontSize: 12, color: '#6b7280', outline: 'none'},
-                }}
-              />  
+              />
             )}
         </EndToEndTourContext.Provider>
     );

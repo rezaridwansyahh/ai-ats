@@ -53,7 +53,7 @@ class InterviewService {
 
   async updateStatus(interview_id, { status, company_id = null } = {}) {
     if (!interview_id) throw { status: 400, message: 'interview_id is required' };
-    const valid = ['ongoing', 'interviewed', 'no_show', 'reschedule', 'cancelled', 'done'];
+    const valid = ['setup', 'scheduled', 'ongoing', 'result', 'cancelled', 'done'];
     if (!valid.includes(status)) {
       throw { status: 400, message: `status must be one of: ${valid.join(', ')}` };
     }
@@ -88,7 +88,15 @@ class InterviewService {
 
     const count = await interviewModel.countSchedules(interview_id);
     if (count >= 3) {
-      throw { status: 400, message: 'Maximum 3 sessions per candidate interview' };
+      throw { status: 400, message: 'Maximum 3 sessions per interview round' };
+    }
+
+    const locked = await interviewModel.isScheduleCreationLocked(interview_id);
+    if (locked) {
+      throw {
+        status: 400,
+        message: 'A session is already active for this round. Resolve it, or start a new round via "Interview Again".',
+      };
     }
 
     const schedule = await interviewModel.createSchedule({
@@ -211,7 +219,11 @@ class InterviewService {
     }
 
     const updated = await interviewModel.recordOutcome(schedule_id, { status, outcome_note });
-    await interviewModel.updateInterviewStatus(existing.interview_id, status);
+
+    // 'reschedule' means the meeting never happened — loop the candidate back
+    // to the Schedule sub-stage instead of parking them in Result.
+    const cascadeStatus = status === 'reschedule' ? 'scheduled' : 'result';
+    await interviewModel.updateInterviewStatus(existing.interview_id, cascadeStatus);
 
     return updated;
   }
@@ -231,10 +243,30 @@ class InterviewService {
 
     const cleared = await interviewModel.clearOutcome(schedule_id);
 
-    // revert parent status back to scheduled since the session is still confirmed
-    await interviewModel.updateInterviewStatus(existing.interview_id, 'scheduled');
+    // revert parent status back to ongoing since the session is still confirmed
+    // (outcomes can only be recorded on confirmed sessions — see recordOutcome)
+    await interviewModel.updateInterviewStatus(existing.interview_id, 'ongoing');
 
     return cleared;
+  }
+
+  // "Interview Again" — starts a fresh round for this candidate. Prior
+  // schedule + scorecard history stays untouched (queryable via
+  // getScheduleHistory / getScorecardHistory), the candidate re-enters the
+  // Schedule sub-stage under the new round.
+  async reInterview(interview_id, { company_id = null } = {}) {
+    if (!interview_id) throw { status: 400, message: 'interview_id is required' };
+
+    const existing = await interviewModel.getById(interview_id);
+    if (!existing) throw { status: 404, message: 'Interview not found' };
+    if (company_id && existing.company_id && existing.company_id !== company_id) {
+      throw { status: 403, message: 'Cross-tenant access denied' };
+    }
+    if (!['result', 'done'].includes(existing.status)) {
+      throw { status: 400, message: 'Interview Again is only available after a result or completed scorecard for the current round' };
+    }
+
+    return await interviewModel.startNextRound(interview_id);
   }
 
   async getPrep(job_id, { company_id = null } = {}) {

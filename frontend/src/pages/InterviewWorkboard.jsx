@@ -19,17 +19,17 @@ const STAGE_META = {
 };
 
 const STATUS_META = {
-  ongoing:     { label: 'Ongoing',     color: 'bg-blue-100 text-blue-700'       },
-  scheduled:   { label: 'Scheduled',   color: 'bg-violet-100 text-violet-700'   },
-  interviewed: { label: 'Interviewed', color: 'bg-emerald-100 text-emerald-700' },
-  no_show:     { label: 'No Show',     color: 'bg-rose-100 text-rose-700'       },
-  reschedule:  { label: 'Reschedule',  color: 'bg-amber-100 text-amber-700'     },
-  done:        { label: 'Done',        color: 'bg-emerald-100 text-emerald-700' },
+  setup:     { label: 'Setup',     color: 'bg-slate-100 text-slate-700'      },
+  scheduled: { label: 'Scheduled', color: 'bg-violet-100 text-violet-700'    },
+  ongoing:   { label: 'Ongoing',   color: 'bg-blue-100 text-blue-700'        },
+  result:    { label: 'Result',    color: 'bg-amber-100 text-amber-700'      },
+  done:      { label: 'Done',      color: 'bg-emerald-100 text-emerald-700'  },
+  cancelled: { label: 'Cancelled', color: 'bg-rose-100 text-rose-700'        },
 };
 
 function toSubStage(status) {
-  if (['ongoing', 'scheduled'].includes(status)) return 'schedule';
-  if (['interviewed', 'no_show', 'reschedule'].includes(status)) return 'result';
+  if (['setup', 'scheduled', 'ongoing'].includes(status)) return 'schedule';
+  if (status === 'result') return 'result';
   if (status === 'done') return 'decide';
   return 'schedule';
 }
@@ -340,9 +340,8 @@ export default function InterviewWorkboard() {
                 <div className="space-y-2">
                   {paged.map((i) => {
                     const name     = i.candidate_name || `#${i.candidate_id}`;
-                    const subStage = i.sub_stage || toSubStage(i.status);
-                    const stageMeta  = STAGE_META[subStage] || { label: subStage, color: 'bg-muted text-muted-foreground' };
                     const statusMeta = STATUS_META[i.status] || { label: i.status, color: 'bg-muted text-muted-foreground' };
+                    const round = i.round || 1;
                     return (
                       <div
                         key={`${i.job_id}-${i.candidate_id}-${i.interview_id}`}
@@ -364,9 +363,9 @@ export default function InterviewWorkboard() {
                           </div>
                         </div>
                         <div className="flex items-center gap-2 shrink-0">
-                          {/* Sub-stage chip */}
-                          <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-semibold ${stageMeta.color}`}>
-                            {stageMeta.label}
+                          {/* Round badge */}
+                          <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-semibold font-mono bg-muted text-muted-foreground border border-border">
+                            R{round}
                           </span>
                           {/* Status badge */}
                           <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-semibold ${statusMeta.color}`}>

@@ -48,9 +48,12 @@ const DEFAULT_RUBRIC_ITEMS = COMPETENCY_CODES.map((code) => ({
 }));
 
 const STATUS_META = {
-  ongoing:   { label: 'Ongoing',   color: 'bg-blue-100 text-blue-700'       },
+  setup:     { label: 'Setup',     color: 'bg-slate-100 text-slate-700'     },
   scheduled: { label: 'Scheduled', color: 'bg-violet-100 text-violet-700'   },
+  ongoing:   { label: 'Ongoing',   color: 'bg-blue-100 text-blue-700'       },
+  result:    { label: 'Result',    color: 'bg-amber-100 text-amber-700'     },
   done:      { label: 'Done',      color: 'bg-emerald-100 text-emerald-700' },
+  cancelled: { label: 'Cancelled', color: 'bg-rose-100 text-rose-700'       },
 };
 
 const SECTIONS = [
@@ -104,7 +107,7 @@ export default function InterviewJobPage() {
   // Candidates eligible for a pack: any active interview stage (confirmed session or outcome recorded),
   // not yet assigned to an open pack, and not already decided.
   const waitingCandidates = interviews.filter(
-    (i) => ['scheduled', 'interviewed', 'no_show', 'reschedule'].includes(i.status) && !i.pack_id
+    (i) => ['scheduled', 'ongoing', 'result'].includes(i.status) && !i.pack_id
   );
 
   const load = useCallback(async () => {

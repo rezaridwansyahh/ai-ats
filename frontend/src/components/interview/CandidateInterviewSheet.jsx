@@ -28,6 +28,7 @@ import {
   saveScorecard,
   recordDecision,
   undoDecision,
+  reInterview,
 } from '@/api/interview.api';
 
 // ─── Constants ─────────────────────────────────────────────────────────────────
@@ -43,12 +44,12 @@ const COMPETENCY_NAMES = {
 };
 
 const STATUS_META = {
-  ongoing:     { label: 'Ongoing',     color: 'bg-blue-100 text-blue-700'       },
-  scheduled:   { label: 'Scheduled',   color: 'bg-violet-100 text-violet-700'   },
-  interviewed: { label: 'Interviewed', color: 'bg-emerald-100 text-emerald-700' },
-  no_show:     { label: 'No Show',     color: 'bg-rose-100 text-rose-700'       },
-  reschedule:  { label: 'Reschedule',  color: 'bg-amber-100 text-amber-700'     },
-  done:        { label: 'Done',        color: 'bg-emerald-100 text-emerald-700' },
+  setup:     { label: 'Setup',     color: 'bg-slate-100 text-slate-700'     },
+  scheduled: { label: 'Scheduled', color: 'bg-violet-100 text-violet-700'   },
+  ongoing:   { label: 'Ongoing',   color: 'bg-blue-100 text-blue-700'       },
+  result:    { label: 'Result',    color: 'bg-amber-100 text-amber-700'     },
+  done:      { label: 'Done',      color: 'bg-emerald-100 text-emerald-700' },
+  cancelled: { label: 'Cancelled', color: 'bg-rose-100 text-rose-700'       },
 };
 
 const OUTCOME_OPTIONS = [
@@ -161,6 +162,26 @@ export default function CandidateInterviewSheet({ open, onOpenChange, interview,
   const iv = fullInterview || interview || {};
   const name = iv.candidate_name || `#${iv.candidate_id}`;
   const statusMeta = STATUS_META[iv.status] || { label: iv.status, color: 'bg-muted text-muted-foreground' };
+  const round = iv.round || 1;
+  const canReInterview = iv.status === 'result' || iv.status === 'done';
+
+  const [reInterviewing, setReInterviewing] = useState(false);
+  const handleReInterview = async () => {
+    if (!interviewId || reInterviewing) return;
+    setReInterviewing(true);
+    setError(null);
+    try {
+      await reInterview(interviewId);
+      setBanner({ ok: true, text: 'New interview round started.' });
+      setTab('schedule');
+      await load();
+      if (onUpdated) onUpdated();
+    } catch (err) {
+      setError(err.response?.data?.message || err.message || 'Failed to start a new round');
+    } finally {
+      setReInterviewing(false);
+    }
+  };
 
   const TABS = [
     { key: 'schedule', label: 'Schedule', icon: CalendarCheck },
@@ -185,10 +206,32 @@ export default function CandidateInterviewSheet({ open, onOpenChange, interview,
                 {iv.job_title || ''}
               </SheetDescription>
             </div>
+            <span className="inline-flex items-center px-2 py-1 rounded-full text-[10px] font-semibold font-mono shrink-0 bg-muted text-muted-foreground border border-border">
+              R{round}
+            </span>
             <span className={`inline-flex items-center px-2.5 py-1 rounded-full text-[10px] font-semibold shrink-0 ${statusMeta.color}`}>
               {statusMeta.label}
             </span>
           </div>
+          {canReInterview && (
+            <div className="mt-3">
+              <Button
+                size="sm"
+                variant="outline"
+                className="text-xs"
+                onClick={handleReInterview}
+                disabled={reInterviewing}
+              >
+                {reInterviewing
+                  ? <Loader2 className="h-3.5 w-3.5 mr-1.5 animate-spin" />
+                  : <RefreshCw className="h-3.5 w-3.5 mr-1.5" />}
+                Interview Again
+              </Button>
+              <p className="text-[10px] text-muted-foreground mt-1">
+                Starts a new round with a fresh schedule + scorecard. Round {round} history is kept.
+              </p>
+            </div>
+          )}
         </SheetHeader>
 
         {/* Tab strip */}
@@ -363,7 +406,7 @@ function ScheduleTab({ interviewId, setInterview, setError, setBanner }) {
       setSessions(remaining);
       setInterview((prev) => ({
         ...(prev || {}),
-        status: remaining.length > 0 ? 'scheduled' : 'ongoing',
+        status: remaining.length > 0 ? 'scheduled' : 'setup',
         scheduled_at: remaining.length > 0 ? (prev?.scheduled_at ?? null) : null,
       }));
       setBanner({ ok: true, text: 'Session removed.' });
@@ -383,7 +426,12 @@ function ScheduleTab({ interviewId, setInterview, setError, setBanner }) {
     }
   };
 
-  const canAdd = sessions.length < MAX_SESSIONS;
+  // Mirrors the backend's isScheduleCreationLocked rule: only a fresh round
+  // (no sessions yet) or a 'reschedule' outcome permits adding another
+  // session. Anything else must go through "Interview Again" (new round).
+  const latestSession = sessions[sessions.length - 1];
+  const locked = !!latestSession && latestSession.status !== 'reschedule';
+  const canAdd = sessions.length < MAX_SESSIONS && !locked;
 
   return (
     <div className="space-y-4">
@@ -400,6 +448,13 @@ function ScheduleTab({ interviewId, setInterview, setError, setBanner }) {
           </Button>
         )}
       </div>
+
+      {locked && !showForm && (
+        <div className="flex items-center gap-2 px-3 py-2 rounded-lg border border-amber-200 bg-amber-50 text-xs text-amber-700">
+          <MessageSquare className="h-3.5 w-3.5 shrink-0" />
+          A session is already active. Resolve its outcome first, or use "Interview Again" to start a new round.
+        </div>
+      )}
 
       {showForm && (
         <Card className="border-primary/30 bg-primary/5">
