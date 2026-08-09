@@ -343,8 +343,8 @@ class OfferService {
     const offer = await OfferModel.getOfferById(offer_id, company_id);
     if (!offer) throw { status: 404, message: 'Offer not found' };
 
-    const approvalStatus = offer.metadata?.approval?.status;
-    if (approvalStatus !== 'approved') {
+    const approvalDecision = offer.metadata?.approval?.decision;
+    if (approvalDecision !== 'approved') {
       throw { status: 400, message: 'Offer must be approved before it can be sent' };
     }
 

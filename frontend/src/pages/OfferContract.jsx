@@ -313,9 +313,13 @@ export default function OfferContractPage({ data = offerContractMock }) {
   return (
     <div className="space-y-5 p-6">
 
-      <JobContextCard job={job} navigate={navigate} />
+      <div data-tour="offer-job-context">
+        <JobContextCard job={job} navigate={navigate} />
+      </div>
 
-      <StepRail activeKey={activeStep} onSelect={setActiveStep} />
+       <div data-tour="offer-step-rail">
+        <StepRail activeKey={activeStep} onSelect={setActiveStep} />
+      </div>
 
       {activeStep === 'remuneration' && (
         <RemunerationStep

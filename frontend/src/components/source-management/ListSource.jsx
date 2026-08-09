@@ -126,7 +126,7 @@ export default function ListSourceStep({ selectedJob }) {
       </div>
 
       {/* Content */}
-      <Card>
+      <Card data-tour="source-mgmt-source-table">
         <CardHeader className="pb-3 space-y-3">
           <CardTitle className="text-sm">All Source</CardTitle>
           <div className="flex items-center gap-3">
@@ -217,6 +217,9 @@ export default function ListSourceStep({ selectedJob }) {
       </Card>
 
       {/* Manual CV Card */}
+      {/* TODO: not wired to a tour step yet — dropzone (onClick/onDrop) and
+          the duplicate Job Title fields aren't functional. Add a
+          data-tour marker + step here once this card actually works. */}
       <Card>
         <CardHeader className="border-b-1">
           <CardTitle>

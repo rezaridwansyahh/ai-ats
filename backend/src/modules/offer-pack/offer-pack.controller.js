@@ -1,67 +1,31 @@
+import jwt from 'jsonwebtoken';
 import OfferPackService from './offer-pack.service.js';
 
+const JWT_SECRET = process.env.JWT_SECRET;
+
 class OfferPackController {
-
-  async create(req, res) {
-    try {
-      const { offer_id } = req.params;
-      const { company_id, user_id } = req.user;
-      const { approver_name } = req.body;
-      const result = await OfferPackService.create(offer_id, approver_name, company_id, user_id);
-      res.status(201).json({ message: 'Approval link created', approval: result });
-    } catch (err) {
-      console.error('OfferPackController.create:', err);
-      res.status(err.status || 500).json({ message: err.message });
-    }
-  }
-
-  async getByOfferId(req, res) {
-    try {
-      const { offer_id } = req.params;
-      const { company_id } = req.user;
-      const result = await OfferPackService.getByOfferId(offer_id, company_id);
-      res.json({ message: 'Approval fetched', approval: result });
-    } catch (err) {
-      console.error('OfferPackController.getByOfferId:', err);
-      res.status(err.status || 500).json({ message: err.message });
-    }
-  }
 
   async decide(req, res) {
     try {
       const { offer_id } = req.params;
       const { company_id, user_id } = req.user;
       const { decision, note } = req.body;
-      const result = await OfferPackService.decideByOfferId(offer_id, decision, note, company_id, user_id);
-      res.json({ message: `Offer ${decision}`, approval: result });
+      const result = await OfferPackService.decide(offer_id, decision, note, company_id, user_id);
+      res.json({ message: `Offer ${decision}`, ...result });
     } catch (err) {
       console.error('OfferPackController.decide:', err);
       res.status(err.status || 500).json({ message: err.message });
     }
   }
 
-  async revoke(req, res) {
+  async getStatus(req, res) {
     try {
       const { offer_id } = req.params;
-      const { company_id, user_id } = req.user;
-      const { reason } = req.body;
-      const result = await OfferPackService.revoke(offer_id, company_id, user_id, reason);
-      res.json({ message: 'Approval link revoked', approval: result });
+      const { company_id } = req.user;
+      const result = await OfferPackService.getStatus(offer_id, company_id);
+      res.json({ message: 'Approval status fetched', ...result });
     } catch (err) {
-      console.error('OfferPackController.revoke:', err);
-      res.status(err.status || 500).json({ message: err.message });
-    }
-  }
-
-  async resend(req, res) {
-    try {
-      const { offer_id } = req.params;
-      const { company_id, user_id } = req.user;
-      const { approver_name } = req.body;
-      const result = await OfferPackService.resend(offer_id, approver_name, company_id, user_id);
-      res.json({ message: 'Approval link resent', approval: result });
-    } catch (err) {
-      console.error('OfferPackController.resend:', err);
+      console.error('OfferPackController.getStatus:', err);
       res.status(err.status || 500).json({ message: err.message });
     }
   }
@@ -71,32 +35,68 @@ class OfferPackController {
       const { job_id } = req.params;
       const { company_id } = req.user;
       const result = await OfferPackService.getByJob(job_id, company_id);
-      res.json({ message: 'Approvals fetched', approvals: result });
+      res.json({ message: 'Approval statuses fetched', offers: result });
     } catch (err) {
       console.error('OfferPackController.getByJob:', err);
       res.status(err.status || 500).json({ message: err.message });
     }
   }
 
-  async getByToken(req, res) {
+  async generateViewLink(req, res) {
     try {
-      const { token } = req.params;
-      const result = await OfferPackService.getByToken(token);
-      res.json({ message: 'Approval fetched', approval: result });
+      const { offer_id } = req.params;
+      const { company_id, user_id } = req.user;
+      const { expiry_days } = req.body;
+      const result = await OfferPackService.generateViewLink(offer_id, expiry_days, company_id, user_id);
+      res.status(201).json({ message: 'View link generated', ...result });
     } catch (err) {
-      console.error('OfferPackController.getByToken:', err);
+      console.error('OfferPackController.generateViewLink:', err);
       res.status(err.status || 500).json({ message: err.message });
     }
   }
 
-  async decideByToken(req, res) {
+  async getViewLinkBasic(req, res) {
     try {
-      const { token } = req.params;
-      const { decision, note } = req.body;
-      const result = await OfferPackService.decideByToken(token, decision, note);
-      res.json({ message: `Offer ${decision}`, approval: result });
+      const result = await OfferPackService.getViewLinkBasic(req.params.token);
+      res.json({ message: 'Link found', view: result });
     } catch (err) {
-      console.error('OfferPackController.decideByToken:', err);
+      res.status(err.status || 500).json({ message: err.message });
+    }
+  }
+
+  async verifyViewLinkEmail(req, res) {
+    try {
+      const { email } = req.body || {};
+      const result = await OfferPackService.verifyViewLinkEmail(req.params.token, email);
+      res.json({ message: 'Email verified', ...result });
+    } catch (err) {
+      res.status(err.status || 500).json({ message: err.message });
+    }
+  }
+
+  // Middleware — verify the offer_approval_view JWT
+  async requireApprovalViewAuth(req, res, next) {
+    try {
+      const authHeader = req.headers['authorization'];
+      const token = authHeader && authHeader.split(' ')[1];
+      if (!token) return res.status(401).json({ message: 'Missing view token.' });
+
+      const payload = jwt.verify(token, JWT_SECRET);
+      if (payload.scope !== 'offer_approval_view') {
+        return res.status(403).json({ message: 'Wrong token scope.' });
+      }
+      req.approvalViewOfferId = payload.offer_id;
+      next();
+    } catch {
+      return res.status(403).json({ message: 'Invalid or expired view token.' });
+    }
+  }
+
+  async getSummary(req, res) {
+    try {
+      const result = await OfferPackService.getSummary(req.params.token, req.approvalViewOfferId);
+      res.json({ message: 'Summary fetched', summary: result });
+    } catch (err) {
       res.status(err.status || 500).json({ message: err.message });
     }
   }
