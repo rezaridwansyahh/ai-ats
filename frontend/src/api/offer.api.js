@@ -77,14 +77,6 @@ export const skipSlipGaji = (offerId, reason) => api.post(`/offer/${offerId}/sli
 
 export const reviewSlipGaji = (offerId, note) => api.post(`/offer/${offerId}/slip-gaji/review`, { note });
 
-export const getApproval = (offerId) => api.get(`/offer/${offerId}/approval`);
-
-export const submitApproval = (offerId, decision, note) => api.post(`/offer/${offerId}/approval`, { decision, note });
-
-export const setupApprovalChain = (offerId, steps) => api.post(`/offer/${offerId}/approval/setup`, { steps });
-
-export const decideApprovalStep = (offerId, stepIndex, decision, note) => api.post(`/offer/${offerId}/approval/${stepIndex}/decide`, { decision, note });
-
 export const getOfferLetterFields = (offerId) => api.get(`/offer/${offerId}/offer-letter/fields`);
 
 export const saveOfferLetterData = (offerId, data) => api.put(`/offer/${offerId}/offer-letter/data`, data);

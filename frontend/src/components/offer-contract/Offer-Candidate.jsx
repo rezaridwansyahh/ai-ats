@@ -3,9 +3,9 @@ import { useNavigate, useParams, Link } from 'react-router-dom';
 import {
   ArrowLeft, Loader2, AlertTriangle, Check, ChevronRight, X,
   FileText, Pencil, Wallet, Send, FileSignature, Plus, Trash2,
-  MessageSquareText, PenLine, ShieldCheck, ThumbsDown, Clock, Circle,
+  MessageSquareText, PenLine, ShieldCheck, ThumbsDown,
   Copy, Sparkles, RefreshCw, Ban, XCircle, Download, Settings as SettingsIcon,
-  Upload, FileCheck2, SkipForward, Lock,
+  Upload, FileCheck2, SkipForward, Lock, Link2,
 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -26,8 +26,7 @@ import {
   getOfferDocument, uploadOfferDocument,
 } from '@/api/offer.api';
 import {
-  startApprovalChain, reviseApprovalChain, getApprovalChain,
-  finalizeApprovalChain, decideApprovalStep,
+  getApprovalStatus, decideApproval, generateApprovalViewLink,
 } from '@/api/offer-pack.api';
 import { getOfferTemplate } from '@/api/offer-template.api';
 
@@ -48,20 +47,17 @@ const STATUS_TONE = {
   expired:     'border-gray-300 text-gray-500 bg-gray-50',
 };
 
-const APPROVAL_TONE = {
-  not_started: 'border-slate-300 text-slate-700 bg-slate-50',
-  in_progress: 'border-blue-300 text-blue-700 bg-blue-50',
-  approved:    'border-emerald-300 text-emerald-700 bg-emerald-50',
-  rejected:    'border-rose-300 text-rose-700 bg-rose-50',
-  finalized:   'border-violet-300 text-violet-700 bg-violet-50',
+const DECISION_TONE = {
+  approved: 'border-emerald-300 text-emerald-700 bg-emerald-50',
+  amend:    'border-amber-300 text-amber-700 bg-amber-50',
+  rejected: 'border-rose-300 text-rose-700 bg-rose-50',
 };
 
-const DEFAULT_APPROVAL_STEPS = [
-  { role: 'Recruiter',       approver_name: '' },
-  { role: 'Hiring Manager',  approver_name: '' },
-  { role: 'Finance',         approver_name: '' },
-  { role: 'CHRO',            approver_name: '' },
-];
+const DECISION_LABEL = {
+  approved: 'Approved',
+  amend:    'Amend requested',
+  rejected: 'Not approved',
+};
 
 function fmtCurrency(value) {
   if (value == null) return '—';
@@ -129,6 +125,7 @@ function SubStageStepper({ activeSection, onSelect }) {
 }
 
 function CandidateCard({ offer, approval }) {
+  const currentDecision = approval?.current?.decision;
   return (
     <Card>
       <CardContent className="p-3 space-y-2">
@@ -146,11 +143,11 @@ function CandidateCard({ offer, approval }) {
               {offer.offer_status}
             </Badge>
           </div>
-          {approval?.status && approval.status !== 'not_started' && (
+          {currentDecision && (
             <div className="flex items-center justify-between gap-2">
               <span className="text-[10px] text-muted-foreground">Approval</span>
-              <Badge variant="outline" className={`text-[9px] ${APPROVAL_TONE[approval.status] || ''}`}>
-                {approval.status.replace(/_/g, ' ')}
+              <Badge variant="outline" className={`text-[9px] ${DECISION_TONE[currentDecision] || ''}`}>
+                {DECISION_LABEL[currentDecision] || currentDecision}
               </Badge>
             </div>
           )}
@@ -744,241 +741,65 @@ function BuildSection({ offer, setOffer, setBanner, setError, onAdvance }) {
   );
 }
 
-/* Approval chain — one shared portal link, unordered roster, revoke & edit,
-   finalize once every step reads approved. */
+/* Approval — single decision from a higher-up, in-app only. Approve / Amend
+   (note required) / Not Approved (double-confirm). Optional read-only view
+   link sits ABOVE the decide controls; decision history sits BELOW them. */
 
-function ApprovalStepRow({ step, onRoleChange, onNameChange, onRemove }) {
+function DecisionHistoryList({ history }) {
+  if (!history || history.length === 0) return null;
   return (
-    <div className="flex items-center gap-2">
-      <Input
-        placeholder="Role — e.g. Finance"
-        className="text-xs h-9"
-        value={step.role}
-        onChange={(e) => onRoleChange(e.target.value)}
-      />
-      <Input
-        placeholder="Approver name"
-        className="text-xs h-9"
-        value={step.approver_name}
-        onChange={(e) => onNameChange(e.target.value)}
-      />
-      <button type="button" onClick={onRemove} className="shrink-0 text-muted-foreground hover:text-rose-600">
-        <Trash2 className="h-3.5 w-3.5" />
-      </button>
-    </div>
-  );
-}
-
-function ApprovalRosterForm({ initialSteps, mode, offerId, setApproval, setBanner, setError, onDone, onCancel }) {
-  const [draftSteps, setDraftSteps] = useState(
-    (initialSteps?.length ? initialSteps : DEFAULT_APPROVAL_STEPS).map((s) => ({ ...s }))
-  );
-  const [saving, setSaving] = useState(false);
-
-  const addStep = () => setDraftSteps((prev) => [...prev, { role: '', approver_name: '' }]);
-  const removeStep = (i) => setDraftSteps((prev) => prev.filter((_, idx) => idx !== i));
-  const updateStep = (i, field, value) =>
-    setDraftSteps((prev) => prev.map((s, idx) => idx === i ? { ...s, [field]: value } : s));
-
-  const handleSubmit = async () => {
-    const cleaned = draftSteps.filter((s) => s.role.trim() && s.approver_name.trim());
-    if (cleaned.length === 0) {
-      setError('Add at least one approval step with a role and an approver name');
-      return;
-    }
-    setSaving(true);
-    setError(null);
-    try {
-      const res = mode === 'setup'
-        ? await startApprovalChain(offerId, cleaned)
-        : await reviseApprovalChain(offerId, cleaned);
-      setApproval(res.data?.chain);
-      setBanner({
-        ok: true,
-        text: mode === 'setup' ? 'Approval chain started.' : 'Chain revoked and updated — a new link was generated.',
-      });
-      onDone?.();
-    } catch (err) {
-      setError(err.response?.data?.message || err.message || 'Failed to save the approval chain');
-    } finally {
-      setSaving(false);
-    }
-  };
-
-  return (
-    <div className="space-y-2">
-      {mode === 'revise' && (
-        <div className="flex items-center gap-2 px-3 py-2 rounded-lg border border-amber-200 bg-amber-50 text-[11px] text-amber-700">
-          <AlertTriangle className="h-3.5 w-3.5 shrink-0" />
-          Saving will clear all current decisions and issue a brand-new portal link — the old link stops working immediately.
-        </div>
-      )}
-      {draftSteps.map((step, i) => (
-        <ApprovalStepRow
-          key={i}
-          step={step}
-          onRoleChange={(v) => updateStep(i, 'role', v)}
-          onNameChange={(v) => updateStep(i, 'approver_name', v)}
-          onRemove={() => removeStep(i)}
-        />
-      ))}
-      <div className="flex items-center gap-2 pt-1">
-        <Button size="sm" variant="outline" className="text-xs h-7" onClick={addStep}>
-          <Plus className="h-3 w-3 mr-1" /> Add step
-        </Button>
-      </div>
-      <div className="flex gap-2 pt-1">
-        <Button size="sm" className="text-xs" onClick={handleSubmit} disabled={saving}>
-          {saving ? <Loader2 className="h-3.5 w-3.5 mr-1.5 animate-spin" /> : <Check className="h-3.5 w-3.5 mr-1.5" />}
-          {mode === 'setup' ? 'Start approval chain' : 'Save & regenerate link'}
-        </Button>
-        {onCancel && (
-          <Button size="sm" variant="ghost" className="text-xs" onClick={onCancel} disabled={saving}>
-            Cancel
-          </Button>
-        )}
-      </div>
-    </div>
-  );
-}
-
-function ApprovalStepCard({ step, editable, offerId, setApproval, setBanner, setError }) {
-  const [note, setNote]           = useState('');
-  const [deciding, setDeciding]   = useState(null); // 'approved' | 'rejected' | null
-  const [confirmReject, setConfirmReject] = useState(false);
-
-  const isApproved = step.status === 'approved';
-  const isRejected = step.status === 'rejected';
-
-  const refreshChain = async () => {
-    const res = await getApprovalChain(offerId);
-    setApproval(res.data?.chain);
-  };
-
-  const submit = async (decision) => {
-    setDeciding(decision);
-    setError(null);
-    try {
-      await decideApprovalStep(offerId, step.id, decision, note || null);
-      await refreshChain();
-      setNote('');
-      setConfirmReject(false);
-      setBanner({ ok: true, text: `${step.role} · ${decision}.` });
-    } catch (err) {
-      setError(err.response?.data?.message || err.message || 'Failed to record decision');
-    } finally {
-      setDeciding(null);
-    }
-  };
-
-  return (
-    <div className="p-3 space-y-2">
-      <div className="flex items-center gap-3">
-        <span className={`h-6 w-6 rounded-full flex items-center justify-center shrink-0 ${
-          isApproved ? 'bg-emerald-500 text-white'
-          : isRejected ? 'bg-rose-500 text-white'
-          : 'bg-muted text-muted-foreground'
-        }`}>
-          {isApproved ? <Check className="h-3.5 w-3.5" />
-            : isRejected ? <X className="h-3.5 w-3.5" />
-            : <Circle className="h-2.5 w-2.5" />}
-        </span>
-        <div className="min-w-0 flex-1">
-          <div className="text-xs font-semibold">{step.role} · {step.approver_name}</div>
-          {step.decided_at && (
-            <div className="text-[10px] text-muted-foreground">
-              {isApproved ? 'Approved' : 'Rejected'} {fmtDate(step.decided_at)}
-              {step.decided_by_name ? ` · by ${step.decided_by_name}` : ' · via portal'}
+    <div className="space-y-1.5 pt-2 border-t">
+      <p className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">Decision history</p>
+      <div className="rounded-lg border divide-y">
+        {history.map((h) => (
+          <div key={h.id} className="p-2.5 text-xs space-y-1">
+            <div className="flex items-center justify-between gap-2 flex-wrap">
+              <Badge variant="outline" className={`text-[9px] ${DECISION_TONE[h.decision] || ''}`}>
+                {DECISION_LABEL[h.decision] || h.decision}
+              </Badge>
+              <span className="text-[10px] text-muted-foreground">
+                {fmtDate(h.decided_at)}{h.decided_by_name ? ` · ${h.decided_by_name}` : ''}
+              </span>
             </div>
-          )}
-          {!step.decided_at && (
-            <div className="text-[10px] text-muted-foreground">Awaiting decision</div>
-          )}
-        </div>
-        {isApproved && <Badge variant="outline" className="text-[9px] border-emerald-300 text-emerald-700 bg-emerald-50">approved</Badge>}
-        {isRejected && <Badge variant="outline" className="text-[9px] border-rose-300 text-rose-700 bg-rose-50">rejected</Badge>}
-      </div>
-
-      {step.note && (
-        <div className="flex items-start gap-2 pl-9 text-[11px] text-muted-foreground">
-          <MessageSquareText className="h-3 w-3 shrink-0 mt-0.5" />
-          {step.note}
-        </div>
-      )}
-
-      {editable && (
-        <div className="pl-9 space-y-2">
-          <Textarea
-            placeholder="Note (optional)"
-            rows={2}
-            className="text-xs"
-            value={note}
-            onChange={(e) => setNote(e.target.value)}
-          />
-          {!confirmReject ? (
-            <div className="flex gap-2">
-              <Button size="sm" className="text-xs h-7 bg-emerald-600 hover:bg-emerald-700" onClick={() => submit('approved')} disabled={!!deciding}>
-                {deciding === 'approved' ? <Loader2 className="h-3 w-3 mr-1 animate-spin" /> : <Check className="h-3 w-3 mr-1" />}
-                {isApproved ? 'Keep Approved' : 'Approve'}
-              </Button>
-              <Button size="sm" variant="outline" className="text-xs h-7 text-rose-600 border-rose-300 hover:bg-rose-50" onClick={() => setConfirmReject(true)} disabled={!!deciding}>
-                <ThumbsDown className="h-3 w-3 mr-1" />
-                Not Approved
-              </Button>
-            </div>
-          ) : (
-            <div className="space-y-1.5 p-2.5 rounded-lg border border-rose-200 bg-rose-50/40">
-              <p className="text-[11px] text-rose-700">
-                Are you sure? This locks the chain until it's revoked & edited.
+            {h.note && (
+              <p className="text-[11px] text-muted-foreground flex items-start gap-1.5">
+                <MessageSquareText className="h-3 w-3 shrink-0 mt-0.5" /> {h.note}
               </p>
-              <div className="flex gap-2">
-                <Button size="sm" variant="destructive" className="text-[10px] h-7" onClick={() => submit('rejected')} disabled={!!deciding}>
-                  {deciding === 'rejected' ? <Loader2 className="h-3 w-3 mr-1 animate-spin" /> : null} Confirm Not Approved
-                </Button>
-                <Button size="sm" variant="ghost" className="text-[10px] h-7" onClick={() => setConfirmReject(false)} disabled={!!deciding}>
-                  Cancel
-                </Button>
-              </div>
-            </div>
-          )}
-        </div>
-      )}
-    </div>
-  );
-}
-
-function FinalizeConfirm({ finalizing, onConfirm, onCancel }) {
-  return (
-    <div className="space-y-2 p-3 rounded-lg border border-violet-200 bg-violet-50/40">
-      <p className="text-[11px] text-violet-700">
-        This will lock the chain and permanently disable the approval link. You won't be able to reissue it. Continue?
-      </p>
-      <div className="flex gap-2">
-        <Button size="sm" className="text-xs h-7 bg-violet-600 hover:bg-violet-700" onClick={onConfirm} disabled={finalizing}>
-          {finalizing ? <Loader2 className="h-3.5 w-3.5 mr-1.5 animate-spin" /> : <Lock className="h-3.5 w-3.5 mr-1.5" />}
-          Confirm finalize
-        </Button>
-        <Button size="sm" variant="ghost" className="text-xs h-7" onClick={onCancel} disabled={finalizing}>
-          Cancel
-        </Button>
+            )}
+          </div>
+        ))}
       </div>
     </div>
   );
 }
 
-function ApproveSection({ offer, offerId, approval, setApproval, setBanner, setError, onAdvance }) {
-  const [showEditForm, setShowEditForm] = useState(false);
-  const [finalizing, setFinalizing] = useState(false);
-  const [showFinalizeConfirm, setShowFinalizeConfirm] = useState(false);
+function ApprovalViewLinkPart({ offerId, viewLink, setApproval, setBanner, setError }) {
+  const [generating, setGenerating] = useState(false);
   const [copied, setCopied] = useState(false);
 
-  const hasCompensation = offer.base_salary != null;
-  const status = approval?.status || 'not_started';
-  const steps = approval?.steps || [];
-  const chainStarted = status !== 'not_started';
-  const portalUrl = approval?.portal_link ? `${window.location.origin}${approval.portal_link}` : null;
-  const editable = status === 'in_progress' || status === 'approved'; // steps decidable, portal not yet locked
-  const canEditChain = chainStarted && status !== 'finalized';
+  const portalUrl = viewLink?.portal_link ? `${window.location.origin}${viewLink.portal_link}` : null;
+
+  const handleGenerate = async () => {
+    setGenerating(true);
+    setError(null);
+    try {
+      const res = await generateApprovalViewLink(offerId, 7);
+      setApproval((prev) => ({
+        ...(prev || {}),
+        view_link: {
+          portal_link: res.data.portal_link,
+          token_expires_at: res.data.token_expires_at,
+          sent_to_email: res.data.sent_to_email,
+          generated_at: new Date(),
+        },
+      }));
+      setBanner({ ok: true, text: 'View link generated.' });
+    } catch (err) {
+      setError(err.response?.data?.message || err.message || 'Failed to generate view link');
+    } finally {
+      setGenerating(false);
+    }
+  };
 
   const handleCopy = async () => {
     if (!portalUrl) return;
@@ -989,68 +810,93 @@ function ApproveSection({ offer, offerId, approval, setApproval, setBanner, setE
     } catch {}
   };
 
-  const handleFinalize = async () => {
-    setFinalizing(true);
+  return (
+    <div className="space-y-2 pb-2 border-b">
+      <p className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
+        Optional — read-only view (data summary only, no letter), gated by your own account email
+      </p>
+
+      {viewLink && portalUrl ? (
+        <div className="rounded-lg border bg-muted/30 p-3 space-y-2">
+          <div className="flex items-center justify-between gap-2 flex-wrap">
+            <span className="text-[11px] text-muted-foreground">
+              Gated to <strong>{viewLink.sent_to_email}</strong> — your account email
+            </span>
+            {viewLink.token_expires_at && (
+              <span className="text-[10px] text-muted-foreground">Expires {fmtDate(viewLink.token_expires_at)}</span>
+            )}
+          </div>
+          <div className="flex items-center gap-2">
+            <code className="flex-1 truncate text-[11px] font-mono text-foreground bg-background border rounded px-2 py-1.5">
+              {portalUrl}
+            </code>
+            <Button size="sm" variant="outline" className="h-7 text-xs shrink-0" onClick={handleCopy}>
+              {copied ? <><Check className="h-3 w-3 mr-1" /> Copied</> : <><Copy className="h-3 w-3 mr-1" /> Copy</>}
+            </Button>
+          </div>
+          <Button size="sm" variant="ghost" className="text-xs h-7" onClick={handleGenerate} disabled={generating}>
+            {generating ? <Loader2 className="h-3.5 w-3.5 mr-1.5 animate-spin" /> : <RefreshCw className="h-3.5 w-3.5 mr-1.5" />}
+            Regenerate
+          </Button>
+        </div>
+      ) : (
+        <Button size="sm" className="text-xs h-8" onClick={handleGenerate} disabled={generating}>
+          {generating ? <Loader2 className="h-3.5 w-3.5 mr-1.5 animate-spin" /> : <Link2 className="h-3.5 w-3.5 mr-1.5" />}
+          Generate view link
+        </Button>
+      )}
+    </div>
+  );
+}
+
+function ApproveSection({ offer, offerId, approval, setApproval, setBanner, setError, onAdvance }) {
+  const [deciding, setDeciding] = useState(null); // 'approved' | 'amend' | 'rejected' | null
+  const [amendNote, setAmendNote] = useState('');
+  const [showAmendForm, setShowAmendForm] = useState(false);
+  const [rejectNote, setRejectNote] = useState('');
+  const [showRejectConfirm, setShowRejectConfirm] = useState(false);
+
+  const hasCompensation = offer.base_salary != null;
+  const isDraft = offer.offer_status === 'draft';
+  const current = approval?.current || null;
+  const history = approval?.history || [];
+  const viewLink = approval?.view_link || null;
+
+  const refresh = async () => {
+    const res = await getApprovalStatus(offerId);
+    setApproval(res.data);
+  };
+
+  const submitDecision = async (decision, note) => {
+    setDeciding(decision);
     setError(null);
     try {
-      const res = await finalizeApprovalChain(offerId);
-      setApproval((prev) => ({ ...(prev || {}), ...res.data.chain }));
-      setShowFinalizeConfirm(false);
-      setBanner({ ok: true, text: 'Approval chain finalized.' });
+      await decideApproval(offerId, decision, note || null);
+      await refresh();
+      setShowAmendForm(false);
+      setAmendNote('');
+      setShowRejectConfirm(false);
+      setRejectNote('');
+      setBanner({
+        ok: true,
+        text: decision === 'approved' ? 'Offer approved.' : decision === 'amend' ? 'Amend requested.' : 'Marked as not approved.',
+      });
     } catch (err) {
-      setError(err.response?.data?.message || err.message || 'Failed to finalize');
+      setError(err.response?.data?.message || err.message || 'Failed to record decision');
     } finally {
-      setFinalizing(false);
+      setDeciding(null);
     }
   };
 
-  if (!hasCompensation) {
-    return (
-      <Card>
-        <CardHeader className="pb-3">
-          <div className="flex items-center gap-2">
-            <ShieldCheck className="h-4 w-4 text-primary shrink-0" />
-            <CardTitle className="text-sm">Approval chain</CardTitle>
-          </div>
-        </CardHeader>
-        <CardContent>
-          <div className="flex items-center gap-2 px-3 py-2 rounded-lg border border-amber-200 bg-amber-50 text-xs text-amber-700">
-            <AlertTriangle className="h-4 w-4 shrink-0" /> Finish Build (compensation) before setting up the approval chain.
-          </div>
-        </CardContent>
-      </Card>
-    );
-  }
+  const handleAmendSubmit = () => {
+    if (!amendNote.trim()) {
+      setError('A note is required when requesting an amend');
+      return;
+    }
+    submitDecision('amend', amendNote.trim());
+  };
 
-  if (!chainStarted || showEditForm) {
-    return (
-      <Card>
-        <CardHeader className="pb-3">
-          <div className="flex items-center gap-2">
-            <ShieldCheck className="h-4 w-4 text-primary shrink-0" />
-            <div className="min-w-0 flex-1">
-              <CardTitle className="text-sm">{showEditForm ? 'Revoke & edit chain' : 'Approval chain'}</CardTitle>
-              <p className="text-[10px] text-muted-foreground mt-0.5">
-                One shared portal link — every approver decides in any order
-              </p>
-            </div>
-          </div>
-        </CardHeader>
-        <CardContent>
-          <ApprovalRosterForm
-            mode={showEditForm ? 'revise' : 'setup'}
-            initialSteps={showEditForm ? steps.map((s) => ({ role: s.role, approver_name: s.approver_name })) : []}
-            offerId={offerId}
-            setApproval={setApproval}
-            setBanner={setBanner}
-            setError={setError}
-            onDone={() => setShowEditForm(false)}
-            onCancel={showEditForm ? () => setShowEditForm(false) : null}
-          />
-        </CardContent>
-      </Card>
-    );
-  }
+  const canDecide = hasCompensation && isDraft;
 
   return (
     <div className="space-y-4">
@@ -1059,95 +905,126 @@ function ApproveSection({ offer, offerId, approval, setApproval, setBanner, setE
           <div className="flex items-center gap-2">
             <ShieldCheck className="h-4 w-4 text-primary shrink-0" />
             <div className="min-w-0 flex-1">
-              <CardTitle className="text-sm">Approval chain</CardTitle>
+              <CardTitle className="text-sm">Approval</CardTitle>
               <p className="text-[10px] text-muted-foreground mt-0.5">
-                Add as many approvers as needed — each gets their own portal link, decided in order
+                One decision from a higher-up — approve, request changes, or close the offer
               </p>
             </div>
-            <Badge variant="outline" className={`text-[9px] shrink-0 ${APPROVAL_TONE[status] || ''}`}>
-              {status.replace(/_/g, ' ')}
-            </Badge>
+            {current && (
+              <Badge variant="outline" className={`text-[9px] shrink-0 ${DECISION_TONE[current.decision] || ''}`}>
+                {DECISION_LABEL[current.decision] || current.decision}
+              </Badge>
+            )}
           </div>
         </CardHeader>
         <CardContent className="space-y-3">
 
-          {status === 'rejected' && (
-            <div className="flex items-center gap-2 px-3 py-2 rounded-lg border border-rose-200 bg-rose-50 text-xs text-rose-700">
-              <XCircle className="h-4 w-4 shrink-0" /> Not approved — revoke & edit the chain to restart it.
+          {!hasCompensation ? (
+            <div className="flex items-center gap-2 px-3 py-2 rounded-lg border border-amber-200 bg-amber-50 text-xs text-amber-700">
+              <AlertTriangle className="h-4 w-4 shrink-0" /> Finish Build (compensation) before recording an approval decision.
             </div>
-          )}
+          ) : !isDraft ? (
+            <div className="flex items-center gap-2 px-3 py-2 rounded-lg border border-slate-200 bg-slate-50 text-xs text-slate-600">
+              <Lock className="h-4 w-4 shrink-0" /> Offer is no longer in draft — approval no longer applies.
+            </div>
+          ) : null}
 
-          {status === 'finalized' ? (
-            <div className="flex items-center gap-2 px-3 py-2 rounded-lg border border-violet-200 bg-violet-50 text-xs text-violet-700">
-              <Lock className="h-4 w-4 shrink-0" /> Finalized {fmtDate(approval.finalized_at)} — the portal link is permanently disabled.
-            </div>
-          ) : portalUrl && (
-            <div className="rounded-lg border bg-muted/30 p-3 space-y-2">
-              <div className="flex items-center justify-between gap-2 flex-wrap">
-                <p className="text-[10px] font-bold tracking-widest uppercase text-muted-foreground">Shared portal link</p>
-                {approval.token_expires_at && (
-                  <span className="text-[10px] text-muted-foreground">Expires {fmtDate(approval.token_expires_at)}</span>
-                )}
-              </div>
-              <div className="flex items-center gap-2">
-                <code className="flex-1 truncate text-[11px] font-mono text-foreground bg-background border rounded px-2 py-1.5">
-                  {portalUrl}
-                </code>
-                <Button size="sm" variant="outline" className="h-7 text-xs shrink-0" onClick={handleCopy}>
-                  {copied ? <><Check className="h-3 w-3 mr-1" /> Copied</> : <><Copy className="h-3 w-3 mr-1" /> Copy</>}
-                </Button>
-                {canEditChain && (
-                  <Button size="sm" variant="outline" className="h-7 text-xs shrink-0" onClick={() => setShowEditForm(true)}>
-                    <RefreshCw className="h-3 w-3 mr-1" /> Revoke & edit
-                  </Button>
-                )}
+          {current && (
+            <div className={`flex items-start gap-2 px-3 py-2 rounded-lg border text-xs ${DECISION_TONE[current.decision] || ''}`}>
+              {current.decision === 'approved' ? <Check className="h-4 w-4 shrink-0 mt-0.5" />
+                : current.decision === 'amend' ? <RefreshCw className="h-4 w-4 shrink-0 mt-0.5" />
+                : <X className="h-4 w-4 shrink-0 mt-0.5" />}
+              <div>
+                <span className="font-semibold">{DECISION_LABEL[current.decision] || current.decision}</span>
+                {' '}{fmtDate(current.decided_at)}{current.decided_by_name ? ` · by ${current.decided_by_name}` : ''}
+                {current.note && <p className="italic mt-0.5">"{current.note}"</p>}
               </div>
             </div>
           )}
 
-          <div className="rounded-lg border divide-y">
-            {steps.map((step) => (
-              <ApprovalStepCard
-                key={step.id}
-                step={step}
-                editable={editable}
-                offerId={offerId}
-                setApproval={setApproval}
-                setBanner={setBanner}
-                setError={setError}
+          {/* View link — sits above the decide controls */}
+          <ApprovalViewLinkPart
+            offerId={offerId} viewLink={viewLink}
+            setApproval={setApproval} setBanner={setBanner} setError={setError}
+          />
+
+          {canDecide && !showAmendForm && !showRejectConfirm && (
+            <div className="grid grid-cols-3 gap-2">
+              <Button
+                size="sm" className="text-xs bg-emerald-600 hover:bg-emerald-700"
+                onClick={() => submitDecision('approved', null)} disabled={!!deciding}
+              >
+                {deciding === 'approved' ? <Loader2 className="h-3.5 w-3.5 mr-1.5 animate-spin" /> : <Check className="h-3.5 w-3.5 mr-1.5" />}
+                Approve
+              </Button>
+              <Button
+                size="sm" variant="outline" className="text-xs text-amber-700 border-amber-300 hover:bg-amber-50"
+                onClick={() => setShowAmendForm(true)} disabled={!!deciding}
+              >
+                <PenLine className="h-3.5 w-3.5 mr-1.5" /> Amend
+              </Button>
+              <Button
+                size="sm" variant="outline" className="text-xs text-rose-600 border-rose-300 hover:bg-rose-50"
+                onClick={() => setShowRejectConfirm(true)} disabled={!!deciding}
+              >
+                <ThumbsDown className="h-3.5 w-3.5 mr-1.5" /> Not Approved
+              </Button>
+            </div>
+          )}
+
+          {canDecide && showAmendForm && (
+            <div className="space-y-2 p-3 rounded-lg border border-amber-200 bg-amber-50/40">
+              <p className="text-[11px] text-amber-700">
+                Explain what needs to change — Intake, Build, and the offer letter stay unlocked so you can rework them; nothing is wiped.
+              </p>
+              <Textarea
+                value={amendNote}
+                onChange={(e) => setAmendNote(e.target.value)}
+                placeholder="What needs to change? (required)"
+                rows={3}
+                className="text-xs"
               />
-            ))}
-          </div>
+              <div className="flex gap-2">
+                <Button size="sm" className="text-xs h-8 bg-amber-600 hover:bg-amber-700" onClick={handleAmendSubmit} disabled={deciding === 'amend'}>
+                  {deciding === 'amend' ? <Loader2 className="h-3.5 w-3.5 mr-1.5 animate-spin" /> : null} Submit amend
+                </Button>
+                <Button size="sm" variant="ghost" className="text-xs h-8" onClick={() => { setShowAmendForm(false); setAmendNote(''); }} disabled={deciding === 'amend'}>
+                  Cancel
+                </Button>
+              </div>
+            </div>
+          )}
+
+          {canDecide && showRejectConfirm && (
+            <div className="space-y-2 p-3 rounded-lg border border-rose-200 bg-rose-50/40">
+              <p className="text-[11px] text-rose-700 font-semibold">
+                Are you sure? This ends the candidate's journey on this offer — nothing further can be done from here.
+              </p>
+              <Textarea
+                value={rejectNote}
+                onChange={(e) => setRejectNote(e.target.value)}
+                placeholder="Note (optional)"
+                rows={2}
+                className="text-xs"
+              />
+              <div className="flex gap-2">
+                <Button size="sm" variant="destructive" className="text-xs h-8" onClick={() => submitDecision('rejected', rejectNote.trim() || null)} disabled={deciding === 'rejected'}>
+                  {deciding === 'rejected' ? <Loader2 className="h-3.5 w-3.5 mr-1.5 animate-spin" /> : null} Confirm Not Approved
+                </Button>
+                <Button size="sm" variant="ghost" className="text-xs h-8" onClick={() => { setShowRejectConfirm(false); setRejectNote(''); }} disabled={deciding === 'rejected'}>
+                  Cancel
+                </Button>
+              </div>
+            </div>
+          )}
+
+          {/* Decision history — sits below the decide controls */}
+          <DecisionHistoryList history={history} />
 
         </CardContent>
       </Card>
 
-      {status === 'approved' && !showFinalizeConfirm && (
-        <Card className="border-violet-200 bg-violet-50/30">
-          <CardContent className="p-4 flex items-center justify-between gap-3 flex-wrap">
-            <div className="min-w-0">
-              <p className="text-sm font-semibold text-violet-800">Every approver has approved</p>
-              <p className="text-xs text-violet-700 mt-0.5">Finalize to lock the chain and move on to Send.</p>
-            </div>
-            <Button size="sm" className="text-xs bg-violet-600 hover:bg-violet-700 shrink-0" onClick={() => setShowFinalizeConfirm(true)}>
-              <Lock className="h-3.5 w-3.5 mr-1.5" /> Finalize approval chain
-            </Button>
-          </CardContent>
-        </Card>
-      )}
-      {status === 'approved' && showFinalizeConfirm && (
-        <Card className="border-violet-200 bg-violet-50/30">
-          <CardContent className="p-4">
-            <FinalizeConfirm
-              finalizing={finalizing}
-              onConfirm={handleFinalize}
-              onCancel={() => setShowFinalizeConfirm(false)}
-            />
-          </CardContent>
-        </Card>
-      )}
-
-      {status === 'finalized' && (
+      {current?.decision === 'approved' && (
         <div className="flex items-center justify-end pt-2 border-t">
           <Button size="sm" variant="outline" className="text-xs" onClick={() => onAdvance('send')}>
             <ChevronRight className="h-3.5 w-3.5 mr-1" /> Go to Send
@@ -1745,7 +1622,7 @@ function SendSection({ offer, approval, setOffer, setBanner, setError, onAdvance
   const [document, setDocument] = useState(null);
   const [loadingDocument, setLoadingDocument] = useState(true);
 
-  const isApproved = approval?.status === 'finalized';
+  const isApproved = approval?.current?.decision === 'approved';
   const hasLetterGenerated = offer.metadata?.offer_letter_final != null;
   const hasDocument = !!document;
 
@@ -2276,10 +2153,10 @@ export default function OfferCandidatePage() {
     try {
       const [offerRes, approvalRes] = await Promise.all([
         getOfferById(offerId),
-        getApprovalChain(offerId).catch(() => null),
+        getApprovalStatus(offerId).catch(() => null),
       ]);
       setOffer(offerRes.data || null);
-      setApproval(approvalRes?.data?.chain || { status: 'not_started', steps: [] });
+      setApproval(approvalRes?.data || { current: null, history: [], view_link: null });
     } catch (err) {
       setError(err.response?.data?.message || err.message || 'Failed to load offer');
     } finally {

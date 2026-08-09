@@ -73,7 +73,7 @@ function App() {
         <Route path="/qa/:token" element={<QAFollowUpPage />} />
         <Route path="/bg/consent/:token" element={<BackgroundCheckConsentPage />} />
         <Route path="/offer/send/:token" element={<OfferSendPage />} />
-        <Route path="/offer/approve/:token" element={<OfferApprovalPage />} />
+        <Route path="/offer/approve-view/:token" element={<OfferApprovalPage />} />
         <Route path="/interview/:token" element={<InterviewPackPortal />} />
 
         {/* All authenticated routes share DashboardLayout */}
