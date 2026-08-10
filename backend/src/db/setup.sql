@@ -10,6 +10,7 @@ DROP TABLE IF EXISTS candidate_onboarding CASCADE;
 
 DROP TABLE IF EXISTS company_budgets CASCADE;
 DROP TABLE IF EXISTS company_usage CASCADE;
+DROP TABLE IF EXISTS interview_round CASCADE;
 DROP TABLE IF EXISTS candidate_interview CASCADE;
 DROP TABLE IF EXISTS interview_position_prep CASCADE;
 DROP TABLE IF EXISTS interview_schedule CASCADE;
@@ -572,7 +573,9 @@ CREATE TABLE candidate_interview (
   candidate_id INTEGER NOT NULL REFERENCES master_candidate(id) ON DELETE CASCADE,
   job_id INTEGER NOT NULL REFERENCES core_job(id)         ON DELETE CASCADE,
   company_id INTEGER REFERENCES core_company(id)              ON DELETE CASCADE,
-  status VARCHAR(20) NOT NULL DEFAULT 'ongoing',  -- ongoing | scheduled | interviewed | no_show | reschedule | done | cancelled
+  status VARCHAR(20) NOT NULL DEFAULT 'setup',  -- setup | scheduled | ongoing | result | done | cancelled
+  round INTEGER NOT NULL DEFAULT 1,
+  current_round_id INTEGER,  -- FK added below, once interview_round exists
   scheduled_at TIMESTAMPTZ,
   decision VARCHAR(20) NOT NULL DEFAULT 'pending',  -- pending | advanced | hold | rejected
   reject_reason VARCHAR(100),
@@ -586,6 +589,24 @@ CREATE TABLE candidate_interview (
 );
 CREATE INDEX idx_ci_job     ON candidate_interview (job_id);
 CREATE INDEX idx_ci_company ON candidate_interview (company_id);
+
+-- Interview Rounds — a candidate can go through the Interview stage more
+-- than once ("Interview Again"). Each round owns its own schedule +
+-- scorecard so prior rounds' history is preserved instead of overwritten.
+-- candidate_interview.current_round_id always points at the active round.
+CREATE TABLE interview_round (
+  id            SERIAL PRIMARY KEY,
+  interview_id  INTEGER NOT NULL REFERENCES candidate_interview(id) ON DELETE CASCADE,
+  round_number  INTEGER NOT NULL,
+  status        VARCHAR(20) NOT NULL DEFAULT 'setup',
+  created_at    TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  updated_at    TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  UNIQUE (interview_id, round_number)
+);
+CREATE INDEX idx_interview_round_interview ON interview_round(interview_id);
+
+ALTER TABLE candidate_interview
+  ADD CONSTRAINT fk_ci_current_round FOREIGN KEY (current_round_id) REFERENCES interview_round(id);
 
 CREATE TABLE interview_position_prep (
   id SERIAL PRIMARY KEY,
@@ -603,6 +624,7 @@ CREATE TABLE interview_position_prep (
 CREATE TABLE interview_schedule (
   id SERIAL PRIMARY KEY,
   interview_id INTEGER NOT NULL REFERENCES candidate_interview(id) ON DELETE CASCADE,
+  round_id INTEGER REFERENCES interview_round(id),  -- which round this session belongs to
   company_id INTEGER REFERENCES core_company(id) ON DELETE CASCADE,
   title VARCHAR(255) NOT NULL,
   description TEXT,
@@ -619,9 +641,12 @@ CREATE TABLE interview_schedule (
   updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
+-- One scorecard per ROUND (not per interview) — this is what allows
+-- "Interview Again" to keep prior rounds' scores instead of overwriting them.
 CREATE TABLE interview_scorecard (
   id SERIAL PRIMARY KEY,
-  interview_id INTEGER NOT NULL UNIQUE REFERENCES candidate_interview(id) ON DELETE CASCADE,
+  interview_id INTEGER NOT NULL REFERENCES candidate_interview(id) ON DELETE CASCADE,
+  round_id INTEGER UNIQUE REFERENCES interview_round(id),
   company_id INTEGER REFERENCES core_company(id) ON DELETE CASCADE,
   competency_scores   JSONB NOT NULL DEFAULT '{}',  -- {"HRD-01": 5, "HRD-02": 6, ...}
   competency_comments JSONB NOT NULL DEFAULT '{}',  -- {"HRD-01": "showed clear thinking..."}

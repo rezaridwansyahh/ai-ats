@@ -347,16 +347,42 @@ const seed = async () => {
 
     console.log(`Seeded ${applicantScores.length} scores and ${candidateScreenings.length} screenings`);
 
-    // 21b. candidate_interview — candidates advanced from screening
+    // 21b. candidate_interview — candidates advanced from screening.
+    //      Each seeded interview also gets its round-1 interview_round row,
+    //      with candidate_interview.current_round_id pointed at it — required
+    //      for schedule/scorecard reads (they join through current_round_id).
     for (const ci of candidateInterviewData) {
-      await getDb().query(
+      const inserted = await getDb().query(
         `INSERT INTO candidate_interview
-          (id, candidate_id, job_id, company_id, status, scheduled_at)
-        VALUES ($1, $2, $3, $4, $5, $6)
-        ON CONFLICT (candidate_id, job_id) DO NOTHING`,
+          (id, candidate_id, job_id, company_id, status, round, scheduled_at)
+        VALUES ($1, $2, $3, $4, $5, $6, $7)
+        ON CONFLICT (candidate_id, job_id) DO NOTHING
+        RETURNING id`,
         [ci.id, ci.candidate_id, ci.job_id,
-        ci.company_id, ci.status, ci.scheduled_at]
+        ci.company_id, ci.status, ci.round_number || 1, ci.scheduled_at]
       );
+      const interviewId = inserted.rows[0]?.id ?? ci.id;
+
+      const round = await getDb().query(
+        `INSERT INTO interview_round (interview_id, round_number, status)
+         VALUES ($1, $2, $3)
+         ON CONFLICT (interview_id, round_number) DO NOTHING
+         RETURNING id`,
+        [interviewId, ci.round_number || 1, ci.status]
+      );
+      const roundId = round.rows[0]?.id ?? (
+        await getDb().query(
+          `SELECT id FROM interview_round WHERE interview_id = $1 AND round_number = $2`,
+          [interviewId, ci.round_number || 1]
+        )
+      ).rows[0]?.id;
+
+      if (roundId) {
+        await getDb().query(
+          `UPDATE candidate_interview SET current_round_id = $2 WHERE id = $1`,
+          [interviewId, roundId]
+        );
+      }
     }
 
     // 21c. candidate_bg
