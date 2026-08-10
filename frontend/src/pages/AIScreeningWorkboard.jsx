@@ -315,6 +315,11 @@ export default function AIScreeningWorkboard() {
                         const key = c.screening_id ?? `${c.job_id}-${c.candidate_id}`;
                         const name = c.applicant_name || `#${c.applicant_id}`;
                         const meta = STAGE_META[c.engine] || { label: c.engine, color: 'bg-muted text-muted-foreground' };
+                        // Percentage is unique to the table row badge — the
+                        // sub-stage filter chips above stay label-only.
+                        const stageLabel = c.engine === 'ready' && c.overall_score != null
+                          ? `${meta.label} · ${c.overall_score}%`
+                          : meta.label;
                         return (
                           <TableRow
                             key={key}
@@ -337,7 +342,7 @@ export default function AIScreeningWorkboard() {
                             </TableCell>
                             <TableCell>
                               <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-semibold ${meta.color}`}>
-                                {meta.label}
+                                {stageLabel}
                               </span>
                             </TableCell>
                           </TableRow>

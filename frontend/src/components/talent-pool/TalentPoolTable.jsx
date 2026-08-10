@@ -2,6 +2,7 @@ import { Briefcase, GraduationCap, MapPin, Plus, Search, AlertTriangle } from 'l
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
+import { Checkbox } from '@/components/ui/checkbox';
 import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from '@/components/ui/table';
@@ -36,7 +37,16 @@ export default function TalentPoolTable({
   totalPages,
   paginationPages,
   onPageChange,
+  // ── Bulk select (new) ──────────────────────────────────────────
+  selectedIds,
+  onToggleSelectOne,
+  onToggleSelectAllPaged,
+  onBulkAddClick,
+  onClearSelection,
 }) {
+  const allPagedSelected = rows.length > 0 && rows.every((r) => selectedIds.has(r.id));
+  const somePagedSelected = rows.some((r) => selectedIds.has(r.id));
+
   return (
     <Card>
       <CardHeader className="pb-3 border-b">
@@ -79,29 +89,55 @@ export default function TalentPoolTable({
           </div>
         )}
 
+        {/* Bulk action bar — appears once at least one candidate is selected */}
+        {selectedIds.size > 0 && (
+          <div className="flex items-center justify-between gap-3 mx-4 mt-4 px-3 py-2 rounded-lg border border-primary/30 bg-primary/5">
+            <span className="text-xs font-semibold text-primary">
+              {selectedIds.size} candidate{selectedIds.size === 1 ? '' : 's'} selected
+            </span>
+            <div className="flex items-center gap-2">
+              <Button size="sm" variant="ghost" className="text-xs" onClick={onClearSelection}>
+                Clear selection
+              </Button>
+              <Button size="sm" className="text-xs" onClick={onBulkAddClick}>
+                <Plus className="h-3 w-3 mr-1" /> Add to Job
+              </Button>
+            </div>
+          </div>
+        )}
+
         <div className="overflow-x-auto">
           <Table data-tour="talent-table" className="table-fixed w-full">
             <TableHeader className="bg-muted/40">
               <TableRow>
-                <TableHead className="w-[20%] text-[10px] font-bold uppercase pl-6">Name</TableHead>
-                <TableHead className="w-[18%] text-[10px] font-bold uppercase">Last Position</TableHead>
-                <TableHead className="w-[22%] text-[10px] font-bold uppercase">Skills</TableHead>
-                <TableHead className="w-[14%] text-[10px] font-bold uppercase">Location</TableHead>
-                <TableHead className="w-[10%] text-[10px] font-bold uppercase text-center">Score</TableHead>
-                <TableHead className="w-[8%] text-[10px] font-bold uppercase">Applied</TableHead>
-                <TableHead data-tour="talent-action-header" className="w-[8%] text-[10px] font-bold uppercase text-right pr-6">Action</TableHead>
+                <TableHead className="w-10 pl-4">
+                  <Checkbox
+                    checked={allPagedSelected}
+                    data-state={!allPagedSelected && somePagedSelected ? 'indeterminate' : undefined}
+                    onCheckedChange={onToggleSelectAllPaged}
+                    aria-label="Select all candidates on this page"
+                    disabled={rows.length === 0}
+                  />
+                </TableHead>
+                <TableHead className="w-[18%] text-[10px] font-bold uppercase">Name</TableHead>
+                <TableHead className="w-[16%] text-[10px] font-bold uppercase">Last Position</TableHead>
+                <TableHead className="w-[20%] text-[10px] font-bold uppercase">Skills</TableHead>
+                <TableHead className="w-[13%] text-[10px] font-bold uppercase">Location</TableHead>
+                <TableHead className="w-[9%] text-[10px] font-bold uppercase text-center">Score</TableHead>
+                <TableHead className="w-[7%] text-[10px] font-bold uppercase">Applied</TableHead>
+                <TableHead data-tour="talent-action-header" className="w-[7%] text-[10px] font-bold uppercase text-right pr-6">Action</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {loading ? (
                 <TableRow>
-                  <TableCell colSpan={7} className="text-center py-10 text-xs text-muted-foreground">
+                  <TableCell colSpan={8} className="text-center py-10 text-xs text-muted-foreground">
                     Loading applicants...
                   </TableCell>
                 </TableRow>
               ) : rows.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={7} className="text-center py-10 text-xs text-muted-foreground">
+                  <TableCell colSpan={8} className="text-center py-10 text-xs text-muted-foreground">
                     {hasActiveFilters ? 'No applicants match your filters.' : 'No applicants found.'}
                   </TableCell>
                 </TableRow>
@@ -111,10 +147,19 @@ export default function TalentPoolTable({
                 const moreSkills  = (Array.isArray(info.skills) ? info.skills.length : 0) - skillTags.length;
                 const positionLabel  = info.job_position?.current || r.last_position || '—';
                 const categoryLabel  = info.job_position?.category;
+                const isSelected = selectedIds.has(r.id);
 
                 return (
-                  <TableRow key={r.id} className="hover:bg-muted/30 transition-colors">
-                    <TableCell className="text-xs pl-6">
+                  <TableRow key={r.id} className={`hover:bg-muted/30 transition-colors ${isSelected ? 'bg-primary/5' : ''}`}>
+                    <TableCell className="pl-4">
+                      <Checkbox
+                        checked={isSelected}
+                        onCheckedChange={() => onToggleSelectOne(r.id)}
+                        aria-label={`Select ${r.name}`}
+                      />
+                    </TableCell>
+
+                    <TableCell className="text-xs">
                       <div className="font-semibold">{r.name}</div>
                     </TableCell>
 
