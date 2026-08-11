@@ -1,3 +1,4 @@
+//PERLU DIUPDATE
 import { useEffect, useRef, useState } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import {
@@ -44,6 +45,7 @@ const ENGINES = [
   { key: 'parse', label: 'Parse',  sub: 'extract CV',  icon: FileText },
   { key: 'match', label: 'Match',  sub: 'score fit',   icon: Wand2 },
   { key: 'qa',    label: 'Q&A',    sub: 'follow-up',   icon: MessageSquare, comingSoon: true },
+  { key: 'summary', label: 'Summary', sub: 'review + decide', icon: ClipboardList },
 ];
 
 function fmt(d) {
@@ -484,10 +486,19 @@ export default function AIScreeningCandidatePage() {
                   scored={scored}
                 />
               )}
+              {activeEngine === 'summary' && (
+                <SummaryPanel 
+                  data={data}
+                  qaCtl={qa}
+                  decision={decision}
+                  existingReason={existingReason}
+                  onPick={setDecisionDraft}
+                />
+              )}
             </div>
 
             {/* Step paginator (mirrors JobEdit) */}
-            <StepPaginator activeEngine={activeEngine} onStep={goToStep} engine={engine} parsed={!!facets} scored={scored} />
+            <StepPaginator activeEngine={activeEngine} onStep={goToStep} engine={engine} parsed={!!facets} scored={scored} qaResponded={qa.status === 'responded'} />
           </div>
 
           {/* SIDEBAR — contextual primary action + steps nav.
@@ -522,6 +533,7 @@ export default function AIScreeningCandidatePage() {
                 engine={engine}
                 parsed={!!facets}
                 scored={scored}
+                qaResponded={qa.status === 'responded'}
               />
             </div>
           </aside>
@@ -919,7 +931,7 @@ function DecisionDialog({ decision, reason, setReason, saving, onConfirm, onClos
 }
 
 /* ─────────── Step paginator (numbered, JobEdit-style) ─────────── */
-function StepPaginator({ activeEngine, onStep, engine, parsed, scored }) {
+function StepPaginator({ activeEngine, onStep, engine, parsed, scored, qaResponded }) {
   const activeIdx = ENGINES.findIndex((e) => e.key === activeEngine);
   return (
     <div className="border-t border-border/60 pt-4 space-y-2">
@@ -938,13 +950,14 @@ function StepPaginator({ activeEngine, onStep, engine, parsed, scored }) {
           const active = i === activeIdx;
           const isDone =
             (engine === 'match' && i === 0) ||
-            (engine === 'done'  && i <= 1);
-            const locked = (i === 1 && !parsed) || (i === 2 && !scored);
+            (engine === 'done'  && i <= 1) ||
+            (i === 2 && qaResponded);
+          const locked = (i === 1 && !parsed) || (i === 2 && !scored) || (i === 3 && !qaResponded);
           return (
             <button
               key={eng.key}
               type="button"
-              title={locked ? (i === 1 ? 'Parse CV first' : 'Score this candidate first') : eng.label}
+              title={locked ? (i === 3 ? 'Candidate must respond to Q&A first' : 'Parse CV first') : eng.label}
               onClick={() => !locked && onStep(eng.key)}
               disabled={locked}
               className={`h-8 w-8 rounded-md text-xs font-semibold flex items-center justify-center transition-colors disabled:opacity-40 disabled:cursor-not-allowed ${
@@ -967,7 +980,8 @@ function StepPaginator({ activeEngine, onStep, engine, parsed, scored }) {
           disabled={
             activeIdx >= ENGINES.length - 1 ||
             (activeIdx === 0 && !parsed) ||
-            (activeIdx === 1 && !scored)
+            (activeIdx === 1 && !scored) ||
+            (activeIdx === 2 && !qaResponded)
           }
           onClick={() => onStep(ENGINES[activeIdx + 1].key)}
         >
@@ -982,7 +996,7 @@ function StepPaginator({ activeEngine, onStep, engine, parsed, scored }) {
 }
 
 /* ─────────── Sidebar: vertical steps nav ─────────── */
-function StepsNav({ activeEngine, onStep, engine, parsed, scored }) {
+function StepsNav({ activeEngine, onStep, engine, parsed, scored, qaResponded }) {
   return (
     <Card>
       <CardContent className="p-3 space-y-1">
@@ -991,16 +1005,17 @@ function StepsNav({ activeEngine, onStep, engine, parsed, scored }) {
           const Icon = eng.icon;
           const isDone =
             (engine === 'match' && idx === 0) ||
-            (engine === 'done'  && idx <= 1);
+            (engine === 'done'  && idx <= 1) ||
+            (idx === 2 && qaResponded);
           const active = eng.key === activeEngine;
-          const locked = (idx === 1 && !parsed) || (idx === 2 && !scored);
+          const locked = (idx === 1 && !parsed) || (idx === 2 && !scored) || (idx === 3 && !qaResponded);
           return (
             <button
               key={eng.key}
               type="button"
               disabled={locked}
               onClick={() => !locked && onStep(eng.key)}
-              title={locked ? (idx === 1 ? 'Parse CV first' : 'Score this candidate first') : undefined}
+              title={locked ? (idx === 3 ? 'Candidate must respond to Q&A first' : 'Parse CV first') : undefined}
               className={`w-full flex items-center gap-2 px-2 py-1.5 rounded-md text-left transition-colors disabled:opacity-40 disabled:cursor-not-allowed ${
                 active ? 'bg-primary/10 text-primary' : 'hover:bg-muted/50 text-foreground'
               }`}
@@ -1765,6 +1780,129 @@ function QAPanel({ qaCtl, jobTitle, scored }) {
             )}
           </>
         )}
+      </CardContent>
+    </Card>
+  );
+}
+
+/* ─────────── Summary panel (step 4 — review + decide) ─────────── */
+function SummaryPanel({ data, qaCtl, decision, existingReason, onPick }) {
+  const {
+    overall_score, skills_score, experience_score, career_trajectory_score,
+    matched_skills, missing_skills, score_summary
+  } = data;
+
+  const matched = Array.isArray(matched_skills) ? matched_skills : [];
+  const missing = Array.isArray(missing_skills) ? missing_skills : [];
+  const rec = scoreRecommendation(overall_score);
+
+  const qaRow = qaCtl.qa;
+  const answers = Array.isArray(qaRow?.answers) ? qaRow.answers : [];
+  const question = Array.isArray(qaRow?.questions) ? qaRow.questions : [];
+
+  const isFinal = decision === 'advance' || decision === 'reject';
+
+  return (
+    <Card>
+      <CardHeader className="pb-3">
+        <CardTitle className="text-sm flex items-center gap-2">
+          <ClipboardList className="h-4 w-4 text-primary" /> Summary — review before deciding
+        </CardTitle>
+      </CardHeader>
+      <CardContent className="space-y-5">
+
+        {/* Match recap */}
+        <div className="space-y-3">
+          <div className="text-[11px] font-medium text-muted-foreground uppercase">Match</div>
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
+            <ScoreTile label="Overall"    score={overall_score} bold />
+            <ScoreTile label="Skills"     score={skills_score} />
+            <ScoreTile label="Experience" score={experience_score} />
+            <ScoreTile label="Trajectory" score={career_trajectory_score} />
+          </div>
+          {rec && (
+            <Badge className={`text-[10px] ${rec.tone}`}>{overall_score}% · {rec.label}</Badge>
+          )}
+          {score_summary && (
+            <p className="text-[11px] text-muted-foreground italic px-3 py-2 rounded-md bg-muted/30 border">
+              {score_summary}
+            </p>
+          )}
+          {(matched.length > 0 || missing.length > 0) && (
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <div className="text-[10px] font-semibold text-muted-foreground uppercase mb-1">Matched</div>
+                <div className="flex flex-wrap gap-1">
+                  {matched.length === 0 ? <span className="text-[11px] text-muted-foreground italic">—</span> :
+                    matched.map((s) => <Badge key={s} variant="secondary" className="text-[10px] bg-emerald-50 text-emerald-700">{s}</Badge>)}
+                </div>
+              </div>
+              <div>
+                <div className="text-[10px] font-semibold text-muted-foreground uppercase mb-1">Missing</div>
+                <div className="flex flex-wrap gap-1">
+                  {missing.length === 0 ? <span className="text-[11px] text-muted-foreground italic">—</span> :
+                    missing.map((s) => <Badge key={s} variant="secondary" className="text-[10px] bg-rose-50 text-rose-700">{s}</Badge>)}
+                </div>
+              </div>
+            </div>
+          )}
+        </div>
+
+        {/* Q&A recap */}
+        <div className="space-y-2 border-t pt-4">
+          <div className="text-[11px] font-medium text-muted-foreground uppercase">Follow-up Q&A</div>
+          {answers.length === 0 ? (
+            <p className="text-[11px] text-muted-foreground italic">No responses on record.</p>
+          ) : (
+            answers.map((a, i) => (
+              <div key={i} className="rounded-lg border bg-background p-3 space-y-1">
+                <div className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
+                  {a.topic || questions[i]?.topic || `Question ${i + 1}`}
+                </div>
+                <div className="text-xs font-medium">{a.question || questions[i]?.text}</div>
+                <div className="text-[11px] text-muted-foreground italic px-3 py-2 rounded-md bg-muted/30 border">
+                  {a.answer ? `"${a.answer}"` : <span className="not-italic">No answer provided.</span>}
+                </div>
+              </div>
+            ))
+          )}
+        </div>
+
+        {/* Decision shortcut */}
+        <div className="space-y-2 border-t pt-4">
+          <div className="text-[11px] font-medium text-muted-foreground uppercase">Decision</div>
+          {isFinal ? (
+            <p className="text-xs text-muted-foreground italic">
+              This candidate has a final decision (<span className="font-semibold not-italic">{decision}</span>) and cannot be changed here.
+            </p>
+          ) : (
+            <div className="grid grid-cols-3 gap-2">
+              {['advance', 'hold', 'reject'].map((key) => {
+                const meta = DECISION_META[key];
+                const Icon = meta.icon;
+                const isActive = decision === key;
+                return (
+                  <Button
+                    key={key}
+                    variant="outline"
+                    size="sm"
+                    className={`justify-start text-xs ${isActive ? 'border-primary/50 bg-primary/5' : ''}`}
+                    onClick={() => onPick(key)}
+                  >
+                    <Icon className={`h-3.5 w-3.5 mr-1.5 ${meta.iconCls}`} />
+                    {meta.label}
+                  </Button>
+                );
+              })}
+            </div>
+          )}
+          {existingReason && (
+            <p className="text-[11px] text-muted-foreground italic px-3 py-2 rounded-md bg-muted/30 border">
+              "{existingReason}"
+            </p>
+          )}
+        </div>
+
       </CardContent>
     </Card>
   );
