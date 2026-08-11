@@ -2,8 +2,9 @@ import OfferModel from './offer.model.js';
 import CompensationEngine from '../../shared/services/compensation-engine.js';
 import OfferTemplateModel from '../offer-template/offer-template.model.js';
 import { mergeOfferLetter, htmlToDocxBuffer, convertHtmlToPdf } from '../../shared/services/document-merge.js';
+import { sendOfferEmail } from '../../shared/services/candidate-mailer.js';
 import mammoth from 'mammoth';
-import fs from 'fs'; 
+import fs from 'fs';
 
 function computeApprovalStatus(steps) {
   if (!steps || steps.length === 0) return 'not_started';
@@ -12,6 +13,8 @@ function computeApprovalStatus(steps) {
   if (active?.status === 'rejected') return 'rejected';
   return 'in_progress';
 }
+
+const SENDABLE_STATUSES = ['draft', 'sent', 'negotiating'];
 
 class OfferService {
   // L1 Workboard - get all offers across jobs
@@ -59,7 +62,6 @@ class OfferService {
     return { ...offer, negotiations };
   }
 
-  // Create new offer
   async createOffer(data) {
     const {
       company_id, candidate_id, job_id, position_title, contract_type,
@@ -119,49 +121,54 @@ class OfferService {
     };
   }
 
-  // Candidate accepts offer
   async acceptOffer(offer_id, acceptance_note) {
     const offer = await OfferModel.getOfferByIdPublic(offer_id);
     if (!offer) throw { status: 404, message: 'Offer not found' };
-    if (offer.offer_status !== 'sent' && offer.offer_status !== 'negotiating') {
-      throw { status: 400, message: 'Offer cannot be accepted in current status' };
+    if (!['sent', 'negotiating'].includes(offer.offer_status)) {
+      throw { status: 400, message: 'Offer cannot be accepted in its current status' };
     }
-    await OfferModel.updateOfferStatus(offer_id, 'accepted', { accepted_at: new Date(), acceptance_note });
-    // TODO: Notify recruiter via email
+    await OfferModel.updateOfferStatus(offer_id, 'accepted', {
+      accepted_at: new Date(),
+      acceptance_note: acceptance_note || null,
+    });
     return { message: 'Offer accepted successfully' };
   }
 
-  // Candidate rejects offer
   async rejectOffer(offer_id, rejection_reason) {
     const offer = await OfferModel.getOfferByIdPublic(offer_id);
     if (!offer) throw { status: 404, message: 'Offer not found' };
-    if (offer.offer_status !== 'sent' && offer.offer_status !== 'negotiating') {
-      throw { status: 400, message: 'Offer cannot be rejected in current status' };
+    if (!['sent', 'negotiating'].includes(offer.offer_status)) {
+      throw { status: 400, message: 'Offer cannot be rejected in its current status' };
     }
-    await OfferModel.updateOfferStatus(offer_id, 'rejected', { rejected_at: new Date(), rejection_reason });
-    // TODO: Notify recruiter
+    await OfferModel.updateOfferStatus(offer_id, 'rejected', {
+      rejected_at: new Date(),
+      rejection_reason: rejection_reason || null,
+    });
     return { message: 'Offer rejected' };
   }
 
-  // Candidate negotiates
   async negotiateOffer(offer_id, negotiation_message, requested_salary) {
     const offer = await OfferModel.getOfferByIdPublic(offer_id);
     if (!offer) throw { status: 404, message: 'Offer not found' };
-    if (offer.offer_status !== 'sent') {
-      throw { status: 400, message: 'Can only negotiate offers in sent status' };
+    if (!['sent', 'negotiating'].includes(offer.offer_status)) {
+      throw { status: 400, message: 'Offer is not open for negotiation' };
+    }
+    if (!negotiation_message || !negotiation_message.trim()) {
+      throw { status: 400, message: 'A negotiation message is required' };
     }
 
     await OfferModel.createNegotiation({
-      offer_id, initiated_by: 'candidate', message: negotiation_message,
-      requested_salary, status: 'pending'
+      offer_id,
+      initiated_by: 'candidate',
+      message: negotiation_message.trim(),
+      requested_salary: requested_salary != null ? Number(requested_salary) : null,
+      status: 'pending',
     });
+    await OfferModel.updateOfferStatus(offer_id, 'negotiating');
 
-    await OfferModel.updateOfferStatus(offer_id, 'negotiating', { last_negotiation_at: new Date() });
-    // TODO: Notify recruiter
-    return { message: 'Negotiation submitted' };
+    return { message: 'Negotiation request submitted' };
   }
 
-  // Recruiter responds to negotiation
   async respondToNegotiation(offer_id, response_type, response_message, revised_compensation, company_id, user_id) {
     const offer = await OfferModel.getOfferById(offer_id, company_id);
     if (!offer) throw { status: 404, message: 'Offer not found' };
@@ -334,75 +341,11 @@ class OfferService {
       throw { status: 400, message: 'Finish Build (compensation) before requesting approval' };
     }
 
+    // NOTE: writes { status: decision, ... } — this is the field
+    // sendOffer() below reads as offer.metadata.approval.status.
     const approval = { status: decision, decided_by: user_id, decided_at: new Date(), note: note || null };
     const metadata = await OfferModel.mergeMetadata(offer_id, { approval });
     return { approval: metadata.approval, message: `Offer ${decision}` };
-  }
-
-  async sendOfferLetter(offer_id, company_id, user_id) {
-    const offer = await OfferModel.getOfferById(offer_id, company_id);
-    if (!offer) throw { status: 404, message: 'Offer not found' };
-
-    const approvalDecision = offer.metadata?.approval?.decision;
-    if (approvalDecision !== 'approved') {
-      throw { status: 400, message: 'Offer must be approved before it can be sent' };
-    }
-
-    const expiryDays = offer.metadata?.dispatch?.portal_expiry_days || 7;
-    const expiresAt = new Date(Date.now() + expiryDays * 24 * 60 * 60 * 1000);
-
-    const send = await OfferModel.createOfferSend({
-      offer_id,
-      token_expires_at: expiresAt,
-      sent_by: user_id,
-    });
-
-    await OfferModel.updateOfferStatus(offer_id, 'sent', { sent_at: new Date(), sent_by: user_id });
-
-    return { message: 'Offer letter sent successfully', token: send.token, token_expires_at: send.token_expires_at };
-  }
-
-  async resendOffer(offer_id, company_id, user_id) {
-    const offer = await OfferModel.getOfferById(offer_id, company_id);
-    if (!offer) throw { status: 404, message: 'Offer not found' };
-    if (!['sent', 'negotiating'].includes(offer.offer_status)) {
-      throw { status: 400, message: 'Can only resend offers that are sent or negotiating' };
-    }
-
-    await OfferModel.revokeActiveOfferSends(offer_id, user_id, 'Resent by recruiter');
-
-    const expiryDays = offer.metadata?.dispatch?.portal_expiry_days || 7;
-    const expiresAt = new Date(Date.now() + expiryDays * 24 * 60 * 60 * 1000);
-
-    const send = await OfferModel.createOfferSend({
-      offer_id,
-      token_expires_at: expiresAt,
-      sent_by: user_id,
-    });
-
-    return { message: 'Offer resent successfully', token: send.token, token_expires_at: send.token_expires_at };
-  }
-
-  async revokeOffer(offer_id, company_id, user_id, reason) {
-    const offer = await OfferModel.getOfferById(offer_id, company_id);
-    if (!offer) throw { status: 404, message: 'Offer not found' };
-
-    const history = await OfferModel.getOfferSendHistory(offer_id);
-    const latest = history[0];
-    if (latest?.status === 'signed') {
-      throw { status: 409, message: 'Offer has been signed and cannot be revoked.' };
-    }
-
-    const revoked = await OfferModel.revokeActiveOfferSends(offer_id, user_id, reason || 'Revoked by recruiter');
-    if (!revoked.length) throw { status: 400, message: 'No active send to revoke' };
-
-    return { message: 'Offer link revoked' };
-  }
-
-  async getSendHistory(offer_id, company_id) {
-    const offer = await OfferModel.getOfferById(offer_id, company_id);
-    if (!offer) throw { status: 404, message: 'Offer not found' };
-    return OfferModel.getOfferSendHistory(offer_id);
   }
 
   async setupApprovalChain(offer_id, steps, company_id, user_id) {
@@ -465,7 +408,80 @@ class OfferService {
     const metadata = await OfferModel.mergeMetadata(offer_id, { approval });
     return { approval: metadata.approval, message: `Step ${decision}` };
   }
-  
+
+  async sendOffer(offer_id, company_id, user_id, emailOverride = {}) {
+    const offer = await OfferModel.getOfferById(offer_id, company_id);
+    if (!offer) throw { status: 404, message: 'Offer not found' };
+
+    if (!SENDABLE_STATUSES.includes(offer.offer_status)) {
+      throw { status: 400, message: `Offer cannot be sent while it is ${offer.offer_status}` };
+    }
+
+    const isFirstSend = offer.offer_status === 'draft';
+
+    const document = await OfferModel.getOfferDocument(offer_id);
+    if (!document) {
+      throw { status: 400, message: 'Upload or generate the finalized offer letter before sending' };
+    }
+    if (!offer.candidate_email) {
+      throw { status: 400, message: 'Candidate has no email on file — cannot send' };
+    }
+
+    // Invalidate any still-active previous link (no-op on first send).
+    await OfferModel.revokeActiveOfferSends(offer_id, user_id, 'Superseded by a new send');
+
+    const expiryDays = offer.metadata?.dispatch?.portal_expiry_days || 7;
+    const expiresAt = new Date(Date.now() + expiryDays * 24 * 60 * 60 * 1000);
+
+    const send = await OfferModel.createOfferSend({
+      offer_id,
+      token_expires_at: expiresAt,
+      sent_by: user_id,
+    });
+
+    const link = `${process.env.FRONTEND_URL}/offer/send/${send.token}`;
+    await sendOfferEmail({
+      candidateName: offer.candidate_name,
+      candidateEmail: offer.candidate_email,
+      jobTitle: offer.position_title || offer.job_title,
+      link,
+      customSubject: emailOverride.subject || null,
+      customBody: emailOverride.body || null,
+    });
+
+    if (isFirstSend) {
+      await OfferModel.updateOfferStatus(offer_id, 'sent', { sent_at: new Date(), sent_by: user_id });
+    }
+
+    return {
+      message: isFirstSend ? 'Offer letter sent successfully' : 'Offer resent successfully',
+      token: send.token,
+      token_expires_at: send.token_expires_at,
+    };
+  }
+
+  async revokeOffer(offer_id, company_id, user_id, reason) {
+    const offer = await OfferModel.getOfferById(offer_id, company_id);
+    if (!offer) throw { status: 404, message: 'Offer not found' };
+
+    const history = await OfferModel.getOfferSendHistory(offer_id);
+    const latest = history[0];
+    if (latest?.status === 'signed') {
+      throw { status: 409, message: 'Offer has been signed and cannot be revoked.' };
+    }
+
+    const revoked = await OfferModel.revokeActiveOfferSends(offer_id, user_id, reason || 'Revoked by recruiter');
+    if (!revoked.length) throw { status: 400, message: 'No active send to revoke' };
+
+    return { message: 'Offer link revoked' };
+  }
+
+  async getSendHistory(offer_id, company_id) {
+    const offer = await OfferModel.getOfferById(offer_id, company_id);
+    if (!offer) throw { status: 404, message: 'Offer not found' };
+    return OfferModel.getOfferSendHistory(offer_id);
+  }
+
   async getOfferLetterFields(offer_id, company_id) {
     const offer = await OfferModel.getOfferById(offer_id, company_id);
     if (!offer) throw { status: 404, message: 'Offer not found' };
@@ -507,7 +523,7 @@ class OfferService {
 
     return { offer_letter_data: metadata.offer_letter_data, message: 'Offer letter fields saved' };
   }
-  
+
   async generateOfferLetterPreview(offer_id, company_id) {
     const offer = await OfferModel.getOfferById(offer_id, company_id);
     if (!offer) throw { status: 404, message: 'Offer not found' };
@@ -628,34 +644,6 @@ class OfferService {
     }
     return OfferModel.getOfferDocument(offer_id);
   }
-
-  // async markOfferPrinted(offer_id, company_id, user_id) {
-  //   const offer = await OfferModel.getOfferById(offer_id, company_id);
-  //   if (!offer) {
-  //     throw { status: 404, message: 'Offer not found' };
-  //   }
-
-  //   const approvalStatus = offer.metadata?.approval?.status;
-  //   if (approvalStatus !== 'approved') {
-  //     throw { status: 400, message: 'Offer must clear the approval chain before proceeding' };
-  //   }
-
-  //   const existing = await OfferModel.getOfferDocument(offer_id);
-  //   if (existing?.file) {
-  //     fs.unlink(existing.file, (err) => {
-  //       if (err) console.error('Failed to remove previous offer document:', err);
-  //     });
-  //   }
-
-  //   const doc = await OfferModel.upsertOfferDocument({
-  //     offer_id,
-  //     file: null,
-  //     method: 'print',
-  //     uploaded_by: user_id,
-  //   });
-
-  //   return { document: doc, message: 'Marked as printed — proceeding without an uploaded file' };
-  // }
 
 }
 

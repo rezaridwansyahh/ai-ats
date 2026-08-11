@@ -110,7 +110,7 @@ class OfferModel {
       LEFT JOIN offer_contract contract ON co.id = contract.offer_id
       WHERE co.id = $1 AND co.company_id = $2
     `;
-  
+
     const result = await getDb().query(query, [offer_id, company_id]);
     return result.rows[0];
   }
@@ -141,7 +141,7 @@ class OfferModel {
       LEFT JOIN offer_contract contract ON co.id = contract.offer_id
       WHERE co.id = $1
     `;
-  
+
     const result = await getDb().query(query, [offer_id]);
     return result.rows[0];
   }
@@ -244,42 +244,6 @@ class OfferModel {
     await getDb().query(query, [offer_id, status, JSON.stringify(metadata)]);
   }
 
-  // Create negotiation record
-  async createNegotiation(data) {
-    const query = `
-      INSERT INTO offer_negotiation (
-        offer_id, initiated_by, message, requested_salary,
-        response_type, status
-      )
-      VALUES ($1, $2, $3, $4, $5, $6)
-      RETURNING id
-    `;
-
-    const result = await getDb().query(query, [
-      data.offer_id,
-      data.initiated_by,
-      data.message,
-      data.requested_salary,
-      data.response_type || null,
-      data.status
-    ]);
-
-    return result.rows[0].id;
-  }
-
-  // Get negotiation history
-  async getNegotiationHistory(offer_id) {
-    const query = `
-      SELECT *
-      FROM offer_negotiation
-      WHERE offer_id = $1
-      ORDER BY created_at ASC
-    `;
-
-    const result = await getDb().query(query, [offer_id]);
-    return result.rows;
-  }
-
   // Create contract
   async createContract(data) {
     const query = `
@@ -350,7 +314,6 @@ class OfferModel {
         COUNT(*) as total,
         COUNT(*) FILTER (WHERE offer_status = 'draft') as draft,
         COUNT(*) FILTER (WHERE offer_status = 'sent') as sent,
-        COUNT(*) FILTER (WHERE offer_status = 'negotiating') as negotiating,
         COUNT(*) FILTER (WHERE offer_status = 'accepted') as accepted,
         COUNT(*) FILTER (WHERE offer_status = 'rejected') as rejected,
         COUNT(*) FILTER (WHERE contract_status = 'signed') as signed,
@@ -375,8 +338,39 @@ class OfferModel {
     `;
     const result = await getDb().query(query, [offer_id, JSON.stringify(metadata)]);
     return result.rows[0]?.metadata;
-  }  
+  }
 
+  // ── Negotiation ──────────────────────────────────────────────────────────
+  // NOTE: was called by offer.service.js (respondToNegotiation) but never
+  // existed on this model — added to fix the crash.
+  async getNegotiationHistory(offer_id) {
+    const result = await getDb().query(
+      `SELECT * FROM offer_negotiation WHERE offer_id = $1 ORDER BY created_at DESC`,
+      [offer_id]
+    );
+    return result.rows;
+  }
+
+  async createNegotiation(data) {
+    const query = `
+      INSERT INTO offer_negotiation (
+        offer_id, initiated_by, message, requested_salary, response_type, status
+      )
+      VALUES ($1, $2, $3, $4, $5, $6)
+      RETURNING *
+    `;
+    const result = await getDb().query(query, [
+      data.offer_id,
+      data.initiated_by,
+      data.message,
+      data.requested_salary || null,
+      data.response_type || null,
+      data.status || 'pending',
+    ]);
+    return result.rows[0];
+  }
+
+  // ── Offer Send (portal link lifecycle) ──────────────────────────────────
   async createOfferSend(data) {
     const query = `
       INSERT INTO offer_send (
@@ -393,7 +387,7 @@ class OfferModel {
     ]);
     return result.rows[0];
   }
- 
+
   async revokeActiveOfferSends(offer_id, revoked_by, reason) {
     const result = await getDb().query(`
       UPDATE offer_send
@@ -403,7 +397,7 @@ class OfferModel {
     `, [offer_id, revoked_by, reason || 'Superseded by a new send']);
     return result.rows;
   }
-  
+
   async getOfferSendHistory(offer_id) {
     const query = `
       SELECT os.*, mu.username AS sent_by_name
@@ -414,6 +408,22 @@ class OfferModel {
     `;
     const result = await getDb().query(query, [offer_id]);
     return result.rows;
+  }
+
+  async getOfferSendByToken(token) {
+    const query = `
+      SELECT
+        os.*,
+        mc.name AS candidate_name
+      FROM offer_send os
+      JOIN candidate_offer co  ON co.id = os.offer_id
+      JOIN master_candidate mc ON mc.id = co.candidate_id
+      WHERE os.token::text = $1
+         OR REPLACE(os.token::text, '-', '') = $1
+      LIMIT 1
+    `;
+    const result = await getDb().query(query, [token]);
+    return result.rows[0] || null;
   }
 
   async upsertOfferDocument(data) {
@@ -445,7 +455,8 @@ class OfferModel {
       WHERE od.offer_id = $1
     `, [offer_id]);
     return result.rows[0] || null;
-  }  
+  }
+
 }
 
 export default new OfferModel();

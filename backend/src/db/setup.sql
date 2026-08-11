@@ -782,6 +782,9 @@ CREATE TABLE offer_send (
   revoked_at TIMESTAMPTZ,
   revoked_by INTEGER REFERENCES master_users(id) ON DELETE SET NULL,
   revocation_reason TEXT,
+  candidate_file VARCHAR(255),
+  candidate_uploaded_at TIMESTAMPTZ,
+  submitted_at TIMESTAMPTZ,
   status VARCHAR(20) NOT NULL DEFAULT 'draft',
   created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
   updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
