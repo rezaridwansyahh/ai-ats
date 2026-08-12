@@ -28,6 +28,8 @@ import {
   confirmSchedule, unconfirmSchedule, deleteSchedule,
   recordOutcome, clearOutcome,
   getPackOutcome,
+  getScorecard,
+  getInterviewRounds,
   getDecideByJob, bulkDecide, resetDecision, getInterviewByCandidateId,
   reInterview,
 } from '@/api/interview.api';
@@ -2153,22 +2155,32 @@ function StepsNav({ activeSection, onStep, status, interview }) {
 // ── Result Section ────────────────────────────────────────────────────────────
 
 function ResultSection({ interview, prep, interviewId }) {
-  const [outcome, setOutcome]     = useState(undefined); // undefined = loading
-  const [loading, setLoading]     = useState(true);
+  const [rounds, setRounds]                 = useState([]); // [{ round_number, round_status, outcome }]
+  const [selectedRound, setSelectedRound]   = useState(null);
+  const [loading, setLoading]               = useState(true);
 
   useEffect(() => {
     if (!interviewId) return;
     setLoading(true);
-    getPackOutcome(interviewId)
-      .then((res) => setOutcome(res.data?.outcome || null))
-      .catch(() => setOutcome(null))
+    getInterviewRounds(interviewId)
+      .then((res) => {
+        const list = res.data?.rounds || [];
+        setRounds(list);
+        // default to the latest round
+        setSelectedRound(list.length > 0 ? list[list.length - 1].round_number : null);
+      })
+      .catch(() => setRounds([]))
       .finally(() => setLoading(false));
   }, [interviewId]);
+
+  const current = rounds.find((r) => r.round_number === selectedRound);
+  const outcome = current?.outcome || null;
 
   const rubricItems = prep?.rubric_items || [];
   const scores      = outcome?.scores || {};
   const rec         = outcome?.recommendation;
-  const recMeta     = RECOMMENDATION_OPTIONS.find((r) => r.value === rec);
+  const recLabel    = PACK_RECOMMENDATION_LABEL[rec];
+  const recColor    = PACK_RECOMMENDATION_COLOR[rec];
 
   if (loading) {
     return (
@@ -2178,31 +2190,53 @@ function ResultSection({ interview, prep, interviewId }) {
     );
   }
 
-  // No outcome yet — show state based on interview status
+  const roundPicker = rounds.length > 1 && (
+    <Select value={String(selectedRound)} onValueChange={(v) => setSelectedRound(Number(v))}>
+      <SelectTrigger className="h-8 text-xs w-36">
+        <SelectValue />
+      </SelectTrigger>
+      <SelectContent>
+        {rounds.map((r) => (
+          <SelectItem key={r.round_number} value={String(r.round_number)} className="text-xs">
+            Round {r.round_number}{r.round_number === rounds[rounds.length - 1].round_number ? ' (current)' : ''}
+          </SelectItem>
+        ))}
+      </SelectContent>
+    </Select>
+  );
+
+  // No outcome yet for the selected round — show state based on interview status
   if (!outcome) {
     const status = interview?.status;
     const isInPack = ['scheduled', 'ongoing'].includes(status);
+    const isPastRound = selectedRound !== rounds[rounds.length - 1]?.round_number;
     return (
-      <Card>
-        <CardContent className="py-14 text-center space-y-2">
-          <div className="h-10 w-10 rounded-full bg-muted flex items-center justify-center mx-auto">
-            <Clock className="h-5 w-5 text-muted-foreground" />
-          </div>
-          <p className="text-sm font-semibold">
-            {isInPack ? 'Waiting for interviewer' : 'No scores yet'}
-          </p>
-          <p className="text-xs text-muted-foreground max-w-xs mx-auto">
-            {isInPack
-              ? 'The interviewer has been sent a pack link. Scores will appear here once they submit.'
-              : 'Create an interview pack link from the position setup → Interview Link tab and send it to the interviewer.'}
-          </p>
-        </CardContent>
-      </Card>
+      <div className="space-y-3">
+        {roundPicker && <div className="flex justify-end">{roundPicker}</div>}
+        <Card>
+          <CardContent className="py-14 text-center space-y-2">
+            <div className="h-10 w-10 rounded-full bg-muted flex items-center justify-center mx-auto">
+              <Clock className="h-5 w-5 text-muted-foreground" />
+            </div>
+            <p className="text-sm font-semibold">
+              {isPastRound ? 'No scores were recorded for this round' : isInPack ? 'Waiting for interviewer' : 'No scores yet'}
+            </p>
+            <p className="text-xs text-muted-foreground max-w-xs mx-auto">
+              {isPastRound
+                ? 'This round moved on without a pack link submission.'
+                : isInPack
+                  ? 'The interviewer has been sent a pack link. Scores will appear here once they submit.'
+                  : 'Create an interview pack link from the position setup → Interview Link tab and send it to the interviewer.'}
+            </p>
+          </CardContent>
+        </Card>
+      </div>
     );
   }
 
   return (
     <div className="space-y-4">
+      {roundPicker && <div className="flex justify-end">{roundPicker}</div>}
       {/* Submitted by banner */}
       <div className="flex items-center gap-3 px-4 py-3 rounded-lg border border-emerald-200 bg-emerald-50 text-sm text-emerald-700">
         <CheckCircle2 className="h-4 w-4 shrink-0" />
@@ -2275,12 +2309,12 @@ function ResultSection({ interview, prep, interviewId }) {
       )}
 
       {/* Recommendation */}
-      {rec && recMeta && (
+      {rec && recLabel && (
         <Card>
-          <CardHeader className="pb-3"><CardTitle className="text-sm">Recommendation</CardTitle></CardHeader>
+          <CardHeader className="pb-3"><CardTitle className="text-sm">Interviewer Recommendation</CardTitle></CardHeader>
           <CardContent>
-            <div className={`inline-flex items-center gap-2 px-4 py-2 rounded-lg border text-sm font-semibold ${recMeta.color}`}>
-              <recMeta.icon className="h-4 w-4" /> {recMeta.label}
+            <div className={`inline-flex items-center gap-2 px-4 py-2 rounded-lg border text-sm font-semibold ${recColor || 'border-border text-muted-foreground'}`}>
+              {recLabel}
             </div>
           </CardContent>
         </Card>

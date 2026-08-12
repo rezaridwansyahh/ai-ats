@@ -37,16 +37,18 @@ class InterviewPackModel {
       const c = candidates[i];
       const result = await db.query(
         `INSERT INTO interview_pack_candidate
-           (pack_id, applicant_id, sort_order, interview_date, interview_time)
-         VALUES ($1, $2, $3, $4, $5)
+           (pack_id, applicant_id, round_id, sort_order, interview_date, interview_time)
+         VALUES ($1, $2, $3, $4, $5, $6)
          ON CONFLICT (pack_id, applicant_id) DO UPDATE
-           SET sort_order     = EXCLUDED.sort_order,
+           SET round_id       = EXCLUDED.round_id,
+               sort_order     = EXCLUDED.sort_order,
                interview_date = EXCLUDED.interview_date,
                interview_time = EXCLUDED.interview_time
          RETURNING *`,
         [
           pack_id,
           c.applicant_id,
+          c.round_id || null,
           c.sort_order ?? i,
           c.interview_date || null,
           c.interview_time || null,

@@ -129,8 +129,21 @@ class InterviewPackService {
       created_by:       userId || null,
     });
 
+    // Stamp each candidate's CURRENT round onto their pack entry, so a
+    // future round's pack link is never confused with a past round's —
+    // needed for the Result tab's per-round dropdown.
+    const roundRows = await getDb().query(
+      `SELECT mc.applicant_id, ci.current_round_id
+         FROM master_candidate mc
+         JOIN candidate_interview ci ON ci.candidate_id = mc.id
+        WHERE mc.job_id = $1 AND mc.applicant_id = ANY($2::int[])`,
+      [job_id, rawCandidates.map((c) => c.applicant_id)]
+    );
+    const roundByApplicant = new Map(roundRows.rows.map((r) => [r.applicant_id, r.current_round_id]));
+
     const candidateRows = rawCandidates.map((c, i) => ({
       applicant_id:   c.applicant_id,
+      round_id:       roundByApplicant.get(c.applicant_id) || null,
       sort_order:     c.sort_order ?? i,
       interview_date: c.interview_date || null,
       interview_time: c.interview_time || null,

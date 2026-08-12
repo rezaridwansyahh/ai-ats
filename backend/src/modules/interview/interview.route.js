@@ -12,6 +12,7 @@ router.get('/by-candidate/:candidate_id', interviewController.getInterviewByCand
 
 // Schedule-related routes (must be before /:interview_id)
 router.get( '/:interview_id/pack-outcome', interviewController.getPackOutcome);
+router.get( '/:interview_id/rounds', interviewController.getRounds);
 router.get( '/:interview_id/schedules', interviewController.getSchedules);
 router.post('/:interview_id/schedules', interviewController.createSchedule);
 router.get( '/:interview_id/scorecard',interviewController.getScorecard);

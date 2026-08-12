@@ -865,6 +865,51 @@ class InterviewModel {
     return result.rows[0] || null;
   }
 
+  // Every round this interview has been through, each with its pack outcome
+  // if one exists yet — powers the Result tab's per-round dropdown.
+  async getRoundsWithOutcomes(interview_id) {
+    const result = await getDb().query(
+      `SELECT DISTINCT ON (ir.round_number)
+         ir.id                AS round_id,
+         ir.round_number,
+         ir.status            AS round_status,
+         ipo.id                AS outcome_id,
+         ipo.scores,
+         ipo.weighted_total,
+         ipo.recommendation,
+         ipo.strengths,
+         ipo.concerns,
+         ipo.updated_at        AS outcome_updated_at,
+         ip.interviewer_name,
+         ip.submitted_at,
+         ip.token              AS pack_token,
+         ip.status              AS pack_status
+       FROM interview_round ir
+       LEFT JOIN interview_pack_candidate ipc ON ipc.round_id = ir.id
+       LEFT JOIN interview_pack ip            ON ip.id = ipc.pack_id
+       LEFT JOIN interview_pack_outcome ipo   ON ipo.pack_candidate_id = ipc.id
+       WHERE ir.interview_id = $1
+       ORDER BY ir.round_number ASC, ipo.updated_at DESC NULLS LAST`,
+      [interview_id]
+    );
+
+    return result.rows.map((r) => ({
+      round_number: r.round_number,
+      round_status: r.round_status,
+      outcome: r.outcome_id ? {
+        scores:            r.scores,
+        weighted_total:    r.weighted_total,
+        recommendation:    r.recommendation,
+        strengths:         r.strengths,
+        concerns:          r.concerns,
+        interviewer_name:  r.interviewer_name,
+        submitted_at:      r.submitted_at,
+        pack_token:        r.pack_token,
+        pack_status:       r.pack_status,
+      } : null,
+    }));
+  }
+
   async getInterviewsByJobWithSubStage(job_id) {
     const result = await getDb().query(
       `SELECT
