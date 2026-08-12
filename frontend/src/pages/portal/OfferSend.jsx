@@ -1,8 +1,8 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useParams } from 'react-router-dom';
 import {
   Loader2, AlertTriangle, CheckCircle2, Clock,
-  FileText, Check, Mail,
+  FileText, Check, Mail, Download, Upload, FileCheck2,
 } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -11,8 +11,10 @@ import { Input } from '@/components/ui/input';
 import {
   getByToken as getOfferSummary,
   verifyEmail as verifyOfferEmail,
-  getOffer as getOfferDocument,
-  sign as signOffer,
+  getOffer as getOfferDetail,
+  downloadDocument,
+  uploadDocument,
+  submit as submitOffer,
 } from '@/api/portal-offer.api';
 
 function fmtDate(d) {
@@ -25,13 +27,29 @@ function fmtDate(d) {
   } catch { return '—'; }
 }
 
-function fmtCurrency(value) {
-  if (value == null) return null;
-  try {
-    return new Intl.NumberFormat('id-ID', {
-      style: 'currency', currency: 'IDR', minimumFractionDigits: 0, maximumFractionDigits: 0,
-    }).format(value);
-  } catch { return null; }
+const CONTENT_TYPE_EXT = {
+  'application/pdf': 'pdf',
+  'application/vnd.openxmlformats-officedocument.wordprocessingml.document': 'docx',
+  'text/plain': 'txt',
+};
+
+function downloadBlobResponse(blobResponse, fallbackBaseName) {
+  const disposition = blobResponse.headers?.['content-disposition'] || '';
+  const match = disposition.match(/filename\*?=(?:UTF-8'')?"?([^";]+)"?/i);
+  let filename = match?.[1];
+
+  if (!filename) {
+    const contentType = (blobResponse.headers?.['content-type'] || '').split(';')[0].trim();
+    const ext = CONTENT_TYPE_EXT[contentType] || 'pdf';
+    filename = `${fallbackBaseName}.${ext}`;
+  }
+
+  const url = window.URL.createObjectURL(new Blob([blobResponse.data]));
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = filename;
+  a.click();
+  window.URL.revokeObjectURL(url);
 }
 
 function Header() {
@@ -57,11 +75,17 @@ export default function OfferSendPage() {
   const [emailBusy, setEmailBusy] = useState(false);
   const [emailErr,  setEmailErr]  = useState(null);
 
-  const [agreed, setAgreed] = useState(false);
-  const [busy,   setBusy]   = useState(false);
-  const [signErr, setSignErr] = useState(null);
+  const [downloadingFormat, setDownloadingFormat] = useState(null); // 'docx' | 'pdf' | null
+  const [downloadErr, setDownloadErr] = useState(null);
 
-  // Load public summary on mount
+  const fileInputRef = useRef(null);
+  const [selectedFileName, setSelectedFileName] = useState(null);
+  const [uploading, setUploading] = useState(false);
+  const [uploadErr, setUploadErr] = useState(null);
+
+  const [submitting, setSubmitting] = useState(false);
+  const [submitErr,  setSubmitErr]  = useState(null);
+
   useEffect(() => {
     let cancelled = false;
     (async () => {
@@ -75,9 +99,9 @@ export default function OfferSendPage() {
         if (cancelled) return;
         const status = err.response?.status;
         const msg    = err.response?.data?.message || '';
-        if (status === 409)                          { setView('signed');  return; }
-        if (status === 410 && msg.includes('revok')) { setView('revoked'); return; }
-        if (status === 410)                          { setView('expired'); return; }
+        if (status === 409)                          { setView('submitted'); return; }
+        if (status === 410 && msg.includes('revok')) { setView('revoked');   return; }
+        if (status === 410)                          { setView('expired');   return; }
         setError(msg || 'Tidak dapat memuat tautan penawaran.');
         setView('error');
       }
@@ -101,25 +125,77 @@ export default function OfferSendPage() {
     }
   };
 
-  const handleSign = async () => {
-    if (!agreed || busy || !offerToken) return;
-    setBusy(true);
-    setSignErr(null);
+  const refreshOffer = async () => {
+    if (!offerToken) return;
     try {
-      await signOffer(token, offerToken);
-      setView('submitted');
+      const res = await getOfferDetail(token, offerToken);
+      setOffer(res.data?.offer || null);
+    } catch { /* keep stale state, next action will surface any real error */ }
+  };
+
+  const handleDownload = async (format) => {
+    if (downloadingFormat) return;
+    setDownloadingFormat(format);
+    setDownloadErr(null);
+    try {
+      const res = await downloadDocument(token, offerToken, format);
+      downloadBlobResponse(res, `Offer_Letter_${offer?.candidate_name || 'candidate'}_${format}`);
     } catch (err) {
       const status = err.response?.status;
-      if (status === 409) { setView('signed');  return; }
-      if (status === 410) { setView('expired'); return; }
-      setSignErr(err.response?.data?.message || 'Gagal menyimpan tanda tangan. Coba lagi.');
+      if (status === 409) { setView('submitted'); return; }
+      if (status === 410) { setView('expired');   return; }
+      setDownloadErr(`Gagal mengunduh versi .${format}. Coba lagi.`);
     } finally {
-      setBusy(false);
+      setDownloadingFormat(null);
     }
   };
 
-  const doc = offer?.document || {};
-  const netSalaryLabel = fmtCurrency(doc.net_salary ?? doc.compensation?.net_salary);
+  const handleFileSelect = (e) => {
+    const file = e.target.files?.[0];
+    e.target.value = ''; // allow re-selecting the same file
+    if (!file) return;
+    setSelectedFileName(file.name);
+    handleUpload(file);
+  };
+
+  const handleUpload = async (file) => {
+    if (uploading) return;
+    setUploading(true);
+    setUploadErr(null);
+    try {
+      const formData = new FormData();
+      formData.append('file', file);
+      await uploadDocument(token, offerToken, formData);
+      await refreshOffer();
+    } catch (err) {
+      const status = err.response?.status;
+      if (status === 409) { setView('submitted'); return; }
+      if (status === 410) { setView('expired');   return; }
+      setUploadErr(err.response?.data?.message || 'Gagal mengunggah berkas. Coba lagi.');
+      setSelectedFileName(null);
+    } finally {
+      setUploading(false);
+    }
+  };
+
+  const handleSubmit = async () => {
+    if (submitting || !offer?.candidate_uploaded_at) return;
+    setSubmitting(true);
+    setSubmitErr(null);
+    try {
+      await submitOffer(token, offerToken);
+      setView('submitted');
+    } catch (err) {
+      const status = err.response?.status;
+      if (status === 409) { setView('submitted'); return; }
+      if (status === 410) { setView('expired');   return; }
+      setSubmitErr(err.response?.data?.message || 'Gagal mengirim. Coba lagi.');
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  const hasUploaded = !!offer?.candidate_uploaded_at;
 
   return (
     <div className="min-h-screen bg-muted/30 flex items-start justify-center p-4 pt-10">
@@ -173,26 +249,18 @@ export default function OfferSendPage() {
           </Card>
         )}
 
-        {view === 'signed' && (
-          <Card>
-            <CardContent className="p-6 space-y-2 text-center">
-              <CheckCircle2 className="h-8 w-8 text-emerald-600 mx-auto" />
-              <h2 className="text-sm font-bold">Surat penawaran sudah ditandatangani</h2>
-              <p className="text-[11px] text-muted-foreground leading-relaxed">
-                Anda sudah menandatangani surat penawaran ini. Terima kasih.
-              </p>
-            </CardContent>
-          </Card>
-        )}
-
         {view === 'submitted' && (
           <Card>
             <CardContent className="p-6 space-y-2 text-center">
               <CheckCircle2 className="h-8 w-8 text-emerald-600 mx-auto" />
               <h2 className="text-sm font-bold">Terima kasih!</h2>
               <p className="text-[11px] text-muted-foreground leading-relaxed">
-                Tanda tangan Anda telah berhasil disimpan. Tim rekrutmen akan segera menghubungi
-                Anda untuk langkah berikutnya. Anda dapat menutup tab ini.
+                Surat penawaran yang telah Anda tanda tangani berhasil dikirim. Tim rekrutmen akan
+                segera menghubungi Anda untuk langkah berikutnya. Anda dapat menutup tab ini.
+              </p>
+              <p className="text-[10px] text-muted-foreground pt-2 border-t">
+                Ada yang perlu diubah pada penawaran ini? Hubungi rekruter Anda langsung — perubahan
+                tidak dapat dilakukan melalui portal ini.
               </p>
             </CardContent>
           </Card>
@@ -266,6 +334,7 @@ export default function OfferSendPage() {
                 </div>
                 <p className="text-[11px] text-muted-foreground">
                   {offer.company_name} · {offer.position_title || offer.job_title}
+                  {offer.contract_type && <> · {offer.contract_type}</>}
                 </p>
                 {offer.token_expires_at && (
                   <p className="text-[10px] text-muted-foreground inline-flex items-center gap-1">
@@ -276,88 +345,136 @@ export default function OfferSendPage() {
               </CardContent>
             </Card>
 
-            {/* Document body */}
             <Card>
-              <CardContent className="p-0 overflow-hidden">
-                <div className="px-5 py-4 border-b bg-muted/20 text-center">
-                  <p className="text-xs font-bold tracking-wide uppercase text-foreground">
-                    SURAT PENAWARAN KERJA
-                  </p>
-                  <p className="text-[10px] text-muted-foreground mt-1">
-                    {offer.company_name || 'PT —'}
-                  </p>
+              <CardContent className="p-5 space-y-3">
+                <div className="flex items-center gap-2">
+                  <span className="h-5 w-5 rounded-full bg-primary text-primary-foreground text-[10px] font-bold flex items-center justify-center shrink-0">1</span>
+                  <p className="text-xs font-semibold">Unduh surat penawaran</p>
                 </div>
+                <p className="text-[11px] text-muted-foreground leading-relaxed">
+                  Unduh surat penawaran final Anda, tanda tangani, lalu unggah kembali pada langkah berikutnya.
+                </p>
 
-                <div className="px-5 py-4 space-y-3 text-[11px] leading-relaxed text-foreground">
-                  <p>
-                    Saya yang bertanda tangan di bawah ini,{' '}
-                    <strong>{offer.candidate_name}</strong>,
-                    dengan ini menerima dan menandatangani surat penawaran kerja dari{' '}
-                    <strong>{offer.company_name || 'perusahaan'}</strong>{' '}
-                    untuk posisi <strong>{offer.position_title || offer.job_title}</strong>
-                    {offer.contract_type && <> dengan jenis kontrak <strong>{offer.contract_type}</strong></>}.
+                {!offer.has_letter ? (
+                  <p className="text-[11px] text-amber-700 bg-amber-50 border border-amber-200 rounded-md px-3 py-2">
+                    Surat penawaran belum tersedia — silakan hubungi tim rekrutmen.
                   </p>
-
-                  {netSalaryLabel && (
-                    <div className="rounded-md border bg-muted/10 px-3 py-2 flex items-center justify-between">
-                      <span className="text-muted-foreground">Gaji bersih (net) / bulan</span>
-                      <span className="font-semibold font-mono">{netSalaryLabel}</span>
+                ) : (
+                  <>
+                    <div className="flex gap-2">
+                      {(offer.letter_available_formats || []).map((fmt) => (
+                        <Button
+                          key={fmt}
+                          variant="outline"
+                          className="flex-1"
+                          onClick={() => handleDownload(fmt)}
+                          disabled={!!downloadingFormat}
+                        >
+                          {downloadingFormat === fmt
+                            ? <><Loader2 className="h-4 w-4 animate-spin mr-2" /> Mengunduh…</>
+                            : <><Download className="h-4 w-4 mr-2" /> Unduh .{fmt.toUpperCase()}</>}
+                        </Button>
+                      ))}
                     </div>
-                  )}
-
-                  {doc.start_date && (
-                    <div className="rounded-md border bg-muted/10 px-3 py-2 flex items-center justify-between">
-                      <span className="text-muted-foreground">Tanggal mulai</span>
-                      <span className="font-semibold">{fmtDate(doc.start_date)}</span>
-                    </div>
-                  )}
-
-                  {!netSalaryLabel && !doc.start_date && (
-                    <p className="text-muted-foreground italic">
-                      Detail kompensasi lengkap akan dikonfirmasi oleh tim rekrutmen sebelum tanggal mulai.
-                    </p>
-                  )}
-
-                  <p className="text-muted-foreground border-t pt-3">
-                    Dengan menandatangani surat ini secara elektronik, saya menyatakan telah membaca,
-                    memahami, dan menyetujui seluruh syarat dan ketentuan yang tercantum dalam
-                    penawaran ini.
-                  </p>
-                </div>
+                    {offer.letter_extension && offer.letter_available_formats?.length === 1 && (
+                      <p className="text-[10px] text-muted-foreground">
+                        Surat ini diunggah sebagai .{offer.letter_extension} — versi lain tidak tersedia.
+                      </p>
+                    )}
+                    {downloadErr && (
+                      <p className="text-[11px] text-rose-600 flex items-center gap-1">
+                        <AlertTriangle className="h-3.5 w-3.5 shrink-0" /> {downloadErr}
+                      </p>
+                    )}
+                  </>
+                )}
               </CardContent>
             </Card>
 
-            {/* Agreement + submit */}
             <Card>
-              <CardContent className="p-5 space-y-4">
-                <label className="flex items-start gap-3 cursor-pointer">
-                  <div
-                    onClick={() => setAgreed((v) => !v)}
-                    className={`mt-0.5 h-4 w-4 rounded border-2 flex items-center justify-center shrink-0 transition-colors cursor-pointer ${
-                      agreed ? 'bg-primary border-primary' : 'border-muted-foreground bg-background'
-                    }`}
-                  >
-                    {agreed && <Check className="h-3 w-3 text-primary-foreground" />}
-                  </div>
-                  <span className="text-xs leading-relaxed">
-                    Saya telah membaca dan memahami surat penawaran ini, dan menyetujui untuk
-                    menandatanganinya.
+              <CardContent className="p-5 space-y-3">
+                <div className="flex items-center gap-2">
+                  <span className={`h-5 w-5 rounded-full text-[10px] font-bold flex items-center justify-center shrink-0 ${
+                    hasUploaded ? 'bg-emerald-500 text-white' : 'bg-primary text-primary-foreground'
+                  }`}>
+                    {hasUploaded ? <Check className="h-3 w-3" /> : '2'}
                   </span>
-                </label>
+                  <p className="text-xs font-semibold">Unggah salinan yang telah ditandatangani</p>
+                </div>
+                <p className="text-[11px] text-muted-foreground leading-relaxed">
+                  Unggah surat penawaran yang sudah Anda tanda tangani (PDF, DOCX, atau TXT, maks. 10MB).
+                </p>
 
-                {signErr && (
-                  <div className="flex items-center gap-2 px-3 py-2 rounded-md border border-rose-200 bg-rose-50 text-xs text-rose-600">
-                    <AlertTriangle className="h-3.5 w-3.5 shrink-0" /> {signErr}
+                {hasUploaded && (
+                  <div className="flex items-center gap-2 px-3 py-2 rounded-md border border-emerald-200 bg-emerald-50 text-[11px] text-emerald-700">
+                    <FileCheck2 className="h-3.5 w-3.5 shrink-0" />
+                    {selectedFileName || 'Berkas'} terunggah — {fmtDate(offer.candidate_uploaded_at)}
                   </div>
                 )}
 
-                <Button className="w-full text-sm" onClick={handleSign} disabled={!agreed || busy}>
-                  {busy
-                    ? <><Loader2 className="h-3.5 w-3.5 mr-1.5 animate-spin" /> Menyimpan…</>
-                    : <><FileText className="h-3.5 w-3.5 mr-1.5" /> Tandatangani Penawaran</>}
+                <input
+                  ref={fileInputRef}
+                  type="file"
+                  accept=".pdf,.docx,.txt"
+                  className="hidden"
+                  onChange={handleFileSelect}
+                />
+                <Button
+                  variant="outline"
+                  className="w-full"
+                  onClick={() => fileInputRef.current?.click()}
+                  disabled={uploading}
+                >
+                  {uploading
+                    ? <><Loader2 className="h-4 w-4 animate-spin mr-2" /> Mengunggah…</>
+                    : <><Upload className="h-4 w-4 mr-2" /> {hasUploaded ? 'Ganti berkas' : 'Unggah berkas'}</>}
                 </Button>
+                {uploadErr && (
+                  <p className="text-[11px] text-rose-600 flex items-center gap-1">
+                    <AlertTriangle className="h-3.5 w-3.5 shrink-0" /> {uploadErr}
+                  </p>
+                )}
               </CardContent>
             </Card>
+
+            <Card>
+              <CardContent className="p-5 space-y-3">
+                <div className="flex items-center gap-2">
+                  <span className="h-5 w-5 rounded-full bg-primary text-primary-foreground text-[10px] font-bold flex items-center justify-center shrink-0">3</span>
+                  <p className="text-xs font-semibold">Kirim</p>
+                </div>
+                <p className="text-[11px] text-muted-foreground leading-relaxed">
+                  Setelah mengunggah, klik Kirim untuk menyelesaikan proses. Pastikan berkas yang
+                  diunggah sudah benar — langkah ini bersifat final.
+                </p>
+
+                {submitErr && (
+                  <div className="flex items-center gap-2 px-3 py-2 rounded-md border border-rose-200 bg-rose-50 text-xs text-rose-600">
+                    <AlertTriangle className="h-3.5 w-3.5 shrink-0" /> {submitErr}
+                  </div>
+                )}
+
+                <Button
+                  className="w-full text-sm"
+                  onClick={handleSubmit}
+                  disabled={!hasUploaded || submitting}
+                >
+                  {submitting
+                    ? <><Loader2 className="h-3.5 w-3.5 mr-1.5 animate-spin" /> Mengirim…</>
+                    : <><Check className="h-3.5 w-3.5 mr-1.5" /> Kirim Surat Penawaran</>}
+                </Button>
+                {!hasUploaded && (
+                  <p className="text-[10px] text-muted-foreground text-center">
+                    Unggah berkas Anda pada langkah 2 sebelum mengirim.
+                  </p>
+                )}
+              </CardContent>
+            </Card>
+
+            <p className="text-[10px] text-muted-foreground text-center px-4">
+              Ingin mengubah sesuatu pada penawaran ini? Hubungi rekruter Anda langsung melalui
+              telepon, chat, atau email — perubahan tidak dapat dilakukan melalui portal ini.
+            </p>
           </>
         )}
 

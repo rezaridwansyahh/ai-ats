@@ -46,12 +46,11 @@ router.put(
   OfferController.updateCompensation
 );
 
-// Generate & send offer letter
 router.post(
   '/:offer_id/send',
   authToken,
   checkPermission('Offer & Onboard', 'Offer & Contract', 'update'),
-  OfferController.sendOfferLetter
+  OfferController.sendOffer
 );
 
 // Candidate accepts offer (public endpoint - portal)
@@ -124,21 +123,21 @@ router.get(
   checkPermission('Offer & Onboard', 'Offer & Contract', 'read'),
   OfferController.getSlipGaji
 );
- 
+
 router.post(
   '/:offer_id/slip-gaji/record',
   authToken,
   checkPermission('Offer & Onboard', 'Offer & Contract', 'update'),
   OfferController.recordSlipGaji
 );
- 
+
 router.post(
   '/:offer_id/slip-gaji/skip',
   authToken,
   checkPermission('Offer & Onboard', 'Offer & Contract', 'update'),
   OfferController.skipSlipGaji
 );
- 
+
 router.post(
   '/:offer_id/slip-gaji/review',
   authToken,
@@ -146,14 +145,18 @@ router.post(
   OfferController.reviewSlipGaji
 );
 
-router.get( '/:offer_id/send-history', authToken, checkPermission('Offer & Onboard', 'Offer & Contract', 'read'), OfferController.getSendHistory);
- 
-router.post( '/:offer_id/resend', authToken, checkPermission('Offer & Onboard', 'Offer & Contract', 'update'), OfferController.resendOffer);
-router.post( '/:offer_id/revoke', authToken, checkPermission('Offer & Onboard', 'Offer & Contract', 'update'), OfferController.revokeOffer);
+router.get('/:offer_id/approval', authToken, checkPermission('Offer & Onboard', 'Offer & Contract', 'read'), OfferController.getApproval);
+router.post('/:offer_id/approval/decide', authToken, checkPermission('Offer & Onboard', 'Offer & Contract', 'update'), OfferController.submitApproval);
+router.post('/:offer_id/approval/chain', authToken, checkPermission('Offer & Onboard', 'Offer & Contract', 'update'), OfferController.setupApprovalChain);
+router.post('/:offer_id/approval/chain/:step_index/decide', authToken, checkPermission('Offer & Onboard', 'Offer & Contract', 'update'), OfferController.decideApprovalStep);
 
-router.get( '/:offer_id/offer-letter/fields', authToken, checkPermission('Offer & Onboard', 'Offer & Contract', 'read'), OfferController.getOfferLetterFields);
+router.get('/:offer_id/send-history', authToken, checkPermission('Offer & Onboard', 'Offer & Contract', 'read'), OfferController.getSendHistory);
 
-router.put( '/:offer_id/offer-letter/data', authToken, checkPermission('Offer & Onboard', 'Offer & Contract', 'update'), OfferController.saveOfferLetterData);
+router.post('/:offer_id/revoke', authToken, checkPermission('Offer & Onboard', 'Offer & Contract', 'update'), OfferController.revokeOffer);
+
+router.get('/:offer_id/offer-letter/fields', authToken, checkPermission('Offer & Onboard', 'Offer & Contract', 'read'), OfferController.getOfferLetterFields);
+
+router.put('/:offer_id/offer-letter/data', authToken, checkPermission('Offer & Onboard', 'Offer & Contract', 'update'), OfferController.saveOfferLetterData);
 
 router.get('/:offer_id/offer-letter/final', authToken, checkPermission('Offer & Onboard', 'Offer & Contract', 'read'), OfferController.getOfferLetterFinal);
 router.get('/:offer_id/offer-letter/download/docx', authToken, checkPermission('Offer & Onboard', 'Offer & Contract', 'read'), OfferController.downloadOfferLetterDocx);
@@ -162,9 +165,9 @@ router.get('/:offer_id/offer-letter/download/pdf', authToken, checkPermission('O
 router.post('/:offer_id/offer-letter/preview', authToken, checkPermission('Offer & Onboard', 'Offer & Contract', 'update'), OfferController.generateOfferLetterPreview);
 router.put('/:offer_id/offer-letter/final', authToken, checkPermission('Offer & Onboard', 'Offer & Contract', 'update'), OfferController.saveOfferLetterFinal);
 
-router.get( '/:offer_id/document', authToken, checkPermission('Offer & Onboard', 'Offer & Contract', 'read'), OfferController.getOfferDocument);
+router.get('/:offer_id/document', authToken, checkPermission('Offer & Onboard', 'Offer & Contract', 'read'), OfferController.getOfferDocument);
 
-router.post( '/:offer_id/document/upload', authToken, checkPermission('Offer & Onboard', 'Offer & Contract', 'update'), upload.single('file'), OfferController.uploadDocument);
+router.post('/:offer_id/document/upload', authToken, checkPermission('Offer & Onboard', 'Offer & Contract', 'update'), upload.single('file'), OfferController.uploadDocument);
 // router.post( '/:offer_id/document/print', authToken, checkPermission('Offer & Onboard', 'Offer & Contract', 'update'), OfferController.markOfferPrinted);
 
 export default router;

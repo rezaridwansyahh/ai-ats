@@ -5,19 +5,22 @@ import {
   FileText, Pencil, Wallet, Send, FileSignature, Plus, Trash2,
   MessageSquareText, PenLine, ShieldCheck, ThumbsDown,
   Copy, Sparkles, RefreshCw, Ban, XCircle, Download, Settings as SettingsIcon,
-  Upload, FileCheck2, SkipForward, Lock, Link2,
+  Upload, FileCheck2, SkipForward, Lock, Link2, Mail,
 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
+import {
+  Dialog, DialogContent, DialogHeader, DialogFooter, DialogTitle, DialogDescription,
+} from '@/components/ui/dialog';
 import { getInitials } from '@/lib/batteries';
 
 import {
   getOfferById, updateCompensation,
   getSlipGaji, recordSlipGaji, skipSlipGaji, reviewSlipGaji,
-  sendOfferLetter, resendOffer, revokeOffer, getSendHistory,
+  sendOffer, revokeOffer, getSendHistory,
   respondToNegotiation,
   generateContract, sendContract,
   getOfferLetterFields, saveOfferLetterData,
@@ -741,9 +744,7 @@ function BuildSection({ offer, setOffer, setBanner, setError, onAdvance }) {
   );
 }
 
-/* Approval — single decision from a higher-up, in-app only. Approve / Amend
-   (note required) / Not Approved (double-confirm). Optional read-only view
-   link sits ABOVE the decide controls; decision history sits BELOW them. */
+/* Approval — UNCHANGED. Uses offer-pack.api.js, out of scope for this pass. */
 
 function DecisionHistoryList({ history }) {
   if (!history || history.length === 0) return null;
@@ -1462,7 +1463,7 @@ function ReviewSection({ offer, offerId, approval, setApproval, setOffer, setBan
   );
 }
 
-/* Send Section — document upload gate + portal-link lifecycle */
+/* Send Section — document upload gate + portal-link lifecycle + Email modal */
 
 function OfferDocumentUploadPart({ offer, offerId, document, setDocument, setBanner, setError }) {
   const [uploading, setUploading] = useState(false);
@@ -1496,7 +1497,7 @@ function OfferDocumentUploadPart({ offer, offerId, document, setDocument, setBan
           <div className="min-w-0 flex-1">
             <CardTitle className="text-sm">Upload finalized offer letter</CardTitle>
             <p className="text-[10px] text-muted-foreground mt-0.5">
-              Generated it in Review, or already have your own finalized letter? Upload the signed-off .docx or .pdf here — required before generating a portal link.
+              Generated it in Review, or already have your own finalized letter? Upload the signed-off .docx or .pdf here — required before generating a portal link. This is what the candidate downloads from the portal.
             </p>
           </div>
           {document && (
@@ -1549,7 +1550,7 @@ function GenerateLinkRow({ onGenerate, generating, label = 'Generate link' }) {
           Portal link
         </p>
         <p className="text-[11px] text-muted-foreground mt-0.5">
-          Generate a portal link for the candidate to review and respond.
+          Generate a portal link for the candidate to download, review, and submit their signed copy back.
         </p>
       </div>
       <Button size="sm" onClick={onGenerate} disabled={generating} className="shrink-0">
@@ -1606,11 +1607,17 @@ function PortalLinkRow({ url, expiresAt, sentAt, onRegenerate, onRevoke, generat
   );
 }
 
+function buildDefaultOfferEmail(jobTitle) {
+  return {
+    subject: `Your Offer Letter — ${jobTitle || 'the position'}`,
+    body: `Hi there,\n\nCongratulations! We're pleased to offer you the position${jobTitle ? ` of ${jobTitle}` : ''}.\n\nPlease review your offer letter and submit your signed copy via the link below:\n\n{{LINK}}\n\nThis link is personal — kindly do not share it with others.\n\nThank you,\nThe Recruitment Team`,
+  };
+}
+
 function SendSection({ offer, approval, setOffer, setBanner, setError, onAdvance }) {
   const [history, setHistory] = useState([]);
   const [loadingHistory, setLoadingHistory] = useState(true);
   const [sending, setSending] = useState(false);
-  const [regenerating, setRegenerating] = useState(false);
   const [revoking, setRevoking] = useState(false);
   const [showRevoke, setShowRevoke] = useState(false);
   const [revokeReason, setRevokeReason] = useState('');
@@ -1621,6 +1628,8 @@ function SendSection({ offer, approval, setOffer, setBanner, setError, onAdvance
 
   const [document, setDocument] = useState(null);
   const [loadingDocument, setLoadingDocument] = useState(true);
+
+  const [emailModal, setEmailModal] = useState({ open: false, subject: '', body: '' });
 
   const isApproved = approval?.current?.decision === 'approved';
   const hasLetterGenerated = offer.metadata?.offer_letter_final != null;
@@ -1654,38 +1663,33 @@ function SendSection({ offer, approval, setOffer, setBanner, setError, onAdvance
   useEffect(() => { loadDocument(); }, [loadDocument]);
 
   const latestSend  = history[0] || null;
-  const isSigned    = latestSend?.status === 'signed';
-  const isRevoked   = !isSigned && !!latestSend?.revoked_at;
-  const isActive    = latestSend?.status === 'sent' && !latestSend?.revoked_at;
-  const portalUrl   = isActive ? `${window.location.origin}/offer/send/${latestSend.token}` : null;
+  // Fixed: offer_send.status uses 'submitted' now, not 'signed' — the
+  // candidate portal flow is upload -> Submit, no e-signature step.
+  const isSubmitted = latestSend?.status === 'submitted';
+  const isRevoked    = !isSubmitted && !!latestSend?.revoked_at;
+  const isActive     = latestSend?.status === 'sent' && !latestSend?.revoked_at;
+  const portalUrl    = isActive ? `${window.location.origin}/offer/send/${latestSend.token}` : null;
   const expiryDaysLeft = isActive ? daysUntil(latestSend.token_expires_at) : null;
 
-  const handleGenerate = async () => {
+  const openSendModal = () => {
+    const defaults = buildDefaultOfferEmail(offer.position_title || offer.job_title);
+    setEmailModal({ open: true, ...defaults });
+  };
+
+  const handleConfirmSend = async () => {
+    if (sending) return;
     setSending(true);
     setError(null);
     try {
-      await sendOfferLetter(offer.id);
-      setOffer((prev) => ({ ...prev, offer_status: 'sent' }));
+      await sendOffer(offer.id, { subject: emailModal.subject, body: emailModal.body });
+      setOffer((prev) => ({ ...prev, offer_status: prev.offer_status === 'draft' ? 'sent' : prev.offer_status }));
+      setEmailModal({ open: false, subject: '', body: '' });
       await loadHistory();
-      setBanner({ ok: true, text: 'Offer letter sent — copy the link below to share with the candidate.' });
+      setBanner({ ok: true, text: latestSend ? 'Link regenerated — previous link revoked.' : 'Offer letter sent — copy the link below to share with the candidate.' });
     } catch (err) {
       setError(err.response?.data?.message || err.message || 'Failed to send offer');
     } finally {
       setSending(false);
-    }
-  };
-
-  const handleRegenerate = async () => {
-    setRegenerating(true);
-    setError(null);
-    try {
-      await resendOffer(offer.id);
-      await loadHistory();
-      setBanner({ ok: true, text: 'Link regenerated — previous link revoked.' });
-    } catch (err) {
-      setError(err.response?.data?.message || err.message || 'Failed to regenerate link');
-    } finally {
-      setRegenerating(false);
     }
   };
 
@@ -1740,7 +1744,7 @@ function SendSection({ offer, approval, setOffer, setBanner, setError, onAdvance
         setError={setError}
       />
 
-      {/* Offer letter · portal link — same document-lifecycle pattern as BG Consent card */}
+      {/* Offer letter · portal link */}
       <Card>
         <CardHeader className="pb-3">
           <div className="flex items-center gap-2">
@@ -1748,19 +1752,19 @@ function SendSection({ offer, approval, setOffer, setBanner, setError, onAdvance
             <div className="min-w-0 flex-1">
               <CardTitle className="text-sm">Offer letter · portal link</CardTitle>
               <p className="text-[10px] text-muted-foreground mt-0.5">
-                candidate reviews & responds via portal{isSigned ? ' ' : ' · revocable until signed'}
+                candidate downloads, uploads their signed copy, and submits via portal{isSubmitted ? ' ' : ' · revocable until submitted'}
               </p>
             </div>
             <Badge
               variant="outline"
               className={`text-[9px] shrink-0 ${
-                isSigned  ? 'border-emerald-300 text-emerald-700 bg-emerald-50'
+                isSubmitted ? 'border-emerald-300 text-emerald-700 bg-emerald-50'
                 : isRevoked ? 'border-rose-300 text-rose-700 bg-rose-50'
                 : isActive  ? 'border-blue-300 text-blue-700 bg-blue-50'
                 : 'border-border text-muted-foreground'
               }`}
             >
-              {isSigned ? 'signed' : isRevoked ? 'revoked' : isActive ? 'sent' : 'not sent'}
+              {isSubmitted ? 'submitted' : isRevoked ? 'revoked' : isActive ? 'sent' : 'not sent'}
             </Badge>
           </div>
         </CardHeader>
@@ -1778,9 +1782,9 @@ function SendSection({ offer, approval, setOffer, setBanner, setError, onAdvance
             </div>
           )}
 
-          {isSigned && (
+          {isSubmitted && (
             <div className="flex items-center gap-2 px-3 py-2 rounded-lg border border-emerald-200 bg-emerald-50 text-xs text-emerald-700">
-              <Check className="h-4 w-4 shrink-0" /> Offer letter signed {fmtDate(latestSend.signed_at)}
+              <Check className="h-4 w-4 shrink-0" /> Signed offer letter submitted {fmtDate(latestSend.submitted_at)}
             </div>
           )}
           {isRevoked && (
@@ -1793,10 +1797,10 @@ function SendSection({ offer, approval, setOffer, setBanner, setError, onAdvance
             </div>
           )}
 
-          {isSigned ? (
+          {isSubmitted ? (
             <div className="rounded-lg border border-dashed bg-emerald-50/50 border-emerald-200 p-3 text-center space-y-0.5">
               <p className="text-[11px] text-emerald-700 font-semibold flex items-center justify-center gap-1.5">
-                <Check className="h-3.5 w-3.5" /> Signed {fmtDate(latestSend.signed_at)}
+                <Check className="h-3.5 w-3.5" /> Submitted {fmtDate(latestSend.submitted_at)}
               </p>
             </div>
           ) : isActive && portalUrl ? (
@@ -1804,13 +1808,13 @@ function SendSection({ offer, approval, setOffer, setBanner, setError, onAdvance
               url={portalUrl}
               expiresAt={latestSend.token_expires_at}
               sentAt={latestSend.sent_at}
-              onRegenerate={handleRegenerate}
+              onRegenerate={openSendModal}
               onRevoke={() => { setShowRevoke(true); setRevokeReason(''); }}
-              generating={regenerating}
+              generating={sending}
             />
           ) : hasDocument ? (
             <GenerateLinkRow
-              onGenerate={handleGenerate}
+              onGenerate={openSendModal}
               generating={sending}
               label={isRevoked ? 'Regenerate link' : 'Generate link'}
             />
@@ -1843,7 +1847,11 @@ function SendSection({ offer, approval, setOffer, setBanner, setError, onAdvance
         </CardContent>
       </Card>
 
-      {/* Negotiation — separate from portal-link lifecycle above */}
+      {/* Negotiation — separate from portal-link lifecycle above. Note: the
+          candidate portal is submit-only (no reject/negotiate action there
+          by design), so new negotiation threads can no longer originate from
+          the candidate side. This panel remains for any negotiation records
+          already on the offer / created through other means. */}
       {offer.offer_status === 'negotiating' && offer.negotiations?.length > 0 && (
         <Card>
           <CardHeader className="pb-2">
@@ -1908,7 +1916,7 @@ function SendSection({ offer, approval, setOffer, setBanner, setError, onAdvance
         </div>
       )}
 
-      {/* Offer document preview — email content + attachment reference, mirrors the wireframe's two-panel layout */}
+      {/* Offer document preview */}
       <Card>
         <CardHeader className="pb-2">
           <div className="flex items-center justify-between gap-2 flex-wrap">
@@ -1916,7 +1924,7 @@ function SendSection({ offer, approval, setOffer, setBanner, setError, onAdvance
               Send · dispatch preview
             </CardTitle>
             <span className="text-[10px] text-muted-foreground">
-              candidate-facing email · signing portal · token-based
+              candidate-facing email · portal · token-based
             </span>
           </div>
         </CardHeader>
@@ -1946,13 +1954,13 @@ function SendSection({ offer, approval, setOffer, setBanner, setError, onAdvance
                   {isActive ? (
                     <>
                       <p>
-                        Silakan tinjau dan tanda-tangan surat penawaran Anda melalui portal di tautan
-                        di bawah ini. Tautan akan kedaluwarsa dalam {expiryDaysLeft ?? '—'} hari.
+                        Silakan unduh, tinjau, dan unggah kembali surat penawaran yang telah ditandatangani melalui
+                        portal di tautan di bawah ini. Tautan akan kedaluwarsa dalam {expiryDaysLeft ?? '—'} hari.
                       </p>
                       <p className="font-mono text-primary break-all">{portalUrl}</p>
                     </>
-                  ) : isSigned ? (
-                    <p className="text-emerald-700">Surat penawaran telah ditandatangani.</p>
+                  ) : isSubmitted ? (
+                    <p className="text-emerald-700">Surat penawaran yang telah ditandatangani telah diterima.</p>
                   ) : (
                     <p className="text-muted-foreground italic">
                       Belum dikirim — hasilkan tautan portal di atas untuk melihat pratinjau lengkap.
@@ -1961,7 +1969,6 @@ function SendSection({ offer, approval, setOffer, setBanner, setError, onAdvance
                 </div>
               </div>
 
-              {/* Reference info — only real fields, no fabricated template metadata */}
               <div className="rounded-lg border bg-muted/10 overflow-hidden">
                 <div className="px-4 py-2.5 border-b bg-muted/20">
                   <p className="text-[10px] font-bold tracking-widest uppercase text-muted-foreground">
@@ -1979,7 +1986,7 @@ function SendSection({ offer, approval, setOffer, setBanner, setError, onAdvance
                   </div>
                   <div className="flex items-center justify-between">
                     <span className="text-muted-foreground">Status</span>
-                    <span className="font-mono">{isSigned ? 'signed' : isRevoked ? 'revoked' : isActive ? 'sent' : 'not sent'}</span>
+                    <span className="font-mono">{isSubmitted ? 'submitted' : isRevoked ? 'revoked' : isActive ? 'sent' : 'not sent'}</span>
                   </div>
                   {latestSend?.sent_by_name && (
                     <div className="flex items-center justify-between">
@@ -1993,10 +2000,10 @@ function SendSection({ offer, approval, setOffer, setBanner, setError, onAdvance
                       <span>{fmtDate(latestSend.sent_at)}</span>
                     </div>
                   )}
-                  {latestSend?.signed_at && (
+                  {latestSend?.submitted_at && (
                     <div className="flex items-center justify-between">
-                      <span className="text-muted-foreground">Signed</span>
-                      <span>{fmtDate(latestSend.signed_at)}</span>
+                      <span className="text-muted-foreground">Submitted</span>
+                      <span>{fmtDate(latestSend.submitted_at)}</span>
                     </div>
                   )}
                 </div>
@@ -2014,6 +2021,72 @@ function SendSection({ offer, approval, setOffer, setBanner, setError, onAdvance
           </Button>
         </div>
       )}
+
+      {/* Email to Candidate modal — same pattern as AI Screening's Q&A send modal */}
+      <Dialog open={emailModal.open} onOpenChange={(open) => !open && !sending && setEmailModal((m) => ({ ...m, open: false }))}>
+        <DialogContent className="max-w-lg">
+          <DialogHeader>
+            <DialogTitle className="text-sm font-semibold flex items-center gap-2">
+              <Mail className="h-4 w-4 text-primary" /> Email to Candidate
+            </DialogTitle>
+            <DialogDescription className="text-xs text-muted-foreground">
+              Review and edit the email before sending. The portal link is inserted automatically where you see{' '}
+              <code className="bg-muted px-1 rounded">{'{{LINK}}'}</code>.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-3 py-1">
+            <div className="space-y-1">
+              <label className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">Subject</label>
+              <Input
+                value={emailModal.subject}
+                onChange={(e) => setEmailModal((m) => ({ ...m, subject: e.target.value }))}
+                className="h-9 text-sm"
+                placeholder="Email subject…"
+              />
+            </div>
+            <div className="space-y-1">
+              <label className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">Body</label>
+              <Textarea
+                value={emailModal.body}
+                onChange={(e) => setEmailModal((m) => ({ ...m, body: e.target.value }))}
+                rows={12}
+                className="text-sm font-mono leading-relaxed resize-y"
+                placeholder="Email body…"
+              />
+            </div>
+            {!emailModal.body.includes('{{LINK}}') && (
+              <div className="flex items-start gap-2 px-3 py-2 rounded-md border border-amber-200 bg-amber-50 text-[11px] text-amber-700">
+                <AlertTriangle className="h-3.5 w-3.5 shrink-0 mt-0.5" />
+                <span>
+                  <strong>{'{{LINK}}'}</strong> is missing from the body. The portal link will be appended automatically at the bottom of the email.
+                </span>
+              </div>
+            )}
+          </div>
+          <DialogFooter className="gap-2">
+            <Button
+              variant="outline"
+              size="sm"
+              className="text-xs"
+              onClick={() => setEmailModal((m) => ({ ...m, open: false }))}
+              disabled={sending}
+            >
+              Cancel
+            </Button>
+            <Button
+              size="sm"
+              className="text-xs"
+              onClick={handleConfirmSend}
+              disabled={sending || !emailModal.subject.trim()}
+            >
+              {sending
+                ? <><Loader2 className="h-3.5 w-3.5 mr-1.5 animate-spin" />Sending…</>
+                : <><Send className="h-3.5 w-3.5 mr-1.5" />Confirm Send</>}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
     </div>
   );
 }

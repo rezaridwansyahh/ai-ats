@@ -60,14 +60,15 @@ class OfferController {
     }
   }
 
-  async sendOfferLetter(req, res) {
+  async sendOffer(req, res) {
     try {
       const { offer_id } = req.params;
       const { company_id, user_id } = req.user;
-      const result = await OfferService.sendOfferLetter(offer_id, company_id, user_id);
+      const { subject, body } = req.body || {};
+      const result = await OfferService.sendOffer(offer_id, company_id, user_id, { subject, body });
       res.json(result);
     } catch (error) {
-      console.error('Error in sendOfferLetter:', error);
+      console.error('Error in sendOffer:', error);
       res.status(error.status || 500).json({ message: error.message });
     }
   }
@@ -287,18 +288,6 @@ class OfferController {
     }
   }
 
-  async resendOffer(req, res) {
-    try {
-      const { offer_id } = req.params;
-      const { company_id, user_id } = req.user;
-      const result = await OfferService.resendOffer(offer_id, company_id, user_id);
-      res.json(result);
-    } catch (error) {
-      console.error('Error in resendOffer:', error);
-      res.status(error.status || 500).json({ message: error.message });
-    }
-  }
-
   async revokeOffer(req, res) {
     try {
       const { offer_id } = req.params;
@@ -412,8 +401,6 @@ class OfferController {
       res.status(error.status || 500).json({ message: error.message });
     }
   }
-
-
 
   async uploadDocument(req, res) {
     try {
