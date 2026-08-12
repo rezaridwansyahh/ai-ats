@@ -1411,8 +1411,18 @@ const VERDICT_OPTIONS = [
   },
 ];
 
+// Pack-link outcomes use a different verdict scale (advance/hold/reject) than
+// direct in-app scorecards (strong_hire..strong_no_hire) — keep them separate.
+const PACK_RECOMMENDATION_LABEL = { advance: 'Advance', hold: 'Hold', reject: 'Reject' };
+const PACK_RECOMMENDATION_COLOR = {
+  advance: 'border-emerald-300 text-emerald-700 bg-emerald-50',
+  hold:    'border-amber-300 text-amber-700 bg-amber-50',
+  reject:  'border-rose-300 text-rose-700 bg-rose-50',
+};
+
 function DecideSection({ interviewId, interview, setInterview, setBanner, setError }) {
   const [scorecard, setScorecard]   = useState(null);
+  const [packOutcome, setPackOutcome] = useState(null);
   const [loading, setLoading]       = useState(true);
   const [submitting, setSubmitting] = useState(false);
 
@@ -1439,20 +1449,36 @@ function DecideSection({ interviewId, interview, setInterview, setBanner, setErr
     (async () => {
       setLoading(true);
       try {
-        const res = await getScorecard(interviewId);
-        setScorecard(res.data?.scorecard || null);
-      } catch { setScorecard(null); }
+        const [scRes, packRes] = await Promise.allSettled([
+          getScorecard(interviewId),
+          getPackOutcome(interviewId),
+        ]);
+        setScorecard(scRes.status === 'fulfilled' ? (scRes.value.data?.scorecard || null) : null);
+        setPackOutcome(packRes.status === 'fulfilled' ? (packRes.value.data?.outcome || null) : null);
+      } catch { setScorecard(null); setPackOutcome(null); }
       finally { setLoading(false); }
     })();
   }, [interviewId]);
 
+  // Two independent scoring paths can produce a "submitted scorecard":
+  //  - direct in-app Evaluate tab  → interview_scorecard (is_draft=false)
+  //  - pack-link portal submission → interview_pack_outcome (no draft concept)
+  // Prefer the direct scorecard when both exist; fall back to the pack
+  // outcome so Decide never stays locked after a portal submission.
+  const hasDirectScorecard = scorecard && !scorecard.is_draft;
+  const usingPackOutcome   = !hasDirectScorecard && !!packOutcome;
+  const isSubmitted        = hasDirectScorecard || usingPackOutcome;
+
   // ── weighted total: Postgres NUMERIC comes back as string, cast it ──
-  const rawTotal      = scorecard?.weighted_total ?? null;
-  const weightedTotal = rawTotal !== null ? Number(rawTotal) : null;
-  const recommendation  = scorecard?.recommendation ?? null;
-  const reviewFlag      = scorecard?.review_flag    ?? false;
-  const isSubmitted     = scorecard && !scorecard.is_draft;
-  const competencyScores = scorecard?.competency_scores || {};
+  const rawTotal      = hasDirectScorecard ? scorecard?.weighted_total : packOutcome?.weighted_total;
+  const weightedTotal = rawTotal !== null && rawTotal !== undefined ? Number(rawTotal) : null;
+  const recommendation   = hasDirectScorecard ? (scorecard?.recommendation ?? null) : null;
+  const packRecommendation = usingPackOutcome ? (packOutcome?.recommendation ?? null) : null;
+  const reviewFlag       = hasDirectScorecard ? (scorecard?.review_flag ?? false) : false;
+  const competencyScores = hasDirectScorecard ? (scorecard?.competency_scores || {}) : {};
+  const packScores       = usingPackOutcome ? (packOutcome?.scores || {}) : {};
+  const strengthsText    = hasDirectScorecard ? scorecard?.standout_strengths : packOutcome?.strengths;
+  const concernsText     = hasDirectScorecard ? scorecard?.concerns : packOutcome?.concerns;
 
   const wtColor = weightedTotal === null ? 'text-muted-foreground'
     : weightedTotal >= 5 ? 'text-emerald-700'
@@ -1605,18 +1631,20 @@ function DecideSection({ interviewId, interview, setInterview, setBanner, setErr
       {!isSubmitted && !alreadyDecided && (
         <div className="flex items-center gap-2 px-4 py-3 rounded-lg border border-amber-200 bg-amber-50 text-xs text-amber-700">
           <AlertTriangle className="h-4 w-4 shrink-0" />
-          Scorecard hasn't been submitted yet — submit it from the Evaluate tab before deciding.
+          No submitted scorecard yet — complete it from the Evaluate tab, or wait for the interviewer's pack link submission.
         </div>
       )}
 
-      {/* scorecard summary */}
-      {scorecard ? (
+      {/* scorecard summary — from either the direct Evaluate scorecard or a submitted pack outcome */}
+      {(hasDirectScorecard || usingPackOutcome) ? (
         <Card>
           <CardHeader className="pb-3">
             <CardTitle className="text-sm flex items-center gap-2">
               <Star className="h-4 w-4 text-primary" /> Scorecard Summary
               {isSubmitted
-                ? <Badge variant="outline" className="ml-auto text-[9px] border-emerald-300 text-emerald-700 bg-emerald-50">Submitted</Badge>
+                ? <Badge variant="outline" className="ml-auto text-[9px] border-emerald-300 text-emerald-700 bg-emerald-50">
+                    {usingPackOutcome ? 'Submitted via pack link' : 'Submitted'}
+                  </Badge>
                 : <Badge variant="outline" className="ml-auto text-[9px] border-amber-300 text-amber-700 bg-amber-50">Draft</Badge>}
             </CardTitle>
           </CardHeader>
@@ -1646,39 +1674,58 @@ function DecideSection({ interviewId, interview, setInterview, setBanner, setErr
                       {RECOMMENDATION_LABEL[recommendation] || recommendation}
                     </Badge>
                   )}
+                  {packRecommendation && (
+                    <Badge variant="outline" className={`text-[9px] ${PACK_RECOMMENDATION_COLOR[packRecommendation] || 'border-border text-muted-foreground'}`}>
+                      Interviewer: {PACK_RECOMMENDATION_LABEL[packRecommendation] || packRecommendation}
+                    </Badge>
+                  )}
                 </div>
               </div>
             </div>
 
-            {/* per-competency grid */}
-            <div className="grid grid-cols-2 md:grid-cols-3 gap-1.5">
-              {Object.entries(competencyScores).map(([code, score]) => (
-                <div key={code} className={`rounded-md border px-2.5 py-2 flex items-center justify-between gap-2 ${scoreBg(Number(score))}`}>
-                  <div className="min-w-0">
-                    <Badge variant="outline" className="text-[9px] border-blue-200 text-blue-700 font-mono">{code}</Badge>
-                    <p className="text-[10px] truncate mt-0.5">{COMPETENCY_NAMES[code] || code}</p>
+            {/* per-competency grid — HRD codes for direct scorecards */}
+            {hasDirectScorecard && (
+              <div className="grid grid-cols-2 md:grid-cols-3 gap-1.5">
+                {Object.entries(competencyScores).map(([code, score]) => (
+                  <div key={code} className={`rounded-md border px-2.5 py-2 flex items-center justify-between gap-2 ${scoreBg(Number(score))}`}>
+                    <div className="min-w-0">
+                      <Badge variant="outline" className="text-[9px] border-blue-200 text-blue-700 font-mono">{code}</Badge>
+                      <p className="text-[10px] truncate mt-0.5">{COMPETENCY_NAMES[code] || code}</p>
+                    </div>
+                    <span className={`text-sm font-bold font-mono shrink-0 ${scoreColor(Number(score))}`}>{score}</span>
                   </div>
-                  <span className={`text-sm font-bold font-mono shrink-0 ${scoreColor(Number(score))}`}>{score}</span>
-                </div>
-              ))}
-            </div>
+                ))}
+              </div>
+            )}
+
+            {/* per-criterion grid — free-text rubric labels for pack outcomes */}
+            {usingPackOutcome && (
+              <div className="grid grid-cols-2 md:grid-cols-3 gap-1.5">
+                {Object.entries(packScores).map(([label, score]) => (
+                  <div key={label} className={`rounded-md border px-2.5 py-2 flex items-center justify-between gap-2 ${scoreBg(Number(score))}`}>
+                    <p className="text-[10px] truncate mt-0.5 min-w-0">{label}</p>
+                    <span className={`text-sm font-bold font-mono shrink-0 ${scoreColor(Number(score))}`}>{score}</span>
+                  </div>
+                ))}
+              </div>
+            )}
 
             {/* strengths & concerns */}
-            {(scorecard.standout_strengths || scorecard.concerns) && (
+            {(strengthsText || concernsText) && (
               <div className="grid grid-cols-1 md:grid-cols-2 gap-3 pt-2 border-t">
-                {scorecard.standout_strengths && (
+                {strengthsText && (
                   <div>
                     <p className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground mb-1">Strengths</p>
                     <p className="text-xs text-emerald-700 bg-emerald-50 border border-emerald-200 rounded-md px-2.5 py-2">
-                      {scorecard.standout_strengths}
+                      {strengthsText}
                     </p>
                   </div>
                 )}
-                {scorecard.concerns && (
+                {concernsText && (
                   <div>
                     <p className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground mb-1">Concerns</p>
                     <p className="text-xs text-rose-700 bg-rose-50 border border-rose-200 rounded-md px-2.5 py-2">
-                      {scorecard.concerns}
+                      {concernsText}
                     </p>
                   </div>
                 )}
@@ -1694,7 +1741,7 @@ function DecideSection({ interviewId, interview, setInterview, setBanner, setErr
             </div>
             <p className="text-sm font-semibold">No scorecard yet</p>
             <p className="text-xs text-muted-foreground max-w-xs mx-auto">
-              Complete the Evaluate tab first, then come back to decide.
+              Complete the Evaluate tab, or wait for the interviewer's pack link submission.
             </p>
           </CardContent>
         </Card>
