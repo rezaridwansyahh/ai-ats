@@ -20,6 +20,7 @@ import { getJobPipeline } from '@/api/pipeline.api';
 
 import JobStages from '@/components/job-management/JobStages';
 import JobPosting from '@/components/job-management/JobPosting';
+import RubricEditor from '@/components/job-management/RubricEditor';
 
 import { StatusBadge } from '@/components/common';
 import { isValid } from 'date-fns';
@@ -483,12 +484,15 @@ export default function JobEditPage() {
                     <ArrowRight className="h-4 w-4" />
                   </Button>
                 </CardHeader>
-                <CardContent>
+                <CardContent className="space-y-5">
                   {job?.id ? (
-                    <JobStages
-                      selectedJob={job}
-                      onPipelineChange={({ hasStages: hs }) => setHasStages(hs)}
-                    />
+                    <>
+                      <JobStages
+                        selectedJob={job}
+                        onPipelineChange={({ hasStages: hs }) => setHasStages(hs)}
+                      />
+                      <RubricEditor jobId={job.id} />
+                    </>
                   ) : (
                     <p className="text-xs text-muted-foreground italic py-2">
                       Pipeline can be configured after the draft is created. Fill the job title above to begin.

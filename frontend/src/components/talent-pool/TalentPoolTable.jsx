@@ -110,22 +110,23 @@ export default function TalentPoolTable({
           <Table data-tour="talent-table" className="table-fixed w-full">
             <TableHeader className="bg-muted/40">
               <TableRow>
-                <TableHead className="w-10 pl-4">
+                <TableHead className="w-10 pl-4 py-2">
                   <Checkbox
                     checked={allPagedSelected}
                     data-state={!allPagedSelected && somePagedSelected ? 'indeterminate' : undefined}
                     onCheckedChange={onToggleSelectAllPaged}
                     aria-label="Select all candidates on this page"
                     disabled={rows.length === 0}
+                    className="border-2 border-slate-400 data-[state=checked]:border-primary data-[state=checked]:bg-primary"
                   />
                 </TableHead>
-                <TableHead className="w-[18%] text-[10px] font-bold uppercase">Name</TableHead>
-                <TableHead className="w-[16%] text-[10px] font-bold uppercase">Last Position</TableHead>
-                <TableHead className="w-[20%] text-[10px] font-bold uppercase">Skills</TableHead>
-                <TableHead className="w-[13%] text-[10px] font-bold uppercase">Location</TableHead>
+                <TableHead className="w-[17%] text-[10px] font-bold uppercase">Name</TableHead>
+                <TableHead className="w-[15%] text-[10px] font-bold uppercase">Last Position</TableHead>
+                <TableHead className="w-[19%] text-[10px] font-bold uppercase">Skills</TableHead>
+                <TableHead className="w-[12%] text-[10px] font-bold uppercase">Location</TableHead>
                 <TableHead className="w-[9%] text-[10px] font-bold uppercase text-center">Score</TableHead>
-                <TableHead className="w-[7%] text-[10px] font-bold uppercase">Applied</TableHead>
-                <TableHead data-tour="talent-action-header" className="w-[7%] text-[10px] font-bold uppercase text-right pr-6">Action</TableHead>
+                <TableHead className="w-[9%] text-[10px] font-bold uppercase pr-4">Applied</TableHead>
+                <TableHead data-tour="talent-action-header" className="w-[9%] text-[10px] font-bold uppercase text-right pr-6">Action</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -151,26 +152,27 @@ export default function TalentPoolTable({
 
                 return (
                   <TableRow key={r.id} className={`hover:bg-muted/30 transition-colors ${isSelected ? 'bg-primary/5' : ''}`}>
-                    <TableCell className="pl-4">
+                    <TableCell className="pl-4 py-2">
                       <Checkbox
                         checked={isSelected}
                         onCheckedChange={() => onToggleSelectOne(r.id)}
                         aria-label={`Select ${r.name}`}
+                        className="border-2 border-slate-400 data-[state=checked]:border-primary data-[state=checked]:bg-primary"
                       />
                     </TableCell>
 
-                    <TableCell className="text-xs">
+                    <TableCell className="text-xs py-2">
                       <div className="font-semibold">{r.name}</div>
                     </TableCell>
 
-                    <TableCell className="text-xs">
+                    <TableCell className="text-xs py-2">
                       <div className="truncate font-medium">{positionLabel}</div>
                       {categoryLabel && (
                         <div className="text-[10px] text-muted-foreground truncate">{categoryLabel}</div>
                       )}
                     </TableCell>
 
-                    <TableCell>
+                    <TableCell className="py-2">
                       <div className="flex flex-wrap gap-1">
                         {skillTags.length === 0 ? (
                           <span className="text-[10px] text-muted-foreground">—</span>
@@ -187,24 +189,24 @@ export default function TalentPoolTable({
                       </div>
                     </TableCell>
 
-                    <TableCell className="text-xs">
+                    <TableCell className="text-xs py-2">
                       <div className="flex items-center gap-1.5">
                         <MapPin className="h-3 w-3 text-muted-foreground shrink-0" />
                         <span className="truncate">{r.address || '—'}</span>
                       </div>
                     </TableCell>
 
-                    <TableCell className="text-center">
+                    <TableCell className="text-center py-2">
                       <Badge className={`text-[10px] font-mono font-semibold ${scoreBg(r.latest_score)}`}>
                         {r.latest_score ?? '—'}
                       </Badge>
                     </TableCell>
 
-                    <TableCell className="text-xs text-muted-foreground">
+                    <TableCell className="text-xs text-muted-foreground py-2 pr-4">
                       {formatDate(r.date)}
                     </TableCell>
 
-                    <TableCell className="text-right pr-6">
+                    <TableCell className="text-right pr-6 py-2">
                       <Button
                         size="sm"
                         variant="outline"

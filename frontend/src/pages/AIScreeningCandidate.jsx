@@ -13,7 +13,6 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Slider } from '@/components/ui/slider';
 import { Textarea } from '@/components/ui/textarea';
 import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
@@ -1234,19 +1233,8 @@ function MatchPanel({ data, match }) {
 
   const {
     roleProfileSel, setRoleProfileSel,
-    rubric, setFixedWeight, addCustom, removeCustom, setCustomWeight,
-    total, totalIs100,
+    rubric, total, totalIs100,
   } = match;
-
-  const [customDraftDesc, setCustomDraftDesc] = useState('');
-  const [customDraftWeight, setCustomDraftWeight] = useState(5);
-
-  const onAddCustom = () => {
-    if (!customDraftDesc.trim()) return;
-    addCustom(customDraftDesc, customDraftWeight);
-    setCustomDraftDesc('');
-    setCustomDraftWeight(5);
-  };
 
   const matched   = Array.isArray(matched_skills) ? matched_skills : [];
   const missing   = Array.isArray(missing_skills) ? missing_skills : [];
@@ -1311,16 +1299,22 @@ function MatchPanel({ data, match }) {
             </div>
           </div>
 
-          {/* Criteria & weights */}
+          {/* Criteria & weights — read-only here; edited in Job → Pipeline & AI */}
           <div className="pt-3 border-t space-y-4">
             <div className="flex items-center justify-between">
               <div className="text-[11px] font-medium text-muted-foreground uppercase">Criteria & weights</div>
-              <div className="flex items-center gap-2">
-                <Badge className={`text-[10px] ${totalIs100 ? 'bg-emerald-100 text-emerald-700' : 'bg-rose-100 text-rose-700'}`}>
-                  Total {Math.round(total)}%
-                </Badge>
-                <span className="text-[10px] text-muted-foreground">must equal 100%</span>
-              </div>
+              <Badge className={`text-[10px] ${totalIs100 ? 'bg-emerald-100 text-emerald-700' : 'bg-rose-100 text-rose-700'}`}>
+                Total {Math.round(total)}%
+              </Badge>
+            </div>
+
+            <div className="flex items-start gap-1.5 text-[10px] text-muted-foreground px-3 py-2 rounded-lg border bg-muted/20">
+              <Info className="h-3 w-3 mt-0.5 shrink-0" />
+              <span>
+                This rubric is shared by every candidate on this job — configure weights from the job's
+                <span className="font-semibold not-italic"> Pipeline & AI </span>
+                setup step, not here.
+              </span>
             </div>
 
             {FIXED_KEYS.map((key) => {
@@ -1328,72 +1322,38 @@ function MatchPanel({ data, match }) {
               const Icon = meta.icon;
               const weight = Number(rubric.fixed_criteria[key]?.weight) || 0;
               return (
-                <div key={key} className="space-y-1.5">
-                  <div className="flex items-center justify-between gap-3">
-                    <div className="flex items-center gap-2">
-                      <Icon className="h-3.5 w-3.5 text-primary" />
-                      <span className="text-xs font-semibold">{meta.label}</span>
-                      <span className="text-[10px] text-muted-foreground">{meta.description}</span>
-                    </div>
-                    <span className="text-xs font-mono font-semibold w-10 text-right">{weight}%</span>
+                <div key={key} className="flex items-center justify-between gap-3">
+                  <div className="flex items-center gap-2 min-w-0">
+                    <Icon className="h-3.5 w-3.5 text-primary shrink-0" />
+                    <span className="text-xs font-semibold">{meta.label}</span>
+                    <span className="text-[10px] text-muted-foreground truncate">{meta.description}</span>
                   </div>
-                  <Slider value={[weight]} onValueChange={(v) => setFixedWeight(key, v[0])} min={0} max={100} step={5} />
+                  <span className="text-xs font-mono font-semibold w-10 text-right shrink-0">{weight}%</span>
                 </div>
               );
             })}
 
-            {/* Custom criteria */}
-            <div className="pt-3 border-t space-y-3">
-              <div className="text-[11px] font-medium text-muted-foreground uppercase">Custom criteria</div>
-              {(rubric.custom_criteria || []).length === 0 && (
-                <div className="text-[10px] text-muted-foreground italic">No custom criteria. Add one below.</div>
-              )}
-              {(rubric.custom_criteria || []).map((c, i) => (
-                <div key={i} className="space-y-1.5 p-3 rounded-lg border bg-muted/20">
-                  <div className="flex items-center justify-between gap-3">
+            {/* Custom criteria — read-only */}
+            {(rubric.custom_criteria || []).length > 0 && (
+              <div className="pt-3 border-t space-y-2">
+                <div className="text-[11px] font-medium text-muted-foreground uppercase">Custom criteria</div>
+                {rubric.custom_criteria.map((c, i) => (
+                  <div key={i} className="flex items-center justify-between gap-3 p-2.5 rounded-lg border bg-muted/20">
                     <div className="flex items-center gap-2 flex-1 min-w-0">
                       <Target className="h-3.5 w-3.5 text-primary shrink-0" />
                       <span className="text-xs truncate">{c.description}</span>
                     </div>
-                    <span className="text-xs font-mono font-semibold w-10 text-right">{c.weight}%</span>
-                    <button onClick={() => removeCustom(i)} className="p-1 hover:bg-rose-50 rounded text-rose-600 transition-colors" type="button">
-                      <X className="h-3 w-3" />
-                    </button>
+                    <span className="text-xs font-mono font-semibold w-10 text-right shrink-0">{c.weight}%</span>
                   </div>
-                  <Slider value={[c.weight]} onValueChange={(v) => setCustomWeight(i, v[0])} min={0} max={50} step={5} />
-                </div>
-              ))}
-
-              <div className="flex items-end gap-2">
-                <div className="flex-1">
-                  <label className="text-[10px] text-muted-foreground">Description</label>
-                  <Input
-                    value={customDraftDesc}
-                    onChange={(e) => setCustomDraftDesc(e.target.value)}
-                    placeholder="e.g. Fluent in Bahasa Indonesia"
-                    className="text-xs h-9"
-                    onKeyDown={(e) => { if (e.key === 'Enter' && customDraftDesc.trim()) { e.preventDefault(); onAddCustom(); } }}
-                  />
-                </div>
-                <div>
-                  <label className="text-[10px] text-muted-foreground">Weight</label>
-                  <Input
-                    type="number" min={0} max={100} value={customDraftWeight}
-                    onChange={(e) => setCustomDraftWeight(Number(e.target.value) || 0)}
-                    className="text-xs h-9 w-20"
-                  />
-                </div>
-                <Button size="sm" variant="outline" className="text-xs" onClick={onAddCustom} disabled={!customDraftDesc.trim()}>
-                  <Plus className="h-3 w-3 mr-1" /> Add
-                </Button>
+                ))}
               </div>
-            </div>
+            )}
           </div>
 
           {/* Fit breakdown OR not-scored hint */}
           {!score_id ? (
             <p className="border-t pt-4 text-center text-xs text-muted-foreground italic">
-              Not scored yet. Configure the rubric above and click <span className="font-semibold not-italic">Score This Candidate</span> in the sidebar.
+              Not scored yet. Click <span className="font-semibold not-italic">Score This Candidate</span> in the sidebar to run against the job's rubric shown above.
             </p>
           ) : (
             <div className="space-y-4 border-t pt-4">
