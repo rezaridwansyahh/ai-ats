@@ -83,6 +83,8 @@ class InterviewPackModel {
       `SELECT
          ipc.id             AS pack_candidate_id,
          ipc.applicant_id,
+         ipc.round_id,
+         ir.round_number,
          ipc.sort_order,
          ipc.interview_date,
          ipc.interview_time,
@@ -98,6 +100,7 @@ class InterviewPackModel {
          ipo.updated_at     AS outcome_updated_at
        FROM interview_pack_candidate ipc
        JOIN master_applicant ma ON ma.id = ipc.applicant_id
+       LEFT JOIN interview_round ir ON ir.id = ipc.round_id
        LEFT JOIN interview_pack_outcome ipo
               ON ipo.pack_id = ipc.pack_id
              AND ipo.pack_candidate_id = ipc.id
@@ -119,10 +122,12 @@ class InterviewPackModel {
          ip.*,
          cj.job_title,
          COUNT(ipc.id)::int AS candidate_count,
-         COUNT(ipo.id)::int AS scored_count
+         COUNT(ipo.id)::int AS scored_count,
+         ARRAY_AGG(DISTINCT ir.round_number) FILTER (WHERE ir.round_number IS NOT NULL) AS round_numbers
        FROM interview_pack ip
        JOIN core_job cj ON cj.id = ip.job_id
        LEFT JOIN interview_pack_candidate ipc ON ipc.pack_id = ip.id
+       LEFT JOIN interview_round ir ON ir.id = ipc.round_id
        LEFT JOIN interview_pack_outcome ipo ON ipo.pack_id = ip.id
        WHERE ip.job_id = $1
        GROUP BY ip.id, cj.job_title

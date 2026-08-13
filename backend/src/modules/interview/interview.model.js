@@ -678,6 +678,10 @@ class InterviewModel {
     return result.rows;
   }
 
+  // Advance/reject are terminal for the current round — status flips to
+  // 'done' alongside the decision so the candidate settles in the Decide
+  // sub-stage. (Interview Again handles its own status reset separately,
+  // via startNextRound — it never goes through bulkDecide.)
   async bulkDecide(job_id, decisions, decided_by) {
     const db     = getDb();
     const client = await db.connect();
@@ -692,6 +696,7 @@ class InterviewModel {
                   reject_note   = $3,
                   decided_at    = $4,
                   decided_by    = $5,
+                  status        = 'done',
                   updated_at    = NOW()
             WHERE id = $6 AND job_id = $7`,
           [d.decision, d.reject_reason ?? null, d.reject_note ?? null, decidedAt, decided_by, d.candidateInterviewId, job_id]
@@ -865,49 +870,83 @@ class InterviewModel {
     return result.rows[0] || null;
   }
 
-  // Every round this interview has been through, each with its pack outcome
-  // if one exists yet — powers the Result tab's per-round dropdown.
+  // Every round this interview has been through, each with its outcome if
+  // one exists yet — powers the Result AND Decide tabs' per-round dropdown.
+  // A round's outcome can come from either scoring path:
+  //   - direct in-app Evaluate scorecard (interview_scorecard, HRD-codes)
+  //   - pack-link portal submission      (interview_pack_outcome, free-text criteria)
+  // Direct scorecard wins if both somehow exist for the same round.
   async getRoundsWithOutcomes(interview_id) {
     const result = await getDb().query(
       `SELECT DISTINCT ON (ir.round_number)
-         ir.id                AS round_id,
          ir.round_number,
-         ir.status            AS round_status,
-         ipo.id                AS outcome_id,
-         ipo.scores,
-         ipo.weighted_total,
-         ipo.recommendation,
-         ipo.strengths,
-         ipo.concerns,
-         ipo.updated_at        AS outcome_updated_at,
+         ir.status              AS round_status,
+         sc.id                  AS scorecard_id,
+         sc.competency_scores,
+         sc.weighted_total      AS sc_weighted_total,
+         sc.recommendation      AS sc_recommendation,
+         sc.standout_strengths  AS sc_strengths,
+         sc.concerns            AS sc_concerns,
+         sc.is_draft            AS sc_is_draft,
+         ipo.id                 AS outcome_id,
+         ipo.scores             AS pack_scores,
+         ipo.weighted_total     AS pack_weighted_total,
+         ipo.recommendation     AS pack_recommendation,
+         ipo.strengths          AS pack_strengths,
+         ipo.concerns           AS pack_concerns,
+         ipo.updated_at         AS outcome_updated_at,
          ip.interviewer_name,
          ip.submitted_at,
-         ip.token              AS pack_token,
+         ip.token               AS pack_token,
          ip.status              AS pack_status
        FROM interview_round ir
-       LEFT JOIN interview_pack_candidate ipc ON ipc.round_id = ir.id
-       LEFT JOIN interview_pack ip            ON ip.id = ipc.pack_id
-       LEFT JOIN interview_pack_outcome ipo   ON ipo.pack_candidate_id = ipc.id
+       LEFT JOIN interview_scorecard sc        ON sc.round_id = ir.id
+       LEFT JOIN interview_pack_candidate ipc  ON ipc.round_id = ir.id
+       LEFT JOIN interview_pack ip             ON ip.id = ipc.pack_id
+       LEFT JOIN interview_pack_outcome ipo    ON ipo.pack_candidate_id = ipc.id
        WHERE ir.interview_id = $1
        ORDER BY ir.round_number ASC, ipo.updated_at DESC NULLS LAST`,
       [interview_id]
     );
 
-    return result.rows.map((r) => ({
-      round_number: r.round_number,
-      round_status: r.round_status,
-      outcome: r.outcome_id ? {
-        scores:            r.scores,
-        weighted_total:    r.weighted_total,
-        recommendation:    r.recommendation,
-        strengths:         r.strengths,
-        concerns:          r.concerns,
-        interviewer_name:  r.interviewer_name,
-        submitted_at:      r.submitted_at,
-        pack_token:        r.pack_token,
-        pack_status:       r.pack_status,
-      } : null,
-    }));
+    const maxRound = result.rows.reduce((m, r) => Math.max(m, r.round_number), 1);
+
+    return result.rows.map((r) => {
+      const hasDirect = r.scorecard_id && r.sc_is_draft === false;
+      const hasPack   = !hasDirect && r.outcome_id;
+
+      let outcome = null;
+      if (hasDirect) {
+        outcome = {
+          source:           'direct',
+          scores:            r.competency_scores,
+          weighted_total:    r.sc_weighted_total,
+          recommendation:    r.sc_recommendation,
+          strengths:         r.sc_strengths,
+          concerns:          r.sc_concerns,
+        };
+      } else if (hasPack) {
+        outcome = {
+          source:           'pack',
+          scores:            r.pack_scores,
+          weighted_total:    r.pack_weighted_total,
+          recommendation:    r.pack_recommendation,
+          strengths:         r.pack_strengths,
+          concerns:          r.pack_concerns,
+          interviewer_name:  r.interviewer_name,
+          submitted_at:      r.submitted_at,
+          pack_token:        r.pack_token,
+          pack_status:       r.pack_status,
+        };
+      }
+
+      return {
+        round_number: r.round_number,
+        round_status: r.round_status,
+        is_current:   r.round_number === maxRound,
+        outcome,
+      };
+    });
   }
 
   async getInterviewsByJobWithSubStage(job_id) {
