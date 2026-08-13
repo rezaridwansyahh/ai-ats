@@ -15,30 +15,12 @@ export const createOffer = (data) => api.post('/offer/create', data);
 // Update compensation
 export const updateCompensation = (offerId, data) => api.put(`/offer/${offerId}/compensation`, data);
 
-// Send offer letter (first send — creates the offer_send token)
-export const sendOfferLetter = (offerId) => api.post(`/offer/${offerId}/send`);
-
-// Resend — revokes the active send and issues a fresh token
-export const resendOffer = (offerId) => api.post(`/offer/${offerId}/resend`);
+export const sendOffer = (offerId, { subject, body } = {}) => api.post(`/offer/${offerId}/send`, { subject, body });
 
 // Revoke — revokes the active send without issuing a new one
 export const revokeOffer = (offerId, reason) => api.post(`/offer/${offerId}/revoke`, { reason });
 
-// Send history — every offer_send row for this offer (sent/resent/revoked/signed)
 export const getSendHistory = (offerId) => api.get(`/offer/${offerId}/send-history`);
-
-// Candidate actions (portal - public endpoints)
-export const acceptOffer = (offerId, acceptanceNote) =>
-  api.post(`/offer/${offerId}/accept`, { acceptance_note: acceptanceNote });
-
-export const rejectOffer = (offerId, rejectionReason) =>
-  api.post(`/offer/${offerId}/reject`, { rejection_reason: rejectionReason });
-
-export const negotiateOffer = (offerId, message, requestedSalary) =>
-  api.post(`/offer/${offerId}/negotiate`, {
-    negotiation_message: message,
-    requested_salary: requestedSalary
-  });
 
 // Recruiter responds to negotiation
 export const respondToNegotiation = (offerId, responseType, message, revisedCompensation = null) =>
@@ -47,6 +29,15 @@ export const respondToNegotiation = (offerId, responseType, message, revisedComp
     response_message: message,
     revised_compensation: revisedCompensation
   });
+
+// Approval chain
+export const getApproval = (offerId) => api.get(`/offer/${offerId}/approval`);
+
+export const submitApproval = (offerId, decision, note) => api.post(`/offer/${offerId}/approval/decide`, { decision, note });
+
+export const setupApprovalChain = (offerId, steps) => api.post(`/offer/${offerId}/approval/chain`, { steps });
+
+export const decideApprovalStep = (offerId, stepIndex, decision, note) => api.post(`/offer/${offerId}/approval/chain/${stepIndex}/decide`, { decision, note });
 
 // Contract management
 export const generateContract = (offerId, contractType, startDate, endDate = null) =>

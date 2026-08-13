@@ -28,6 +28,8 @@ import {
   confirmSchedule, unconfirmSchedule, deleteSchedule,
   recordOutcome, clearOutcome,
   getPackOutcome,
+  getScorecard,
+  getInterviewRounds,
   getDecideByJob, bulkDecide, resetDecision, getInterviewByCandidateId,
   reInterview,
 } from '@/api/interview.api';
@@ -191,11 +193,15 @@ export default function InterviewCandidatePage() {
   const hasConducted = ['result', 'done'].includes(status);
   const canReInterview = status === 'result' || status === 'done';
   const round = interview.round || 1;
+  // Once "Interview Again" has run at least once, Round 1's Result/Decide
+  // history exists forever — never re-lock those tabs just because the new
+  // round hasn't caught back up to 'result'/'done' yet.
+  const hasRoundHistory = round > 1;
 
   const canGoStep = (key) => {
     if (key === 'schedule') return true;
-    if (key === 'result')   return isScheduled;    // unlocks once session confirmed
-    if (key === 'decide')   return hasConducted;   // unlocks once outcome recorded
+    if (key === 'result')   return isScheduled || hasRoundHistory;
+    if (key === 'decide')   return hasConducted || hasRoundHistory;
     return true;
   };
 
@@ -248,20 +254,6 @@ export default function InterviewCandidatePage() {
             <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] font-semibold ${statusMeta.color}`}>
               {statusMeta.label}
             </span>
-            {canReInterview && (
-              <Button
-                size="sm"
-                variant="outline"
-                className="text-xs"
-                onClick={handleReInterview}
-                disabled={reInterviewing}
-              >
-                {reInterviewing
-                  ? <Loader2 className="h-3.5 w-3.5 mr-1.5 animate-spin" />
-                  : <RefreshCw className="h-3.5 w-3.5 mr-1.5" />}
-                Interview Again
-              </Button>
-            )}
           </div>
         </div>
       </div>
@@ -303,9 +295,9 @@ export default function InterviewCandidatePage() {
               ))}
             </div>
 
-            {activeSection === 'schedule' && <ScheduleSection interviewId={interviewId} interview={interview} setInterview={setInterview} setBanner={setBanner} setError={setError} />}
-            {activeSection === 'result'   && <ResultSection   interview={interview} prep={prep} interviewId={interviewId} />}
-            {activeSection === 'decide'   && <DecideSection   interviewId={interviewId} interview={interview} setInterview={setInterview} setBanner={setBanner} setError={setError} />}
+            {activeSection === 'schedule' && <ScheduleSection key={`schedule-${round}`} interviewId={interviewId} interview={interview} setInterview={setInterview} setBanner={setBanner} setError={setError} />}
+            {activeSection === 'result'   && <ResultSection   key={`result-${round}`}   interview={interview} prep={prep} interviewId={interviewId} />}
+            {activeSection === 'decide'   && <DecideSection   key={`decide-${round}`}   interviewId={interviewId} interview={interview} setInterview={setInterview} setBanner={setBanner} setError={setError} onReInterview={handleReInterview} reInterviewing={reInterviewing} />}
           </div>
 
           <aside>
@@ -1392,13 +1384,13 @@ const VERDICT_OPTIONS = [
     iconColor:   'text-emerald-600',
   },
   {
-    value:       'hold',
-    label:       'Hold',
-    description: 'Keep in interview pool for further review',
-    icon:        Clock,
-    color:       'border-amber-300 bg-amber-50/60 text-amber-700',
-    activeColor: 'border-amber-500 bg-amber-50 text-amber-700 ring-2 ring-amber-300',
-    iconColor:   'text-amber-500',
+    value:       'reinterview',
+    label:       'Interview Again',
+    description: 'Start a new round — this round\'s history is kept',
+    icon:        RefreshCw,
+    color:       'border-violet-300 bg-violet-50/60 text-violet-700',
+    activeColor: 'border-violet-500 bg-violet-50 text-violet-700 ring-2 ring-violet-300',
+    iconColor:   'text-violet-500',
   },
   {
     value:       'rejected',
@@ -1411,20 +1403,33 @@ const VERDICT_OPTIONS = [
   },
 ];
 
-function DecideSection({ interviewId, interview, setInterview, setBanner, setError }) {
+// Pack-link outcomes use a different verdict scale (advance/hold/reject) than
+// direct in-app scorecards (strong_hire..strong_no_hire) — keep them separate.
+const PACK_RECOMMENDATION_LABEL = { advance: 'Advance', hold: 'Hold', reject: 'Reject' };
+const PACK_RECOMMENDATION_COLOR = {
+  advance: 'border-emerald-300 text-emerald-700 bg-emerald-50',
+  hold:    'border-amber-300 text-amber-700 bg-amber-50',
+  reject:  'border-rose-300 text-rose-700 bg-rose-50',
+};
+
+function DecideSection({ interviewId, interview, setInterview, setBanner, setError, onReInterview, reInterviewing }) {
   const [scorecard, setScorecard]   = useState(null);
+  const [packOutcome, setPackOutcome] = useState(null);
   const [loading, setLoading]       = useState(true);
   const [submitting, setSubmitting] = useState(false);
 
-  // verdict selector: null | 'advanced' | 'hold' | 'rejected'
+  // round history — "1 card dropdown" per round, same pattern as Result tab
+  const [rounds, setRounds]                 = useState([]);
+  const [selectedRoundNum, setSelectedRoundNum] = useState(null);
+
+  // verdict selector: null | 'advanced' | 'reinterview' | 'rejected'
   const [selectedVerdict, setSelectedVerdict] = useState(null);
 
   // advance modal
   const [showAdvanceModal, setShowAdvanceModal] = useState(false);
 
-  // hold modal steps: null | 'reason' | 'confirm'
-  const [holdStep, setHoldStep]     = useState(null);
-  const [holdReason, setHoldReason] = useState('');
+  // interview-again confirm modal
+  const [showReinterviewModal, setShowReinterviewModal] = useState(false);
 
   // reject modal steps: null | 'reason' | 'confirm'
   const [rejectStep, setRejectStep]     = useState(null);
@@ -1439,20 +1444,53 @@ function DecideSection({ interviewId, interview, setInterview, setBanner, setErr
     (async () => {
       setLoading(true);
       try {
-        const res = await getScorecard(interviewId);
-        setScorecard(res.data?.scorecard || null);
-      } catch { setScorecard(null); }
+        const [scRes, packRes] = await Promise.allSettled([
+          getScorecard(interviewId),
+          getPackOutcome(interviewId),
+        ]);
+        setScorecard(scRes.status === 'fulfilled' ? (scRes.value.data?.scorecard || null) : null);
+        setPackOutcome(packRes.status === 'fulfilled' ? (packRes.value.data?.outcome || null) : null);
+      } catch { setScorecard(null); setPackOutcome(null); }
       finally { setLoading(false); }
     })();
   }, [interviewId]);
 
+  useEffect(() => {
+    if (!interviewId) return;
+    getInterviewRounds(interviewId)
+      .then((res) => {
+        const list = res.data?.rounds || [];
+        setRounds(list);
+        setSelectedRoundNum(list.length > 0 ? list[list.length - 1].round_number : null);
+      })
+      .catch(() => setRounds([]));
+  }, [interviewId, interview?.round]);
+
+  const latestRoundNumber = rounds.length > 0 ? rounds[rounds.length - 1].round_number : 1;
+  const isViewingCurrent  = selectedRoundNum == null || selectedRoundNum === latestRoundNumber;
+  const pastRoundOutcome  = !isViewingCurrent
+    ? (rounds.find((r) => r.round_number === selectedRoundNum)?.outcome || null)
+    : null;
+
+  // Two independent scoring paths can produce a "submitted scorecard":
+  //  - direct in-app Evaluate tab  → interview_scorecard (is_draft=false)
+  //  - pack-link portal submission → interview_pack_outcome (no draft concept)
+  // Prefer the direct scorecard when both exist; fall back to the pack
+  // outcome so Decide never stays locked after a portal submission.
+  const hasDirectScorecard = scorecard && !scorecard.is_draft;
+  const usingPackOutcome   = !hasDirectScorecard && !!packOutcome;
+  const isSubmitted        = hasDirectScorecard || usingPackOutcome;
+
   // ── weighted total: Postgres NUMERIC comes back as string, cast it ──
-  const rawTotal      = scorecard?.weighted_total ?? null;
-  const weightedTotal = rawTotal !== null ? Number(rawTotal) : null;
-  const recommendation  = scorecard?.recommendation ?? null;
-  const reviewFlag      = scorecard?.review_flag    ?? false;
-  const isSubmitted     = scorecard && !scorecard.is_draft;
-  const competencyScores = scorecard?.competency_scores || {};
+  const rawTotal      = hasDirectScorecard ? scorecard?.weighted_total : packOutcome?.weighted_total;
+  const weightedTotal = rawTotal !== null && rawTotal !== undefined ? Number(rawTotal) : null;
+  const recommendation   = hasDirectScorecard ? (scorecard?.recommendation ?? null) : null;
+  const packRecommendation = usingPackOutcome ? (packOutcome?.recommendation ?? null) : null;
+  const reviewFlag       = hasDirectScorecard ? (scorecard?.review_flag ?? false) : false;
+  const competencyScores = hasDirectScorecard ? (scorecard?.competency_scores || {}) : {};
+  const packScores       = usingPackOutcome ? (packOutcome?.scores || {}) : {};
+  const strengthsText    = hasDirectScorecard ? scorecard?.standout_strengths : packOutcome?.strengths;
+  const concernsText     = hasDirectScorecard ? scorecard?.concerns : packOutcome?.concerns;
 
   const wtColor = weightedTotal === null ? 'text-muted-foreground'
     : weightedTotal >= 5 ? 'text-emerald-700'
@@ -1467,9 +1505,9 @@ function DecideSection({ interviewId, interview, setInterview, setBanner, setErr
   // ── Handlers ──
   const handleSubmitVerdict = () => {
     if (!selectedVerdict) return;
-    if (selectedVerdict === 'advanced')  { setShowAdvanceModal(true); return; }
-    if (selectedVerdict === 'hold')      { setHoldStep('reason');     return; }
-    if (selectedVerdict === 'rejected')  { setRejectStep('reason');   return; }
+    if (selectedVerdict === 'advanced')    { setShowAdvanceModal(true);      return; }
+    if (selectedVerdict === 'reinterview') { setShowReinterviewModal(true);  return; }
+    if (selectedVerdict === 'rejected')    { setRejectStep('reason');        return; }
   };
 
   const handleAdvance = async () => {
@@ -1478,7 +1516,7 @@ function DecideSection({ interviewId, interview, setInterview, setBanner, setErr
       await bulkDecide(interview.job_id, [
         { candidateInterviewId: interviewId, decision: 'advanced' },
       ]);
-      setInterview((prev) => ({ ...prev, decision: 'advanced' }));
+      setInterview((prev) => ({ ...prev, decision: 'advanced', status: 'done' }));
       setBanner({ ok: true, text: 'Candidate advanced.' });
       setShowAdvanceModal(false);
     } catch (err) {
@@ -1486,23 +1524,15 @@ function DecideSection({ interviewId, interview, setInterview, setBanner, setErr
     } finally { setSubmitting(false); }
   };
 
-  const handleHold = async () => {
-    setSubmitting(true); setError(null); setBanner(null);
-    try {
-      await bulkDecide(interview.job_id, [
-        {
-          candidateInterviewId: interviewId,
-          decision:    'hold',
-          reject_note: holdReason || null,
-        },
-      ]);
-      setInterview((prev) => ({ ...prev, decision: 'hold' }));
-      setBanner({ ok: true, text: 'Candidate placed on hold.' });
-      setHoldStep(null);
-      setHoldReason('');
-    } catch (err) {
-      setError(err.response?.data?.message || err.message || 'Failed to hold candidate');
-    } finally { setSubmitting(false); }
+  // "Interview Again" — starts a fresh round instead of recording a
+  // decision. Delegates the actual API call + tab switch to the parent
+  // (same handler the page header used to expose).
+  const handleConfirmReInterview = async () => {
+    // onReInterview switches activeSection to 'schedule' inside itself,
+    // which unmounts this component — touch local state first.
+    setShowReinterviewModal(false);
+    setSelectedVerdict(null);
+    await onReInterview?.();
   };
 
   const handleReject = async () => {
@@ -1516,7 +1546,7 @@ function DecideSection({ interviewId, interview, setInterview, setBanner, setErr
           reject_note:   rejectNote || null,
         },
       ]);
-      setInterview((prev) => ({ ...prev, decision: 'rejected' }));
+      setInterview((prev) => ({ ...prev, decision: 'rejected', status: 'done' }));
       setBanner({ ok: true, text: 'Candidate rejected.' });
       setRejectStep(null);
       setRejectReason('');
@@ -1526,7 +1556,6 @@ function DecideSection({ interviewId, interview, setInterview, setBanner, setErr
     } finally { setSubmitting(false); }
   };
 
-  const closeHoldModal   = () => { setHoldStep(null);   setHoldReason('');   };
   const closeRejectModal = () => { setRejectStep(null);  setRejectReason(''); setRejectNote(''); };
 
   const handleResetDecision = async () => {
@@ -1546,9 +1575,6 @@ function DecideSection({ interviewId, interview, setInterview, setBanner, setErr
     return `${new Date().toISOString()} · ${interview?.candidate_name || 'Candidate'} · REJECT · reason="${reasonLabel}"${rejectNote ? ` · note="${rejectNote}"` : ''}`;
   };
 
-  const buildHoldAuditString = () =>
-    `${new Date().toISOString()} · ${interview?.candidate_name || 'Candidate'} · HOLD${holdReason ? ` · reason="${holdReason}"` : ''}`;
-
   // ── Decided state label ──
   const decidedMeta = {
     advanced: { label: 'This candidate has been advanced.',        color: 'border-emerald-200 bg-emerald-50 text-emerald-700', icon: Check  },
@@ -1564,13 +1590,94 @@ function DecideSection({ interviewId, interview, setInterview, setBanner, setErr
     );
   }
 
+  const roundPicker = rounds.length > 0 && (
+    <Select value={String(selectedRoundNum)} onValueChange={(v) => setSelectedRoundNum(Number(v))}>
+      <SelectTrigger className="h-8 text-xs w-36">
+        <SelectValue />
+      </SelectTrigger>
+      <SelectContent>
+        {rounds.map((r) => (
+          <SelectItem key={r.round_number} value={String(r.round_number)} className="text-xs">
+            Round {r.round_number}{r.round_number === latestRoundNumber ? ' (current)' : ''}
+          </SelectItem>
+        ))}
+      </SelectContent>
+    </Select>
+  );
+
+  // Read-only summary for a past round — decisions only ever apply to the
+  // live/current round, so no verdict UI here.
+  if (!isViewingCurrent) {
+    const pastWeightedTotal = pastRoundOutcome?.weighted_total != null ? Number(pastRoundOutcome.weighted_total) : null;
+    const pastRecLabel = pastRoundOutcome?.source === 'pack' ? PACK_RECOMMENDATION_LABEL[pastRoundOutcome.recommendation] : null;
+    const pastRecColor = pastRoundOutcome?.source === 'pack' ? PACK_RECOMMENDATION_COLOR[pastRoundOutcome.recommendation] : null;
+    return (
+      <div className="space-y-4">
+        <div className="flex items-start justify-between gap-3 flex-wrap">
+          <div>
+            <h2 className="text-sm font-semibold">Decide</h2>
+            <p className="text-[11px] text-muted-foreground">Read-only summary for a past round.</p>
+          </div>
+          {roundPicker}
+        </div>
+
+        <div className="flex items-center gap-2 px-4 py-3 rounded-lg border border-violet-200 bg-violet-50 text-xs text-violet-700">
+          <RefreshCw className="h-4 w-4 shrink-0" />
+          This round moved on via Interview Again — no decision was recorded for it.
+        </div>
+
+        {pastRoundOutcome ? (
+          <Card>
+            <CardHeader className="pb-3"><CardTitle className="text-sm">Scorecard Summary — Round {selectedRoundNum}</CardTitle></CardHeader>
+            <CardContent className="space-y-3">
+              <div className="flex items-center gap-3 flex-wrap">
+                <p className="text-2xl font-bold font-mono">
+                  {pastWeightedTotal !== null ? pastWeightedTotal : '—'}
+                  <span className="text-sm text-muted-foreground font-normal">/7</span>
+                </p>
+                {pastRecLabel && (
+                  <Badge variant="outline" className={`text-[9px] ${pastRecColor || ''}`}>Interviewer: {pastRecLabel}</Badge>
+                )}
+              </div>
+              {(pastRoundOutcome.strengths || pastRoundOutcome.concerns) && (
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-3 pt-2 border-t">
+                  {pastRoundOutcome.strengths && (
+                    <div>
+                      <p className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground mb-1">Strengths</p>
+                      <p className="text-xs">{pastRoundOutcome.strengths}</p>
+                    </div>
+                  )}
+                  {pastRoundOutcome.concerns && (
+                    <div>
+                      <p className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground mb-1">Concerns</p>
+                      <p className="text-xs">{pastRoundOutcome.concerns}</p>
+                    </div>
+                  )}
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        ) : (
+          <Card>
+            <CardContent className="py-10 text-center text-xs text-muted-foreground italic">
+              No scores were recorded for this round.
+            </CardContent>
+          </Card>
+        )}
+      </div>
+    );
+  }
+
   return (
     <div className="space-y-4">
-      <div>
-        <h2 className="text-sm font-semibold">Decide</h2>
-        <p className="text-[11px] text-muted-foreground">
-          Review this candidate's scorecard summary and make a decision.
-        </p>
+      <div className="flex items-start justify-between gap-3 flex-wrap">
+        <div>
+          <h2 className="text-sm font-semibold">Decide</h2>
+          <p className="text-[11px] text-muted-foreground">
+            Review this candidate's scorecard summary and make a decision.
+          </p>
+        </div>
+        {roundPicker}
       </div>
 
       {/* already decided banner — stays visible with undo */}
@@ -1605,18 +1712,20 @@ function DecideSection({ interviewId, interview, setInterview, setBanner, setErr
       {!isSubmitted && !alreadyDecided && (
         <div className="flex items-center gap-2 px-4 py-3 rounded-lg border border-amber-200 bg-amber-50 text-xs text-amber-700">
           <AlertTriangle className="h-4 w-4 shrink-0" />
-          Scorecard hasn't been submitted yet — submit it from the Evaluate tab before deciding.
+          No submitted scorecard yet — complete it from the Evaluate tab, or wait for the interviewer's pack link submission.
         </div>
       )}
 
-      {/* scorecard summary */}
-      {scorecard ? (
+      {/* scorecard summary — from either the direct Evaluate scorecard or a submitted pack outcome */}
+      {(hasDirectScorecard || usingPackOutcome) ? (
         <Card>
           <CardHeader className="pb-3">
             <CardTitle className="text-sm flex items-center gap-2">
               <Star className="h-4 w-4 text-primary" /> Scorecard Summary
               {isSubmitted
-                ? <Badge variant="outline" className="ml-auto text-[9px] border-emerald-300 text-emerald-700 bg-emerald-50">Submitted</Badge>
+                ? <Badge variant="outline" className="ml-auto text-[9px] border-emerald-300 text-emerald-700 bg-emerald-50">
+                    {usingPackOutcome ? 'Submitted via pack link' : 'Submitted'}
+                  </Badge>
                 : <Badge variant="outline" className="ml-auto text-[9px] border-amber-300 text-amber-700 bg-amber-50">Draft</Badge>}
             </CardTitle>
           </CardHeader>
@@ -1646,39 +1755,58 @@ function DecideSection({ interviewId, interview, setInterview, setBanner, setErr
                       {RECOMMENDATION_LABEL[recommendation] || recommendation}
                     </Badge>
                   )}
+                  {packRecommendation && (
+                    <Badge variant="outline" className={`text-[9px] ${PACK_RECOMMENDATION_COLOR[packRecommendation] || 'border-border text-muted-foreground'}`}>
+                      Interviewer: {PACK_RECOMMENDATION_LABEL[packRecommendation] || packRecommendation}
+                    </Badge>
+                  )}
                 </div>
               </div>
             </div>
 
-            {/* per-competency grid */}
-            <div className="grid grid-cols-2 md:grid-cols-3 gap-1.5">
-              {Object.entries(competencyScores).map(([code, score]) => (
-                <div key={code} className={`rounded-md border px-2.5 py-2 flex items-center justify-between gap-2 ${scoreBg(Number(score))}`}>
-                  <div className="min-w-0">
-                    <Badge variant="outline" className="text-[9px] border-blue-200 text-blue-700 font-mono">{code}</Badge>
-                    <p className="text-[10px] truncate mt-0.5">{COMPETENCY_NAMES[code] || code}</p>
+            {/* per-competency grid — HRD codes for direct scorecards */}
+            {hasDirectScorecard && (
+              <div className="grid grid-cols-2 md:grid-cols-3 gap-1.5">
+                {Object.entries(competencyScores).map(([code, score]) => (
+                  <div key={code} className={`rounded-md border px-2.5 py-2 flex items-center justify-between gap-2 ${scoreBg(Number(score))}`}>
+                    <div className="min-w-0">
+                      <Badge variant="outline" className="text-[9px] border-blue-200 text-blue-700 font-mono">{code}</Badge>
+                      <p className="text-[10px] truncate mt-0.5">{COMPETENCY_NAMES[code] || code}</p>
+                    </div>
+                    <span className={`text-sm font-bold font-mono shrink-0 ${scoreColor(Number(score))}`}>{score}</span>
                   </div>
-                  <span className={`text-sm font-bold font-mono shrink-0 ${scoreColor(Number(score))}`}>{score}</span>
-                </div>
-              ))}
-            </div>
+                ))}
+              </div>
+            )}
+
+            {/* per-criterion grid — free-text rubric labels for pack outcomes */}
+            {usingPackOutcome && (
+              <div className="grid grid-cols-2 md:grid-cols-3 gap-1.5">
+                {Object.entries(packScores).map(([label, score]) => (
+                  <div key={label} className={`rounded-md border px-2.5 py-2 flex items-center justify-between gap-2 ${scoreBg(Number(score))}`}>
+                    <p className="text-[10px] truncate mt-0.5 min-w-0">{label}</p>
+                    <span className={`text-sm font-bold font-mono shrink-0 ${scoreColor(Number(score))}`}>{score}</span>
+                  </div>
+                ))}
+              </div>
+            )}
 
             {/* strengths & concerns */}
-            {(scorecard.standout_strengths || scorecard.concerns) && (
+            {(strengthsText || concernsText) && (
               <div className="grid grid-cols-1 md:grid-cols-2 gap-3 pt-2 border-t">
-                {scorecard.standout_strengths && (
+                {strengthsText && (
                   <div>
                     <p className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground mb-1">Strengths</p>
                     <p className="text-xs text-emerald-700 bg-emerald-50 border border-emerald-200 rounded-md px-2.5 py-2">
-                      {scorecard.standout_strengths}
+                      {strengthsText}
                     </p>
                   </div>
                 )}
-                {scorecard.concerns && (
+                {concernsText && (
                   <div>
                     <p className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground mb-1">Concerns</p>
                     <p className="text-xs text-rose-700 bg-rose-50 border border-rose-200 rounded-md px-2.5 py-2">
-                      {scorecard.concerns}
+                      {concernsText}
                     </p>
                   </div>
                 )}
@@ -1694,7 +1822,7 @@ function DecideSection({ interviewId, interview, setInterview, setBanner, setErr
             </div>
             <p className="text-sm font-semibold">No scorecard yet</p>
             <p className="text-xs text-muted-foreground max-w-xs mx-auto">
-              Complete the Evaluate tab first, then come back to decide.
+              Complete the Evaluate tab, or wait for the interviewer's pack link submission.
             </p>
           </CardContent>
         </Card>
@@ -1785,101 +1913,24 @@ function DecideSection({ interviewId, interview, setInterview, setBanner, setErr
         </DialogContent>
       </Dialog>
 
-      {/* ── Hold modal step 1: reason ── */}
-      <Dialog open={holdStep === 'reason'} onOpenChange={(open) => { if (!open) closeHoldModal(); }}>
+      {/* ── Interview Again confirmation modal ── */}
+      <Dialog open={showReinterviewModal} onOpenChange={setShowReinterviewModal}>
         <DialogContent className="max-w-md">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
-              <Clock className="h-5 w-5 text-amber-500" /> Hold Candidate
+              <RefreshCw className="h-5 w-5 text-violet-600" /> Interview Again
             </DialogTitle>
             <DialogDescription>
-              <span className="font-semibold">{interview?.candidate_name}</span> will be kept in the interview pool for further review.
+              Starts Round {latestRoundNumber + 1} for <span className="font-semibold">{interview?.candidate_name}</span> — Round {latestRoundNumber}'s schedule and scorecard stay saved and viewable from the round dropdown.
             </DialogDescription>
           </DialogHeader>
 
-          {/* step indicator */}
-          <div className="flex items-center gap-1.5 text-[10px] font-semibold">
-            <span className="h-5 w-5 rounded-full bg-primary text-primary-foreground flex items-center justify-center text-[9px]">1</span>
-            <span className="text-primary">Hold reason</span>
-            <ChevronRight className="h-3 w-3 text-muted-foreground" />
-            <span className="h-5 w-5 rounded-full bg-muted text-muted-foreground flex items-center justify-center text-[9px]">2</span>
-            <span className="text-muted-foreground">Confirmation</span>
-          </div>
-
-          <div className="space-y-3">
-            <p className="text-xs text-muted-foreground">
-              Optionally add a reason for the hold — visible to recruiters only.
-            </p>
-            <Textarea
-              value={holdReason}
-              onChange={(e) => setHoldReason(e.target.value)}
-              placeholder="e.g. Waiting for another candidate to complete assessment…"
-              rows={3}
-              className="text-xs"
-            />
-          </div>
-
           <DialogFooter>
-            <Button variant="outline" size="sm" onClick={closeHoldModal}>Cancel</Button>
-            <Button size="sm" onClick={() => setHoldStep('confirm')}>
-              Continue <ChevronRight className="h-3.5 w-3.5 ml-1" />
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-
-      {/* ── Hold modal step 2: confirmation ── */}
-      <Dialog open={holdStep === 'confirm'} onOpenChange={(open) => { if (!open) closeHoldModal(); }}>
-        <DialogContent className="max-w-md">
-          <DialogHeader>
-            <DialogTitle className="flex items-center gap-2">
-              <Clock className="h-5 w-5 text-amber-500" /> Hold Candidate
-            </DialogTitle>
-          </DialogHeader>
-
-          {/* step indicator */}
-          <div className="flex items-center gap-1.5 text-[10px] font-semibold">
-            <span className="h-5 w-5 rounded-full bg-emerald-500 text-white flex items-center justify-center text-[9px]">
-              <Check className="h-2.5 w-2.5" />
-            </span>
-            <span className="text-muted-foreground">Hold reason</span>
-            <ChevronRight className="h-3 w-3 text-muted-foreground" />
-            <span className="h-5 w-5 rounded-full bg-primary text-primary-foreground flex items-center justify-center text-[9px]">2</span>
-            <span className="text-primary">Confirmation</span>
-          </div>
-
-          <p className="text-xs text-muted-foreground">Review — confirming commits the audit entry.</p>
-
-          <div className="rounded-lg border divide-y text-xs">
-            <div className="flex items-center justify-between px-3 py-2.5 gap-3">
-              <span className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">Candidate</span>
-              <span className="font-medium">{interview?.candidate_name}</span>
-            </div>
-            <div className="flex items-center justify-between px-3 py-2.5 gap-3">
-              <span className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">Decision</span>
-              <Badge variant="outline" className="text-[9px] border-amber-300 text-amber-700 bg-amber-50">Hold</Badge>
-            </div>
-            {holdReason && (
-              <div className="flex items-start justify-between px-3 py-2.5 gap-3">
-                <span className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground shrink-0">Reason</span>
-                <span className="text-right text-muted-foreground italic">{holdReason}</span>
-              </div>
-            )}
-          </div>
-
-          <div className="space-y-1.5">
-            <p className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">Audit log entry</p>
-            <div className="rounded-md bg-muted/40 border px-3 py-2 font-mono text-[10px] text-muted-foreground break-all">
-              {buildHoldAuditString()}
-            </div>
-          </div>
-
-          <DialogFooter>
-            <Button variant="outline" size="sm" onClick={() => setHoldStep('reason')} disabled={submitting}>← Back</Button>
-            <Button size="sm" className="bg-amber-500 hover:bg-amber-600 text-white" onClick={handleHold} disabled={submitting}>
-              {submitting
-                ? <><Loader2 className="h-3.5 w-3.5 mr-1.5 animate-spin" /> Saving…</>
-                : <><Check className="h-3.5 w-3.5 mr-1.5" /> Confirm Hold</>}
+            <Button variant="outline" size="sm" onClick={() => setShowReinterviewModal(false)} disabled={reInterviewing}>Cancel</Button>
+            <Button size="sm" className="bg-violet-600 hover:bg-violet-700" onClick={handleConfirmReInterview} disabled={reInterviewing}>
+              {reInterviewing
+                ? <><Loader2 className="h-3.5 w-3.5 mr-1.5 animate-spin" /> Starting…</>
+                : <><RefreshCw className="h-3.5 w-3.5 mr-1.5" /> Start New Round</>}
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -2042,11 +2093,14 @@ function StepsNav({ activeSection, onStep, status, interview }) {
   const isScheduled  = ['scheduled', 'ongoing', 'result', 'done'].includes(status);
   const hasConducted = ['result', 'done'].includes(status);
   const hasDecided   = interview?.decision && interview.decision !== 'pending';
+  // Same round-history carve-out as the top nav — Round 1's Result/Decide
+  // stay reachable after "Interview Again" resets the current round.
+  const hasRoundHistory = (interview?.round || 1) > 1;
 
   const stepState = (key) => {
     if (key === 'schedule') return hasConducted ? 'done'  : isScheduled   ? 'active' : 'active';
-    if (key === 'result')   return hasDecided   ? 'done'  : hasConducted  ? 'active' : isScheduled ? 'active' : 'pending';
-    if (key === 'decide')   return hasDecided   ? 'done'  : hasConducted  ? 'active' : 'pending';
+    if (key === 'result')   return hasDecided   ? 'done'  : (hasConducted || hasRoundHistory) ? 'active' : isScheduled ? 'active' : 'pending';
+    if (key === 'decide')   return hasDecided   ? 'done'  : (hasConducted || hasRoundHistory) ? 'active' : 'pending';
     return 'soon';
   };
 
@@ -2106,22 +2160,32 @@ function StepsNav({ activeSection, onStep, status, interview }) {
 // ── Result Section ────────────────────────────────────────────────────────────
 
 function ResultSection({ interview, prep, interviewId }) {
-  const [outcome, setOutcome]     = useState(undefined); // undefined = loading
-  const [loading, setLoading]     = useState(true);
+  const [rounds, setRounds]                 = useState([]); // [{ round_number, round_status, outcome }]
+  const [selectedRound, setSelectedRound]   = useState(null);
+  const [loading, setLoading]               = useState(true);
 
   useEffect(() => {
     if (!interviewId) return;
     setLoading(true);
-    getPackOutcome(interviewId)
-      .then((res) => setOutcome(res.data?.outcome || null))
-      .catch(() => setOutcome(null))
+    getInterviewRounds(interviewId)
+      .then((res) => {
+        const list = res.data?.rounds || [];
+        setRounds(list);
+        // default to the latest round
+        setSelectedRound(list.length > 0 ? list[list.length - 1].round_number : null);
+      })
+      .catch(() => setRounds([]))
       .finally(() => setLoading(false));
   }, [interviewId]);
+
+  const current = rounds.find((r) => r.round_number === selectedRound);
+  const outcome = current?.outcome || null;
 
   const rubricItems = prep?.rubric_items || [];
   const scores      = outcome?.scores || {};
   const rec         = outcome?.recommendation;
-  const recMeta     = RECOMMENDATION_OPTIONS.find((r) => r.value === rec);
+  const recLabel    = PACK_RECOMMENDATION_LABEL[rec];
+  const recColor    = PACK_RECOMMENDATION_COLOR[rec];
 
   if (loading) {
     return (
@@ -2131,31 +2195,53 @@ function ResultSection({ interview, prep, interviewId }) {
     );
   }
 
-  // No outcome yet — show state based on interview status
+  const roundPicker = rounds.length > 0 && (
+    <Select value={String(selectedRound)} onValueChange={(v) => setSelectedRound(Number(v))}>
+      <SelectTrigger className="h-8 text-xs w-36">
+        <SelectValue />
+      </SelectTrigger>
+      <SelectContent>
+        {rounds.map((r) => (
+          <SelectItem key={r.round_number} value={String(r.round_number)} className="text-xs">
+            Round {r.round_number}{r.round_number === rounds[rounds.length - 1].round_number ? ' (current)' : ''}
+          </SelectItem>
+        ))}
+      </SelectContent>
+    </Select>
+  );
+
+  // No outcome yet for the selected round — show state based on interview status
   if (!outcome) {
     const status = interview?.status;
     const isInPack = ['scheduled', 'ongoing'].includes(status);
+    const isPastRound = selectedRound !== rounds[rounds.length - 1]?.round_number;
     return (
-      <Card>
-        <CardContent className="py-14 text-center space-y-2">
-          <div className="h-10 w-10 rounded-full bg-muted flex items-center justify-center mx-auto">
-            <Clock className="h-5 w-5 text-muted-foreground" />
-          </div>
-          <p className="text-sm font-semibold">
-            {isInPack ? 'Waiting for interviewer' : 'No scores yet'}
-          </p>
-          <p className="text-xs text-muted-foreground max-w-xs mx-auto">
-            {isInPack
-              ? 'The interviewer has been sent a pack link. Scores will appear here once they submit.'
-              : 'Create an interview pack link from the position setup → Interview Link tab and send it to the interviewer.'}
-          </p>
-        </CardContent>
-      </Card>
+      <div className="space-y-3">
+        {roundPicker && <div className="flex justify-end">{roundPicker}</div>}
+        <Card>
+          <CardContent className="py-14 text-center space-y-2">
+            <div className="h-10 w-10 rounded-full bg-muted flex items-center justify-center mx-auto">
+              <Clock className="h-5 w-5 text-muted-foreground" />
+            </div>
+            <p className="text-sm font-semibold">
+              {isPastRound ? 'No scores were recorded for this round' : isInPack ? 'Waiting for interviewer' : 'No scores yet'}
+            </p>
+            <p className="text-xs text-muted-foreground max-w-xs mx-auto">
+              {isPastRound
+                ? 'This round moved on without a pack link submission.'
+                : isInPack
+                  ? 'The interviewer has been sent a pack link. Scores will appear here once they submit.'
+                  : 'Create an interview pack link from the position setup → Interview Link tab and send it to the interviewer.'}
+            </p>
+          </CardContent>
+        </Card>
+      </div>
     );
   }
 
   return (
     <div className="space-y-4">
+      {roundPicker && <div className="flex justify-end">{roundPicker}</div>}
       {/* Submitted by banner */}
       <div className="flex items-center gap-3 px-4 py-3 rounded-lg border border-emerald-200 bg-emerald-50 text-sm text-emerald-700">
         <CheckCircle2 className="h-4 w-4 shrink-0" />
@@ -2228,12 +2314,12 @@ function ResultSection({ interview, prep, interviewId }) {
       )}
 
       {/* Recommendation */}
-      {rec && recMeta && (
+      {rec && recLabel && (
         <Card>
-          <CardHeader className="pb-3"><CardTitle className="text-sm">Recommendation</CardTitle></CardHeader>
+          <CardHeader className="pb-3"><CardTitle className="text-sm">Interviewer Recommendation</CardTitle></CardHeader>
           <CardContent>
-            <div className={`inline-flex items-center gap-2 px-4 py-2 rounded-lg border text-sm font-semibold ${recMeta.color}`}>
-              <recMeta.icon className="h-4 w-4" /> {recMeta.label}
+            <div className={`inline-flex items-center gap-2 px-4 py-2 rounded-lg border text-sm font-semibold ${recColor || 'border-border text-muted-foreground'}`}>
+              {recLabel}
             </div>
           </CardContent>
         </Card>

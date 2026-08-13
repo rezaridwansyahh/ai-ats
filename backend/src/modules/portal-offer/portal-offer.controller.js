@@ -50,10 +50,44 @@ class PortalOfferController {
     }
   }
 
-  async sign(req, res) {
+  async downloadDocument(req, res) {
     try {
-      const result = await PortalOfferService.sign(req.params.token, req.offerSendId);
-      res.status(200).json({ message: 'Offer signed', ...result });
+      const format = typeof req.query.format === 'string' ? req.query.format.toLowerCase() : null;
+      const info = await PortalOfferService.getDownloadInfo(req.params.token, req.offerSendId, format);
+
+      res.set('Access-Control-Expose-Headers', 'Content-Disposition');
+
+      if (info.kind === 'buffer') {
+        res.setHeader('Content-Type', info.contentType);
+        res.setHeader('Content-Disposition', `attachment; filename="${info.fileName}"`);
+        return res.send(info.buffer);
+      }
+
+      res.download(info.filePath, info.fileName, (err) => {
+        if (err && !res.headersSent) {
+          console.error('Error in downloadDocument (res.download):', err);
+          res.status(500).json({ message: 'Failed to download the offer letter.' });
+        }
+      });
+    } catch (err) {
+      console.error('Error in downloadDocument:', err);
+      res.status(err.status || 500).json({ message: err.message });
+    }
+  }
+
+  async upload(req, res) {
+    try {
+      const result = await PortalOfferService.uploadCandidateFile(req.params.token, req.offerSendId, req.file);
+      res.status(200).json({ message: 'File uploaded', ...result });
+    } catch (err) {
+      res.status(err.status || 500).json({ message: err.message });
+    }
+  }
+
+  async submit(req, res) {
+    try {
+      const result = await PortalOfferService.submit(req.params.token, req.offerSendId);
+      res.status(200).json({ message: 'Offer submitted successfully', ...result });
     } catch (err) {
       res.status(err.status || 500).json({ message: err.message });
     }

@@ -94,6 +94,18 @@ class InterviewController {
     }
   }
 
+  async getRounds(req, res) {
+    try {
+      const interview_id = Number(req.params.interview_id);
+      const rounds = await interviewService.getRounds(interview_id, {
+        company_id: req.user?.company_id || null,
+      });
+      res.status(200).json({ message: 'Rounds fetched', rounds });
+    } catch (err) {
+      res.status(err.status || 500).json({ message: err.message });
+    }
+  }
+
   async updateStatus(req, res) {
     try {
       const interview_id = Number(req.params.interview_id);

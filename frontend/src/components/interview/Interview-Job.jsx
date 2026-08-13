@@ -998,6 +998,9 @@ function LinkSection({ jobId, waitingCandidates = [], setBanner, setError }) {
                     <p className="text-xs text-muted-foreground mt-1">
                       Interviewer: {pack.interviewer_name} · {pack.candidate_count} candidate{pack.candidate_count !== 1 ? 's' : ''}
                       {pack.scored_count > 0 && ` · ${pack.scored_count} scored`}
+                      {Array.isArray(pack.round_numbers) && pack.round_numbers.length > 0 && (
+                        <> · Round{pack.round_numbers.length > 1 ? 's' : ''} {pack.round_numbers.slice().sort((a, b) => a - b).join(', ')}</>
+                      )}
                     </p>
                     <p className="text-[10px] text-muted-foreground mt-0.5 font-mono truncate">
                       {window.location.origin}/interview/{pack.token}

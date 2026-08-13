@@ -782,6 +782,9 @@ CREATE TABLE offer_send (
   revoked_at TIMESTAMPTZ,
   revoked_by INTEGER REFERENCES master_users(id) ON DELETE SET NULL,
   revocation_reason TEXT,
+  candidate_file VARCHAR(255),
+  candidate_uploaded_at TIMESTAMPTZ,
+  submitted_at TIMESTAMPTZ,
   status VARCHAR(20) NOT NULL DEFAULT 'draft',
   created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
   updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
@@ -1132,6 +1135,7 @@ CREATE TABLE interview_pack_candidate (
   id              SERIAL PRIMARY KEY,
   pack_id         INTEGER NOT NULL REFERENCES interview_pack(id) ON DELETE CASCADE,
   applicant_id    INTEGER NOT NULL REFERENCES master_applicant(id) ON DELETE CASCADE,
+  round_id        INTEGER REFERENCES interview_round(id),  -- which interview round this pack entry belongs to
   sort_order      INTEGER NOT NULL DEFAULT 0,
   interview_date  DATE,
   interview_time  TIME,
@@ -1139,6 +1143,7 @@ CREATE TABLE interview_pack_candidate (
   UNIQUE(pack_id, applicant_id)
 );
 CREATE INDEX idx_ipc_pack ON interview_pack_candidate(pack_id, sort_order);
+CREATE INDEX idx_ipc_round ON interview_pack_candidate(round_id);
 
 CREATE TABLE interview_pack_outcome (
   id               SERIAL PRIMARY KEY,

@@ -98,3 +98,43 @@ export async function sendAssessmentInvitationEmail({
 
   await sendMail(candidateEmail, subject, html);
 }
+
+export async function sendOfferEmail({
+  candidateName,
+  candidateEmail,
+  jobTitle,
+  link,
+  customSubject = null,
+  customBody = null,
+}) {
+  if (!candidateEmail) {
+    console.warn(`[candidate-mailer] Skipping no email for candidate ${candidateName}`);
+    return;
+  }
+
+  const subject = customSubject || `Your Offer Letter — ${jobTitle}`;
+
+  let html;
+  if (customBody) {
+    const bodyWithFallback = customBody.includes('{{LINK}}')
+      ? customBody
+      : `${customBody}\n\n${link}`;
+    const bodyWithLink = bodyWithFallback.replace(/\{\{LINK\}\}/g, `<a href="${link}" target="_blank">${link}</a>`);
+    html = `<div style="font-family:Arial,sans-serif;color:#1a1a1f;line-height:1.6;white-space:pre-wrap;">${bodyWithLink}</div>`;
+  } else {
+    html = `
+  <div style="font-family:Arial,sans-serif;color:#1a1a1f;line-height:1.6;">
+    <p>Hi ${candidateName},</p>
+    <p>Congratulations! Please review your offer letter for the <strong>${jobTitle}</strong> position.</p>
+    <p>You can download your offer letter, sign it, and submit your signed copy via the link below:</p>
+    <p>
+      <a href="${link}" target="_blank">${link}</a>
+    </p>
+    <p style="color:#6B6660;font-size:13px;">This link is personal — kindly do not share it with others.</p>
+    <p>Thank you,<br/>The Recruitment Team</p>
+  </div>
+  `;
+  }
+
+  await sendMail(candidateEmail, subject, html);
+}
