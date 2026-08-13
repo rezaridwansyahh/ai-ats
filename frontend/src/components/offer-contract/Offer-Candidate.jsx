@@ -183,8 +183,9 @@ const DEFAULT_ROWS = [
 ];
 
 function IntakeSection({ offer, offerId, setOffer, setBanner, setError, onAdvance }) {
-  const [slipGaji, setSlipGaji] = useState(null);
-  const [loading, setLoading]   = useState(true);
+  const initialSlipGaji = offer.metadata?.intake?.slip_gaji || { status: 'not_recorded' };
+
+  const [slipGaji, setSlipGaji] = useState(initialSlipGaji);
   const [saving, setSaving]     = useState(false);
   const [editing, setEditing]   = useState(false);
   const [lineItems, setLineItems] = useState(DEFAULT_ROWS.map((r) => ({ ...r })));
@@ -192,20 +193,6 @@ function IntakeSection({ offer, offerId, setOffer, setBanner, setError, onAdvanc
   const [skipReason, setSkipReason] = useState('');
   const [reviewNote, setReviewNote] = useState('');
   const [showSkip, setShowSkip] = useState(false);
-
-  const load = useCallback(async () => {
-    setLoading(true);
-    try {
-      const res = await getSlipGaji(offerId);
-      setSlipGaji(res.data || { status: 'not_recorded' });
-    } catch (err) {
-      setError(err.response?.data?.message || err.message || 'Failed to load slip gaji');
-    } finally {
-      setLoading(false);
-    }
-  }, [offerId, setError]);
-
-  useEffect(() => { load(); }, [load]);
 
   const addRow = () => setLineItems((prev) => [...prev, { label: '', amount: '' }]);
   const removeRow = (i) => setLineItems((prev) => prev.filter((_, idx) => idx !== i));
@@ -238,11 +225,16 @@ function IntakeSection({ offer, offerId, setOffer, setBanner, setError, onAdvanc
     setError(null);
     try {
       const res = await recordSlipGaji(offerId, cleaned, expectedSalary ? Number(expectedSalary) : null);
-      setSlipGaji(res.data?.slip_gaji);
-      setOffer((prev) => ({
-        ...prev,
-        metadata: { ...(prev.metadata || {}), intake: { ...(prev.metadata?.intake || {}), slip_gaji: res.data?.slip_gaji } },
-      }));
+      const updated = res.data?.slip_gaji;
+      setSlipGaji(updated);
+      setOffer((prev) => {
+        const next = {
+          ...prev,
+          metadata: { ...(prev.metadata || {}), intake: { ...(prev.metadata?.intake || {}), slip_gaji: updated } },
+        };
+        console.log('[IntakeSection] offer after save:', next.metadata.intake.slip_gaji);
+        return next;
+      });
       setEditing(false);
       setReviewNote('');
       setBanner({ ok: true, text: editing ? 'Slip gaji updated.' : 'Slip gaji saved.' });
@@ -289,14 +281,6 @@ function IntakeSection({ offer, offerId, setOffer, setBanner, setError, onAdvanc
       setSaving(false);
     }
   };
-
-  if (loading) {
-    return (
-      <div className="flex justify-center py-12">
-        <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
-      </div>
-    );
-  }
 
   const status = slipGaji?.status || 'not_recorded';
   const showForm = status === 'not_recorded' || editing;
@@ -588,7 +572,18 @@ function BuildSection({ offer, setOffer, setBanner, setError, onAdvance }) {
         allowances: toObject(allowances),
         bonus_structure: toObject(bonuses),
       });
-      setOffer((prev) => ({ ...prev, ...res.data.compensation }));
+      const comp = res.data.compensation;
+      setOffer((prev) => ({
+        ...prev,
+        base_salary: comp.base_salary,
+        allowances: comp.allowances,
+        bonus_structure: comp.bonus_structure,
+        gross_salary: comp.gross_salary,
+        pph21: comp.pph21,
+        bpjs_kesehatan: comp.bpjs_kesehatan,
+        bpjs_ketenagakerjaan: comp.bpjs_ketenagakerjaan,
+        net_salary: comp.net_salary,
+      }));
       setBanner({ ok: true, text: 'Compensation saved.' });
     } catch (err) {
       setError(err.response?.data?.message || err.message || 'Failed to update compensation');
@@ -2212,12 +2207,17 @@ export default function OfferCandidatePage() {
   const { offerId: param } = useParams();
   const offerId            = param ? Number(param) : null;
 
-  const [offer, setOffer]     = useState(null);
+  const [offer, _setOffer] = useState(null);
   const [approval, setApproval] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError]     = useState(null);
   const [banner, setBanner]   = useState(null);
   const [activeSection, setActiveSection] = useState('intake');
+  const setOffer = useCallback((...args) => {
+    _setOffer(...args);
+  }, []);
+
+  useEffect(() => {}, [offer]);
 
   const load = useCallback(async () => {
     if (!offerId) return;
@@ -2237,7 +2237,12 @@ export default function OfferCandidatePage() {
     }
   }, [offerId]);
 
-  useEffect(() => { load(); }, [load]);
+  const hasLoadedRef = useRef(false);
+  useEffect(() => {
+    if (hasLoadedRef.current) return; 
+    hasLoadedRef.current = true;
+    load();
+  }, [load]);
 
   if (loading) {
     return (

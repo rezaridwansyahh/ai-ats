@@ -16,7 +16,7 @@ export default [
     expired_at: null,
     created_by: 1,
   },
- 
+
   {
     id: 2,
     company_id: 1,
@@ -33,7 +33,7 @@ export default [
     expired_at: null,
     created_by: 1,
   },
- 
+
   // ── Job 2 — Backend Engineer ──────────────────────────────────────────────
   {
     id: 3,
@@ -51,7 +51,7 @@ export default [
     expired_at: null,
     created_by: 1,
   },
- 
+
   {
     id: 4,
     company_id: 1,
@@ -68,8 +68,8 @@ export default [
     expired_at: null,
     created_by: 1,
   },
- 
-  // ── Job 3 — Product Designer ──────────────────────────────────────────────
+
+  // ── Job 3 — Product Designer ────────────────────────────────────────────────
   {
     id: 5,
     company_id: 1,
@@ -86,5 +86,39 @@ export default [
     expired_at: null,
     created_by: 1,
   },
+
+
+  {
+    id: 6,
+    company_id: 1,
+    candidate_id: 12,
+    job_id: 2,
+    position_title: 'Backend Engineer',
+    contract_type: 'PKWT',
+    offer_status: 'draft',
+    contract_status: null,
+    metadata: {},
+    sent_at: null,
+    accepted_at: null,
+    rejected_at: null,
+    expired_at: null,
+    created_by: 1,
+  },
+
+  {
+    id: 7,
+    company_id: 1,
+    candidate_id: 13,
+    job_id: 2,
+    position_title: 'Backend Engineer',
+    contract_type: 'PKWT',
+    offer_status: 'draft',
+    contract_status: null,
+    metadata: {},
+    sent_at: null,
+    accepted_at: null,
+    rejected_at: null,
+    expired_at: null,
+    created_by: 1,
+  },
 ];
- 

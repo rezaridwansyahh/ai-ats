@@ -408,7 +408,7 @@ class OfferService {
     const metadata = await OfferModel.mergeMetadata(offer_id, { approval });
     return { approval: metadata.approval, message: `Step ${decision}` };
   }
-
+  
   async sendOffer(offer_id, company_id, user_id, emailOverride = {}) {
     const offer = await OfferModel.getOfferById(offer_id, company_id);
     if (!offer) throw { status: 404, message: 'Offer not found' };
@@ -427,7 +427,6 @@ class OfferService {
       throw { status: 400, message: 'Candidate has no email on file — cannot send' };
     }
 
-    // Invalidate any still-active previous link (no-op on first send).
     await OfferModel.revokeActiveOfferSends(offer_id, user_id, 'Superseded by a new send');
 
     const expiryDays = offer.metadata?.dispatch?.portal_expiry_days || 7;
@@ -439,7 +438,9 @@ class OfferService {
       sent_by: user_id,
     });
 
-    const link = `${process.env.FRONTEND_URL}/offer/send/${send.token}`;
+    const baseUrl = process.env.FRONTEND_URL || 'http://localhost:5173';
+    const link = `${baseUrl}/offer/send/${send.token}`;
+
     await sendOfferEmail({
       candidateName: offer.candidate_name,
       candidateEmail: offer.candidate_email,
