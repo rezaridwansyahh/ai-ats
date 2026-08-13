@@ -56,6 +56,12 @@ import offerPack from "./src/modules/offer-pack/offer-pack.route.js";
 
 app.use(express.json());
 
+app.set('etag', false);
+app.use((req, res, next) => {
+  res.set('Cache-Control', 'no-store');
+  next();
+});
+
 const allowedOrigins = process.env.CORS_ORIGIN
   ? process.env.CORS_ORIGIN.split(',').map(o => o.trim())
   : null; // null = allow all in dev (no credentials restriction)

@@ -236,7 +236,7 @@ class OfferModel {
       UPDATE candidate_offer
       SET
         offer_status = $2,
-        metadata = metadata || $3::jsonb,
+        metadata = COALESCE(metadata, '{}'::jsonb) || $3::jsonb,
         updated_at = NOW()
       WHERE id = $1
     `;
@@ -332,7 +332,7 @@ class OfferModel {
   async mergeMetadata(offer_id, metadata) {
     const query = `
       UPDATE candidate_offer
-      SET metadata = metadata || $2::jsonb, updated_at = NOW()
+      SET metadata = COALESCE(metadata, '{}'::jsonb) || $2::jsonb, updated_at = NOW()
       WHERE id = $1
       RETURNING metadata
     `;
@@ -340,9 +340,6 @@ class OfferModel {
     return result.rows[0]?.metadata;
   }
 
-  // ── Negotiation ──────────────────────────────────────────────────────────
-  // NOTE: was called by offer.service.js (respondToNegotiation) but never
-  // existed on this model — added to fix the crash.
   async getNegotiationHistory(offer_id) {
     const result = await getDb().query(
       `SELECT * FROM offer_negotiation WHERE offer_id = $1 ORDER BY created_at DESC`,
@@ -370,7 +367,6 @@ class OfferModel {
     return result.rows[0];
   }
 
-  // ── Offer Send (portal link lifecycle) ──────────────────────────────────
   async createOfferSend(data) {
     const query = `
       INSERT INTO offer_send (
