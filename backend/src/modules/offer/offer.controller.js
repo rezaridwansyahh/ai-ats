@@ -426,6 +426,24 @@ class OfferController {
     }
   }
 
+  async downloadCandidateFile(req, res) {
+    try {
+      const { offer_id } = req.params;
+      const { company_id } = req.user;
+      const { filePath, fileName } = await OfferService.downloadCandidateFile(offer_id, company_id);
+
+      res.download(filePath, fileName, (err) => {
+        if (err && !res.headersSent) {
+          console.error('Error in downloadCandidateFile (res.download):', err);
+          res.status(500).json({ message: 'Failed to download the candidate file.' });
+        }
+      });
+    } catch (error) {
+      console.error('Error in downloadCandidateFile:', error);
+      res.status(error.status || 500).json({ message: error.message });
+    }
+  }
+
   // async markOfferPrinted(req, res) {
   //   try {
   //     const { offer_id } = req.params;

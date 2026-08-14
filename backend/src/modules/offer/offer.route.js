@@ -168,6 +168,9 @@ router.put('/:offer_id/offer-letter/final', authToken, checkPermission('Offer & 
 router.get('/:offer_id/document', authToken, checkPermission('Offer & Onboard', 'Offer & Contract', 'read'), OfferController.getOfferDocument);
 
 router.post('/:offer_id/document/upload', authToken, checkPermission('Offer & Onboard', 'Offer & Contract', 'update'), upload.single('file'), OfferController.uploadDocument);
+
+router.get( '/:offer_id/candidate-file/download', authToken, checkPermission('Offer & Onboard', 'Offer & Contract', 'read'), OfferController.downloadCandidateFile);
+
 // router.post( '/:offer_id/document/print', authToken, checkPermission('Offer & Onboard', 'Offer & Contract', 'update'), OfferController.markOfferPrinted);
 
 export default router;

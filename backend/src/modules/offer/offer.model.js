@@ -453,6 +453,18 @@ class OfferModel {
     return result.rows[0] || null;
   }
 
+  static async getLatestOfferSend(offer_id) {
+    const result = await getDb().query(`
+      SELECT *
+      FROM offer_send
+      WHERE offer_id = $1
+      ORDER BY created_at DESC
+      LIMIT 1
+    `, [offer_id]);
+    return result.rows[0] || null;
+  }
+
+
 }
 
 export default new OfferModel();

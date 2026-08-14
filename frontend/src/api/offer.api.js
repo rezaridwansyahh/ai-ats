@@ -85,3 +85,5 @@ export const downloadOfferLetterPdf = (offerId) => api.get(`/offer/${offerId}/of
 export const getOfferDocument = (offerId) => api.get(`/offer/${offerId}/document`);
 
 export const uploadOfferDocument = (offerId, formData) => api.post(`/offer/${offerId}/document/upload`, formData, {  headers: { 'Content-Type': 'multipart/form-data' }, });
+
+export const downloadCandidateFile = (offerId) => api.get(`/offer/${offerId}/candidate-file/download`, { responseType: 'blob' });

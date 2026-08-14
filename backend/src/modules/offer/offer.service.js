@@ -646,6 +646,23 @@ class OfferService {
     return OfferModel.getOfferDocument(offer_id);
   }
 
+  async downloadCandidateFile(offer_id, company_id) {
+    const offer = await OfferModel.getOfferById(offer_id, company_id);
+    if (!offer) throw { status: 404, message: 'Offer not found' };
+
+    const history = await OfferModel.getOfferSendHistory(offer_id);
+    const latest = history[0];
+
+    if (!latest?.candidate_file) {
+      throw { status: 404, message: 'No candidate file has been submitted for this offer yet' };
+    }
+
+    return {
+      filePath: latest.candidate_file,
+      fileName: `signed_offer_${offer.candidate_name || 'candidate'}_${offer_id}${path.extname(latest.candidate_file)}`,
+    };
+  }
+
 }
 
 export default new OfferService();

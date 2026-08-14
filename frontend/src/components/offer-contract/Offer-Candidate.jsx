@@ -27,6 +27,7 @@ import {
   generateOfferLetterPreview, getOfferLetterFinal, saveOfferLetterFinal,
   downloadOfferLetterDocx, downloadOfferLetterPdf,
   getOfferDocument, uploadOfferDocument,
+  downloadCandidateFile,
 } from '@/api/offer.api';
 import {
   getApprovalStatus, decideApproval, generateApprovalViewLink,
@@ -76,7 +77,14 @@ function fmtDate(d) {
   } catch { return '—'; }
 }
 
-function downloadBlob(blobResponse, filename) {
+function downloadBlob(blobResponse, fallbackFilename) {
+  let filename = fallbackFilename;
+  const disposition = blobResponse.headers?.['content-disposition'];
+  if (disposition) {
+    const match = disposition.match(/filename="?([^"]+)"?/);
+    if (match?.[1]) filename = match[1];
+  }
+
   const url = window.URL.createObjectURL(new Blob([blobResponse.data]));
   const a = document.createElement('a');
   a.href = url;
@@ -172,8 +180,6 @@ function CandidateCard({ offer, approval }) {
   );
 }
 
-/* Intake Section — slip gaji, manual line-item entry, editable after saving */
-
 const DEFAULT_ROWS = [
   { label: 'Gaji Pokok', amount: '' },
   { label: 'Transport', amount: '' },
@@ -227,14 +233,10 @@ function IntakeSection({ offer, offerId, setOffer, setBanner, setError, onAdvanc
       const res = await recordSlipGaji(offerId, cleaned, expectedSalary ? Number(expectedSalary) : null);
       const updated = res.data?.slip_gaji;
       setSlipGaji(updated);
-      setOffer((prev) => {
-        const next = {
-          ...prev,
-          metadata: { ...(prev.metadata || {}), intake: { ...(prev.metadata?.intake || {}), slip_gaji: updated } },
-        };
-        console.log('[IntakeSection] offer after save:', next.metadata.intake.slip_gaji);
-        return next;
-      });
+      setOffer((prev) => ({
+        ...prev,
+        metadata: { ...(prev.metadata || {}), intake: { ...(prev.metadata?.intake || {}), slip_gaji: updated } },
+      }));
       setEditing(false);
       setReviewNote('');
       setBanner({ ok: true, text: editing ? 'Slip gaji updated.' : 'Slip gaji saved.' });
@@ -1014,7 +1016,6 @@ function ApproveSection({ offer, offerId, approval, setApproval, setBanner, setE
             </div>
           )}
 
-          {/* Decision history — sits below the decide controls */}
           <DecisionHistoryList history={history} />
 
         </CardContent>
@@ -1458,15 +1459,13 @@ function ReviewSection({ offer, offerId, approval, setApproval, setOffer, setBan
   );
 }
 
-/* Send Section — document upload gate + portal-link lifecycle + Email modal */
-
 function OfferDocumentUploadPart({ offer, offerId, document, setDocument, setBanner, setError }) {
   const [uploading, setUploading] = useState(false);
   const fileInputRef = useRef(null);
 
   const handleFileSelect = async (e) => {
     const file = e.target.files?.[0];
-    e.target.value = ''; // allow re-selecting the same file
+    e.target.value = ''; 
     if (!file) return;
 
     setUploading(true);
@@ -1609,6 +1608,47 @@ function buildDefaultOfferEmail(jobTitle) {
   };
 }
 
+function CandidateSignedFilePart({ offer, isSubmitted, submittedAt }) {
+  const [downloading, setDownloading] = useState(false);
+  const [localError, setLocalError] = useState(null);
+
+  const handleDownload = async () => {
+    setDownloading(true);
+    setLocalError(null);
+    try {
+      const res = await downloadCandidateFile(offer.id);
+      downloadBlob(res, `signed_offer_${offer.candidate_name || offer.id}`);
+    } catch (err) {
+      setLocalError(err.response?.data?.message || err.message || 'Failed to download the signed file');
+    } finally {
+      setDownloading(false);
+    }
+  };
+
+  if (!isSubmitted) return null;
+
+  return (
+    <div className="rounded-lg border bg-muted/30 p-3 flex items-center justify-between gap-3 flex-wrap">
+      <div className="min-w-0">
+        <p className="text-[10px] font-bold tracking-widest uppercase text-muted-foreground">
+          Signed copy from candidate
+        </p>
+        <p className="text-[11px] text-muted-foreground mt-0.5">
+          Submitted {fmtDate(submittedAt)}
+        </p>
+        {localError && (
+          <p className="text-[11px] text-rose-600 mt-1">{localError}</p>
+        )}
+      </div>
+      <Button size="sm" variant="outline" className="text-xs shrink-0" onClick={handleDownload} disabled={downloading}>
+        {downloading
+          ? <><Loader2 className="h-3.5 w-3.5 mr-1.5 animate-spin" /> Downloading…</>
+          : <><Download className="h-3.5 w-3.5 mr-1.5" /> Download signed file</>}
+      </Button>
+    </div>
+  );
+}
+
 function SendSection({ offer, approval, setOffer, setBanner, setError, onAdvance }) {
   const [history, setHistory] = useState([]);
   const [loadingHistory, setLoadingHistory] = useState(true);
@@ -1658,8 +1698,6 @@ function SendSection({ offer, approval, setOffer, setBanner, setError, onAdvance
   useEffect(() => { loadDocument(); }, [loadDocument]);
 
   const latestSend  = history[0] || null;
-  // Fixed: offer_send.status uses 'submitted' now, not 'signed' — the
-  // candidate portal flow is upload -> Submit, no e-signature step.
   const isSubmitted = latestSend?.status === 'submitted';
   const isRevoked    = !isSubmitted && !!latestSend?.revoked_at;
   const isActive     = latestSend?.status === 'sent' && !latestSend?.revoked_at;
@@ -1729,7 +1767,6 @@ function SendSection({ offer, approval, setOffer, setBanner, setError, onAdvance
   return (
     <div className="space-y-4">
 
-      {/* Document upload — the sole requirement before a portal link can be generated */}
       <OfferDocumentUploadPart
         offer={offer}
         offerId={offer.id}
@@ -1815,6 +1852,12 @@ function SendSection({ offer, approval, setOffer, setBanner, setError, onAdvance
             />
           ) : null}
 
+          <CandidateSignedFilePart
+            offer={offer}
+            isSubmitted={isSubmitted}
+            submittedAt={latestSend?.submitted_at}
+          />
+
           {showRevoke && isActive && (
             <div className="space-y-2 p-3 rounded-lg border border-rose-200 bg-rose-50/30">
               <p className="text-[10px] font-semibold text-rose-700 uppercase tracking-wide">
@@ -1842,11 +1885,6 @@ function SendSection({ offer, approval, setOffer, setBanner, setError, onAdvance
         </CardContent>
       </Card>
 
-      {/* Negotiation — separate from portal-link lifecycle above. Note: the
-          candidate portal is submit-only (no reject/negotiate action there
-          by design), so new negotiation threads can no longer originate from
-          the candidate side. This panel remains for any negotiation records
-          already on the offer / created through other means. */}
       {offer.offer_status === 'negotiating' && offer.negotiations?.length > 0 && (
         <Card>
           <CardHeader className="pb-2">
@@ -2207,17 +2245,12 @@ export default function OfferCandidatePage() {
   const { offerId: param } = useParams();
   const offerId            = param ? Number(param) : null;
 
-  const [offer, _setOffer] = useState(null);
+  const [offer, setOffer]     = useState(null);
   const [approval, setApproval] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError]     = useState(null);
   const [banner, setBanner]   = useState(null);
   const [activeSection, setActiveSection] = useState('intake');
-  const setOffer = useCallback((...args) => {
-    _setOffer(...args);
-  }, []);
-
-  useEffect(() => {}, [offer]);
 
   const load = useCallback(async () => {
     if (!offerId) return;
@@ -2239,7 +2272,7 @@ export default function OfferCandidatePage() {
 
   const hasLoadedRef = useRef(false);
   useEffect(() => {
-    if (hasLoadedRef.current) return; 
+    if (hasLoadedRef.current) return;
     hasLoadedRef.current = true;
     load();
   }, [load]);
