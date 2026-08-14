@@ -590,13 +590,23 @@ class InterviewService {
       throw { status: 400, message: 'Questions must be configured before generating a link.' };
     }
 
-    // Build rubric_snapshot from prep rubric_items
+   // Build rubric_snapshot from prep rubric_items
     const rubric_snapshot = {
       custom_criteria: prep.rubric_items.map((item) => ({
         description: item.label || item.competency_code || item.name || String(item),
         weight: Number(item.weight) || 1,
       })),
     };
+
+    // Snapshot questions as they exist right now — so if the recruiter later
+    // edits/regenerates prep.questions, already-issued packs stay unaffected.
+    const questions_snapshot = prep.questions.map((q) => ({
+      id: q.id ?? null,
+      competency: q.competency ?? null,
+      text: q.text,
+      follow_up: q.follow_up ?? null,
+    }));
+    console.log('🔍 STEP 1 - questions_snapshot built:', JSON.stringify(questions_snapshot).slice(0, 200));
 
     const job = await jobModel.getById(job_id);
 
@@ -606,6 +616,7 @@ class InterviewService {
       title: title || `Interview Pack — ${job?.job_title || 'Position'}`,
       interviewer_name: String(interviewer_name).trim(),
       rubric_snapshot,
+      questions_snapshot,
       candidates: candidates.map((c, i) => ({
         applicant_id: c.applicant_id,
         sort_order: c.sort_order ?? i,

@@ -155,6 +155,42 @@ function SaveIndicator({ savingId, savedId, candidateId }) {
   return null;
 }
 
+function QuestionReadOnly({ questions = [] }) {
+  if (!questions.length) return null;
+  return(
+     <Card>
+      <div className="px-5 py-3 border-b border-border flex items-center justify-between">
+        <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">
+          Interview questions
+        </p>
+        <span className="text-[10px] text-muted-foreground flex items-center gap-1">
+          <Lock className="h-3 w-3" /> Locked
+        </span>
+      </div>
+      <CardContent className="p-5 space-y-2">
+        {questions.map((q, i) => (
+          <div key={q.id || i} className="rounded-lg border border-border bg-muted/10 p-3">
+            <div className="flex items-start gap-2">
+              <span className="text-[10px] font-mono text-muted-foreground mt-0.5 shrink-0">{i + 1}</span>
+              <div className="min-w-0">
+                {q.competency && (
+                  <span className="inline-flex items-center px-2 py-0.5 rounded-full border border-blue-200 bg-blue-50 text-blue-700 text-[9px] font-semibold mb-1">
+                    {q.competency}
+                  </span>
+                )}
+                <p className="text-xs leading-relaxed text-foreground">{q.text}</p>
+                {q.follow_up && (
+                  <p className="text-[10px] text-muted-foreground mt-0.5 italic">↳ {q.follow_up}</p>
+                )}
+              </div>
+            </div>
+          </div>
+        ))}
+      </CardContent>
+    </Card>
+  );
+}
+
 // ── Main Portal Page ────────────────────────────────────────────────────────────
 
 export default function InterviewPackPortal() {
@@ -190,6 +226,7 @@ export default function InterviewPackPortal() {
         if (cancelled) return;
         const p = res.data?.pack || res.data;
         setPack(p);
+        console.log('pack payload: ', p);
         // Populate outcomes from existing data
         const initial = {};
         for (const c of p?.candidates || []) {
@@ -557,6 +594,11 @@ export default function InterviewPackPortal() {
                   </CardContent>
                 </Card>
               )}
+
+              {/* Interview questions — locked, view only */}
+              <QuestionReadOnly 
+                questions={pack?.questions_snapshot || pack?.rubric_snapshot?.questions || []}
+              />
 
               {/* Decision */}
               <Card>

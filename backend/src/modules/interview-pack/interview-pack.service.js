@@ -85,6 +85,7 @@ class InterviewPackService {
       applicant_ids,
       candidates,   // optional: array of { applicant_id, interview_date, interview_time }
       rubric_snapshot: providedRubric,
+      questions_snapshot,
     } = data;
 
     if (!job_id) throw { status: 400, message: 'job_id is required' };
@@ -126,6 +127,7 @@ class InterviewPackService {
       window_start:     window_start || null,
       window_end:       window_end || null,
       rubric_snapshot,
+      questions_snapshot: questions_snapshot || [],
       created_by:       userId || null,
     });
 
