@@ -1122,6 +1122,7 @@ CREATE TABLE interview_pack (
   token             UUID NOT NULL UNIQUE DEFAULT gen_random_uuid(),
   status            VARCHAR(20) NOT NULL DEFAULT 'open' CHECK (status IN ('open', 'submitted')),
   rubric_snapshot   JSONB NOT NULL,
+  questions_snapshot JSONB NOT NULL DEFAULT '[]'::jsonb,
   submitted_at      TIMESTAMP,
   created_by        INTEGER REFERENCES master_users(id) ON DELETE SET NULL,
   created_at        TIMESTAMP NOT NULL DEFAULT NOW(),

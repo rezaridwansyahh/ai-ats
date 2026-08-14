@@ -66,6 +66,7 @@ export const FIXED_META = {
 };
 
 export const DEFAULT_RUBRIC = {
+  role_profile: 'experienced',
   fixed_criteria: {
     skills:            { weight: 45 },
     experience:        { weight: 35 },

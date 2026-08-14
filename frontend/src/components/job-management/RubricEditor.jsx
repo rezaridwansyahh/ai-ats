@@ -1,11 +1,16 @@
 import { useEffect, useState } from 'react';
-import { Loader2, Check, Plus, X, AlertTriangle, Star } from 'lucide-react';
+import { Loader2, Check, Plus, X, AlertTriangle, Star, Briefcase, GraduationCap } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { getRubric, saveRubric } from '@/api/screening.api';
 import { FIXED_KEYS, FIXED_META, DEFAULT_RUBRIC, totalWeight } from '@/components/ai-screening/shared';
+
+const ROLE_PROFILES = [
+  { value: 'experienced', label: 'Experienced', desc: 'Years, role progression, prior responsibilities matter.', icon: Briefcase },
+  { value: 'fresh_graduate', label: 'Fresh Graduate', desc: 'Lack of senior titles will not penalize. Education weighed higher.', icon: GraduationCap },
+]
 
 // Rubric setup lives here (Job → Pipeline & AI) rather than inside the AI
 // Screening candidate page — one rubric per job, shared by every candidate
@@ -29,6 +34,7 @@ export default function RubricEditor({ jobId }) {
         if (cancelled) return;
         if (res.data?.rubric?.fixed_criteria) {
           setRubric({
+            role_profile: res.data.rubric.role_profile || DEFAULT_RUBRIC.role_profile,
             fixed_criteria: { ...DEFAULT_RUBRIC.fixed_criteria, ...res.data.rubric.fixed_criteria },
             custom_criteria: Array.isArray(res.data.rubric.custom_criteria) ? res.data.rubric.custom_criteria : [],
           });
@@ -41,6 +47,9 @@ export default function RubricEditor({ jobId }) {
 
   const total = totalWeight(rubric);
   const isBalanced = total === 100;
+
+  const setRoleProfile = (value) => 
+    setRubric((rb) => ({ ...rb, role_profile: value}));
 
   const setFixedWeight = (key, weight) =>
     setRubric((rb) => ({ ...rb, fixed_criteria: { ...rb.fixed_criteria, [key]: { ...rb.fixed_criteria[key], weight } } }));
@@ -75,7 +84,7 @@ export default function RubricEditor({ jobId }) {
     }
   };
 
-  if (loading) {
+   if (loading) {
     return (
       <div className="flex justify-center py-8">
         <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
@@ -110,6 +119,33 @@ export default function RubricEditor({ jobId }) {
             <AlertTriangle className="h-3.5 w-3.5 shrink-0" /> {error}
           </div>
         )}
+
+        {/* Role profile — one setting per job, applies to every candidate scored against it */}
+        <div className="space-y-2">
+          <p className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">Role profile</p>
+          <div className="flex gap-3">
+            {ROLE_PROFILES.map((opt) => {
+              const Icon = opt.icon;
+              const active = rubric.role_profile === opt.value;
+              return (
+                <button
+                  key={opt.value}
+                  type="button"
+                  onClick={() => setRoleProfile(opt.value)}
+                  className={`flex-1 text-left px-4 py-3 rounded-lg border transition-colors ${
+                    active ? 'border-primary bg-primary/5' : 'border-border bg-muted/30 hover:border-primary/40'
+                  }`}
+                >
+                  <div className="flex items-center gap-1.5">
+                    <Icon className="h-3.5 w-3.5 text-primary shrink-0" />
+                    <span className="text-xs font-semibold">{opt.label}</span>
+                  </div>
+                  <div className="text-[10px] text-muted-foreground mt-0.5">{opt.desc}</div>
+                </button>
+              );
+            })}
+          </div>
+        </div>
 
         <div className="space-y-3">
           {FIXED_KEYS.map((key) => {

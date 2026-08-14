@@ -4,12 +4,13 @@ class InterviewPackModel {
   /**
    * Create a new interview pack (without candidates).
    */
-  async create({ company_id, job_id, title, batch_code, interviewer_name, window_start, window_end, rubric_snapshot, created_by }) {
+  async create({ company_id, job_id, title, batch_code, interviewer_name, window_start, window_end, rubric_snapshot, questions_snapshot, created_by }) {
+    console.log('🔍 STEP 4 - model received questions_snapshot:', questions_snapshot);
     const result = await getDb().query(
       `INSERT INTO interview_pack
-         (company_id, job_id, title, batch_code, interviewer_name, window_start, window_end, rubric_snapshot, created_by)
-       VALUES ($1, $2, $3, $4, $5, $6, $7, $8::jsonb, $9)
-       RETURNING *`,
+        (company_id, job_id, title, batch_code, interviewer_name, window_start, window_end, rubric_snapshot, questions_snapshot, created_by)
+      VALUES ($1, $2, $3, $4, $5, $6, $7, $8::jsonb, $9::jsonb, $10)
+      RETURNING *`,
       [
         company_id || null,
         job_id,
@@ -19,12 +20,12 @@ class InterviewPackModel {
         window_start || null,
         window_end || null,
         JSON.stringify(rubric_snapshot),
+        JSON.stringify(questions_snapshot || []),
         created_by || null,
       ]
     );
     return result.rows[0];
   }
-
   /**
    * Bulk-insert candidates into an interview pack.
    * candidates: Array of { applicant_id, sort_order, interview_date, interview_time }

@@ -83,15 +83,10 @@ const DECISION_BADGE_CLS = {
 function useMatch(data, onScored) {
   const { job_id, applicant_id } = data || {};
 
-  const [roleProfileSel, setRoleProfileSel] = useState('experienced');
+  const [roleProfileSel, setRoleProfileSel] = useState('experienced'); // now driven by the job's saved rubric, not clicked per-candidate
   const [rubric, setRubric] = useState(DEFAULT_RUBRIC);
   const [running, setRunning] = useState(false);
   const [runError, setRunError] = useState(null);
-
-  // Reflect the candidate's last-scored role profile once it's known.
-  useEffect(() => {
-    if (data?.role_profile) setRoleProfileSel(data.role_profile);
-  }, [data?.role_profile]);
 
   // Load this job's saved rubric (once per job).
   useEffect(() => {
@@ -106,6 +101,9 @@ function useMatch(data, onScored) {
             fixed_criteria: { ...DEFAULT_RUBRIC.fixed_criteria, ...r.data.rubric.fixed_criteria },
             custom_criteria: Array.isArray(r.data.rubric.custom_criteria) ? r.data.rubric.custom_criteria : [],
           });
+          // Role profile is a job-level setting now — read it off the saved
+          // rubric, not left as something the recruiter picks per candidate.
+          setRoleProfileSel(r.data.rubric.role_profile === 'fresh_graduate' ? 'fresh_graduate' : 'experienced');
         }
       } catch { /* keep default rubric */ }
     })();
@@ -1232,7 +1230,7 @@ function MatchPanel({ data, match }) {
           required_skills, preferred_skills } = data;
 
   const {
-    roleProfileSel, setRoleProfileSel,
+    roleProfileSel,
     rubric, total, totalIs100,
   } = match;
 
@@ -1259,6 +1257,14 @@ function MatchPanel({ data, match }) {
           {/* Role profile */}
           <div>
             <div className="text-[11px] font-medium text-muted-foreground uppercase mb-2">Role profile</div>
+            <div className="flex items-start gap-1.5 text-[10px] text-muted-foreground px-3 py-2 rounded-lg border bg-muted/20 mb-2">
+              <Info className="h-3 w-3 mt-0.5 shrink-0" />
+              <span>
+                This is shared by every candidate on this job — configure it from the job's
+                <span className="font-semibold not-italic"> Pipeline & AI </span>
+                setup step, not here.
+              </span>
+            </div>
             <div className="flex gap-3">
               {[
                 { value: 'experienced', label: 'Experienced', desc: 'Years, role progression, prior responsibilities matter.' },
@@ -1267,9 +1273,9 @@ function MatchPanel({ data, match }) {
                 <button
                   key={opt.value}
                   type="button"
-                  onClick={() => setRoleProfileSel(opt.value)}
+                  disabled
                   className={`flex-1 text-left px-4 py-3 rounded-lg border transition-colors ${
-                    roleProfileSel === opt.value ? 'border-primary bg-primary/5' : 'border-border hover:bg-muted/30'
+                    roleProfileSel === opt.value ? 'border-primary bg-primary/5' : 'border-border bg-muted/30 cursor-not-allowed'
                   }`}
                 >
                   <div className="text-xs font-semibold">{opt.label}</div>
