@@ -1608,6 +1608,11 @@ function buildDefaultOfferEmail(jobTitle) {
   };
 }
 
+const CANDIDATE_FILE_EXT = {
+  'application/pdf': 'pdf',
+  'application/vnd.openxmlformats-officedocument.wordprocessingml.document': 'docx',
+};
+
 function CandidateSignedFilePart({ offer, isSubmitted, submittedAt }) {
   const [downloading, setDownloading] = useState(false);
   const [localError, setLocalError] = useState(null);
@@ -1617,7 +1622,9 @@ function CandidateSignedFilePart({ offer, isSubmitted, submittedAt }) {
     setLocalError(null);
     try {
       const res = await downloadCandidateFile(offer.id);
-      downloadBlob(res, `signed_offer_${offer.candidate_name || offer.id}`);
+      const contentType = (res.headers?.['content-type'] || '').split(';')[0].trim();
+      const ext = CANDIDATE_FILE_EXT[contentType] || '';
+      downloadBlob(res, `signed_offer_${offer.candidate_name || offer.id}${ext ? `.${ext}` : ''}`);
     } catch (err) {
       setLocalError(err.response?.data?.message || err.message || 'Failed to download the signed file');
     } finally {

@@ -17,9 +17,8 @@ const MAX_SIZE = 10 * MB;
 const ALLOWED_MIMES = [
   'application/pdf',
   'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
-  'text/plain',
 ];
-const ALLOWED_EXTS = ['.pdf', '.docx', '.txt'];
+const ALLOWED_EXTS = ['.pdf', '.docx'];
 
 const OFFER_CONTRACT_ROOT = process.env.OFFER_CONTRACT_ROOT
   || path.join(process.cwd(), 'offer_contract');
@@ -40,7 +39,7 @@ const fileFilter = async (req, file, cb) => {
     if (ALLOWED_MIMES.includes(file.mimetype) && ALLOWED_EXTS.includes(ext)) {
       return cb(null, true);
     }
-    cb(new Error('Only PDF, DOCX, and TXT files are allowed'), false);
+    cb(new Error('Only PDF and DOCX files are allowed'), false);
   } catch (err) {
     cb(err, false);
   }

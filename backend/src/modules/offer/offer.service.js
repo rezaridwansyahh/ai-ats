@@ -5,6 +5,7 @@ import { mergeOfferLetter, htmlToDocxBuffer, convertHtmlToPdf } from '../../shar
 import { sendOfferEmail } from '../../shared/services/candidate-mailer.js';
 import mammoth from 'mammoth';
 import fs from 'fs';
+import path from 'path';
 
 function computeApprovalStatus(steps) {
   if (!steps || steps.length === 0) return 'not_started';

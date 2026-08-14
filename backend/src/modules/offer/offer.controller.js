@@ -432,6 +432,8 @@ class OfferController {
       const { company_id } = req.user;
       const { filePath, fileName } = await OfferService.downloadCandidateFile(offer_id, company_id);
 
+      res.set('Access-Control-Expose-Headers', 'Content-Disposition');   
+
       res.download(filePath, fileName, (err) => {
         if (err && !res.headersSent) {
           console.error('Error in downloadCandidateFile (res.download):', err);

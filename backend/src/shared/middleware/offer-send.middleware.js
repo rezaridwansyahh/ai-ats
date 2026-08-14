@@ -17,9 +17,8 @@ const MAX_SIZE = 10 * MB;
 const ALLOWED_MIMES = [
   'application/pdf',
   'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
-  'text/plain',
 ];
-const ALLOWED_EXTS = ['.pdf', '.docx', '.txt'];
+const ALLOWED_EXTS = ['.pdf', '.docx'];
 
 const OFFER_CONTRACT_ROOT = process.env.OFFER_CONTRACT_ROOT
   || path.join(process.cwd(), 'offer_contract');
