@@ -447,6 +447,7 @@ class ScreeningModel {
       `
       SELECT
         mc.id          AS candidate_id,
+        mc.applicant_id,                        -- ← add this line
         mc.job_id,
         a.name         AS applicant_name,
         a.last_position,
