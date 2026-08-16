@@ -40,6 +40,11 @@ export const recordOutcome = (schedule_id, { status, outcome_note } = {}) => api
 
 export const reInterview = (interview_id) => api.post(`/interview/${interview_id}/reinterview`);
 
+// Single-candidate decide — used by the candidate detail page's Advance/Reject
+// buttons. Distinct from bulkDecide (Calibration page's multi-select batch action).
+export const decideCandidate = (interview_id, { decision, reject_reason, reject_note } = {}) =>
+  api.post(`/interview/${interview_id}/decide-one`, { decision, reject_reason, reject_note });
+
 export const updateCandidateQuestions = (interview_id, custom_questions) =>
   api.put(`/interview/${interview_id}/custom-questions`, { custom_questions });
 

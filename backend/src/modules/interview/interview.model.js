@@ -678,6 +678,26 @@ class InterviewModel {
     return result.rows;
   }
 
+  // Single-candidate decide — used by the candidate detail page's
+  // Advance/Reject buttons. Scoped strictly to one candidate_interview row
+  // by primary key; does not touch decisions[] arrays or loops at all.
+  async decideOne(interview_id, { decision, reject_reason, reject_note, decided_by }) {
+    const result = await getDb().query(
+      `UPDATE candidate_interview
+          SET decision      = $2,
+              reject_reason = $3,
+              reject_note   = $4,
+              decided_at    = NOW(),
+              decided_by    = $5,
+              status        = 'done',
+              updated_at    = NOW()
+        WHERE id = $1
+        RETURNING *`,
+      [interview_id, decision, reject_reason ?? null, reject_note ?? null, decided_by ?? null]
+    );
+    return result.rows[0] || null;
+  }
+
   // Advance/reject are terminal for the current round — status flips to
   // 'done' alongside the decision so the candidate settles in the Decide
   // sub-stage. (Interview Again handles its own status reset separately,
