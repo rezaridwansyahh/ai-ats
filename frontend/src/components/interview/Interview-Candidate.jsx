@@ -30,7 +30,7 @@ import {
   getPackOutcome,
   getScorecard,
   getInterviewRounds,
-  getDecideByJob, bulkDecide, resetDecision, getInterviewByCandidateId,
+  getDecideByJob, decideCandidate, resetDecision, getInterviewByCandidateId,
   reInterview,
 } from '@/api/interview.api';
 
@@ -1513,9 +1513,7 @@ function DecideSection({ interviewId, interview, setInterview, setBanner, setErr
   const handleAdvance = async () => {
     setSubmitting(true); setError(null); setBanner(null);
     try {
-      await bulkDecide(interview.job_id, [
-        { candidateInterviewId: interviewId, decision: 'advanced' },
-      ]);
+      await decideCandidate(interviewId, { decision: 'advanced' });
       setInterview((prev) => ({ ...prev, decision: 'advanced', status: 'done' }));
       setBanner({ ok: true, text: 'Candidate advanced.' });
       setShowAdvanceModal(false);
@@ -1538,14 +1536,11 @@ function DecideSection({ interviewId, interview, setInterview, setBanner, setErr
   const handleReject = async () => {
     setSubmitting(true); setError(null); setBanner(null);
     try {
-      await bulkDecide(interview.job_id, [
-        {
-          candidateInterviewId: interviewId,
-          decision:      'rejected',
-          reject_reason: rejectReason,
-          reject_note:   rejectNote || null,
-        },
-      ]);
+      await decideCandidate(interviewId, {
+        decision:      'rejected',
+        reject_reason: rejectReason,
+        reject_note:   rejectNote || null,
+      });
       setInterview((prev) => ({ ...prev, decision: 'rejected', status: 'done' }));
       setBanner({ ok: true, text: 'Candidate rejected.' });
       setRejectStep(null);

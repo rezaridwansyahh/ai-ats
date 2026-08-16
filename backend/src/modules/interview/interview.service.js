@@ -437,6 +437,58 @@ class InterviewService {
     return await interviewModel.getDecideByJob(job_id);
   }
 
+  // Single-candidate decide — used by the Advance/Reject buttons on the
+  // candidate detail page's Decide tab. Never touches a decisions[] array,
+  // so there is no loop/array path that could ever affect another candidate.
+  async decideCandidate(interview_id, { decision, reject_reason, reject_note, company_id = null, decided_by = null } = {}) {
+    if (!interview_id) throw { status: 400, message: 'interview_id is required' };
+
+    const validDecisions = ['advanced', 'rejected'];
+    if (!validDecisions.includes(decision)) {
+      throw { status: 400, message: `decision must be one of: ${validDecisions.join(', ')}` };
+    }
+    const validRejectReasons = [
+      'skill_gap_core_competency', 'below_score_band_rubric',
+      'stronger_candidate_selected', 'communication_culture_fit',
+      'withdrew_counter_offer', 'other',
+    ];
+    if (decision === 'rejected') {
+      if (!reject_reason) throw { status: 400, message: 'reject_reason is required for rejected candidates' };
+      if (!validRejectReasons.includes(reject_reason)) throw { status: 400, message: `invalid reject_reason: ${reject_reason}` };
+    }
+
+    const existing = await interviewModel.getById(interview_id);
+    if (!existing) throw { status: 404, message: 'Interview not found' };
+    if (company_id && existing.company_id && existing.company_id !== company_id) {
+      throw { status: 403, message: 'Cross-tenant access denied' };
+    }
+
+    const updated = await interviewModel.decideOne(interview_id, {
+      decision, reject_reason, reject_note, decided_by,
+    });
+    if (!updated) throw { status: 404, message: 'Interview not found' };
+
+    // Advance this ONE candidate's pipeline stage — no array, no loop, and no
+    // raw SQL against master_candidate; addStage already knows how to find
+    // the candidate's current stage and move to next.
+    if (decision === 'advanced') {
+      try {
+        const pipeline = await candidatePipelineService.getById(updated.candidate_id);
+        if (pipeline?.latest_stage) {
+          candidatePipelineService.addStage(updated.candidate_id, pipeline.latest_stage, 'advanced')
+            .catch((err) => console.error(
+              `Failed to advance pipeline for candidate ${updated.candidate_id}:`,
+              err?.message || err
+            ));
+        }
+      } catch (err) {
+        console.error(`Failed to look up pipeline for candidate ${updated.candidate_id}:`, err?.message || err);
+      }
+    }
+
+    return updated;
+  }
+
   async bulkDecide(job_id, { decisions, company_id = null, decided_by = null } = {}) {
     if (!job_id) throw { status: 400, message: 'job_id is required' };
     if (!Array.isArray(decisions) || decisions.length === 0) {
@@ -478,17 +530,17 @@ class InterviewService {
         [advancedIds]
       );
       for (const row of rows.rows) {
-        const cand = await getDb().query(
-          `SELECT latest_stage FROM master_candidate WHERE id = $1`,
-          [row.candidate_id]
-        );
-        const latestStage = cand.rows[0]?.latest_stage;
-        if (latestStage) {
-          candidatePipelineService.addStage(row.candidate_id, latestStage, 'advanced')
-            .catch((err) => console.error(
-              `Failed to advance pipeline for candidate ${row.candidate_id}:`,
-              err?.message || err
-            ));
+        try {
+          const pipeline = await candidatePipelineService.getById(row.candidate_id);
+          if (pipeline?.latest_stage) {
+            candidatePipelineService.addStage(row.candidate_id, pipeline.latest_stage, 'advanced')
+              .catch((err) => console.error(
+                `Failed to advance pipeline for candidate ${row.candidate_id}:`,
+                err?.message || err
+              ));
+          }
+        } catch (err) {
+          console.error(`Failed to look up pipeline for candidate ${row.candidate_id}:`, err?.message || err);
         }
       }
     }
