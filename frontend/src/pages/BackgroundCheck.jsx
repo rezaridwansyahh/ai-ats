@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
-  ShieldCheck, AlertTriangle, Loader2, RotateCw, Search, HelpCircle,
+  ShieldCheck, AlertTriangle, Loader2, RotateCw, Search, HelpCircle, Settings,
 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -49,6 +49,7 @@ export default function BackgroundCheckWorkboard() {
   const [loading, setLoading]       = useState(true);
   const [error, setError]           = useState(null);
 
+  const [activeJob, setActiveJob]       = useState('');
   const [activeStatus, setActiveStatus] = useState(null);
   const [search, setSearch]             = useState('');
   const [page, setPage]                 = useState(1);
@@ -92,8 +93,13 @@ export default function BackgroundCheckWorkboard() {
     return c;
   }, [bgChecks]);
 
+  const displayBgChecks = useMemo(() => {
+    if (activeJob === '') return bgChecks;
+    return bgChecks.filter((b) => b.job_id === activeJob.job_id);
+  }, [bgChecks, activeJob]);
+
   const filtered = useMemo(() => {
-    let list = bgChecks;
+    let list = displayBgChecks;
     if (activeStatus) list = list.filter((b) => b.status === activeStatus);
     const q = search.trim().toLowerCase();
     if (q) {
@@ -120,7 +126,7 @@ export default function BackgroundCheckWorkboard() {
     setPage(1);
   };
 
-  const resetView = () => { setActiveStatus(null); setSearch(''); setPage(1); };
+  const resetView = () => { setActiveStatus(null); setSearch(''); setPage(1); setActiveJob(''); };
 
   return (
     <div className="space-y-5 p-6">
@@ -207,35 +213,59 @@ export default function BackgroundCheckWorkboard() {
                 <button
                   type="button"
                   onClick={resetView}
-                  className="w-full flex items-center justify-between px-3 py-2 rounded-md text-xs bg-primary/10 text-primary font-semibold"
+                  className={[
+                    'w-full flex items-center justify-between px-3 py-2 rounded-md text-xs font-semibold',
+                    activeJob === ''
+                      ? 'bg-primary/10 text-primary'
+                      : 'text-muted-foreground hover:bg-muted/60 text-foreground',
+                  ].join(' ')}
                 >
                   <span>All positions</span>
                   <span className="font-mono text-[10px]">{totalBgChecks}</span>
                 </button>
                 <div className="space-y-0.5 mt-1">
-                  {positions.map((p) => (
-                    <button
-                      key={p.job_id}
-                      type="button"
-                      onClick={() => navigate(`/selection/background-check/job/${p.job_id}`)}
-                      className="w-full flex items-center justify-between gap-2 px-3 py-2 rounded-md text-xs hover:bg-muted/50 text-foreground transition-colors"
-                    >
-                      <span className="truncate text-left flex items-center gap-1.5 min-w-0">
-                        <span className="truncate">{p.job_title}</span>
-                        {p.status && (
-                          <Badge
-                            variant="outline"
-                            className={`text-[8px] uppercase tracking-wide shrink-0 ${jobStatusTone(p.status)}`}
-                          >
-                            {p.status}
-                          </Badge>
-                        )}
-                      </span>
-                      <span className="font-mono text-[10px] text-muted-foreground shrink-0">
-                        {p.total}
-                      </span>
-                    </button>
-                  ))}
+                  {positions.map((p) => {
+                    const isActive = activeJob.job_id === p.job_id;
+                    return (
+                      <div key={p.job_id} className="relative group">
+                        <button
+                          type="button"
+                          onClick={() => { setActiveJob(p); setPage(1); }}
+                          className={[
+                            'w-full flex items-center justify-between gap-2 px-3 py-2 rounded-md text-xs pr-8',
+                            isActive
+                              ? 'bg-primary/10 text-primary'
+                              : 'text-muted-foreground hover:bg-muted/60 text-foreground',
+                          ].join(' ')}
+                        >
+                          <span className="truncate text-left flex items-center gap-1.5 min-w-0">
+                            <span className="truncate">{p.job_title}</span>
+                            {p.status && (
+                              <Badge
+                                variant="outline"
+                                className={`text-[8px] uppercase tracking-wide shrink-0 ${jobStatusTone(p.status)}`}
+                              >
+                                {p.status}
+                              </Badge>
+                            )}
+                          </span>
+                          <span className="font-mono text-[10px] text-muted-foreground shrink-0">
+                            {p.total}
+                          </span>
+                        </button>
+
+                        {/* Gear icon — navigates to the position detail page */}
+                        <button
+                          type="button"
+                          onClick={(e) => { e.stopPropagation(); navigate(`/selection/background-check/job/${p.job_id}`); }}
+                          title="Position detail"
+                          className="absolute top-2 right-1.5 h-6 w-6 flex items-center justify-center rounded text-muted-foreground hover:text-foreground hover:bg-muted/60 opacity-0 group-hover:opacity-100 transition-opacity"
+                        >
+                          <Settings className="h-3.5 w-3.5" />
+                        </button>
+                      </div>
+                    );
+                  })}
                 </div>
               </>
             )}
@@ -245,11 +275,22 @@ export default function BackgroundCheckWorkboard() {
         {/* Candidates panel */}
         <Card>
           <CardHeader className="pb-3 space-y-3">
-            <CardTitle className="text-sm">
-              All candidates
-              <span className="ml-2 text-[11px] font-normal text-muted-foreground">
+            <CardTitle className="text-sm flex items-center gap-3 flex-wrap">
+              <ShieldCheck className="h-4 w-4 text-primary shrink-0" />
+              {activeJob === '' ? 'All candidates' : activeJob.job_title}
+              <span className="text-[11px] font-normal text-muted-foreground">
                 {filtered.length} {activeStatus ? `at ${STATUS_META[activeStatus]?.label}` : 'total'}
               </span>
+              {activeJob !== '' && (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="text-xs"
+                  onClick={() => navigate(`/selection/background-check/job/${activeJob.job_id}`)}
+                >
+                  <Settings className="h-3.5 w-3.5 mr-1.5" /> Open Detail
+                </Button>
+              )}
             </CardTitle>
             <div data-tour="bgcheck-search" className="relative max-w-sm">
               <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
