@@ -1,14 +1,17 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
-  ShieldCheck, AlertTriangle, Loader2, RotateCw, Search, HelpCircle,
+  AlertTriangle, Loader2, RotateCw, Search, HelpCircle,
 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import {
+  Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
+} from '@/components/ui/table';
 import { PageHeader } from '@/components/common';
 import { TablePagination } from '@/components/shared/TablePagination';
+import PositionsRail from '@/components/shared/PositionsRail';
 import { getInitials } from '@/lib/batteries';
 
 import { getWorkboard, getBgChecksByJob } from '@/api/background-check.api';
@@ -26,21 +29,6 @@ const STATUS_META = {
 
 const CHIP_KEYS = ['claims', 'consent', 'tracker', 'verdict', 'done'];
 
-function jobStatusTone(status) {
-  switch ((status || '').toLowerCase()) {
-    case 'active':
-    case 'running':
-      return 'border-emerald-200 text-emerald-700 bg-emerald-50';
-    case 'draft':
-      return 'border-amber-200 text-amber-700 bg-amber-50';
-    case 'expired':
-    case 'failed':
-      return 'border-rose-200 text-rose-700 bg-rose-50';
-    default:
-      return 'border-border text-muted-foreground bg-muted/40';
-  }
-}
-
 export default function BackgroundCheckWorkboard() {
   const navigate = useNavigate();
 
@@ -49,6 +37,7 @@ export default function BackgroundCheckWorkboard() {
   const [loading, setLoading]       = useState(true);
   const [error, setError]           = useState(null);
 
+  const [activeJob, setActiveJob]       = useState('');
   const [activeStatus, setActiveStatus] = useState(null);
   const [search, setSearch]             = useState('');
   const [page, setPage]                 = useState(1);
@@ -74,7 +63,7 @@ export default function BackgroundCheckWorkboard() {
 
       setBgChecks(
         results.flatMap(({ p, rows }) =>
-          rows.map((b) => ({ ...b, job_title: p.job_title }))
+          rows.map((b) => ({ ...b, job_title: p.job_title, job_id: p.job_id }))
         )
       );
     } catch (err) {
@@ -86,14 +75,40 @@ export default function BackgroundCheckWorkboard() {
 
   useEffect(() => { loadWorkboard(); }, []);
 
+  // Compute background check counts per job_id for PositionsRail
+  const bgCheckCountsByJob = useMemo(() => {
+    const map = {};
+    for (const b of bgChecks) {
+      const jid = b.job_id;
+      if (jid) map[jid] = (map[jid] || 0) + 1;
+    }
+    return map;
+  }, [bgChecks]);
+
+  // Format positions for PositionsRail contract
+  const mappedPositions = useMemo(() => {
+    return positions.map((p) => ({
+      ...p,
+      job_id: p.job_id,
+      job_title: p.job_title,
+      status: p.status,
+      total: bgCheckCountsByJob[p.job_id] ?? p.total ?? 0,
+    }));
+  }, [positions, bgCheckCountsByJob]);
+
   const statusCounts = useMemo(() => {
     const c = { claims: 0, consent: 0, tracker: 0, verdict: 0, done: 0 };
     for (const b of bgChecks) if (c[b.status] != null) c[b.status]++;
     return c;
   }, [bgChecks]);
 
+  const displayBgChecks = useMemo(() => {
+    if (!activeJob) return bgChecks;
+    return bgChecks.filter((b) => b.job_id === activeJob.job_id);
+  }, [bgChecks, activeJob]);
+
   const filtered = useMemo(() => {
-    let list = bgChecks;
+    let list = displayBgChecks;
     if (activeStatus) list = list.filter((b) => b.status === activeStatus);
     const q = search.trim().toLowerCase();
     if (q) {
@@ -104,7 +119,7 @@ export default function BackgroundCheckWorkboard() {
       );
     }
     return list;
-  }, [bgChecks, activeStatus, search]);
+  }, [displayBgChecks, activeStatus, search]);
 
   const totalPages  = Math.max(1, Math.ceil(filtered.length / pageSize));
   const pageClamped = Math.min(page, totalPages);
@@ -112,7 +127,7 @@ export default function BackgroundCheckWorkboard() {
 
   const totalBgChecks   = bgChecks.length;
   const activePositions = positions.filter((p) =>
-    ['active', 'running'].includes((p.status || '').toLowerCase())
+    ['active', 'open', 'running'].includes((p.status || '').toLowerCase())
   ).length;
 
   const toggleStatus = (status) => {
@@ -120,7 +135,14 @@ export default function BackgroundCheckWorkboard() {
     setPage(1);
   };
 
-  const resetView = () => { setActiveStatus(null); setSearch(''); setPage(1); };
+  const resetView = () => { 
+    setActiveStatus(null); 
+    setSearch(''); 
+    setPage(1); 
+    setActiveJob('');
+  };
+
+  const handleChangeJob = (position) => setActiveJob(position);
 
   return (
     <div className="space-y-5 p-6">
@@ -140,7 +162,6 @@ export default function BackgroundCheckWorkboard() {
           </Button>
         </div>
       </div>
-    
 
       {error && (
         <div className="flex items-center gap-2 px-4 py-3 rounded-lg border border-red-200 bg-red-50 text-sm text-red-600">
@@ -149,7 +170,7 @@ export default function BackgroundCheckWorkboard() {
         </div>
       )}
 
-      {/* Status chip strip */}
+      {/* Sub-stage chip strip */}
       <Card data-tour="bgcheck-status-chips">
         <CardContent className="py-4">
           <div className="flex items-center gap-3 flex-wrap">
@@ -185,71 +206,33 @@ export default function BackgroundCheckWorkboard() {
         </CardContent>
       </Card>
 
-      {/* Two-column layout */}
+      {/* Two-column: positions rail + candidates panel */}
       <div className="grid grid-cols-1 md:grid-cols-[240px_1fr] gap-4">
-
         {/* Positions rail */}
-        <Card data-tour="bgcheck-positions-rail" className="self-start">
-          <CardHeader className="pb-2">
-            <CardTitle className="text-xs uppercase tracking-wide text-muted-foreground">
-              Positions · {positions.length}
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="pt-0 px-2 pb-2">
-            {loading ? (
-              <div className="flex justify-center py-6">
-                <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
-              </div>
-            ) : positions.length === 0 ? (
-              <p className="text-xs text-muted-foreground italic px-2 py-3">No positions.</p>
-            ) : (
-              <>
-                <button
-                  type="button"
-                  onClick={resetView}
-                  className="w-full flex items-center justify-between px-3 py-2 rounded-md text-xs bg-primary/10 text-primary font-semibold"
-                >
-                  <span>All positions</span>
-                  <span className="font-mono text-[10px]">{totalBgChecks}</span>
-                </button>
-                <div className="space-y-0.5 mt-1">
-                  {positions.map((p) => (
-                    <button
-                      key={p.job_id}
-                      type="button"
-                      onClick={() => navigate(`/selection/background-check/job/${p.job_id}`)}
-                      className="w-full flex items-center justify-between gap-2 px-3 py-2 rounded-md text-xs hover:bg-muted/50 text-foreground transition-colors"
-                    >
-                      <span className="truncate text-left flex items-center gap-1.5 min-w-0">
-                        <span className="truncate">{p.job_title}</span>
-                        {p.status && (
-                          <Badge
-                            variant="outline"
-                            className={`text-[8px] uppercase tracking-wide shrink-0 ${jobStatusTone(p.status)}`}
-                          >
-                            {p.status}
-                          </Badge>
-                        )}
-                      </span>
-                      <span className="font-mono text-[10px] text-muted-foreground shrink-0">
-                        {p.total}
-                      </span>
-                    </button>
-                  ))}
-                </div>
-              </>
-            )}
-          </CardContent>
-        </Card>
+        <PositionsRail
+          dataTour="bgcheck-positions-rail"
+          positions={mappedPositions}
+          activeJob={activeJob}
+          onSelectJob={handleChangeJob}
+          onResetView={resetView}
+          totalCount={totalBgChecks}
+          loading={loading}
+          emptyMessage="No jobs."
+        />
 
         {/* Candidates panel */}
         <Card>
           <CardHeader className="pb-3 space-y-3">
-            <CardTitle className="text-sm">
-              All candidates
+            <CardTitle className="text-sm gap-3 flex items-center h-[40px]">
+              {activeJob === '' ? 'All candidates' : activeJob.job_title}
               <span className="ml-2 text-[11px] font-normal text-muted-foreground">
-                {filtered.length} {activeStatus ? `at ${STATUS_META[activeStatus]?.label}` : 'total'}
+                {filtered.length} {activeStatus ? `at ${STATUS_META[activeStatus].label}` : 'total'}
               </span>
+              {activeJob !== '' && (
+                <Button variant="outline" size="sm" onClick={() => navigate(`/selection/background-check/job/${activeJob.job_id}`)}>
+                  Open Detail
+                </Button>
+              )}
             </CardTitle>
             <div data-tour="bgcheck-search" className="relative max-w-sm">
               <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
@@ -264,7 +247,7 @@ export default function BackgroundCheckWorkboard() {
           <CardContent>
             {loading ? (
               <div className="text-center py-10 text-xs text-muted-foreground">
-                <Loader2 className="h-4 w-4 animate-spin inline mr-1.5" /> Loading…
+                <Loader2 className="h-4 w-4 animate-spin inline mr-1.5" /> Loading candidates…
               </div>
             ) : filtered.length === 0 ? (
               <div className="text-center py-10 text-xs text-muted-foreground">
@@ -274,48 +257,52 @@ export default function BackgroundCheckWorkboard() {
               </div>
             ) : (
               <>
-                <div data-tour="bgcheck-candidate-list" className="space-y-2">
-                  {paged.map((b) => {
-                    const name = b.candidate_name || `#${b.candidate_id}`;
-                    const meta = STATUS_META[b.status] || { label: b.status, color: 'bg-muted text-muted-foreground' };
-                    return (
-                      <div
-                        key={b.bg_id}
-                        onClick={() => navigate(`/selection/background-check/candidate/${b.bg_id}`)}
-                        className="flex items-center justify-between gap-3 p-3 border rounded-lg transition-colors hover:bg-muted/30 cursor-pointer"
-                      >
-                        <div className="flex items-center gap-3 min-w-0 flex-1">
-                          <div className="h-8 w-8 rounded-full bg-primary/10 text-primary flex items-center justify-center text-[11px] font-bold shrink-0">
-                            {getInitials(name)}
-                          </div>
-                          <div className="min-w-0">
-                            <div className="text-sm font-semibold truncate">{name}</div>
-                            <div className="flex items-center gap-3 mt-1">
-                              {b.last_position && (
-                                <span className="text-[10px] text-muted-foreground truncate">
-                                  {b.last_position}
-                                </span>
-                              )}
-                              <span className="text-[10px] text-muted-foreground truncate">
-                                {b.job_title || '—'}
+                <div data-tour="bgcheck-candidate-list" className="rounded-lg border border-border overflow-hidden">
+                  <Table className="table-fixed w-full">
+                    <TableHeader className="bg-muted/40">
+                      <TableRow>
+                        <TableHead className="w-[30%] text-[10px] font-bold uppercase pl-6">Name</TableHead>
+                        <TableHead className="w-[25%] text-[10px] font-bold uppercase">Last Position</TableHead>
+                        <TableHead className="w-[25%] text-[10px] font-bold uppercase">Job</TableHead>
+                        <TableHead className="w-[20%] text-[10px] font-bold uppercase">Stage</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {paged.map((b) => {
+                        const name = b.candidate_name || `#${b.candidate_id}`;
+                        const meta = STATUS_META[b.status] || { label: b.status, color: 'bg-muted text-muted-foreground' };
+                        return (
+                          <TableRow
+                            key={b.bg_id}
+                            className="hover:bg-muted/30 transition-colors cursor-pointer"
+                            onClick={() => navigate(`/selection/background-check/candidate/${b.bg_id}`)}
+                          >
+                            <TableCell className="text-xs pl-6">
+                              <div className="flex items-center gap-2 min-w-0">
+                                <div className="h-7 w-7 rounded-full bg-primary/10 text-primary flex items-center justify-center text-[10px] font-bold shrink-0">
+                                  {getInitials(name)}
+                                </div>
+                                <span className="font-semibold truncate">{name}</span>
+                              </div>
+                            </TableCell>
+                            <TableCell className="text-xs truncate">
+                              {b.last_position || '—'}
+                            </TableCell>
+                            <TableCell className="text-xs text-muted-foreground truncate">
+                              {b.job_title || '—'}
+                            </TableCell>
+                            <TableCell>
+                              <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-semibold ${meta.color}`}>
+                                {meta.label}
                               </span>
-                            </div>
-                          </div>
-                        </div>
-                        <div className="flex items-center gap-2 shrink-0">
-                          {b.verdict && (
-                            <span className="text-[10px] font-mono text-muted-foreground bg-muted px-1.5 py-0.5 rounded">
-                              {b.verdict.replace(/_/g, ' ')}
-                            </span>
-                          )}
-                          <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-semibold ${meta.color}`}>
-                            {meta.label}
-                          </span>
-                        </div>
-                      </div>
-                    );
-                  })}
+                            </TableCell>
+                          </TableRow>
+                        );
+                      })}
+                    </TableBody>
+                  </Table>
                 </div>
+
                 <div className="pt-3">
                   <TablePagination
                     page={pageClamped}
@@ -330,10 +317,9 @@ export default function BackgroundCheckWorkboard() {
             )}
           </CardContent>
         </Card>
-
       </div>
 
-      <PipelineTour 
+      <PipelineTour
         steps={BG_CHECK_WORKBOARD_STEPS}
         tourKey="bg-check-workboard"
         run={run}

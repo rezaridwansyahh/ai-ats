@@ -1,26 +1,26 @@
-import JobsSidebar from '@/components/report/JobsSidebar';
-import CandidatesPanel from '@/components/report/CandidatesPanel';
-import StepFilterBar from '@/components/report/StepFilterBar';
-import { PageHeader } from '@/components/common';
-import { Button } from '@/components/ui/button';
-import { HelpCircle } from 'lucide-react';
-import { getCandidatePipelineSummary, getCandidatesByJobId } from '@/api/candidate.api';
 import { useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { HelpCircle } from 'lucide-react';
+import { PageHeader } from '@/components/common';
+import { Button } from '@/components/ui/button';
+import CandidatesPanel from '@/components/report/CandidatesPanel';
+import StepFilterBar from '@/components/report/StepFilterBar';
+import PositionsRail from '@/components/shared/PositionsRail';
+
+import { getCandidatePipelineSummary, getCandidatesByJobId } from '@/api/candidate.api';
 import PipelineTour, { usePipelineTour } from '@/components/tours/PipelineTour';
 import { PSYCH_ASSESSMENT_STEPS } from '@/components/tours/tourSteps';
-// Real-data Report page.
-// - Left rail: GET /candidate-pipeline/summary → [{ job_id, job_title, total }]
-// - Right panel: GET /candidate-pipeline/job/:job_id → candidate rows for the selected job
+
 export default function PsychAssesmentPage() {
   const navigate = useNavigate();
   const [jobs, setJobs] = useState([]);
   const [jobsLoading, setJobsLoading] = useState(true);
   const [jobsError, setJobsError]     = useState(null);
 
-  const [selectedJobId, setSelectedJobId] = useState(null);
+  // Default to 'all' so it opens with All Candidates view
+  const [selectedJobId, setSelectedJobId] = useState('all');
 
-  const [candidates, setCandidates]       = useState([]);
+  const [candidates, setCandidates]               = useState([]);
   const [candidatesLoading, setCandidatesLoading] = useState(false);
   const [candidatesError, setCandidatesError]     = useState(null);
 
@@ -29,19 +29,17 @@ export default function PsychAssesmentPage() {
 
   const { run, setRun, markSeen, restart } = usePipelineTour('psych-assessment');
 
-  // Initial summary fetch — also seeds the selected job.
+  // Initial summary fetch
   useEffect(() => {
     let cancelled = false;
     (async () => {
       setJobsLoading(true);
       setJobsError(null);
       try {
-        // Added filter 
         const res  = await getCandidatePipelineSummary('Assessment');
         const list = res.data?.summary || [];
         if (cancelled) return;
         setJobs(list);
-        if (list.length > 0) setSelectedJobId(list[0].job_id);
       } catch (err) {
         if (!cancelled) {
           setJobsError(err.response?.data?.message || err.message || 'Failed to load jobs');
@@ -53,20 +51,34 @@ export default function PsychAssesmentPage() {
     return () => { cancelled = true; };
   }, []);
 
-  // Candidate list fetch — runs whenever the selected job changes.
+  // Candidate list fetch — handles both 'all' (fetches all jobs in parallel) and specific job_id
   useEffect(() => {
-    if (selectedJobId == null || selectedJobId === 'all') {
-      setCandidates([]);
-      return undefined;
-    }
     let cancelled = false;
     (async () => {
       setCandidatesLoading(true);
       setCandidatesError(null);
       try {
-        // In here categorized assesment so only assesment is shown
-        const res = await getCandidatesByJobId(selectedJobId, 'Assessment');
-        if (!cancelled) setCandidates(res.data?.pipelines || []);
+        if (selectedJobId === 'all') {
+          if (jobs.length === 0) {
+            setCandidates([]);
+            setCandidatesLoading(false);
+            return;
+          }
+          // Fetch candidates for all available jobs in parallel
+          const results = await Promise.all(
+            jobs.map((j) =>
+              getCandidatesByJobId(j.job_id, 'Assessment')
+                .then((r) => r.data?.pipelines || [])
+                .catch(() => [])
+            )
+          );
+          if (!cancelled) setCandidates(results.flat());
+        } else if (selectedJobId) {
+          const res = await getCandidatesByJobId(selectedJobId, 'Assessment');
+          if (!cancelled) setCandidates(res.data?.pipelines || []);
+        } else {
+          setCandidates([]);
+        }
       } catch (err) {
         if (!cancelled) {
           setCandidatesError(err.response?.data?.message || err.message || 'Failed to load candidates');
@@ -77,15 +89,29 @@ export default function PsychAssesmentPage() {
       }
     })();
     return () => { cancelled = true; };
-  }, [selectedJobId]);
+  }, [selectedJobId, jobs]);
 
   const selectedJob = useMemo(
-    () => jobs.find((j) => j.job_id === selectedJobId) || null,
+    () => (selectedJobId === 'all' ? '' : jobs.find((j) => j.job_id === selectedJobId) || null),
     [jobs, selectedJobId]
   );
 
-  // Pill counts always reflect the full unfiltered list — clicking a pill
-  // focuses the candidate list without hiding what's available in other steps.
+  // Map positions array to match the contract expected by PositionsRail
+  const mappedPositions = useMemo(() => {
+    return jobs.map((j) => ({
+      ...j,
+      job_id: j.job_id,
+      job_title: j.job_title,
+      status: j.status || 'active',
+      total: j.total ?? 0,
+    }));
+  }, [jobs]);
+
+  const totalCandidatesAcrossJobs = useMemo(() => {
+    return jobs.reduce((acc, j) => acc + (j.total || 0), 0);
+  }, [jobs]);
+
+  // Pill counts always reflect the full unfiltered candidate list
   const stepCounts = useMemo(() => {
     const c = { setup: 0, take: 0, decide: 0 };
     for (const cand of candidates) {
@@ -99,11 +125,16 @@ export default function PsychAssesmentPage() {
     [candidates, activeStep]
   );
 
-  // Clear the filter when switching jobs so the new job starts unfocused.
+  // Clear the step filter when switching jobs
   useEffect(() => { setActiveStep(null); }, [selectedJobId]);
 
   const handleSelectCandidate = (candidate) => {
     navigate(`/selection/psych-assessment/${candidate.job_id}/${candidate.id}`);
+  };
+
+  const resetView = () => {
+    setSelectedJobId('all');
+    setActiveStep(null);
   };
 
   return (
@@ -124,6 +155,7 @@ export default function PsychAssesmentPage() {
           {jobsError}
         </div>
       ) : null}
+
       <div data-tour="psych-step-filter">
         <StepFilterBar
           counts={stepCounts}
@@ -132,18 +164,22 @@ export default function PsychAssesmentPage() {
         />
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-[220px_1fr] gap-4">
+      <div className="grid grid-cols-1 md:grid-cols-[240px_1fr] gap-4">
         <div data-tour="psych-positions-rail">
-          <JobsSidebar
-            jobs={jobs}
+          <PositionsRail
+            positions={mappedPositions}
+            activeJob={selectedJob}
+            onSelectJob={(job) => setSelectedJobId(job.job_id)}
+            onResetView={resetView}
+            totalCount={totalCandidatesAcrossJobs}
             loading={jobsLoading}
-            selectedJobId={selectedJobId}
-            onSelectJob={setSelectedJobId}
+            emptyMessage="No positions."
           />
         </div>
+
         <CandidatesPanel
           key={selectedJobId ?? 'none'}
-          jobTitle={selectedJob?.job_title ?? '—'}
+          jobTitle={selectedJobId === 'all' ? 'All candidates' : (selectedJob?.job_title ?? '—')}
           candidates={filteredCandidates}
           loading={candidatesLoading}
           error={candidatesError}

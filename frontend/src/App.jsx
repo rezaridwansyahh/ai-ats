@@ -28,6 +28,7 @@ import AIScreeningCandidatePage from "./pages/AIScreeningCandidate"
 import AssessmentBPage from "./pages/AssessmentB"
 import CandidatePipelinePage from "./pages/CandidatePipeline"
 import CandidatePipelineDetailPage from "./pages/CandidatePipelineDetail"
+import CandidateProfile from "./pages/CandidateProfile"
 import AssessmentCPage from "./pages/AssessmentC"
 import AssessmentDPage from "./pages/AssessmentD"
 import InsightsDiscoveryAssessmentPage from "./pages/InsightsDiscoveryAssessment"
@@ -81,6 +82,7 @@ function App() {
           <Route path="/dashboard" element={<DashboardPage />} />
           <Route path="/candidate-pipeline" element={<CandidatePipelinePage />} />
           <Route path="/candidate-pipeline/:id" element={<CandidatePipelineDetailPage />} />
+          <Route path="/candidate-detail/:id" element={<CandidateProfile />} />
 
           <Route path="/sourcing/job-management" element={<JobManagementPage />} />
           <Route path="/sourcing/job-management/new" element={<JobEditPage />} />
