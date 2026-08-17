@@ -1,6 +1,6 @@
 import getDb from '../../config/postgres.js';
 
-class PortalOfferModel {
+class PortalContractModel {
 
   static async getByToken(token) {
     const result = await getDb().query(`
@@ -17,6 +17,7 @@ class PortalOfferModel {
         os.submitted_at,
         co.position_title,
         co.contract_type,
+        co.contract_status,
         mc.name           AS candidate_name,
         ma.email          AS candidate_email,
         cj.job_title,
@@ -30,8 +31,8 @@ class PortalOfferModel {
       JOIN core_job cj          ON cj.id  = co.job_id
       JOIN core_company cc      ON cc.id  = co.company_id
       LEFT JOIN master_applicant ma ON ma.id = mc.applicant_id
-      LEFT JOIN offer_document   od ON od.offer_id = os.offer_id AND od.document_type = 'offer'
-      WHERE os.document_type = 'offer'
+      LEFT JOIN offer_document   od ON od.offer_id = os.offer_id AND od.document_type = 'contract'
+      WHERE os.document_type = 'contract'
         AND (os.token::text = $1 OR REPLACE(os.token::text, '-', '') = $1)
       LIMIT 1
     `, [token]);
@@ -69,4 +70,4 @@ class PortalOfferModel {
 
 }
 
-export default PortalOfferModel;
+export default PortalContractModel;

@@ -202,7 +202,6 @@ class OfferService {
     return { message: 'Negotiation response sent' };
   }
 
-  // Generate contract after offer accepted
   async generateContract(offer_id, contract_type, start_date, end_date, company_id, user_id) {
     const offer = await OfferModel.getOfferById(offer_id, company_id);
     if (!offer) throw { status: 404, message: 'Offer not found' };
@@ -210,31 +209,26 @@ class OfferService {
       throw { status: 400, message: 'Can only generate contract for accepted offers' };
     }
 
-    // Generate contract PDF (TODO: implement template rendering)
-    // const contract_pdf = await generateContractPDF(offer, contract_type, start_date, end_date);
-
     const contract_id = await OfferModel.createContract({
       offer_id, contract_type, start_date, end_date, status: 'ready',
-      // pdf_url: contract_pdf.url,
       generated_by: user_id
     });
 
     return { contract_id, message: 'Contract generated successfully' };
   }
 
-  // Send contract for signature
+  // Send contract for signature (LEGACY — superseded by sendContractDocument)
   async sendContract(offer_id, company_id, user_id) {
     const offer = await OfferModel.getOfferById(offer_id, company_id);
     if (!offer) throw { status: 404, message: 'Offer not found' };
     if (offer.contract_status !== 'ready') {
       throw { status: 400, message: 'Contract not ready to send' };
     }
-    // TODO: Send email with contract link
     await OfferModel.updateContractStatus(offer_id, 'sent', { sent_at: new Date(), sent_by: user_id });
     return { message: 'Contract sent successfully' };
   }
 
-  // Candidate signs contract
+  // Candidate signs contract (LEGACY — superseded by the portal submit flow)
   async signContract(offer_id, signature_data) {
     const offer = await OfferModel.getOfferByIdPublic(offer_id);
     if (!offer) throw { status: 404, message: 'Offer not found' };
@@ -242,7 +236,6 @@ class OfferService {
       throw { status: 400, message: 'Contract cannot be signed in current status' };
     }
     await OfferModel.updateContractStatus(offer_id, 'signed', { signed_at: new Date(), signature_data });
-    // TODO: Notify recruiter
     return { message: 'Contract signed successfully' };
   }
 
@@ -342,8 +335,6 @@ class OfferService {
       throw { status: 400, message: 'Finish Build (compensation) before requesting approval' };
     }
 
-    // NOTE: writes { status: decision, ... } — this is the field
-    // sendOffer() below reads as offer.metadata.approval.status.
     const approval = { status: decision, decided_by: user_id, decided_at: new Date(), note: note || null };
     const metadata = await OfferModel.mergeMetadata(offer_id, { approval });
     return { approval: metadata.approval, message: `Offer ${decision}` };
@@ -409,7 +400,7 @@ class OfferService {
     const metadata = await OfferModel.mergeMetadata(offer_id, { approval });
     return { approval: metadata.approval, message: `Step ${decision}` };
   }
-  
+
   async sendOffer(offer_id, company_id, user_id, emailOverride = {}) {
     const offer = await OfferModel.getOfferById(offer_id, company_id);
     if (!offer) throw { status: 404, message: 'Offer not found' };
@@ -420,7 +411,7 @@ class OfferService {
 
     const isFirstSend = offer.offer_status === 'draft';
 
-    const document = await OfferModel.getOfferDocument(offer_id);
+    const document = await OfferModel.getOfferDocument(offer_id, 'offer');
     if (!document) {
       throw { status: 400, message: 'Upload or generate the finalized offer letter before sending' };
     }
@@ -428,7 +419,7 @@ class OfferService {
       throw { status: 400, message: 'Candidate has no email on file — cannot send' };
     }
 
-    await OfferModel.revokeActiveOfferSends(offer_id, user_id, 'Superseded by a new send');
+    await OfferModel.revokeActiveOfferSends(offer_id, user_id, 'Superseded by a new send', 'offer');
 
     const expiryDays = offer.metadata?.dispatch?.portal_expiry_days || 7;
     const expiresAt = new Date(Date.now() + expiryDays * 24 * 60 * 60 * 1000);
@@ -437,6 +428,7 @@ class OfferService {
       offer_id,
       token_expires_at: expiresAt,
       sent_by: user_id,
+      document_type: 'offer',
     });
 
     const baseUrl = process.env.FRONTEND_URL || 'http://localhost:5173';
@@ -466,13 +458,14 @@ class OfferService {
     const offer = await OfferModel.getOfferById(offer_id, company_id);
     if (!offer) throw { status: 404, message: 'Offer not found' };
 
-    const history = await OfferModel.getOfferSendHistory(offer_id);
+    const history = await OfferModel.getOfferSendHistory(offer_id, 'offer');
     const latest = history[0];
-    if (latest?.status === 'signed') {
+
+    if (latest?.status === 'submitted') {
       throw { status: 409, message: 'Offer has been signed and cannot be revoked.' };
     }
 
-    const revoked = await OfferModel.revokeActiveOfferSends(offer_id, user_id, reason || 'Revoked by recruiter');
+    const revoked = await OfferModel.revokeActiveOfferSends(offer_id, user_id, reason || 'Revoked by recruiter', 'offer');
     if (!revoked.length) throw { status: 400, message: 'No active send to revoke' };
 
     return { message: 'Offer link revoked' };
@@ -481,7 +474,7 @@ class OfferService {
   async getSendHistory(offer_id, company_id) {
     const offer = await OfferModel.getOfferById(offer_id, company_id);
     if (!offer) throw { status: 404, message: 'Offer not found' };
-    return OfferModel.getOfferSendHistory(offer_id);
+    return OfferModel.getOfferSendHistory(offer_id, 'offer');
   }
 
   async getOfferLetterFields(offer_id, company_id) {
@@ -622,7 +615,7 @@ class OfferService {
       throw { status: 400, message: 'No file received' };
     }
 
-    const existing = await OfferModel.getOfferDocument(offer_id);
+    const existing = await OfferModel.getOfferDocument(offer_id, 'offer');
     if (existing?.file && existing.file !== file.path) {
       fs.unlink(existing.file, (err) => {
         if (err) console.error('Failed to remove previous offer document:', err);
@@ -634,6 +627,7 @@ class OfferService {
       file: file.path,
       method: 'upload',
       uploaded_by: user_id,
+      document_type: 'offer',
     });
 
     return { document: doc, message: 'Document uploaded' };
@@ -644,14 +638,14 @@ class OfferService {
     if (!offer) {
       throw { status: 404, message: 'Offer not found' };
     }
-    return OfferModel.getOfferDocument(offer_id);
+    return OfferModel.getOfferDocument(offer_id, 'offer');
   }
 
   async downloadCandidateFile(offer_id, company_id) {
     const offer = await OfferModel.getOfferById(offer_id, company_id);
     if (!offer) throw { status: 404, message: 'Offer not found' };
 
-    const history = await OfferModel.getOfferSendHistory(offer_id);
+    const history = await OfferModel.getOfferSendHistory(offer_id, 'offer');
     const latest = history[0];
 
     if (!latest?.candidate_file) {
@@ -661,6 +655,201 @@ class OfferService {
     return {
       filePath: latest.candidate_file,
       fileName: `signed_offer_${offer.candidate_name || 'candidate'}_${offer_id}${path.extname(latest.candidate_file)}`,
+    };
+  }
+
+  async uploadContractDocument(offer_id, company_id, user_id, file) {
+    const offer = await OfferModel.getOfferById(offer_id, company_id);
+
+    if (!offer) {
+      if (file?.path) fs.unlink(file.path, () => {});
+      throw { status: 404, message: 'Offer not found' };
+    }
+    if (offer.offer_status !== 'accepted') {
+      if (file?.path) fs.unlink(file.path, () => {});
+      throw { status: 400, message: 'Candidate must accept the offer before a contract can be uploaded' };
+    }
+
+    const latestSend = await OfferModel.getLatestOfferSend(offer_id, 'contract');
+    if (latestSend?.status === 'submitted') {
+      if (file?.path) fs.unlink(file.path, () => {});
+      throw { status: 409, message: 'The signed contract has already been submitted and cannot be replaced.' };
+    }
+
+    if (!file) {
+      throw { status: 400, message: 'No file received' };
+    }
+
+    const existing = await OfferModel.getOfferDocument(offer_id, 'contract');
+    if (existing?.file && existing.file !== file.path) {
+      fs.unlink(existing.file, (err) => {
+        if (err) console.error('Failed to remove previous contract document:', err);
+      });
+    }
+
+    const doc = await OfferModel.upsertOfferDocument({
+      offer_id,
+      file: file.path,
+      method: 'upload',
+      uploaded_by: user_id,
+      document_type: 'contract',
+    });
+
+    if (!offer.contract_status || offer.contract_status === 'draft') {
+      await OfferModel.updateOfferContractStatus(offer_id, 'ready');
+    }
+
+    return { document: doc, message: 'Contract document uploaded' };
+  }
+
+  async getContractDocument(offer_id, company_id) {
+    const offer = await OfferModel.getOfferById(offer_id, company_id);
+    if (!offer) throw { status: 404, message: 'Offer not found' };
+    return OfferModel.getOfferDocument(offer_id, 'contract');
+  }
+
+  async sendContractDocument(offer_id, company_id, user_id, emailOverride = {}) {
+    const offer = await OfferModel.getOfferById(offer_id, company_id);
+    if (!offer) throw { status: 404, message: 'Offer not found' };
+
+    if (offer.offer_status !== 'accepted') {
+      throw { status: 400, message: 'Candidate must accept the offer before the contract can be sent' };
+    }
+
+    // Same policy as uploadContractDocument — see comment there.
+    const latestSend = await OfferModel.getLatestOfferSend(offer_id, 'contract');
+    if (latestSend?.status === 'submitted') {
+      throw { status: 409, message: 'The signed contract has already been submitted — nothing left to send.' };
+    }
+
+    const document = await OfferModel.getOfferDocument(offer_id, 'contract');
+    if (!document) {
+      throw { status: 400, message: 'Upload the finalized contract letter before sending' };
+    }
+    if (!offer.candidate_email) {
+      throw { status: 400, message: 'Candidate has no email on file — cannot send' };
+    }
+
+    const isFirstSend = !offer.contract_status || ['draft', 'ready'].includes(offer.contract_status);
+
+    await OfferModel.revokeActiveOfferSends(offer_id, user_id, 'Superseded by a new send', 'contract');
+
+    const expiryDays = offer.metadata?.dispatch?.contract_portal_expiry_days || 7;
+    const expiresAt = new Date(Date.now() + expiryDays * 24 * 60 * 60 * 1000);
+
+    const send = await OfferModel.createOfferSend({
+      offer_id,
+      token_expires_at: expiresAt,
+      sent_by: user_id,
+      document_type: 'contract',
+    });
+
+    const baseUrl = process.env.FRONTEND_URL || 'http://localhost:5173';
+    const link = `${baseUrl}/contract/send/${send.token}`;
+
+    await sendOfferEmail({
+      candidateName: offer.candidate_name,
+      candidateEmail: offer.candidate_email,
+      jobTitle: offer.position_title || offer.job_title,
+      link,
+      customSubject: emailOverride.subject || null,
+      customBody: emailOverride.body || null,
+    });
+
+    await OfferModel.updateOfferContractStatus(offer_id, 'sent');
+
+    return {
+      message: isFirstSend ? 'Contract sent successfully' : 'Contract resent successfully',
+      token: send.token,
+      token_expires_at: send.token_expires_at,
+    };
+  }
+
+  async revokeContractDocument(offer_id, company_id, user_id, reason) {
+    const offer = await OfferModel.getOfferById(offer_id, company_id);
+    if (!offer) throw { status: 404, message: 'Offer not found' };
+
+    const history = await OfferModel.getOfferSendHistory(offer_id, 'contract');
+    const latest = history[0];
+    if (latest?.status === 'submitted') {
+      throw { status: 409, message: 'Contract has already been submitted and cannot be revoked.' };
+    }
+
+    const revoked = await OfferModel.revokeActiveOfferSends(offer_id, user_id, reason || 'Revoked by recruiter', 'contract');
+    if (!revoked.length) throw { status: 400, message: 'No active contract send to revoke' };
+
+    return { message: 'Contract link revoked' };
+  }
+
+  async getContractSendHistory(offer_id, company_id) {
+    const offer = await OfferModel.getOfferById(offer_id, company_id);
+    if (!offer) throw { status: 404, message: 'Offer not found' };
+    return OfferModel.getOfferSendHistory(offer_id, 'contract');
+  }
+
+  async downloadContractCandidateFile(offer_id, company_id) {
+    const offer = await OfferModel.getOfferById(offer_id, company_id);
+    if (!offer) throw { status: 404, message: 'Offer not found' };
+
+    const history = await OfferModel.getOfferSendHistory(offer_id, 'contract');
+    const latest = history[0];
+
+    if (!latest?.candidate_file) {
+      throw { status: 404, message: 'No signed contract has been submitted for this offer yet' };
+    }
+
+    return {
+      filePath: latest.candidate_file,
+      fileName: `signed_contract_${offer.candidate_name || 'candidate'}_${offer_id}${path.extname(latest.candidate_file)}`,
+    };
+  }
+
+  async uploadContractExecutedDocument(offer_id, company_id, user_id, file, notes) {
+    const offer = await OfferModel.getOfferById(offer_id, company_id);
+
+    if (!offer) {
+      if (file?.path) fs.unlink(file.path, () => {});
+      throw { status: 404, message: 'Offer not found' };
+    }
+    if (!file) {
+      throw { status: 400, message: 'No file received' };
+    }
+
+    const existing = await OfferModel.getContractExecutedDocument(offer_id);
+    if (existing?.file && existing.file !== file.path) {
+      fs.unlink(existing.file, (err) => {
+        if (err) console.error('Failed to remove previous executed contract:', err);
+      });
+    }
+
+    const doc = await OfferModel.upsertContractExecutedDocument({
+      offer_id,
+      file: file.path,
+      uploaded_by: user_id,
+      notes: notes || null,
+    });
+
+    return { document: doc, message: 'Fully-executed contract saved' };
+  }
+
+  async getContractExecutedDocument(offer_id, company_id) {
+    const offer = await OfferModel.getOfferById(offer_id, company_id);
+    if (!offer) throw { status: 404, message: 'Offer not found' };
+    return OfferModel.getContractExecutedDocument(offer_id);
+  }
+
+  async downloadContractExecutedDocument(offer_id, company_id) {
+    const offer = await OfferModel.getOfferById(offer_id, company_id);
+    if (!offer) throw { status: 404, message: 'Offer not found' };
+
+    const doc = await OfferModel.getContractExecutedDocument(offer_id);
+    if (!doc) {
+      throw { status: 404, message: 'No fully-executed contract has been saved for this offer yet' };
+    }
+
+    return {
+      filePath: doc.file,
+      fileName: `executed_contract_${offer.candidate_name || 'candidate'}_${offer_id}${path.extname(doc.file)}`,
     };
   }
 
