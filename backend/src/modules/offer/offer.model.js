@@ -244,7 +244,12 @@ class OfferModel {
     await getDb().query(query, [offer_id, status, JSON.stringify(metadata)]);
   }
 
-  // Create contract
+  async updateOfferContractStatus(offer_id, status) {
+    await getDb().query(`
+      UPDATE candidate_offer SET contract_status = $2, updated_at = NOW() WHERE id = $1
+    `, [offer_id, status]);
+  }
+
   async createContract(data) {
     const query = `
       INSERT INTO offer_contract (
@@ -268,7 +273,7 @@ class OfferModel {
     return result.rows[0].id;
   }
 
-  // Update contract status
+  // Update contract status (legacy — operates on offer_contract row)
   async updateContractStatus(offer_id, status, metadata = {}) {
     const query = `
       UPDATE offer_contract
@@ -291,18 +296,15 @@ class OfferModel {
     await getDb().query(updateOfferQuery, [offer_id, status]);
   }
 
-  // Get signed offers by job (for calibration)
   async getSignedOffersByJob(job_id, candidate_ids, company_id) {
     const query = `
-      SELECT co.*, contract.signed_at
+      SELECT co.*
       FROM candidate_offer co
-      JOIN offer_contract contract ON co.id = contract.offer_id
       WHERE co.job_id = $1
         AND co.candidate_id = ANY($2::int[])
         AND co.company_id = $3
-        AND contract.status = 'signed'
+        AND co.contract_status = 'signed'
     `;
-
     const result = await getDb().query(query, [job_id, candidate_ids, company_id]);
     return result.rows;
   }
@@ -368,15 +370,17 @@ class OfferModel {
   }
 
   async createOfferSend(data) {
+    const document_type = data.document_type || 'offer';
     const query = `
       INSERT INTO offer_send (
-        offer_id, token_expires_at, document, sent_at, sent_by, status
+        offer_id, document_type, token_expires_at, document, sent_at, sent_by, status
       )
-      VALUES ($1, $2, $3, NOW(), $4, 'sent')
+      VALUES ($1, $2, $3, $4, NOW(), $5, 'sent')
       RETURNING *
     `;
     const result = await getDb().query(query, [
       data.offer_id,
+      document_type,
       data.token_expires_at,
       JSON.stringify(data.document || {}),
       data.sent_by || null,
@@ -384,25 +388,25 @@ class OfferModel {
     return result.rows[0];
   }
 
-  async revokeActiveOfferSends(offer_id, revoked_by, reason) {
+  async revokeActiveOfferSends(offer_id, revoked_by, reason, document_type = 'offer') {
     const result = await getDb().query(`
       UPDATE offer_send
       SET revoked_at = NOW(), revoked_by = $2, revocation_reason = $3, updated_at = NOW()
-      WHERE offer_id = $1 AND status = 'sent' AND revoked_at IS NULL
+      WHERE offer_id = $1 AND document_type = $4 AND status = 'sent' AND revoked_at IS NULL
       RETURNING *
-    `, [offer_id, revoked_by, reason || 'Superseded by a new send']);
+    `, [offer_id, revoked_by, reason || 'Superseded by a new send', document_type]);
     return result.rows;
   }
 
-  async getOfferSendHistory(offer_id) {
+  async getOfferSendHistory(offer_id, document_type = 'offer') {
     const query = `
       SELECT os.*, mu.username AS sent_by_name
       FROM offer_send os
       LEFT JOIN master_users mu ON mu.id = os.sent_by
-      WHERE os.offer_id = $1
+      WHERE os.offer_id = $1 AND os.document_type = $2
       ORDER BY os.sent_at DESC
     `;
-    const result = await getDb().query(query, [offer_id]);
+    const result = await getDb().query(query, [offer_id, document_type]);
     return result.rows;
   }
 
@@ -423,10 +427,11 @@ class OfferModel {
   }
 
   async upsertOfferDocument(data) {
+    const document_type = data.document_type || 'offer';
     const query = `
-      INSERT INTO offer_document (offer_id, file, method, uploaded_by, uploaded_at)
-      VALUES ($1, $2, $3, $4, NOW())
-      ON CONFLICT (offer_id) DO UPDATE
+      INSERT INTO offer_document (offer_id, document_type, file, method, uploaded_by, uploaded_at)
+      VALUES ($1, $2, $3, $4, $5, NOW())
+      ON CONFLICT (offer_id, document_type) DO UPDATE
       SET file = EXCLUDED.file,
           method = EXCLUDED.method,
           uploaded_by = EXCLUDED.uploaded_by,
@@ -436,6 +441,7 @@ class OfferModel {
     `;
     const result = await getDb().query(query, [
       data.offer_id,
+      document_type,
       data.file,
       data.method,
       data.uploaded_by || null,
@@ -443,13 +449,55 @@ class OfferModel {
     return result.rows[0];
   }
 
-  async getOfferDocument(offer_id) {
+  async getOfferDocument(offer_id, document_type = 'offer') {
     const result = await getDb().query(`
       SELECT od.*, mu.username AS uploaded_by_name
       FROM offer_document od
       LEFT JOIN master_users mu ON mu.id = od.uploaded_by
-      WHERE od.offer_id = $1
+      WHERE od.offer_id = $1 AND od.document_type = $2
+    `, [offer_id, document_type]);
+    return result.rows[0] || null;
+  }
+
+  async upsertContractExecutedDocument(data) {
+    const query = `
+      INSERT INTO contract_executed_document (offer_id, file, uploaded_by, uploaded_at, notes)
+      VALUES ($1, $2, $3, NOW(), $4)
+      ON CONFLICT (offer_id) DO UPDATE
+      SET file = EXCLUDED.file,
+          uploaded_by = EXCLUDED.uploaded_by,
+          uploaded_at = NOW(),
+          notes = EXCLUDED.notes,
+          updated_at = NOW()
+      RETURNING *
+    `;
+    const result = await getDb().query(query, [
+      data.offer_id,
+      data.file,
+      data.uploaded_by || null,
+      data.notes || null,
+    ]);
+    return result.rows[0];
+  }
+
+  async getContractExecutedDocument(offer_id) {
+    const result = await getDb().query(`
+      SELECT ced.*, mu.username AS uploaded_by_name
+      FROM contract_executed_document ced
+      LEFT JOIN master_users mu ON mu.id = ced.uploaded_by
+      WHERE ced.offer_id = $1
     `, [offer_id]);
+    return result.rows[0] || null;
+  }
+
+  async getLatestOfferSend(offer_id, document_type = 'offer') {
+    const result = await getDb().query(`
+      SELECT *
+      FROM offer_send
+      WHERE offer_id = $1 AND document_type = $2
+      ORDER BY created_at DESC
+      LIMIT 1
+    `, [offer_id, document_type]);
     return result.rows[0] || null;
   }
 

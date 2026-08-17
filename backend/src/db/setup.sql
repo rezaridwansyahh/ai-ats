@@ -50,6 +50,7 @@ DROP TABLE IF EXISTS bg_consent CASCADE;
 DROP TABLE IF EXISTS bg_lane CASCADE;
 DROP TABLE IF EXISTS candidate_bg CASCADE;
 DROP TABLE IF EXISTS company_offer_letter CASCADE;
+DROP TABLE IF EXISTS contract_executed_document CASCADE;
 DROP TABLE IF EXISTS offer_approval CASCADE;
 DROP TABLE IF EXISTS offer_document CASCADE;
 DROP TABLE IF EXISTS offer_send CASCADE;
@@ -103,6 +104,7 @@ DROP TYPE IF EXISTS offer_status_type CASCADE;
 DROP TYPE IF EXISTS contract_status_type CASCADE;
 DROP TYPE IF EXISTS contract_type_enum CASCADE;
 DROP TYPE IF EXISTS negotiation_initiator_type CASCADE;
+DROP TYPE IF EXISTS document_type_enum CASCADE;
 
 -- Create ENUM type
 CREATE TYPE status_type AS ENUM ('Draft', 'Active', 'Running', 'Expired', 'Failed', 'Blocked');
@@ -132,6 +134,7 @@ CREATE TYPE offer_status_type AS ENUM ('draft', 'sent', 'negotiating', 'accepted
 CREATE TYPE contract_status_type AS ENUM ('draft', 'ready', 'sent', 'signed', 'expired');
 CREATE TYPE contract_type_enum AS ENUM ('PKWT', 'PKWTT'); -- PKWT = Fixed-term, PKWTT = Permanent
 CREATE TYPE negotiation_initiator_type AS ENUM ('candidate', 'recruiter');
+CREATE TYPE document_type_enum AS ENUM ('offer', 'contract');
 CREATE EXTENSION IF NOT EXISTS pgcrypto;
 CREATE EXTENSION IF NOT EXISTS pg_trgm;
 
@@ -773,6 +776,7 @@ CREATE INDEX idx_offer_compensation_offer ON offer_compensation(offer_id);
 CREATE TABLE offer_send (
   id SERIAL PRIMARY KEY,
   offer_id INTEGER NOT NULL REFERENCES candidate_offer(id) ON DELETE CASCADE,
+  document_type document_type_enum NOT NULL DEFAULT 'offer',
   token UUID NOT NULL UNIQUE DEFAULT gen_random_uuid(),
   token_expires_at TIMESTAMPTZ,
   document JSONB,
@@ -792,13 +796,15 @@ CREATE TABLE offer_send (
 
 CREATE TABLE offer_document (
   id SERIAL PRIMARY KEY,
-  offer_id INTEGER NOT NULL UNIQUE REFERENCES candidate_offer(id) ON DELETE CASCADE,
+  offer_id INTEGER NOT NULL REFERENCES candidate_offer(id) ON DELETE CASCADE,
   file VARCHAR(255) NOT NULL,
   method VARCHAR(20) NOT NULL DEFAULT 'upload', -- 'upload' | 'print'
+  document_type document_type_enum NOT NULL DEFAULT 'offer',
   uploaded_by INTEGER REFERENCES master_users(id) ON DELETE SET NULL,
   uploaded_at TIMESTAMPTZ,
   created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-  updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  UNIQUE (offer_id, document_type)
 );
 
 CREATE TABLE company_offer_letter (
@@ -860,6 +866,17 @@ CREATE TABLE offer_approval (
   created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
   updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
   UNIQUE (offer_id, step_order)
+);
+
+CREATE TABLE contract_executed_document (
+  id SERIAL PRIMARY KEY,
+  offer_id INTEGER NOT NULL UNIQUE REFERENCES candidate_offer(id) ON DELETE CASCADE,
+  file VARCHAR(255) NOT NULL,
+  uploaded_by INTEGER REFERENCES master_users(id) ON DELETE SET NULL,
+  uploaded_at TIMESTAMPTZ,
+  notes TEXT,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
 -- =============================================================================
