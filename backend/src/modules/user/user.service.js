@@ -3,12 +3,12 @@ import User from './user.model.js';
 import Role from '../role/role.model.js';
 
 class UserService {
-  async getAll() {
-    return await User.getAll();
+  async getAll(company_id) {
+    return await User.getAll(company_id);
   }
 
-  async getAllWithRoles() {
-    return await User.getAllWithRoles();
+  async getAllWithRoles(company_id) {
+    return await User.getAllWithRoles(company_id);
   }
 
   async getById(id) {

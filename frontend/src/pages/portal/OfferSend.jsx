@@ -30,7 +30,6 @@ function fmtDate(d) {
 const CONTENT_TYPE_EXT = {
   'application/pdf': 'pdf',
   'application/vnd.openxmlformats-officedocument.wordprocessingml.document': 'docx',
-  'text/plain': 'txt',
 };
 
 function downloadBlobResponse(blobResponse, fallbackBaseName) {
@@ -402,7 +401,7 @@ export default function OfferSendPage() {
                   <p className="text-xs font-semibold">Unggah salinan yang telah ditandatangani</p>
                 </div>
                 <p className="text-[11px] text-muted-foreground leading-relaxed">
-                  Unggah surat penawaran yang sudah Anda tanda tangani (PDF, DOCX, atau TXT, maks. 10MB).
+                  Unggah surat penawaran yang sudah Anda tanda tangani (PDF atau DOCX maks. 10MB).
                 </p>
 
                 {hasUploaded && (
@@ -415,7 +414,7 @@ export default function OfferSendPage() {
                 <input
                   ref={fileInputRef}
                   type="file"
-                  accept=".pdf,.docx,.txt"
+                  accept=".pdf,.docx"
                   className="hidden"
                   onChange={handleFileSelect}
                 />

@@ -354,12 +354,12 @@ const seed = async () => {
     for (const ci of candidateInterviewData) {
       const inserted = await getDb().query(
         `INSERT INTO candidate_interview
-          (id, candidate_id, job_id, company_id, status, round, scheduled_at)
-        VALUES ($1, $2, $3, $4, $5, $6, $7)
+          (id, candidate_id, job_id, company_id, status, round, scheduled_at, decision)
+        VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
         ON CONFLICT (candidate_id, job_id) DO NOTHING
         RETURNING id`,
         [ci.id, ci.candidate_id, ci.job_id,
-        ci.company_id, ci.status, ci.round_number || 1, ci.scheduled_at]
+        ci.company_id, ci.status, ci.round_number || 1, ci.scheduled_at, ci.decision || 'pending']
       );
       const interviewId = inserted.rows[0]?.id ?? ci.id;
 

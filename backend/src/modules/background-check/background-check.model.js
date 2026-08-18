@@ -73,48 +73,67 @@ class BackgroundCheckModel {
     return result.rows[0] || null;
   }
 
+  // Driven from master_candidate — a candidate only shows here while their
+  // CURRENT latest_stage is Background Check, matching getWorkboard above.
   async getByJob(job_id) {
     const result = await getDb().query(`
       SELECT
         cb.id             AS bg_id,
-        cb.candidate_id,
-        cb.job_id,
-        cb.status,
+        mc.id             AS candidate_id,
+        mc.job_id,
+        COALESCE(cb.status, 'claims') AS status,
         cb.status_changed_at,
         cb.verdict,
         cb.archived_reason,
-        cb.created_at,
+        mc.created_at,
 
         mc.name           AS candidate_name,
         mc.last_position
 
-      FROM candidate_bg cb
-      JOIN master_candidate mc ON mc.id = cb.candidate_id
-      WHERE cb.job_id = $1
-      ORDER BY cb.created_at ASC
+      FROM master_candidate mc
+      JOIN job_stage js ON js.id = mc.latest_stage
+      JOIN recruitment_stage_category rsc ON rsc.id = js.stage_type_id
+      LEFT JOIN candidate_bg cb ON cb.candidate_id = mc.id AND cb.job_id = mc.job_id
+      WHERE mc.job_id = $1 AND rsc.name = 'Background Check'
+      ORDER BY mc.created_at ASC
     `, [job_id]);
 
     return result.rows;
   }
 
+  // Driven from master_candidate (source of truth for "who is currently in
+  // Background Check"), so a job only appears if at least one candidate's
+  // CURRENT latest_stage is in the Background Check category — a stale
+  // candidate_bg row left over from an earlier stage no longer counts.
   async getWorkboard(company_id) {
     const db = getDb();
 
     const positionRows = await db.query(`
+      WITH bg_candidates AS (
+        SELECT
+          mc.job_id,
+          mc.id AS candidate_id,
+          cb.status
+        FROM master_candidate mc
+        JOIN job_stage js ON js.id = mc.latest_stage
+        JOIN recruitment_stage_category rsc ON rsc.id = js.stage_type_id
+        LEFT JOIN candidate_bg cb ON cb.candidate_id = mc.id AND cb.job_id = mc.job_id
+        WHERE rsc.name = 'Background Check'
+      )
       SELECT
         cj.id         AS job_id,
         cj.job_title,
         cj.status,
 
-        COUNT(cb.id)                                                  AS total,
-        COUNT(*) FILTER (WHERE cb.status = 'claims')                 AS claims,
-        COUNT(*) FILTER (WHERE cb.status = 'consent')                AS consent,
-        COUNT(*) FILTER (WHERE cb.status = 'tracker')                AS tracker,
-        COUNT(*) FILTER (WHERE cb.status = 'verdict')                AS verdict,
-        COUNT(*) FILTER (WHERE cb.status = 'done')                   AS ready
+        COUNT(bc.candidate_id)                                        AS total,
+        COUNT(*) FILTER (WHERE bc.status = 'claims')                 AS claims,
+        COUNT(*) FILTER (WHERE bc.status = 'consent')                AS consent,
+        COUNT(*) FILTER (WHERE bc.status = 'tracker')                AS tracker,
+        COUNT(*) FILTER (WHERE bc.status = 'verdict')                AS verdict,
+        COUNT(*) FILTER (WHERE bc.status = 'done')                   AS ready
 
       FROM core_job cj
-      LEFT JOIN candidate_bg cb ON cb.job_id = cj.id
+      JOIN bg_candidates bc ON bc.job_id = cj.id
       WHERE cj.company_id = $1
       GROUP BY cj.id, cj.job_title, cj.status
       ORDER BY cj.status = 'Active' DESC, cj.id ASC

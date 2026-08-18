@@ -85,6 +85,7 @@ class InterviewPackService {
       applicant_ids,
       candidates,   // optional: array of { applicant_id, interview_date, interview_time }
       rubric_snapshot: providedRubric,
+      questions_snapshot,
     } = data;
 
     if (!job_id) throw { status: 400, message: 'job_id is required' };
@@ -126,6 +127,7 @@ class InterviewPackService {
       window_start:     window_start || null,
       window_end:       window_end || null,
       rubric_snapshot,
+      questions_snapshot: questions_snapshot || [],
       created_by:       userId || null,
     });
 
@@ -211,7 +213,16 @@ class InterviewPackService {
       throw { status: 404, message: 'Candidate not found in this interview pack' };
     }
 
-    const { scores, recommendation, strengths, concerns } = outcomeData || {};
+    const { scores, recommendation, strengths, concerns, question_notes } = outcomeData || {};
+
+    // Sanitize question_notes: only string values, capped at 500 chars each.
+    // Never trust the client-side cap alone — enforce it server-side too.
+    const cleanNotes = {};
+    if (question_notes && typeof question_notes === 'object') {
+      for (const [qId, text] of Object.entries(question_notes)) {
+        if (typeof text === 'string') cleanNotes[qId] = text.slice(0, 500);
+      }
+    }
 
     // Compute weighted total
     const competencies = pack.rubric_snapshot?.competencies || [];
@@ -225,6 +236,7 @@ class InterviewPackService {
       recommendation:    recommendation || null,
       strengths:         strengths || null,
       concerns:          concerns || null,
+      question_notes:    cleanNotes,
     });
 
     return outcome;

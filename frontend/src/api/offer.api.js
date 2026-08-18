@@ -39,19 +39,6 @@ export const setupApprovalChain = (offerId, steps) => api.post(`/offer/${offerId
 
 export const decideApprovalStep = (offerId, stepIndex, decision, note) => api.post(`/offer/${offerId}/approval/chain/${stepIndex}/decide`, { decision, note });
 
-// Contract management
-export const generateContract = (offerId, contractType, startDate, endDate = null) =>
-  api.post(`/offer/${offerId}/contract/generate`, {
-    contract_type: contractType,
-    start_date: startDate,
-    end_date: endDate
-  });
-
-export const sendContract = (offerId) => api.post(`/offer/${offerId}/contract/send`);
-
-export const signContract = (offerId, signatureData) =>
-  api.post(`/offer/${offerId}/contract/sign`, { signature_data: signatureData });
-
 // L4 Calibration - bulk advance
 export const bulkAdvanceToOnboarding = (jobId, candidateIds) =>
   api.post(`/offer/calibrate/${jobId}/advance`, { candidate_ids: candidateIds });
@@ -85,3 +72,23 @@ export const downloadOfferLetterPdf = (offerId) => api.get(`/offer/${offerId}/of
 export const getOfferDocument = (offerId) => api.get(`/offer/${offerId}/document`);
 
 export const uploadOfferDocument = (offerId, formData) => api.post(`/offer/${offerId}/document/upload`, formData, {  headers: { 'Content-Type': 'multipart/form-data' }, });
+
+export const downloadCandidateFile = (offerId) => api.get(`/offer/${offerId}/candidate-file/download`, { responseType: 'blob' });
+
+export const getContractDocument = (offerId) => api.get(`/offer/${offerId}/contract/document`);
+
+export const uploadContractDocument = (offerId, formData) => api.post(`/offer/${offerId}/contract/document/upload`, formData, { headers: { 'Content-Type': 'multipart/form-data' }, });
+
+export const sendContractDocument = (offerId, { subject, body } = {}) => api.post(`/offer/${offerId}/contract/document/send`, { subject, body });
+
+export const revokeContractDocument = (offerId, reason) => api.post(`/offer/${offerId}/contract/document/revoke`, { reason });
+
+export const getContractSendHistory = (offerId) => api.get(`/offer/${offerId}/contract/send-history`);
+
+export const downloadContractCandidateFile = (offerId) => api.get(`/offer/${offerId}/contract/candidate-file/download`, { responseType: 'blob' });
+
+export const uploadContractExecutedDocument = (offerId, formData) => api.post(`/offer/${offerId}/contract/executed/upload`, formData, { headers: { 'Content-Type': 'multipart/form-data' }, });
+
+export const getContractExecutedDocument = (offerId) => api.get(`/offer/${offerId}/contract/executed`);
+
+export const downloadContractExecutedDocument = (offerId) => api.get(`/offer/${offerId}/contract/executed/download`, { responseType: 'blob' });

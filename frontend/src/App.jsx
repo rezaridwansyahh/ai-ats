@@ -28,6 +28,7 @@ import AIScreeningCandidatePage from "./pages/AIScreeningCandidate"
 import AssessmentBPage from "./pages/AssessmentB"
 import CandidatePipelinePage from "./pages/CandidatePipeline"
 import CandidatePipelineDetailPage from "./pages/CandidatePipelineDetail"
+import CandidateProfile from "./pages/CandidateProfile"
 import AssessmentCPage from "./pages/AssessmentC"
 import AssessmentDPage from "./pages/AssessmentD"
 import InsightsDiscoveryAssessmentPage from "./pages/InsightsDiscoveryAssessment"
@@ -45,6 +46,7 @@ import OfferWorkboard from "./pages/OfferWorkboard"
 import OfferJobPage from "./components/offer-contract/Offer-Job";
 import OfferCandidatePage from "./components/offer-contract/Offer-Candidate";
 import OfferSendPage from "./pages/portal/OfferSend"
+import ContractSendPage from "./pages/portal/ContractSend"
 import OfferApprovalPage from "./pages/portal/OfferApproval"
 
 //PUNYA BAYU MASIH DUMMY
@@ -73,6 +75,7 @@ function App() {
         <Route path="/qa/:token" element={<QAFollowUpPage />} />
         <Route path="/bg/consent/:token" element={<BackgroundCheckConsentPage />} />
         <Route path="/offer/send/:token" element={<OfferSendPage />} />
+        <Route path="/contract/send/:token" element={<ContractSendPage />} />
         <Route path="/offer/approve-view/:token" element={<OfferApprovalPage />} />
         <Route path="/interview/:token" element={<InterviewPackPortal />} />
 
@@ -81,6 +84,7 @@ function App() {
           <Route path="/dashboard" element={<DashboardPage />} />
           <Route path="/candidate-pipeline" element={<CandidatePipelinePage />} />
           <Route path="/candidate-pipeline/:id" element={<CandidatePipelineDetailPage />} />
+          <Route path="/candidate-detail/:id" element={<CandidateProfile />} />
 
           <Route path="/sourcing/job-management" element={<JobManagementPage />} />
           <Route path="/sourcing/job-management/new" element={<JobEditPage />} />

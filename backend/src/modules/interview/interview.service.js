@@ -437,6 +437,58 @@ class InterviewService {
     return await interviewModel.getDecideByJob(job_id);
   }
 
+  // Single-candidate decide — used by the Advance/Reject buttons on the
+  // candidate detail page's Decide tab. Never touches a decisions[] array,
+  // so there is no loop/array path that could ever affect another candidate.
+  async decideCandidate(interview_id, { decision, reject_reason, reject_note, company_id = null, decided_by = null } = {}) {
+    if (!interview_id) throw { status: 400, message: 'interview_id is required' };
+
+    const validDecisions = ['advanced', 'rejected'];
+    if (!validDecisions.includes(decision)) {
+      throw { status: 400, message: `decision must be one of: ${validDecisions.join(', ')}` };
+    }
+    const validRejectReasons = [
+      'skill_gap_core_competency', 'below_score_band_rubric',
+      'stronger_candidate_selected', 'communication_culture_fit',
+      'withdrew_counter_offer', 'other',
+    ];
+    if (decision === 'rejected') {
+      if (!reject_reason) throw { status: 400, message: 'reject_reason is required for rejected candidates' };
+      if (!validRejectReasons.includes(reject_reason)) throw { status: 400, message: `invalid reject_reason: ${reject_reason}` };
+    }
+
+    const existing = await interviewModel.getById(interview_id);
+    if (!existing) throw { status: 404, message: 'Interview not found' };
+    if (company_id && existing.company_id && existing.company_id !== company_id) {
+      throw { status: 403, message: 'Cross-tenant access denied' };
+    }
+
+    const updated = await interviewModel.decideOne(interview_id, {
+      decision, reject_reason, reject_note, decided_by,
+    });
+    if (!updated) throw { status: 404, message: 'Interview not found' };
+
+    // Advance this ONE candidate's pipeline stage — no array, no loop, and no
+    // raw SQL against master_candidate; addStage already knows how to find
+    // the candidate's current stage and move to next.
+    if (decision === 'advanced') {
+      try {
+        const pipeline = await candidatePipelineService.getById(updated.candidate_id);
+        if (pipeline?.latest_stage) {
+          candidatePipelineService.addStage(updated.candidate_id, pipeline.latest_stage, 'advanced')
+            .catch((err) => console.error(
+              `Failed to advance pipeline for candidate ${updated.candidate_id}:`,
+              err?.message || err
+            ));
+        }
+      } catch (err) {
+        console.error(`Failed to look up pipeline for candidate ${updated.candidate_id}:`, err?.message || err);
+      }
+    }
+
+    return updated;
+  }
+
   async bulkDecide(job_id, { decisions, company_id = null, decided_by = null } = {}) {
     if (!job_id) throw { status: 400, message: 'job_id is required' };
     if (!Array.isArray(decisions) || decisions.length === 0) {
@@ -478,17 +530,17 @@ class InterviewService {
         [advancedIds]
       );
       for (const row of rows.rows) {
-        const cand = await getDb().query(
-          `SELECT latest_stage FROM master_candidate WHERE id = $1`,
-          [row.candidate_id]
-        );
-        const latestStage = cand.rows[0]?.latest_stage;
-        if (latestStage) {
-          candidatePipelineService.addStage(row.candidate_id, latestStage, 'advanced')
-            .catch((err) => console.error(
-              `Failed to advance pipeline for candidate ${row.candidate_id}:`,
-              err?.message || err
-            ));
+        try {
+          const pipeline = await candidatePipelineService.getById(row.candidate_id);
+          if (pipeline?.latest_stage) {
+            candidatePipelineService.addStage(row.candidate_id, pipeline.latest_stage, 'advanced')
+              .catch((err) => console.error(
+                `Failed to advance pipeline for candidate ${row.candidate_id}:`,
+                err?.message || err
+              ));
+          }
+        } catch (err) {
+          console.error(`Failed to look up pipeline for candidate ${row.candidate_id}:`, err?.message || err);
         }
       }
     }
@@ -590,13 +642,23 @@ class InterviewService {
       throw { status: 400, message: 'Questions must be configured before generating a link.' };
     }
 
-    // Build rubric_snapshot from prep rubric_items
+   // Build rubric_snapshot from prep rubric_items
     const rubric_snapshot = {
       custom_criteria: prep.rubric_items.map((item) => ({
         description: item.label || item.competency_code || item.name || String(item),
         weight: Number(item.weight) || 1,
       })),
     };
+
+    // Snapshot questions as they exist right now — so if the recruiter later
+    // edits/regenerates prep.questions, already-issued packs stay unaffected.
+    const questions_snapshot = prep.questions.map((q) => ({
+      id: q.id ?? null,
+      competency: q.competency ?? null,
+      text: q.text,
+      follow_up: q.follow_up ?? null,
+    }));
+    console.log('🔍 STEP 1 - questions_snapshot built:', JSON.stringify(questions_snapshot).slice(0, 200));
 
     const job = await jobModel.getById(job_id);
 
@@ -606,6 +668,7 @@ class InterviewService {
       title: title || `Interview Pack — ${job?.job_title || 'Position'}`,
       interviewer_name: String(interviewer_name).trim(),
       rubric_snapshot,
+      questions_snapshot,
       candidates: candidates.map((c, i) => ({
         applicant_id: c.applicant_id,
         sort_order: c.sort_order ?? i,

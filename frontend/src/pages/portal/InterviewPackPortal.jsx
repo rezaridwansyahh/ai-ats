@@ -155,6 +155,68 @@ function SaveIndicator({ savingId, savedId, candidateId }) {
   return null;
 }
 
+const QUESTION_NOTE_LIMIT = 500;
+
+function QuestionsPanel({ questions = [], outcome, packCandidateId, onNoteChange, isReadOnly }) {
+  if(!questions.length) return null;
+  const notes = outcome?.question_notes || {};
+
+  return (
+    <Card>
+      <div className="px-5 py-3 border-b border-border flex items-center justify-between">
+        <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">
+          Interview Questions
+        </p>
+        <span  className="text-[10px] text-muted-foreground flex items-center gap-1">
+          <Lock className="h-3 w-3" /> Questions locked · answers editable
+        </span>
+      </div>
+      <CardContent className="p-5 space-y-3">
+        {questions.map((q, i) => {
+          const key = q.id != null ? String(q.id) : String(i);
+          const note = notes[key] || '';
+          return (
+            <div key={key} className="rounded-lg border border-border bg-muted/10 p-3 space-y-2.5">
+              <div className="flex items-start gap-2">
+                <span className="text-[10px] font-mono text-muted-foreground mt-0.5 shrink-0">{i + 1}</span>
+                <div className="min-w-0">
+                  {q.competency && (
+                    <span className="inline-flex items-center px-2 py-0.5 rounded-full border border-blue-200 bg-blue-50 text-blue-700 text-[9px] font-semibold mb-1">
+                      {q.competency}
+                    </span>
+                  )}
+                  <p className="text-xs leading-relaxed text-foreground">{q.text}</p>
+                  {q.follow_up && (
+                    <p className="text-[10px] text-muted-foreground mt-0.5 italic">↳ {q.follow_up}</p>
+                  )}
+                </div>
+              </div>
+
+              <div className="pl-5 space-y-1">
+                <label className="text-[10px] font-medium text-muted-foreground">
+                  Candidate's answer
+                </label>
+                <textarea
+                  rows={2}
+                  disabled={isReadOnly}
+                  maxLength={QUESTION_NOTE_LIMIT}
+                  placeholder="Write what the candidate said, or your own observations…"
+                  className="w-full text-xs rounded-md border border-border bg-background px-2.5 py-1.5 resize-none focus:outline-none focus:ring-1 focus:ring-primary disabled:opacity-60 disabled:cursor-not-allowed"
+                  value={note}
+                  onChange={(e) => onNoteChange(packCandidateId, key, e.target.value)}
+                />
+                <p className="text-[9px] text-muted-foreground text-right">
+                  {note.length}/{QUESTION_NOTE_LIMIT}
+                </p>
+              </div>
+            </div>
+          );
+        })}
+      </CardContent>
+    </Card>
+  )
+}
+
 // ── Main Portal Page ────────────────────────────────────────────────────────────
 
 export default function InterviewPackPortal() {
@@ -190,6 +252,7 @@ export default function InterviewPackPortal() {
         if (cancelled) return;
         const p = res.data?.pack || res.data;
         setPack(p);
+        console.log('pack payload: ', p);
         // Populate outcomes from existing data
         const initial = {};
         for (const c of p?.candidates || []) {
@@ -199,6 +262,7 @@ export default function InterviewPackPortal() {
             recommendation: c.outcome?.recommendation || null,
             strengths: c.outcome?.strengths || '',
             concerns: c.outcome?.concerns || '',
+            question_notes: c.outcome?.question_notes || {},
           };
         }
         setOutcomes(initial);
@@ -274,6 +338,26 @@ export default function InterviewPackPortal() {
     });
   }
 
+  function updateQuestionNote(packCandidateId, questionKey, text){
+    if (submitted) return;
+    const capped = text.slice(0, QUESTION_NOTE_LIMIT);
+    setOutcomes((prev) => {
+      const existing = prev[packCandidateId] || {};
+      const updated = {
+        ...prev,
+        [packCandidateId]: {
+          ...existing,
+          question_notes: {
+            ...(existing.question_notes || {}),
+            [questionKey]: capped,
+          },
+        },
+      };
+      triggerAutosave(packCandidateId, updated[packCandidateId]);
+      return updated;
+    })
+  }
+
   async function handleSubmit() {
     setSubmitting(true);
     setSubmitError('');
@@ -326,7 +410,7 @@ export default function InterviewPackPortal() {
   const competencies = pack?.rubric_snapshot?.competencies || [];
   const activeCandidate = candidates[activeIndex];
   const activePcId = activeCandidate?.pack_candidate_id;
-  const activeOutcome = outcomes[activePcId] || { scores: {}, recommendation: null, strengths: '', concerns: '' };
+  const activeOutcome = outcomes[activePcId] || { scores: {}, recommendation: null, strengths: '', concerns: '', question_notes: {} };
 
   const evaluatedCount = candidates.filter((c) => {
     const pcId = c.pack_candidate_id;
@@ -557,6 +641,15 @@ export default function InterviewPackPortal() {
                   </CardContent>
                 </Card>
               )}
+
+              {/* Interview questions — question text locked, answer box editable */}
+              <QuestionsPanel
+                questions={pack?.questions_snapshot || []}
+                outcome={activeOutcome}
+                packCandidateId={activePcId}
+                onNoteChange={updateQuestionNote}
+                isReadOnly={isReadOnly}
+              />
 
               {/* Decision */}
               <Card>

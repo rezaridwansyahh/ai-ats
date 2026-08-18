@@ -30,9 +30,9 @@ class PortalOfferModel {
       JOIN core_job cj          ON cj.id  = co.job_id
       JOIN core_company cc      ON cc.id  = co.company_id
       LEFT JOIN master_applicant ma ON ma.id = mc.applicant_id
-      LEFT JOIN offer_document   od ON od.offer_id = os.offer_id
-      WHERE os.token::text = $1
-         OR REPLACE(os.token::text, '-', '') = $1
+      LEFT JOIN offer_document   od ON od.offer_id = os.offer_id AND od.document_type = 'offer'
+      WHERE os.document_type = 'offer'
+        AND (os.token::text = $1 OR REPLACE(os.token::text, '-', '') = $1)
       LIMIT 1
     `, [token]);
 

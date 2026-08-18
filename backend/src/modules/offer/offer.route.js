@@ -2,9 +2,11 @@ import express from 'express';
 import OfferController from './offer.controller.js';
 import authToken from '../../shared/middleware/auth.middleware.js';
 import checkPermission from '../../shared/middleware/role.middleware.js';
-import upload from '../../shared/middleware/offer.middleware.js';
+import upload, { createOfferUpload } from '../../shared/middleware/offer.middleware.js';
 
 const router = express.Router();
+const contractUpload = createOfferUpload('contract');
+const contractExecutedUpload = createOfferUpload('contract_executed');
 
 // L1 Workboard - get all offers across jobs for company
 router.get(
@@ -79,28 +81,6 @@ router.post(
   OfferController.respondToNegotiation
 );
 
-// Generate contract (after offer accepted)
-router.post(
-  '/:offer_id/contract/generate',
-  authToken,
-  checkPermission('Offer & Onboard', 'Offer & Contract', 'update'),
-  OfferController.generateContract
-);
-
-// Send contract for signature
-router.post(
-  '/:offer_id/contract/send',
-  authToken,
-  checkPermission('Offer & Onboard', 'Offer & Contract', 'update'),
-  OfferController.sendContract
-);
-
-// Candidate signs contract (public endpoint - portal)
-router.post(
-  '/:offer_id/contract/sign',
-  OfferController.signContract
-);
-
 // L4 Calibration - bulk advance to Onboarding
 router.post(
   '/calibrate/:job_id/advance',
@@ -168,6 +148,21 @@ router.put('/:offer_id/offer-letter/final', authToken, checkPermission('Offer & 
 router.get('/:offer_id/document', authToken, checkPermission('Offer & Onboard', 'Offer & Contract', 'read'), OfferController.getOfferDocument);
 
 router.post('/:offer_id/document/upload', authToken, checkPermission('Offer & Onboard', 'Offer & Contract', 'update'), upload.single('file'), OfferController.uploadDocument);
-// router.post( '/:offer_id/document/print', authToken, checkPermission('Offer & Onboard', 'Offer & Contract', 'update'), OfferController.markOfferPrinted);
+
+router.get( '/:offer_id/candidate-file/download', authToken, checkPermission('Offer & Onboard', 'Offer & Contract', 'read'), OfferController.downloadCandidateFile);
+
+router.get('/:offer_id/contract/document', authToken, checkPermission('Offer & Onboard', 'Offer & Contract', 'read'), OfferController.getContractDocument);
+
+router.post('/:offer_id/contract/document/upload', authToken, checkPermission('Offer & Onboard', 'Offer & Contract', 'update'), contractUpload.single('file'), OfferController.uploadContractDocument);
+router.post('/:offer_id/contract/document/send', authToken, checkPermission('Offer & Onboard', 'Offer & Contract', 'update'), OfferController.sendContractDocument);
+router.post('/:offer_id/contract/document/revoke', authToken, checkPermission('Offer & Onboard', 'Offer & Contract', 'update'), OfferController.revokeContractDocument);
+
+router.get('/:offer_id/contract/send-history', authToken, checkPermission('Offer & Onboard', 'Offer & Contract', 'read'), OfferController.getContractSendHistory);
+router.get('/:offer_id/contract/candidate-file/download', authToken, checkPermission('Offer & Onboard', 'Offer & Contract', 'read'), OfferController.downloadContractCandidateFile);
+
+router.post('/:offer_id/contract/executed/upload', authToken, checkPermission('Offer & Onboard', 'Offer & Contract', 'update'), contractExecutedUpload.single('file'), OfferController.uploadContractExecutedDocument);
+
+router.get('/:offer_id/contract/executed', authToken, checkPermission('Offer & Onboard', 'Offer & Contract', 'read'), OfferController.getContractExecutedDocument);
+router.get('/:offer_id/contract/executed/download', authToken, checkPermission('Offer & Onboard', 'Offer & Contract', 'read'), OfferController.downloadContractExecutedDocument);
 
 export default router;

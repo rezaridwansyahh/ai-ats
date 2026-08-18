@@ -95,6 +95,7 @@ export default function InterviewJobPage() {
   const [job, setJob]               = useState(null);
   const [interviews, setInterviews] = useState([]);
   const [prep, setPrep]             = useState(null);
+  const [packs, setPacks]           = useState([]);
   const [loading, setLoading]       = useState(true);
   const [error, setError]           = useState(null);
   const [banner, setBanner]         = useState(null);
@@ -110,25 +111,29 @@ export default function InterviewJobPage() {
     (i) => ['scheduled', 'ongoing', 'result'].includes(i.status) && !i.pack_id
   );
 
-  const load = useCallback(async () => {
+ const load = useCallback(async () => {
     if (!jobId) return;
     setLoading(true);
     setError(null);
     try {
-      const [jobRes, interviewsRes, prepRes] = await Promise.all([
+      const [jobRes, interviewsRes, prepRes, packsRes] = await Promise.all([
         getJobById(jobId),
         getInterviewsByJob(jobId),
         getPrep(jobId),
+        getPacksByJob(jobId),
       ]);
       setJob(jobRes.data?.job || jobRes.data || null);
       setInterviews(Array.isArray(interviewsRes.data?.interviews) ? interviewsRes.data.interviews : []);
       setPrep(prepRes.data?.prep || null);
+      setPacks(Array.isArray(packsRes.data?.packs) ? packsRes.data.packs : []);
     } catch (err) {
       setError(err.response?.data?.message || err.message || 'Failed to load');
     } finally {
       setLoading(false);
     }
   }, [jobId]);
+  
+  const hasActivePacks = packs.length > 0;
 
   useEffect(() => { load(); }, [load]);
 
@@ -228,7 +233,7 @@ export default function InterviewJobPage() {
         />
       )}
       {activeSection === 'questions' && (
-        <QuestionsSection
+        <QuestionsSection 
           jobId={jobId}
           job={job}
           prep={prep}
@@ -236,6 +241,7 @@ export default function InterviewJobPage() {
           setBanner={setBanner}
           setError={setError}
           hasSubmittedScorecards={interviews.some((i) => i.status === 'done')}
+          hasActivePacks={hasActivePacks}
           rubricReady={rubricReady}
         />
       )}
@@ -319,22 +325,22 @@ function CandidatesSection({ interviews, navigate }) {
   );
 }
 
-function QuestionsSection({ jobId, job, prep, setPrep, setBanner, setError, hasSubmittedScorecards }) {
+function QuestionsSection({ jobId, job, prep, setPrep, setBanner, setError, hasSubmittedScorecards, hasActivePacks }) {
   const [numQuestions, setNumQuestions] = useState('8');
   const [language, setLanguage]         = useState('id');
   const [generating, setGenerating]     = useState(false);
   const [saving, setSaving]             = useState(false);
   const [editingIdx, setEditingIdx]     = useState(null);
 
-  // local editable copy of questions
+  //local editable copy of questions
   const [questions, setQuestions] = useState([]);
 
-  // sync from prep whenever it changes
+  //sync from prep whenever it changes
   useEffect(() => {
     setQuestions(Array.isArray(prep?.questions) ? prep.questions : []);
   }, [prep]);
 
-  const isLocked = hasSubmittedScorecards;
+  const isLocked = hasSubmittedScorecards || hasActivePacks;
 
   const handleGenerate = async () => {
     if (generating) return;
@@ -342,8 +348,8 @@ function QuestionsSection({ jobId, job, prep, setPrep, setBanner, setError, hasS
       setError('Scorecards have been submitted — questions cannot be changed to preserve scoring integrity.');
       return;
     }
-    if (isLocked) {
-      setError('Rubric is locked — unlock it from the Rubric tab before regenerating.');
+    if (hasActivePacks) {
+      setError('This job already has an interview pack in use — questions are locked to keep candidates in sync.');
       return;
     }
     setGenerating(true);
@@ -418,10 +424,10 @@ function QuestionsSection({ jobId, job, prep, setPrep, setBanner, setError, hasS
               Scorecards have been submitted — questions are permanently locked to preserve scoring integrity.
             </div>
           )}
-          {!hasSubmittedScorecards && isLocked && (
+          {!hasSubmittedScorecards && hasActivePacks && (
             <div className="flex items-center gap-2 px-3 py-2 rounded-lg border border-amber-200 bg-amber-50 text-xs text-amber-700">
               <Lock className="h-3.5 w-3.5 shrink-0" />
-              Rubric is locked. Unlock from the Rubric tab to regenerate or edit questions.
+              An interview pack has already been generated for this job — questions are locked so candidates stay in sync.
             </div>
           )}
           {!isLocked && !hasSubmittedScorecards && !!prep?.rubric_items?.length && !questions.length && (
@@ -998,6 +1004,9 @@ function LinkSection({ jobId, waitingCandidates = [], setBanner, setError }) {
                     <p className="text-xs text-muted-foreground mt-1">
                       Interviewer: {pack.interviewer_name} · {pack.candidate_count} candidate{pack.candidate_count !== 1 ? 's' : ''}
                       {pack.scored_count > 0 && ` · ${pack.scored_count} scored`}
+                      {Array.isArray(pack.round_numbers) && pack.round_numbers.length > 0 && (
+                        <> · Round{pack.round_numbers.length > 1 ? 's' : ''} {pack.round_numbers.slice().sort((a, b) => a - b).join(', ')}</>
+                      )}
                     </p>
                     <p className="text-[10px] text-muted-foreground mt-0.5 font-mono truncate">
                       {window.location.origin}/interview/{pack.token}

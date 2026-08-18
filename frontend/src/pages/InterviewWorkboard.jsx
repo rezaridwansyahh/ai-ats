@@ -1,11 +1,11 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { CalendarCheck, AlertTriangle, Loader2, RotateCw, Search, Settings } from 'lucide-react';
+import { CalendarCheck, AlertTriangle, Loader2, RotateCw, Search } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { TablePagination } from '@/components/shared/TablePagination';
+import PositionsRail from '@/components/shared/PositionsRail';
 import { getInitials } from '@/lib/batteries';
 import { PageHeader } from '@/components/common';
 
@@ -14,7 +14,7 @@ import { getWorkboard, getInterviewsByJobSubStage } from '@/api/interview.api';
 // Sub-stage chip + pill styling
 const STAGE_META = {
   schedule: { label: 'Schedule', color: 'bg-violet-100 text-violet-700',   dot: 'bg-violet-500' },
-  result:   { label: 'Result',   color: 'bg-amber-100 text-amber-700',     dot: 'bg-amber-500' },
+  result:   { label: 'Result',   color: 'bg-amber-100 text-amber-700',    dot: 'bg-amber-500' },
   decide:   { label: 'Decide',   color: 'bg-emerald-100 text-emerald-700', dot: 'bg-emerald-500' },
 };
 
@@ -32,22 +32,6 @@ function toSubStage(status) {
   if (status === 'result') return 'result';
   if (status === 'done') return 'decide';
   return 'schedule';
-}
-
-function jobStatusTone(status) {
-  switch ((status || '').toLowerCase()) {
-    case 'active':
-    case 'open':
-    case 'running':
-      return 'border-emerald-200 text-emerald-700 bg-emerald-50';
-    case 'draft':
-      return 'border-amber-200 text-amber-700 bg-amber-50';
-    case 'expired':
-    case 'failed':
-      return 'border-rose-200 text-rose-700 bg-rose-50';
-    default:
-      return 'border-border text-muted-foreground bg-muted/40';
-  }
 }
 
 export default function InterviewWorkboard() {
@@ -108,17 +92,26 @@ export default function InterviewWorkboard() {
     return c;
   }, [interviews]);
 
-  // Per-position sub-stage counts (for rail pills)
-  const positionSubStageCounts = useMemo(() => {
+  // Compute total candidates per job_id for PositionsRail
+  const candidateCountsByJob = useMemo(() => {
     const map = {};
     for (const i of interviews) {
       const jid = i.job_id;
-      if (!map[jid]) map[jid] = { schedule: 0, result: 0, decide: 0 };
-      const ss = i.sub_stage || toSubStage(i.status);
-      if (map[jid][ss] != null) map[jid][ss]++;
+      map[jid] = (map[jid] || 0) + 1;
     }
     return map;
   }, [interviews]);
+
+  // Format positions for PositionsRail contract
+  const mappedPositions = useMemo(() => {
+    return positions.map((p) => ({
+      ...p,
+      job_id: p.job_id,
+      job_title: p.job_title,
+      status: p.status,
+      total: candidateCountsByJob[p.job_id] || 0,
+    }));
+  }, [positions, candidateCountsByJob]);
 
   const displayInterviews = useMemo(() => {
     if (activeJob === '') return interviews;
@@ -220,84 +213,18 @@ export default function InterviewWorkboard() {
       {/* Two-column: positions rail + candidates panel */}
       <div className="grid grid-cols-1 md:grid-cols-[240px_1fr] gap-4">
         {/* Positions rail */}
-        <Card className="self-start">
-          <CardHeader className="pb-2">
-            <CardTitle className="text-xs uppercase tracking-wide text-muted-foreground">
-              Positions · {positions.length}
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="pt-0 px-2 pb-2">
-            {loading ? (
-              <div className="flex justify-center py-6">
-                <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
-              </div>
-            ) : positions.length === 0 ? (
-              <p className="text-xs text-muted-foreground italic px-2 py-3">No jobs.</p>
-            ) : (
-              <>
-                <button
-                  type="button"
-                  onClick={resetView}
-                  className={[
-                    'w-full flex items-center justify-between px-3 py-2 rounded-md text-xs font-semibold',
-                    activeJob === ''
-                      ? 'bg-primary/10 text-primary'
-                      : 'text-muted-foreground hover:bg-muted/60 text-foreground',
-                  ].join(' ')}
-                >
-                  <span>All positions</span>
-                  <span className="font-mono text-[10px]">{totalInterviews}</span>
-                </button>
-                <div className="space-y-0.5 mt-1">
-                  {positions.map((p) => {
-                    const counts = positionSubStageCounts[p.job_id] || { schedule: 0, result: 0, decide: 0 };
-                    const isActive = activeJob.job_id === p.job_id;
-                    return (
-                      <div key={p.job_id} className="relative group">
-                        <button
-                          type="button"
-                          onClick={() => setActiveJob(p)}
-                          className={[
-                            'w-full flex items-center gap-1.5 px-3 py-2.5 rounded-md text-xs pr-8 min-w-0',
-                            isActive
-                              ? 'bg-primary/10 text-primary'
-                              : 'text-muted-foreground hover:bg-muted/60 text-foreground',
-                          ].join(' ')}
-                        >
-                          <span
-                            className={`shrink-0 h-1.5 w-1.5 rounded-full ${
-                              p.prep_ready ? 'bg-emerald-500' : 'bg-amber-400'
-                            }`}
-                            title={p.prep_ready ? 'Pack ready' : 'Setup incomplete'}
-                          />
-                          <span className="truncate font-semibold">{p.job_title}</span>
-                          {p.status && (
-                            <Badge
-                              variant="outline"
-                              className={`text-[8px] uppercase tracking-wide shrink-0 ${jobStatusTone(p.status)}`}
-                            >
-                              {p.status}
-                            </Badge>
-                          )}
-                        </button>
-
-                        {/* Gear icon — navigates to job setup page */}
-                        <button
-                          type="button"
-                          onClick={(e) => { e.stopPropagation(); navigate(`/selection/interview/job/${p.job_id}`); }}
-                          title="Position setup"
-                          className="absolute top-2 right-1.5 h-6 w-6 flex items-center justify-center rounded text-muted-foreground hover:text-foreground hover:bg-muted/60 opacity-0 group-hover:opacity-100 transition-opacity"
-                        >
-                          <Settings className="h-3.5 w-3.5" />
-                        </button>
-                      </div>
-                    );
-                  })}
-                </div>
-              </>
-            )}
-          </CardContent>
-        </Card>
+        <PositionsRail
+          positions={mappedPositions}
+          activeJob={activeJob}
+          onSelectJob={(job) => {
+            setActiveJob(job);
+            setPage(1);
+          }}
+          onResetView={resetView}
+          totalCount={totalInterviews}
+          loading={loading}
+          emptyMessage="No jobs."
+        />
 
         {/* Candidates panel */}
         <Card>
@@ -310,7 +237,7 @@ export default function InterviewWorkboard() {
               </span>
               {activeJob !== '' && (
                 <Button variant="outline" size="sm" className="text-xs" onClick={() => navigate(`/selection/interview/job/${activeJob.job_id}`)}>
-                  <Settings className="h-3.5 w-3.5 mr-1.5" /> Setup
+                  Open Detail
                 </Button>
               )}
             </CardTitle>
@@ -391,7 +318,6 @@ export default function InterviewWorkboard() {
           </CardContent>
         </Card>
       </div>
-
     </div>
   );
 }

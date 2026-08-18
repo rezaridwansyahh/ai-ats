@@ -5,7 +5,7 @@ import {
   FileText, Pencil, Wallet, Send, FileSignature, Plus, Trash2,
   MessageSquareText, PenLine, ShieldCheck, ThumbsDown,
   Copy, Sparkles, RefreshCw, Ban, XCircle, Download, Settings as SettingsIcon,
-  Upload, FileCheck2, SkipForward, Lock, Link2, Mail,
+  Upload, FileCheck2, SkipForward, Lock, Link2, Mail, Archive,
 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -22,11 +22,15 @@ import {
   getSlipGaji, recordSlipGaji, skipSlipGaji, reviewSlipGaji,
   sendOffer, revokeOffer, getSendHistory,
   respondToNegotiation,
-  generateContract, sendContract,
   getOfferLetterFields, saveOfferLetterData,
   generateOfferLetterPreview, getOfferLetterFinal, saveOfferLetterFinal,
   downloadOfferLetterDocx, downloadOfferLetterPdf,
   getOfferDocument, uploadOfferDocument,
+  downloadCandidateFile,
+  getContractDocument, uploadContractDocument,
+  sendContractDocument, revokeContractDocument, getContractSendHistory,
+  downloadContractCandidateFile,
+  uploadContractExecutedDocument, getContractExecutedDocument, downloadContractExecutedDocument,
 } from '@/api/offer.api';
 import {
   getApprovalStatus, decideApproval, generateApprovalViewLink,
@@ -48,6 +52,14 @@ const STATUS_TONE = {
   accepted:    'border-emerald-300 text-emerald-700 bg-emerald-50',
   rejected:    'border-rose-300 text-rose-700 bg-rose-50',
   expired:     'border-gray-300 text-gray-500 bg-gray-50',
+};
+
+const CONTRACT_STATUS_TONE = {
+  draft:  'border-slate-300 text-slate-700 bg-slate-50',
+  ready:  'border-blue-300 text-blue-700 bg-blue-50',
+  sent:   'border-blue-300 text-blue-700 bg-blue-50',
+  signed: 'border-purple-300 text-purple-700 bg-purple-50',
+  expired: 'border-gray-300 text-gray-500 bg-gray-50',
 };
 
 const DECISION_TONE = {
@@ -76,7 +88,14 @@ function fmtDate(d) {
   } catch { return '—'; }
 }
 
-function downloadBlob(blobResponse, filename) {
+function downloadBlob(blobResponse, fallbackFilename) {
+  let filename = fallbackFilename;
+  const disposition = blobResponse.headers?.['content-disposition'];
+  if (disposition) {
+    const match = disposition.match(/filename="?([^"]+)"?/);
+    if (match?.[1]) filename = match[1];
+  }
+
   const url = window.URL.createObjectURL(new Blob([blobResponse.data]));
   const a = document.createElement('a');
   a.href = url;
@@ -183,8 +202,9 @@ const DEFAULT_ROWS = [
 ];
 
 function IntakeSection({ offer, offerId, setOffer, setBanner, setError, onAdvance }) {
-  const [slipGaji, setSlipGaji] = useState(null);
-  const [loading, setLoading]   = useState(true);
+  const initialSlipGaji = offer.metadata?.intake?.slip_gaji || { status: 'not_recorded' };
+
+  const [slipGaji, setSlipGaji] = useState(initialSlipGaji);
   const [saving, setSaving]     = useState(false);
   const [editing, setEditing]   = useState(false);
   const [lineItems, setLineItems] = useState(DEFAULT_ROWS.map((r) => ({ ...r })));
@@ -192,20 +212,6 @@ function IntakeSection({ offer, offerId, setOffer, setBanner, setError, onAdvanc
   const [skipReason, setSkipReason] = useState('');
   const [reviewNote, setReviewNote] = useState('');
   const [showSkip, setShowSkip] = useState(false);
-
-  const load = useCallback(async () => {
-    setLoading(true);
-    try {
-      const res = await getSlipGaji(offerId);
-      setSlipGaji(res.data || { status: 'not_recorded' });
-    } catch (err) {
-      setError(err.response?.data?.message || err.message || 'Failed to load slip gaji');
-    } finally {
-      setLoading(false);
-    }
-  }, [offerId, setError]);
-
-  useEffect(() => { load(); }, [load]);
 
   const addRow = () => setLineItems((prev) => [...prev, { label: '', amount: '' }]);
   const removeRow = (i) => setLineItems((prev) => prev.filter((_, idx) => idx !== i));
@@ -238,10 +244,11 @@ function IntakeSection({ offer, offerId, setOffer, setBanner, setError, onAdvanc
     setError(null);
     try {
       const res = await recordSlipGaji(offerId, cleaned, expectedSalary ? Number(expectedSalary) : null);
-      setSlipGaji(res.data?.slip_gaji);
+      const updated = res.data?.slip_gaji;
+      setSlipGaji(updated);
       setOffer((prev) => ({
         ...prev,
-        metadata: { ...(prev.metadata || {}), intake: { ...(prev.metadata?.intake || {}), slip_gaji: res.data?.slip_gaji } },
+        metadata: { ...(prev.metadata || {}), intake: { ...(prev.metadata?.intake || {}), slip_gaji: updated } },
       }));
       setEditing(false);
       setReviewNote('');
@@ -289,14 +296,6 @@ function IntakeSection({ offer, offerId, setOffer, setBanner, setError, onAdvanc
       setSaving(false);
     }
   };
-
-  if (loading) {
-    return (
-      <div className="flex justify-center py-12">
-        <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
-      </div>
-    );
-  }
 
   const status = slipGaji?.status || 'not_recorded';
   const showForm = status === 'not_recorded' || editing;
@@ -588,7 +587,19 @@ function BuildSection({ offer, setOffer, setBanner, setError, onAdvance }) {
         allowances: toObject(allowances),
         bonus_structure: toObject(bonuses),
       });
-      setOffer((prev) => ({ ...prev, ...res.data.compensation }));
+      const comp = res.data.compensation;
+      setOffer((prev) => ({
+        ...prev,
+        base_salary: comp.base_salary,
+        allowances: comp.allowances,
+        bonus_structure: comp.bonus_structure,
+        gross_salary: comp.gross_salary,
+        pph21: comp.pph21,
+        bpjs_kesehatan: comp.bpjs_kesehatan,
+        bpjs_ketenagakerjaan: comp.bpjs_ketenagakerjaan,
+        net_salary: comp.net_salary,
+
+      }));
       setBanner({ ok: true, text: 'Compensation saved.' });
     } catch (err) {
       setError(err.response?.data?.message || err.message || 'Failed to update compensation');
@@ -1019,7 +1030,6 @@ function ApproveSection({ offer, offerId, approval, setApproval, setBanner, setE
             </div>
           )}
 
-          {/* Decision history — sits below the decide controls */}
           <DecisionHistoryList history={history} />
 
         </CardContent>
@@ -1463,8 +1473,6 @@ function ReviewSection({ offer, offerId, approval, setApproval, setOffer, setBan
   );
 }
 
-/* Send Section — document upload gate + portal-link lifecycle + Email modal */
-
 function OfferDocumentUploadPart({ offer, offerId, document, setDocument, setBanner, setError }) {
   const [uploading, setUploading] = useState(false);
   const fileInputRef = useRef(null);
@@ -1614,6 +1622,47 @@ function buildDefaultOfferEmail(jobTitle) {
   };
 }
 
+function CandidateSignedFilePart({ offer, isSubmitted, submittedAt }) {
+  const [downloading, setDownloading] = useState(false);
+  const [localError, setLocalError] = useState(null);
+
+  const handleDownload = async () => {
+    setDownloading(true);
+    setLocalError(null);
+    try {
+      const res = await downloadCandidateFile(offer.id);
+      downloadBlob(res, `signed_offer_${offer.candidate_name || offer.id}`);
+    } catch (err) {
+      setLocalError(err.response?.data?.message || err.message || 'Failed to download the signed file');
+    } finally {
+      setDownloading(false);
+    }
+  };
+
+  if (!isSubmitted) return null;
+
+  return (
+    <div className="rounded-lg border bg-muted/30 p-3 flex items-center justify-between gap-3 flex-wrap">
+      <div className="min-w-0">
+        <p className="text-[10px] font-bold tracking-widest uppercase text-muted-foreground">
+          Signed copy from candidate
+        </p>
+        <p className="text-[11px] text-muted-foreground mt-0.5">
+          Submitted {fmtDate(submittedAt)}
+        </p>
+        {localError && (
+          <p className="text-[11px] text-rose-600 mt-1">{localError}</p>
+        )}
+      </div>
+      <Button size="sm" variant="outline" className="text-xs shrink-0" onClick={handleDownload} disabled={downloading}>
+        {downloading
+          ? <><Loader2 className="h-3.5 w-3.5 mr-1.5 animate-spin" /> Downloading…</>
+          : <><Download className="h-3.5 w-3.5 mr-1.5" /> Download signed file</>}
+      </Button>
+    </div>
+  );
+}
+
 function SendSection({ offer, approval, setOffer, setBanner, setError, onAdvance }) {
   const [history, setHistory] = useState([]);
   const [loadingHistory, setLoadingHistory] = useState(true);
@@ -1663,8 +1712,6 @@ function SendSection({ offer, approval, setOffer, setBanner, setError, onAdvance
   useEffect(() => { loadDocument(); }, [loadDocument]);
 
   const latestSend  = history[0] || null;
-  // Fixed: offer_send.status uses 'submitted' now, not 'signed' — the
-  // candidate portal flow is upload -> Submit, no e-signature step.
   const isSubmitted = latestSend?.status === 'submitted';
   const isRevoked    = !isSubmitted && !!latestSend?.revoked_at;
   const isActive     = latestSend?.status === 'sent' && !latestSend?.revoked_at;
@@ -1734,7 +1781,6 @@ function SendSection({ offer, approval, setOffer, setBanner, setError, onAdvance
   return (
     <div className="space-y-4">
 
-      {/* Document upload — the sole requirement before a portal link can be generated */}
       <OfferDocumentUploadPart
         offer={offer}
         offerId={offer.id}
@@ -1820,6 +1866,12 @@ function SendSection({ offer, approval, setOffer, setBanner, setError, onAdvance
             />
           ) : null}
 
+          <CandidateSignedFilePart
+            offer={offer}
+            isSubmitted={isSubmitted}
+            submittedAt={latestSend?.submitted_at}
+          />
+
           {showRevoke && isActive && (
             <div className="space-y-2 p-3 rounded-lg border border-rose-200 bg-rose-50/30">
               <p className="text-[10px] font-semibold text-rose-700 uppercase tracking-wide">
@@ -1847,11 +1899,6 @@ function SendSection({ offer, approval, setOffer, setBanner, setError, onAdvance
         </CardContent>
       </Card>
 
-      {/* Negotiation — separate from portal-link lifecycle above. Note: the
-          candidate portal is submit-only (no reject/negotiate action there
-          by design), so new negotiation threads can no longer originate from
-          the candidate side. This panel remains for any negotiation records
-          already on the offer / created through other means. */}
       {offer.offer_status === 'negotiating' && offer.negotiations?.length > 0 && (
         <Card>
           <CardHeader className="pb-2">
@@ -2091,48 +2138,334 @@ function SendSection({ offer, approval, setOffer, setBanner, setError, onAdvance
   );
 }
 
+function ContractDocumentUploadPart({ offerId, document, setDocument, setBanner, setError }) {
+  const [uploading, setUploading] = useState(false);
+  const fileInputRef = useRef(null);
+
+  const handleFileSelect = async (e) => {
+    const file = e.target.files?.[0];
+    e.target.value = ''; // allow re-selecting the same file
+    if (!file) return;
+
+    setUploading(true);
+    setError(null);
+    try {
+      const formData = new FormData();
+      formData.append('file', file);
+      const res = await uploadContractDocument(offerId, formData);
+      setDocument(res.data.document);
+      setBanner({ ok: true, text: 'Finalized contract letter uploaded.' });
+    } catch (err) {
+      setError(err.response?.data?.message || err.message || 'Failed to upload contract document');
+    } finally {
+      setUploading(false);
+    }
+  };
+
+  return (
+    <Card>
+      <CardHeader className="pb-3">
+        <div className="flex items-center gap-2">
+          <Upload className="h-4 w-4 text-primary shrink-0" />
+          <div className="min-w-0 flex-1">
+            <CardTitle className="text-sm">Upload finalized contract letter</CardTitle>
+            <p className="text-[10px] text-muted-foreground mt-0.5">
+              Upload the finalized .docx or .pdf contract — required before generating a portal link. This is what the candidate downloads from the portal.
+            </p>
+          </div>
+          {document && (
+            <Badge variant="outline" className="text-[9px] shrink-0 border-emerald-300 text-emerald-700 bg-emerald-50">
+              uploaded
+            </Badge>
+          )}
+        </div>
+      </CardHeader>
+      <CardContent className="space-y-2">
+        {document ? (
+          <div className="flex items-center justify-between gap-2 px-3 py-2 rounded-lg border bg-muted/20 text-xs">
+            <span className="flex items-center gap-2 text-muted-foreground truncate">
+              <FileCheck2 className="h-3.5 w-3.5 shrink-0" />
+              {document.file?.split('/').pop() || 'Uploaded file'}
+            </span>
+            <span className="text-[10px] text-muted-foreground shrink-0">{fmtDate(document.uploaded_at)}</span>
+          </div>
+        ) : (
+          <div className="flex items-center gap-2 px-3 py-2 rounded-lg border border-amber-200 bg-amber-50 text-xs text-amber-700">
+            <AlertTriangle className="h-4 w-4 shrink-0" /> No finalized contract uploaded yet.
+          </div>
+        )}
+        <input
+          ref={fileInputRef}
+          type="file"
+          accept=".docx,.pdf"
+          className="hidden"
+          onChange={handleFileSelect}
+        />
+        <Button
+          size="sm" variant="outline" className="text-xs"
+          onClick={() => fileInputRef.current?.click()}
+          disabled={uploading}
+        >
+          {uploading
+            ? <><Loader2 className="h-3.5 w-3.5 mr-1.5 animate-spin" /> Uploading…</>
+            : <><Upload className="h-3.5 w-3.5 mr-1.5" /> {document ? 'Replace file' : 'Upload file'}</>}
+        </Button>
+      </CardContent>
+    </Card>
+  );
+}
+
+function buildDefaultContractEmail(jobTitle) {
+  return {
+    subject: `Your Contract — ${jobTitle || 'the position'}`,
+    body: `Hi there,\n\nPlease find your employment contract ready for review below.\n\nPlease review your contract and submit your signed copy via the link below:\n\n{{LINK}}\n\nThis link is personal — kindly do not share it with others.\n\nThank you,\nThe Recruitment Team`,
+  };
+}
+
+function ContractSignedFilePart({ offer, isSubmitted, submittedAt }) {
+  const [downloading, setDownloading] = useState(false);
+  const [localError, setLocalError] = useState(null);
+
+  const handleDownload = async () => {
+    setDownloading(true);
+    setLocalError(null);
+    try {
+      const res = await downloadContractCandidateFile(offer.id);
+      downloadBlob(res, `signed_contract_${offer.candidate_name || offer.id}`);
+    } catch (err) {
+      setLocalError(err.response?.data?.message || err.message || 'Failed to download the signed contract');
+    } finally {
+      setDownloading(false);
+    }
+  };
+
+  if (!isSubmitted) return null;
+
+  return (
+    <div className="rounded-lg border bg-muted/30 p-3 flex items-center justify-between gap-3 flex-wrap">
+      <div className="min-w-0">
+        <p className="text-[10px] font-bold tracking-widest uppercase text-muted-foreground">
+          Signed copy from candidate
+        </p>
+        <p className="text-[11px] text-muted-foreground mt-0.5">
+          Submitted {fmtDate(submittedAt)}
+        </p>
+        {localError && (
+          <p className="text-[11px] text-rose-600 mt-1">{localError}</p>
+        )}
+      </div>
+      <Button size="sm" variant="outline" className="text-xs shrink-0" onClick={handleDownload} disabled={downloading}>
+        {downloading
+          ? <><Loader2 className="h-3.5 w-3.5 mr-1.5 animate-spin" /> Downloading…</>
+          : <><Download className="h-3.5 w-3.5 mr-1.5" /> Download signed file</>}
+      </Button>
+    </div>
+  );
+}
+
+function ExecutedContractPart({ offer, setBanner, setError }) {
+  const [document, setDocument] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [uploading, setUploading] = useState(false);
+  const [downloading, setDownloading] = useState(false);
+  const [notes, setNotes] = useState('');
+  const fileInputRef = useRef(null);
+
+  const load = useCallback(async () => {
+    setLoading(true);
+    try {
+      const res = await getContractExecutedDocument(offer.id);
+      setDocument(res.data || null);
+    } catch {
+      setDocument(null);
+    } finally {
+      setLoading(false);
+    }
+  }, [offer.id]);
+
+  useEffect(() => { load(); }, [load]);
+
+  const handleFileSelect = async (e) => {
+    const file = e.target.files?.[0];
+    e.target.value = '';
+    if (!file) return;
+
+    setUploading(true);
+    setError(null);
+    try {
+      const formData = new FormData();
+      formData.append('file', file);
+      if (notes.trim()) formData.append('notes', notes.trim());
+      const res = await uploadContractExecutedDocument(offer.id, formData);
+      setDocument(res.data.document);
+      setNotes('');
+      setBanner({ ok: true, text: 'Fully-executed contract saved.' });
+    } catch (err) {
+      setError(err.response?.data?.message || err.message || 'Failed to save the executed contract');
+    } finally {
+      setUploading(false);
+    }
+  };
+
+  const handleDownload = async () => {
+    setDownloading(true);
+    setError(null);
+    try {
+      const res = await downloadContractExecutedDocument(offer.id);
+      downloadBlob(res, `executed_contract_${offer.candidate_name || offer.id}`);
+    } catch (err) {
+      setError(err.response?.data?.message || err.message || 'Failed to download the executed contract');
+    } finally {
+      setDownloading(false);
+    }
+  };
+
+  return (
+    <Card>
+      <CardHeader className="pb-3">
+        <div className="flex items-center gap-2">
+          <Archive className="h-4 w-4 text-primary shrink-0" />
+          <div className="min-w-0 flex-1">
+            <CardTitle className="text-sm">contract archive</CardTitle>
+            <p className="text-[10px] text-muted-foreground mt-0.5">
+              Optional — once both sides have signed (e.g. a combined wet-signed scan), save the final
+              copy here for your records. Separate from the portal flow above
+            </p>
+          </div>
+        </div>
+      </CardHeader>
+      <CardContent className="space-y-2">
+        {loading ? (
+          <div className="flex justify-center py-4">
+            <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
+          </div>
+        ) : document ? (
+          <div className="space-y-2">
+            <div className="flex items-center justify-between gap-2 px-3 py-2 rounded-lg border bg-muted/20 text-xs">
+              <span className="flex items-center gap-2 text-muted-foreground truncate">
+                <FileCheck2 className="h-3.5 w-3.5 shrink-0" />
+                {document.file?.split('/').pop() || 'Executed contract'}
+              </span>
+              <span className="text-[10px] text-muted-foreground shrink-0">{fmtDate(document.uploaded_at)}</span>
+            </div>
+            {document.notes && (
+              <p className="text-[11px] text-muted-foreground italic px-1">"{document.notes}"</p>
+            )}
+            <div className="flex gap-2">
+              <Button size="sm" variant="outline" className="text-xs" onClick={handleDownload} disabled={downloading}>
+                {downloading ? <Loader2 className="h-3.5 w-3.5 mr-1.5 animate-spin" /> : <Download className="h-3.5 w-3.5 mr-1.5" />}
+                Download
+              </Button>
+              <Button size="sm" variant="outline" className="text-xs" onClick={() => fileInputRef.current?.click()} disabled={uploading}>
+                {uploading ? <Loader2 className="h-3.5 w-3.5 mr-1.5 animate-spin" /> : <Upload className="h-3.5 w-3.5 mr-1.5" />}
+                Replace
+              </Button>
+            </div>
+          </div>
+        ) : (
+          <>
+            <div className="flex items-center gap-2 px-3 py-2 rounded-lg border border-dashed text-xs text-muted-foreground">
+              Nothing saved yet.
+            </div>
+            <Input
+              placeholder="Note (optional) — e.g. wet-signed copy scanned 20 Aug"
+              className="text-xs h-8"
+              value={notes}
+              onChange={(e) => setNotes(e.target.value)}
+            />
+            <Button size="sm" variant="outline" className="text-xs" onClick={() => fileInputRef.current?.click()} disabled={uploading}>
+              {uploading
+                ? <><Loader2 className="h-3.5 w-3.5 mr-1.5 animate-spin" /> Uploading…</>
+                : <><Upload className="h-3.5 w-3.5 mr-1.5" /> Upload executed contract</>}
+            </Button>
+          </>
+        )}
+        <input
+          ref={fileInputRef}
+          type="file"
+          accept=".docx,.pdf"
+          className="hidden"
+          onChange={handleFileSelect}
+        />
+      </CardContent>
+    </Card>
+  );
+}
+
 function ContractSection({ offer, setOffer, setBanner, setError }) {
-  const [contractType, setContractType] = useState('PKWTT');
-  const [startDate, setStartDate] = useState('');
-  const [endDate, setEndDate] = useState('');
-  const [generating, setGenerating] = useState(false);
+  const [history, setHistory] = useState([]);
+  const [loadingHistory, setLoadingHistory] = useState(true);
   const [sending, setSending] = useState(false);
+  const [revoking, setRevoking] = useState(false);
+  const [showRevoke, setShowRevoke] = useState(false);
+  const [revokeReason, setRevokeReason] = useState('');
+
+  const [document, setDocument] = useState(null);
+  const [loadingDocument, setLoadingDocument] = useState(true);
+
+  const [emailModal, setEmailModal] = useState({ open: false, subject: '', body: '' });
+
+  const hasDocument = !!document;
+
+  const loadHistory = useCallback(async () => {
+    setLoadingHistory(true);
+    try {
+      const res = await getContractSendHistory(offer.id);
+      setHistory(res.data || []);
+    } catch {
+      // not sent yet
+    } finally {
+      setLoadingHistory(false);
+    }
+  }, [offer.id]);
+
+  const loadDocument = useCallback(async () => {
+    setLoadingDocument(true);
+    try {
+      const res = await getContractDocument(offer.id);
+      setDocument(res.data || null);
+    } catch {
+      setDocument(null);
+    } finally {
+      setLoadingDocument(false);
+    }
+  }, [offer.id]);
+
+  useEffect(() => { loadHistory(); }, [loadHistory]);
+  useEffect(() => { loadDocument(); }, [loadDocument]);
+
+  const latestSend  = history[0] || null;
+  const isSubmitted = latestSend?.status === 'submitted';
+  const isRevoked    = !isSubmitted && !!latestSend?.revoked_at;
+  const isActive     = latestSend?.status === 'sent' && !latestSend?.revoked_at;
+  const portalUrl    = isActive ? `${window.location.origin}/contract/send/${latestSend.token}` : null;
+  const expiryDaysLeft = isActive ? daysUntil(latestSend.token_expires_at) : null;
 
   if (offer.offer_status !== 'accepted') {
     return (
       <Card>
         <CardContent className="py-10 text-center text-xs text-muted-foreground">
-          Contract can only be generated once the offer is accepted.
+          Contract can only be sent once the offer is accepted.
         </CardContent>
       </Card>
     );
   }
 
-  const handleGenerate = async () => {
-    if (!startDate) {
-      setError('Start date is required');
-      return;
-    }
-    setGenerating(true);
-    setError(null);
-    try {
-      await generateContract(offer.id, contractType, startDate, contractType === 'PKWT' ? endDate : null);
-      setOffer((prev) => ({ ...prev, contract_status: 'ready' }));
-      setBanner({ ok: true, text: 'Contract generated.' });
-    } catch (err) {
-      setError(err.response?.data?.message || err.message || 'Failed to generate contract');
-    } finally {
-      setGenerating(false);
-    }
+  const openSendModal = () => {
+    const defaults = buildDefaultContractEmail(offer.position_title || offer.job_title);
+    setEmailModal({ open: true, ...defaults });
   };
 
-  const handleSend = async () => {
+  const handleConfirmSend = async () => {
+    if (sending) return;
     setSending(true);
     setError(null);
     try {
-      await sendContract(offer.id);
+      await sendContractDocument(offer.id, { subject: emailModal.subject, body: emailModal.body });
       setOffer((prev) => ({ ...prev, contract_status: 'sent' }));
-      setBanner({ ok: true, text: 'Contract sent for signature.' });
+      setEmailModal({ open: false, subject: '', body: '' });
+      await loadHistory();
+      setBanner({ ok: true, text: latestSend ? 'Link regenerated — previous link revoked.' : 'Contract sent — copy the link below to share with the candidate.' });
     } catch (err) {
       setError(err.response?.data?.message || err.message || 'Failed to send contract');
     } finally {
@@ -2140,69 +2473,304 @@ function ContractSection({ offer, setOffer, setBanner, setError }) {
     }
   };
 
+  const handleRevoke = async () => {
+    setRevoking(true);
+    setError(null);
+    try {
+      await revokeContractDocument(offer.id, revokeReason || null);
+      await loadHistory();
+      setShowRevoke(false);
+      setRevokeReason('');
+      setBanner({ ok: true, text: 'Contract link revoked.' });
+    } catch (err) {
+      setError(err.response?.data?.message || err.message || 'Revoke failed');
+    } finally {
+      setRevoking(false);
+    }
+  };
+
   return (
     <div className="space-y-4">
+
+      <ContractDocumentUploadPart
+        offerId={offer.id}
+        document={document}
+        setDocument={setDocument}
+        setBanner={setBanner}
+        setError={setError}
+      />
+
+      {/* Contract letter · portal link */}
       <Card>
         <CardHeader className="pb-3">
           <div className="flex items-center gap-2">
             <FileSignature className="h-4 w-4 text-primary shrink-0" />
-            <CardTitle className="text-sm">Contract & signing</CardTitle>
-            {offer.contract_status && (
-              <Badge variant="outline" className="text-[9px] ml-auto">{offer.contract_status}</Badge>
-            )}
+            <div className="min-w-0 flex-1">
+              <CardTitle className="text-sm">Contract letter · portal link</CardTitle>
+              <p className="text-[10px] text-muted-foreground mt-0.5">
+                candidate downloads, uploads their signed copy, and submits via portal{isSubmitted ? ' ' : ' · revocable until submitted'}
+              </p>
+            </div>
+            <Badge
+              variant="outline"
+              className={`text-[9px] shrink-0 ${
+                isSubmitted ? 'border-emerald-300 text-emerald-700 bg-emerald-50'
+                : isRevoked ? 'border-rose-300 text-rose-700 bg-rose-50'
+                : isActive  ? 'border-blue-300 text-blue-700 bg-blue-50'
+                : 'border-border text-muted-foreground'
+              }`}
+            >
+              {isSubmitted ? 'submitted' : isRevoked ? 'revoked' : isActive ? 'sent' : 'not sent'}
+            </Badge>
           </div>
         </CardHeader>
         <CardContent className="space-y-3">
 
-          {!offer.contract_status || offer.contract_status === 'draft' ? (
-            <>
-              <div className="flex items-center gap-2 flex-wrap">
-                {['PKWTT', 'PKWT'].map((t) => (
-                  <button
-                    key={t}
-                    type="button"
-                    onClick={() => setContractType(t)}
-                    className={`px-2.5 py-1 rounded-full border text-[10px] font-semibold ${
-                      contractType === t ? 'bg-primary text-primary-foreground border-primary' : 'border-border text-muted-foreground'
-                    }`}
-                  >
-                    {t}
-                  </button>
-                ))}
-              </div>
-              <div className="grid grid-cols-2 gap-2">
-                <div className="space-y-1">
-                  <label className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">Start date</label>
-                  <Input type="date" className="text-xs h-8" value={startDate} onChange={(e) => setStartDate(e.target.value)} />
-                </div>
-                {contractType === 'PKWT' && (
-                  <div className="space-y-1">
-                    <label className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">End date</label>
-                    <Input type="date" className="text-xs h-8" value={endDate} onChange={(e) => setEndDate(e.target.value)} />
-                  </div>
-                )}
-              </div>
-              <Button size="sm" className="text-xs" onClick={handleGenerate} disabled={generating}>
-                {generating ? <><Loader2 className="h-3.5 w-3.5 mr-1.5 animate-spin" /> Generating…</> : <><PenLine className="h-3.5 w-3.5 mr-1.5" /> Generate contract</>}
-              </Button>
-            </>
-          ) : offer.contract_status === 'ready' ? (
-            <>
-              <p className="text-xs text-muted-foreground">Contract generated — ready to send for signature.</p>
-              <Button size="sm" className="text-xs" onClick={handleSend} disabled={sending}>
-                {sending ? <><Loader2 className="h-3.5 w-3.5 mr-1.5 animate-spin" /> Sending…</> : <><Send className="h-3.5 w-3.5 mr-1.5" /> Send for signature</>}
-              </Button>
-            </>
-          ) : offer.contract_status === 'sent' ? (
-            <p className="text-xs text-muted-foreground">Awaiting candidate signature.</p>
-          ) : offer.contract_status === 'signed' ? (
-            <div className="flex items-center gap-2 px-3 py-2 rounded-lg border border-emerald-200 bg-emerald-50 text-xs text-emerald-700">
-              <Check className="h-4 w-4 shrink-0" /> Contract signed — offer complete
+          {!hasDocument && !latestSend && !loadingDocument && (
+            <div className="flex items-center gap-2 px-3 py-2 rounded-lg border border-amber-200 bg-amber-50 text-xs text-amber-700">
+              <AlertTriangle className="h-4 w-4 shrink-0" /> Upload the finalized contract letter above before generating a portal link.
             </div>
+          )}
+
+          {isSubmitted && (
+            <div className="flex items-center gap-2 px-3 py-2 rounded-lg border border-emerald-200 bg-emerald-50 text-xs text-emerald-700">
+              <Check className="h-4 w-4 shrink-0" /> Signed contract submitted {fmtDate(latestSend.submitted_at)}
+            </div>
+          )}
+          {isRevoked && (
+            <div className="flex items-center gap-2 px-3 py-2 rounded-lg border border-rose-200 bg-rose-50 text-xs text-rose-700">
+              <XCircle className="h-4 w-4 shrink-0" />
+              Link revoked {fmtDate(latestSend.revoked_at)}
+              {latestSend.revocation_reason && (
+                <span className="italic"> — "{latestSend.revocation_reason}"</span>
+              )}
+            </div>
+          )}
+
+          {isSubmitted ? (
+            <div className="rounded-lg border border-dashed bg-emerald-50/50 border-emerald-200 p-3 text-center space-y-0.5">
+              <p className="text-[11px] text-emerald-700 font-semibold flex items-center justify-center gap-1.5">
+                <Check className="h-3.5 w-3.5" /> Submitted {fmtDate(latestSend.submitted_at)}
+              </p>
+            </div>
+          ) : isActive && portalUrl ? (
+            <PortalLinkRow
+              url={portalUrl}
+              expiresAt={latestSend.token_expires_at}
+              sentAt={latestSend.sent_at}
+              onRegenerate={openSendModal}
+              onRevoke={() => { setShowRevoke(true); setRevokeReason(''); }}
+              generating={sending}
+            />
+          ) : hasDocument ? (
+            <GenerateLinkRow
+              onGenerate={openSendModal}
+              generating={sending}
+              label={isRevoked ? 'Regenerate link' : 'Generate link'}
+            />
           ) : null}
+
+          <ContractSignedFilePart
+            offer={offer}
+            isSubmitted={isSubmitted}
+            submittedAt={latestSend?.submitted_at}
+          />
+
+          {showRevoke && isActive && (
+            <div className="space-y-2 p-3 rounded-lg border border-rose-200 bg-rose-50/30">
+              <p className="text-[10px] font-semibold text-rose-700 uppercase tracking-wide">
+                Revoke contract link
+              </p>
+              <Input
+                value={revokeReason}
+                onChange={(e) => setRevokeReason(e.target.value)}
+                placeholder="Reason (optional) — e.g. terms changed"
+                className="text-xs h-8"
+              />
+              <div className="flex gap-2">
+                <Button size="sm" variant="destructive" className="text-xs h-8" onClick={handleRevoke} disabled={revoking}>
+                  {revoking
+                    ? <><Loader2 className="h-3.5 w-3.5 mr-1.5 animate-spin" /> Revoking…</>
+                    : 'Confirm revoke'}
+                </Button>
+                <Button size="sm" variant="ghost" className="text-xs h-8" onClick={() => { setShowRevoke(false); setRevokeReason(''); }}>
+                  Cancel
+                </Button>
+              </div>
+            </div>
+          )}
 
         </CardContent>
       </Card>
+
+      {offer.contract_status === 'signed' && (
+        <div className="flex items-center gap-2 px-3 py-2 rounded-lg border border-purple-200 bg-purple-50 text-xs text-purple-700">
+          <Check className="h-4 w-4 shrink-0" /> Contract signed — offer complete
+        </div>
+      )}
+
+      {/* Contract document preview */}
+      <Card>
+        <CardHeader className="pb-2">
+          <div className="flex items-center justify-between gap-2 flex-wrap">
+            <CardTitle className="text-xs uppercase tracking-wide text-muted-foreground">
+              Send · dispatch preview
+            </CardTitle>
+            <span className="text-[10px] text-muted-foreground">
+              candidate-facing email · portal · token-based
+            </span>
+          </div>
+        </CardHeader>
+        <CardContent className="pt-0">
+          {loadingHistory ? (
+            <div className="flex justify-center py-6">
+              <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+
+              <div className="rounded-lg border bg-muted/10 overflow-hidden">
+                <div className="px-4 py-2.5 border-b bg-muted/20">
+                  <p className="text-[10px] font-bold tracking-widest uppercase text-muted-foreground">
+                    Document preview
+                  </p>
+                </div>
+                <div className="px-4 py-3 space-y-2.5 text-[11px] leading-relaxed text-foreground">
+                  <p>Halo {offer.candidate_name || 'Kandidat'},</p>
+                  <p>
+                    Berikut adalah kontrak kerja Anda untuk posisi{' '}
+                    <strong>{offer.position_title || offer.job_title}</strong>.
+                  </p>
+                  {isActive ? (
+                    <>
+                      <p>
+                        Silakan unduh, tinjau, dan unggah kembali kontrak yang telah ditandatangani melalui
+                        portal di tautan di bawah ini. Tautan akan kedaluwarsa dalam {expiryDaysLeft ?? '—'} hari.
+                      </p>
+                      <p className="font-mono text-primary break-all">{portalUrl}</p>
+                    </>
+                  ) : isSubmitted ? (
+                    <p className="text-emerald-700">Kontrak yang telah ditandatangani telah diterima.</p>
+                  ) : (
+                    <p className="text-muted-foreground italic">
+                      Belum dikirim — hasilkan tautan portal di atas untuk melihat pratinjau lengkap.
+                    </p>
+                  )}
+                </div>
+              </div>
+
+              <div className="rounded-lg border bg-muted/10 overflow-hidden">
+                <div className="px-4 py-2.5 border-b bg-muted/20">
+                  <p className="text-[10px] font-bold tracking-widest uppercase text-muted-foreground">
+                    Contract reference
+                  </p>
+                </div>
+                <div className="px-4 py-3 space-y-2 text-[11px]">
+                  <div className="flex items-center justify-between">
+                    <span className="text-muted-foreground">Position</span>
+                    <span className="font-medium">{offer.position_title || offer.job_title || '—'}</span>
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <span className="text-muted-foreground">Contract type</span>
+                    <span className="font-mono">{offer.contract_type || '—'}</span>
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <span className="text-muted-foreground">Status</span>
+                    <span className="font-mono">{isSubmitted ? 'submitted' : isRevoked ? 'revoked' : isActive ? 'sent' : 'not sent'}</span>
+                  </div>
+                  {latestSend?.sent_by_name && (
+                    <div className="flex items-center justify-between">
+                      <span className="text-muted-foreground">Sent by</span>
+                      <span>{latestSend.sent_by_name}</span>
+                    </div>
+                  )}
+                  {latestSend?.sent_at && (
+                    <div className="flex items-center justify-between">
+                      <span className="text-muted-foreground">Sent</span>
+                      <span>{fmtDate(latestSend.sent_at)}</span>
+                    </div>
+                  )}
+                  {latestSend?.submitted_at && (
+                    <div className="flex items-center justify-between">
+                      <span className="text-muted-foreground">Submitted</span>
+                      <span>{fmtDate(latestSend.submitted_at)}</span>
+                    </div>
+                  )}
+                </div>
+              </div>
+
+            </div>
+          )}
+        </CardContent>
+      </Card>
+
+      <ExecutedContractPart offer={offer} setBanner={setBanner} setError={setError} />
+
+      {/* Email to Candidate modal — same pattern as Send */}
+      <Dialog open={emailModal.open} onOpenChange={(open) => !open && !sending && setEmailModal((m) => ({ ...m, open: false }))}>
+        <DialogContent className="max-w-lg">
+          <DialogHeader>
+            <DialogTitle className="text-sm font-semibold flex items-center gap-2">
+              <Mail className="h-4 w-4 text-primary" /> Email to Candidate
+            </DialogTitle>
+            <DialogDescription className="text-xs text-muted-foreground">
+              Review and edit the email before sending. The portal link is inserted automatically where you see{' '}
+              <code className="bg-muted px-1 rounded">{'{{LINK}}'}</code>.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-3 py-1">
+            <div className="space-y-1">
+              <label className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">Subject</label>
+              <Input
+                value={emailModal.subject}
+                onChange={(e) => setEmailModal((m) => ({ ...m, subject: e.target.value }))}
+                className="h-9 text-sm"
+                placeholder="Email subject…"
+              />
+            </div>
+            <div className="space-y-1">
+              <label className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">Body</label>
+              <Textarea
+                value={emailModal.body}
+                onChange={(e) => setEmailModal((m) => ({ ...m, body: e.target.value }))}
+                rows={12}
+                className="text-sm font-mono leading-relaxed resize-y"
+                placeholder="Email body…"
+              />
+            </div>
+            {!emailModal.body.includes('{{LINK}}') && (
+              <div className="flex items-start gap-2 px-3 py-2 rounded-md border border-amber-200 bg-amber-50 text-[11px] text-amber-700">
+                <AlertTriangle className="h-3.5 w-3.5 shrink-0 mt-0.5" />
+                <span>
+                  <strong>{'{{LINK}}'}</strong> is missing from the body. The portal link will be appended automatically at the bottom of the email.
+                </span>
+              </div>
+            )}
+          </div>
+          <DialogFooter className="gap-2">
+            <Button
+              variant="outline"
+              size="sm"
+              className="text-xs"
+              onClick={() => setEmailModal((m) => ({ ...m, open: false }))}
+              disabled={sending}
+            >
+              Cancel
+            </Button>
+            <Button
+              size="sm"
+              className="text-xs"
+              onClick={handleConfirmSend}
+              disabled={sending || !emailModal.subject.trim()}
+            >
+              {sending
+                ? <><Loader2 className="h-3.5 w-3.5 mr-1.5 animate-spin" />Sending…</>
+                : <><Send className="h-3.5 w-3.5 mr-1.5" />Confirm Send</>}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
     </div>
   );
 }
@@ -2237,7 +2805,12 @@ export default function OfferCandidatePage() {
     }
   }, [offerId]);
 
-  useEffect(() => { load(); }, [load]);
+  const hasLoadedRef = useRef(false);
+  useEffect(() => {
+    if (hasLoadedRef.current) return;
+    hasLoadedRef.current = true;
+    load();
+  }, [load]);
 
   if (loading) {
     return (

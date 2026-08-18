@@ -4,12 +4,13 @@ class InterviewPackModel {
   /**
    * Create a new interview pack (without candidates).
    */
-  async create({ company_id, job_id, title, batch_code, interviewer_name, window_start, window_end, rubric_snapshot, created_by }) {
+  async create({ company_id, job_id, title, batch_code, interviewer_name, window_start, window_end, rubric_snapshot, questions_snapshot, created_by }) {
+    console.log('🔍 STEP 4 - model received questions_snapshot:', questions_snapshot);
     const result = await getDb().query(
       `INSERT INTO interview_pack
-         (company_id, job_id, title, batch_code, interviewer_name, window_start, window_end, rubric_snapshot, created_by)
-       VALUES ($1, $2, $3, $4, $5, $6, $7, $8::jsonb, $9)
-       RETURNING *`,
+        (company_id, job_id, title, batch_code, interviewer_name, window_start, window_end, rubric_snapshot, questions_snapshot, created_by)
+      VALUES ($1, $2, $3, $4, $5, $6, $7, $8::jsonb, $9::jsonb, $10)
+      RETURNING *`,
       [
         company_id || null,
         job_id,
@@ -19,12 +20,12 @@ class InterviewPackModel {
         window_start || null,
         window_end || null,
         JSON.stringify(rubric_snapshot),
+        JSON.stringify(questions_snapshot || []),
         created_by || null,
       ]
     );
     return result.rows[0];
   }
-
   /**
    * Bulk-insert candidates into an interview pack.
    * candidates: Array of { applicant_id, sort_order, interview_date, interview_time }
@@ -83,6 +84,8 @@ class InterviewPackModel {
       `SELECT
          ipc.id             AS pack_candidate_id,
          ipc.applicant_id,
+         ipc.round_id,
+         ir.round_number,
          ipc.sort_order,
          ipc.interview_date,
          ipc.interview_time,
@@ -95,9 +98,11 @@ class InterviewPackModel {
          ipo.recommendation,
          ipo.strengths,
          ipo.concerns,
+         ipo.question_notes,
          ipo.updated_at     AS outcome_updated_at
        FROM interview_pack_candidate ipc
        JOIN master_applicant ma ON ma.id = ipc.applicant_id
+       LEFT JOIN interview_round ir ON ir.id = ipc.round_id
        LEFT JOIN interview_pack_outcome ipo
               ON ipo.pack_id = ipc.pack_id
              AND ipo.pack_candidate_id = ipc.id
@@ -119,10 +124,12 @@ class InterviewPackModel {
          ip.*,
          cj.job_title,
          COUNT(ipc.id)::int AS candidate_count,
-         COUNT(ipo.id)::int AS scored_count
+         COUNT(ipo.id)::int AS scored_count,
+         ARRAY_AGG(DISTINCT ir.round_number) FILTER (WHERE ir.round_number IS NOT NULL) AS round_numbers
        FROM interview_pack ip
        JOIN core_job cj ON cj.id = ip.job_id
        LEFT JOIN interview_pack_candidate ipc ON ipc.pack_id = ip.id
+       LEFT JOIN interview_round ir ON ir.id = ipc.round_id
        LEFT JOIN interview_pack_outcome ipo ON ipo.pack_id = ip.id
        WHERE ip.job_id = $1
        GROUP BY ip.id, cj.job_title
@@ -191,6 +198,7 @@ class InterviewPackModel {
          ipo.recommendation,
          ipo.strengths,
          ipo.concerns,
+         ipo.question_notes,
          ipo.updated_at     AS outcome_updated_at
        FROM interview_pack_candidate ipc
        JOIN master_applicant ma ON ma.id = ipc.applicant_id
@@ -209,31 +217,33 @@ class InterviewPackModel {
   /**
    * Upsert an outcome record for one candidate in a pack.
    */
-  async upsertOutcome({ pack_id, pack_candidate_id, scores, weighted_total, recommendation, strengths, concerns }) {
-    const result = await getDb().query(
-      `INSERT INTO interview_pack_outcome
-         (pack_id, pack_candidate_id, scores, weighted_total, recommendation, strengths, concerns)
-       VALUES ($1, $2, $3::jsonb, $4, $5, $6, $7)
-       ON CONFLICT (pack_id, pack_candidate_id) DO UPDATE
-         SET scores         = EXCLUDED.scores,
-             weighted_total = EXCLUDED.weighted_total,
-             recommendation = EXCLUDED.recommendation,
-             strengths      = EXCLUDED.strengths,
-             concerns       = EXCLUDED.concerns,
-             updated_at     = NOW()
-       RETURNING *`,
-      [
-        pack_id,
-        pack_candidate_id,
-        JSON.stringify(scores || {}),
-        weighted_total ?? null,
-        recommendation || null,
-        strengths || null,
-        concerns || null,
-      ]
-    );
-    return result.rows[0];
-  }
+    async upsertOutcome({ pack_id, pack_candidate_id, scores, weighted_total, recommendation, strengths, concerns, question_notes }) {
+      const result = await getDb().query(
+        `INSERT INTO interview_pack_outcome
+          (pack_id, pack_candidate_id, scores, weighted_total, recommendation, strengths, concerns, question_notes)
+        VALUES ($1, $2, $3::jsonb, $4, $5, $6, $7, $8::jsonb)
+        ON CONFLICT (pack_id, pack_candidate_id) DO UPDATE
+          SET scores         = EXCLUDED.scores,
+              weighted_total = EXCLUDED.weighted_total,
+              recommendation = EXCLUDED.recommendation,
+              strengths      = EXCLUDED.strengths,
+              concerns       = EXCLUDED.concerns,
+              question_notes = EXCLUDED.question_notes,
+              updated_at     = NOW()
+        RETURNING *`,
+        [
+          pack_id,
+          pack_candidate_id,
+          JSON.stringify(scores || {}),
+          weighted_total ?? null,
+          recommendation || null,
+          strengths || null,
+          concerns || null,
+          JSON.stringify(question_notes || {}),
+        ]
+      );
+      return result.rows[0];
+    }
 
   /**
    * Mark the pack as submitted. Only transitions open → submitted.

@@ -1,5 +1,14 @@
 import getDb from '../../config/postgres.js';
 
+// candidate_offer.offer_status values that get a matching real timestamp
+// column on that same table. Anything not in this map (e.g. 'negotiating',
+// 'draft') only touches offer_status + metadata.
+const STATUS_TIMESTAMP_COLUMN = {
+  sent: 'sent_at',
+  accepted: 'accepted_at',
+  rejected: 'rejected_at',
+};
+
 class OfferModel {
   // L1 Workboard - get all offers for company
   async getWorkboard(company_id) {
@@ -16,22 +25,19 @@ class OfferModel {
         co.sent_at,
         co.accepted_at,
         co.rejected_at,
+        co.expired_at,
         mc.name as candidate_name,
         ma.email as candidate_email,
         mc.information->>'phone' as candidate_phone,
         cj.job_title,
         comp.base_salary,
         comp.gross_salary,
-        comp.net_salary,
-        contract.start_date,
-        contract.end_date,
-        contract.signed_at
+        comp.net_salary
       FROM candidate_offer co
       JOIN master_candidate mc ON co.candidate_id = mc.id
       LEFT JOIN master_applicant ma ON mc.applicant_id = ma.id
       JOIN core_job cj ON co.job_id = cj.id
       LEFT JOIN offer_compensation comp ON co.id = comp.offer_id
-      LEFT JOIN offer_contract contract ON co.id = contract.offer_id
       WHERE co.company_id = $1
       ORDER BY co.created_at DESC
     `;
@@ -53,16 +59,15 @@ class OfferModel {
         co.created_at,
         co.sent_at,
         co.accepted_at,
+        co.rejected_at,
         mc.name as candidate_name,
         ma.email as candidate_email,
         comp.base_salary,
-        comp.net_salary,
-        contract.signed_at
+        comp.net_salary
       FROM candidate_offer co
       JOIN master_candidate mc ON co.candidate_id = mc.id
       LEFT JOIN master_applicant ma ON mc.applicant_id = ma.id
       LEFT JOIN offer_compensation comp ON co.id = comp.offer_id
-      LEFT JOIN offer_contract contract ON co.id = contract.offer_id
       WHERE co.job_id = $1 AND co.company_id = $2
       ORDER BY co.created_at DESC
     `;
@@ -92,22 +97,13 @@ class OfferModel {
         comp.bpjs_kesehatan,
         comp.bpjs_ketenagakerjaan,
         comp.net_salary,
-        comp.calculation_metadata,
-        contract.id as contract_id,
-        contract.contract_type as contract_doc_type,
-        contract.start_date,
-        contract.end_date,
-        contract.status as contract_doc_status,
-        contract.pdf_url,
-        contract.signed_at,
-        contract.signature_data
+        comp.calculation_metadata
       FROM candidate_offer co
       JOIN master_candidate mc ON co.candidate_id = mc.id
       LEFT JOIN master_applicant ma ON mc.applicant_id = ma.id
       JOIN core_job cj ON co.job_id = cj.id
       JOIN core_company cc ON co.company_id = cc.id
       LEFT JOIN offer_compensation comp ON co.id = comp.offer_id
-      LEFT JOIN offer_contract contract ON co.id = contract.offer_id
       WHERE co.id = $1 AND co.company_id = $2
     `;
 
@@ -131,14 +127,11 @@ class OfferModel {
         comp.bpjs_kesehatan,
         comp.bpjs_ketenagakerjaan,
         comp.net_salary,
-        comp.calculation_metadata,
-        contract.status as contract_doc_status,
-        contract.pdf_url
+        comp.calculation_metadata
       FROM candidate_offer co
       JOIN master_candidate mc ON co.candidate_id = mc.id
       LEFT JOIN master_applicant ma ON mc.applicant_id = ma.id
       LEFT JOIN offer_compensation comp ON co.id = comp.offer_id
-      LEFT JOIN offer_contract contract ON co.id = contract.offer_id
       WHERE co.id = $1
     `;
 
@@ -230,79 +223,50 @@ class OfferModel {
     ]);
   }
 
-  // Update offer status
   async updateOfferStatus(offer_id, status, metadata = {}) {
+    const timestampColumn = STATUS_TIMESTAMP_COLUMN[status];
+
+    const setClauses = [
+      'offer_status = $2',
+      "metadata = COALESCE(metadata, '{}'::jsonb) || $3::jsonb",
+      'updated_at = NOW()',
+    ];
+    if (timestampColumn) {
+      setClauses.push(`${timestampColumn} = NOW()`);
+    }
+
     const query = `
       UPDATE candidate_offer
-      SET
-        offer_status = $2,
-        metadata = metadata || $3::jsonb,
-        updated_at = NOW()
+      SET ${setClauses.join(', ')}
       WHERE id = $1
     `;
 
     await getDb().query(query, [offer_id, status, JSON.stringify(metadata)]);
   }
 
-  // Create contract
-  async createContract(data) {
-    const query = `
-      INSERT INTO offer_contract (
-        offer_id, contract_type, start_date, end_date,
-        status, pdf_url, generated_by
-      )
-      VALUES ($1, $2, $3, $4, $5, $6, $7)
-      RETURNING id
-    `;
-
-    const result = await getDb().query(query, [
-      data.offer_id,
-      data.contract_type,
-      data.start_date,
-      data.end_date,
-      data.status,
-      data.pdf_url || null,
-      data.generated_by
-    ]);
-
-    return result.rows[0].id;
-  }
-
-  // Update contract status
-  async updateContractStatus(offer_id, status, metadata = {}) {
-    const query = `
-      UPDATE offer_contract
-      SET
-        status = $2,
-        metadata = metadata || $3::jsonb,
-        updated_at = NOW()
-      WHERE offer_id = $1
-    `;
-
-    await getDb().query(query, [offer_id, status, JSON.stringify(metadata)]);
-
-    // Also update candidate_offer contract_status
-    const updateOfferQuery = `
+  async markOfferExpired(offer_id) {
+    await getDb().query(`
       UPDATE candidate_offer
-      SET contract_status = $2
+      SET offer_status = 'expired', expired_at = NOW(), updated_at = NOW()
       WHERE id = $1
-    `;
-
-    await getDb().query(updateOfferQuery, [offer_id, status]);
+    `, [offer_id]);
   }
 
-  // Get signed offers by job (for calibration)
+  async updateOfferContractStatus(offer_id, status) {
+    await getDb().query(`
+      UPDATE candidate_offer SET contract_status = $2, updated_at = NOW() WHERE id = $1
+    `, [offer_id, status]);
+  }
+
   async getSignedOffersByJob(job_id, candidate_ids, company_id) {
     const query = `
-      SELECT co.*, contract.signed_at
+      SELECT co.*
       FROM candidate_offer co
-      JOIN offer_contract contract ON co.id = contract.offer_id
       WHERE co.job_id = $1
         AND co.candidate_id = ANY($2::int[])
         AND co.company_id = $3
-        AND contract.status = 'signed'
+        AND co.contract_status = 'signed'
     `;
-
     const result = await getDb().query(query, [job_id, candidate_ids, company_id]);
     return result.rows;
   }
@@ -332,7 +296,7 @@ class OfferModel {
   async mergeMetadata(offer_id, metadata) {
     const query = `
       UPDATE candidate_offer
-      SET metadata = metadata || $2::jsonb, updated_at = NOW()
+      SET metadata = COALESCE(metadata, '{}'::jsonb) || $2::jsonb, updated_at = NOW()
       WHERE id = $1
       RETURNING metadata
     `;
@@ -340,9 +304,6 @@ class OfferModel {
     return result.rows[0]?.metadata;
   }
 
-  // ── Negotiation ──────────────────────────────────────────────────────────
-  // NOTE: was called by offer.service.js (respondToNegotiation) but never
-  // existed on this model — added to fix the crash.
   async getNegotiationHistory(offer_id) {
     const result = await getDb().query(
       `SELECT * FROM offer_negotiation WHERE offer_id = $1 ORDER BY created_at DESC`,
@@ -370,43 +331,43 @@ class OfferModel {
     return result.rows[0];
   }
 
-  // ── Offer Send (portal link lifecycle) ──────────────────────────────────
   async createOfferSend(data) {
+    const document_type = data.document_type || 'offer';
     const query = `
       INSERT INTO offer_send (
-        offer_id, token_expires_at, document, sent_at, sent_by, status
+        offer_id, document_type, token_expires_at, sent_at, sent_by, status
       )
       VALUES ($1, $2, $3, NOW(), $4, 'sent')
       RETURNING *
     `;
     const result = await getDb().query(query, [
       data.offer_id,
+      document_type,
       data.token_expires_at,
-      JSON.stringify(data.document || {}),
       data.sent_by || null,
     ]);
     return result.rows[0];
   }
 
-  async revokeActiveOfferSends(offer_id, revoked_by, reason) {
+  async revokeActiveOfferSends(offer_id, revoked_by, reason, document_type = 'offer') {
     const result = await getDb().query(`
       UPDATE offer_send
-      SET revoked_at = NOW(), revoked_by = $2, revocation_reason = $3, updated_at = NOW()
-      WHERE offer_id = $1 AND status = 'sent' AND revoked_at IS NULL
+      SET status = 'revoked', revoked_at = NOW(), revoked_by = $2, revocation_reason = $3, updated_at = NOW()
+      WHERE offer_id = $1 AND document_type = $4 AND status = 'sent' AND revoked_at IS NULL
       RETURNING *
-    `, [offer_id, revoked_by, reason || 'Superseded by a new send']);
+    `, [offer_id, revoked_by, reason || 'Superseded by a new send', document_type]);
     return result.rows;
   }
 
-  async getOfferSendHistory(offer_id) {
+  async getOfferSendHistory(offer_id, document_type = 'offer') {
     const query = `
       SELECT os.*, mu.username AS sent_by_name
       FROM offer_send os
       LEFT JOIN master_users mu ON mu.id = os.sent_by
-      WHERE os.offer_id = $1
+      WHERE os.offer_id = $1 AND os.document_type = $2
       ORDER BY os.sent_at DESC
     `;
-    const result = await getDb().query(query, [offer_id]);
+    const result = await getDb().query(query, [offer_id, document_type]);
     return result.rows;
   }
 
@@ -427,10 +388,11 @@ class OfferModel {
   }
 
   async upsertOfferDocument(data) {
+    const document_type = data.document_type || 'offer';
     const query = `
-      INSERT INTO offer_document (offer_id, file, method, uploaded_by, uploaded_at)
-      VALUES ($1, $2, $3, $4, NOW())
-      ON CONFLICT (offer_id) DO UPDATE
+      INSERT INTO offer_document (offer_id, document_type, file, method, uploaded_by, uploaded_at)
+      VALUES ($1, $2, $3, $4, $5, NOW())
+      ON CONFLICT (offer_id, document_type) DO UPDATE
       SET file = EXCLUDED.file,
           method = EXCLUDED.method,
           uploaded_by = EXCLUDED.uploaded_by,
@@ -440,6 +402,7 @@ class OfferModel {
     `;
     const result = await getDb().query(query, [
       data.offer_id,
+      document_type,
       data.file,
       data.method,
       data.uploaded_by || null,
@@ -447,13 +410,55 @@ class OfferModel {
     return result.rows[0];
   }
 
-  async getOfferDocument(offer_id) {
+  async getOfferDocument(offer_id, document_type = 'offer') {
     const result = await getDb().query(`
       SELECT od.*, mu.username AS uploaded_by_name
       FROM offer_document od
       LEFT JOIN master_users mu ON mu.id = od.uploaded_by
-      WHERE od.offer_id = $1
+      WHERE od.offer_id = $1 AND od.document_type = $2
+    `, [offer_id, document_type]);
+    return result.rows[0] || null;
+  }
+
+  async upsertContractExecutedDocument(data) {
+    const query = `
+      INSERT INTO contract_executed_document (offer_id, file, uploaded_by, uploaded_at, notes)
+      VALUES ($1, $2, $3, NOW(), $4)
+      ON CONFLICT (offer_id) DO UPDATE
+      SET file = EXCLUDED.file,
+          uploaded_by = EXCLUDED.uploaded_by,
+          uploaded_at = NOW(),
+          notes = EXCLUDED.notes,
+          updated_at = NOW()
+      RETURNING *
+    `;
+    const result = await getDb().query(query, [
+      data.offer_id,
+      data.file,
+      data.uploaded_by || null,
+      data.notes || null,
+    ]);
+    return result.rows[0];
+  }
+
+  async getContractExecutedDocument(offer_id) {
+    const result = await getDb().query(`
+      SELECT ced.*, mu.username AS uploaded_by_name
+      FROM contract_executed_document ced
+      LEFT JOIN master_users mu ON mu.id = ced.uploaded_by
+      WHERE ced.offer_id = $1
     `, [offer_id]);
+    return result.rows[0] || null;
+  }
+
+  async getLatestOfferSend(offer_id, document_type = 'offer') {
+    const result = await getDb().query(`
+      SELECT *
+      FROM offer_send
+      WHERE offer_id = $1 AND document_type = $2
+      ORDER BY created_at DESC
+      LIMIT 1
+    `, [offer_id, document_type]);
     return result.rows[0] || null;
   }
 

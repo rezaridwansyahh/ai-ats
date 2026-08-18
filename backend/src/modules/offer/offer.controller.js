@@ -124,43 +124,6 @@ class OfferController {
     }
   }
 
-  async generateContract(req, res) {
-    try {
-      const { offer_id } = req.params;
-      const { company_id, user_id } = req.user;
-      const { contract_type, start_date, end_date } = req.body;
-      const result = await OfferService.generateContract(offer_id, contract_type, start_date, end_date, company_id, user_id);
-      res.json(result);
-    } catch (error) {
-      console.error('Error in generateContract:', error);
-      res.status(error.status || 500).json({ message: error.message });
-    }
-  }
-
-  async sendContract(req, res) {
-    try {
-      const { offer_id } = req.params;
-      const { company_id, user_id } = req.user;
-      const result = await OfferService.sendContract(offer_id, company_id, user_id);
-      res.json(result);
-    } catch (error) {
-      console.error('Error in sendContract:', error);
-      res.status(error.status || 500).json({ message: error.message });
-    }
-  }
-
-  async signContract(req, res) {
-    try {
-      const { offer_id } = req.params;
-      const { signature_data } = req.body;
-      const result = await OfferService.signContract(offer_id, signature_data);
-      res.json(result);
-    } catch (error) {
-      console.error('Error in signContract:', error);
-      res.status(error.status || 500).json({ message: error.message });
-    }
-  }
-
   async bulkAdvanceToOnboarding(req, res) {
     try {
       const { job_id } = req.params;
@@ -426,17 +389,152 @@ class OfferController {
     }
   }
 
-  // async markOfferPrinted(req, res) {
-  //   try {
-  //     const { offer_id } = req.params;
-  //     const { company_id, user_id } = req.user;
-  //     const result = await OfferService.markOfferPrinted(offer_id, company_id, user_id);
-  //     res.status(201).json(result);
-  //   } catch (error) {
-  //     console.error('Error in markOfferPrinted:', error);
-  //     res.status(error.status || 500).json({ message: error.message });
-  //   }
-  // }
+  async downloadCandidateFile(req, res) {
+    try {
+      const { offer_id } = req.params;
+      const { company_id } = req.user;
+      const { filePath, fileName } = await OfferService.downloadCandidateFile(offer_id, company_id);
+
+      res.set('Access-Control-Expose-Headers', 'Content-Disposition');
+
+      res.download(filePath, fileName, (err) => {
+        if (err && !res.headersSent) {
+          console.error('Error in downloadCandidateFile (res.download):', err);
+          res.status(500).json({ message: 'Failed to download the candidate file.' });
+        }
+      });
+    } catch (error) {
+      console.error('Error in downloadCandidateFile:', error);
+      res.status(error.status || 500).json({ message: error.message });
+    }
+  }
+
+  async uploadContractDocument(req, res) {
+    try {
+      const { offer_id } = req.params;
+      const { company_id, user_id } = req.user;
+      const result = await OfferService.uploadContractDocument(offer_id, company_id, user_id, req.file);
+      res.status(201).json(result);
+    } catch (error) {
+      console.error('Error in uploadContractDocument:', error);
+      res.status(error.status || 500).json({ message: error.message });
+    }
+  }
+
+  async getContractDocument(req, res) {
+    try {
+      const { offer_id } = req.params;
+      const { company_id } = req.user;
+      const result = await OfferService.getContractDocument(offer_id, company_id);
+      res.json(result);
+    } catch (error) {
+      console.error('Error in getContractDocument:', error);
+      res.status(error.status || 500).json({ message: error.message });
+    }
+  }
+
+  async sendContractDocument(req, res) {
+    try {
+      const { offer_id } = req.params;
+      const { company_id, user_id } = req.user;
+      const { subject, body } = req.body || {};
+      const result = await OfferService.sendContractDocument(offer_id, company_id, user_id, { subject, body });
+      res.json(result);
+    } catch (error) {
+      console.error('Error in sendContractDocument:', error);
+      res.status(error.status || 500).json({ message: error.message });
+    }
+  }
+
+  async revokeContractDocument(req, res) {
+    try {
+      const { offer_id } = req.params;
+      const { company_id, user_id } = req.user;
+      const { reason } = req.body;
+      const result = await OfferService.revokeContractDocument(offer_id, company_id, user_id, reason);
+      res.json(result);
+    } catch (error) {
+      console.error('Error in revokeContractDocument:', error);
+      res.status(error.status || 500).json({ message: error.message });
+    }
+  }
+
+  async getContractSendHistory(req, res) {
+    try {
+      const { offer_id } = req.params;
+      const { company_id } = req.user;
+      const result = await OfferService.getContractSendHistory(offer_id, company_id);
+      res.json(result);
+    } catch (error) {
+      console.error('Error in getContractSendHistory:', error);
+      res.status(error.status || 500).json({ message: error.message });
+    }
+  }
+
+  async downloadContractCandidateFile(req, res) {
+    try {
+      const { offer_id } = req.params;
+      const { company_id } = req.user;
+      const { filePath, fileName } = await OfferService.downloadContractCandidateFile(offer_id, company_id);
+
+      res.set('Access-Control-Expose-Headers', 'Content-Disposition');
+
+      res.download(filePath, fileName, (err) => {
+        if (err && !res.headersSent) {
+          console.error('Error in downloadContractCandidateFile (res.download):', err);
+          res.status(500).json({ message: 'Failed to download the signed contract.' });
+        }
+      });
+    } catch (error) {
+      console.error('Error in downloadContractCandidateFile:', error);
+      res.status(error.status || 500).json({ message: error.message });
+    }
+  }
+
+  async uploadContractExecutedDocument(req, res) {
+    try {
+      const { offer_id } = req.params;
+      const { company_id, user_id } = req.user;
+      const { notes } = req.body || {};
+      const result = await OfferService.uploadContractExecutedDocument(offer_id, company_id, user_id, req.file, notes);
+      res.status(201).json(result);
+    } catch (error) {
+      console.error('Error in uploadContractExecutedDocument:', error);
+      res.status(error.status || 500).json({ message: error.message });
+    }
+  }
+
+  async getContractExecutedDocument(req, res) {
+    try {
+      const { offer_id } = req.params;
+      const { company_id } = req.user;
+      const result = await OfferService.getContractExecutedDocument(offer_id, company_id);
+      res.json(result);
+    } catch (error) {
+      console.error('Error in getContractExecutedDocument:', error);
+      res.status(error.status || 500).json({ message: error.message });
+    }
+  }
+
+  async downloadContractExecutedDocument(req, res) {
+    try {
+      const { offer_id } = req.params;
+      const { company_id } = req.user;
+      const { filePath, fileName } = await OfferService.downloadContractExecutedDocument(offer_id, company_id);
+
+      res.set('Access-Control-Expose-Headers', 'Content-Disposition');
+
+      res.download(filePath, fileName, (err) => {
+        if (err && !res.headersSent) {
+          console.error('Error in downloadContractExecutedDocument (res.download):', err);
+          res.status(500).json({ message: 'Failed to download the executed contract.' });
+        }
+      });
+    } catch (error) {
+      console.error('Error in downloadContractExecutedDocument:', error);
+      res.status(error.status || 500).json({ message: error.message });
+    }
+  }
 
 }
 

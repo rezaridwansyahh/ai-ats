@@ -351,6 +351,23 @@ class InterviewController {
     }
   }  
 
+  async decideCandidate(req, res) {
+    try {
+      const interview_id = Number(req.params.interview_id);
+      const { decision, reject_reason, reject_note } = req.body || {};
+      const result = await interviewService.decideCandidate(interview_id, {
+        decision,
+        reject_reason,
+        reject_note,
+        company_id: req.user?.company_id || null,
+        decided_by: req.user?.user_id    || null,
+      });
+      res.status(200).json({ message: 'Decision recorded', interview: result });
+    } catch (err) {
+      res.status(err.status || 500).json({ message: err.message });
+    }
+  }
+
   async getDecideByJob(req, res) {
     try {
       const job_id = Number(req.params.job_id);
