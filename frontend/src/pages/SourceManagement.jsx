@@ -2,15 +2,15 @@ import { useState, useEffect, useCallback } from 'react';
 import { Check, ChevronLeft, ChevronRight, HelpCircle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { PageHeader } from '@/components/common';
-import { getJobs } from '@/api/job.api';
-import JobSelection from '@/components/source-management/JobSelection';
+import { getJobAccountsByUserId } from '@/api/job-accounts.api';
+import AccountSelection from '@/components/source-management/AccountSelection';
 import ListSource from '@/components/source-management/ListSource';
 import SourceSetup from '@/components/source-management/SourceSetup';
 import ListCandidate from '@/components/source-management/ListCandidate';
 import SourceManagementWizard, { useSourceManagementWizard } from '@/components/tours/SourceManagementWizard';
 
 const STEPS = [
-  { key: 'selection', label: 'Job Select'    },
+  { key: 'selection', label: 'Account Select'},
   { key: 'sourcing',  label: 'List Source'   },
   { key: 'setting',   label: 'Source Setup'  },
   { key: 'candidate', label: 'List Candidate'},
@@ -18,17 +18,19 @@ const STEPS = [
 
 export default function SourceManagementPage() {
  const [activeStep, setActiveStep] = useState(0);
-  const [jobs, setJobs]             = useState([]);
+  const [accounts, setAccounts]     = useState([]);
   const [loading, setLoading]       = useState(true);
-  const [selectedJob, setSelectedJob] = useState(null);
+  const [selectedAccount, setSelectedAccount] = useState(null);
 
   const { run: wizardRun, setRun: setWizardRun, markSeen: markWizardSeen, restart: restartWizard } = useSourceManagementWizard();
 
-  const fetchJobs = useCallback(async () => {
+  const fetchAccounts = useCallback(async () => {
     setLoading(true);
     try {
-      const res = await getJobs();
-      setJobs(res.data.jobs || []);
+      const user = JSON.parse(localStorage.getItem('user'));
+      if (!user?.id) { setAccounts([]); return; }
+      const res = await getJobAccountsByUserId(user.id);
+      setAccounts(res.data.accounts || []);
     } catch {
       // no-op
     } finally {
@@ -36,7 +38,7 @@ export default function SourceManagementPage() {
     }
   }, []);
 
-  useEffect(() => { fetchJobs(); }, [fetchJobs]);
+  useEffect(() => { fetchAccounts(); }, [fetchAccounts]);
 
   const handleNext = () => setActiveStep(prev => Math.min(prev + 1, STEPS.length - 1));
   const handlePrev = () => setActiveStep(prev => Math.max(prev - 1, 0));
@@ -111,7 +113,7 @@ export default function SourceManagementPage() {
             variant="ghost"
             size="sm"
             className="text-xs"
-            disabled={activeStep === 0 && !selectedJob}
+            disabled={activeStep === 0 && !selectedAccount}
             onClick={handleNext}
           >
             Next: {STEPS[activeStep + 1].label}
@@ -122,21 +124,21 @@ export default function SourceManagementPage() {
 
       {/* Step content */}
       {activeStep === 0 && (
-        <JobSelection
-          jobs={jobs}
+        <AccountSelection
+          accounts={accounts}
           loading={loading}
-          selectedJob={selectedJob}
-          onSelectJob={setSelectedJob}
+          selectedAccount={selectedAccount}
+          onSelectAccount={setSelectedAccount}
         />
       )}
       {activeStep === 1 && (
-        <ListSource selectedJob={selectedJob} />
+        <ListSource selectedAccount={selectedAccount} />
       )}
       {activeStep === 2 && (
-        <SourceSetup selectedJob={selectedJob} />
+        <SourceSetup selectedJob={null} />
       )}
       {activeStep === 3 && (
-        <ListCandidate selectedJob={selectedJob} />
+        <ListCandidate selectedJob={null} />
       )}
 
       <SourceManagementWizard 

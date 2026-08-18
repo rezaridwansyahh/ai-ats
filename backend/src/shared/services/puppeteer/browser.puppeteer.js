@@ -16,7 +16,7 @@ class BrowserPuppeteer {
   }
 
   async init(session, accountId = null) {
-    const launchOptions = { headless: false };
+    const launchOptions = { headless: true };
 
     if (accountId) {
       launchOptions.userDataDir = path.join(PROFILES_DIR, `account_${accountId}`);

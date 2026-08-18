@@ -32,6 +32,14 @@ class JobSourceService {
     return { job, postings };
   }
 
+  async getByAccountId(account_id) {
+    const account = await JobAccount.getById(account_id);
+    if (!account) throw { status: 404, message: 'Job account not found' };
+
+    const postings = await JobSource.getByAccountId(account_id);
+    return { account, postings };
+  }
+
   async getByJobPostId(job_post_id) {
     const jobPost = await JobPost.getById(job_post_id);
     if(!jobPost) throw { status: 404, message: 'Job Post not found' };

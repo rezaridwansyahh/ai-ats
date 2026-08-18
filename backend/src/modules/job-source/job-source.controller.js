@@ -29,15 +29,6 @@ class JobSourceController {
     }
   }
 
-  async getByJobId(req, res) {
-    try {
-      const { job, postings } = await jobSourceService.getByJobId(req.params.job_id);
-      res.status(200).json({ message: 'List of Job Postings for this Job', postings });
-    } catch (err) {
-      res.status(err.status || 500).json({ message: err.message });
-    }
-  }
-
   async getByJobPostId(req, res) {
     try {
       const { jobPost, postings } = await jobSourceService.getByJobPostId(req.params.job_post_id);
@@ -51,6 +42,15 @@ class JobSourceController {
     try {
       const { job, postings } = await jobSourceService.getByJobId(req.params.job_id);
       res.status(200).json({ message: 'Sourcing channels for this job', job, postings });
+    } catch (err) {
+      res.status(err.status || 500).json({ message: err.message });
+    }
+  }
+
+  async getByAccountId(req, res) {
+    try {
+      const { account, postings } = await jobSourceService.getByAccountId(req.params.account_id);
+      res.status(200).json({ message: 'Sourcings for this account', account, postings });
     } catch (err) {
       res.status(err.status || 500).json({ message: err.message });
     }

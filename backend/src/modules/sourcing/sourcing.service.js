@@ -5,7 +5,6 @@ import SourcingModel from './sourcing.model.js';
 import SourcingRecruiteModel from './sourcing-recruite.model.js';
 import linkedinProducer from '../../bullmq/linkedin/linkedin.producer.js';
 import cvProducer from '../../bullmq/cv/cv.producer.js';
-import JobSourceModel from '../job-source/job-source.model.js';
 import ApplicantModel from '../applicant/applicant.model.js';
 import aiService from '../../shared/services/ai.service.js';
 import companyService from '../company/company.service.js';
@@ -219,11 +218,9 @@ class SourcingService {
         file.originalname.replace(/\.pdf$/i, '').replace(/[-_]/g, ' ').trim() ||
         'Unknown Candidate';
 
-      const sourcing = await JobSourceModel.create(null, null, 'internal', extracted.last_position || 'Manual Upload', 'Active', null);
-
       // Create applicant first (without attachment) so we have its id to name the file with
       const applicant = await ApplicantModel.create({
-        job_sourcing_id: sourcing.id,
+        upload_batch_id:  batch.id,
         company_id:      companyId || null,
         name:            candidateName,
         email:           extracted.email,
@@ -258,7 +255,7 @@ class SourcingService {
         applicant_position: extracted.last_position,
       });
 
-      return { applicant: { ...applicant, name: candidateName }, sourcing, batch };
+      return { applicant: { ...applicant, name: candidateName }, batch };
     } catch (err) {
       await SourcingModel.updateBatch(batch.id, { status: 'Failed', error_message: err.message || 'Unknown error' });
       throw err;

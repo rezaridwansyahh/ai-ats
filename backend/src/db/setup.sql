@@ -417,7 +417,12 @@ CREATE TABLE mapping_job_sourcing_linkedin (
 
 CREATE TABLE master_applicant (
   id SERIAL PRIMARY KEY,
-  job_sourcing_id INTEGER NOT NULL REFERENCES core_job_sourcing(id) ON DELETE CASCADE,
+  -- Nullable: only set for applicants sourced from an external platform
+  -- posting (Seek/LinkedIn). Manual CV uploads (Talent Pool) use
+  -- upload_batch_id instead — see chk_sourcing_or_upload below and the FK
+  -- added after cv_upload_batch is created further down this file.
+  job_sourcing_id INTEGER REFERENCES core_job_sourcing(id) ON DELETE CASCADE,
+  upload_batch_id INTEGER,
   company_id INTEGER REFERENCES core_company(id) ON DELETE CASCADE,
   name VARCHAR(255) NOT NULL,
   email VARCHAR(255),
@@ -427,7 +432,11 @@ CREATE TABLE master_applicant (
   information JSONB,
   date TIMESTAMPTZ,
   attachment VARCHAR(255),
-  UNIQUE (name, job_sourcing_id)
+  UNIQUE (name, job_sourcing_id),
+  CONSTRAINT chk_sourcing_or_upload CHECK (
+    (job_sourcing_id IS NOT NULL AND upload_batch_id IS NULL) OR
+    (job_sourcing_id IS NULL AND upload_batch_id IS NOT NULL)
+  )
 );
 CREATE INDEX idx_master_applicant_company ON master_applicant (company_id);
 
@@ -1028,6 +1037,14 @@ CREATE TABLE cv_upload_batch (
   updated_at         TIMESTAMP NOT NULL DEFAULT NOW()
 );
 CREATE INDEX idx_cv_upload_batch_company ON cv_upload_batch (company_id, created_at DESC);
+
+-- Added here (not inline on master_applicant's CREATE TABLE above) since
+-- cv_upload_batch didn't exist yet at that point in the file.
+-- ON DELETE RESTRICT (not SET NULL) — SET NULL would leave a row with both
+-- job_sourcing_id and upload_batch_id NULL, violating chk_sourcing_or_upload.
+ALTER TABLE master_applicant
+  ADD CONSTRAINT fk_master_applicant_upload_batch
+  FOREIGN KEY (upload_batch_id) REFERENCES cv_upload_batch(id) ON DELETE RESTRICT;
 
 CREATE TABLE master_skill_alias (
   alias        VARCHAR(100) PRIMARY KEY,

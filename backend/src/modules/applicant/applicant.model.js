@@ -153,11 +153,11 @@ class ApplicantModel {
     return result.rows;
   }
 
-  async create({ job_sourcing_id, company_id, name, email, last_position, address, education, information, date, attachment }) {
+  async create({ job_sourcing_id, upload_batch_id, company_id, name, email, last_position, address, education, information, date, attachment }) {
     const result = await getDb().query(`
       INSERT INTO master_applicant
-        (job_sourcing_id, company_id, name, email, last_position, address, education, information, date, attachment)
-      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
+        (job_sourcing_id, upload_batch_id, company_id, name, email, last_position, address, education, information, date, attachment)
+      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
       ON CONFLICT (name, job_sourcing_id) DO UPDATE SET
         email         = EXCLUDED.email,
         last_position = EXCLUDED.last_position,
@@ -168,7 +168,8 @@ class ApplicantModel {
         attachment    = EXCLUDED.attachment
       RETURNING *
     `, [
-      job_sourcing_id,
+      job_sourcing_id || null,
+      upload_batch_id || null,
       company_id || null,
       name,
       email || null,
