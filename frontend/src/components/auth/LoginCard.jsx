@@ -156,20 +156,20 @@ export function LoginCard() {
             'Sign In'
           )}
         </Button>
-
-        <Button
-          type="button"
-          variant="outline"
-          className="w-full h-10 font-semibold cursor-pointer transition-all duration-200"
-          disabled={loading}
-          onClick={() => {
-            setEmail("user1@example.com")
-            setPassword("pass1")
-          }}
-        >
-          Fill Demo Credentials
-        </Button>
       </form>
+
+      {/* Demo credentials info */}
+      <div className="mt-4 p-3 rounded-lg bg-shade border border-border">
+        <p className="text-xs font-semibold text-foreground/70 mb-1.5">Demo Credentials</p>
+        <div className="space-y-1">
+          <p className="text-xs text-muted-foreground">
+            <span className="font-medium">Email:</span> user1@example.com
+          </p>
+          <p className="text-xs text-muted-foreground">
+            <span className="font-medium">Password:</span> pass1
+          </p>
+        </div>
+      </div>
 
       {/* Divider */}
       <div className="flex items-center gap-3 my-5">
