@@ -191,8 +191,8 @@ export default function IntegrationsSettings() {
                   key={channel.id}
                   className="flex items-center justify-between gap-4 w-full px-4 py-3 border-b last:border-b-0 flex-wrap"
                 >
-                  <div className="flex items-center gap-8 flex-wrap min-w-0">
-                    <div className="flex items-center gap-3 min-w-0">
+                  <div className="flex items-center gap-8 min-w-0">
+                    <div className="flex items-center gap-3 w-56 shrink-0 min-w-0">
                       <div className="h-10 w-10 rounded-lg flex items-center justify-center shrink-0 overflow-hidden bg-muted/40">
                         <img src={LOGOS[channel.id]} alt={channel.name} className="h-full w-full object-contain" />
                       </div>
