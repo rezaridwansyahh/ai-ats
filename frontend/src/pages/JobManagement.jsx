@@ -3,8 +3,6 @@ import { useNavigate } from 'react-router-dom';
 import { Plus, Download, HelpCircle, Sparkles } from 'lucide-react';
 import { getJobs, deleteJob } from '@/api/job.api';
 import JobCreation from '@/components/job-management/JobCreation';
-import JobWizard from '@/components/job-management/JobWizard';
-import AutomationMatrix from '@/components/job-management/AutomationMatrix';
 import { PageHeader } from '@/components/common';
 import { Button } from '@/components/ui/button';
 
@@ -65,8 +63,6 @@ export default function JobManagementPage() {
 
   return (
     <div className="space-y-8 p-6">
-      <JobWizard />
-      <AutomationMatrix />
 
       <div className="space-y-6">
         <PageHeader

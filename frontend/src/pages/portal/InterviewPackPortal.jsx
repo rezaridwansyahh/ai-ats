@@ -194,7 +194,7 @@ function QuestionsPanel({ questions = [], outcome, packCandidateId, onNoteChange
 
               <div className="pl-5 space-y-1">
                 <label className="text-[10px] font-medium text-muted-foreground">
-                  Candidate's answer / your notes
+                  Candidate's answer
                 </label>
                 <textarea
                   rows={2}
