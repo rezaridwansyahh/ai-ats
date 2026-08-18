@@ -1,138 +1,279 @@
-import { useState } from 'react';
-import { FileText } from 'lucide-react';
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
-import { Badge } from '@/components/ui/badge';
+import { useState, useEffect, useCallback } from 'react';
+import { RefreshCw } from 'lucide-react';
+import { Button }   from '@/components/ui/button';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { toast } from 'sonner';
+import { Badge }    from '@/components/ui/badge';
 
-// ── Static data — swap for API data when backend is ready ──
+import { createJobAccount, updateJobAccount, getJobAccountsByUserId } from '@/api/job-accounts.api';
+import { checkConnection, syncSeekJobPosts } from '@/api/job-posting-seek.api';
 
-const INTEGRATION_GROUPS = [
-  {
-    title: 'Job boards',
-    desc: 'Post openings and sync applicants automatically.',
-    items: [
-      { id: 'linkedin', name: 'LinkedIn Jobs', desc: 'Post & sync applicants', connected: true },
-      { id: 'jobstreet', name: 'JobStreet', desc: 'Post & sync applicants', connected: true },
-      { id: 'glints', name: 'Glints', desc: 'Post & sync applicants', connected: true },
-      { id: 'kalibrr', name: 'Kalibrr', desc: 'Post & sync applicants', connected: true },
-    ],
-  },
-  {
-    title: 'Communication',
-    desc: 'Tools for reaching candidates and running interviews.',
-    items: [
-      { id: 'whatsapp', name: 'WhatsApp Business', desc: 'Send application updates', connected: true },
-      { id: 'gmail', name: 'Gmail / Workspace', desc: 'Send & receive email', connected: true },
-      { id: 'outlook', name: 'Outlook / 365', desc: 'Calendar + email', connected: false },
-      { id: 'zoom', name: 'Zoom', desc: 'Video interviews', connected: true },
-      { id: 'meet', name: 'Google Meet', desc: 'Video interviews', connected: true },
-    ],
-  },
-  {
-    title: 'Signing & verification',
-    desc: 'Offer signatures and background checks.',
-    items: [
-      { id: 'docusign', name: 'DocuSign', desc: 'Offer letter e-signature', connected: true },
-      { id: 'sertifikat', name: 'Sertifikat', desc: 'Ijazah verification (DIKTI)', connected: true },
-      { id: 'bpjs', name: 'BPJS check', desc: 'Prior employment verification', connected: true },
-    ],
-  },
-  {
-    title: 'HRIS & downstream',
-    desc: 'Where hired employees go after onboarding.',
-    items: [
-      { id: 'bamboohr', name: 'BambooHR', desc: 'Push hired employees', connected: true },
-      { id: 'talenta', name: 'Talenta', desc: 'Push hired employees', connected: false },
-      { id: 'mekari', name: 'Mekari', desc: 'Push hired employees', connected: false },
-    ],
-  },
+import { AccountFormDialog } from '@/components/job-account/AccountFormDialog';
+
+import linkedin from '@/assets/logos/linkedin.png';
+import seek from '@/assets/logos/seek.png';
+import glints from '@/assets/logos/glints.png';
+import instagram from '@/assets/logos/instagram.png';
+import facebook from '@/assets/logos/facebook.png';
+import whatsapp from '@/assets/logos/whatsapp.png';
+
+const LOGOS = { linkedin, seek, glints, instagram, facebook, whatsapp };
+
+const PUBLIC_CHANNELS = [
+  { id: 'linkedin', name: 'LinkedIn' },
+  { id: 'seek', name: 'Seek' },
+  { id: 'glints', name: 'Glints' },
 ];
 
-// ── Integration row ──
+const PRIVATE_CHANNELS = [
+  { id: 'instagram', name: 'Instagram' },
+  { id: 'facebook', name: 'Facebook' },
+  { id: 'whatsapp', name: 'WhatsApp' },
+];
 
-function IntegrationRow({ item, onToggle }) {
-  const initials = item.name
-    .split(' ')
-    .slice(0, 2)
-    .map((w) => w[0])
-    .join('');
-
-  return (
-    <div className="flex items-center gap-3 py-3 border-b last:border-b-0">
-      <div className="h-9 w-9 rounded-md bg-muted flex items-center justify-center text-xs font-semibold text-muted-foreground flex-shrink-0">
-        {initials}
-      </div>
-      <div className="flex-1 min-w-0">
-        <p className="text-sm font-medium">{item.name}</p>
-        <p className="text-xs text-muted-foreground mt-0.5">{item.desc}</p>
-      </div>
-      {item.connected ? (
-        <Button variant="outline" size="sm" onClick={onToggle} className="gap-1.5">
-          <Badge variant="outline" className="h-1.5 w-1.5 p-0 rounded-full bg-emerald-500 border-emerald-500" />
-          Connected
-        </Button>
-      ) : (
-        <Button variant="outline" size="sm" onClick={onToggle}>
-          Connect
-        </Button>
-      )}
-    </div>
-  );
-}
-
-// ── Page ──
-
+/*
+ * Integrations settings — real job platform connections, backed by
+ * master_job_account (same table pages/Account.jsx already uses at
+ * /settings/account). Ported that page's logic in here rather than
+ * rebuilding, since it already works.
+ *
+ * Previously this tab was a hardcoded INTEGRATION_GROUPS mockup with zero
+ * API calls — deleted rather than kept alongside the real thing. There is
+ * still a second standalone mockup at pages/Integrations.jsx
+ * (/settings/integrations route) that duplicates this same fake concept —
+ * not touched here, flagged separately.
+ */
 export default function IntegrationsSettings() {
-  const [groups, setGroups] = useState(INTEGRATION_GROUPS);
+  const [accounts, setAccounts] = useState([]);
+  const [loading, setLoading]   = useState(true);
 
-  const toggleConnection = (groupTitle, itemId) => {
-    setGroups((prev) =>
-      prev.map((g) =>
-        g.title !== groupTitle
-          ? g
-          : {
-              ...g,
-              items: g.items.map((it) =>
-                it.id === itemId ? { ...it, connected: !it.connected } : it
-              ),
-            }
-      )
-    );
+  const [user] = useState(() => {
+    try { return JSON.parse(localStorage.getItem('user')); } catch { return null; }
+  });
+
+  const fetchAccounts = useCallback(async () => {
+    if (!user?.id) { setLoading(false); return; }
+    setLoading(true);
+    try {
+      const { data } = await getJobAccountsByUserId(user.id);
+      setAccounts(data.accounts || []);
+    } catch (err) {
+      toast.error(err.response?.data?.message || err.message || 'Failed to load job accounts');
+    } finally {
+      setLoading(false);
+    }
+  }, [user?.id]);
+
+  useEffect(() => { fetchAccounts(); }, [fetchAccounts]);
+
+  const [formOpen, setFormOpen]               = useState(false);
+  const [selectedAccount, setSelectedAccount] = useState(null);
+  const [selectedPlatform, setSelectedPlatform] = useState(null);
+  const [submitting, setSubmitting]           = useState(false);
+
+  const openConfigure = (platform, account) => {
+    setSelectedAccount(account || null);
+    setSelectedPlatform(platform);
+    setFormOpen(true);
+  };
+
+  const handleCreateOrUpdate = async (payload, accountId) => {
+    setSubmitting(true);
+    try {
+      if (accountId) {
+        await updateJobAccount(accountId, payload);
+      } else {
+        await createJobAccount(payload);
+      }
+      await fetchAccounts();
+    } finally {
+      setSubmitting(false);
+    }
   };
 
   return (
     <div className="space-y-4">
-      <div className="flex items-start justify-between">
+      <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold tracking-tight font-serif">Integrations</h1>
-          <p className="text-sm text-muted-foreground mt-1 max-w-2xl">
-            Connect the tools your team already uses for sourcing, communication, signing, and
-            downstream HR systems.
+          <h2 className="text-lg font-bold tracking-tight">Integrations</h2>
+          <p className="text-sm text-muted-foreground mt-0.5">
+            Job portal credentials used to publish jobs and sync applications.
           </p>
         </div>
-        <Button variant="outline" size="sm" className="flex-shrink-0">
-          <FileText className="h-3.5 w-3.5 mr-1.5" />
-          Export config
+        <Button variant="outline" size="sm" onClick={fetchAccounts} disabled={loading}>
+          <RefreshCw className={`h-3.5 w-3.5 ${loading ? 'animate-spin' : ''}`} />
+          Refresh
         </Button>
       </div>
 
-      {groups.map((group) => (
-        <Card key={group.title}>
-          <CardHeader>
-            <CardTitle>{group.title}</CardTitle>
-            <CardDescription>{group.desc}</CardDescription>
-          </CardHeader>
-          <CardContent className="pt-0 divide-y">
-            {group.items.map((item) => (
-              <IntegrationRow
-                key={item.id}
-                item={item}
-                onToggle={() => toggleConnection(group.title, item.id)}
-              />
-            ))}
-          </CardContent>
-        </Card>
-      ))}
+      {/* Public Channels */}
+      <Card className="py-0 gap-0">
+        <CardHeader className="border-b !pb-0 flex items-center h-15">
+          <CardTitle className="flex justify-between items-center w-full">
+            <div>Public Channels</div>
+            <div className="text-xs text-gray-400">
+              Direct API publishing — applications flow back automatically
+            </div>
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          {PUBLIC_CHANNELS.map((channels) => {
+            const account = accounts.find((acc) => acc.portal_name === channels.id);
+
+            return (
+              <div key={channels.id} className="flex justify-between items-center w-full border-b last:border-b-0">
+                <div className="flex items-center gap-10">
+                  <div className="flex items-center gap-3 py-3 border-b last:border-b-0">
+                    <div className="h-10 w-10 rounded-lg flex items-center justify-center text-white text-[10px] font-bold shrink-0">
+                      <img src={LOGOS[channels.id]} />
+                    </div>
+                    <div className="flex-1 min-w-80">
+                      <span className="text-sm font-semibold">{channels.name}</span>
+                      <div className="text-xs text-gray-400">
+                        Account: {account ? account?.email : '-'}
+                      </div>
+                    </div>
+                  </div>
+                  <div>
+                    <div className="text-xs text-gray-400">
+                      Last Connection: {account?.last_connect || '-'}
+                    </div>
+                    <div className="text-xs text-gray-400">
+                      Last Sync: {account?.last_sync || '-'}
+                    </div>
+                  </div>
+                </div>
+
+                <div className="flex gap-5">
+                  <div className="min-w-45 inline">
+                    <div className="flex justify-between">
+                      <div className="text-xs text-gray-400 mr-5">Status :</div>
+                      <div className="flex items-center">
+                        {account?.status_connection === 'Connected' ? (
+                          <Badge variant="outline" className="text-[9px] px-1.5 py-0 bg-emerald-50 text-emerald-600 border-emerald-200">
+                            Connected
+                          </Badge>
+                        ) : account?.status_connection === 'Re-connecting' ? (
+                          <Badge variant="outline" className="text-[9px] px-1.5 py-0 bg-gray-50 text-gray-600 border-gray-200">
+                            Re-connecting...
+                          </Badge>
+                        ) : (
+                          <Badge variant="outline" className="text-[9px] px-1.5 py-0 bg-red-50 text-red-600 border-red-200">
+                            {account?.status_connection || 'Not Connected'}
+                          </Badge>
+                        )}
+                      </div>
+                    </div>
+                    <div className="flex justify-between">
+                      <div className="text-xs text-gray-400 mr-5">Sync Status :</div>
+                      <div className="flex items-center">
+                        {account?.status_sync === 'Sync' ? (
+                          <Badge variant="outline" className="text-[9px] px-1.5 py-0 bg-emerald-50 text-emerald-600 border-emerald-200">
+                            Synced
+                          </Badge>
+                        ) : account?.status_sync === 'Re-sync' ? (
+                          <Badge variant="outline" className="text-[9px] px-1.5 py-0 bg-gray-50 text-gray-600 border-gray-200">
+                            Re-syncing...
+                          </Badge>
+                        ) : (
+                          <Badge variant="outline" className="text-[9px] px-1.5 py-0 bg-red-50 text-red-600 border-red-200">
+                            {account?.status_sync || 'Not sync'}
+                          </Badge>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+
+                  <Button
+                    disabled={!account || account?.status_connection !== 'Connected'}
+                    onClick={() => toast.promise(syncSeekJobPosts(account.id), {
+                      position: 'top-center', loading: 'Connection Queued', success: 'Queued Created', error: 'Queued Error',
+                    })}
+                  >
+                    Sync
+                  </Button>
+                  <Button
+                    disabled={!account || account?.status_connection === 'Re-connecting'}
+                    onClick={() => toast.promise(checkConnection(account.id), {
+                      position: 'top-center', loading: 'Connection Queued', success: 'Queued Created', error: 'Queued Error',
+                    })}
+                  >
+                    Re-connect
+                  </Button>
+                  <Button onClick={() => openConfigure(channels.id, account)}>
+                    Configure
+                  </Button>
+                </div>
+              </div>
+            );
+          })}
+        </CardContent>
+      </Card>
+
+      {/* Private Channels */}
+      <Card className="py-0 gap-0">
+        <CardHeader className="border-b !pb-0 flex items-center h-15">
+          <CardTitle className="flex justify-between items-center w-full">
+            <div>Private Channels</div>
+            <div className="text-xs text-gray-400">
+              Social sharing & broadcast channels
+            </div>
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          {PRIVATE_CHANNELS.map((channels) => {
+            const account = accounts.find((acc) => acc.portal_name === channels.id);
+
+            return (
+              <div key={channels.id} className="flex justify-between items-center w-full border-b last:border-b-0">
+                <div className="flex items-center gap-10">
+                  <div className="flex items-center gap-3 py-3">
+                    <div className="h-10 w-10 rounded-lg flex items-center justify-center text-white text-[10px] font-bold shrink-0">
+                      <img src={LOGOS[channels.id]} />
+                    </div>
+                    <div className="flex-1 min-w-20">
+                      <span className="text-sm font-semibold">{channels.name}</span>
+                      <div>
+                        {account ? (
+                          <Badge variant="outline" className="text-[9px] px-1.5 py-0 bg-emerald-50 text-emerald-600 border-emerald-200">
+                            {account.condition || 'Connected'}
+                          </Badge>
+                        ) : (
+                          <Badge variant="outline" className="text-[9px] px-1.5 py-0 bg-red-50 text-red-600 border-red-200">
+                            Not Connected
+                          </Badge>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                  <div className="text-xs text-gray-400">
+                    Last Connection: {account?.last_connect || '-'}
+                  </div>
+                </div>
+
+                <div className="flex gap-5">
+                  <Button disabled={!account} onClick={() => toast.promise(new Promise((resolve) => setTimeout(resolve, 3000)))}>
+                    Re-connect
+                  </Button>
+                  <Button onClick={() => openConfigure(channels.id, account)}>
+                    Configure
+                  </Button>
+                </div>
+              </div>
+            );
+          })}
+        </CardContent>
+      </Card>
+
+      <AccountFormDialog
+        open={formOpen}
+        onOpenChange={setFormOpen}
+        account={selectedAccount}
+        user={user}
+        platform={selectedPlatform}
+        onSubmit={handleCreateOrUpdate}
+        loading={submitting}
+      />
     </div>
   );
 }
