@@ -1,7 +1,3 @@
-// Separate axios instance for the public assessment portal.
-// - Same baseURL as the recruiter app, different token storage key (portal_token).
-// - 401 does NOT redirect to /portal/login (that's the recruiter page).
-//   Instead the page state machine drops the portal_token and re-opens the email gate.
 import axios from 'axios';
 
 const portalApi = axios.create({
