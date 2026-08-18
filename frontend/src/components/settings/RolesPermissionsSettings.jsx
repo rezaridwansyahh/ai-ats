@@ -1,103 +1,185 @@
-import { useEffect, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { Loader2, AlertTriangle, ShieldCheck, ArrowRight } from 'lucide-react';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { useState, useEffect, useCallback } from 'react';
+import { Plus, XCircle, RefreshCw } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { getRoles } from '@/api/roles.api';
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
+
+import {
+  getRoles, createRole, updateRole, deleteRole,
+  setRolePermissions, getRolePermissions, getAllPermissions,
+} from '@/api/roles.api';
+import { hasPermission } from '@/utils/permissions';
+
+import { RoleTable }        from '@/components/role-management/RoleTable';
+import { RoleFormDialog }   from '@/components/role-management/RoleFormDialog';
+import { DeleteRoleDialog } from '@/components/role-management/DeleteRoleDialog';
 
 /*
- * Roles & Permissions settings — real roles, backed by master_roles (same
- * table RoleManagementPage.jsx already uses). Previously this was a
- * hardcoded 15-surface × 6-role access matrix (Recruiter/Psikolog/Finance/
- * HR Ops/...) with zero API calls and a role vocabulary that matched
- * nothing in the DB — deleted rather than rebuilt, since fine-grained
- * module/menu/functionality permission editing already exists and works
- * on /settings/role-management (RoleFormDialog + setRolePermissions).
+ * Roles & Permissions settings — same functionality as RoleManagementPage.jsx
+ * (real roles from master_roles, real module/menu/functionality permission
+ * editing via RoleFormDialog + setRolePermissions), embedded directly in the
+ * Settings shell instead of redirecting out to /settings/role-management.
  *
- * This tab now just lists the real roles and links each one straight into
- * that page rather than re-implementing the same CRUD in a second shape.
+ * Previously this tab was a hardcoded 15-surface × 6-role access matrix with
+ * zero API calls and an invented role vocabulary that matched nothing in
+ * the DB — replaced rather than rebuilt against real data, since this exact
+ * CRUD already existed and worked on the standalone Role Management page.
  */
 export default function RolesPermissionsSettings() {
-  const navigate = useNavigate();
+  const canCreate = hasPermission('Settings', 'Role Management', 'create');
+  const canEdit   = hasPermission('Settings', 'Role Management', 'update');
+  const canDelete = hasPermission('Settings', 'Role Management', 'delete');
 
-  const [roles, setRoles]     = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError]     = useState(null);
+  // ── Data ──────────────────────────────────────────────────────────────────
+  const [roles,      setRoles]      = useState([]);
+  const [allModules, setAllModules] = useState([]);
+  const [loading,    setLoading]    = useState(true);
+  const [error,      setError]      = useState(null);
 
-  useEffect(() => {
-    (async () => {
-      setLoading(true);
-      setError(null);
-      try {
-        const { data } = await getRoles();
-        setRoles(data.roles || []);
-      } catch (err) {
-        setError(err.response?.data?.message || err.message || 'Failed to load roles');
-      } finally {
-        setLoading(false);
-      }
-    })();
+  const fetchRoles = useCallback(async () => {
+    setLoading(true);
+    setError(null);
+    try {
+      const { data } = await getRoles();
+      setRoles(data.roles || []);
+    } catch (err) {
+      setError(err.response?.data?.message || err.message || 'Failed to load roles');
+    } finally {
+      setLoading(false);
+    }
   }, []);
 
-  if (loading) {
-    return (
-      <div className="p-6 flex items-center justify-center">
-        <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
-      </div>
-    );
-  }
+  const fetchAllPermissions = useCallback(async () => {
+    try {
+      const { data } = await getAllPermissions();
+      setAllModules(data.modules || []);
+    } catch (err) {
+      console.error('Failed to load permissions:', err);
+    }
+  }, []);
+
+  useEffect(() => {
+    fetchRoles();
+    fetchAllPermissions();
+  }, [fetchRoles, fetchAllPermissions]);
+
+  // ── Dialog state ──────────────────────────────────────────────────────────
+  const [formOpen,     setFormOpen]     = useState(false);
+  const [deleteOpen,   setDeleteOpen]   = useState(false);
+  const [selectedRole, setSelectedRole] = useState(null);
+  const [submitting,   setSubmitting]   = useState(false);
+
+  const openCreate = () => { setSelectedRole(null); setFormOpen(true); };
+
+  const openEdit = async (role) => {
+    try {
+      const { data } = await getRolePermissions(role.id);
+      const permIds = (data.modules || [])
+        .flatMap(m => m.menus.flatMap(menu => menu.permissions));
+      setSelectedRole({ ...role, permissions: permIds });
+    } catch {
+      setSelectedRole({ ...role, permissions: [] });
+    }
+    setFormOpen(true);
+  };
+
+  const openDelete = (role) => { setSelectedRole(role); setDeleteOpen(true); };
+
+  // ── CRUD handlers ─────────────────────────────────────────────────────────
+  const handleCreateOrUpdate = async ({ name, additional, permission_ids }, roleId) => {
+    setSubmitting(true);
+    try {
+      let id = roleId;
+      if (id) {
+        await updateRole(id, { name, additional });
+      } else {
+        const { data } = await createRole({ name, additional });
+        id = data.newRole.id;
+      }
+      await setRolePermissions(id, permission_ids);
+      await fetchRoles();
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  const handleDelete = async (roleId) => {
+    setSubmitting(true);
+    try {
+      await deleteRole(roleId);
+      await fetchRoles();
+    } finally {
+      setSubmitting(false);
+    }
+  };
 
   return (
     <div className="space-y-4">
-      <div>
-        <h2 className="text-lg font-bold tracking-tight">Roles & Permissions</h2>
-        <p className="text-sm text-muted-foreground mt-0.5">
-          Every role in the workspace. Add roles and edit their module/menu permissions on the Role Management page.
-        </p>
+      <div className="flex items-start justify-between gap-3">
+        <div>
+          <h2 className="text-lg font-bold tracking-tight">Roles & Permissions</h2>
+          <p className="text-sm text-muted-foreground mt-0.5">
+            Manage roles and their module/menu permission sets.
+          </p>
+        </div>
+        <div className="flex gap-2 shrink-0">
+          <Button variant="outline" size="sm" onClick={fetchRoles} disabled={loading}>
+            <RefreshCw className={`h-3.5 w-3.5 ${loading ? 'animate-spin' : ''}`} />
+            Refresh
+          </Button>
+          {canCreate && (
+            <Button size="sm" onClick={openCreate} className="bg-teal-700 hover:bg-teal-800">
+              <Plus className="h-3.5 w-3.5" />
+              Add role
+            </Button>
+          )}
+        </div>
       </div>
 
-      {error && (
-        <div className="flex items-center gap-2 px-4 py-3 rounded-lg border border-red-200 bg-red-50 text-sm text-red-600">
-          <AlertTriangle className="h-4 w-4 shrink-0" />
-          <span>{error}</span>
-        </div>
-      )}
-
       <Card>
-        <CardHeader className="flex flex-row items-center justify-between">
-          <div>
-            <CardTitle className="text-sm">All roles</CardTitle>
-            <p className="text-xs text-muted-foreground mt-0.5">{roles.length} role{roles.length !== 1 ? 's' : ''}</p>
-          </div>
-          <Button size="sm" onClick={() => navigate('/settings/role-management')} className="bg-teal-700 hover:bg-teal-800">
-            Manage roles <ArrowRight className="h-3.5 w-3.5 ml-1.5" />
-          </Button>
+        <CardHeader className="pb-3">
+          <CardTitle className="text-sm font-semibold">All roles</CardTitle>
+          <CardDescription className="text-xs">
+            {loading ? 'Loading…' : `${roles.length} role${roles.length !== 1 ? 's' : ''}`}
+          </CardDescription>
         </CardHeader>
-        <CardContent className="p-0">
-          {roles.length === 0 ? (
-            <div className="px-4 py-8 text-center text-sm text-muted-foreground">No roles yet.</div>
-          ) : (
-            <div className="divide-y">
-              {roles.map((r) => (
-                <div key={r.id} className="flex items-center justify-between px-4 py-3">
-                  <div className="flex items-center gap-2.5">
-                    <ShieldCheck className="h-4 w-4 text-primary shrink-0" />
-                    <p className="text-sm font-semibold">{r.name}</p>
-                  </div>
-                  <Button
-                    variant="link"
-                    size="sm"
-                    className="h-auto p-0 text-sm"
-                    onClick={() => navigate('/settings/role-management')}
-                  >
-                    Edit permissions
-                  </Button>
-                </div>
-              ))}
+        <CardContent>
+          {error ? (
+            <div className="flex flex-col items-center gap-2 py-16 text-destructive">
+              <XCircle className="h-8 w-8" />
+              <p className="text-sm font-medium">{error}</p>
+              <Button variant="outline" size="sm" onClick={fetchRoles}>Try again</Button>
             </div>
+          ) : (
+            <RoleTable
+              roles={roles}
+              loading={loading}
+              onEdit={openEdit}
+              onDelete={openDelete}
+              canEdit={canEdit}
+              canDelete={canDelete}
+            />
           )}
         </CardContent>
       </Card>
+
+      <RoleFormDialog
+        open={formOpen}
+        onOpenChange={setFormOpen}
+        role={selectedRole}
+        allModules={allModules}
+        onSubmit={handleCreateOrUpdate}
+        loading={submitting}
+      />
+
+      {selectedRole && (
+        <DeleteRoleDialog
+          open={deleteOpen}
+          onOpenChange={setDeleteOpen}
+          role={selectedRole}
+          onConfirm={handleDelete}
+          loading={submitting}
+        />
+      )}
     </div>
   );
 }
