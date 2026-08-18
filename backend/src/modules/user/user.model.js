@@ -1,16 +1,17 @@
 import getDb from "../../config/postgres.js"
 
 class UserModel {
-  async getAll() {
+  async getAll(company_id) {
     const result = await getDb().query(`
       SELECT *
       FROM master_users
-    `);
+      WHERE company_id = $1
+    `, [company_id]);
 
     return result.rows;
   }
 
-  async getAllWithRoles() {
+  async getAllWithRoles(company_id) {
     const result = await getDb().query(`
       SELECT
         u.id,
@@ -30,9 +31,10 @@ class UserModel {
       FROM master_users u
       LEFT JOIN mapping_users_roles mur ON u.id = mur.user_id
       LEFT JOIN master_roles r ON mur.role_id = r.id
+      WHERE u.company_id = $1
       GROUP BY u.id, u.email, u.username, u.password
       ORDER BY u.id ASC
-    `);
+    `, [company_id]);
 
     return result.rows;
   }
