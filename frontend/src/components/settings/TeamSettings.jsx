@@ -1,5 +1,4 @@
 import { useEffect, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
 import { UserPlus, Loader2, AlertTriangle } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -193,8 +192,6 @@ function ManageMemberDialog({ member, roles, open, onOpenChange, onUpdateRole, o
 // ── Main Team section ──
 
 export default function TeamSettings() {
-  const navigate = useNavigate();
-
   const [users, setUsers]     = useState([]);
   const [roles, setRoles]     = useState([]);
   const [loading, setLoading] = useState(true);
@@ -342,31 +339,6 @@ export default function TeamSettings() {
               </div>
             ))
           )}
-        </CardContent>
-      </Card>
-
-      {/* Roles summary — real roles, links out to the real Role Management page */}
-      <Card>
-        <CardHeader>
-          <CardTitle>Roles</CardTitle>
-          <p className="text-xs text-muted-foreground mt-0.5">
-            Fine-grained module/menu permissions are managed on the Role Management page.
-          </p>
-        </CardHeader>
-        <CardContent className="pt-0 divide-y">
-          {roles.map((r) => (
-            <div key={r.id} className="flex items-center justify-between py-3">
-              <p className="text-sm font-semibold">{r.name}</p>
-              <Button
-                variant="link"
-                size="sm"
-                className="h-auto p-0 text-sm"
-                onClick={() => navigate('/settings/role-management')}
-              >
-                Edit permissions
-              </Button>
-            </div>
-          ))}
         </CardContent>
       </Card>
 
