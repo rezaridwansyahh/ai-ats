@@ -67,7 +67,7 @@ export default function InterviewPacksPage() {
   }
 
   function handleCopyLink(pack) {
-    const link = `${window.location.origin}/interview/${pack.token}`;
+    const link = `${window.location.origin}/portal/interview/${pack.token}`;
     navigator.clipboard.writeText(link).then(() => {
       const id = pack.id ?? pack.pack_id;
       setCopiedId(id);

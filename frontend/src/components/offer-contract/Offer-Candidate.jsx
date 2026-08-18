@@ -1715,7 +1715,7 @@ function SendSection({ offer, approval, setOffer, setBanner, setError, onAdvance
   const isSubmitted = latestSend?.status === 'submitted';
   const isRevoked    = !isSubmitted && !!latestSend?.revoked_at;
   const isActive     = latestSend?.status === 'sent' && !latestSend?.revoked_at;
-  const portalUrl    = isActive ? `${window.location.origin}/offer/send/${latestSend.token}` : null;
+  const portalUrl    = isActive ? `${window.location.origin}/portal/offer/send/${latestSend.token}` : null;
   const expiryDaysLeft = isActive ? daysUntil(latestSend.token_expires_at) : null;
 
   const openSendModal = () => {
@@ -2438,7 +2438,7 @@ function ContractSection({ offer, setOffer, setBanner, setError }) {
   const isSubmitted = latestSend?.status === 'submitted';
   const isRevoked    = !isSubmitted && !!latestSend?.revoked_at;
   const isActive     = latestSend?.status === 'sent' && !latestSend?.revoked_at;
-  const portalUrl    = isActive ? `${window.location.origin}/contract/send/${latestSend.token}` : null;
+  const portalUrl    = isActive ? `${window.location.origin}/portal/contract/send/${latestSend.token}` : null;
   const expiryDaysLeft = isActive ? daysUntil(latestSend.token_expires_at) : null;
 
   if (offer.offer_status !== 'accepted') {
