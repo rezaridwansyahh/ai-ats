@@ -2308,6 +2308,47 @@ function ResultSection({ interview, prep, interviewId }) {
         </Card>
       )}
 
+      {/* Interview questions & answers — read-only */}
+      {Array.isArray(outcome.questions_snapshot) && outcome.questions_snapshot.length > 0 && (
+        <Card>
+          <CardHeader className="pb-3">
+            <CardTitle className="text-sm">Interview Questions & Answers</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-2">
+            {outcome.questions_snapshot.map((q, i) => {
+              const key = q.id != null ? String(q.id) : String(i);
+              const answer = outcome.question_notes?.[key];
+              return (
+                <div key={key} className="rounded-lg border bg-muted/10 p-3 space-y-2">
+                  <div className="flex items-start gap-2">
+                    <span className="text-[10px] font-mono text-muted-foreground mt-0.5 shrink-0">{i + 1}</span>
+                    <div className="min-w-0">
+                      {q.competency && (
+                        <Badge variant="outline" className="text-[9px] border-blue-200 text-blue-700 bg-blue-50 mb-1">
+                          {q.competency}
+                        </Badge>
+                      )}
+                      <p className="text-xs leading-relaxed">{q.text}</p>
+                      {q.follow_up && (
+                        <p className="text-[10px] text-muted-foreground mt-0.5 italic">↳ {q.follow_up}</p>
+                      )}
+                    </div>
+                  </div>
+                  <div className="pl-5">
+                    <p className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground mb-1">
+                      Answer
+                    </p>
+                    <p className="text-xs leading-relaxed bg-background border rounded-md px-2.5 py-2">
+                      {answer?.trim() ? answer : <em className="text-muted-foreground">No answer recorded</em>}
+                    </p>
+                  </div>
+                </div>
+              );
+            })}
+          </CardContent>
+        </Card>
+      )}
+      
       {/* Recommendation */}
       {rec && recLabel && (
         <Card>

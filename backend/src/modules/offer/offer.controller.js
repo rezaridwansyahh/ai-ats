@@ -124,43 +124,6 @@ class OfferController {
     }
   }
 
-  async generateContract(req, res) {
-    try {
-      const { offer_id } = req.params;
-      const { company_id, user_id } = req.user;
-      const { contract_type, start_date, end_date } = req.body;
-      const result = await OfferService.generateContract(offer_id, contract_type, start_date, end_date, company_id, user_id);
-      res.json(result);
-    } catch (error) {
-      console.error('Error in generateContract:', error);
-      res.status(error.status || 500).json({ message: error.message });
-    }
-  }
-
-  async sendContract(req, res) {
-    try {
-      const { offer_id } = req.params;
-      const { company_id, user_id } = req.user;
-      const result = await OfferService.sendContract(offer_id, company_id, user_id);
-      res.json(result);
-    } catch (error) {
-      console.error('Error in sendContract:', error);
-      res.status(error.status || 500).json({ message: error.message });
-    }
-  }
-
-  async signContract(req, res) {
-    try {
-      const { offer_id } = req.params;
-      const { signature_data } = req.body;
-      const result = await OfferService.signContract(offer_id, signature_data);
-      res.json(result);
-    } catch (error) {
-      console.error('Error in signContract:', error);
-      res.status(error.status || 500).json({ message: error.message });
-    }
-  }
-
   async bulkAdvanceToOnboarding(req, res) {
     try {
       const { job_id } = req.params;

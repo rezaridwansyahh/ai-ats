@@ -98,6 +98,7 @@ class InterviewPackModel {
          ipo.recommendation,
          ipo.strengths,
          ipo.concerns,
+         ipo.question_notes,
          ipo.updated_at     AS outcome_updated_at
        FROM interview_pack_candidate ipc
        JOIN master_applicant ma ON ma.id = ipc.applicant_id
@@ -197,6 +198,7 @@ class InterviewPackModel {
          ipo.recommendation,
          ipo.strengths,
          ipo.concerns,
+         ipo.question_notes,
          ipo.updated_at     AS outcome_updated_at
        FROM interview_pack_candidate ipc
        JOIN master_applicant ma ON ma.id = ipc.applicant_id
@@ -215,31 +217,33 @@ class InterviewPackModel {
   /**
    * Upsert an outcome record for one candidate in a pack.
    */
-  async upsertOutcome({ pack_id, pack_candidate_id, scores, weighted_total, recommendation, strengths, concerns }) {
-    const result = await getDb().query(
-      `INSERT INTO interview_pack_outcome
-         (pack_id, pack_candidate_id, scores, weighted_total, recommendation, strengths, concerns)
-       VALUES ($1, $2, $3::jsonb, $4, $5, $6, $7)
-       ON CONFLICT (pack_id, pack_candidate_id) DO UPDATE
-         SET scores         = EXCLUDED.scores,
-             weighted_total = EXCLUDED.weighted_total,
-             recommendation = EXCLUDED.recommendation,
-             strengths      = EXCLUDED.strengths,
-             concerns       = EXCLUDED.concerns,
-             updated_at     = NOW()
-       RETURNING *`,
-      [
-        pack_id,
-        pack_candidate_id,
-        JSON.stringify(scores || {}),
-        weighted_total ?? null,
-        recommendation || null,
-        strengths || null,
-        concerns || null,
-      ]
-    );
-    return result.rows[0];
-  }
+    async upsertOutcome({ pack_id, pack_candidate_id, scores, weighted_total, recommendation, strengths, concerns, question_notes }) {
+      const result = await getDb().query(
+        `INSERT INTO interview_pack_outcome
+          (pack_id, pack_candidate_id, scores, weighted_total, recommendation, strengths, concerns, question_notes)
+        VALUES ($1, $2, $3::jsonb, $4, $5, $6, $7, $8::jsonb)
+        ON CONFLICT (pack_id, pack_candidate_id) DO UPDATE
+          SET scores         = EXCLUDED.scores,
+              weighted_total = EXCLUDED.weighted_total,
+              recommendation = EXCLUDED.recommendation,
+              strengths      = EXCLUDED.strengths,
+              concerns       = EXCLUDED.concerns,
+              question_notes = EXCLUDED.question_notes,
+              updated_at     = NOW()
+        RETURNING *`,
+        [
+          pack_id,
+          pack_candidate_id,
+          JSON.stringify(scores || {}),
+          weighted_total ?? null,
+          recommendation || null,
+          strengths || null,
+          concerns || null,
+          JSON.stringify(question_notes || {}),
+        ]
+      );
+      return result.rows[0];
+    }
 
   /**
    * Mark the pack as submitted. Only transitions open → submitted.

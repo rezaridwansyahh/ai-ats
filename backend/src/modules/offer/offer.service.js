@@ -66,7 +66,7 @@ class OfferService {
   async createOffer(data) {
     const {
       company_id, candidate_id, job_id, position_title, contract_type,
-      base_salary, allowances, bonus_structure, start_date, end_date, created_by
+      base_salary, allowances, bonus_structure, created_by
     } = data;
 
     const compensation = CompensationEngine.calculate({ base_salary, allowances, bonus_structure });
@@ -129,7 +129,6 @@ class OfferService {
       throw { status: 400, message: 'Offer cannot be accepted in its current status' };
     }
     await OfferModel.updateOfferStatus(offer_id, 'accepted', {
-      accepted_at: new Date(),
       acceptance_note: acceptance_note || null,
     });
     return { message: 'Offer accepted successfully' };
@@ -142,7 +141,6 @@ class OfferService {
       throw { status: 400, message: 'Offer cannot be rejected in its current status' };
     }
     await OfferModel.updateOfferStatus(offer_id, 'rejected', {
-      rejected_at: new Date(),
       rejection_reason: rejection_reason || null,
     });
     return { message: 'Offer rejected' };
@@ -200,43 +198,6 @@ class OfferService {
 
     // TODO: Notify candidate
     return { message: 'Negotiation response sent' };
-  }
-
-  async generateContract(offer_id, contract_type, start_date, end_date, company_id, user_id) {
-    const offer = await OfferModel.getOfferById(offer_id, company_id);
-    if (!offer) throw { status: 404, message: 'Offer not found' };
-    if (offer.offer_status !== 'accepted') {
-      throw { status: 400, message: 'Can only generate contract for accepted offers' };
-    }
-
-    const contract_id = await OfferModel.createContract({
-      offer_id, contract_type, start_date, end_date, status: 'ready',
-      generated_by: user_id
-    });
-
-    return { contract_id, message: 'Contract generated successfully' };
-  }
-
-  // Send contract for signature (LEGACY — superseded by sendContractDocument)
-  async sendContract(offer_id, company_id, user_id) {
-    const offer = await OfferModel.getOfferById(offer_id, company_id);
-    if (!offer) throw { status: 404, message: 'Offer not found' };
-    if (offer.contract_status !== 'ready') {
-      throw { status: 400, message: 'Contract not ready to send' };
-    }
-    await OfferModel.updateContractStatus(offer_id, 'sent', { sent_at: new Date(), sent_by: user_id });
-    return { message: 'Contract sent successfully' };
-  }
-
-  // Candidate signs contract (LEGACY — superseded by the portal submit flow)
-  async signContract(offer_id, signature_data) {
-    const offer = await OfferModel.getOfferByIdPublic(offer_id);
-    if (!offer) throw { status: 404, message: 'Offer not found' };
-    if (offer.contract_status !== 'sent') {
-      throw { status: 400, message: 'Contract cannot be signed in current status' };
-    }
-    await OfferModel.updateContractStatus(offer_id, 'signed', { signed_at: new Date(), signature_data });
-    return { message: 'Contract signed successfully' };
   }
 
   // L4 Calibration - bulk advance to Onboarding
@@ -444,7 +405,10 @@ class OfferService {
     });
 
     if (isFirstSend) {
-      await OfferModel.updateOfferStatus(offer_id, 'sent', { sent_at: new Date(), sent_by: user_id });
+      // sent_at is now written by updateOfferStatus itself; sent_by has no
+      // dedicated column on candidate_offer (offer_send.sent_by already
+      // captures it per-send), so it still goes into metadata.
+      await OfferModel.updateOfferStatus(offer_id, 'sent', { sent_by: user_id });
     }
 
     return {

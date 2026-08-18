@@ -39,18 +39,6 @@ export const setupApprovalChain = (offerId, steps) => api.post(`/offer/${offerId
 
 export const decideApprovalStep = (offerId, stepIndex, decision, note) => api.post(`/offer/${offerId}/approval/chain/${stepIndex}/decide`, { decision, note });
 
-export const generateContract = (offerId, contractType, startDate, endDate = null) =>
-  api.post(`/offer/${offerId}/contract/generate`, {
-    contract_type: contractType,
-    start_date: startDate,
-    end_date: endDate
-  });
-
-export const sendContract = (offerId) => api.post(`/offer/${offerId}/contract/send`);
-
-export const signContract = (offerId, signatureData) =>
-  api.post(`/offer/${offerId}/contract/sign`, { signature_data: signatureData });
-
 // L4 Calibration - bulk advance
 export const bulkAdvanceToOnboarding = (jobId, candidateIds) =>
   api.post(`/offer/calibrate/${jobId}/advance`, { candidate_ids: candidateIds });

@@ -896,7 +896,7 @@ class InterviewModel {
   //   - direct in-app Evaluate scorecard (interview_scorecard, HRD-codes)
   //   - pack-link portal submission      (interview_pack_outcome, free-text criteria)
   // Direct scorecard wins if both somehow exist for the same round.
-  async getRoundsWithOutcomes(interview_id) {
+    async getRoundsWithOutcomes(interview_id) {
     const result = await getDb().query(
       `SELECT DISTINCT ON (ir.round_number)
          ir.round_number,
@@ -914,11 +914,13 @@ class InterviewModel {
          ipo.recommendation     AS pack_recommendation,
          ipo.strengths          AS pack_strengths,
          ipo.concerns           AS pack_concerns,
+         ipo.question_notes     AS pack_question_notes,
          ipo.updated_at         AS outcome_updated_at,
          ip.interviewer_name,
          ip.submitted_at,
          ip.token               AS pack_token,
-         ip.status              AS pack_status
+         ip.status              AS pack_status,
+         ip.questions_snapshot  AS pack_questions_snapshot
        FROM interview_round ir
        LEFT JOIN interview_scorecard sc        ON sc.round_id = ir.id
        LEFT JOIN interview_pack_candidate ipc  ON ipc.round_id = ir.id
@@ -947,16 +949,18 @@ class InterviewModel {
         };
       } else if (hasPack) {
         outcome = {
-          source:           'pack',
-          scores:            r.pack_scores,
-          weighted_total:    r.pack_weighted_total,
-          recommendation:    r.pack_recommendation,
-          strengths:         r.pack_strengths,
-          concerns:          r.pack_concerns,
-          interviewer_name:  r.interviewer_name,
-          submitted_at:      r.submitted_at,
-          pack_token:        r.pack_token,
-          pack_status:       r.pack_status,
+          source:            'pack',
+          scores:             r.pack_scores,
+          weighted_total:     r.pack_weighted_total,
+          recommendation:     r.pack_recommendation,
+          strengths:          r.pack_strengths,
+          concerns:           r.pack_concerns,
+          interviewer_name:   r.interviewer_name,
+          submitted_at:       r.submitted_at,
+          pack_token:         r.pack_token,
+          pack_status:        r.pack_status,
+          questions_snapshot: r.pack_questions_snapshot,
+          question_notes:     r.pack_question_notes,
         };
       }
 
