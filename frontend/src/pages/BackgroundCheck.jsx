@@ -1,8 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
-  ShieldCheck, RotateCw, HelpCircle, Settings,
-  AlertTriangle, Loader2, Search,
+  ShieldCheck, AlertTriangle, Loader2, RotateCw, Search, HelpCircle, Settings,
 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -137,6 +136,8 @@ export default function BackgroundCheckWorkboard() {
   };
 
   const [openingId, setOpeningId] = useState(null);
+
+  const handleChangeJob = (position) => setActiveJob(position);
 
   // bg_id can be null if the candidate just arrived at Background Check and
   // no candidate_bg row exists yet (LEFT JOIN in getByJob). Never navigate
