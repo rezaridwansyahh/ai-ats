@@ -93,9 +93,6 @@ class OfferService {
   async updateCompensation(offer_id, data, company_id, user_id) {
     const offer = await OfferModel.getOfferById(offer_id, company_id);
     if (!offer) throw { status: 404, message: 'Offer not found' };
-    if (offer.offer_status !== 'draft') {
-      throw { status: 400, message: 'Cannot update compensation after offer is sent' };
-    }
 
     const { base_salary, allowances, bonus_structure } = data;
     const calculated = CompensationEngine.calculate({ base_salary, allowances, bonus_structure });

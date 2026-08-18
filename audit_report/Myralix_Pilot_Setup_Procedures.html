@@ -1,0 +1,423 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Myralix — Pilot Setup Checklist</title>
+<style>
+  :root{
+    --primary:#0A6E5C;
+    --accent:#0D9276;
+    --light:#E8F5F2;
+    --dark:#16241F;
+    --muted:#5B6B65;
+    --warn-bg:#FBF6E5;
+    --warn-border:#C99A2E;
+    --danger-bg:#FBEFEC;
+    --danger-border:#C0503B;
+    --success-bg:#E8F7EF;
+    --success-border:#22C55E;
+    --row-alt:#F3F8F6;
+    --hairline:#D8DED9;
+  }
+  *{box-sizing:border-box;}
+  body{
+    font-family: Arial, Helvetica, sans-serif;
+    color: var(--dark);
+    background:#FAFAF8;
+    margin:0;
+    padding:0;
+    line-height:1.6;
+  }
+  .page{
+    max-width: 900px;
+    margin: 0 auto;
+    padding: 48px 56px 80px;
+    background:#fff;
+  }
+  .masthead{
+    display:flex;
+    justify-content:space-between;
+    align-items:flex-start;
+    margin-bottom:8px;
+  }
+  .brand{
+    font-size:34px;
+    font-weight:800;
+    color:var(--primary);
+    letter-spacing:0.5px;
+  }
+  .print-note{
+    font-size:11px;
+    color:var(--muted);
+  }
+  h1.title{
+    font-size:24px;
+    font-weight:600;
+    margin:2px 0 4px;
+    color:var(--dark);
+  }
+  .subtitle{
+    font-size:15px;
+    color:var(--accent);
+    font-style:italic;
+    margin-bottom:4px;
+  }
+  .prepared-for{
+    font-size:12.5px;
+    color:var(--muted);
+    margin-bottom:28px;
+  }
+  h2.section{
+    font-size:21px;
+    font-weight:700;
+    color:var(--primary);
+    border-bottom:2px solid var(--primary);
+    padding-bottom:8px;
+    margin:44px 0 16px;
+  }
+  h3.subsection{
+    font-size:17px;
+    font-weight:700;
+    color:var(--accent);
+    margin:28px 0 12px;
+  }
+  p.lede{
+    font-size:13.5px;
+    color:var(--muted);
+    margin-bottom:16px;
+  }
+  .group-title{
+    font-size:14px;
+    font-weight:700;
+    color:var(--dark);
+    margin:22px 0 8px;
+    background:var(--light);
+    padding:8px 12px;
+    border-radius:4px;
+    border-left:3px solid var(--accent);
+  }
+  ul.checklist{
+    list-style:none;
+    margin:0 0 16px;
+    padding:0;
+  }
+  ul.checklist li{
+    display:flex;
+    align-items:flex-start;
+    gap:10px;
+    font-size:13.5px;
+    padding:8px 0;
+    border-bottom:1px dashed #EEF1EF;
+  }
+  ul.checklist li .box{
+    flex:0 0 auto;
+    width:18px;
+    height:18px;
+    margin-top:2px;
+    border:2px solid var(--primary);
+    border-radius:3px;
+  }
+  ul.checklist li .owner-tag{
+    margin-left:auto;
+    flex:0 0 auto;
+    font-size:11.5px;
+    color:var(--muted);
+    font-style:italic;
+    white-space:nowrap;
+    padding-left:12px;
+  }
+  .callout{
+    display:flex;
+    gap:12px;
+    padding:14px 16px;
+    border:1px solid var(--hairline);
+    border-left-width:4px;
+    border-radius:8px;
+    background:var(--light);
+    font-size:13.3px;
+    margin-bottom:14px;
+  }
+  .callout.note{ border-left-color:var(--accent); }
+  .callout.warn{ border-left-color:var(--warn-border); background:var(--warn-bg); }
+  .callout.danger{ border-left-color:var(--danger-border); background:var(--danger-bg); }
+  .callout.success{ border-left-color:var(--success-border); background:var(--success-bg); }
+  .callout .ico{ font-size:17px; line-height:1; }
+  .callout .body b{ display:block; margin-bottom:3px; color:var(--dark); }
+  footer{
+    margin-top:56px;
+    padding-top:14px;
+    border-top:1px solid var(--hairline);
+    font-size:11px;
+    color:var(--muted);
+    text-align:center;
+  }
+  @media print{
+    body{ background:#fff; }
+    .page{ box-shadow:none; padding:0 20px; }
+  }
+  @media (max-width:640px){
+    .page{ padding:24px 18px 60px; }
+  }
+</style>
+</head>
+<body>
+<div class="page">
+
+  <div class="masthead">
+    <div>
+      <div class="brand">MYRALIX</div>
+    </div>
+    <div class="print-note">PT Myralix Indonesia · Internal Use</div>
+  </div>
+  <h1 class="title">Pilot Setup Checklist</h1>
+  <div class="subtitle">4-Day Implementation Plan</div>
+  <div class="prepared-for">Version 1.0 · Prepared for pilot tenant provisioning</div>
+
+  <div class="callout note">
+    <div class="ico">💡</div>
+    <div class="body"><b>Purpose</b>Master checklist for pilot implementation covering: User & Role Setup, Company Provisioning, Sample Data Preparation, and Patching Procedures. Check off each item as completed.</div>
+  </div>
+
+  <!-- ====================================================================== -->
+  <h2 class="section">Pre-Implementation Preparation</h2>
+  <!-- ====================================================================== -->
+
+  <ul class="checklist">
+    <li><span class="box"></span>Pilot contract signed and DPA confirmed complete<span class="owner-tag">SonSon</span></li>
+    <li><span class="box"></span>Collect pilot company details (name, email, website, logo)<span class="owner-tag">SonSon</span></li>
+    <li><span class="box"></span>Obtain pilot team roster from HR (names, emails, roles)<span class="owner-tag">SonSon</span></li>
+    <li><span class="box"></span>Confirm approval chain structure (offer sign-off, budget approval)<span class="owner-tag">SonSon</span></li>
+    <li><span class="box"></span>Identify employee categories for probation templates<span class="owner-tag">SonSon</span></li>
+    <li><span class="box"></span>Confirm 2-3 sample job titles aligned with pilot's actual hiring needs<span class="owner-tag">SonSon</span></li>
+  </ul>
+
+  <!-- ====================================================================== -->
+  <h2 class="section">Day 1 — Environment Setup & Full-Funnel Walkthrough</h2>
+  <!-- ====================================================================== -->
+
+  <h3 class="subsection">Morning: Environment & Tenant Setup</h3>
+  <ul class="checklist">
+    <li><span class="box"></span>Provision dedicated pilot tenant (subdomain, branding, logo)<span class="owner-tag">Eng</span></li>
+    <li><span class="box"></span>Set up production-equivalent environment, separate from dev/staging DB<span class="owner-tag">Eng</span></li>
+    <li><span class="box"></span>Confirm PostgreSQL backup schedule configured<span class="owner-tag">Eng</span></li>
+    <li><span class="box"></span>Test rollback plan with dummy backup file<span class="owner-tag">Eng</span></li>
+    <li><span class="box"></span>Create pilot company record in database<span class="owner-tag">Eng</span></li>
+    <li><span class="box"></span>Configure AI budget cap ($100/month default or per contract)<span class="owner-tag">Eng</span></li>
+  </ul>
+
+  <h3 class="subsection">Afternoon: Full-Funnel Functional Walkthrough</h3>
+  <ul class="checklist">
+    <li><span class="box"></span>Run full pass through Source stage with dummy data<span class="owner-tag">Eng + SonSon</span></li>
+    <li><span class="box"></span>Verify Screen stage (AI Matching + Calibration)<span class="owner-tag">Eng + SonSon</span></li>
+    <li><span class="box"></span>Test Interview scheduling and scorecard creation<span class="owner-tag">Eng + SonSon</span></li>
+    <li><span class="box"></span>Verify Assess stage (Battery A + Insights)<span class="owner-tag">Eng + SonSon</span></li>
+    <li><span class="box"></span>Test Verify stage (Background Check flow)<span class="owner-tag">Eng + SonSon</span></li>
+    <li><span class="box"></span>Verify Offer stage (approval routing)<span class="owner-tag">Eng + SonSon</span></li>
+    <li><span class="box"></span>Test Onboard stage (Day 1 → Day 30/60/90 checkpoints)<span class="owner-tag">Eng + SonSon</span></li>
+    <li><span class="box"></span>Confirm data carries through correctly at every stage handoff<span class="owner-tag">Eng + SonSon</span></li>
+    <li><span class="box"></span>Log all bugs found; triage severity before Day 2<span class="owner-tag">Eng</span></li>
+  </ul>
+
+  <h3 class="subsection">End of Day: Scope Confirmation</h3>
+  <ul class="checklist">
+    <li><span class="box"></span>Write 1-page pilot scope note confirming full end-to-end funnel in scope<span class="owner-tag">SonSon</span></li>
+    <li><span class="box"></span>Share scope note internally (both engineers aligned)<span class="owner-tag">SonSon</span></li>
+  </ul>
+
+  <!-- ====================================================================== -->
+  <h2 class="section">Day 2 — Configuration & Integrations</h2>
+  <!-- ====================================================================== -->
+
+  <h3 class="subsection">Morning: User & Role Access Setup</h3>
+  <ul class="checklist">
+    <li><span class="box"></span>Create user accounts for pilot team members<span class="owner-tag">Eng</span></li>
+    <li><span class="box"></span>Assign roles to users (Recruiter, Hiring Manager, HR Ops, Admin, Finance, Psikolog)<span class="owner-tag">Eng</span></li>
+    <li><span class="box"></span>Map approval chain into RBAC matrix (offer sign-off, budget approval)<span class="owner-tag">Eng</span></li>
+    <li><span class="box"></span>Configure salary visibility overrides if needed (signed justification on file)<span class="owner-tag">Eng</span></li>
+    <li><span class="box"></span>Test login for each user account (verify credentials work)<span class="owner-tag">Eng</span></li>
+    <li><span class="box"></span>Verify sidebar menu permissions match role assignments<span class="owner-tag">Eng</span></li>
+  </ul>
+
+  <h3 class="subsection">Afternoon: Pipeline & Templates Configuration</h3>
+  <ul class="checklist">
+    <li><span class="box"></span>Configure job templates for pilot company's hiring roles<span class="owner-tag">Eng</span></li>
+    <li><span class="box"></span>Set probation template tracks matching employee categories<span class="owner-tag">Eng</span></li>
+    <li><span class="box"></span>Configure email notification settings end to end<span class="owner-tag">Eng</span></li>
+    <li><span class="box"></span>Test email notification delivery<span class="owner-tag">Eng</span></li>
+  </ul>
+
+  <h3 class="subsection">End of Day: Integration Smoke Test</h3>
+  <ul class="checklist">
+    <li><span class="box"></span>Test LinkedIn job posting integration with live credentials<span class="owner-tag">Eng</span></li>
+    <li><span class="box"></span>Test Jobstreet (Seek) job posting integration with live credentials<span class="owner-tag">Eng</span></li>
+    <li><span class="box"></span>Log and triage any integration failures before Day 3<span class="owner-tag">Eng</span></li>
+  </ul>
+
+  <!-- ====================================================================== -->
+  <h2 class="section">Day 3 — Data, Training Material & Monitoring</h2>
+  <!-- ====================================================================== -->
+
+  <h3 class="subsection">Morning: Vanilla Data Preparation</h3>
+  <ul class="checklist">
+    <li><span class="box"></span>Load 2–3 sample job postings aligned with pilot's actual hiring needs<span class="owner-tag">Eng</span></li>
+    <li><span class="box"></span>Load 5-10 sample candidates per job for walkthrough<span class="owner-tag">Eng</span></li>
+    <li><span class="box"></span>Seed AI Matching scores for calibration test<span class="owner-tag">Eng</span></li>
+    <li><span class="box"></span>Walk full in-scope funnel end to end with sample data<span class="owner-tag">Eng</span></li>
+    <li><span class="box"></span>Log every bug found; fix or triage before training<span class="owner-tag">Eng</span></li>
+  </ul>
+
+  <h3 class="subsection">Afternoon: Training Material & Enablement</h3>
+  <ul class="checklist">
+    <li><span class="box"></span>Trim full user guide into pilot-specific EN/ID quick-start<span class="owner-tag">SonSon</span></li>
+    <li><span class="box"></span>Prepare 30–60 min training session (live or recorded)<span class="owner-tag">SonSon</span></li>
+    <li><span class="box"></span>Confirm two points of contact (one per side) for pilot-week issues<span class="owner-tag">SonSon</span></li>
+    <li><span class="box"></span>Prepare FAQ document from common questions<span class="owner-tag">SonSon</span></li>
+  </ul>
+
+  <h3 class="subsection">End of Day: Monitoring Readiness</h3>
+  <ul class="checklist">
+    <li><span class="box"></span>Set up error monitoring / logging for pilot tenant<span class="owner-tag">Eng</span></li>
+    <li><span class="box"></span>Configure alerts for critical errors (email/Slack)<span class="owner-tag">Eng</span></li>
+    <li><span class="box"></span>Confirm engineer reachable during company's working hours in week 1<span class="owner-tag">Eng</span></li>
+  </ul>
+
+  <!-- ====================================================================== -->
+  <h2 class="section">Day 4 — UAT, Fixes & Go-Live Sign-Off</h2>
+  <!-- ====================================================================== -->
+
+  <h3 class="subsection">Morning: Dry Run / UAT with Company</h3>
+  <ul class="checklist">
+    <li><span class="box"></span>Run live walkthrough with company's HR contact using sample data<span class="owner-tag">SonSon + Company HR</span></li>
+    <li><span class="box"></span>Capture every question and point of confusion<span class="owner-tag">SonSon</span></li>
+    <li><span class="box"></span>Document answers in FAQ for week 1 support<span class="owner-tag">SonSon</span></li>
+  </ul>
+
+  <h3 class="subsection">Afternoon: Fix & Finalize</h3>
+  <ul class="checklist">
+    <li><span class="box"></span>Fix any UAT-surfaced issues that are feasible same-day<span class="owner-tag">Eng</span></li>
+    <li><span class="box"></span>Log non-blocking issues with owner and target date<span class="owner-tag">Eng</span></li>
+    <li><span class="box"></span>Share non-blocking issues list with company transparently<span class="owner-tag">SonSon</span></li>
+    <li><span class="box"></span>Deliver trimmed quick-start guide to company's HR team<span class="owner-tag">SonSon</span></li>
+  </ul>
+
+  <h3 class="subsection">End of Day: Go-Live Sign-Off</h3>
+  <ul class="checklist">
+    <li><span class="box"></span>Confirm success criteria for pilot in writing with company<span class="owner-tag">SonSon</span></li>
+    <li><span class="box"></span>Confirm scope note (in-scope vs excluded stages) explicitly shared with company<span class="owner-tag">SonSon</span></li>
+    <li><span class="box"></span>Schedule mid-pilot check-in date (not just end-of-pilot review)<span class="owner-tag">SonSon</span></li>
+    <li><span class="box"></span>Get written go-live approval from company HR contact<span class="owner-tag">SonSon</span></li>
+  </ul>
+
+  <!-- ====================================================================== -->
+  <h2 class="section">Post-Implementation: Week 1 Monitoring</h2>
+  <!-- ====================================================================== -->
+
+  <ul class="checklist">
+    <li><span class="box"></span>Monitor error logs daily (mornings and end of day)<span class="owner-tag">Eng</span></li>
+    <li><span class="box"></span>Respond to pilot company issues within 4 hours during business hours<span class="owner-tag">Eng + SonSon</span></li>
+    <li><span class="box"></span>Document all issues and resolutions in pilot log<span class="owner-tag">Eng</span></li>
+    <li><span class="box"></span>Update FAQ based on real questions from pilot users<span class="owner-tag">SonSon</span></li>
+    <li><span class="box"></span>Conduct mid-pilot check-in (Day 3-5 of live use)<span class="owner-tag">SonSon</span></li>
+    <li><span class="box"></span>Collect feedback for product improvements<span class="owner-tag">SonSon</span></li>
+    <li><span class="box"></span>Prepare end-of-pilot review report<span class="owner-tag">SonSon</span></li>
+  </ul>
+
+  <!-- ====================================================================== -->
+  <h2 class="section">Patching Procedures (As Needed)</h2>
+  <!-- ====================================================================== -->
+
+  <p class="lede">Use these checklists when hotfixes or schema changes are required during pilot.</p>
+
+  <h3 class="subsection">Code Hotfix Deployment</h3>
+  <ul class="checklist">
+    <li><span class="box"></span>Create hotfix branch and commit changes<span class="owner-tag">Eng</span></li>
+    <li><span class="box"></span>Test fix locally with full test suite<span class="owner-tag">Eng</span></li>
+    <li><span class="box"></span>Merge to master and create Git tag (e.g., pilot-v1.0.1)<span class="owner-tag">Eng</span></li>
+    <li><span class="box"></span>Deploy to pilot environment (pull, install deps, restart)<span class="owner-tag">Eng</span></li>
+    <li><span class="box"></span>Verify deployment via logs and manual testing<span class="owner-tag">Eng</span></li>
+    <li><span class="box"></span>Notify pilot company of fix (if customer-facing)<span class="owner-tag">SonSon</span></li>
+  </ul>
+
+  <h3 class="subsection">Database Schema Patch</h3>
+  <div class="callout warn">
+    <div class="ico">⚠️</div>
+    <div class="body"><b>Downtime Required</b>Notify pilot company 24h in advance for schema changes.</div>
+  </div>
+  <ul class="checklist">
+    <li><span class="box"></span>Create migration SQL file in migrations directory<span class="owner-tag">Eng</span></li>
+    <li><span class="box"></span>Test migration locally on dev database<span class="owner-tag">Eng</span></li>
+    <li><span class="box"></span>Notify pilot company of maintenance window<span class="owner-tag">SonSon</span></li>
+    <li><span class="box"></span>Create full database backup before applying<span class="owner-tag">Eng</span></li>
+    <li><span class="box"></span>Apply migration to pilot database<span class="owner-tag">Eng</span></li>
+    <li><span class="box"></span>Verify migration success (check schema, test queries)<span class="owner-tag">Eng</span></li>
+    <li><span class="box"></span>Deploy application code changes (if needed)<span class="owner-tag">Eng</span></li>
+    <li><span class="box"></span>Test affected functionality in pilot frontend<span class="owner-tag">Eng</span></li>
+  </ul>
+
+  <h3 class="subsection">Data Patch (Non-Schema)</h3>
+  <ul class="checklist">
+    <li><span class="box"></span>Prepare UPDATE/INSERT script with clear documentation<span class="owner-tag">Eng</span></li>
+    <li><span class="box"></span>Test script on staging/dev database with similar data<span class="owner-tag">Eng</span></li>
+    <li><span class="box"></span>Backup affected tables before applying<span class="owner-tag">Eng</span></li>
+    <li><span class="box"></span>Apply data patch to pilot database<span class="owner-tag">Eng</span></li>
+    <li><span class="box"></span>Verify changes with SELECT queries<span class="owner-tag">Eng</span></li>
+  </ul>
+
+  <h3 class="subsection">Emergency Rollback</h3>
+  <div class="callout danger">
+    <div class="ico">🚨</div>
+    <div class="body"><b>Critical Issues Only</b>Use rollback if patch causes critical failures.</div>
+  </div>
+  <ul class="checklist">
+    <li><span class="box"></span>Rollback application code to previous Git tag<span class="owner-tag">Eng</span></li>
+    <li><span class="box"></span>Restore database from backup (if schema changed)<span class="owner-tag">Eng</span></li>
+    <li><span class="box"></span>Notify stakeholders of rollback and investigation status<span class="owner-tag">SonSon</span></li>
+    <li><span class="box"></span>Document root cause and plan corrective action<span class="owner-tag">Eng</span></li>
+  </ul>
+
+  <!-- ====================================================================== -->
+  <h2 class="section">Key Risks & Mitigation</h2>
+  <!-- ====================================================================== -->
+
+  <div class="callout warn">
+    <div class="ico">📌</div>
+    <div class="body"><b>First Real End-to-End Run</b>All 7 stages are functionally in place, but this pilot is the first time the full funnel runs against real company data. Treat Day 1's full-funnel walkthrough as validation of the whole chain — stage handoffs are where issues are most likely to surface.</div>
+  </div>
+
+  <div class="callout warn">
+    <div class="ico">📌</div>
+    <div class="body"><b>Live Job Board Integrations</b>LinkedIn and Jobstreet (Seek) job posting integrations behave differently with live credentials versus test data. Confirm these are tested with realistic job postings on Day 2, not assumed to work because the code path exists.</div>
+  </div>
+
+  <div class="callout note">
+    <div class="ico">💡</div>
+    <div class="body"><b>Team Adoption Across All 7 Stages</b>Because the full funnel is in scope, the company's team needs to get comfortable with more surface area than a limited pilot would require. Make sure Day 3 training walks the complete Source-to-Onboard journey.</div>
+  </div>
+
+  <div class="callout note">
+    <div class="ico">💡</div>
+    <div class="body"><b>Close Monitoring During Week 1</b>Even fully built features can surface edge cases under real usage patterns. Keep error monitoring active and an engineer reachable through at least the first week of live use, especially around Onboarding checkpoints and Offer approval routing.</div>
+  </div>
+
+  <!-- ====================================================================== -->
+  <h2 class="section">Emergency Contacts</h2>
+  <!-- ====================================================================== -->
+
+  <p class="lede">At least one engineer will be reachable during pilot company's working hours (8AM-5PM WIB) throughout the first week.</p>
+
+  <ul class="checklist">
+    <li><span class="box"></span>Technical Lead: SonSon (sonson@myralix.com) — Mon-Fri 9AM-6PM WIB<span class="owner-tag">Primary</span></li>
+    <li><span class="box"></span>Backend Engineer: Eng Team (eng@myralix.com) — On-call during pilot week 1<span class="owner-tag">On-call</span></li>
+    <li><span class="box"></span>Pilot Company HR: [To be assigned] — Mon-Fri 8AM-5PM WIB<span class="owner-tag">Client</span></li>
+  </ul>
+
+  <div class="callout success">
+    <div class="ico">✅</div>
+    <div class="body"><b>Critical Issue Escalation</b>For urgent issues during pilot week, escalate immediately via WhatsApp or phone. Target response time: 4 hours during business hours.</div>
+  </div>
+
+  <footer>Myralix · Pilot Setup Checklist v1.0 · Generated 2026-08-18</footer>
+</div>
+</body>
+</html>

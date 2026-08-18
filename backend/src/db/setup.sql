@@ -1152,6 +1152,7 @@ CREATE TABLE interview_pack_outcome (
   recommendation   VARCHAR(10) CHECK (recommendation IN ('advance', 'hold', 'reject')),
   strengths        TEXT,
   concerns         TEXT,
+  question_notes   JSONB DEFAULT '{}',
   created_at       TIMESTAMP NOT NULL DEFAULT NOW(),
   updated_at       TIMESTAMP NOT NULL DEFAULT NOW(),
   UNIQUE(pack_id, pack_candidate_id)
