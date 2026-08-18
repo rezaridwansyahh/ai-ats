@@ -68,7 +68,7 @@ export default function PositionSetupSheet({ open, onOpenChange, position, onUpd
       const p = prepRes.data?.prep || null;
       setPrep(p);
       if (p?.pack_token) {
-        setPackLink(`${window.location.origin}/interview/${p.pack_token}`);
+        setPackLink(`${window.location.origin}/portal/interview/${p.pack_token}`);
       } else {
         setPackLink(null);
       }
@@ -122,7 +122,7 @@ export default function PositionSetupSheet({ open, onOpenChange, position, onUpd
       const res = await generatePackLink(jobId);
       const token = res.data?.pack_token || res.data?.token;
       if (token) {
-        const url = `${window.location.origin}/interview/${token}`;
+        const url = `${window.location.origin}/portal/interview/${token}`;
         setPackLink(url);
         setBanner({ ok: true, text: 'Interview pack link generated.' });
         if (onUpdated) onUpdated();
@@ -136,7 +136,7 @@ export default function PositionSetupSheet({ open, onOpenChange, position, onUpd
         const p = prepRes.data?.prep || null;
         setPrep(p);
         if (p?.pack_token) {
-          const url = `${window.location.origin}/interview/${p.pack_token}`;
+          const url = `${window.location.origin}/portal/interview/${p.pack_token}`;
           setPackLink(url);
           setBanner({ ok: true, text: 'Interview pack link generated.' });
           if (onUpdated) onUpdated();
