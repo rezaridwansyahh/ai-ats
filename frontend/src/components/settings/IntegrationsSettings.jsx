@@ -1,7 +1,8 @@
 import { useState, useEffect, useCallback } from 'react';
-import { RefreshCw } from 'lucide-react';
+import { RefreshCw, AlertTriangle, Loader2 } from 'lucide-react';
 import { Button }   from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Skeleton } from '@/components/ui/skeleton';
 import { toast } from 'sonner';
 import { Badge }    from '@/components/ui/badge';
 
@@ -31,6 +32,34 @@ const PRIVATE_CHANNELS = [
   { id: 'whatsapp', name: 'WhatsApp' },
 ];
 
+// Shared badge tones — warm-cream tokens (bg-muted/text-muted-foreground/
+// border-border), not the hardcoded slate/gray classes the ported version had.
+const BADGE_TONE = {
+  positive: 'bg-emerald-50 text-emerald-600 border-emerald-200',
+  neutral:  'bg-muted text-muted-foreground border-border',
+  negative: 'bg-rose-50 text-rose-600 border-rose-200',
+};
+
+function StatusBadge({ tone, children }) {
+  return (
+    <Badge variant="outline" className={`text-[9px] px-1.5 py-0 ${BADGE_TONE[tone]}`}>
+      {children}
+    </Badge>
+  );
+}
+
+function connectionTone(status) {
+  if (status === 'Connected') return 'positive';
+  if (status === 'Re-connecting') return 'neutral';
+  return 'negative';
+}
+
+function syncTone(status) {
+  if (status === 'Sync') return 'positive';
+  if (status === 'Re-sync') return 'neutral';
+  return 'negative';
+}
+
 /*
  * Integrations settings — real job platform connections, backed by
  * master_job_account (same table pages/Account.jsx already uses at
@@ -46,6 +75,7 @@ const PRIVATE_CHANNELS = [
 export default function IntegrationsSettings() {
   const [accounts, setAccounts] = useState([]);
   const [loading, setLoading]   = useState(true);
+  const [error, setError]       = useState(null);
 
   const [user] = useState(() => {
     try { return JSON.parse(localStorage.getItem('user')); } catch { return null; }
@@ -54,11 +84,12 @@ export default function IntegrationsSettings() {
   const fetchAccounts = useCallback(async () => {
     if (!user?.id) { setLoading(false); return; }
     setLoading(true);
+    setError(null);
     try {
       const { data } = await getJobAccountsByUserId(user.id);
       setAccounts(data.accounts || []);
     } catch (err) {
-      toast.error(err.response?.data?.message || err.message || 'Failed to load job accounts');
+      setError(err.response?.data?.message || err.message || 'Failed to load job accounts');
     } finally {
       setLoading(false);
     }
@@ -66,10 +97,11 @@ export default function IntegrationsSettings() {
 
   useEffect(() => { fetchAccounts(); }, [fetchAccounts]);
 
-  const [formOpen, setFormOpen]               = useState(false);
-  const [selectedAccount, setSelectedAccount] = useState(null);
+  const [formOpen, setFormOpen]                 = useState(false);
+  const [selectedAccount, setSelectedAccount]   = useState(null);
   const [selectedPlatform, setSelectedPlatform] = useState(null);
-  const [submitting, setSubmitting]           = useState(false);
+  const [submitting, setSubmitting]             = useState(false);
+  const [busyAccountId, setBusyAccountId]       = useState(null);
 
   const openConfigure = (platform, account) => {
     setSelectedAccount(account || null);
@@ -91,9 +123,28 @@ export default function IntegrationsSettings() {
     }
   };
 
+  const runAccountAction = async (account, action, messages) => {
+    setBusyAccountId(account.id);
+    try {
+      await toast.promise(action(account.id), { position: 'top-center', ...messages });
+    } finally {
+      setBusyAccountId(null);
+      fetchAccounts();
+    }
+  };
+
+  if (!user?.id) {
+    return (
+      <div className="flex items-center gap-2 px-4 py-3 rounded-lg border border-amber-200 bg-amber-50 text-sm text-amber-700">
+        <AlertTriangle className="h-4 w-4 shrink-0" />
+        You must be signed in to manage integrations.
+      </div>
+    );
+  }
+
   return (
     <div className="space-y-4">
-      <div className="flex items-center justify-between">
+      <div className="flex items-center justify-between gap-3">
         <div>
           <h2 className="text-lg font-bold tracking-tight">Integrations</h2>
           <p className="text-sm text-muted-foreground mt-0.5">
@@ -106,162 +157,173 @@ export default function IntegrationsSettings() {
         </Button>
       </div>
 
+      {error && (
+        <div className="flex items-center gap-2 px-4 py-3 rounded-lg border border-red-200 bg-red-50 text-sm text-red-600">
+          <AlertTriangle className="h-4 w-4 shrink-0" />
+          <span>{error}</span>
+        </div>
+      )}
+
       {/* Public Channels */}
       <Card className="py-0 gap-0">
-        <CardHeader className="border-b !pb-0 flex items-center h-15">
-          <CardTitle className="flex justify-between items-center w-full">
-            <div>Public Channels</div>
-            <div className="text-xs text-gray-400">
+        <CardHeader className="border-b !pb-3 pt-3 flex items-center min-h-14">
+          <CardTitle className="flex justify-between items-center w-full gap-3 flex-wrap">
+            <span className="text-sm">Public Channels</span>
+            <span className="text-xs font-normal text-muted-foreground">
               Direct API publishing — applications flow back automatically
-            </div>
+            </span>
           </CardTitle>
         </CardHeader>
-        <CardContent>
-          {PUBLIC_CHANNELS.map((channels) => {
-            const account = accounts.find((acc) => acc.portal_name === channels.id);
+        <CardContent className="px-0 py-0">
+          {loading ? (
+            <div className="p-4 space-y-3">
+              {Array.from({ length: PUBLIC_CHANNELS.length }).map((_, i) => (
+                <Skeleton key={i} className="h-14 w-full" />
+              ))}
+            </div>
+          ) : (
+            PUBLIC_CHANNELS.map((channel) => {
+              const account = accounts.find((acc) => acc.portal_name === channel.id);
+              const busy = busyAccountId === account?.id;
 
-            return (
-              <div key={channels.id} className="flex justify-between items-center w-full border-b last:border-b-0">
-                <div className="flex items-center gap-10">
-                  <div className="flex items-center gap-3 py-3 border-b last:border-b-0">
-                    <div className="h-10 w-10 rounded-lg flex items-center justify-center text-white text-[10px] font-bold shrink-0">
-                      <img src={LOGOS[channels.id]} />
-                    </div>
-                    <div className="flex-1 min-w-80">
-                      <span className="text-sm font-semibold">{channels.name}</span>
-                      <div className="text-xs text-gray-400">
-                        Account: {account ? account?.email : '-'}
+              return (
+                <div
+                  key={channel.id}
+                  className="flex items-center justify-between gap-4 w-full px-4 py-3 border-b last:border-b-0 flex-wrap"
+                >
+                  <div className="flex items-center gap-8 flex-wrap min-w-0">
+                    <div className="flex items-center gap-3 min-w-0">
+                      <div className="h-10 w-10 rounded-lg flex items-center justify-center shrink-0 overflow-hidden bg-muted/40">
+                        <img src={LOGOS[channel.id]} alt={channel.name} className="h-full w-full object-contain" />
+                      </div>
+                      <div className="min-w-0">
+                        <span className="text-sm font-semibold">{channel.name}</span>
+                        <div className="text-xs text-muted-foreground truncate">
+                          Account: {account?.email || '—'}
+                        </div>
                       </div>
                     </div>
-                  </div>
-                  <div>
-                    <div className="text-xs text-gray-400">
-                      Last Connection: {account?.last_connect || '-'}
+                    <div className="text-xs text-muted-foreground space-y-0.5">
+                      <div>Last connection: {account?.last_connect || '—'}</div>
+                      <div>Last sync: {account?.last_sync || '—'}</div>
                     </div>
-                    <div className="text-xs text-gray-400">
-                      Last Sync: {account?.last_sync || '-'}
+                  </div>
+
+                  <div className="flex items-center gap-4 flex-wrap">
+                    <div className="space-y-1">
+                      <div className="flex items-center justify-between gap-3">
+                        <span className="text-xs text-muted-foreground">Status</span>
+                        <StatusBadge tone={connectionTone(account?.status_connection)}>
+                          {account?.status_connection === 'Re-connecting' ? 'Re-connecting…' : (account?.status_connection || 'Not connected')}
+                        </StatusBadge>
+                      </div>
+                      <div className="flex items-center justify-between gap-3">
+                        <span className="text-xs text-muted-foreground">Sync</span>
+                        <StatusBadge tone={syncTone(account?.status_sync)}>
+                          {account?.status_sync === 'Sync' ? 'Synced' : account?.status_sync === 'Re-sync' ? 'Re-syncing…' : (account?.status_sync || 'Not synced')}
+                        </StatusBadge>
+                      </div>
+                    </div>
+
+                    <div className="flex items-center gap-2">
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        disabled={!account || account?.status_connection !== 'Connected' || busy}
+                        onClick={() => runAccountAction(account, syncSeekJobPosts, {
+                          loading: 'Queuing sync…', success: 'Sync queued', error: 'Failed to queue sync',
+                        })}
+                      >
+                        {busy ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : 'Sync'}
+                      </Button>
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        disabled={!account || account?.status_connection === 'Re-connecting' || busy}
+                        onClick={() => runAccountAction(account, checkConnection, {
+                          loading: 'Checking connection…', success: 'Connection check queued', error: 'Failed to check connection',
+                        })}
+                      >
+                        {busy ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : 'Re-connect'}
+                      </Button>
+                      <Button size="sm" onClick={() => openConfigure(channel.id, account)}>
+                        {account ? 'Configure' : 'Connect'}
+                      </Button>
                     </div>
                   </div>
                 </div>
-
-                <div className="flex gap-5">
-                  <div className="min-w-45 inline">
-                    <div className="flex justify-between">
-                      <div className="text-xs text-gray-400 mr-5">Status :</div>
-                      <div className="flex items-center">
-                        {account?.status_connection === 'Connected' ? (
-                          <Badge variant="outline" className="text-[9px] px-1.5 py-0 bg-emerald-50 text-emerald-600 border-emerald-200">
-                            Connected
-                          </Badge>
-                        ) : account?.status_connection === 'Re-connecting' ? (
-                          <Badge variant="outline" className="text-[9px] px-1.5 py-0 bg-gray-50 text-gray-600 border-gray-200">
-                            Re-connecting...
-                          </Badge>
-                        ) : (
-                          <Badge variant="outline" className="text-[9px] px-1.5 py-0 bg-red-50 text-red-600 border-red-200">
-                            {account?.status_connection || 'Not Connected'}
-                          </Badge>
-                        )}
-                      </div>
-                    </div>
-                    <div className="flex justify-between">
-                      <div className="text-xs text-gray-400 mr-5">Sync Status :</div>
-                      <div className="flex items-center">
-                        {account?.status_sync === 'Sync' ? (
-                          <Badge variant="outline" className="text-[9px] px-1.5 py-0 bg-emerald-50 text-emerald-600 border-emerald-200">
-                            Synced
-                          </Badge>
-                        ) : account?.status_sync === 'Re-sync' ? (
-                          <Badge variant="outline" className="text-[9px] px-1.5 py-0 bg-gray-50 text-gray-600 border-gray-200">
-                            Re-syncing...
-                          </Badge>
-                        ) : (
-                          <Badge variant="outline" className="text-[9px] px-1.5 py-0 bg-red-50 text-red-600 border-red-200">
-                            {account?.status_sync || 'Not sync'}
-                          </Badge>
-                        )}
-                      </div>
-                    </div>
-                  </div>
-
-                  <Button
-                    disabled={!account || account?.status_connection !== 'Connected'}
-                    onClick={() => toast.promise(syncSeekJobPosts(account.id), {
-                      position: 'top-center', loading: 'Connection Queued', success: 'Queued Created', error: 'Queued Error',
-                    })}
-                  >
-                    Sync
-                  </Button>
-                  <Button
-                    disabled={!account || account?.status_connection === 'Re-connecting'}
-                    onClick={() => toast.promise(checkConnection(account.id), {
-                      position: 'top-center', loading: 'Connection Queued', success: 'Queued Created', error: 'Queued Error',
-                    })}
-                  >
-                    Re-connect
-                  </Button>
-                  <Button onClick={() => openConfigure(channels.id, account)}>
-                    Configure
-                  </Button>
-                </div>
-              </div>
-            );
-          })}
+              );
+            })
+          )}
         </CardContent>
       </Card>
 
       {/* Private Channels */}
       <Card className="py-0 gap-0">
-        <CardHeader className="border-b !pb-0 flex items-center h-15">
-          <CardTitle className="flex justify-between items-center w-full">
-            <div>Private Channels</div>
-            <div className="text-xs text-gray-400">
+        <CardHeader className="border-b !pb-3 pt-3 flex items-center min-h-14">
+          <CardTitle className="flex justify-between items-center w-full gap-3 flex-wrap">
+            <span className="text-sm">Private Channels</span>
+            <span className="text-xs font-normal text-muted-foreground">
               Social sharing & broadcast channels
-            </div>
+            </span>
           </CardTitle>
         </CardHeader>
-        <CardContent>
-          {PRIVATE_CHANNELS.map((channels) => {
-            const account = accounts.find((acc) => acc.portal_name === channels.id);
+        <CardContent className="px-0 py-0">
+          {loading ? (
+            <div className="p-4 space-y-3">
+              {Array.from({ length: PRIVATE_CHANNELS.length }).map((_, i) => (
+                <Skeleton key={i} className="h-14 w-full" />
+              ))}
+            </div>
+          ) : (
+            PRIVATE_CHANNELS.map((channel) => {
+              const account = accounts.find((acc) => acc.portal_name === channel.id);
 
-            return (
-              <div key={channels.id} className="flex justify-between items-center w-full border-b last:border-b-0">
-                <div className="flex items-center gap-10">
-                  <div className="flex items-center gap-3 py-3">
-                    <div className="h-10 w-10 rounded-lg flex items-center justify-center text-white text-[10px] font-bold shrink-0">
-                      <img src={LOGOS[channels.id]} />
-                    </div>
-                    <div className="flex-1 min-w-20">
-                      <span className="text-sm font-semibold">{channels.name}</span>
-                      <div>
-                        {account ? (
-                          <Badge variant="outline" className="text-[9px] px-1.5 py-0 bg-emerald-50 text-emerald-600 border-emerald-200">
-                            {account.condition || 'Connected'}
-                          </Badge>
-                        ) : (
-                          <Badge variant="outline" className="text-[9px] px-1.5 py-0 bg-red-50 text-red-600 border-red-200">
-                            Not Connected
-                          </Badge>
-                        )}
+              return (
+                <div
+                  key={channel.id}
+                  className="flex items-center justify-between gap-4 w-full px-4 py-3 border-b last:border-b-0 flex-wrap"
+                >
+                  <div className="flex items-center gap-8 flex-wrap min-w-0">
+                    <div className="flex items-center gap-3 min-w-0">
+                      <div className="h-10 w-10 rounded-lg flex items-center justify-center shrink-0 overflow-hidden bg-muted/40">
+                        <img src={LOGOS[channel.id]} alt={channel.name} className="h-full w-full object-contain" />
+                      </div>
+                      <div className="min-w-0">
+                        <span className="text-sm font-semibold">{channel.name}</span>
+                        <div>
+                          {account ? (
+                            <StatusBadge tone="positive">{account.condition || 'Connected'}</StatusBadge>
+                          ) : (
+                            <StatusBadge tone="negative">Not connected</StatusBadge>
+                          )}
+                        </div>
                       </div>
                     </div>
+                    <div className="text-xs text-muted-foreground">
+                      Last connection: {account?.last_connect || '—'}
+                    </div>
                   </div>
-                  <div className="text-xs text-gray-400">
-                    Last Connection: {account?.last_connect || '-'}
-                  </div>
-                </div>
 
-                <div className="flex gap-5">
-                  <Button disabled={!account} onClick={() => toast.promise(new Promise((resolve) => setTimeout(resolve, 3000)))}>
-                    Re-connect
-                  </Button>
-                  <Button onClick={() => openConfigure(channels.id, account)}>
-                    Configure
-                  </Button>
+                  <div className="flex items-center gap-2">
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      disabled={!account}
+                      onClick={() => toast.promise(new Promise((resolve) => setTimeout(resolve, 3000)), {
+                        position: 'top-center', loading: 'Reconnecting…', success: 'Reconnected', error: 'Failed to reconnect',
+                      })}
+                    >
+                      Re-connect
+                    </Button>
+                    <Button size="sm" onClick={() => openConfigure(channel.id, account)}>
+                      {account ? 'Configure' : 'Connect'}
+                    </Button>
+                  </div>
                 </div>
-              </div>
-            );
-          })}
+              );
+            })
+          )}
         </CardContent>
       </Card>
 
