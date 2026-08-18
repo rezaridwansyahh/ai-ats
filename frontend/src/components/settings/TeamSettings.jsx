@@ -1,58 +1,35 @@
-import { useState } from 'react';
-import { UserPlus } from 'lucide-react';
+import { useEffect, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
+import { UserPlus, Loader2, AlertTriangle } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter,
 } from '@/components/ui/dialog';
+import { getUsers, createUser, updateUser, deleteUser, getMasterRoles } from '@/api/users.api';
 
-// ── Static data — swap for API data when backend is ready ──
+/*
+ * Team settings — real roster, backed by master_users / master_roles /
+ * mapping_users_roles (same tables UserManagementPage.jsx / RoleManagementPage.jsx
+ * already use). Previously this whole file was a hardcoded useState mockup with
+ * zero API calls and its own invented role vocabulary (TA Lead, Interviewer, ...)
+ * that didn't match any real role in the DB.
+ *
+ * "Cities" and "Status" (Active/Invited/Suspended) from the old mockup have no
+ * backing column on master_users — dropped rather than faked. Email is shown
+ * instead, which is real.
+ */
 
-const TEAM_MEMBERS = [
-  {
-    id: 1, name: 'Sarah Chen', initials: 'SC', role: 'TA Lead', access: 'Admin',
-    cities: ['Jakarta', 'Bandung', 'Surabaya'], status: 'Active',
-  },
-  {
-    id: 2, name: 'Maya Hartono', initials: 'MH', role: 'Recruiter', access: 'Recruiter',
-    cities: ['Jakarta'], status: 'Active',
-  },
-  {
-    id: 3, name: 'Budi Prasetyo', initials: 'BP', role: 'Recruiter', access: 'Recruiter',
-    cities: ['Surabaya'], status: 'Active',
-  },
-  {
-    id: 4, name: 'Ahmad Sutanto', initials: 'AS', role: 'Hiring Manager', access: 'Hiring Manager',
-    cities: ['Jakarta'], status: 'Active',
-  },
-  {
-    id: 5, name: 'Rini Wahyuni', initials: 'RW', role: 'Interviewer', access: 'Interviewer',
-    cities: ['Bandung'], status: 'Active',
-  },
-  {
-    id: 6, name: 'Nadia Ayu', initials: 'NA', role: 'Recruiter', access: 'Recruiter',
-    cities: ['Jakarta'], status: 'Invited',
-  },
-];
-
-const ROLE_SUMMARIES = [
-  { id: 'admin', name: 'Admin', desc: 'Full access · billing · integrations · compliance' },
-  { id: 'ta-lead', name: 'TA Lead', desc: 'All jobs · reports · team management (read)' },
-  { id: 'recruiter', name: 'Recruiter', desc: 'Assigned jobs only · candidate write · invites' },
-  { id: 'hiring-manager', name: 'Hiring Manager', desc: 'Assigned jobs · scorecards · reject/advance' },
-  { id: 'interviewer', name: 'Interviewer', desc: 'Scorecards only for assigned interviews' },
-];
-
-const ROLE_OPTIONS = ['TA Lead', 'Recruiter', 'Hiring Manager', 'Interviewer', 'Admin'];
-
-const STATUS_STYLES = {
-  Active: 'bg-emerald-50 text-emerald-600 border-emerald-200',
-  Invited: 'bg-amber-50 text-amber-600 border-amber-200',
-  Suspended: 'bg-gray-50 text-gray-500 border-gray-200',
-};
-
-// ── Avatar ──
+function getInitials(name) {
+  if (!name) return '?';
+  return name
+    .split(/\s+/)
+    .filter(Boolean)
+    .slice(0, 2)
+    .map((s) => s[0]?.toUpperCase())
+    .join('');
+}
 
 function Avatar({ initials }) {
   return (
@@ -64,16 +41,29 @@ function Avatar({ initials }) {
 
 // ── Invite member dialog ──
 
-function InviteMemberDialog({ open, onOpenChange, onInvite }) {
-  const [email, setEmail] = useState('');
-  const [role, setRole] = useState('Recruiter');
+function InviteMemberDialog({ open, onOpenChange, roles, onInvite, submitting, error }) {
+  const [email, setEmail]       = useState('');
+  const [username, setUsername] = useState('');
+  const [password, setPassword] = useState('');
+  const [roleId, setRoleId]     = useState('');
+
+  useEffect(() => {
+    if (open) {
+      setEmail(''); setUsername(''); setPassword('');
+      setRoleId(roles[0] ? String(roles[0].id) : '');
+    }
+  }, [open, roles]);
+
+  const canSubmit = email.trim() && username.trim() && password.trim() && roleId;
 
   const handleSubmit = () => {
-    if (!email.trim()) return;
-    onInvite({ email, role });
-    setEmail('');
-    setRole('Recruiter');
-    onOpenChange(false);
+    if (!canSubmit) return;
+    onInvite({
+      email: email.trim(),
+      username: username.trim(),
+      password: password.trim(),
+      role_ids: [Number(roleId)],
+    });
   };
 
   return (
@@ -83,32 +73,60 @@ function InviteMemberDialog({ open, onOpenChange, onInvite }) {
           <DialogTitle>Invite member</DialogTitle>
         </DialogHeader>
         <div className="space-y-3 py-2">
+          {error && (
+            <div className="flex items-center gap-2 px-3 py-2 rounded-lg border border-red-200 bg-red-50 text-xs text-red-600">
+              <AlertTriangle className="h-3.5 w-3.5 shrink-0" /> {error}
+            </div>
+          )}
           <div className="space-y-1.5">
             <label className="text-xs font-medium text-muted-foreground">Email</label>
             <input
               type="email"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
-              placeholder="name@acme.co.id"
+              placeholder="name@company.co.id"
+              className="w-full h-9 rounded-md border px-3 text-sm focus:outline-none focus:ring-1 focus:ring-ring"
+            />
+          </div>
+          <div className="space-y-1.5">
+            <label className="text-xs font-medium text-muted-foreground">Username</label>
+            <input
+              type="text"
+              value={username}
+              onChange={(e) => setUsername(e.target.value)}
+              placeholder="Display name"
+              className="w-full h-9 rounded-md border px-3 text-sm focus:outline-none focus:ring-1 focus:ring-ring"
+            />
+          </div>
+          <div className="space-y-1.5">
+            <label className="text-xs font-medium text-muted-foreground">Temporary password</label>
+            <input
+              type="password"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              placeholder="They can change this after logging in"
               className="w-full h-9 rounded-md border px-3 text-sm focus:outline-none focus:ring-1 focus:ring-ring"
             />
           </div>
           <div className="space-y-1.5">
             <label className="text-xs font-medium text-muted-foreground">Role</label>
             <select
-              value={role}
-              onChange={(e) => setRole(e.target.value)}
+              value={roleId}
+              onChange={(e) => setRoleId(e.target.value)}
               className="w-full h-9 rounded-md border px-3 text-sm bg-background focus:outline-none focus:ring-1 focus:ring-ring"
             >
-              {ROLE_OPTIONS.map((r) => (
-                <option key={r} value={r}>{r}</option>
+              {roles.map((r) => (
+                <option key={r.id} value={r.id}>{r.name}</option>
               ))}
             </select>
           </div>
         </div>
         <DialogFooter>
-          <Button variant="outline" onClick={() => onOpenChange(false)}>Cancel</Button>
-          <Button onClick={handleSubmit} disabled={!email.trim()}>Send invite</Button>
+          <Button variant="outline" onClick={() => onOpenChange(false)} disabled={submitting}>Cancel</Button>
+          <Button onClick={handleSubmit} disabled={!canSubmit || submitting}>
+            {submitting ? <Loader2 className="h-3.5 w-3.5 mr-1.5 animate-spin" /> : null}
+            Send invite
+          </Button>
         </DialogFooter>
       </DialogContent>
     </Dialog>
@@ -117,7 +135,13 @@ function InviteMemberDialog({ open, onOpenChange, onInvite }) {
 
 // ── Manage member dialog ──
 
-function ManageMemberDialog({ member, open, onOpenChange, onUpdateRole, onRemove }) {
+function ManageMemberDialog({ member, roles, open, onOpenChange, onUpdateRole, onRemove, submitting }) {
+  const [roleId, setRoleId] = useState('');
+
+  useEffect(() => {
+    if (member) setRoleId(member.roleId ? String(member.roleId) : '');
+  }, [member]);
+
   if (!member) return null;
 
   return (
@@ -133,28 +157,33 @@ function ManageMemberDialog({ member, open, onOpenChange, onUpdateRole, onRemove
           <div className="space-y-1.5">
             <label className="text-xs font-medium text-muted-foreground">Role</label>
             <select
-              value={member.role}
-              onChange={(e) => onUpdateRole(member.id, e.target.value)}
+              value={roleId}
+              onChange={(e) => setRoleId(e.target.value)}
               className="w-full h-9 rounded-md border px-3 text-sm bg-background focus:outline-none focus:ring-1 focus:ring-ring"
             >
-              {ROLE_OPTIONS.map((r) => (
-                <option key={r} value={r}>{r}</option>
+              {roles.map((r) => (
+                <option key={r.id} value={r.id}>{r.name}</option>
               ))}
             </select>
           </div>
-          <p className="text-xs text-muted-foreground">
-            Cities: {member.cities.join(', ')}
-          </p>
+          <p className="text-xs text-muted-foreground">Email: {member.email}</p>
         </div>
         <DialogFooter className="sm:justify-between">
           <Button
             variant="ghost"
             className="text-red-600 hover:text-red-700 hover:bg-red-50"
-            onClick={() => { onRemove(member.id); onOpenChange(false); }}
+            disabled={submitting}
+            onClick={() => onRemove(member.id)}
           >
             Remove from workspace
           </Button>
-          <Button onClick={() => onOpenChange(false)}>Done</Button>
+          <Button
+            disabled={submitting || !roleId}
+            onClick={() => onUpdateRole(member.id, Number(roleId))}
+          >
+            {submitting ? <Loader2 className="h-3.5 w-3.5 mr-1.5 animate-spin" /> : null}
+            Save
+          </Button>
         </DialogFooter>
       </DialogContent>
     </Dialog>
@@ -164,123 +193,177 @@ function ManageMemberDialog({ member, open, onOpenChange, onUpdateRole, onRemove
 // ── Main Team section ──
 
 export default function TeamSettings() {
-  const [members, setMembers] = useState(TEAM_MEMBERS);
-  const [inviteOpen, setInviteOpen] = useState(false);
+  const navigate = useNavigate();
+
+  const [users, setUsers]     = useState([]);
+  const [roles, setRoles]     = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError]     = useState(null);
+
+  const [inviteOpen, setInviteOpen]     = useState(false);
   const [manageMember, setManageMember] = useState(null);
+  const [submitting, setSubmitting]     = useState(false);
+  const [formError, setFormError]       = useState(null);
+
+  const load = async () => {
+    setLoading(true);
+    setError(null);
+    try {
+      const [usersRes, rolesRes] = await Promise.all([getUsers(), getMasterRoles()]);
+      setUsers(usersRes.data?.users || []);
+      setRoles(rolesRes.data?.roles || []);
+    } catch (err) {
+      setError(err.response?.data?.message || err.message || 'Failed to load team');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => { load(); }, []);
+
+  const members = users.map((u) => {
+    const primaryRole = u.roles?.[0] || null;
+    return {
+      id: u.id,
+      name: u.username || u.email,
+      email: u.email,
+      initials: getInitials(u.username || u.email),
+      roleName: primaryRole?.name || 'No role assigned',
+      roleId: primaryRole?.id || null,
+    };
+  });
 
   const totalCount = members.length;
-  const pendingCount = members.filter((m) => m.status === 'Invited').length;
 
-  const handleInvite = ({ email, role }) => {
-    const initials = email.slice(0, 2).toUpperCase();
-    setMembers((prev) => [
-      ...prev,
-      {
-        id: Date.now(),
-        name: email.split('@')[0],
-        initials,
-        role,
-        access: role,
-        cities: [],
-        status: 'Invited',
-      },
-    ]);
+  const handleInvite = async (payload) => {
+    setSubmitting(true);
+    setFormError(null);
+    try {
+      await createUser(payload);
+      setInviteOpen(false);
+      await load();
+    } catch (err) {
+      setFormError(err.response?.data?.message || err.message || 'Failed to invite member');
+    } finally {
+      setSubmitting(false);
+    }
   };
 
-  const handleUpdateRole = (id, newRole) => {
-    setMembers((prev) =>
-      prev.map((m) => (m.id === id ? { ...m, role: newRole, access: newRole } : m))
+  const handleUpdateRole = async (userId, roleId) => {
+    setSubmitting(true);
+    try {
+      await updateUser(userId, { role_ids: [roleId] });
+      setManageMember(null);
+      await load();
+    } catch (err) {
+      setError(err.response?.data?.message || err.message || 'Failed to update role');
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  const handleRemove = async (userId) => {
+    setSubmitting(true);
+    try {
+      await deleteUser(userId);
+      setManageMember(null);
+      await load();
+    } catch (err) {
+      setError(err.response?.data?.message || err.message || 'Failed to remove member');
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  if (loading) {
+    return (
+      <div className="p-6 flex items-center justify-center">
+        <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
+      </div>
     );
-    setManageMember((prev) => (prev ? { ...prev, role: newRole, access: newRole } : prev));
-  };
-
-  const handleRemove = (id) => {
-    setMembers((prev) => prev.filter((m) => m.id !== id));
-  };
+  }
 
   return (
     <div className="space-y-4">
+      {error && (
+        <div className="flex items-center gap-2 px-4 py-3 rounded-lg border border-red-200 bg-red-50 text-sm text-red-600">
+          <AlertTriangle className="h-4 w-4 shrink-0" />
+          <span>{error}</span>
+        </div>
+      )}
+
       {/* Team members table */}
       <Card>
         <CardHeader className="flex flex-row items-center justify-between">
           <div>
             <CardTitle>Team members</CardTitle>
-            <p className="text-xs text-muted-foreground mt-0.5">
-              {totalCount} total{pendingCount > 0 && ` · ${pendingCount} pending invite${pendingCount > 1 ? 's' : ''}`}
-            </p>
+            <p className="text-xs text-muted-foreground mt-0.5">{totalCount} total</p>
           </div>
-          <Button size="sm" onClick={() => setInviteOpen(true)} className="bg-teal-700 hover:bg-teal-800">
+          <Button size="sm" onClick={() => { setFormError(null); setInviteOpen(true); }} className="bg-teal-700 hover:bg-teal-800">
             <UserPlus className="h-3.5 w-3.5 mr-1.5" />
             Invite member
           </Button>
         </CardHeader>
 
         <CardContent className="p-0">
-          <div className="grid grid-cols-[1.4fr_1fr_1fr_1.2fr_0.9fr_0.7fr] gap-3 px-4 py-2 bg-muted/40 text-xs uppercase tracking-wide text-muted-foreground">
+          <div className="grid grid-cols-[1.4fr_1.4fr_1fr_0.7fr] gap-3 px-4 py-2 bg-muted/40 text-xs uppercase tracking-wide text-muted-foreground">
             <span>Name</span>
+            <span>Email</span>
             <span>Role</span>
-            <span>Access</span>
-            <span>Cities</span>
-            <span>Status</span>
             <span />
           </div>
 
-          {members.map((m) => (
-            <div
-              key={m.id}
-              className="grid grid-cols-[1.4fr_1fr_1fr_1.2fr_0.9fr_0.7fr] gap-3 px-4 py-3 items-center border-b last:border-b-0 text-sm"
-            >
-              <div className="flex items-center gap-2.5">
-                <Avatar initials={m.initials} />
-                <span className="font-medium">{m.name}</span>
-              </div>
-              <span className="text-muted-foreground">{m.role}</span>
-              <div>
-                <Badge variant="outline" className="text-xs font-normal">
-                  {m.access}
-                </Badge>
-              </div>
-              <span className="text-muted-foreground truncate">
-                {m.cities.length > 0 ? m.cities.join(', ') : '—'}
-              </span>
-              <div>
-                <Badge
-                  variant="outline"
-                  className={`text-[10px] px-1.5 py-0 ${STATUS_STYLES[m.status] ?? STATUS_STYLES.Active}`}
-                >
-                  {m.status}
-                </Badge>
-              </div>
-              <Button
-                variant="link"
-                size="sm"
-                className="h-auto p-0 justify-self-end text-sm"
-                onClick={() => setManageMember(m)}
+          {members.length === 0 ? (
+            <div className="px-4 py-8 text-center text-sm text-muted-foreground">No team members yet.</div>
+          ) : (
+            members.map((m) => (
+              <div
+                key={m.id}
+                className="grid grid-cols-[1.4fr_1.4fr_1fr_0.7fr] gap-3 px-4 py-3 items-center border-b last:border-b-0 text-sm"
               >
-                Manage
-              </Button>
-            </div>
-          ))}
+                <div className="flex items-center gap-2.5 min-w-0">
+                  <Avatar initials={m.initials} />
+                  <span className="font-medium truncate">{m.name}</span>
+                </div>
+                <span className="text-muted-foreground truncate">{m.email}</span>
+                <div>
+                  <Badge variant="outline" className="text-xs font-normal">
+                    {m.roleName}
+                  </Badge>
+                </div>
+                <Button
+                  variant="link"
+                  size="sm"
+                  className="h-auto p-0 justify-self-end text-sm"
+                  onClick={() => setManageMember(m)}
+                >
+                  Manage
+                </Button>
+              </div>
+            ))
+          )}
         </CardContent>
       </Card>
 
-      {/* Roles & permissions summary */}
+      {/* Roles summary — real roles, links out to the real Role Management page */}
       <Card>
         <CardHeader>
-          <CardTitle>Roles & permissions</CardTitle>
+          <CardTitle>Roles</CardTitle>
           <p className="text-xs text-muted-foreground mt-0.5">
-            Who can do what. Fine-grained per-job overrides available.
+            Fine-grained module/menu permissions are managed on the Role Management page.
           </p>
         </CardHeader>
         <CardContent className="pt-0 divide-y">
-          {ROLE_SUMMARIES.map((r) => (
+          {roles.map((r) => (
             <div key={r.id} className="flex items-center justify-between py-3">
-              <div>
-                <p className="text-sm font-semibold">{r.name}</p>
-                <p className="text-xs text-muted-foreground mt-0.5">{r.desc}</p>
-              </div>
-              <Button variant="link" size="sm" className="h-auto p-0 text-sm">
-                Edit
+              <p className="text-sm font-semibold">{r.name}</p>
+              <Button
+                variant="link"
+                size="sm"
+                className="h-auto p-0 text-sm"
+                onClick={() => navigate('/settings/role-management')}
+              >
+                Edit permissions
               </Button>
             </div>
           ))}
@@ -290,14 +373,19 @@ export default function TeamSettings() {
       <InviteMemberDialog
         open={inviteOpen}
         onOpenChange={setInviteOpen}
+        roles={roles}
         onInvite={handleInvite}
+        submitting={submitting}
+        error={formError}
       />
       <ManageMemberDialog
         member={manageMember}
+        roles={roles}
         open={!!manageMember}
         onOpenChange={(open) => !open && setManageMember(null)}
         onUpdateRole={handleUpdateRole}
         onRemove={handleRemove}
+        submitting={submitting}
       />
     </div>
   );
