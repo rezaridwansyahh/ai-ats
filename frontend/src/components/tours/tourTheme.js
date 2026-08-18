@@ -15,8 +15,7 @@
 export const CLICK_THROUGH_OPTIONS = {
   showProgress: true,
   buttons: ['skip', 'back', 'primary'],
-  overlayClickAction: 'close',
-  scrollOffset: 100, // accounts for sticky top headers so targets don't scroll underneath them
+  scrollOffset: 100,
   primaryColor: '#0f766e',
   textColor: '#1f2937',
   backgroundColor: '#ffffff',
