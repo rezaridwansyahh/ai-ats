@@ -4,6 +4,7 @@ import screeningService from '../screening/screening.service.js';
 import getDb from '../../config/postgres.js';
 import interviewModel from '../interview/interview.model.js';
 import backgroundCheckModel from '../background-check/background-check.model.js';
+import OfferModel from '../offer/offer.model.js';
 
 class CandidatePipelineService {
   async getAll() {
@@ -150,6 +151,34 @@ class CandidatePipelineService {
         // Ensure a candidate_bg row exists so the candidate is visible
         // in the background-check workboard.
         await backgroundCheckModel.getByCandidateId(candidate_id);
+      } else if (category === 'Offering & Contract') {
+        const candRow = await getDb().query(
+          `SELECT mc.job_id, cj.company_id, cj.job_title
+             FROM master_candidate mc
+             JOIN core_job cj ON cj.id = mc.job_id
+            WHERE mc.id = $1`,
+          [candidate_id]
+        );
+        const { job_id, company_id, job_title } = candRow.rows[0] || {};
+
+        if (job_id && company_id) {
+          const existingOffer = await getDb().query(
+            `SELECT id FROM candidate_offer WHERE candidate_id = $1 AND job_id = $2`,
+            [candidate_id, job_id]
+          );
+
+          if (!existingOffer.rows[0]) {
+            await OfferModel.createOffer({
+              company_id,
+              candidate_id,
+              job_id,
+              position_title: job_title || null,
+              contract_type: 'PKWTT',
+              offer_status: 'draft',
+              created_by: null,
+            });
+          }
+        }
       }
     } catch (sideEffectErr) {
       console.error('addStage side-effect error:', sideEffectErr?.message || sideEffectErr);
