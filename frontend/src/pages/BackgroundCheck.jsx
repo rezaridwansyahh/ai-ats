@@ -2,7 +2,6 @@ import { useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
   ShieldCheck, AlertTriangle, Loader2, RotateCw, Search, HelpCircle, Settings,
-  AlertTriangle, Loader2, RotateCw, Search, HelpCircle,
 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
