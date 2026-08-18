@@ -3,7 +3,7 @@ import userService from './user.service.js';
 class UserController {
   async getAll(req, res) {
     try {
-      const users = await userService.getAll();
+      const users = await userService.getAll(req.user?.company_id);
       res.status(200).json({ message: "List all Users", users });
     } catch (err) {
       res.status(err.status || 500).json({ message: err.message });
@@ -12,7 +12,7 @@ class UserController {
 
   async getAllWithRoles(req, res) {
     try {
-      const users = await userService.getAllWithRoles();
+      const users = await userService.getAllWithRoles(req.user?.company_id);
       res.status(200).json({ message: "List all Users with Roles", users });
     } catch (err) {
       res.status(err.status || 500).json({ message: err.message });
