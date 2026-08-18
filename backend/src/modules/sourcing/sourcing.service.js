@@ -8,6 +8,23 @@ import cvProducer from '../../bullmq/cv/cv.producer.js';
 import JobSourceModel from '../job-source/job-source.model.js';
 import ApplicantModel from '../applicant/applicant.model.js';
 import aiService from '../../shared/services/ai.service.js';
+import companyService from '../company/company.service.js';
+
+
+// ── Save an uploaded PDF buffer to permanent disk storage, return its path ──
+function saveCvBuffer(buffer, companyId, companyName, applicant) {
+  const safeCompanyName = (companyName || 'unknown').replace(/[^a-zA-Z0-9.\-_]/g, '_');
+  const companyFolder = `${companyId}_${safeCompanyName}`;
+
+  const uploadsDir = path.join(process.cwd(), 'uploads', 'cv', companyFolder);
+  fs.mkdirSync(uploadsDir, { recursive: true });
+
+  const savedFilename = `${applicant.id}_${applicant.name}.pdf`;
+  const savedPath = path.join(uploadsDir, savedFilename);
+
+  fs.writeFileSync(savedPath, buffer);
+  return savedPath;
+}
 
 class SourcingService {
   // ─── Sourcing ───
@@ -204,6 +221,7 @@ class SourcingService {
 
       const sourcing = await JobSourceModel.create(null, null, 'internal', extracted.last_position || 'Manual Upload', 'Active', null);
 
+      // Create applicant first (without attachment) so we have its id to name the file with
       const applicant = await ApplicantModel.create({
         job_sourcing_id: sourcing.id,
         company_id:      companyId || null,
@@ -216,6 +234,22 @@ class SourcingService {
         date:            new Date(),
         attachment:      null,
       });
+
+      // Look up company name for a readable folder name (falls back gracefully if missing)
+      let companyName = 'unknown';
+      if (companyId) {
+        try {
+          const company = await companyService.getById(companyId);
+          companyName = company.name;
+        } catch {
+          // company lookup failing shouldn't block the CV upload
+        }
+      }
+
+      // Now save the file using the applicant's real id, then persist the path
+      const savedPath = saveCvBuffer(file.buffer, companyId, companyName, applicant);
+      await ApplicantModel.updateAttachment(applicant.id, savedPath);
+      applicant.attachment = savedPath;
 
       await SourcingModel.updateBatch(batch.id, {
         status:             'Done',

@@ -25,7 +25,16 @@ export default [
     verdict_note: null,
     archived_reason: null,
   },
-
+   {
+    id: 5,
+    candidate_id: 1, // Ayu Pratiwi — latest_stage 9 (currently AT Background Check)
+    job_id: 1,
+    company_id: 1,
+    status: 'claims',
+    verdict: null,
+    verdict_note: null,
+    archived_reason: null,
+  },
   {
     id: 2,
     candidate_id: 6, // Irfan Maulana — latest_stage 11 (past Background Check)

@@ -9,6 +9,7 @@ import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from '@/components/ui/table';
 import { TablePagination } from '@/components/shared/TablePagination';
+import PositionsRail from '@/components/shared/PositionsRail';
 import { getInitials } from '@/lib/batteries';
 
 import { getWorkboard, getLaneCandidates } from '@/api/screening.api';
@@ -25,22 +26,6 @@ const STAGE_META = {
   qa:    { label: 'Q&A',   color: 'bg-amber-100 text-amber-700',   dot: 'bg-amber-500' },
   ready: { label: 'Ready', color: 'bg-emerald-100 text-emerald-700', dot: 'bg-emerald-500' },
 };
-
-function statusTone(status) {
-  switch ((status || '').toLowerCase()) {
-    case 'active':
-    case 'open':
-    case 'running':
-      return 'border-emerald-200 text-emerald-700 bg-emerald-50';
-    case 'draft':
-      return 'border-amber-200 text-amber-700 bg-amber-50';
-    case 'expired':
-    case 'failed':
-      return 'border-rose-200 text-rose-700 bg-rose-50';
-    default:
-      return 'border-border text-muted-foreground bg-muted/40';
-  }
-}
 
 export default function AIScreeningWorkboard() {
   const navigate = useNavigate();
@@ -205,64 +190,17 @@ export default function AIScreeningWorkboard() {
 
       {/* Two-column: positions rail + candidates panel */}
       <div className="grid grid-cols-1 md:grid-cols-[240px_1fr] gap-4">
-        {/* Positions rail */}
-        <Card data-tour="screening-positions-rail" className="self-start">
-          <CardHeader className="pb-2">
-            <CardTitle className="text-xs uppercase tracking-wide text-muted-foreground">
-              Positions · {positions.length}
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="pt-0 px-2 pb-2">
-            {loading ? (
-              <div className="flex justify-center py-6">
-                <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
-              </div>
-            ) : positions.length === 0 ? (
-              <p className="text-xs text-muted-foreground italic px-2 py-3">No jobs.</p>
-            ) : (
-              <>
-                <button
-                  type="button"
-                  onClick={resetView}
-                  className={[
-                    "w-full flex items-center justify-between px-3 py-2 rounded-md text-xs font-semibold",
-                    (activeJob === "")
-                      ? 'bg-primary/10 text-primary'
-                      : 'text-muted-foreground hover:bg-muted/60 text-foreground'
-                  ].join(" ")}
-                >
-                  <span>All positions</span>
-                  <span className="font-mono text-[10px]">{totalCandidates}</span>
-                </button>
-                <div className="space-y-0.5 mt-1">
-                  {positions.map((p) => (
-                    <button
-                      key={p.job_id}
-                      type="button"
-                      onClick={() => handleChangeJob(p)}
-                      className={[
-                        "w-full flex items-center justify-between gap-2 px-3 py-2 rounded-md text-xs",
-                        (activeJob.job_id === p.job_id)
-                          ? 'bg-primary/10 text-primary'
-                          : 'text-muted-foreground hover:bg-muted/60 text-foreground',
-                      ].join(" ")}
-                    >
-                      <span className="truncate text-left flex items-center gap-1.5 min-w-0">
-                        <span className="truncate">{p.job_title}</span>
-                        {p.status && (
-                          <Badge variant="outline" className={`text-[8px] uppercase tracking-wide shrink-0 ${statusTone(p.status)}`}>
-                            {p.status}
-                          </Badge>
-                        )}
-                      </span>
-                      <span className="font-mono text-[10px] text-muted-foreground shrink-0">{p.total}</span>
-                    </button>
-                  ))}
-                </div>
-              </>
-            )}
-          </CardContent>
-        </Card>
+        {/* Positions rail — shared component, reused across all Selection stages */}
+        <PositionsRail
+          dataTour="screening-positions-rail"
+          positions={positions}
+          activeJob={activeJob}
+          onSelectJob={handleChangeJob}
+          onResetView={resetView}
+          totalCount={totalCandidates}
+          loading={loading}
+          emptyMessage="No jobs."
+        />
 
         {/* Candidates panel */}
         <Card>
