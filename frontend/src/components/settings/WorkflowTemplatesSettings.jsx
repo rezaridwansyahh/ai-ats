@@ -1,111 +1,334 @@
-import { useState } from 'react';
-import { FileText, Plus, Copy } from 'lucide-react';
+import { useState, useEffect, useCallback } from 'react';
+import { Plus, Trash2, AlertTriangle } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
+import { Skeleton } from '@/components/ui/skeleton';
+import { toast } from 'sonner';
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter,
 } from '@/components/ui/dialog';
+import {
+  Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
+} from '@/components/ui/select';
 
-// ── Static data — swap for API data when backend is ready ──
+import { getStageCategories } from '@/api/stage-category.api';
+import {
+  getTemplateStages, getTemplateStageById, createTemplateStage, deleteTemplateStage,
+  addTemplateStageStage, updateTemplateStageStage, deleteTemplateStageStage,
+} from '@/api/template-stage.api';
 
-const TEMPLATES = [
-  {
-    id: 'bulk-hiring',
-    name: 'Bulk hiring · Sales/Ops',
-    desc: 'Fast-lane for 10+ reqs with standardized stages',
-    sla: '14 days end-to-end',
-    uses: 47,
-    lastUsed: '3 days ago',
-    stages: ['Applied', 'Auto-screen', 'Assessment day', 'Panel interview', 'Offer', 'Onboard'],
-  },
-  {
-    id: 'executive-search',
-    name: 'Executive search',
-    desc: 'C-level / VP / director roles with heavy HM involvement',
-    sla: '45 days end-to-end',
-    uses: 8,
-    lastUsed: '2 weeks ago',
-    stages: ['Applied', 'HM screen', 'Panel interview', 'Reference check', 'Offer', 'Onboard'],
-  },
-  {
-    id: 'intern-graduate',
-    name: 'Intern / Graduate program',
-    desc: 'Cohort hiring with campus drives',
-    sla: '21 days end-to-end',
-    uses: 12,
-    lastUsed: '1 month ago',
-    stages: ['Applied', 'Auto-screen', 'Assessment day', 'Group interview', 'Offer'],
-  },
-  {
-    id: 'freelance-contract',
-    name: 'Freelance / Contract',
-    desc: 'Short-lived engagements, lightweight',
-    sla: '5 days end-to-end',
-    uses: 23,
-    lastUsed: '1 week ago',
-    stages: ['Applied', 'Portfolio review', 'Interview', 'Offer'],
-  },
-  {
-    id: 'regular-fulltime',
-    name: 'Regular full-time (default)',
-    desc: 'Standard 5-stage pipeline for most IC roles',
-    sla: '30 days end-to-end',
-    uses: 156,
-    lastUsed: 'Today',
-    stages: ['Applied', 'Auto-screen', 'Assessment day', 'Panel interview', 'Offer'],
-  },
-];
+/*
+ * Workflow Templates settings — this is the real master_template_stage
+ * system (job_stage rows with master_id set instead of job_id). These are
+ * the same templates JobStages.jsx (Job Wizard → Pipeline & AI step) lets
+ * a recruiter pick from via the Template dropdown, via
+ * getTemplateStages()/getTemplateStageById().
+ *
+ * This tab exists to CREATE and maintain those templates — not to
+ * "duplicate" or "use in job" (that selection already happens for real in
+ * the Job Wizard, no shortcut needed here).
+ */
+export default function WorkflowTemplatesSettings() {
+  const [templates, setTemplates] = useState([]);
+  const [categories, setCategories] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [selectedId, setSelectedId] = useState(null);
+  const [detail, setDetail] = useState(null);
+  const [loadingDetail, setLoadingDetail] = useState(false);
 
-// ── Stage configure dialog ──
+  const [newTemplateOpen, setNewTemplateOpen] = useState(false);
+  const [addStageOpen, setAddStageOpen] = useState(false);
+  const [configuring, setConfiguring] = useState(null); // stage row being edited
+  const [deleteTemplateOpen, setDeleteTemplateOpen] = useState(false);
+  const [saving, setSaving] = useState(false);
 
-function ConfigureStageDialog({ stage, index, open, onOpenChange, onSave }) {
-  const [name, setName] = useState(stage ?? '');
+  const fetchTemplates = useCallback(async () => {
+    setLoading(true);
+    try {
+      const { data } = await getTemplateStages();
+      const list = data.data || [];
+      setTemplates(list);
+      setSelectedId((prev) => prev ?? list[0]?.id ?? null);
+    } catch (err) {
+      toast.error(err.response?.data?.message || err.message || 'Failed to load templates');
+    } finally {
+      setLoading(false);
+    }
+  }, []);
 
-  if (!open) return null;
+  const fetchDetail = useCallback(async (id) => {
+    if (!id) { setDetail(null); return; }
+    setLoadingDetail(true);
+    try {
+      const { data } = await getTemplateStageById(id);
+      setDetail(data.data);
+    } catch (err) {
+      toast.error(err.response?.data?.message || err.message || 'Failed to load template detail');
+      setDetail(null);
+    } finally {
+      setLoadingDetail(false);
+    }
+  }, []);
 
-  const handleSave = () => {
-    if (!name.trim()) return;
-    onSave(index, name.trim());
-    onOpenChange(false);
+  useEffect(() => {
+    fetchTemplates();
+    getStageCategories().then((res) => setCategories(res.data.data || [])).catch(() => {});
+  }, [fetchTemplates]);
+
+  useEffect(() => { fetchDetail(selectedId); }, [selectedId, fetchDetail]);
+
+  const handleCreateTemplate = async ({ name }) => {
+    setSaving(true);
+    try {
+      const { data } = await createTemplateStage({ name });
+      toast.success('Template created');
+      setNewTemplateOpen(false);
+      await fetchTemplates();
+      setSelectedId(data.data.id);
+    } catch (err) {
+      toast.error(err.response?.data?.message || err.message || 'Failed to create template');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const handleDeleteTemplate = async () => {
+    if (!selectedId) return;
+    setSaving(true);
+    try {
+      await deleteTemplateStage(selectedId);
+      toast.success('Template deleted');
+      setDeleteTemplateOpen(false);
+      setSelectedId(null);
+      await fetchTemplates();
+    } catch (err) {
+      toast.error(err.response?.data?.message || err.message || 'Failed to delete template');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const handleAddStage = async ({ name, stage_type_id }) => {
+    setSaving(true);
+    try {
+      await addTemplateStageStage(selectedId, { name, stage_type_id });
+      toast.success('Stage added');
+      setAddStageOpen(false);
+      await fetchDetail(selectedId);
+    } catch (err) {
+      toast.error(err.response?.data?.message || err.message || 'Failed to add stage');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const handleSaveStage = async ({ name, stage_type_id }) => {
+    setSaving(true);
+    try {
+      await updateTemplateStageStage(configuring.id, { name, stage_type_id });
+      toast.success('Stage updated');
+      setConfiguring(null);
+      await fetchDetail(selectedId);
+    } catch (err) {
+      toast.error(err.response?.data?.message || err.message || 'Failed to update stage');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const handleRemoveStage = async (stageId) => {
+    try {
+      await deleteTemplateStageStage(stageId);
+      toast.success('Stage removed');
+      await fetchDetail(selectedId);
+    } catch (err) {
+      toast.error(err.response?.data?.message || err.message || 'Failed to remove stage');
+    }
   };
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-sm">
-        <DialogHeader>
-          <DialogTitle>Configure stage {index + 1}</DialogTitle>
-        </DialogHeader>
-        <div className="space-y-1.5 py-2">
-          <label className="text-xs font-medium text-muted-foreground">Stage name</label>
-          <input
-            type="text"
-            value={name}
-            onChange={(e) => setName(e.target.value)}
-            className="w-full h-9 rounded-md border px-3 text-sm focus:outline-none focus:ring-1 focus:ring-ring"
-            autoFocus
-          />
+    <div className="space-y-4">
+      <div className="flex items-start justify-between">
+        <div>
+          <h2 className="text-2xl font-bold tracking-tight font-serif">Workflow Templates</h2>
+          <p className="text-sm text-muted-foreground mt-1 max-w-2xl">
+            Pre-configured stage sequences recruiters pick from in Step 2 (Stages) of the Job Wizard.
+          </p>
         </div>
-        <DialogFooter>
-          <Button variant="outline" onClick={() => onOpenChange(false)}>Cancel</Button>
-          <Button onClick={handleSave} disabled={!name.trim()}>Save stage</Button>
-        </DialogFooter>
-      </DialogContent>
-    </Dialog>
+        <Button size="sm" onClick={() => setNewTemplateOpen(true)} className="bg-teal-700 hover:bg-teal-800">
+          <Plus className="h-3.5 w-3.5 mr-1.5" />
+          New template
+        </Button>
+      </div>
+
+      <div className="grid grid-cols-[320px_1fr] gap-4">
+        {/* Template list */}
+        <Card className="py-0 gap-0 overflow-hidden">
+          <CardHeader className="border-b py-3">
+            <CardTitle className="text-base">Templates</CardTitle>
+            <p className="text-xs text-muted-foreground">{templates.length} available</p>
+          </CardHeader>
+          <CardContent className="p-0">
+            {loading ? (
+              <div className="p-4 space-y-3">
+                {Array.from({ length: 3 }).map((_, i) => <Skeleton key={i} className="h-12 w-full" />)}
+              </div>
+            ) : templates.length === 0 ? (
+              <p className="text-xs text-muted-foreground px-4 py-6 text-center">
+                No templates yet. Create one to get started.
+              </p>
+            ) : (
+              templates.map((t) => {
+                const isActive = t.id === selectedId;
+                return (
+                  <button
+                    key={t.id}
+                    onClick={() => setSelectedId(t.id)}
+                    className={`w-full text-left px-4 py-3 border-b last:border-b-0 transition-colors ${
+                      isActive ? 'bg-emerald-50' : 'hover:bg-muted/50'
+                    }`}
+                  >
+                    <p className={`text-sm font-semibold ${isActive ? 'text-emerald-700' : 'text-foreground'}`}>
+                      {t.name}
+                    </p>
+                  </button>
+                );
+              })
+            )}
+          </CardContent>
+        </Card>
+
+        {/* Selected template detail */}
+        {selectedId && (
+          <Card className="py-0 gap-0">
+            <CardHeader className="border-b py-3 flex flex-row items-center justify-between">
+              <CardTitle className="text-base">{detail?.name || '—'}</CardTitle>
+              <Button variant="outline" size="sm" className="text-destructive hover:text-destructive" onClick={() => setDeleteTemplateOpen(true)}>
+                <Trash2 className="h-3.5 w-3.5 mr-1.5" />
+                Delete template
+              </Button>
+            </CardHeader>
+
+            <CardContent className="pt-4 pb-2">
+              <div className="flex items-center justify-between mb-3">
+                <p className="text-xs uppercase tracking-wide text-muted-foreground">
+                  Stage sequence
+                </p>
+                <Button variant="outline" size="sm" onClick={() => setAddStageOpen(true)}>
+                  <Plus className="h-3.5 w-3.5 mr-1.5" />
+                  Add stage
+                </Button>
+              </div>
+
+              {loadingDetail ? (
+                <div className="space-y-2 pb-3">
+                  {Array.from({ length: 3 }).map((_, i) => <Skeleton key={i} className="h-10 w-full" />)}
+                </div>
+              ) : !detail?.stages?.length ? (
+                <p className="text-xs text-muted-foreground py-6 text-center">
+                  No stages yet. Add the first one.
+                </p>
+              ) : (
+                <div className="space-y-0">
+                  {detail.stages.map((stage, i) => (
+                    <div key={stage.id} className="flex items-center gap-3 py-2.5 border-b last:border-b-0">
+                      <div className="h-6 w-6 rounded-full bg-emerald-100 text-emerald-700 text-xs font-semibold flex items-center justify-center flex-shrink-0">
+                        {i + 1}
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <span className="text-sm font-medium">{stage.name}</span>
+                        <p className="text-xs text-muted-foreground">{stage.category}</p>
+                      </div>
+                      <Button variant="outline" size="sm" onClick={() => setConfiguring(stage)}>
+                        Configure
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="h-8 w-8 text-destructive hover:text-destructive"
+                        onClick={() => handleRemoveStage(stage.id)}
+                        title="Remove stage"
+                      >
+                        <Trash2 className="h-3.5 w-3.5" />
+                      </Button>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </CardContent>
+
+            <div className="px-4 py-3 bg-muted/30 text-xs text-muted-foreground border-t">
+              Loaded in: Job Wizard · Step 2 · Stages. Recruiter picks a template, then customizes
+              any stage.
+            </div>
+          </Card>
+        )}
+      </div>
+
+      {newTemplateOpen && (
+        <NewTemplateDialog
+          open={newTemplateOpen}
+          onOpenChange={setNewTemplateOpen}
+          onCreate={handleCreateTemplate}
+          loading={saving}
+        />
+      )}
+
+      {addStageOpen && (
+        <StageDialog
+          open={addStageOpen}
+          onOpenChange={setAddStageOpen}
+          categories={categories}
+          onSave={handleAddStage}
+          loading={saving}
+          title="Add stage"
+        />
+      )}
+
+      {configuring && (
+        <StageDialog
+          open={!!configuring}
+          onOpenChange={(open) => !open && setConfiguring(null)}
+          stage={configuring}
+          categories={categories}
+          onSave={handleSaveStage}
+          loading={saving}
+          title={`Configure "${configuring.name}"`}
+        />
+      )}
+
+      <Dialog open={deleteTemplateOpen} onOpenChange={setDeleteTemplateOpen}>
+        <DialogContent className="sm:max-w-sm">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <AlertTriangle className="h-4 w-4 text-destructive" />
+              Delete template?
+            </DialogTitle>
+          </DialogHeader>
+          <p className="text-sm text-muted-foreground">
+            This removes "{detail?.name}" and all its stages. Jobs already using this template
+            keep their own copy of the stages and are not affected.
+          </p>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setDeleteTemplateOpen(false)}>Cancel</Button>
+            <Button variant="destructive" onClick={handleDeleteTemplate} disabled={saving}>
+              Delete
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+    </div>
   );
 }
 
 // ── New template dialog ──
 
-function NewTemplateDialog({ open, onOpenChange, onCreate }) {
+function NewTemplateDialog({ open, onOpenChange, onCreate, loading }) {
   const [name, setName] = useState('');
-  const [desc, setDesc] = useState('');
 
   const handleSubmit = () => {
     if (!name.trim()) return;
-    onCreate({ name: name.trim(), desc: desc.trim() });
-    setName('');
-    setDesc('');
-    onOpenChange(false);
+    onCreate({ name: name.trim() });
   };
 
   return (
@@ -126,201 +349,70 @@ function NewTemplateDialog({ open, onOpenChange, onCreate }) {
               autoFocus
             />
           </div>
-          <div className="space-y-1.5">
-            <label className="text-xs font-medium text-muted-foreground">Description</label>
-            <input
-              type="text"
-              value={desc}
-              onChange={(e) => setDesc(e.target.value)}
-              placeholder="Short description of when to use this"
-              className="w-full h-9 rounded-md border px-3 text-sm focus:outline-none focus:ring-1 focus:ring-ring"
-            />
-          </div>
           <p className="text-xs text-muted-foreground">
-            Starts with a single "Applied" stage — add more from the detail panel.
+            Starts empty — add stages from the detail panel once created.
           </p>
         </div>
         <DialogFooter>
           <Button variant="outline" onClick={() => onOpenChange(false)}>Cancel</Button>
-          <Button onClick={handleSubmit} disabled={!name.trim()}>Create template</Button>
+          <Button onClick={handleSubmit} disabled={!name.trim() || loading}>
+            {loading ? 'Creating…' : 'Create template'}
+          </Button>
         </DialogFooter>
       </DialogContent>
     </Dialog>
   );
 }
 
-// ── Main Workflow Templates section ──
+// ── Add / Configure stage dialog ──
 
-export default function WorkflowTemplatesSettings() {
-  const [templates, setTemplates] = useState(TEMPLATES);
-  const [selectedId, setSelectedId] = useState(TEMPLATES[0].id);
-  const [newTemplateOpen, setNewTemplateOpen] = useState(false);
-  const [configuring, setConfiguring] = useState(null); // { stageIndex }
+function StageDialog({ open, onOpenChange, stage, categories, onSave, loading, title }) {
+  const [name, setName] = useState(stage?.name || '');
+  const [categoryId, setCategoryId] = useState(stage?.stage_type_id ? String(stage.stage_type_id) : '');
 
-  const selected = templates.find((t) => t.id === selectedId);
-
-  const handleDuplicate = () => {
-    const copy = {
-      ...selected,
-      id: `${selected.id}-copy-${Date.now()}`,
-      name: `${selected.name} (copy)`,
-      uses: 0,
-      lastUsed: 'Never',
-    };
-    setTemplates((prev) => [...prev, copy]);
-    setSelectedId(copy.id);
-  };
-
-  const handleCreateTemplate = ({ name, desc }) => {
-    const newTemplate = {
-      id: `template-${Date.now()}`,
-      name,
-      desc: desc || 'New workflow template',
-      sla: '— end-to-end',
-      uses: 0,
-      lastUsed: 'Never',
-      stages: ['Applied'],
-    };
-    setTemplates((prev) => [...prev, newTemplate]);
-    setSelectedId(newTemplate.id);
-  };
-
-  const handleSaveStage = (index, newName) => {
-    setTemplates((prev) =>
-      prev.map((t) =>
-        t.id === selectedId
-          ? { ...t, stages: t.stages.map((s, i) => (i === index ? newName : s)) }
-          : t
-      )
-    );
-  };
-
-  const handleUseInNewJob = () => {
-    // Hook up to Job Wizard navigation once available
-    console.log('Use in new job:', selectedId);
+  const handleSave = () => {
+    if (!name.trim() || !categoryId) return;
+    onSave({ name: name.trim(), stage_type_id: Number(categoryId) });
   };
 
   return (
-    <div className="space-y-4">
-      <div className="flex items-start justify-between">
-        <div>
-          <h2 className="text-2xl font-bold tracking-tight font-serif">Workflow Templates</h2>
-          <p className="text-sm text-muted-foreground mt-1 max-w-2xl">
-            Pre-configured stage sequences. Pick one during Step 2 of the Job Wizard instead of
-            rebuilding stages every time.
-          </p>
-        </div>
-        <div className="flex gap-2 flex-shrink-0">
-          <Button variant="outline" size="sm">
-            <FileText className="h-3.5 w-3.5 mr-1.5" />
-            Import from v45
-          </Button>
-          <Button size="sm" onClick={() => setNewTemplateOpen(true)} className="bg-teal-700 hover:bg-teal-800">
-            <Plus className="h-3.5 w-3.5 mr-1.5" />
-            New template
-          </Button>
-        </div>
-      </div>
-
-      <div className="grid grid-cols-[320px_1fr] gap-4">
-        {/* Template list */}
-        <Card className="py-0 gap-0 overflow-hidden">
-          <CardHeader className="border-b py-3">
-            <CardTitle className="text-base">Templates</CardTitle>
-            <p className="text-xs text-muted-foreground">{templates.length} available</p>
-          </CardHeader>
-          <CardContent className="p-0">
-            {templates.map((t) => {
-              const isActive = t.id === selectedId;
-              return (
-                <button
-                  key={t.id}
-                  onClick={() => setSelectedId(t.id)}
-                  className={`w-full text-left px-4 py-3 border-b last:border-b-0 transition-colors ${
-                    isActive ? 'bg-emerald-50' : 'hover:bg-muted/50'
-                  }`}
-                >
-                  <p className={`text-sm font-semibold ${isActive ? 'text-emerald-700' : 'text-foreground'}`}>
-                    {t.name}
-                  </p>
-                  <p className="text-xs text-muted-foreground mt-0.5">{t.desc}</p>
-                  <p className="text-[11px] text-muted-foreground/70 mt-1">
-                    {t.uses} uses · {t.lastUsed}
-                  </p>
-                </button>
-              );
-            })}
-          </CardContent>
-        </Card>
-
-        {/* Selected template detail */}
-        {selected && (
-          <Card className="py-0 gap-0">
-            <CardHeader className="border-b py-3 flex flex-row items-center justify-between">
-              <div>
-                <CardTitle className="text-base">{selected.name}</CardTitle>
-                <p className="text-xs text-muted-foreground mt-0.5">
-                  {selected.desc} · SLA {selected.sla}
-                </p>
-              </div>
-              <div className="flex gap-2 flex-shrink-0">
-                <Button variant="outline" size="sm" onClick={handleDuplicate}>
-                  <Copy className="h-3.5 w-3.5 mr-1.5" />
-                  Duplicate
-                </Button>
-                <Button size="sm" onClick={handleUseInNewJob} className="bg-teal-700 hover:bg-teal-800">
-                  Use in new job
-                </Button>
-              </div>
-            </CardHeader>
-
-            <CardContent className="pt-4 pb-2">
-              <p className="text-xs uppercase tracking-wide text-muted-foreground mb-3">
-                Stage sequence
-              </p>
-
-              <div className="space-y-0">
-                {selected.stages.map((stage, i) => (
-                  <div key={i} className="flex items-center gap-3 py-2.5 border-b last:border-b-0">
-                    <div className="h-6 w-6 rounded-full bg-emerald-100 text-emerald-700 text-xs font-semibold flex items-center justify-center flex-shrink-0">
-                      {i + 1}
-                    </div>
-                    <span className="flex-1 text-sm font-medium">{stage}</span>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => setConfiguring({ stageIndex: i })}
-                    >
-                      Configure
-                    </Button>
-                  </div>
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="sm:max-w-sm">
+        <DialogHeader>
+          <DialogTitle>{title}</DialogTitle>
+        </DialogHeader>
+        <div className="space-y-3 py-2">
+          <div className="space-y-1.5">
+            <label className="text-xs font-medium text-muted-foreground">Stage name</label>
+            <input
+              type="text"
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+              className="w-full h-9 rounded-md border px-3 text-sm focus:outline-none focus:ring-1 focus:ring-ring"
+              autoFocus
+            />
+          </div>
+          <div className="space-y-1.5">
+            <label className="text-xs font-medium text-muted-foreground">Category</label>
+            <Select value={categoryId} onValueChange={setCategoryId}>
+              <SelectTrigger className="h-9 text-sm w-full">
+                <SelectValue placeholder="Select a category..." />
+              </SelectTrigger>
+              <SelectContent>
+                {categories.map((c) => (
+                  <SelectItem key={c.id} value={String(c.id)}>{c.name}</SelectItem>
                 ))}
-              </div>
-            </CardContent>
-
-            <div className="px-4 py-3 bg-muted/30 text-xs text-muted-foreground border-t">
-              Loaded in: Job Wizard · Step 2 · Stages. Recruiter picks a template, then customizes
-              any stage.
-            </div>
-          </Card>
-        )}
-      </div>
-
-      <NewTemplateDialog
-        open={newTemplateOpen}
-        onOpenChange={setNewTemplateOpen}
-        onCreate={handleCreateTemplate}
-      />
-
-      {configuring && selected && (
-        <ConfigureStageDialog
-          stage={selected.stages[configuring.stageIndex]}
-          index={configuring.stageIndex}
-          open={!!configuring}
-          onOpenChange={(open) => !open && setConfiguring(null)}
-          onSave={handleSaveStage}
-        />
-      )}
-    </div>
+              </SelectContent>
+            </Select>
+          </div>
+        </div>
+        <DialogFooter>
+          <Button variant="outline" onClick={() => onOpenChange(false)}>Cancel</Button>
+          <Button onClick={handleSave} disabled={!name.trim() || !categoryId || loading}>
+            {loading ? 'Saving…' : 'Save stage'}
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
   );
 }
