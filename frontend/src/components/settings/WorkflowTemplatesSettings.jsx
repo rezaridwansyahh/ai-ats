@@ -56,11 +56,6 @@ const TEMPLATES = [
   },
 ];
 
-const BANNER = {
-  title: 'New in v50 · Action 23.',
-  body: 'v45 had Bulk / Executive / Intern / Freelance / Regular presets; v49 required manual stage config every time. Templates are now loaded during JobWizard Step 2 (Stages).',
-};
-
 // ── Stage configure dialog ──
 
 function ConfigureStageDialog({ stage, index, open, onOpenChange, onSave }) {
@@ -225,12 +220,6 @@ export default function WorkflowTemplatesSettings() {
             New template
           </Button>
         </div>
-      </div>
-
-      {/* Callout banner */}
-      <div className="rounded-lg border border-emerald-200 bg-emerald-50/60 px-4 py-3 text-sm text-emerald-900">
-        <span className="font-semibold">{BANNER.title}</span>{' '}
-        <span className="text-emerald-800">{BANNER.body}</span>
       </div>
 
       <div className="grid grid-cols-[320px_1fr] gap-4">
