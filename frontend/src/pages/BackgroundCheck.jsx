@@ -11,7 +11,7 @@ import { PageHeader } from '@/components/common';
 import { TablePagination } from '@/components/shared/TablePagination';
 import { getInitials } from '@/lib/batteries';
 
-import { getWorkboard, getBgChecksByJob } from '@/api/background-check.api';
+import { getWorkboard, getBgChecksByJob, getBgCheckByCandidate } from '@/api/background-check.api';
 
 import PipelineTour, { usePipelineTour } from '@/components/tours/PipelineTour';
 import { BG_CHECK_WORKBOARD_STEPS } from '@/components/tours/tourSteps';
@@ -124,6 +124,30 @@ export default function BackgroundCheckWorkboard() {
   const toggleStatus = (status) => {
     setActiveStatus((cur) => (cur === status ? null : status));
     setPage(1);
+  };
+
+  const [openingId, setOpeningId] = useState(null);
+
+  // bg_id can be null if the candidate just arrived at Background Check and
+  // no candidate_bg row exists yet (LEFT JOIN in getByJob). Never navigate
+  // straight to "/candidate/null" — resolve/create the row first via the
+  // by-candidate ensure endpoint, then open with the real bg_id.
+  const handleOpenCandidate = async (b) => {
+    if (b.bg_id) {
+      navigate(`/selection/background-check/candidate/${b.bg_id}`);
+      return;
+    }
+    setOpeningId(b.candidate_id);
+    try {
+      const res = await getBgCheckByCandidate(b.candidate_id);
+      const bgId = res.data?.bg_check?.id;
+      if (bgId) navigate(`/selection/background-check/candidate/${bgId}`);
+      else setError('Could not open this candidate — no background check record found.');
+    } catch (err) {
+      setError(err.response?.data?.message || err.message || 'Failed to open candidate');
+    } finally {
+      setOpeningId(null);
+    }
   };
 
   const resetView = () => { setActiveStatus(null); setSearch(''); setPage(1); setActiveJob(''); };
@@ -321,9 +345,11 @@ export default function BackgroundCheckWorkboard() {
                     const meta = STATUS_META[b.status] || { label: b.status, color: 'bg-muted text-muted-foreground' };
                     return (
                       <div
-                        key={b.bg_id}
-                        onClick={() => navigate(`/selection/background-check/candidate/${b.bg_id}`)}
-                        className="flex items-center justify-between gap-3 p-3 border rounded-lg transition-colors hover:bg-muted/30 cursor-pointer"
+                        key={b.bg_id ?? `candidate-${b.candidate_id}`}
+                        onClick={() => handleOpenCandidate(b)}
+                        className={`flex items-center justify-between gap-3 p-3 border rounded-lg transition-colors hover:bg-muted/30 cursor-pointer ${
+                          openingId === b.candidate_id ? 'opacity-60 pointer-events-none' : ''
+                        }`}
                       >
                         <div className="flex items-center gap-3 min-w-0 flex-1">
                           <div className="h-8 w-8 rounded-full bg-primary/10 text-primary flex items-center justify-center text-[11px] font-bold shrink-0">
