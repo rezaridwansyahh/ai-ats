@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
-import { Joyride, STATUS } from 'react-joyride';
+import { Joyride, STATUS, EVENTS } from 'react-joyride';
 import { useActionGatedTour } from './useActionGatedTour';
 import { ACTION_GATED_OPTIONS, ACTION_GATED_STYLES } from './tourTheme';
 /**
@@ -97,7 +97,16 @@ export default function CvUploadWizard({ file, successData, historyVisible, run,
   });
 
   const handleEvent = (data) => {
-    if (data.status === STATUS.SKIPPED) {
+    if (data.type === EVENTS.TARGET_NOT_FOUND) {
+      setRun(false);
+      markSeen();
+      return;
+    }
+    if (
+      data.status === STATUS.SKIPPED ||
+      data.status === STATUS.FINISHED ||
+      data.action === 'close'
+    ) {
       setRun(false);
       markSeen();
     }
@@ -120,6 +129,7 @@ export default function CvUploadWizard({ file, successData, historyVisible, run,
       run={run}
       continuous
       scrollToFirstStep
+      disableOverlayClose
       onEvent={handleEvent}
       options={ACTION_GATED_OPTIONS}
       locale={{ skip: 'Skip' }}

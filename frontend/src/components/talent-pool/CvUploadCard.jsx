@@ -398,7 +398,7 @@ export default function CvUploadCard() {
         file={file}
         successData={successData}
         historyVisible={!!successData && !modalOpen}
-        run={wizardRun}
+        run={wizardRun && !modalOpen}
         setRun={setWizardRun}
         markSeen={markWizardSeen}
       />

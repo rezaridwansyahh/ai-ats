@@ -191,19 +191,19 @@ export default function IntegrationsSettings() {
                   key={channel.id}
                   className="flex items-center justify-between gap-4 w-full px-4 py-3 border-b last:border-b-0 flex-wrap"
                 >
-                  <div className="flex items-center gap-8 flex-wrap min-w-0">
-                    <div className="flex items-center gap-3 min-w-0">
+                  <div className="flex items-center gap-8 min-w-0">
+                    <div className="flex items-center gap-3 w-56 shrink-0 min-w-0">
                       <div className="h-10 w-10 rounded-lg flex items-center justify-center shrink-0 overflow-hidden bg-muted/40">
                         <img src={LOGOS[channel.id]} alt={channel.name} className="h-full w-full object-contain" />
                       </div>
                       <div className="min-w-0">
                         <span className="text-sm font-semibold">{channel.name}</span>
-                        <div className="text-xs text-muted-foreground truncate">
+                        <div className="text-xs text-muted-foreground truncate" title={account?.email || ''}>
                           Account: {account?.email || '—'}
                         </div>
                       </div>
                     </div>
-                    <div className="text-xs text-muted-foreground space-y-0.5">
+                    <div className="text-xs text-muted-foreground space-y-0.5 shrink-0">
                       <div>Last connection: {account?.last_connect || '—'}</div>
                       <div>Last sync: {account?.last_sync || '—'}</div>
                     </div>
@@ -284,13 +284,13 @@ export default function IntegrationsSettings() {
                   key={channel.id}
                   className="flex items-center justify-between gap-4 w-full px-4 py-3 border-b last:border-b-0 flex-wrap"
                 >
-                  <div className="flex items-center gap-8 flex-wrap min-w-0">
-                    <div className="flex items-center gap-3 min-w-0">
+                  <div className="flex items-center gap-8 min-w-0">
+                    <div className="flex items-center gap-3 w-56 shrink-0 min-w-0">
                       <div className="h-10 w-10 rounded-lg flex items-center justify-center shrink-0 overflow-hidden bg-muted/40">
                         <img src={LOGOS[channel.id]} alt={channel.name} className="h-full w-full object-contain" />
                       </div>
                       <div className="min-w-0">
-                        <span className="text-sm font-semibold">{channel.name}</span>
+                        <span className="text-sm font-semibold truncate block">{channel.name}</span>
                         <div>
                           {account ? (
                             <StatusBadge tone="positive">{account.condition || 'Connected'}</StatusBadge>
@@ -300,7 +300,7 @@ export default function IntegrationsSettings() {
                         </div>
                       </div>
                     </div>
-                    <div className="text-xs text-muted-foreground">
+                    <div className="text-xs text-muted-foreground shrink-0">
                       Last connection: {account?.last_connect || '—'}
                     </div>
                   </div>
