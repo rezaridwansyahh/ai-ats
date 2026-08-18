@@ -14,7 +14,7 @@ import { TablePagination } from '@/components/shared/TablePagination';
 import PositionsRail from '@/components/shared/PositionsRail';
 import { getInitials } from '@/lib/batteries';
 
-import { getWorkboard, getBgChecksByJob } from '@/api/background-check.api';
+import { getWorkboard, getBgChecksByJob, getBgCheckByCandidate } from '@/api/background-check.api';
 
 import PipelineTour, { usePipelineTour } from '@/components/tours/PipelineTour';
 import { BG_CHECK_WORKBOARD_STEPS } from '@/components/tours/tourSteps';
@@ -135,14 +135,31 @@ export default function BackgroundCheckWorkboard() {
     setPage(1);
   };
 
-  const resetView = () => { 
-    setActiveStatus(null); 
-    setSearch(''); 
-    setPage(1); 
-    setActiveJob('');
+  const [openingId, setOpeningId] = useState(null);
+
+  // bg_id can be null if the candidate just arrived at Background Check and
+  // no candidate_bg row exists yet (LEFT JOIN in getByJob). Never navigate
+  // straight to "/candidate/null" — resolve/create the row first via the
+  // by-candidate ensure endpoint, then open with the real bg_id.
+  const handleOpenCandidate = async (b) => {
+    if (b.bg_id) {
+      navigate(`/selection/background-check/candidate/${b.bg_id}`);
+      return;
+    }
+    setOpeningId(b.candidate_id);
+    try {
+      const res = await getBgCheckByCandidate(b.candidate_id);
+      const bgId = res.data?.bg_check?.id;
+      if (bgId) navigate(`/selection/background-check/candidate/${bgId}`);
+      else setError('Could not open this candidate — no background check record found.');
+    } catch (err) {
+      setError(err.response?.data?.message || err.message || 'Failed to open candidate');
+    } finally {
+      setOpeningId(null);
+    }
   };
 
-  const handleChangeJob = (position) => setActiveJob(position);
+  const resetView = () => { setActiveStatus(null); setSearch(''); setPage(1); setActiveJob(''); };
 
   return (
     <div className="space-y-5 p-6">
@@ -257,50 +274,49 @@ export default function BackgroundCheckWorkboard() {
               </div>
             ) : (
               <>
-                <div data-tour="bgcheck-candidate-list" className="rounded-lg border border-border overflow-hidden">
-                  <Table className="table-fixed w-full">
-                    <TableHeader className="bg-muted/40">
-                      <TableRow>
-                        <TableHead className="w-[30%] text-[10px] font-bold uppercase pl-6">Name</TableHead>
-                        <TableHead className="w-[25%] text-[10px] font-bold uppercase">Last Position</TableHead>
-                        <TableHead className="w-[25%] text-[10px] font-bold uppercase">Job</TableHead>
-                        <TableHead className="w-[20%] text-[10px] font-bold uppercase">Stage</TableHead>
-                      </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                      {paged.map((b) => {
-                        const name = b.candidate_name || `#${b.candidate_id}`;
-                        const meta = STATUS_META[b.status] || { label: b.status, color: 'bg-muted text-muted-foreground' };
-                        return (
-                          <TableRow
-                            key={b.bg_id}
-                            className="hover:bg-muted/30 transition-colors cursor-pointer"
-                            onClick={() => navigate(`/selection/background-check/candidate/${b.bg_id}`)}
-                          >
-                            <TableCell className="text-xs pl-6">
-                              <div className="flex items-center gap-2 min-w-0">
-                                <div className="h-7 w-7 rounded-full bg-primary/10 text-primary flex items-center justify-center text-[10px] font-bold shrink-0">
-                                  {getInitials(name)}
-                                </div>
-                                <span className="font-semibold truncate">{name}</span>
-                              </div>
-                            </TableCell>
-                            <TableCell className="text-xs truncate">
-                              {b.last_position || '—'}
-                            </TableCell>
-                            <TableCell className="text-xs text-muted-foreground truncate">
-                              {b.job_title || '—'}
-                            </TableCell>
-                            <TableCell>
-                              <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-semibold ${meta.color}`}>
-                                {meta.label}
+                <div data-tour="bgcheck-candidate-list" className="space-y-2">
+                  {paged.map((b) => {
+                    const name = b.candidate_name || `#${b.candidate_id}`;
+                    const meta = STATUS_META[b.status] || { label: b.status, color: 'bg-muted text-muted-foreground' };
+                    return (
+                      <div
+                        key={b.bg_id ?? `candidate-${b.candidate_id}`}
+                        onClick={() => handleOpenCandidate(b)}
+                        className={`flex items-center justify-between gap-3 p-3 border rounded-lg transition-colors hover:bg-muted/30 cursor-pointer ${
+                          openingId === b.candidate_id ? 'opacity-60 pointer-events-none' : ''
+                        }`}
+                      >
+                        <div className="flex items-center gap-3 min-w-0 flex-1">
+                          <div className="h-8 w-8 rounded-full bg-primary/10 text-primary flex items-center justify-center text-[11px] font-bold shrink-0">
+                            {getInitials(name)}
+                          </div>
+                          <div className="min-w-0">
+                            <div className="text-sm font-semibold truncate">{name}</div>
+                            <div className="flex items-center gap-3 mt-1">
+                              {b.last_position && (
+                                <span className="text-[10px] text-muted-foreground truncate">
+                                  {b.last_position}
+                                </span>
+                              )}
+                              <span className="text-[10px] text-muted-foreground truncate">
+                                {b.job_title || '—'}
                               </span>
-                            </TableCell>
-                          </TableRow>
-                        );
-                      })}
-                    </TableBody>
-                  </Table>
+                            </div>
+                          </div>
+                        </div>
+                        <div className="flex items-center gap-2 shrink-0">
+                          {b.verdict && (
+                            <span className="text-[10px] font-mono text-muted-foreground bg-muted px-1.5 py-0.5 rounded">
+                              {b.verdict.replace(/_/g, ' ')}
+                            </span>
+                          )}
+                          <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-semibold ${meta.color}`}>
+                            {meta.label}
+                          </span>
+                        </div>
+                      </div>
+                    );
+                  })}
                 </div>
 
                 <div className="pt-3">

@@ -8,11 +8,14 @@ import { getCompanyById, updateCompany } from '@/api/company.api';
 /*
  * General settings — Organization section.
  *
- * Only 3 fields are real, backed by core_company: name, website, email.
+ * All 5 columns core_company actually has are editable here: name, website,
+ * email, description, logo_url (logo_url is a plain URL string — no upload
+ * mechanism is wired up yet, see company.service.js update()).
+ *
  * The mockup's Legal Entity, Industry, entire Locale & Regional section,
  * and entire Workspace Defaults section have no backend support — confirmed
- * against company.model.js (only name/description/email/website/logo_url
- * exist) and automation-setting (scoped per-job, not per-workspace).
+ * against company.model.js (only the 5 columns above exist) and
+ * automation-setting (scoped per-job, not per-workspace).
  * Not rendering those here rather than showing dead "Edit" buttons.
  */
 export default function GeneralSettings() {
@@ -133,6 +136,30 @@ export default function GeneralSettings() {
             draftValue={draftValue}
             setDraftValue={setDraftValue}
             onEdit={() => startEdit('email')}
+            onSave={saveEdit}
+            onCancel={cancelEdit}
+            saving={saving}
+          />
+          <SettingRow
+            label="Description"
+            field="description"
+            value={company.description}
+            editing={editingField === 'description'}
+            draftValue={draftValue}
+            setDraftValue={setDraftValue}
+            onEdit={() => startEdit('description')}
+            onSave={saveEdit}
+            onCancel={cancelEdit}
+            saving={saving}
+          />
+          <SettingRow
+            label="Logo URL"
+            field="logo_url"
+            value={company.logo_url}
+            editing={editingField === 'logo_url'}
+            draftValue={draftValue}
+            setDraftValue={setDraftValue}
+            onEdit={() => startEdit('logo_url')}
             onSave={saveEdit}
             onCancel={cancelEdit}
             saving={saving}
