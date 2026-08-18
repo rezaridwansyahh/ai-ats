@@ -21,6 +21,7 @@ DROP TABLE IF EXISTS applicant_job_score CASCADE;  -- orphan cleanup: old name (
 DROP TABLE IF EXISTS cv_upload_batch CASCADE;
 DROP TABLE IF EXISTS master_skill_alias CASCADE;
 DROP TABLE IF EXISTS core_company CASCADE;
+DROP TABLE IF EXISTS company_setting CASCADE;
 DROP TABLE IF EXISTS mapping_applicant_linkedin CASCADE;
 DROP TABLE IF EXISTS mapping_applicant_seek CASCADE;
 DROP TABLE IF EXISTS mapping_job_sourcing_linkedin CASCADE;
@@ -155,6 +156,21 @@ CREATE TABLE master_users (
   email VARCHAR(100) NOT NULL,
   username VARCHAR(100) NOT NULL,
   company_id INTEGER REFERENCES core_company(id) ON DELETE SET NULL
+);
+
+-- Generic key/value store for Settings tabs that are pure toggle/preference
+-- state (Notifications, Candidate Portal). One JSONB blob per
+-- (company_id, key) — good enough to make these pages persist real data
+-- instead of resetting on every reload, without building a bespoke table
+-- for each one.
+CREATE TABLE company_setting (
+  id SERIAL PRIMARY KEY,
+  company_id INTEGER REFERENCES core_company(id) ON DELETE CASCADE,
+  key VARCHAR(100) NOT NULL,
+  value JSONB NOT NULL DEFAULT '{}'::jsonb,
+  created_at TIMESTAMP NOT NULL DEFAULT NOW(),
+  updated_at TIMESTAMP NOT NULL DEFAULT NOW(),
+  UNIQUE(company_id, key)
 );
 
 CREATE TABLE company_usage (

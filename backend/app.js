@@ -41,6 +41,7 @@ import automationSetting from "./src/modules/automation-setting/automation.route
 import screening from "./src/modules/screening/screening.route.js"
 import company from "./src/modules/company/company.route.js"
 import companyUsage from "./src/modules/company-usage/company-usage.route.js"
+import setting from "./src/modules/setting/setting.route.js"
 import portalAssessment from "./src/modules/portal-assessment/portal-assessment.route.js"
 import portalQa from "./src/modules/portal-qa/portal-qa.route.js"
 import interview from "./src/modules/interview/interview.route.js"
@@ -102,6 +103,7 @@ portal.use("/api/automation-setting", automationSetting);
 portal.use("/api/screening", screening);
 portal.use("/api/company", company);
 portal.use("/api/company-usage", companyUsage);
+portal.use("/api/setting", setting);
 portal.use("/api/participant", participant);
 portal.use("/api/question", question);
 portal.use("/api/session", session);
@@ -149,6 +151,7 @@ app.use("/api/automation-setting", automationSetting);
 app.use("/api/screening", screening);
 app.use("/api/company", company);
 app.use("/api/company-usage", companyUsage);
+app.use("/api/setting", setting);
 app.use("/api/portal-assessment", portalAssessment);
 app.use("/api/portal-qa", portalQa);
 app.use("/api/interview", interview);

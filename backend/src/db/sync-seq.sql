@@ -1,5 +1,6 @@
 -- Run this after seeding to sync all PostgreSQL sequences
 SELECT setval('core_company_id_seq',              (SELECT MAX(id) FROM core_company));
+SELECT setval('company_setting_id_seq',           COALESCE((SELECT MAX(id) FROM company_setting), 1));
 SELECT setval('master_users_id_seq',              (SELECT MAX(id) FROM master_users));
 SELECT setval('company_usage_id_seq',             COALESCE((SELECT MAX(id) FROM company_usage), 1));
 SELECT setval('candidate_screening_id_seq',       COALESCE((SELECT MAX(id) FROM candidate_screening), 1));
