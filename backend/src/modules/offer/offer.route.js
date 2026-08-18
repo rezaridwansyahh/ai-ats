@@ -81,30 +81,6 @@ router.post(
   OfferController.respondToNegotiation
 );
 
-// Generate contract (after offer accepted) — LEGACY, superseded by the
-// contract/document/* routes below
-router.post(
-  '/:offer_id/contract/generate',
-  authToken,
-  checkPermission('Offer & Onboard', 'Offer & Contract', 'update'),
-  OfferController.generateContract
-);
-
-// Send contract for signature — LEGACY, superseded by /contract/document/send
-router.post(
-  '/:offer_id/contract/send',
-  authToken,
-  checkPermission('Offer & Onboard', 'Offer & Contract', 'update'),
-  OfferController.sendContract
-);
-
-// Candidate signs contract (public endpoint - portal) — LEGACY, superseded
-// by the portal-contract submit flow
-router.post(
-  '/:offer_id/contract/sign',
-  OfferController.signContract
-);
-
 // L4 Calibration - bulk advance to Onboarding
 router.post(
   '/calibrate/:job_id/advance',

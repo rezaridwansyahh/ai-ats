@@ -137,6 +137,8 @@ export default function BackgroundCheckWorkboard() {
 
   const [openingId, setOpeningId] = useState(null);
 
+  const handleChangeJob = (position) => setActiveJob(position);
+
   // bg_id can be null if the candidate just arrived at Background Check and
   // no candidate_bg row exists yet (LEFT JOIN in getByJob). Never navigate
   // straight to "/candidate/null" — resolve/create the row first via the

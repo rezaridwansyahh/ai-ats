@@ -749,12 +749,12 @@ CREATE TABLE candidate_offer (
   updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
   UNIQUE (candidate_id, job_id)
 );
-
+ 
 CREATE INDEX idx_candidate_offer_company ON candidate_offer(company_id);
 CREATE INDEX idx_candidate_offer_candidate ON candidate_offer(candidate_id);
 CREATE INDEX idx_candidate_offer_job ON candidate_offer(job_id);
 CREATE INDEX idx_candidate_offer_status ON candidate_offer(offer_status);
-
+ 
 CREATE TABLE offer_compensation (
   id SERIAL PRIMARY KEY,
   offer_id INTEGER NOT NULL UNIQUE REFERENCES candidate_offer(id) ON DELETE CASCADE,
@@ -770,35 +770,35 @@ CREATE TABLE offer_compensation (
   created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
   updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
-
+ 
 CREATE INDEX idx_offer_compensation_offer ON offer_compensation(offer_id);
-
+ 
 CREATE TABLE offer_send (
   id SERIAL PRIMARY KEY,
   offer_id INTEGER NOT NULL REFERENCES candidate_offer(id) ON DELETE CASCADE,
   document_type document_type_enum NOT NULL DEFAULT 'offer',
   token UUID NOT NULL UNIQUE DEFAULT gen_random_uuid(),
   token_expires_at TIMESTAMPTZ,
-  document JSONB,
   sent_at TIMESTAMPTZ,
   sent_by INTEGER REFERENCES master_users(id) ON DELETE SET NULL,
-  signed_at TIMESTAMPTZ,
   revoked_at TIMESTAMPTZ,
   revoked_by INTEGER REFERENCES master_users(id) ON DELETE SET NULL,
   revocation_reason TEXT,
   candidate_file VARCHAR(255),
   candidate_uploaded_at TIMESTAMPTZ,
   submitted_at TIMESTAMPTZ,
-  status VARCHAR(20) NOT NULL DEFAULT 'draft',
+  status VARCHAR(20) NOT NULL DEFAULT 'draft'
+    CHECK (status IN ('draft', 'sent', 'revoked', 'submitted')),
   created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
   updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
-
+CREATE INDEX idx_offer_send_offer ON offer_send(offer_id, document_type);
+ 
 CREATE TABLE offer_document (
   id SERIAL PRIMARY KEY,
   offer_id INTEGER NOT NULL REFERENCES candidate_offer(id) ON DELETE CASCADE,
   file VARCHAR(255) NOT NULL,
-  method VARCHAR(20) NOT NULL DEFAULT 'upload', -- 'upload' | 'print'
+  method VARCHAR(20) NOT NULL DEFAULT 'upload', -- 'upload' | 'print' ('print' unused today)
   document_type document_type_enum NOT NULL DEFAULT 'offer',
   uploaded_by INTEGER REFERENCES master_users(id) ON DELETE SET NULL,
   uploaded_at TIMESTAMPTZ,
@@ -806,7 +806,7 @@ CREATE TABLE offer_document (
   updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
   UNIQUE (offer_id, document_type)
 );
-
+ 
 CREATE TABLE company_offer_letter (
   id SERIAL PRIMARY KEY,
   company_id INTEGER NOT NULL UNIQUE REFERENCES core_company(id) ON DELETE CASCADE,
@@ -817,57 +817,21 @@ CREATE TABLE company_offer_letter (
   created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
   updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
-
+ 
 CREATE TABLE offer_negotiation (
   id SERIAL PRIMARY KEY,
   offer_id INTEGER NOT NULL REFERENCES candidate_offer(id) ON DELETE CASCADE,
   initiated_by negotiation_initiator_type NOT NULL,
   message TEXT NOT NULL,
   requested_salary NUMERIC(15,2),
-  response_type VARCHAR(20), -- 'accept' | 'counter' | 'decline'
-  status VARCHAR(20) NOT NULL DEFAULT 'pending', -- pending | responded | closed
+  response_type VARCHAR(20), -- 'accept' | 'counter' | 'decline' ('counter' unused today)
+  status VARCHAR(20) NOT NULL DEFAULT 'pending', -- pending | responded | closed ('closed' unused today)
   created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
-
+ 
 CREATE INDEX idx_offer_negotiation_offer ON offer_negotiation(offer_id);
 CREATE INDEX idx_offer_negotiation_created ON offer_negotiation(created_at DESC);
-
-CREATE TABLE offer_contract (
-  id SERIAL PRIMARY KEY,
-  offer_id INTEGER NOT NULL UNIQUE REFERENCES candidate_offer(id) ON DELETE CASCADE,
-  contract_type contract_type_enum NOT NULL,
-  start_date DATE NOT NULL,
-  end_date DATE, -- NULL for PKWTT (permanent), required for PKWT (fixed-term)
-  status contract_status_type NOT NULL DEFAULT 'draft',
-  pdf_url TEXT,
-  metadata JSONB NOT NULL DEFAULT '{}', -- { clauses, benefits, termination_conditions, etc }
-  signature_data TEXT, -- base64 PNG of candidate signature
-  signed_at TIMESTAMPTZ,
-  sent_at TIMESTAMPTZ,
-  sent_by INTEGER REFERENCES master_users(id) ON DELETE SET NULL,
-  generated_by INTEGER REFERENCES master_users(id) ON DELETE SET NULL,
-  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-  updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
-);
-
-CREATE INDEX idx_offer_contract_offer ON offer_contract(offer_id);
-CREATE INDEX idx_offer_contract_status ON offer_contract(status);
-
-CREATE TABLE offer_approval (
-  id SERIAL PRIMARY KEY,
-  offer_id INTEGER NOT NULL REFERENCES candidate_offer(id) ON DELETE CASCADE,
-  step_order INTEGER NOT NULL,
-  role VARCHAR(100) NOT NULL,
-  approver_name VARCHAR(255) NOT NULL,
-  status VARCHAR(20) NOT NULL DEFAULT 'pending' CHECK (status IN ('pending', 'approved', 'rejected')),
-  note TEXT,
-  decided_at TIMESTAMPTZ,
-  decided_by INTEGER REFERENCES master_users(id) ON DELETE SET NULL,
-  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-  updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-  UNIQUE (offer_id, step_order)
-);
-
+ 
 CREATE TABLE contract_executed_document (
   id SERIAL PRIMARY KEY,
   offer_id INTEGER NOT NULL UNIQUE REFERENCES candidate_offer(id) ON DELETE CASCADE,
