@@ -390,7 +390,7 @@ class OfferService {
     });
 
     const baseUrl = process.env.FRONTEND_URL || 'http://localhost:5173';
-    const link = `${baseUrl}/offer/send/${send.token}`;
+    const link = `${baseUrl}/portal/offer/send/${send.token}`;
 
     await sendOfferEmail({
       candidateName: offer.candidate_name,
@@ -706,7 +706,7 @@ class OfferService {
     });
 
     const baseUrl = process.env.FRONTEND_URL || 'http://localhost:5173';
-    const link = `${baseUrl}/contract/send/${send.token}`;
+    const link = `${baseUrl}/portal/contract/send/${send.token}`;
 
     await sendOfferEmail({
       candidateName: offer.candidate_name,
