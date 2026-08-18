@@ -679,7 +679,7 @@ class InterviewService {
 
     return {
       pack,
-      portal_link: `/interview/${pack.token}`,
+      portal_link: `/portal/interview/${pack.token}`,
     };
   }
 
