@@ -72,30 +72,41 @@ class ExtractJobPostService {
 
         // 1️⃣ Extract basic row info
         const basicData = await row.evaluate((row) => {
+          const rows = document.querySelectorAll('table tbody tr');
+          const row = rows[7];
+          // get seek_id
+          const href = row.getAttribute('data-testid');
+          const seek_id = Number(href.match(/\d+/)[0]);
+
+          // Select td as array of nodelist
           const cells = Array.from(row.querySelectorAll('td'));
-          const href = cells[1]?.querySelector('a')?.getAttribute('href') || '';
-          const candidateCount = cells[2]?.querySelector('span:nth-of-type(1)')?.textContent.trim() || '';
-          const wordCreated = cells[1]?.querySelector('span:nth-of-type(2)')?.textContent.trim();
-          const check = wordCreated?.match(/(oleh)/);
-          let createdDate;
-          let createdBy;
-          
-          if(check) {
-            createdDate = cells[1]?.querySelector('span:nth-of-type(2)')?.textContent.trim().match(/\d.+?(?=\s+oleh)/);
-            createdBy = cells[1]?.querySelector('span:nth-of-type(2)')?.textContent.trim().match(/(?<=oleh\s).+$/);
-          } else {
-            createdDate = cells[1]?.querySelector('span:nth-of-type(2)')?.textContent.trim().match(/\d.*$/);
-          }
-          const statusT = cells[0]?.textContent.trim() || '';
-          const idMatch = statusT === 'Draf' ? href.match(/draftId=(.+)/) : href.match(/(\d+)$/);
-          console.log(idMatch);
+
+          // get location, job title, job location
+          const divMain = cells[0].querySelector('div');
+
+          const divDividedArr = divMain.querySelectorAll(':scope > div');
+
+          const job_title = divDividedArr[0].querySelector('[data-testid="jobTitle"]').innerText;
+
+          const locations = divDividedArr[1].querySelector('span:first-of-type')?.textContent.trim();
+          const created_by = divDividedArr[1].querySelector(':scope > span:nth-last-child(1)')?.textContent.trim();
+
+          // get candidate count
+          const countString = cells[1].querySelector('[data-testid="numberOfCandidatesLink"]').innerText;
+          const countArr = countString.match(/\d+/g).map(Number); 
+          const candidate_count = Number(countArr.join('')); 
+
+          console.log(seek_id);
+          console.log(job_title);
+          console.log(locations);
+          console.log(created_by);
+          console.log(candidate_count);
           return {
-            status: statusT,
-            seek_id: statusT === 'Draf' ? idMatch[1] : idMatch[0],
-            job_title: cells[1]?.querySelector('[data-testid="jobTitle"]')?.textContent.trim() || '',
-            candidate_count: candidateCount ? parseInt(candidateCount.replace(/,/g, ""), 10) : null,
-            created_date: createdDate ? createdDate[0] : null,
-            created_by: createdBy ? createdBy[0] : null
+            seek_id: seek_id,
+            job_title: job_title,
+            candidate_count: candidate_count,
+            location: locations,
+            created_by: created_by
           };
         });
 
@@ -121,20 +132,10 @@ class ExtractJobPostService {
           continue;
         }
 
-        // ---- NEW TAB: extract job description ----
-        const [newPage] = await Promise.all([
-          new Promise((resolve) => {
-            const handler = async (target) => {
-              const p = await target.page();
-              if (p) {
-                browser.off('targetcreated', handler);
-                resolve(p);
-              }
-            };
-            browser.on('targetcreated', handler);
-          }),
-          page.click('div[aria-label="view-job"]'),
-        ]);
+        console.log("Extract Job Description");
+
+        const newPage = await browser.newPage();
+        await newPage.goto(`https://id.jobstreet.com/id/expiredjob/${basicData.seek_id}?ref=hirer-jobs-list`);
 
         await newPage.waitForSelector('div[data-automation="jobAdDetails"]', {
           visible: true,
@@ -176,7 +177,11 @@ class ExtractJobPostService {
           continue;
         }
 
-        await page.click('[aria-label="view-job-info"]');
+        await page.evaluate(() => {
+          const btnDetail = document.querySelectorAll('[role="menuitem"]');
+          btnDetail[1].click();
+        })
+        
         await page.waitForSelector('[data-testid="jobInformation"]', { visible: true });
 
         const jobDetail = await page.evaluate(() => {
@@ -195,7 +200,7 @@ class ExtractJobPostService {
                 result[key.toLowerCase().replace(/\s+/g, "_")] = value;
             });
             console.log(divs);
-        });
+          });
 
           return result;
         });
