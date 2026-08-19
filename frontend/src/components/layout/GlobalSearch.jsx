@@ -1,16 +1,28 @@
 import { useState, useRef, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Search, Home, Briefcase, GitBranch, Users, Search as SearchIcon, Mail, Brain } from 'lucide-react';
+import {
+  Search, Home, Briefcase, GitBranch, Users, Search as SearchIcon,
+  Brain, FileText, UserCheck, HeartPulse, ShieldCheck,
+  FileSignature, ClipboardCheck, BarChart3, Settings as SettingsIcon,
+} from 'lucide-react';
 
 const JUMP_TO = [
-  { label: 'Go to Dashboard',         icon: Home,       route: '/dashboard',                  shortcut: ['G', 'D'] },
-  { label: 'Go to Job Management',     icon: Briefcase,  route: '/sourcing/job-management',    shortcut: ['G', 'J'] },
-  { label: 'Go to Pipeline',           icon: GitBranch,  route: '/candidate-pipeline',         shortcut: ['G', 'P'] },
-  { label: 'Go to Talent Pool',        icon: Users,      route: '/sourcing/talent-pool',       shortcut: ['G', 'T'] },
-  { label: 'Go to Search & Outreach',  icon: SearchIcon, route: '/sourcing/source-candidate',  shortcut: [] },
-  { label: 'Go to AI Screening',       icon: Brain,      route: '/selection/ai-screening',     shortcut: [] },
-  { label: 'Go to Source Management',  icon: GitBranch,  route: '/sourcing/source-management', shortcut: [] },
-  { label: 'Go to Manager Inbox',      icon: Mail,       route: '/manager-inbox',              shortcut: [] },
+  { label: 'Go to Dashboard',           icon: Home,           route: '/dashboard',                    shortcut: ['G', 'D'] },
+  { label: 'Go to Report Candidate',    icon: FileText,       route: '/report-candidate',              shortcut: ['G', 'R'] },
+  { label: 'Go to Job Management',      icon: Briefcase,      route: '/sourcing/job-management',       shortcut: ['G', 'J'] },
+  { label: 'Go to Pipeline',            icon: GitBranch,      route: '/candidate-pipeline',            shortcut: ['G', 'P'] },
+  { label: 'Go to Search & Outreach',   icon: SearchIcon,     route: '/sourcing/source-candidate',     shortcut: ['G', 'S'] },
+  { label: 'Go to Source Management',   icon: GitBranch,      route: '/sourcing/source-management',    shortcut: ['G', 'O'] },
+  { label: 'Go to Talent Pool',         icon: Users,          route: '/sourcing/talent-pool',          shortcut: ['G', 'T'] },
+  { label: 'Go to AI Screening',        icon: Brain,          route: '/selection/ai-screening',        shortcut: ['G', 'A'] },
+  { label: 'Go to Interview',           icon: UserCheck,      route: '/selection/interview',           shortcut: ['G', 'I'] },
+  { label: 'Go to Psychological Ass.',  icon: HeartPulse,     route: '/selection/psych-assessment',    shortcut: ['G', 'Y'] },
+  { label: 'Go to Medical Assessment',  icon: HeartPulse,     route: '/selection/medical-assessment',  shortcut: ['G', 'M'] },
+  { label: 'Go to Background Check',    icon: ShieldCheck,    route: '/selection/background-check',    shortcut: ['G', 'B'] },
+  { label: 'Go to Offer & Contract',    icon: FileSignature,  route: '/selection/offer-contract',      shortcut: ['G', 'C'] },
+  { label: 'Go to Onboarding',          icon: ClipboardCheck, route: '/selection/onboarding',          shortcut: ['G', 'N'] },
+  { label: 'Go to Reports',             icon: BarChart3,      route: '/reports',                       shortcut: ['G', 'E'] },
+  { label: 'Go to Settings',            icon: SettingsIcon,   route: '/settings',                      shortcut: ['G', 'K'] },
 ];
 
 const SEARCH_ITEMS = [
@@ -29,6 +41,10 @@ export default function GlobalSearch() {
   const [open, setOpen]     = useState(false);
   const [query, setQuery]   = useState('');
   const [cursor, setCursor] = useState(0);
+
+  // Tracks whether "G" was just pressed, waiting for the second key of a chord
+  const pendingGRef        = useRef(false);
+  const pendingGTimeoutRef = useRef(null);
 
   const items = query.trim()
     ? SEARCH_ITEMS.filter(i =>
@@ -61,6 +77,44 @@ export default function GlobalSearch() {
     return () => window.removeEventListener('keydown', handler);
   }, []);
 
+  // "G then <letter>" chord shortcuts — navigates directly, no modal needed.
+  // Only active while the modal is closed; press G, then within 1s press the
+  // second key (e.g. G then D -> Dashboard). Ignored while typing in a field.
+  useEffect(() => {
+    if (open) return;
+    const handler = (e) => {
+      const target = e.target;
+      const isTyping =
+        target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' || target.isContentEditable;
+      if (isTyping || e.metaKey || e.ctrlKey || e.altKey) return;
+
+      const key = e.key.toLowerCase();
+
+      if (pendingGRef.current) {
+        pendingGRef.current = false;
+        clearTimeout(pendingGTimeoutRef.current);
+        const match = JUMP_TO.find(
+          (item) => item.shortcut.length === 2 && item.shortcut[1].toLowerCase() === key
+        );
+        if (match) {
+          e.preventDefault();
+          navigate(match.route);
+        }
+        return;
+      }
+
+      if (key === 'g') {
+        pendingGRef.current = true;
+        pendingGTimeoutRef.current = setTimeout(() => { pendingGRef.current = false; }, 1000);
+      }
+    };
+    window.addEventListener('keydown', handler);
+    return () => {
+      window.removeEventListener('keydown', handler);
+      clearTimeout(pendingGTimeoutRef.current);
+    };
+  }, [open, navigate]);
+
   // Keyboard nav inside modal
   useEffect(() => {
     if (!open) return;
@@ -82,11 +136,11 @@ export default function GlobalSearch() {
     return (
       <button
         onClick={() => { setOpen(true); setTimeout(() => inputRef.current?.focus(), 50); }}
-        className="hidden md:flex items-center gap-2 px-3 h-8 rounded-lg border border-border bg-muted/40 text-xs text-muted-foreground hover:bg-muted/70 transition-colors min-w-[220px]"
+        className="flex items-center gap-2 px-3 h-8 rounded-lg border border-border bg-muted/40 text-xs text-muted-foreground hover:bg-muted/70 transition-colors w-8 md:w-auto md:min-w-[220px] justify-center md:justify-start"
       >
         <Search className="h-3.5 w-3.5 flex-shrink-0" />
-        <span className="flex-1 text-left">Search people, jobs, actions...</span>
-        <kbd className="text-[9px] font-semibold bg-background border border-border rounded px-1 py-0.5 flex-shrink-0">
+        <span className="hidden md:flex flex-1 text-left">Search people, jobs, actions...</span>
+        <kbd className="hidden md:flex text-[9px] font-semibold bg-background border border-border rounded px-1 py-0.5 flex-shrink-0">
           Ctrl + K
         </kbd>
       </button>
@@ -97,12 +151,15 @@ export default function GlobalSearch() {
     <>
       {/* Backdrop — no backdrop-blur so the topbar stays sharp */}
       <div
-        className="fixed inset-0 bg-black/40 z-40"
+        className="fixed inset-0 bg-black/20 z-40"
         onClick={close}
       />
 
-      {/* Modal — sits just below the topbar (64px), centered across full viewport */}
-      <div className="fixed top-[64px] left-1/2 -translate-x-1/2 w-full max-w-lg z-50 overflow-hidden rounded-2xl border border-border bg-background shadow-2xl">
+      {/* Modal — sits just below the topbar, centered across full viewport. Uses --app-header-h (set in DashboardLayout.jsx) instead of a guessed pixel value. */}
+      <div
+        className="fixed left-1/2 -translate-x-1/2 w-full max-w-lg z-50 overflow-hidden rounded-2xl border border-border bg-background shadow-2xl"
+        style={{ top: 'calc(var(--app-header-h) + 8px)' }}
+      >
 
         {/* Search input row */}
         <div className="flex items-center gap-3 px-4 py-3 border-b border-border">

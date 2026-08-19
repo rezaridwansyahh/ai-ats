@@ -22,7 +22,14 @@ export default function SourceManagementPage() {
   const [loading, setLoading]       = useState(true);
   const [selectedAccount, setSelectedAccount] = useState(null);
 
-  const { run: wizardRun, setRun: setWizardRun, markSeen: markWizardSeen, restart: restartWizard } = useSourceManagementWizard();
+  const {
+    run: wizardRun,
+    setRun: setWizardRun,
+    markSeen: markWizardSeen,
+    restart: restartWizard,
+    tourKey,
+  } = useSourceManagementWizard(loading);
+
 
   const fetchAccounts = useCallback(async () => {
     setLoading(true);
@@ -53,7 +60,15 @@ export default function SourceManagementPage() {
           highlight="Management"
           subtitle="End-to-end job lifecycle — create, configure stages, publish, source, and manage applicants."
         />
-        <Button variant="ghost" size="sm" className="text-xs" onClick={restartWizard}>
+       <Button
+          variant="ghost"
+          size="sm"
+          className="text-xs"
+          onClick={() => {
+            setActiveStep(0);
+            restartWizard();
+          }}
+        >
           <HelpCircle className="h-3.5 w-3.5 mr-1" /> Take the tour
         </Button>
       </div>
@@ -141,7 +156,8 @@ export default function SourceManagementPage() {
         <ListCandidate selectedJob={null} />
       )}
 
-      <SourceManagementWizard 
+      <SourceManagementWizard
+        key={tourKey}
         activeStep={activeStep}
         run={wizardRun}
         setRun={setWizardRun}

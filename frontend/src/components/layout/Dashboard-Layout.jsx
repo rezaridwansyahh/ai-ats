@@ -7,7 +7,7 @@ import { Toaster } from "@/components/ui/sonner"
 import { BreadcrumbContext } from '@/components/layout/breadcrumb-context'
 import PipelineBar from '@/components/layout/PipelineBar';
 import GlobalSearch from '@/components/layout/GlobalSearch';
-import { ChevronRight, Zap, Bell } from 'lucide-react';
+import { ChevronRight, Bell } from 'lucide-react';
 
 const BREADCRUMB_MAP = {
   '/dashboard':                  ['Workspace', 'Dashboard'],
@@ -40,11 +40,6 @@ function resolveBreadcrumbs(pathname) {
   return ['Workspace', 'Dashboard']
 }
 
-// Dummy credit data — TODO: replace with real API
-const CREDITS_USED  = 60;
-const CREDITS_TOTAL = 100;
-const DAYS_LEFT     = 14;
-
 export default function DashboardLayout() {
   const location = useLocation();
   const navigate = useNavigate();
@@ -63,16 +58,21 @@ export default function DashboardLayout() {
     breadcrumbs = [...breadcrumbs.slice(0, -1), dynCrumb.label]
   }
 
-  const creditPct = Math.round((CREDITS_USED / CREDITS_TOTAL) * 100);
-
   return (
     <SidebarProvider>
       <AppSidebar />
 
       <SidebarInset>
 
-        {/* ── Top header ── */}
-        <header className="flex h-12 items-center gap-3 border-b border-border/70 px-4 sticky top-0 z-20 backdrop-blur-md bg-card/90">
+        {/* ── Top header ──
+            --app-header-h = h-12 (3rem) + border-b (1px). Declared once, here,
+            and consumed by any descendant (e.g. JobEditPage's sticky sub-header)
+            via var(--app-header-h) instead of a hardcoded/guessed pixel value.
+            Custom-property keys must be quoted strings in a React style object. */}
+        <header
+          className="flex h-12 items-center gap-3 border-b border-border/70 px-4 sticky top-0 z-20 backdrop-blur-md bg-card/90"
+          style={{ '--app-header-h': 'calc(3rem + 1px)' }}
+        >
           <SidebarTrigger className="-ml-1 text-muted-foreground hover:text-foreground transition-colors" />
           <Separator orientation="vertical" className="h-4 opacity-50" />
 
@@ -95,35 +95,7 @@ export default function DashboardLayout() {
           <div className="flex-1" />
 
 
-          <div className="hidden md:block">
-            <GlobalSearch />
-          </div>
-
-          {/* Credits */}
-          <div className="hidden sm:flex items-center gap-2">
-            <Zap className="h-3.5 w-3.5 text-primary flex-shrink-0" />
-            <div className="flex items-center gap-1.5">
-              <span className="text-xs font-semibold text-foreground">
-                {CREDITS_USED}
-              </span>
-              <span className="text-xs text-muted-foreground">/</span>
-              <span className="text-xs text-muted-foreground">{CREDITS_TOTAL}</span>
-              {/* Progress bar */}
-              <div className="w-16 h-1.5 rounded-full bg-muted overflow-hidden">
-                <div
-                  className="h-full rounded-full bg-primary transition-all"
-                  style={{ width: `${creditPct}%` }}
-                />
-              </div>
-            </div>
-          </div>
-
-          <Separator orientation="vertical" className="h-4 opacity-50" />
-
-          {/* Days left */}
-          <span className={`text-xs font-bold ${DAYS_LEFT <= 7 ? 'text-red-500' : 'text-amber-500'}`}>
-            {DAYS_LEFT}d left
-          </span>
+          <GlobalSearch />
 
           {/* Notification bell */}
           <button className="relative h-8 w-8 flex items-center justify-center rounded-lg hover:bg-muted/60 transition-colors">
