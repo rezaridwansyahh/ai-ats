@@ -134,6 +134,7 @@ app.use("/api/module", module);
 app.use("/api/menu", menu);
 app.use("/api/job-account", jobAccount);
 app.use("/api/job-posting", jobPosting);
+app.use("/api/job-sourcing", jobSourcing);
 app.use("/api/job", job);
 app.use("/api/applicant", applicant);
 app.use("/api/candidate-pipeline", candidatePipeline);

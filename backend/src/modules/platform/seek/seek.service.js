@@ -225,8 +225,10 @@ class SeekService {
         
         result.push(extracted);
       }
+      await jobAccountModel.updateSync(account_id, 'Sync');
       return result;
     } catch(err) {
+      await jobAccountModel.updateSync(account_id, 'Error');
       throw err;
     } finally {
       if(ownPage) await browserPuppeteer.close();
