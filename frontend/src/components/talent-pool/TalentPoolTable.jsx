@@ -110,7 +110,7 @@ export default function TalentPoolTable({
           <Table data-tour="talent-table" className="table-fixed w-full">
             <TableHeader className="bg-muted/40">
               <TableRow>
-                <TableHead className="w-10 pl-4 py-2">
+                <TableHead className="w-10 pl-4 pr-0 py-2">
                   <Checkbox
                     checked={allPagedSelected}
                     data-state={!allPagedSelected && somePagedSelected ? 'indeterminate' : undefined}
@@ -120,7 +120,7 @@ export default function TalentPoolTable({
                     className="border-2 border-slate-400 data-[state=checked]:border-primary data-[state=checked]:bg-primary"
                   />
                 </TableHead>
-                <TableHead className="w-[17%] text-[10px] font-bold uppercase">Name</TableHead>
+                <TableHead className="w-[17%] text-[10px] font-bold uppercase pl-0">Name</TableHead>
                 <TableHead className="w-[15%] text-[10px] font-bold uppercase">Last Position</TableHead>
                 <TableHead className="w-[19%] text-[10px] font-bold uppercase">Skills</TableHead>
                 <TableHead className="w-[12%] text-[10px] font-bold uppercase">Location</TableHead>
@@ -152,7 +152,7 @@ export default function TalentPoolTable({
 
                 return (
                   <TableRow key={r.id} className={`hover:bg-muted/30 transition-colors ${isSelected ? 'bg-primary/5' : ''}`}>
-                    <TableCell className="pl-4 py-2">
+                    <TableCell className="pl-4 pr-0 py-2">
                       <Checkbox
                         checked={isSelected}
                         onCheckedChange={() => onToggleSelectOne(r.id)}
@@ -161,14 +161,14 @@ export default function TalentPoolTable({
                       />
                     </TableCell>
 
-                    <TableCell className="text-xs py-2">
-                      <div className="font-semibold">{r.name}</div>
+                    <TableCell className="text-xs py-2 pl-0">
+                      <div className="font-semibold break-words">{r.name}</div>
                     </TableCell>
 
                     <TableCell className="text-xs py-2">
-                      <div className="truncate font-medium">{positionLabel}</div>
+                      <div className="font-medium break-words">{positionLabel}</div>
                       {categoryLabel && (
-                        <div className="text-[10px] text-muted-foreground truncate">{categoryLabel}</div>
+                        <div className="text-[10px] text-muted-foreground break-words">{categoryLabel}</div>
                       )}
                     </TableCell>
 
@@ -190,9 +190,9 @@ export default function TalentPoolTable({
                     </TableCell>
 
                     <TableCell className="text-xs py-2">
-                      <div className="flex items-center gap-1.5">
-                        <MapPin className="h-3 w-3 text-muted-foreground shrink-0" />
-                        <span className="truncate">{r.address || '—'}</span>
+                      <div className="flex items-start gap-1.5">
+                        <MapPin className="h-3 w-3 text-muted-foreground shrink-0 mt-0.5" />
+                        <span className="break-words">{r.address || '—'}</span>
                       </div>
                     </TableCell>
 

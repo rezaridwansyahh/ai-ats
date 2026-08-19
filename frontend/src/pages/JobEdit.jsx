@@ -376,7 +376,10 @@ export default function JobEditPage() {
           so the sticky containing block is <main>, not a padded inner div.
           top-[52px] = sits right below Dashboard-Layout's sticky breadcrumb (h-13).
           -mx-5 + px-5 cancels <main>'s p-5 so the bar spans edge-to-edge. */}
-      <div className="sticky top-[52px] z-10 bg-background/95 backdrop-blur-sm -mt-5 -mx-5 px-5 pt-5 pb-5 border-b border-border/60 space-y-3">
+      <div
+        className="sticky z-10 bg-background/95 backdrop-blur-sm -mt-5 -mx-5 px-5 pt-5 pb-5 border-b border-border/60 space-y-3"
+        style={{ top: 'var(--app-header-h)' }}
+      >
         {/* Top action row */}
         <div className="flex items-center gap-3 flex-wrap">
           <Button variant="ghost" size="sm" className="text-xs" onClick={() => navigate('/sourcing/job-management')}>
@@ -418,7 +421,7 @@ export default function JobEditPage() {
       </div>
 
       {showPrompt && (
-        <div className="pc-6 pt-4">
+        <div className="px-6 pt-4">
           <FirstJobWizardPrompt onAccept={acceptWizard} onDecline={declineWizard} />
         </div>
       )}
@@ -581,7 +584,10 @@ export default function JobEditPage() {
           {/* SIDEBAR — anchor nav + completeness.
               Sticky offset = Dashboard topbar (52px) + JobEdit sticky header (~110px) + breathing space. */}
           <aside className="hidden lg:block">
-            <div className="sticky top-[200px] space-y-3">
+            <div
+              className="sticky space-y-3"
+              style={{ top: 'calc(var(--app-header-h) + 1rem)' }}
+            >
               {/* Save status (left) + publish (right) — moved out of the sticky header */}
               <div className="flex items-center justify-between gap-2 px-1">
                 <SavedIndicator saving={saving} savedAt={savedAt} error={error} />
@@ -1113,11 +1119,11 @@ function Field({ label, required, missing, missingMessage = 'required', help, ch
 
 function SelectBox({ value, onChange, options, disabled }) {
   return (
-    <Select value={value} onValueChange={onChange} disabled={disabled}>
+    <Select value={value} onValueChange={onChange} disabled={disabled} modal={false}>
       <SelectTrigger className="text-sm">
         <SelectValue placeholder="Select…" />
       </SelectTrigger>
-      <SelectContent>
+      <SelectContent position="popper">
         {options.map((o) => <SelectItem key={o} value={o}>{o}</SelectItem>)}
       </SelectContent>
     </Select>
