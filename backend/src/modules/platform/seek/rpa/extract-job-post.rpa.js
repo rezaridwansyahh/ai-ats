@@ -70,35 +70,41 @@ class ExtractJobPostService {
 
         const row = rows[i];
 
-        // 1️⃣ Extract basic row info
+        // 1️⃣ Extract basic row info — every step is null-guarded so a
+        // malformed/unexpected row (ad banner, skeleton, layout variant)
+        // returns seek_id: null instead of throwing and killing the whole
+        // sync job. The `if (!basicData.seek_id) continue;` below already
+        // exists to skip rows like that.
         const basicData = await row.evaluate((row) => {
+          const empty = { seek_id: null, job_title: null, candidate_count: null, location: null, created_by: null };
+
           // get seek_id
           const href = row.getAttribute('data-testid');
-          const seek_id = Number(href.match(/\d+/)[0]);
+          const seekIdMatch = href?.match(/\d+/);
+          if (!seekIdMatch) return empty;
+          const seek_id = Number(seekIdMatch[0]);
 
           // Select td as array of nodelist
           const cells = Array.from(row.querySelectorAll('td'));
+          if (cells.length < 2) return empty;
 
           // get location, job title, job location
           const divMain = cells[0].querySelector('div');
+          if (!divMain) return empty;
 
           const divDividedArr = divMain.querySelectorAll(':scope > div');
+          if (divDividedArr.length < 2) return empty;
 
-          const job_title = divDividedArr[0].querySelector('[data-testid="jobTitle"]').innerText;
+          const job_title = divDividedArr[0].querySelector('[data-testid="jobTitle"]')?.innerText || null;
 
-          const locations = divDividedArr[1].querySelector('span:first-of-type')?.textContent.trim();
-          const created_by = divDividedArr[1].querySelector(':scope > span:nth-last-child(1)')?.textContent.trim();
+          const locations = divDividedArr[1].querySelector('span:first-of-type')?.textContent?.trim() || null;
+          const created_by = divDividedArr[1].querySelector(':scope > span:nth-last-child(1)')?.textContent?.trim() || null;
 
           // get candidate count
-          const countString = cells[1].querySelector('[data-testid="numberOfCandidatesLink"]').innerText;
-          const countArr = countString.match(/\d+/g).map(Number); 
-          const candidate_count = Number(countArr.join('')); 
+          const countString = cells[1].querySelector('[data-testid="numberOfCandidatesLink"]')?.innerText;
+          const countArr = countString?.match(/\d+/g)?.map(Number) || [];
+          const candidate_count = countArr.length ? Number(countArr.join('')) : null;
 
-          console.log(seek_id);
-          console.log(job_title);
-          console.log(locations);
-          console.log(created_by);
-          console.log(candidate_count);
           return {
             seek_id: seek_id,
             job_title: job_title,
