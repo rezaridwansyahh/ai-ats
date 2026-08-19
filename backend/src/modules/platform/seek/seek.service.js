@@ -164,7 +164,7 @@ class SeekService {
   }
 
   async syncJobPostAll(account_id, page = null) {
-    const types = ['open', 'expired', 'draft']; // 
+    const types = ['open', 'expired']; // Seek has no real "draft" listing under this page/type flow
     const ownPage = !page;
 
     if(!page) {

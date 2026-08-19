@@ -72,8 +72,6 @@ class ExtractJobPostService {
 
         // 1️⃣ Extract basic row info
         const basicData = await row.evaluate((row) => {
-          const rows = document.querySelectorAll('table tbody tr');
-          const row = rows[7];
           // get seek_id
           const href = row.getAttribute('data-testid');
           const seek_id = Number(href.match(/\d+/)[0]);
