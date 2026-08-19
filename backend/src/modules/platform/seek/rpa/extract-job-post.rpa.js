@@ -175,11 +175,18 @@ class ExtractJobPostService {
           continue;
         }
 
-        await page.evaluate(() => {
+        const detailBtnClicked = await page.evaluate(() => {
           const btnDetail = document.querySelectorAll('[role="menuitem"]');
+          if (!btnDetail[1]) return false;
           btnDetail[1].click();
-        })
-        
+          return true;
+        });
+
+        if (!detailBtnClicked) {
+          results.push({ ...basicData, job_desc: contentDesc });
+          continue;
+        }
+
         await page.waitForSelector('[data-testid="jobInformation"]', { visible: true });
 
         const jobDetail = await page.evaluate(() => {
@@ -191,13 +198,16 @@ class ExtractJobPostService {
           const blocks = container.querySelectorAll(':scope > div > div');
 
           blocks.forEach(block => {
-            const divs = block.querySelectorAll(':scope > div');
-            divs.forEach(div => {
-                const key = div.querySelector('div:first-child').innerText;
-                const value = div.querySelector('div:last-child').innerText;
-                result[key.toLowerCase().replace(/\s+/g, "_")] = value;
+            const rows = block.querySelectorAll(':scope > div');
+            rows.forEach(row => {
+              const keyEl   = row.firstElementChild;
+              const valueEl = row.lastElementChild;
+              if (!keyEl || !valueEl) return; // skip malformed rows instead of crashing the whole sync
+
+              const key = keyEl.innerText;
+              const value = valueEl.innerText;
+              result[key.toLowerCase().replace(/\s+/g, "_")] = value;
             });
-            console.log(divs);
           });
 
           return result;
