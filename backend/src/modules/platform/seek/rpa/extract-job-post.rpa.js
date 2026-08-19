@@ -136,10 +136,14 @@ class ExtractJobPostService {
             const locations = divDividedArr[1].querySelector('span:first-of-type')?.textContent?.trim() || null;
             const created_by = divDividedArr[1].querySelector(':scope > span:nth-last-child(1)')?.textContent?.trim() || null;
 
-            // get candidate count
+            // get candidate count — strip everything but digits and parse as
+            // one number. NOT matching /\d+/g and joining separate groups:
+            // Indonesian locale uses "." as a thousands separator (e.g.
+            // "1.002"), which would split into ["1","002"], and Number("002")
+            // drops the leading zero -> "2", corrupting 1002 into 12.
             const countString = cells[1].querySelector('[data-testid="numberOfCandidatesLink"]')?.innerText;
-            const countArr = countString?.match(/\d+/g)?.map(Number) || [];
-            const candidate_count = countArr.length ? Number(countArr.join('')) : null;
+            const digitsOnly = countString?.replace(/\D/g, '');
+            const candidate_count = digitsOnly ? Number(digitsOnly) : null;
 
             return {
               seek_id: seek_id,
