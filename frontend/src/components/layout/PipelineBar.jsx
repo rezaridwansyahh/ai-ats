@@ -6,12 +6,7 @@ import { getWorkboard as getInterviewWorkboard } from '@/api/interview.api';
 import { getWorkboard as getVerifyWorkboard } from '@/api/background-check.api';
 import { getWorkboard as getOfferWorkboard } from '@/api/offer.api';
 import { getOnboardingWorkboard } from '@/api/onboarding.api';
-import { getCandidatePipelineSummary } from '@/api/candidate.api';
-
-// Assess is served by a different endpoint shape than the other stages:
-// /candidate-pipeline/summary?category=Assessment returns an array of
-// { job_id, job_title, total } — one row per job — not { counts, positions }.
-const getAssessWorkboard = () => getCandidatePipelineSummary('Assessment');
+import { getWorkboard as getAssessWorkboard } from '@/api/assessment.api';
 
 // Each stage's /{stage}/workboard endpoint returns:
 //   { message, counts: { <status>: number, ... }, positions: [...] }
@@ -19,11 +14,6 @@ const getAssessWorkboard = () => getCandidatePipelineSummary('Assessment');
 // status buckets (equivalent to summing positions[].total).
 const sumCounts = (counts) =>
   Object.values(counts || {}).reduce((sum, n) => sum + (Number(n) || 0), 0);
-
-// Assess's summary is an array of per-job rows instead of a counts object —
-// sum their `total` fields to get the stage-wide count.
-const sumSummaryRows = (rows) =>
-  (rows || []).reduce((sum, row) => sum + (Number(row.total) || 0), 0);
 
 // Onboard's workboard is a flat array of onboarding records (one row per
 // candidate), wrapped as { success, data: [...] } — the count is just the
@@ -58,13 +48,13 @@ export default function PipelineBar() {
     results.forEach((result, i) => {
       const stageKey = STAGES[i].key;
       if (result.status === 'fulfilled') {
-        if (stageKey === 'Assess') {
-          next[stageKey] = sumSummaryRows(result.value?.data?.summary);
-        } else if (stageKey === 'Onboard') {
+        if (stageKey === 'Onboard') {
           next[stageKey] = countRows(result.value?.data?.data);
         } else if (stageKey === 'Offer') {
           next[stageKey] = Number(result.value?.data?.summary?.total) || 0;
         } else {
+          // Screen, Interview, Assess, BG Check all share the
+          // { message, counts: {...}, positions: [...] } shape.
           next[stageKey] = sumCounts(result.value?.data?.counts);
         }
       } else {
