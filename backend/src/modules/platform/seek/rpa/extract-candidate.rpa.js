@@ -64,7 +64,7 @@ class ExtractCandidateService {
     console.log(candidateType);
     console.log("Starting candidate extraction with pagination");
 
-    await page.waitForSelector('[data-cy="job-application-list"]');
+    await page.waitForSelector('[data-testid="job-application-card"]');
 
     // Click to open filter for full candidate list
     try {
@@ -101,6 +101,7 @@ class ExtractCandidateService {
         const cardSelector = `[data-testid="job-application-card-${i}"]`;
 
         const cardData = await page.evaluate((selector) => {
+          // dont forget to change
           const card = document.querySelector(selector);
           if (!card) return null;
 
@@ -142,14 +143,16 @@ class ExtractCandidateService {
             card.querySelectorAll('[data-cy="role-requirement"]')
           );
 
-          rows.forEach(row => {
-            const q = row.querySelector('[data-cy="question"] span')?.innerText.trim();
-            const a = row.querySelector('[data-cy="answer-0"] span')?.innerText.trim();
+          if(rows) {
+            rows.forEach(row => {
+              const q = row.querySelector('[data-cy="question"] span')?.innerText.trim();
+              const a = row.querySelector('[data-cy="answer-0"] span')?.innerText.trim();
 
-            if (q) {
-              information[q] = a || "";
-            }
-          });
+              if (q) {
+                information[q] = a || "";
+              }
+            });
+          }
 
           const dateWrapper = card.querySelector('span[aria-describedby]');
           const date = dateWrapper?.getAttribute('aria-describedby') || "";
@@ -177,7 +180,7 @@ class ExtractCandidateService {
           if (el) el.click();
         }, cardSelector);
 
-        await page.waitForSelector('[data-cy="job-application-details"]', { timeout: 10000 });
+        await page.waitForSelector('[id="details-view-drawer"]', { timeout: 10000 });
         await delay(1000);
 
         const candidateId = await page.evaluate(() => {
