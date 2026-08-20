@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import {
   Settings2, Users, ShieldCheck, Workflow, Plug, Bell, Globe,
-  ShieldQuestion, FileText, CreditCard, CalendarClock,
+  ShieldQuestion, FileText, CreditCard, CalendarClock, Mail,
 } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -19,6 +19,7 @@ import BillingPlanSettings from '../components/settings/BillingPlanSettings';
 import ProbationTemplatesSettings from '../components/settings/ProbationTemplatesSettings';
 import GeneralSettings from '../components/settings/GeneralSettings';
 import OfferTemplateSettings from '../components/settings/OfferTemplateSettings';
+import EmailTemplateSettings from '../components/settings/EmailTemplateSettings';
 
 // ── Static Configuration ──
 
@@ -31,6 +32,7 @@ const SETTINGS_NAV = [
   { id: 'notifications', label: 'Notifications', icon: Bell },
   { id: 'candidate-portal', label: 'Candidate Portal', icon: Globe },
   { id: 'offer-template', label: 'Offer Letter Template', icon: FileText },
+  { id: 'email-templates', label: 'Email Templates', icon: Mail },
   { id: 'compliance', label: 'Compliance', icon: ShieldQuestion, badge: 'OK' },
   { id: 'audit-export', label: 'Audit Export', icon: FileText },
   { id: 'billing', label: 'Billing & Plan', icon: CreditCard },
@@ -48,6 +50,7 @@ const SECTION_COMPONENTS = {
   notifications: NotificationsSettings,
   'candidate-portal': CandidatePortalSettings,
   'offer-template': OfferTemplateSettings,
+  'email-templates': EmailTemplateSettings,
   compliance: ComplianceSettings,
   'audit-export': AuditExportSettings,
   billing: BillingPlanSettings,

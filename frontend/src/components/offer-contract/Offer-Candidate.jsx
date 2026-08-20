@@ -36,6 +36,7 @@ import {
   getApprovalStatus, decideApproval, generateApprovalViewLink,
 } from '@/api/offer-pack.api';
 import { getOfferTemplate } from '@/api/offer-template.api';
+import { getEmailTemplates } from '@/api/email-template.api';
 
 const SUBSTAGES = [
   { key: 'intake',   number: 1, label: 'Intake',   sub: 'slip gaji'                 },
@@ -1718,9 +1719,20 @@ function SendSection({ offer, approval, setOffer, setBanner, setError, onAdvance
   const portalUrl    = isActive ? `${window.location.origin}/portal/offer/send/${latestSend.token}` : null;
   const expiryDaysLeft = isActive ? daysUntil(latestSend.token_expires_at) : null;
 
-  const openSendModal = () => {
-    const defaults = buildDefaultOfferEmail(offer.position_title || offer.job_title);
-    setEmailModal({ open: true, ...defaults });
+  const openSendModal = async () => {
+    try {
+      const { data } = await getEmailTemplates();
+      const mod = data.find((m) => m.module_key === 'offer');
+      const tpl = mod?.templates.find((t) => t.template_key === 'offer');
+      const jobTitle = offer.position_title || offer.job_title;
+      setEmailModal({
+        open: true,
+        subject: (tpl?.subject || '').replace('{{JOB_TITLE}}', jobTitle || 'the position'),
+        body: (tpl?.body || '').replace('{{CANDIDATE_NAME}}', offer.candidate_name || 'there').replace('{{JOB_TITLE}}', jobTitle || 'the position'),
+      });
+    } catch {
+      setError('Failed to load email template from Settings.');
+    }
   };
 
   const handleConfirmSend = async () => {
@@ -1728,7 +1740,7 @@ function SendSection({ offer, approval, setOffer, setBanner, setError, onAdvance
     setSending(true);
     setError(null);
     try {
-      await sendOffer(offer.id, { subject: emailModal.subject, body: emailModal.body });
+      await sendOffer(offer.id); 
       setOffer((prev) => ({ ...prev, offer_status: prev.offer_status === 'draft' ? 'sent' : prev.offer_status }));
       setEmailModal({ open: false, subject: '', body: '' });
       await loadHistory();

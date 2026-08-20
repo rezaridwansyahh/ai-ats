@@ -99,8 +99,8 @@ export const generateQa = (screening_id, { focus_area, num_questions, language }
 export const updateQa = (screening_id, questions) =>
   api.put(`/screening/screening/${screening_id}/qa`, { questions });
 
-export const sendQa = (screening_id, { subject, body } = {}) =>
-  api.post(`/screening/screening/${screening_id}/qa/send`, { subject, body });
+export const sendQa = (screening_id) =>
+  api.post(`/screening/screening/${screening_id}/qa/send`);
 
 // Standard Application Form template (static) — recruiter read-only preview.
 export const getApplicationFormTemplate = () =>

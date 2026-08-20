@@ -1,7 +1,8 @@
 import Session from './session.model.js';
 import Participant from '../participant/participant.model.js';
 import { resolveParticipantByCandidate } from '../../../shared/services/candidate-resolver.js';
-import { sendAssessmentInvitationEmail } from '../../../shared/services/candidate-mailer.js';
+import { sendTemplatedEmail } from '../../../shared/services/candidate-mailer.js';
+import EmailTemplateService from '../../email-template/email-template.service.js';
 
 const EDITABLE_FIELDS = ['battery', 'participant_id', 'job_id', 'status', 'expired_at', 'notes'];
 const VALID_BATTERIES = ['A', 'B', 'C', 'D', 'I', 'T'];
@@ -180,7 +181,7 @@ class SessionService {
     return session;
   }
 
-  async sendInvitation(session_id, { subject, body } = {}) {
+  async sendInvitation(session_id) {
     const session = await Session.getById(session_id);
     if (!session) throw { status: 404, message: 'Session not found' };
     if (session.status === 'revoked')  throw { status: 409, message: 'Session is revoked' };
@@ -197,14 +198,17 @@ class SessionService {
     const dashless = String(session.token || '').replaceAll('-', '');
     const link = `${origin}/portal/assessment-placement/${dashless}`;
 
-    await sendAssessmentInvitationEmail({
-      candidateName:  ctx.candidate_name,
+    const template = await EmailTemplateService.getResolved(ctx.company_id, 'assessment', 'invite');
+    await sendTemplatedEmail({
+      candidateName: ctx.candidate_name,
       candidateEmail: ctx.candidate_email,
-      jobTitle:       ctx.job_title || 'the position',
-      battery:        session.battery,
+      template,
       link,
-      customSubject:  subject || null,
-      customBody:     body    || null,
+      vars: {
+        CANDIDATE_NAME: ctx.candidate_name,
+        JOB_TITLE: ctx.job_title || 'the position',
+        BATTERY: session.battery,
+      },
     });
 
     return { sent_to: ctx.candidate_email, link };

@@ -56,6 +56,7 @@ import interviewPack from "./src/modules/interview-pack/interview-pack.route.js"
 import portalInterview from "./src/modules/portal-interview/portal-interview.route.js"
 import offerPack from "./src/modules/offer-pack/offer-pack.route.js";
 import portalContract from "./src/modules/portal-contract/portal-contract.route.js";
+import emailTemplate from "./src/modules/email-template/email-template.route.js";
 
 app.use(express.json());
 
@@ -124,6 +125,7 @@ portal.use("/api/interview-pack", interviewPack);
 portal.use("/api/portal-interview", portalInterview);
 portal.use("/api/offer-pack", offerPack)
 portal.use("/api/portal-contract", portalContract);
+portal.use("/api/email-template", emailTemplate)
 app.use("/portal", portal);
 app.use("/api/auth", auth);
 app.use("/api/cookies", cookies);
@@ -169,6 +171,7 @@ app.use("/api/interview-pack", interviewPack);
 app.use("/api/portal-interview", portalInterview);
 app.use("/api/offer-pack", offerPack);
 app.use("/api/portal-contract", portalContract);
+app.use("/api/email-template", emailTemplate)
 
 
 const PORT = process.env.PORT || 3000;

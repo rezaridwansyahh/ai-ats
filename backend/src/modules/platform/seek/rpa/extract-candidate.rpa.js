@@ -1,5 +1,6 @@
 import path from 'path';
 import fs from 'fs';
+import os from 'os';
 
 const delay = (ms) => new Promise(r => setTimeout(r, ms));
 
@@ -60,11 +61,20 @@ class ExtractCandidateService {
     return buckets;
   }
 
-  async extractCandidates(page, candidateType, account_id, seek_id, job_name) {
+  // checkExists(name) → Promise<boolean>: called right after a card's name is
+  // read, before we click into it — lets the caller skip the expensive part
+  // (open detail modal, download resume) for candidates already synced from a
+  // previous run instead of only deduping at DB insert time.
+  // onSave(candidate) → Promise<void>: called immediately per candidate as
+  // soon as it's fully scraped, instead of buffering everything into an array
+  // and returning it only once the whole bucket (all pages) finishes — so a
+  // crash/timeout partway through a large candidate list doesn't lose
+  // everything scraped so far.
+  async extractCandidates(page, candidateType, account_id, seek_id, job_name, { checkExists, onSave } = {}) {
     console.log(candidateType);
     console.log("Starting candidate extraction with pagination");
 
-    await page.waitForSelector('[data-cy="job-application-list"]');
+    await page.waitForSelector('[data-testid="job-application-card"]');
 
     // Click to open filter for full candidate list
     try {
@@ -82,11 +92,17 @@ class ExtractCandidateService {
       console.log('Filter toggle not found or already open');
     }
 
-    let allCandidates = [];
+    let saved = 0;
+    let skipped = 0;
 
-    // Prepare download path: resumes/{account_id}/{jobId}_{jobName}/
+    // Download to a temp staging dir — at this point the applicant doesn't have
+    // a master_applicant row yet (that only exists after seek.service.js calls
+    // applicantModel.create), so we can't name/place the file into permanent
+    // storage yet. seek.service.js promotes it into uploads/cv/{company}/ —
+    // same location manual Talent Pool CV uploads use — once the applicant id
+    // is known (see promoteDownloadedCv in shared/utils/cv-storage.js).
     const safeName = job_name.replace(/[<>:"/\\|?*]+/g, '_');
-    const downloadDir = path.resolve(`./resumes/${account_id}/${seek_id}_${safeName}`);
+    const downloadDir = path.join(os.tmpdir(), 'seek-cv-staging', `${account_id}_${seek_id}_${safeName}`);
     fs.mkdirSync(downloadDir, { recursive: true });
 
     while (true) {
@@ -101,6 +117,7 @@ class ExtractCandidateService {
         const cardSelector = `[data-testid="job-application-card-${i}"]`;
 
         const cardData = await page.evaluate((selector) => {
+          // dont forget to change
           const card = document.querySelector(selector);
           if (!card) return null;
 
@@ -142,14 +159,16 @@ class ExtractCandidateService {
             card.querySelectorAll('[data-cy="role-requirement"]')
           );
 
-          rows.forEach(row => {
-            const q = row.querySelector('[data-cy="question"] span')?.innerText.trim();
-            const a = row.querySelector('[data-cy="answer-0"] span')?.innerText.trim();
+          if(rows) {
+            rows.forEach(row => {
+              const q = row.querySelector('[data-cy="question"] span')?.innerText.trim();
+              const a = row.querySelector('[data-cy="answer-0"] span')?.innerText.trim();
 
-            if (q) {
-              information[q] = a || "";
-            }
-          });
+              if (q) {
+                information[q] = a || "";
+              }
+            });
+          }
 
           const dateWrapper = card.querySelector('span[aria-describedby]');
           const date = dateWrapper?.getAttribute('aria-describedby') || "";
@@ -171,13 +190,21 @@ class ExtractCandidateService {
           continue;
         }
 
+        // Skip already-synced candidates before paying for the click + modal +
+        // resume download — cheap short-circuit on re-sync.
+        if (checkExists && cardData.name && await checkExists(cardData.name)) {
+          console.log(`Already synced, skipping: ${cardData.name}`);
+          skipped++;
+          continue;
+        }
+
         // Click card to open details
         await page.evaluate((selector) => {
           const el = document.querySelector(selector);
           if (el) el.click();
         }, cardSelector);
 
-        await page.waitForSelector('[data-cy="job-application-details"]', { timeout: 10000 });
+        await page.waitForSelector('[id="details-view-drawer"]', { timeout: 10000 });
         await delay(1000);
 
         const candidateId = await page.evaluate(() => {
@@ -204,7 +231,9 @@ class ExtractCandidateService {
 
         if (hasResumeTab) {
           const fileName = `${seek_id}_${candidateId}.pdf`;
-          resumeFileName = `resumes/${account_id}/${seek_id}_${safeName}/${fileName}`;
+          // Temp absolute path — promoted into permanent storage by seek.service.js
+          // once the applicant's real DB id exists.
+          resumeFileName = path.join(downloadDir, fileName);
 
           try {
             await page.click('#tab-select-detail-view_3');
@@ -253,16 +282,19 @@ class ExtractCandidateService {
 
         await delay(500);
 
-        allCandidates.push({
-          ...cardData,
-          candidate_id: candidateId,
-          attachment: resumeFileName
-        });
+        const candidate = { ...cardData, candidate_id: candidateId, attachment: resumeFileName };
+
+        // Save immediately rather than buffering — persists progress as we go
+        // instead of holding the whole bucket in memory until it's all done.
+        if (onSave) {
+          await onSave(candidate);
+        }
+        saved++;
 
         console.log(`Extracted candidate ${i + 1}/${totalCards}: ${cardData.name} (ID: ${candidateId})`);
       }
 
-      console.log(`Candidates extracted so far: ${allCandidates.length}`);
+      console.log(`Candidates saved so far: ${saved}, skipped (already synced): ${skipped}`);
       console.log('\nChecking for next page...');
 
       const nextBtn = await page.$('a[rel="next"][aria-hidden="false"]');
@@ -287,8 +319,8 @@ class ExtractCandidateService {
       await delay(2000);
     }
 
-    console.log(`\nTotal candidates extracted: ${allCandidates.length}`);
-    return allCandidates;
+    console.log(`\nTotal candidates saved: ${saved}, skipped: ${skipped}`);
+    return { saved, skipped };
   }
 }
 

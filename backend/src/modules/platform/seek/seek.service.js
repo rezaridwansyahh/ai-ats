@@ -9,6 +9,8 @@ import extractJobPostRpa from "../seek/rpa/extract-job-post.rpa.js"
 import applicantModel from "../../applicant/applicant.model.js"
 import jobAccountModel from "../../job-account/job-account.model.js"
 import candidatePipelineModel from "../../candidate-pipeline/candidate-pipeline.model.js"
+import companyService from "../../company/company.service.js"
+import { promoteDownloadedCv } from "../../../shared/utils/cv-storage.js"
 
 class SeekService {
   async jobPost(account_id, service, dataForm) {
@@ -106,6 +108,24 @@ class SeekService {
     // When linked, each synced applicant is auto-promoted to a candidate for that job.
     const linkedJobId = await jobSourceModel.getLinkedJobId(job_sourcing_id);
 
+    // Resolve the owning company from the job account so synced applicants are
+    // scoped correctly — without this, applicants insert with company_id=NULL
+    // and silently never show up in Talent Pool (WHERE ma.company_id = $1).
+    const account = await jobAccountModel.getById(account_id);
+    const company_id = account?.company_id || null;
+
+    // Company name is just for a readable storage folder — resolved once up
+    // front (not per-candidate) and falls back gracefully if it's missing.
+    let companyName = 'unknown';
+    if (company_id) {
+      try {
+        const company = await companyService.getById(company_id);
+        companyName = company.name;
+      } catch {
+        // company lookup failing shouldn't block the sync
+      }
+    }
+
     try {
       await loginRpa.authenticatedPage(page, account_id);
       await extractCandidateRpa.navigateToCandidatePage(page, jobPostSeek.seek_id);
@@ -118,27 +138,55 @@ class SeekService {
 
       for (const bucket of buckets) {
         if (bucket.count === 0) {
-          results.push({ bucket: bucket.name, saved: 0, promoted: 0 });
+          results.push({ bucket: bucket.name, saved: 0, skipped: 0, promoted: 0 });
           continue;
         }
 
         await extractCandidateRpa.navigateToCandidateDetail(page, bucket.name);
-        const candidates = await extractCandidateRpa.extractCandidates(page, bucket, account_id, jobPostSeek.seek_id, job_name);
 
         let promoted = 0;
-        for (const candidate of candidates) {
-          if (!candidate.candidate_id) continue;
 
+        // Skip candidates already saved for this job_sourcing_id — checked by
+        // the RPA layer before it clicks into the card, so a re-sync doesn't
+        // re-open the modal / re-download the resume for people we already have.
+        const checkExists = (name) => applicantModel.existsByNameAndJobSourcing(name, job_sourcing_id);
+
+        // Called by the RPA layer immediately per candidate (not buffered into
+        // an array and processed only after the whole bucket finishes) — so
+        // progress persists even if a later page in this bucket fails/times out.
+        const onSave = async (candidate) => {
+          if (!candidate.candidate_id) return;
+
+          // Create without attachment first — the resume PDF (if any) is still
+          // sitting in a temp staging dir at this point (extract-candidate.rpa.js
+          // can't name/place it into permanent storage before the applicant's
+          // real DB id exists). Same two-step pattern the manual Talent Pool CV
+          // upload uses (sourcing.service.js:uploadCv).
           const applicant = await applicantModel.create({
             job_sourcing_id,
+            company_id,
             name: candidate.name,
             last_position: candidate.last_position,
             address: candidate.address,
             education: candidate.education || null,
             information: candidate.information || null,
             date: candidate.date || null,
-            attachment: candidate.attachment || null,
+            attachment: null,
           });
+
+          if (candidate.attachment && applicant?.id) {
+            try {
+              const savedPath = promoteDownloadedCv(
+                candidate.attachment, company_id, companyName, applicant.id, applicant.name
+              );
+              if (savedPath) {
+                await applicantModel.updateAttachment(applicant.id, savedPath);
+                applicant.attachment = savedPath;
+              }
+            } catch (err) {
+              console.error(`Failed to promote resume for applicant ${applicant.id}:`, err.message);
+            }
+          }
 
           // Auto-promote to candidate for owned postings only. Dup-safe (ON CONFLICT
           // DO NOTHING) and individually guarded so one failure never aborts the batch.
@@ -150,9 +198,13 @@ class SeekService {
               console.error(`Auto-promote failed for applicant ${applicant.id} → job ${linkedJobId}:`, err.message);
             }
           }
-        }
+        };
 
-        results.push({ bucket: bucket.name, saved: candidates.length, promoted });
+        const { saved, skipped } = await extractCandidateRpa.extractCandidates(
+          page, bucket, account_id, jobPostSeek.seek_id, job_name, { checkExists, onSave }
+        );
+
+        results.push({ bucket: bucket.name, saved, skipped, promoted });
       }
 
       return { buckets, results, linkedJobId };

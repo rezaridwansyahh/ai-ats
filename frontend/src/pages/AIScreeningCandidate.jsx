@@ -38,6 +38,7 @@ import { FIXED_KEYS, FIXED_META, DEFAULT_RUBRIC, totalWeight, scoreRecommendatio
 
 import PipelineTour, { usePipelineTour } from '@/components/tours/PipelineTour';
 import { AI_SCREENING_CANDIDATE_STEPS } from '@/components/tours/tourSteps';
+import { getEmailTemplates } from '@/api/email-template.api';
 
 /* ─── Engine config (mirrors the spec) ─── */
 const ENGINES = [
@@ -266,9 +267,7 @@ function useQa(screeningId, scored, enabled) {
 
   const removeQuestion = (idx) => setQuestions((qs) => qs.filter((_, i) => i !== idx));
 
-  // Opens the email editor with a pre-filled English template.
-  // Does NOT send yet — recruiter reviews and confirms in the modal.
-  const handleSend = (candidateName, jobTitle) => {
+  const handleSend = async (candidateName, jobTitle) => {
     const cleaned = questions
       .map((q) => ({ topic: (q.topic || '').trim(), text: (q.text || '').trim() }))
       .filter((q) => q.text.length > 0);
@@ -276,14 +275,20 @@ function useQa(screeningId, scored, enabled) {
       setError('Add at least one question with text before sending.');
       return;
     }
-    setEmailModal({
-      open: true,
-      subject: `Follow-up Questions — ${jobTitle || 'the position'}`,
-      body: `Hi ${candidateName || 'there'},\n\nThank you for applying. As a next step, we have a few short follow-up questions for you.\n\nPlease complete them via the link below:\n\n{{LINK}}\n\nPlease respond within 48 hours. This link is personal — kindly do not share it with others.\n\nThank you,\nThe Recruitment Team`,
-    });
+    try {
+      const { data } = await getEmailTemplates();
+      const mod = data.find((m) => m.module_key === 'interview');
+      const tpl = mod?.templates.find((t) => t.template_key === 'qa_invite');
+      setEmailModal({
+        open: true,
+        subject: (tpl?.subject || 'Follow-up Questions').replace('{{JOB_TITLE}}', jobTitle || 'the position'),
+        body: (tpl?.body || '').replace('{{CANDIDATE_NAME}}', candidateName || 'there').replace('{{JOB_TITLE}}', jobTitle || 'the position'),
+      });
+    } catch {
+      setError('Failed to load email template from Settings.');
+    }
   };
 
-  // Called when recruiter confirms send from the email editor modal.
   const handleConfirmSend = async () => {
     if (sending) return;
     const cleaned = questions
@@ -293,7 +298,7 @@ function useQa(screeningId, scored, enabled) {
     setError(null);
     try {
       await updateQa(screeningId, cleaned);
-      await sendQa(screeningId, { subject: emailModal.subject, body: emailModal.body });
+      await sendQa(screeningId); // no subject/body — backend resolves from Settings
       setEmailModal({ open: false, subject: '', body: '' });
       await load();
       setTab('inbox');

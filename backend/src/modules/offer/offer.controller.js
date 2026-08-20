@@ -64,8 +64,7 @@ class OfferController {
     try {
       const { offer_id } = req.params;
       const { company_id, user_id } = req.user;
-      const { subject, body } = req.body || {};
-      const result = await OfferService.sendOffer(offer_id, company_id, user_id, { subject, body });
+      const result = await OfferService.sendOffer(offer_id, company_id, user_id);
       res.json(result);
     } catch (error) {
       console.error('Error in sendOffer:', error);
@@ -437,8 +436,7 @@ class OfferController {
     try {
       const { offer_id } = req.params;
       const { company_id, user_id } = req.user;
-      const { subject, body } = req.body || {};
-      const result = await OfferService.sendContractDocument(offer_id, company_id, user_id, { subject, body });
+      const result = await OfferService.sendContractDocument(offer_id, company_id, user_id);
       res.json(result);
     } catch (error) {
       console.error('Error in sendContractDocument:', error);

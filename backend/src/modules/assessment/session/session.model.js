@@ -139,9 +139,10 @@ class Session {
   static async getCandidateContext(session_id) {
     const result = await getDb().query(`
       SELECT
-        mc.name      AS candidate_name,
-        ma.email     AS candidate_email,
-        cj.job_title
+        mc.name       AS candidate_name,
+        ma.email      AS candidate_email,
+        cj.job_title,
+        cj.company_id
       FROM assessment_sessions s
       JOIN master_candidate mc ON mc.id = s.candidate_id
       JOIN master_applicant ma ON ma.id = mc.applicant_id
