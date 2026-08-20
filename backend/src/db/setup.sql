@@ -8,6 +8,7 @@ DROP TABLE IF EXISTS onboarding_day_one_schedule CASCADE;
 DROP TABLE IF EXISTS onboarding_checklist_item CASCADE;
 DROP TABLE IF EXISTS candidate_onboarding CASCADE;
 
+DROP TABLE IF EXISTS company_email_template CASCADE;
 DROP TABLE IF EXISTS company_budgets CASCADE;
 DROP TABLE IF EXISTS company_usage CASCADE;
 DROP TABLE IF EXISTS interview_round CASCADE;
@@ -204,6 +205,19 @@ CREATE TABLE company_budgets (
 );
 CREATE INDEX idx_company_budgets_company_month ON company_budgets (company_id, month_year DESC);
 CREATE INDEX idx_company_budgets_month_year ON company_budgets (month_year DESC);
+
+CREATE TABLE company_email_template (
+  id SERIAL PRIMARY KEY,
+  company_id INTEGER NOT NULL REFERENCES core_company(id) ON DELETE CASCADE,
+  module_key VARCHAR(50) NOT NULL,    
+  template_key VARCHAR(50) NOT NULL,  
+  subject TEXT NOT NULL,
+  body TEXT NOT NULL,
+  updated_by INTEGER REFERENCES master_users(id) ON DELETE SET NULL,
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  UNIQUE (company_id, module_key, template_key)
+);
 
 CREATE TABLE master_roles (
   id SERIAL PRIMARY KEY,
@@ -417,12 +431,7 @@ CREATE TABLE mapping_job_sourcing_linkedin (
 
 CREATE TABLE master_applicant (
   id SERIAL PRIMARY KEY,
-  -- Nullable: only set for applicants sourced from an external platform
-  -- posting (Seek/LinkedIn). Manual CV uploads (Talent Pool) use
-  -- upload_batch_id instead — see chk_sourcing_or_upload below and the FK
-  -- added after cv_upload_batch is created further down this file.
-  job_sourcing_id INTEGER REFERENCES core_job_sourcing(id) ON DELETE CASCADE,
-  upload_batch_id INTEGER,
+  job_sourcing_id INTEGER NOT NULL REFERENCES core_job_sourcing(id) ON DELETE CASCADE,
   company_id INTEGER REFERENCES core_company(id) ON DELETE CASCADE,
   name VARCHAR(255) NOT NULL,
   email VARCHAR(255),
@@ -432,11 +441,7 @@ CREATE TABLE master_applicant (
   information JSONB,
   date TIMESTAMPTZ,
   attachment VARCHAR(255),
-  UNIQUE (name, job_sourcing_id),
-  CONSTRAINT chk_sourcing_or_upload CHECK (
-    (job_sourcing_id IS NOT NULL AND upload_batch_id IS NULL) OR
-    (job_sourcing_id IS NULL AND upload_batch_id IS NOT NULL)
-  )
+  UNIQUE (name, job_sourcing_id)
 );
 CREATE INDEX idx_master_applicant_company ON master_applicant (company_id);
 
@@ -1037,14 +1042,6 @@ CREATE TABLE cv_upload_batch (
   updated_at         TIMESTAMP NOT NULL DEFAULT NOW()
 );
 CREATE INDEX idx_cv_upload_batch_company ON cv_upload_batch (company_id, created_at DESC);
-
--- Added here (not inline on master_applicant's CREATE TABLE above) since
--- cv_upload_batch didn't exist yet at that point in the file.
--- ON DELETE RESTRICT (not SET NULL) — SET NULL would leave a row with both
--- job_sourcing_id and upload_batch_id NULL, violating chk_sourcing_or_upload.
-ALTER TABLE master_applicant
-  ADD CONSTRAINT fk_master_applicant_upload_batch
-  FOREIGN KEY (upload_batch_id) REFERENCES cv_upload_batch(id) ON DELETE RESTRICT;
 
 CREATE TABLE master_skill_alias (
   alias        VARCHAR(100) PRIMARY KEY,

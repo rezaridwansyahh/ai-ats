@@ -147,8 +147,7 @@ class SessionController {
 
   async sendInvitation(req, res) {
     try {
-      const { subject, body } = req.body;
-      const result = await sessionService.sendInvitation(req.params.id, { subject, body });
+      const result = await sessionService.sendInvitation(req.params.id);
       res.status(200).json({ message: 'Invitation sent', ...result });
     } catch (err) {
       res.status(err.status || 500).json({ message: err.message });

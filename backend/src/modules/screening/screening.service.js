@@ -3,7 +3,8 @@ import jobModel from '../job/job.model.js';
 import CandidatePipelineService from '../candidate-pipeline/candidate-pipeline.service.js';
 import automationModel from '../automation-setting/automation.model.js';
 import aiService from '../../shared/services/ai.service.js';
-import { sendQuestionsEmail } from '../../shared/services/candidate-mailer.js';
+import { sendTemplatedEmail } from '../../shared/services/candidate-mailer.js';
+import EmailTemplateService from '../email-template/email-template.service.js';
 import { getApplicationFormTemplate } from './screening-applicationForm.js';
 
 class ScreeningService {
@@ -557,8 +558,8 @@ class ScreeningService {
     return updated;
   }
 
-  // Email the questions to the candidate via the portal link; mark the set sent.
-  async qaSend(screening_id, { subject, body } = {}) {
+// Email the questions to the candidate via the portal link; mark the set sent.
+  async qaSend(screening_id, company_id) {
     const qa = await screeningModel.getQaByScreening(screening_id);
     if (!qa) throw { status: 404, message: 'No Q&A set for this screening — generate first' };
     if (!Array.isArray(qa.questions) || qa.questions.length === 0) {
@@ -569,10 +570,11 @@ class ScreeningService {
     if (!ctx?.candidate_email) {
       throw { status: 400, message: `Candidate "${ctx?.candidate_name || screening_id}" has no email on the linked applicant` };
     }
+    if (company_id && ctx.company_id && ctx.company_id !== company_id) {
+      throw { status: 403, message: 'Cross-tenant access denied' };
+    }
 
-    const expired_at = new Date(Date.now() + 48 * 60 * 60 * 1000); // 48h response window
-    // Freeze the application-form schema onto the row so the candidate is always
-    // validated against the exact definition they were served (custom-ready hook).
+    const expired_at = new Date(Date.now() + 48 * 60 * 60 * 1000);
     const tpl = getApplicationFormTemplate();
     const sent = await screeningModel.markQaSent(screening_id, expired_at, tpl);
 
@@ -581,29 +583,19 @@ class ScreeningService {
       .replace(/\/portal$/, '');
     const link = `${origin}/portal/qa/${qa.token}`;
 
-    await sendQuestionsEmail({
+    const template = await EmailTemplateService.getResolved(company_id, 'interview', 'qa_invite');
+    await sendTemplatedEmail({
       candidateName: ctx.candidate_name,
       candidateEmail: ctx.candidate_email,
-      jobTitle: ctx.job_title,
+      template,
       link,
-      customSubject: subject || null,
-      customBody: body || null,
+      vars: { CANDIDATE_NAME: ctx.candidate_name, JOB_TITLE: ctx.job_title },
     });
 
     return { sent_to: ctx.candidate_email, link, status: sent.status, expired_at: sent.expired_at };
   }
 
-  // Recruiter inbox — the Q&A set WITH the candidate's answers (qaGet strips them).
-  async qaGetWithAnswers(screening_id) {
-    if (!screening_id) throw { status: 400, message: 'screening_id is required' };
-    return await screeningModel.getQaByScreening(screening_id);
-  }
 
-  // Recruiter inbox list — sent/responded Q&A across the company.
-  async qaInbox(company_id) {
-    if (!company_id) throw { status: 400, message: 'company_id is required' };
-    return await screeningModel.qaInbox(company_id);
-  }
 }
 
 export default new ScreeningService();

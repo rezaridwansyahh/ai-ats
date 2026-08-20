@@ -2,7 +2,8 @@ import OfferModel from './offer.model.js';
 import CompensationEngine from '../../shared/services/compensation-engine.js';
 import OfferTemplateModel from '../offer-template/offer-template.model.js';
 import { mergeOfferLetter, htmlToDocxBuffer, convertHtmlToPdf } from '../../shared/services/document-merge.js';
-import { sendOfferEmail } from '../../shared/services/candidate-mailer.js';
+import { sendTemplatedEmail } from '../../shared/services/candidate-mailer.js';
+import EmailTemplateService from '../email-template/email-template.service.js';
 import mammoth from 'mammoth';
 import fs from 'fs';
 import path from 'path';
@@ -359,7 +360,7 @@ class OfferService {
     return { approval: metadata.approval, message: `Step ${decision}` };
   }
 
-  async sendOffer(offer_id, company_id, user_id, emailOverride = {}) {
+  async sendOffer(offer_id, company_id, user_id) {
     const offer = await OfferModel.getOfferById(offer_id, company_id);
     if (!offer) throw { status: 404, message: 'Offer not found' };
 
@@ -392,13 +393,16 @@ class OfferService {
     const baseUrl = process.env.FRONTEND_URL || 'http://localhost:5173';
     const link = `${baseUrl}/portal/offer/send/${send.token}`;
 
-    await sendOfferEmail({
+    const template = await EmailTemplateService.getResolved(company_id, 'offer', 'offer');
+    await sendTemplatedEmail({
       candidateName: offer.candidate_name,
       candidateEmail: offer.candidate_email,
-      jobTitle: offer.position_title || offer.job_title,
+      template,
       link,
-      customSubject: emailOverride.subject || null,
-      customBody: emailOverride.body || null,
+      vars: {
+        CANDIDATE_NAME: offer.candidate_name,
+        JOB_TITLE: offer.position_title || offer.job_title,
+      },
     });
 
     if (isFirstSend) {
@@ -669,7 +673,7 @@ class OfferService {
     return OfferModel.getOfferDocument(offer_id, 'contract');
   }
 
-  async sendContractDocument(offer_id, company_id, user_id, emailOverride = {}) {
+  async sendContractDocument(offer_id, company_id, user_id) {
     const offer = await OfferModel.getOfferById(offer_id, company_id);
     if (!offer) throw { status: 404, message: 'Offer not found' };
 
@@ -708,13 +712,16 @@ class OfferService {
     const baseUrl = process.env.FRONTEND_URL || 'http://localhost:5173';
     const link = `${baseUrl}/portal/contract/send/${send.token}`;
 
-    await sendOfferEmail({
+    const template = await EmailTemplateService.getResolved(company_id, 'contract', 'contract');
+    await sendTemplatedEmail({
       candidateName: offer.candidate_name,
       candidateEmail: offer.candidate_email,
-      jobTitle: offer.position_title || offer.job_title,
+      template,
       link,
-      customSubject: emailOverride.subject || null,
-      customBody: emailOverride.body || null,
+      vars: {
+        CANDIDATE_NAME: offer.candidate_name,
+        JOB_TITLE: offer.position_title || offer.job_title,
+      },
     });
 
     await OfferModel.updateOfferContractStatus(offer_id, 'sent');

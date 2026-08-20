@@ -15,7 +15,7 @@ export const createOffer = (data) => api.post('/offer/create', data);
 // Update compensation
 export const updateCompensation = (offerId, data) => api.put(`/offer/${offerId}/compensation`, data);
 
-export const sendOffer = (offerId, { subject, body } = {}) => api.post(`/offer/${offerId}/send`, { subject, body });
+export const sendOffer = (offerId) => api.post(`/offer/${offerId}/send`);
 
 // Revoke — revokes the active send without issuing a new one
 export const revokeOffer = (offerId, reason) => api.post(`/offer/${offerId}/revoke`, { reason });
@@ -79,7 +79,7 @@ export const getContractDocument = (offerId) => api.get(`/offer/${offerId}/contr
 
 export const uploadContractDocument = (offerId, formData) => api.post(`/offer/${offerId}/contract/document/upload`, formData, { headers: { 'Content-Type': 'multipart/form-data' }, });
 
-export const sendContractDocument = (offerId, { subject, body } = {}) => api.post(`/offer/${offerId}/contract/document/send`, { subject, body });
+export const sendContractDocument = (offerId) => api.post(`/offer/${offerId}/contract/document/send`);
 
 export const revokeContractDocument = (offerId, reason) => api.post(`/offer/${offerId}/contract/document/revoke`, { reason });
 
