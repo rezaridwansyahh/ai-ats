@@ -27,6 +27,7 @@ import jobSourcing from './src/modules/job-source/job-source.router.js'
 import job from "./src/modules/job/job.route.js"
 import applicant from "./src/modules/applicant/applicant.route.js"
 import candidatePipeline from "./src/modules/candidate-pipeline/candidate-pipeline.route.js"
+import assessment from "./src/modules/assessment/assessment.route.js"
 import participant from "./src/modules/assessment/participant/participant.route.js"
 import question from "./src/modules/assessment/question/question.route.js"
 import session from "./src/modules/assessment/session/session.route.js"
@@ -104,6 +105,7 @@ portal.use("/api/screening", screening);
 portal.use("/api/company", company);
 portal.use("/api/company-usage", companyUsage);
 portal.use("/api/setting", setting);
+portal.use("/api/assessment", assessment);
 portal.use("/api/participant", participant);
 portal.use("/api/question", question);
 portal.use("/api/session", session);
@@ -138,6 +140,7 @@ app.use("/api/job-sourcing", jobSourcing);
 app.use("/api/job", job);
 app.use("/api/applicant", applicant);
 app.use("/api/candidate-pipeline", candidatePipeline);
+app.use("/api/assessment", assessment);
 app.use("/api/participant", participant);
 app.use("/api/question", question);
 app.use("/api/session", session);
