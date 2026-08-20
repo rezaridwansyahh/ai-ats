@@ -163,6 +163,92 @@ class SeekService {
     }
   }
 
+  // Upserts a single normalized row immediately — this is what makes the
+  // sync resilient to a mid-scrape crash: every row that's already been
+  // scraped is already saved by the time the next one starts, instead of
+  // everything living only in memory until the whole multi-page scrape
+  // finishes. Never throws — a DB failure on one row is logged and
+  // skipped rather than aborting the rest of the sync.
+  async _upsertSeekJobPostRow(account_id, data) {
+    try {
+      const existing = data.seek_id ? await jobPostSeekModel.getBySeekId(data.seek_id) : null;
+
+      if (existing) {
+        await jobSourceModel.update(existing.job_sourcing_id, {
+          job_title: data.job_title,
+          status: data.status,
+          additional: data.additional,
+          job_desc: data.job_desc,
+          job_location: data.job_location,
+        });
+        await jobPostSeekModel.update(existing.job_sourcing_id, {
+          candidate_count: data.candidate_count,
+          currency: data.currency,
+          pay_type: data.pay_type,
+          pay_min: data.pay_min,
+          pay_max: data.pay_max,
+          pay_display: data.pay_display,
+          created_date_seek: data.created_date_seek,
+          created_by: data.created_by,
+          work_option: data.work_option,
+          work_type: data.work_type,
+        });
+      } else {
+        // Create new records (synced from Seek without a corresponding job_post)
+        const sourcing = await jobSourceModel.create(
+          account_id,
+          null,
+          'seek',
+          data.job_title,
+          data.status,
+          data.additional,
+          data.job_desc,
+          data.job_location
+        );
+
+        await jobPostSeekModel.create(sourcing.id, {
+          seek_id: data.seek_id,
+          candidate_count: data.candidate_count,
+          created_date_seek: data.created_date_seek,
+          created_by: data.created_by,
+          currency: data.currency,
+          pay_type: data.pay_type,
+          pay_min: data.pay_min,
+          pay_max: data.pay_max,
+          pay_display: data.pay_display,
+          work_option: data.work_option,
+          work_type: data.work_type,
+        });
+      }
+    } catch (err) {
+      console.error(`[syncJobPostAll] Failed to upsert seek_id=${data.seek_id}:`, err.message);
+    }
+  }
+
+  // Decides whether a row is worth the expensive detail-modal scrape.
+  // - expired jobs can never change again once we already have their full
+  //   detail (pay/created-date), so they're skipped forever after the
+  //   first successful scrape.
+  // - open jobs are skipped only if the cheap row-level fields (title,
+  //   candidate count) and status both still match what's already stored —
+  //   any real change forces a fresh detail scrape.
+  async _shouldSkipSeekDetailScrape(basicData, type) {
+    if (!basicData.seek_id) return false;
+
+    const existing = await jobPostSeekModel.getBySeekId(basicData.seek_id);
+    if (!existing) return false; // brand new job — always scrape
+
+    if (type === 'expired') {
+      const hasFullDetail = existing.pay_min != null || existing.created_date_seek != null;
+      return existing.status === 'Expired' && hasFullDetail;
+    }
+
+    // 'open' bucket
+    return existing.status === 'Active'
+      && existing.sourcing_job_title === basicData.job_title
+      && existing.candidate_count === basicData.candidate_count;
+  }
+
   async syncJobPostAll(account_id, page = null) {
     const types = ['open', 'expired']; // Seek has no real "draft" listing under this page/type flow
     const ownPage = !page;
@@ -173,60 +259,20 @@ class SeekService {
 
     try {
       await loginRpa.authenticatedPage(page, account_id);
-      const result = []
+      const summary = {};
       for(let i = 0; i < types.length; i++) {
-        const extracted = await extractJobPostRpa.syncAll(page, types[i]);
-        
-        console.log('Upserting to database');
-        for(const data of extracted) {
-          // Check if this seek_id already exists
-          const existing = data.seek_id ? await jobPostSeekModel.getBySeekId(data.seek_id) : null;
+        const counts = await extractJobPostRpa.syncAll(page, types[i], {
+          onRow: (data) => this._upsertSeekJobPostRow(account_id, data),
+          shouldSkipDetail: (basicData, type) => this._shouldSkipSeekDetailScrape(basicData, type),
+        });
 
-          if (existing) {
-            // Update existing records
-            await jobSourceModel.update(existing.job_sourcing_id, {
-              job_title: data.job_title,
-              status: data.status,
-              additional: data.additional,
-            });
-            await jobPostSeekModel.update(existing.job_sourcing_id, {
-              currency: data.currency,
-              pay_type: data.pay_type,
-              pay_min: data.pay_min,
-              pay_max: data.pay_max,
-              pay_display: data.pay_display,
-              created_date_seek: data.created_date_seek,
-              created_by: data.created_by,
-            });
-          } else {
-            // Create new records (synced from Seek without a corresponding job_post)
-            const sourcing = await jobSourceModel.create(
-              account_id,
-              null,
-              'seek',
-              data.job_title,
-              data.status,
-              data.additional
-            );
-
-            await jobPostSeekModel.create(sourcing.id, {
-              seek_id: data.seek_id,
-              candidate_count: data.candidate_count,
-              created_date_seek: data.created_date_seek,
-              created_by: data.created_by,
-              currency: data.currency,
-              pay_type: data.pay_type,
-              pay_min: data.pay_min,
-              pay_max: data.pay_max,
-              pay_display: data.pay_display,
-            });
-          }
-        }
-        
-        result.push(extracted);
+        summary[types[i]] = counts;
+        console.log(`[syncJobPostAll] account=${account_id} type=${types[i]}: scraped=${counts.scraped} skipped=${counts.skipped} failed=${counts.failed}`);
       }
-      return result;
+      await jobAccountModel.updateSync(account_id, 'Sync');
+      return summary;
     } catch(err) {
+      await jobAccountModel.updateSync(account_id, 'Error');
       throw err;
     } finally {
       if(ownPage) await browserPuppeteer.close();

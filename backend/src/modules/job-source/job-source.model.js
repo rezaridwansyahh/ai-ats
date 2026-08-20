@@ -104,13 +104,13 @@ class JobSourceModel {
     return result.rows;
   }
 
-  async create(account_id, job_post_id, platform, job_title, status = 'Active', additional = null) {
+  async create(account_id, job_post_id, platform, job_title, status = 'Active', additional = null, job_desc = null, job_location = null) {
     const result = await getDb().query(`
       INSERT INTO core_job_sourcing
-        (account_id, job_post_id, platform, job_title, status, additional)
-      VALUES ($1, $2, $3, $4, $5, $6)
+        (account_id, job_post_id, platform, job_title, status, additional, job_desc, job_location)
+      VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
       RETURNING *
-    `, [account_id, job_post_id, platform, job_title, status, additional]);
+    `, [account_id, job_post_id, platform, job_title, status, additional, job_desc, job_location]);
 
     return result.rows[0];
   }
