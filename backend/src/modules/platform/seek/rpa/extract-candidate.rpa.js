@@ -1,5 +1,6 @@
 import path from 'path';
 import fs from 'fs';
+import os from 'os';
 
 const delay = (ms) => new Promise(r => setTimeout(r, ms));
 
@@ -84,9 +85,14 @@ class ExtractCandidateService {
 
     let allCandidates = [];
 
-    // Prepare download path: resumes/{account_id}/{jobId}_{jobName}/
+    // Download to a temp staging dir — at this point the applicant doesn't have
+    // a master_applicant row yet (that only exists after seek.service.js calls
+    // applicantModel.create), so we can't name/place the file into permanent
+    // storage yet. seek.service.js promotes it into uploads/cv/{company}/ —
+    // same location manual Talent Pool CV uploads use — once the applicant id
+    // is known (see promoteDownloadedCv in shared/utils/cv-storage.js).
     const safeName = job_name.replace(/[<>:"/\\|?*]+/g, '_');
-    const downloadDir = path.resolve(`./resumes/${account_id}/${seek_id}_${safeName}`);
+    const downloadDir = path.join(os.tmpdir(), 'seek-cv-staging', `${account_id}_${seek_id}_${safeName}`);
     fs.mkdirSync(downloadDir, { recursive: true });
 
     while (true) {
@@ -207,7 +213,9 @@ class ExtractCandidateService {
 
         if (hasResumeTab) {
           const fileName = `${seek_id}_${candidateId}.pdf`;
-          resumeFileName = `resumes/${account_id}/${seek_id}_${safeName}/${fileName}`;
+          // Temp absolute path — promoted into permanent storage by seek.service.js
+          // once the applicant's real DB id exists.
+          resumeFileName = path.join(downloadDir, fileName);
 
           try {
             await page.click('#tab-select-detail-view_3');

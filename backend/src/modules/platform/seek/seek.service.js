@@ -9,6 +9,8 @@ import extractJobPostRpa from "../seek/rpa/extract-job-post.rpa.js"
 import applicantModel from "../../applicant/applicant.model.js"
 import jobAccountModel from "../../job-account/job-account.model.js"
 import candidatePipelineModel from "../../candidate-pipeline/candidate-pipeline.model.js"
+import companyService from "../../company/company.service.js"
+import { promoteDownloadedCv } from "../../../shared/utils/cv-storage.js"
 
 class SeekService {
   async jobPost(account_id, service, dataForm) {
@@ -106,6 +108,24 @@ class SeekService {
     // When linked, each synced applicant is auto-promoted to a candidate for that job.
     const linkedJobId = await jobSourceModel.getLinkedJobId(job_sourcing_id);
 
+    // Resolve the owning company from the job account so synced applicants are
+    // scoped correctly — without this, applicants insert with company_id=NULL
+    // and silently never show up in Talent Pool (WHERE ma.company_id = $1).
+    const account = await jobAccountModel.getById(account_id);
+    const company_id = account?.company_id || null;
+
+    // Company name is just for a readable storage folder — resolved once up
+    // front (not per-candidate) and falls back gracefully if it's missing.
+    let companyName = 'unknown';
+    if (company_id) {
+      try {
+        const company = await companyService.getById(company_id);
+        companyName = company.name;
+      } catch {
+        // company lookup failing shouldn't block the sync
+      }
+    }
+
     try {
       await loginRpa.authenticatedPage(page, account_id);
       await extractCandidateRpa.navigateToCandidatePage(page, jobPostSeek.seek_id);
@@ -129,16 +149,36 @@ class SeekService {
         for (const candidate of candidates) {
           if (!candidate.candidate_id) continue;
 
+          // Create without attachment first — the resume PDF (if any) is still
+          // sitting in a temp staging dir at this point (extract-candidate.rpa.js
+          // can't name/place it into permanent storage before the applicant's
+          // real DB id exists). Same two-step pattern the manual Talent Pool CV
+          // upload uses (sourcing.service.js:uploadCv).
           const applicant = await applicantModel.create({
             job_sourcing_id,
+            company_id,
             name: candidate.name,
             last_position: candidate.last_position,
             address: candidate.address,
             education: candidate.education || null,
             information: candidate.information || null,
             date: candidate.date || null,
-            attachment: candidate.attachment || null,
+            attachment: null,
           });
+
+          if (candidate.attachment && applicant?.id) {
+            try {
+              const savedPath = promoteDownloadedCv(
+                candidate.attachment, company_id, companyName, applicant.id, applicant.name
+              );
+              if (savedPath) {
+                await applicantModel.updateAttachment(applicant.id, savedPath);
+                applicant.attachment = savedPath;
+              }
+            } catch (err) {
+              console.error(`Failed to promote resume for applicant ${applicant.id}:`, err.message);
+            }
+          }
 
           // Auto-promote to candidate for owned postings only. Dup-safe (ON CONFLICT
           // DO NOTHING) and individually guarded so one failure never aborts the batch.

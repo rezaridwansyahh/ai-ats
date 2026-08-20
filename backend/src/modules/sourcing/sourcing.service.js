@@ -8,22 +8,7 @@ import cvProducer from '../../bullmq/cv/cv.producer.js';
 import ApplicantModel from '../applicant/applicant.model.js';
 import aiService from '../../shared/services/ai.service.js';
 import companyService from '../company/company.service.js';
-
-
-// ── Save an uploaded PDF buffer to permanent disk storage, return its path ──
-function saveCvBuffer(buffer, companyId, companyName, applicant) {
-  const safeCompanyName = (companyName || 'unknown').replace(/[^a-zA-Z0-9.\-_]/g, '_');
-  const companyFolder = `${companyId}_${safeCompanyName}`;
-
-  const uploadsDir = path.join(process.cwd(), 'uploads', 'cv', companyFolder);
-  fs.mkdirSync(uploadsDir, { recursive: true });
-
-  const savedFilename = `${applicant.id}_${applicant.name}.pdf`;
-  const savedPath = path.join(uploadsDir, savedFilename);
-
-  fs.writeFileSync(savedPath, buffer);
-  return savedPath;
-}
+import { saveCvBuffer } from '../../shared/utils/cv-storage.js';
 
 class SourcingService {
   // ─── Sourcing ───
@@ -244,7 +229,7 @@ class SourcingService {
       }
 
       // Now save the file using the applicant's real id, then persist the path
-      const savedPath = saveCvBuffer(file.buffer, companyId, companyName, applicant);
+      const savedPath = saveCvBuffer(file.buffer, companyId, companyName, applicant.id, applicant.name);
       await ApplicantModel.updateAttachment(applicant.id, savedPath);
       applicant.attachment = savedPath;
 

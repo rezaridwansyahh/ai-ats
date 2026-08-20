@@ -1,5 +1,6 @@
 import fs from 'fs';
 import path from 'path';
+import os from 'os';
 
 const delay = ms => new Promise(r => setTimeout(r, ms));
 
@@ -147,8 +148,11 @@ class ExtractRecruiteRpa {
     let hasNext = true;
     let count = 0;
 
+    // Temp staging dir — linkedin.service.js promotes into permanent storage
+    // (uploads/cv/{company}/) once the applicant's real DB id is known.
+    // See extract-candidate.rpa.js (Seek) for the same pattern.
     const safeName = job_name.replace(/[<>:"/\\|?*]+/g, '_');
-    const downloadDir = path.resolve(`./resumes/${account_id}/${linkedin_id}_${safeName}`);
+    const downloadDir = path.join(os.tmpdir(), 'linkedin-cv-staging', `${account_id}_${linkedin_id}_${safeName}`);
     fs.mkdirSync(downloadDir, { recursive: true });
 
     while(hasNext && count < limit) {
@@ -272,7 +276,8 @@ class ExtractRecruiteRpa {
 
         if (downloadBtn) {
           const fileName = `${linkedin_id}_${count}.pdf`;
-          attachment = `resumes/${account_id}/${linkedin_id}_${safeName}/${fileName}`;
+          // Temp absolute path — promoted into permanent storage by linkedin.service.js.
+          attachment = path.join(downloadDir, fileName);
 
           try {
             const filesBefore = new Set(fs.readdirSync(downloadDir));
