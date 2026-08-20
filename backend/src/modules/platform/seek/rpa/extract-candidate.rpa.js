@@ -61,7 +61,16 @@ class ExtractCandidateService {
     return buckets;
   }
 
-  async extractCandidates(page, candidateType, account_id, seek_id, job_name) {
+  // checkExists(name) → Promise<boolean>: called right after a card's name is
+  // read, before we click into it — lets the caller skip the expensive part
+  // (open detail modal, download resume) for candidates already synced from a
+  // previous run instead of only deduping at DB insert time.
+  // onSave(candidate) → Promise<void>: called immediately per candidate as
+  // soon as it's fully scraped, instead of buffering everything into an array
+  // and returning it only once the whole bucket (all pages) finishes — so a
+  // crash/timeout partway through a large candidate list doesn't lose
+  // everything scraped so far.
+  async extractCandidates(page, candidateType, account_id, seek_id, job_name, { checkExists, onSave } = {}) {
     console.log(candidateType);
     console.log("Starting candidate extraction with pagination");
 
@@ -83,7 +92,8 @@ class ExtractCandidateService {
       console.log('Filter toggle not found or already open');
     }
 
-    let allCandidates = [];
+    let saved = 0;
+    let skipped = 0;
 
     // Download to a temp staging dir — at this point the applicant doesn't have
     // a master_applicant row yet (that only exists after seek.service.js calls
@@ -180,6 +190,14 @@ class ExtractCandidateService {
           continue;
         }
 
+        // Skip already-synced candidates before paying for the click + modal +
+        // resume download — cheap short-circuit on re-sync.
+        if (checkExists && cardData.name && await checkExists(cardData.name)) {
+          console.log(`Already synced, skipping: ${cardData.name}`);
+          skipped++;
+          continue;
+        }
+
         // Click card to open details
         await page.evaluate((selector) => {
           const el = document.querySelector(selector);
@@ -264,16 +282,19 @@ class ExtractCandidateService {
 
         await delay(500);
 
-        allCandidates.push({
-          ...cardData,
-          candidate_id: candidateId,
-          attachment: resumeFileName
-        });
+        const candidate = { ...cardData, candidate_id: candidateId, attachment: resumeFileName };
+
+        // Save immediately rather than buffering — persists progress as we go
+        // instead of holding the whole bucket in memory until it's all done.
+        if (onSave) {
+          await onSave(candidate);
+        }
+        saved++;
 
         console.log(`Extracted candidate ${i + 1}/${totalCards}: ${cardData.name} (ID: ${candidateId})`);
       }
 
-      console.log(`Candidates extracted so far: ${allCandidates.length}`);
+      console.log(`Candidates saved so far: ${saved}, skipped (already synced): ${skipped}`);
       console.log('\nChecking for next page...');
 
       const nextBtn = await page.$('a[rel="next"][aria-hidden="false"]');
@@ -298,8 +319,8 @@ class ExtractCandidateService {
       await delay(2000);
     }
 
-    console.log(`\nTotal candidates extracted: ${allCandidates.length}`);
-    return allCandidates;
+    console.log(`\nTotal candidates saved: ${saved}, skipped: ${skipped}`);
+    return { saved, skipped };
   }
 }
 

@@ -153,6 +153,19 @@ class ApplicantModel {
     return result.rows;
   }
 
+  // Mirrors the (name, job_sourcing_id) UNIQUE constraint used by create()'s
+  // ON CONFLICT. Used by RPA extraction to skip already-synced candidates
+  // *before* paying for the expensive per-candidate work (opening the detail
+  // modal, downloading the resume) instead of only deduping at insert time.
+  async existsByNameAndJobSourcing(name, job_sourcing_id) {
+    const result = await getDb().query(`
+      SELECT 1 FROM master_applicant
+      WHERE name = $1 AND job_sourcing_id = $2
+      LIMIT 1
+    `, [name, job_sourcing_id]);
+    return result.rowCount > 0;
+  }
+
   async create({ job_sourcing_id, upload_batch_id, company_id, name, email, last_position, address, education, information, date, attachment }) {
     const result = await getDb().query(`
       INSERT INTO master_applicant

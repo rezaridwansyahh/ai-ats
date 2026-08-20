@@ -142,9 +142,17 @@ class ExtractRecruiteRpa {
     return results;
   }
 
-  async extractApplicant(page, dataForm) {
+  // checkExists(name) → Promise<boolean>: called right after a card's name is
+  // read, before we click into the profile — skips the expensive part (open
+  // profile modal, download resume) for candidates already synced from a
+  // previous run instead of only deduping at DB insert time.
+  // onSave(candidate) → Promise<void>: called immediately per candidate as
+  // soon as it's fully scraped, instead of buffering everything into an array
+  // and returning it only once every page finishes.
+  async extractApplicant(page, dataForm, { checkExists, onSave } = {}) {
     const { account_id, job_name, linkedin_id, limit } = dataForm;
-    const results = [];
+    let saved = 0;
+    let skipped = 0;
     let hasNext = true;
     let count = 0;
 
@@ -184,6 +192,14 @@ class ExtractRecruiteRpa {
           last_position: el.querySelector('span[data-test-row-lockup-headline]')?.innerText,
           address: el.querySelector('[data-test-row-lockup-location]')?.innerText
         }));
+
+        // Skip already-synced candidates before paying for the click + modal +
+        // resume download — cheap short-circuit on re-sync.
+        if (checkExists && basic.name && await checkExists(basic.name)) {
+          console.log(`Already synced, skipping: ${basic.name}`);
+          skipped++;
+          continue;
+        }
 
         // click the card to open modal
         await card.evaluate(el => el.querySelector('a[data-test-link-to-profile-link]').click());
@@ -304,7 +320,14 @@ class ExtractRecruiteRpa {
         await page.click('a[data-test-close-pagination-header-button]');
         await page.waitForSelector('div[data-live-test-profile-index-tab-content]', { hidden: true });
 
-        results.push({ ...basic, information: modalData, attachment });
+        const candidate = { ...basic, information: modalData, attachment };
+
+        // Save immediately rather than buffering — persists progress as we go
+        // instead of holding everything in memory until the whole run finishes.
+        if (onSave) {
+          await onSave(candidate);
+        }
+        saved++;
         count++;
       }
 
@@ -323,7 +346,8 @@ class ExtractRecruiteRpa {
       }
     }
 
-    return results;
+    console.log(`Total candidates saved: ${saved}, skipped: ${skipped}`);
+    return { saved, skipped };
   }
 }
 

@@ -131,13 +131,6 @@ class LinkedInService {
       await loginRpa.authenticatedPage(page, account_id);
       await navigationRpa.redirectProjectJob(page, jobPostLinkedin.project_id, jobPostLinkedin.linkedin_id);
 
-      const candidates = await extractDataRpa.extractApplicant(page, {
-        account_id,
-        job_name: sourcing.job_title,
-        linkedin_id: jobPostLinkedin.linkedin_id,
-        limit
-      });
-
       // Owned posting → resolves to a core_job; auto-promote synced applicants to
       // candidates for that job (parity with the Seek sync hook). Orphan → null → skip.
       const linkedJobId = await jobSourceModel.getLinkedJobId(job_sourcing_id);
@@ -161,7 +154,15 @@ class LinkedInService {
       }
 
       let promoted = 0;
-      for (const candidate of candidates) {
+
+      // Skip candidates already saved for this job_sourcing_id — checked by
+      // the RPA layer before it clicks into the profile, so a re-sync doesn't
+      // re-open the modal / re-download the resume for people we already have.
+      const checkExists = (name) => applicantModel.existsByNameAndJobSourcing(name, job_sourcing_id);
+
+      // Called by the RPA layer immediately per candidate (not buffered into
+      // an array and processed only after the whole run finishes).
+      const onSave = async (candidate) => {
         // Create without attachment first — the resume PDF (if any) is still in a
         // temp staging dir at this point. Same two-step pattern as Seek and the
         // manual Talent Pool CV upload (sourcing.service.js:uploadCv).
@@ -197,9 +198,16 @@ class LinkedInService {
             console.error(`Auto-promote failed for applicant ${applicant.id} → job ${linkedJobId}:`, err.message);
           }
         }
-      }
+      };
 
-      return { saved: candidates.length, promoted, linkedJobId };
+      const { saved, skipped } = await extractDataRpa.extractApplicant(page, {
+        account_id,
+        job_name: sourcing.job_title,
+        linkedin_id: jobPostLinkedin.linkedin_id,
+        limit
+      }, { checkExists, onSave });
+
+      return { saved, skipped, promoted, linkedJobId };
     } catch (err) {
       console.log(err);
       throw err;

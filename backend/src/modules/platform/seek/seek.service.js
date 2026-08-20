@@ -138,16 +138,24 @@ class SeekService {
 
       for (const bucket of buckets) {
         if (bucket.count === 0) {
-          results.push({ bucket: bucket.name, saved: 0, promoted: 0 });
+          results.push({ bucket: bucket.name, saved: 0, skipped: 0, promoted: 0 });
           continue;
         }
 
         await extractCandidateRpa.navigateToCandidateDetail(page, bucket.name);
-        const candidates = await extractCandidateRpa.extractCandidates(page, bucket, account_id, jobPostSeek.seek_id, job_name);
 
         let promoted = 0;
-        for (const candidate of candidates) {
-          if (!candidate.candidate_id) continue;
+
+        // Skip candidates already saved for this job_sourcing_id — checked by
+        // the RPA layer before it clicks into the card, so a re-sync doesn't
+        // re-open the modal / re-download the resume for people we already have.
+        const checkExists = (name) => applicantModel.existsByNameAndJobSourcing(name, job_sourcing_id);
+
+        // Called by the RPA layer immediately per candidate (not buffered into
+        // an array and processed only after the whole bucket finishes) — so
+        // progress persists even if a later page in this bucket fails/times out.
+        const onSave = async (candidate) => {
+          if (!candidate.candidate_id) return;
 
           // Create without attachment first — the resume PDF (if any) is still
           // sitting in a temp staging dir at this point (extract-candidate.rpa.js
@@ -190,9 +198,13 @@ class SeekService {
               console.error(`Auto-promote failed for applicant ${applicant.id} → job ${linkedJobId}:`, err.message);
             }
           }
-        }
+        };
 
-        results.push({ bucket: bucket.name, saved: candidates.length, promoted });
+        const { saved, skipped } = await extractCandidateRpa.extractCandidates(
+          page, bucket, account_id, jobPostSeek.seek_id, job_name, { checkExists, onSave }
+        );
+
+        results.push({ bucket: bucket.name, saved, skipped, promoted });
       }
 
       return { buckets, results, linkedJobId };
