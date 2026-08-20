@@ -1,5 +1,6 @@
 import fs from 'fs';
 import path from 'path';
+import os from 'os';
 
 const delay = ms => new Promise(r => setTimeout(r, ms));
 
@@ -141,14 +142,25 @@ class ExtractRecruiteRpa {
     return results;
   }
 
-  async extractApplicant(page, dataForm) {
+  // checkExists(name) → Promise<boolean>: called right after a card's name is
+  // read, before we click into the profile — skips the expensive part (open
+  // profile modal, download resume) for candidates already synced from a
+  // previous run instead of only deduping at DB insert time.
+  // onSave(candidate) → Promise<void>: called immediately per candidate as
+  // soon as it's fully scraped, instead of buffering everything into an array
+  // and returning it only once every page finishes.
+  async extractApplicant(page, dataForm, { checkExists, onSave } = {}) {
     const { account_id, job_name, linkedin_id, limit } = dataForm;
-    const results = [];
+    let saved = 0;
+    let skipped = 0;
     let hasNext = true;
     let count = 0;
 
+    // Temp staging dir — linkedin.service.js promotes into permanent storage
+    // (uploads/cv/{company}/) once the applicant's real DB id is known.
+    // See extract-candidate.rpa.js (Seek) for the same pattern.
     const safeName = job_name.replace(/[<>:"/\\|?*]+/g, '_');
-    const downloadDir = path.resolve(`./resumes/${account_id}/${linkedin_id}_${safeName}`);
+    const downloadDir = path.join(os.tmpdir(), 'linkedin-cv-staging', `${account_id}_${linkedin_id}_${safeName}`);
     fs.mkdirSync(downloadDir, { recursive: true });
 
     while(hasNext && count < limit) {
@@ -180,6 +192,14 @@ class ExtractRecruiteRpa {
           last_position: el.querySelector('span[data-test-row-lockup-headline]')?.innerText,
           address: el.querySelector('[data-test-row-lockup-location]')?.innerText
         }));
+
+        // Skip already-synced candidates before paying for the click + modal +
+        // resume download — cheap short-circuit on re-sync.
+        if (checkExists && basic.name && await checkExists(basic.name)) {
+          console.log(`Already synced, skipping: ${basic.name}`);
+          skipped++;
+          continue;
+        }
 
         // click the card to open modal
         await card.evaluate(el => el.querySelector('a[data-test-link-to-profile-link]').click());
@@ -272,7 +292,8 @@ class ExtractRecruiteRpa {
 
         if (downloadBtn) {
           const fileName = `${linkedin_id}_${count}.pdf`;
-          attachment = `resumes/${account_id}/${linkedin_id}_${safeName}/${fileName}`;
+          // Temp absolute path — promoted into permanent storage by linkedin.service.js.
+          attachment = path.join(downloadDir, fileName);
 
           try {
             const filesBefore = new Set(fs.readdirSync(downloadDir));
@@ -299,7 +320,14 @@ class ExtractRecruiteRpa {
         await page.click('a[data-test-close-pagination-header-button]');
         await page.waitForSelector('div[data-live-test-profile-index-tab-content]', { hidden: true });
 
-        results.push({ ...basic, information: modalData, attachment });
+        const candidate = { ...basic, information: modalData, attachment };
+
+        // Save immediately rather than buffering — persists progress as we go
+        // instead of holding everything in memory until the whole run finishes.
+        if (onSave) {
+          await onSave(candidate);
+        }
+        saved++;
         count++;
       }
 
@@ -318,7 +346,8 @@ class ExtractRecruiteRpa {
       }
     }
 
-    return results;
+    console.log(`Total candidates saved: ${saved}, skipped: ${skipped}`);
+    return { saved, skipped };
   }
 }
 

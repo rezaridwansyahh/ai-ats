@@ -12,6 +12,9 @@ import jobSourceModel from "../../job-source/job-source.model.js"
 import jobPostLinkedinModel from "./job-post-linkedin.model.js"
 import applicantModel from "../../applicant/applicant.model.js"
 import candidatePipelineModel from "../../candidate-pipeline/candidate-pipeline.model.js"
+import jobAccountModel from "../../job-account/job-account.model.js"
+import companyService from "../../company/company.service.js"
+import { promoteDownloadedCv } from "../../../shared/utils/cv-storage.js"
 
 import { joinArrayFields } from '../../../shared/utils/format.js';
 
@@ -128,27 +131,64 @@ class LinkedInService {
       await loginRpa.authenticatedPage(page, account_id);
       await navigationRpa.redirectProjectJob(page, jobPostLinkedin.project_id, jobPostLinkedin.linkedin_id);
 
-      const candidates = await extractDataRpa.extractApplicant(page, {
-        account_id,
-        job_name: sourcing.job_title,
-        linkedin_id: jobPostLinkedin.linkedin_id,
-        limit
-      });
-
       // Owned posting → resolves to a core_job; auto-promote synced applicants to
       // candidates for that job (parity with the Seek sync hook). Orphan → null → skip.
       const linkedJobId = await jobSourceModel.getLinkedJobId(job_sourcing_id);
 
+      // Resolve the owning company from the job account so synced applicants are
+      // scoped correctly — without this, applicants insert with company_id=NULL
+      // and silently never show up in Talent Pool (WHERE ma.company_id = $1).
+      const account = await jobAccountModel.getById(account_id);
+      const company_id = account?.company_id || null;
+
+      // Company name is just for a readable storage folder — resolved once up
+      // front (not per-candidate) and falls back gracefully if it's missing.
+      let companyName = 'unknown';
+      if (company_id) {
+        try {
+          const company = await companyService.getById(company_id);
+          companyName = company.name;
+        } catch {
+          // company lookup failing shouldn't block the sync
+        }
+      }
+
       let promoted = 0;
-      for (const candidate of candidates) {
+
+      // Skip candidates already saved for this job_sourcing_id — checked by
+      // the RPA layer before it clicks into the profile, so a re-sync doesn't
+      // re-open the modal / re-download the resume for people we already have.
+      const checkExists = (name) => applicantModel.existsByNameAndJobSourcing(name, job_sourcing_id);
+
+      // Called by the RPA layer immediately per candidate (not buffered into
+      // an array and processed only after the whole run finishes).
+      const onSave = async (candidate) => {
+        // Create without attachment first — the resume PDF (if any) is still in a
+        // temp staging dir at this point. Same two-step pattern as Seek and the
+        // manual Talent Pool CV upload (sourcing.service.js:uploadCv).
         const applicant = await applicantModel.create({
           job_sourcing_id,
+          company_id,
           name: candidate.name,
           last_position: candidate.last_position,
           address: candidate.address,
           information: candidate.information ? JSON.stringify(candidate.information) : null,
-          attachment: candidate.attachment || null,
+          attachment: null,
         });
+
+        if (candidate.attachment && applicant?.id) {
+          try {
+            const savedPath = promoteDownloadedCv(
+              candidate.attachment, company_id, companyName, applicant.id, applicant.name
+            );
+            if (savedPath) {
+              await applicantModel.updateAttachment(applicant.id, savedPath);
+              applicant.attachment = savedPath;
+            }
+          } catch (err) {
+            console.error(`Failed to promote resume for applicant ${applicant.id}:`, err.message);
+          }
+        }
 
         if (linkedJobId && applicant?.id) {
           try {
@@ -158,9 +198,16 @@ class LinkedInService {
             console.error(`Auto-promote failed for applicant ${applicant.id} → job ${linkedJobId}:`, err.message);
           }
         }
-      }
+      };
 
-      return { saved: candidates.length, promoted, linkedJobId };
+      const { saved, skipped } = await extractDataRpa.extractApplicant(page, {
+        account_id,
+        job_name: sourcing.job_title,
+        linkedin_id: jobPostLinkedin.linkedin_id,
+        limit
+      }, { checkExists, onSave });
+
+      return { saved, skipped, promoted, linkedJobId };
     } catch (err) {
       console.log(err);
       throw err;

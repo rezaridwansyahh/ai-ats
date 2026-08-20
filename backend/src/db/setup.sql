@@ -380,6 +380,8 @@ CREATE TABLE core_job_sourcing (
   account_id INTEGER REFERENCES master_job_account(id) ON DELETE CASCADE,
   job_post_id INTEGER REFERENCES job_post(id) ON DELETE CASCADE,
   job_title VARCHAR(255) NOT NULL,
+  job_desc TEXT,          -- platform-agnostic: same concept regardless of source platform
+  job_location VARCHAR(255),
   platform platform_type NOT NULL,
   platform_job_id VARCHAR(255),
   status status_type NOT NULL DEFAULT 'Active',
@@ -416,6 +418,8 @@ CREATE TABLE mapping_job_sourcing_seek (
   pay_min INT,
   pay_max INT,
   pay_display pay_display_type,
+  work_option work_option_type,
+  work_type work_type_type,
   created_at TIMESTAMP NOT NULL DEFAULT NOW(),
   updated_at TIMESTAMP NOT NULL DEFAULT NOW()
 );

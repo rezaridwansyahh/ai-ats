@@ -108,12 +108,15 @@ class SeekSyncJobPostService {
   async extractJobAppTypeCount(page) {
     const data =  await page.evaluate(() => {
       const el = document.querySelector('[data-testid="totalCount"]');
-      
+
       if (!el) return 0;
 
-      const match = el.textContent.match(/\d+/);
-      
-      return match ? Number(match[0]) : 0;
+      // Strip everything but digits and parse as one number — don't match
+      // just the first \d+ run, since Indonesian locale uses "." as a
+      // thousands separator (e.g. "1.002" would otherwise truncate to 1).
+      const digitsOnly = el.textContent.replace(/\D/g, '');
+
+      return digitsOnly ? Number(digitsOnly) : 0;
     });
 
     return data;

@@ -8,12 +8,12 @@ import { ACTION_GATED_OPTIONS, ACTION_GATED_STYLES } from './tourTheme';
  * -------------------------------------------------------------------------
  * Action-based, like FirstJobWizard/CvUploadWizard — NOT an explainer tour
  * like PipelineTour. Four steps, one per stage of SourceManagementPage's
- * own stepper (Job Select, List Source, Source Setup, List Candidate).
+ * own stepper (Account Select, List Source, Source Setup, List Candidate).
  *
  * Unlike FirstJobWizard, gating here doesn't check form field validity —
  * it checks `ctx.activeStep`, the SAME state that drives which step
  * component SourceManagementPage actually renders. This matters because
- * each step's target element (job list, source table, threshold card,
+ * each step's target element (account list, source table, threshold card,
  * candidate table) only exists in the DOM once activeStep reaches it —
  * so a step's isDone can only become true after its target has already
  * been reached and shown to the user.
@@ -33,9 +33,13 @@ const FINAL_STEPS_DISPLAY_MS = 4000;
 
 const STEPS = [
     {
-        target: '[data-tour="source-mgmt-job-list"]',
-        title: 'Pick a job',
-        content: 'Select an active job to source candidate for. We\u2019ll move on automatically once you\u2019ve picked one.',
+        // NOTE: step 0 of SourceManagementPage renders <AccountSelection>,
+        // not a job list — target/copy updated to match. Make sure
+        // AccountSelection.jsx has a data-tour="source-mgmt-account-list"
+        // attribute on its account list/cards container.
+        target: '[data-tour="source-mgmt-account-list"]',
+        title: 'Connect an account',
+        content: 'Pick a connected account (LinkedIn, Seek, etc.) to source from. We\u2019ll move on automatically once you\u2019ve picked one.',
         placement: 'top',
         isDone: (ctx) => ctx.activeStep > 0,
     },
@@ -63,16 +67,18 @@ const STEPS = [
     },
 ];
 
-export function useSourceManagementWizard(){
+export function useSourceManagementWizard(loading){
     const [run, setRun] = useState(false);
+    const [tourKey, setTourKey] = useState(0);
 
     useEffect(() => {
+        if (loading) return;
         const seen = localStorage.getItem(STORAGE_KEY);
         if (!seen){
             const t = setTimeout(() => setRun(true), 1000);
             return () => clearTimeout(t);
         }
-    }, []);
+    }, [loading]);
 
     const markSeen = useCallback(() => {
         localStorage.setItem(STORAGE_KEY, '1');
@@ -80,15 +86,16 @@ export function useSourceManagementWizard(){
 
     const restart = useCallback(() => {
         localStorage.removeItem(STORAGE_KEY);
+        setTourKey((k) => k + 1); // forces SourceManagementWizard to remount
         setRun(true);
     }, []);
 
-    return { run, setRun, markSeen, restart };
+    return { run, setRun, markSeen, restart, tourKey };
 }
 
 export default function SourceManagementWizard({ activeStep, run, setRun, markSeen}){
     const ctx = { activeStep };
-    
+
     const { stepIndex } = useActionGatedTour(STEPS, ctx, {
         run, setRun, markSeen,
         deps: [activeStep],
@@ -98,8 +105,8 @@ export default function SourceManagementWizard({ activeStep, run, setRun, markSe
         },
     });
 
-    const handleEvent = (data) => {
-        if(data.status === STATUS.SKIPPED) {
+    const handleCallback = (data) => {
+        if (data.status === STATUS.SKIPPED) {
             setRun(false);
             markSeen();
         }
@@ -122,7 +129,7 @@ export default function SourceManagementWizard({ activeStep, run, setRun, markSe
         run={run}
         continuous
         scrollToFirstStep
-        onEvent={handleEvent}
+        callback={handleCallback}
         options={ACTION_GATED_OPTIONS}
         locale={{ skip: 'Skip' }}
         styles={ACTION_GATED_STYLES}

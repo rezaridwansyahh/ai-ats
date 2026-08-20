@@ -46,171 +46,246 @@ class ExtractJobPostService {
     await page.goto(`https://id.employer.seek.com/id/jobs?type=${type}`, { waitUntil: 'networkidle0' });
   }
 
-  async extractJobPost(page) {
+  /**
+   * Scrapes the full jobs table across all pages.
+   *
+   * options.onRow(rowData) — called immediately after each row finishes
+   * processing (success OR graceful partial-failure), so the caller can
+   * persist it right away instead of waiting for the whole scrape to
+   * finish. This is what makes a crash partway through non-catastrophic —
+   * everything already pushed via onRow is already saved.
+   *
+   * options.shouldSkipDetail(basicData) — called right after the cheap
+   * row-level scrape, before opening the (expensive) detail modal. If it
+   * resolves true, the modal is skipped entirely for that row — nothing
+   * changed, nothing to persist.
+   *
+   * Returns lightweight counts ({ scraped, skipped, failed }), not the
+   * scraped data itself — persistence already happened via onRow as each
+   * row was processed, and nothing currently reads the full result set,
+   * so there's no reason to hold every row's data in memory for the
+   * entire run just to throw it away at the end.
+   */
+  async extractJobPost(page, { onRow, shouldSkipDetail } = {}) {
     console.log('Starting Extract Job Post');
     const browser = browserPuppeteer.getBrowser();
 
-    let results = [];
+    const counts = { scraped: 0, skipped: 0, failed: 0 };
     let hasNext = true;
+
+    const report = async (data) => {
+      counts.scraped++;
+      if (onRow) {
+        try {
+          await onRow(data);
+        } catch (err) {
+          // A failure persisting one row should never abort the scrape —
+          // log and keep going. Callers are expected to handle their own
+          // errors internally, but this is a last-resort safety net.
+          console.error('[extractJobPost] onRow callback failed:', err.message);
+        }
+      }
+    };
 
     while(hasNext) {
       const table = await this.waitForOptionalTable(page);
 
-      if(!table) return results;
+      if(!table) return counts;
 
       await page.waitForFunction(() => {
         const firstCell = document.querySelector('table tbody tr td');
         return firstCell && firstCell.textContent.trim() !== '' && !firstCell.textContent.includes('_');
       });
       await delay(1000);
-      
+
       const rows = await page.$$('table tbody tr');
       console.log('Start page');
       for (let i = 0; i < rows.length; i++) {
+        // Every row is independently guarded — one row's unexpected
+        // failure (timeout, navigation error, unforeseen selector issue)
+        // logs and moves on to the next row instead of aborting the
+        // entire multi-page scrape and losing everything already gathered.
+        try {
+          const row = rows[i];
 
-        const row = rows[i];
+          // 1️⃣ Extract basic row info — every step is null-guarded so a
+          // malformed/unexpected row (ad banner, skeleton, layout variant)
+          // returns seek_id: null instead of throwing.
+          const basicData = await row.evaluate((row) => {
+            const empty = { seek_id: null, job_title: null, candidate_count: null, location: null, created_by: null };
 
-        // 1️⃣ Extract basic row info
-        const basicData = await row.evaluate((row) => {
-          const cells = Array.from(row.querySelectorAll('td'));
-          const href = cells[1]?.querySelector('a')?.getAttribute('href') || '';
-          const candidateCount = cells[2]?.querySelector('span:nth-of-type(1)')?.textContent.trim() || '';
-          const wordCreated = cells[1]?.querySelector('span:nth-of-type(2)')?.textContent.trim();
-          const check = wordCreated?.match(/(oleh)/);
-          let createdDate;
-          let createdBy;
-          
-          if(check) {
-            createdDate = cells[1]?.querySelector('span:nth-of-type(2)')?.textContent.trim().match(/\d.+?(?=\s+oleh)/);
-            createdBy = cells[1]?.querySelector('span:nth-of-type(2)')?.textContent.trim().match(/(?<=oleh\s).+$/);
-          } else {
-            createdDate = cells[1]?.querySelector('span:nth-of-type(2)')?.textContent.trim().match(/\d.*$/);
-          }
-          const statusT = cells[0]?.textContent.trim() || '';
-          const idMatch = statusT === 'Draf' ? href.match(/draftId=(.+)/) : href.match(/(\d+)$/);
-          console.log(idMatch);
-          return {
-            status: statusT,
-            seek_id: statusT === 'Draf' ? idMatch[1] : idMatch[0],
-            job_title: cells[1]?.querySelector('[data-testid="jobTitle"]')?.textContent.trim() || '',
-            candidate_count: candidateCount ? parseInt(candidateCount.replace(/,/g, ""), 10) : null,
-            created_date: createdDate ? createdDate[0] : null,
-            created_by: createdBy ? createdBy[0] : null
-          };
-        });
+            // get seek_id
+            const href = row.getAttribute('data-testid');
+            const seekIdMatch = href?.match(/\d+/);
+            if (!seekIdMatch) return empty;
+            const seek_id = Number(seekIdMatch[0]);
 
-        if (!basicData.seek_id) continue;
+            // Select td as array of nodelist
+            const cells = Array.from(row.querySelectorAll('td'));
+            if (cells.length < 2) return empty;
 
-        console.log('click dot btn');
+            // get location, job title, job location
+            const divMain = cells[0].querySelector('div');
+            if (!divMain) return empty;
 
-        const dotBtn = await this.waitForDotBtn(page, row);
+            const divDividedArr = divMain.querySelectorAll(':scope > div');
+            if (divDividedArr.length < 2) return empty;
 
-        if (!dotBtn) {
-          console.log("no btn");
-          results.push(basicData);
+            const job_title = divDividedArr[0].querySelector('[data-testid="jobTitle"]')?.innerText || null;
 
-          continue;
-        }
+            const locations = divDividedArr[1].querySelector('span:first-of-type')?.textContent?.trim() || null;
+            const created_by = divDividedArr[1].querySelector(':scope > span:nth-last-child(1)')?.textContent?.trim() || null;
 
-        await dotBtn.click();
+            // get candidate count — strip everything but digits and parse as
+            // one number. NOT matching /\d+/g and joining separate groups:
+            // Indonesian locale uses "." as a thousands separator (e.g.
+            // "1.002"), which would split into ["1","002"], and Number("002")
+            // drops the leading zero -> "2", corrupting 1002 into 12.
+            const countString = cells[1].querySelector('[data-testid="numberOfCandidatesLink"]')?.innerText;
+            const digitsOnly = countString?.replace(/\D/g, '');
+            const candidate_count = digitsOnly ? Number(digitsOnly) : null;
 
-        const dropdown = await this.waitForDropdown(page);
-
-        if (!dropdown) {
-          results.push(basicData);
-          continue;
-        }
-
-        // ---- NEW TAB: extract job description ----
-        const [newPage] = await Promise.all([
-          new Promise((resolve) => {
-            const handler = async (target) => {
-              const p = await target.page();
-              if (p) {
-                browser.off('targetcreated', handler);
-                resolve(p);
-              }
+            return {
+              seek_id: seek_id,
+              job_title: job_title,
+              candidate_count: candidate_count,
+              location: locations,
+              created_by: created_by
             };
-            browser.on('targetcreated', handler);
-          }),
-          page.click('div[aria-label="view-job"]'),
-        ]);
+          });
 
-        await newPage.waitForSelector('div[data-automation="jobAdDetails"]', {
-          visible: true,
-          timeout: 10000
-        });
+          if (!basicData.seek_id) continue;
 
-        const contentDesc = await newPage.evaluate(() => {
-          const div = document.querySelector('div[data-automation="jobAdDetails"]');
-          return div?.firstElementChild?.innerHTML || '';
-        });
+          // 2️⃣ Decide whether the expensive detail scrape is even needed.
+          // NOTE: deliberately NOT calling report()/onRow() here — basicData
+          // alone is missing job_desc/pay/work_option/etc (never scraped for
+          // a skipped row), and normalizing+upserting that partial object
+          // would overwrite the already-good stored detail with blanks.
+          // Skip means "confirmed unchanged," which means nothing to persist.
+          const skip = shouldSkipDetail ? await shouldSkipDetail(basicData) : false;
+          if (skip) {
+            counts.skipped++;
+            continue;
+          }
 
-        await newPage.close();
-        await page.bringToFront();
-        await delay(500);
+          console.log('click dot btn');
 
-        // ---- BACK TO ORIGINAL PAGE: re-query everything ----
-        const freshRows = await page.$$('table tbody tr');
-        const freshRow = freshRows[i];  // FIX: different variable name
+          const dotBtn = await this.waitForDotBtn(page, row);
 
-        if (!freshRow) {
-          results.push({ ...basicData, job_desc: contentDesc });
-          continue;
-        }
+          if (!dotBtn) {
+            console.log("no btn");
+            await report(basicData);
+            continue;
+          }
 
-        // ---- MODAL: extract job detail ----
-        const dotBtnAgain = await this.waitForDotBtn(page, freshRow);  // FIX: use freshRow
+          await dotBtn.click();
 
-        if (!dotBtnAgain) {
-          results.push({ ...basicData, job_desc: contentDesc });
-          continue;
-        }
+          const dropdown = await this.waitForDropdown(page);
 
-        await dotBtnAgain.click();  // FIX: was using stale dotBtn
+          if (!dropdown) {
+            await report(basicData);
+            continue;
+          }
 
-        const dropdown2 = await this.waitForDropdown(page);
+          console.log("Extract Job Description");
 
-        if (!dropdown2) {  // FIX: null check was missing
-          results.push({ ...basicData, job_desc: contentDesc });
-          continue;
-        }
+          const newPage = await browser.newPage();
+          await newPage.goto(`https://id.jobstreet.com/id/expiredjob/${basicData.seek_id}?ref=hirer-jobs-list`);
 
-        await page.click('[aria-label="view-job-info"]');
-        await page.waitForSelector('[data-testid="jobInformation"]', { visible: true });
+          await newPage.waitForSelector('div[data-automation="jobAdDetails"]', {
+            visible: true,
+            timeout: 10000
+          });
 
-        const jobDetail = await page.evaluate(() => {
-          const result = {};
+          const contentDesc = await newPage.evaluate(() => {
+            const div = document.querySelector('div[data-automation="jobAdDetails"]');
+            return div?.firstElementChild?.innerHTML || '';
+          });
 
-          const container = document.querySelector('[data-testid="jobInformation"]');
-          if (!container) return result;
+          await newPage.close();
+          await page.bringToFront();
+          await delay(500);
 
-          const blocks = container.querySelectorAll(':scope > div > div');
+          // ---- BACK TO ORIGINAL PAGE: re-query everything ----
+          const freshRows = await page.$$('table tbody tr');
+          const freshRow = freshRows[i];  // FIX: different variable name
 
-          blocks.forEach(block => {
-            const divs = block.querySelectorAll(':scope > div');
-            divs.forEach(div => {
-                const key = div.querySelector('div:first-child').innerText;
-                const value = div.querySelector('div:last-child').innerText;
+          if (!freshRow) {
+            await report({ ...basicData, job_desc: contentDesc });
+            continue;
+          }
+
+          // ---- MODAL: extract job detail ----
+          const dotBtnAgain = await this.waitForDotBtn(page, freshRow);  // FIX: use freshRow
+
+          if (!dotBtnAgain) {
+            await report({ ...basicData, job_desc: contentDesc });
+            continue;
+          }
+
+          await dotBtnAgain.click();  // FIX: was using stale dotBtn
+
+          const dropdown2 = await this.waitForDropdown(page);
+
+          if (!dropdown2) {  // FIX: null check was missing
+            await report({ ...basicData, job_desc: contentDesc });
+            continue;
+          }
+
+          const detailBtnClicked = await page.evaluate(() => {
+            const btnDetail = document.querySelectorAll('[role="menuitem"]');
+            if (!btnDetail[1]) return false;
+            btnDetail[1].click();
+            return true;
+          });
+
+          if (!detailBtnClicked) {
+            await report({ ...basicData, job_desc: contentDesc });
+            continue;
+          }
+
+          await page.waitForSelector('[data-testid="jobInformation"]', { visible: true });
+
+          const jobDetail = await page.evaluate(() => {
+            const result = {};
+
+            const container = document.querySelector('[data-testid="jobInformation"]');
+            if (!container) return result;
+
+            const blocks = container.querySelectorAll(':scope > div > div');
+
+            blocks.forEach(block => {
+              const rows = block.querySelectorAll(':scope > div');
+              rows.forEach(row => {
+                const keyEl   = row.firstElementChild;
+                const valueEl = row.lastElementChild;
+                if (!keyEl || !valueEl) return; // skip malformed rows instead of crashing the whole sync
+
+                const key = keyEl.innerText;
+                const value = valueEl.innerText;
                 result[key.toLowerCase().replace(/\s+/g, "_")] = value;
+              });
             });
-            console.log(divs);
-        });
 
-          return result;
-        });
+            return result;
+          });
 
-        console.log("job detail", jobDetail);
+          console.log("job detail", jobDetail);
 
-        await page.click('button[aria-label="Close"]');
-        await page.waitForSelector('[id="job-information"]', { hidden: true });
+          await page.click('button[aria-label="Close"]');
+          await page.waitForSelector('[id="job-information"]', { hidden: true });
 
-        // ---- COMBINE ----
-        results.push({
-          ...basicData,
-          ...jobDetail,
-          job_desc: contentDesc
-        });
+          // ---- COMBINE ----
+          await report({
+            ...basicData,
+            ...jobDetail,
+            job_desc: contentDesc
+          });
+        } catch (rowErr) {
+          counts.failed++;
+          console.error(`[extractJobPost] Row ${i} failed, skipping:`, rowErr.message);
+          continue;
+        }
       }
       const nextBtn = await page.$('a[rel="next"][aria-hidden="false"]');
       hasNext = false;
@@ -226,16 +301,35 @@ class ExtractJobPostService {
 
       if (!hasNext) console.log("No more pages.");
     }
-    
-    return results;
+
+    return counts;
   }
 
-  async syncAll(page, type) {
+  /**
+   * options.onRow(normalizedRow) — called per row, already normalized
+   * (SeekJobMapper.normalize applied), ready to persist immediately.
+   * options.shouldSkipDetail(basicData, type) — see extractJobPost above;
+   * `type` is threaded in automatically here so the caller doesn't need
+   * its own closure over it.
+   *
+   * Returns the same { scraped, skipped, failed } counts as extractJobPost.
+   */
+  async syncAll(page, type, { onRow, shouldSkipDetail } = {}) {
     await this.redirectJobsPage(page, type);
-    const result = await this.extractJobPost(page);
-    console.log(result);
-    const normalized = SeekJobMapper.normalizeAll(result, type);
-    return normalized;
+
+    const counts = await this.extractJobPost(page, {
+      shouldSkipDetail: shouldSkipDetail
+        ? (basicData) => shouldSkipDetail(basicData, type)
+        : undefined,
+      onRow: onRow
+        ? async (rawRow) => {
+            const normalized = SeekJobMapper.normalize(rawRow, type);
+            await onRow(normalized);
+          }
+        : undefined,
+    });
+
+    return counts;
   }
 }
 
