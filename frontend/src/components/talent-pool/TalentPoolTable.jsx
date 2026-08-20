@@ -161,11 +161,11 @@ export default function TalentPoolTable({
                       />
                     </TableCell>
 
-                    <TableCell className="text-xs py-2 pl-0">
+                    <TableCell className="text-xs py-2 pl-0 whitespace-normal">
                       <div className="font-semibold break-words">{r.name}</div>
                     </TableCell>
 
-                    <TableCell className="text-xs py-2">
+                    <TableCell className="text-xs py-2 whitespace-normal">
                       <div className="font-medium break-words">{positionLabel}</div>
                       {categoryLabel && (
                         <div className="text-[10px] text-muted-foreground break-words">{categoryLabel}</div>
@@ -189,7 +189,7 @@ export default function TalentPoolTable({
                       </div>
                     </TableCell>
 
-                    <TableCell className="text-xs py-2">
+                    <TableCell className="text-xs py-2 whitespace-normal">
                       <div className="flex items-start gap-1.5">
                         <MapPin className="h-3 w-3 text-muted-foreground shrink-0 mt-0.5" />
                         <span className="break-words">{r.address || '—'}</span>
