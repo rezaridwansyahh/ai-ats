@@ -315,7 +315,7 @@ class ExtractCandidateService {
 
       console.log('Going to next page...');
       await delay(3000);
-      await page.waitForSelector('[data-cy="job-application-list"]');
+      await page.waitForSelector('[data-testid="job-application-card"]');
       await delay(2000);
     }
 
