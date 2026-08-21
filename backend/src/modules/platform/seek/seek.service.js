@@ -174,7 +174,7 @@ class SeekService {
             attachment: null,
           });
 
-          await jobPostSeekModel.update(existing.job_sourcing_id, {
+          await jobPostSeekModel.update(job_sourcing_id, {
             progress: candidate.progress
           });
 
