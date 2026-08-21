@@ -24,7 +24,8 @@ class JobSourceModel {
   async getByAccountId(account_id) {
     const result = await getDb().query(`
       SELECT cjs.*,
-      mjss.candidate_count
+      mjss.candidate_count,
+      mjss.progress
       FROM core_job_sourcing cjs
       LEFT JOIN mapping_job_sourcing_seek mjss ON mjss.job_sourcing_id = cjs.id
       WHERE account_id = $1
