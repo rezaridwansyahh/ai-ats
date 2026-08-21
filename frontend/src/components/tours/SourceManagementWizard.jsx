@@ -71,18 +71,21 @@ export function useSourceManagementWizard(loading){
     const [run, setRun] = useState(false);
     const [tourKey, setTourKey] = useState(0);
 
+    const markSeen = useCallback(() => {
+        localStorage.setItem(STORAGE_KEY, '1');
+    }, []);
+
     useEffect(() => {
         if (loading) return;
         const seen = localStorage.getItem(STORAGE_KEY);
         if (!seen){
-            const t = setTimeout(() => setRun(true), 1000);
+            const t = setTimeout(() => {
+                setRun(true);
+                markSeen(); // ← mark seen saat auto-trigger, bukan nunggu selesai
+            }, 1000);
             return () => clearTimeout(t);
         }
-    }, [loading]);
-
-    const markSeen = useCallback(() => {
-        localStorage.setItem(STORAGE_KEY, '1');
-    }, []);
+    }, [loading, markSeen]);
 
     const restart = useCallback(() => {
         localStorage.removeItem(STORAGE_KEY);

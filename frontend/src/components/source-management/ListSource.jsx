@@ -104,6 +104,11 @@ export default function ListSourceStep({ selectedAccount }) {
     }
   };
 
+  // Placeholder — link this sourcing to a job. No destination/behavior wired yet.
+  const handleLinkRow = (source) => {
+    // TODO: wire this up once the link-to-job flow is defined.
+  };
+
   if (!selectedAccount) {
     return (
       <div className="flex flex-col items-center justify-center py-20 text-center">
@@ -171,12 +176,12 @@ export default function ListSourceStep({ selectedAccount }) {
             <TableCaption>Job sourcings synced from {selectedAccount.email}.</TableCaption>
             <TableHeader className="bg-muted/40">
               <TableRow>
-                <TableHead>Job Title</TableHead>
-                <TableHead>Status</TableHead>
-                <TableHead>Linked to a job?</TableHead>
-                <TableHead>Sync</TableHead>
-                <TableHead>Last Sync</TableHead>
-                <TableHead className="text-right">Action</TableHead>
+                <TableHead className="w-[26%]">Job Title</TableHead>
+                <TableHead className="w-[12%]">Status</TableHead>
+                <TableHead className="w-[14%]">Linked to a job?</TableHead>
+                <TableHead className="w-[10%]">Sync</TableHead>
+                <TableHead className="w-[18%]">Last Sync</TableHead>
+                <TableHead className="w-[20%] text-right">Action</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -198,7 +203,7 @@ export default function ListSourceStep({ selectedAccount }) {
                 const isSyncing = source.sync_state === 'syncing' || syncingIds.has(source.id);
                 return (
                   <TableRow key={source.id}>
-                    <TableCell className="font-medium truncate">{source.job_title}</TableCell>
+                    <TableCell className="font-medium truncate pr-3">{source.job_title}</TableCell>
                     <TableCell>
                       <StatusBadge
                         label={source.status}
@@ -220,19 +225,29 @@ export default function ListSourceStep({ selectedAccount }) {
                         dot
                       />
                     </TableCell>
-                    <TableCell className="text-xs text-muted-foreground">
+                    <TableCell className="text-xs text-muted-foreground truncate">
                       {source.last_sync ? new Date(source.last_sync).toLocaleString() : '—'}
                     </TableCell>
-                    <TableCell className="text-right">
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        className="text-xs h-7 px-2.5"
-                        disabled={isSyncing}
-                        onClick={() => handleResyncRow(source)}
-                      >
-                        {isSyncing ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : 'Re-Sync'}
-                      </Button>
+                    <TableCell className="text-right pr-1">
+                      <div className="inline-flex items-center gap-1.5">
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          className="text-xs h-7 px-2.5"
+                          disabled={isSyncing}
+                          onClick={() => handleResyncRow(source)}
+                        >
+                          {isSyncing ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : 'Re-Sync'}
+                        </Button>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          className="text-xs h-7 px-2.5"
+                          onClick={() => handleLinkRow(source)}
+                        >
+                          Link
+                        </Button>
+                      </div>
                     </TableCell>
                   </TableRow>
                 );
