@@ -95,7 +95,7 @@ class SeekService {
       await browserPuppeteer.close();
     }
   }
-  async extractCandidates(account_id, job_sourcing_id, page = null) {
+  async extractCandidates(account_id, job_sourcing_id, page = null, progress = 0) {
     const ownPage = !page;
 
     if(!page) {
@@ -174,6 +174,10 @@ class SeekService {
             attachment: null,
           });
 
+          await jobPostSeekModel.update(existing.job_sourcing_id, {
+            progress: candidate.progress
+          });
+
           if (candidate.attachment && applicant?.id) {
             try {
               const savedPath = promoteDownloadedCv(
@@ -200,9 +204,11 @@ class SeekService {
           }
         };
 
-        const { saved, skipped } = await extractCandidateRpa.extractCandidates(
-          page, bucket, account_id, jobPostSeek.seek_id, job_name, { checkExists, onSave }
+        const { saved, skipped, progress: updatedProgress } = await extractCandidateRpa.extractCandidates(
+          page, bucket, account_id, jobPostSeek.seek_id, job_name, { checkExists, onSave }, progress
         );
+
+        progress = updatedProgress;
 
         results.push({ bucket: bucket.name, saved, skipped, promoted });
       }

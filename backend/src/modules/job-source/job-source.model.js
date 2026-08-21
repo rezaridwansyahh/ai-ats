@@ -23,10 +23,11 @@ class JobSourceModel {
 
   async getByAccountId(account_id) {
     const result = await getDb().query(`
-      SELECT *
-      FROM core_job_sourcing
+      SELECT cjs.*
+      FROM core_job_sourcing cjs
+      LEFT JOIN mapping_job_sourcing_seek mjss ON mjss.job_sourcing_id = cjs.id
       WHERE account_id = $1
-      ORDER BY created_at DESC
+      ORDER BY created_at ASC
     `, [account_id]);
 
     return result.rows;
