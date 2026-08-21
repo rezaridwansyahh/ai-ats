@@ -31,6 +31,7 @@ import {
   sendContractDocument, revokeContractDocument, getContractSendHistory,
   downloadContractCandidateFile,
   uploadContractExecutedDocument, getContractExecutedDocument, downloadContractExecutedDocument,
+  getOfferSendPreview, getContractSendPreview,
 } from '@/api/offer.api';
 import {
   getApprovalStatus, decideApproval, generateApprovalViewLink,
@@ -1721,17 +1722,10 @@ function SendSection({ offer, approval, setOffer, setBanner, setError, onAdvance
 
   const openSendModal = async () => {
     try {
-      const { data } = await getEmailTemplates();
-      const mod = data.find((m) => m.module_key === 'offer');
-      const tpl = mod?.templates.find((t) => t.template_key === 'offer');
-      const jobTitle = offer.position_title || offer.job_title;
-      setEmailModal({
-        open: true,
-        subject: (tpl?.subject || '').replace('{{JOB_TITLE}}', jobTitle || 'the position'),
-        body: (tpl?.body || '').replace('{{CANDIDATE_NAME}}', offer.candidate_name || 'there').replace('{{JOB_TITLE}}', jobTitle || 'the position'),
-      });
+      const { data } = await getOfferSendPreview(offer.id);
+      setEmailModal({ open: true, subject: data.subject, body: data.body });
     } catch {
-      setError('Failed to load email template from Settings.');
+      setError('Failed to load email preview.');
     }
   };
 
@@ -2081,7 +2075,7 @@ function SendSection({ offer, approval, setOffer, setBanner, setError, onAdvance
         </div>
       )}
 
-      {/* Email to Candidate modal — same pattern as AI Screening's Q&A send modal */}
+      {/* Email to Candidate modal — read-only preview, edited only in Settings */}
       <Dialog open={emailModal.open} onOpenChange={(open) => !open && !sending && setEmailModal((m) => ({ ...m, open: false }))}>
         <DialogContent className="max-w-lg">
           <DialogHeader>
@@ -2089,43 +2083,35 @@ function SendSection({ offer, approval, setOffer, setBanner, setError, onAdvance
               <Mail className="h-4 w-4 text-primary" /> Email to Candidate
             </DialogTitle>
             <DialogDescription className="text-xs text-muted-foreground">
-              Review and edit the email before sending. The portal link is inserted automatically where you see{' '}
+              This is the wording configured in Settings. The portal link is inserted automatically where you see{' '}
               <code className="bg-muted px-1 rounded">{'{{LINK}}'}</code>.
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-3 py-1">
             <div className="space-y-1">
               <label className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">Subject</label>
-              <Input
-                value={emailModal.subject}
-                onChange={(e) => setEmailModal((m) => ({ ...m, subject: e.target.value }))}
-                className="h-9 text-sm"
-                placeholder="Email subject…"
-              />
+              <div className="h-9 flex items-center px-3 rounded-md border bg-muted/30 text-sm text-foreground">
+                {emailModal.subject}
+              </div>
             </div>
             <div className="space-y-1">
               <label className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">Body</label>
-              <Textarea
-                value={emailModal.body}
-                onChange={(e) => setEmailModal((m) => ({ ...m, body: e.target.value }))}
-                rows={12}
-                className="text-sm font-mono leading-relaxed resize-y"
-                placeholder="Email body…"
-              />
-            </div>
-            {!emailModal.body.includes('{{LINK}}') && (
-              <div className="flex items-start gap-2 px-3 py-2 rounded-md border border-amber-200 bg-amber-50 text-[11px] text-amber-700">
-                <AlertTriangle className="h-3.5 w-3.5 shrink-0 mt-0.5" />
-                <span>
-                  <strong>{'{{LINK}}'}</strong> is missing from the body. The portal link will be appended automatically at the bottom of the email.
-                </span>
+              <div className="text-sm leading-relaxed whitespace-pre-wrap rounded-md border bg-muted/30 px-3 py-2 max-h-64 overflow-y-auto">
+                {emailModal.body}
               </div>
-            )}
+            </div>
+            <Link
+              to="/settings"
+              state={{ section: 'email-templates' }}
+              className="text-xs text-primary hover:underline inline-flex items-center gap-1"
+            >
+              <Pencil className="h-3 w-3" /> Edit this wording in Settings
+            </Link>
           </div>
           <DialogFooter className="gap-2">
             <Button
               variant="outline"
-              size="sm"
+              size="sm"   
               className="text-xs"
               onClick={() => setEmailModal((m) => ({ ...m, open: false }))}
               disabled={sending}
@@ -2136,7 +2122,7 @@ function SendSection({ offer, approval, setOffer, setBanner, setError, onAdvance
               size="sm"
               className="text-xs"
               onClick={handleConfirmSend}
-              disabled={sending || !emailModal.subject.trim()}
+              disabled={sending}
             >
               {sending
                 ? <><Loader2 className="h-3.5 w-3.5 mr-1.5 animate-spin" />Sending…</>
@@ -2463,9 +2449,13 @@ function ContractSection({ offer, setOffer, setBanner, setError }) {
     );
   }
 
-  const openSendModal = () => {
-    const defaults = buildDefaultContractEmail(offer.position_title || offer.job_title);
-    setEmailModal({ open: true, ...defaults });
+  const openSendModal = async () => {
+    try {
+      const { data } = await getContractSendPreview(offer.id);
+      setEmailModal({ open: true, subject: data.subject, body: data.body });
+    } catch {
+      setError('Failed to load email preview.');
+    }
   };
 
   const handleConfirmSend = async () => {
@@ -2473,7 +2463,7 @@ function ContractSection({ offer, setOffer, setBanner, setError }) {
     setSending(true);
     setError(null);
     try {
-      await sendContractDocument(offer.id, { subject: emailModal.subject, body: emailModal.body });
+      await sendContractDocument(offer.id);
       setOffer((prev) => ({ ...prev, contract_status: 'sent' }));
       setEmailModal({ open: false, subject: '', body: '' });
       await loadHistory();
@@ -2733,31 +2723,23 @@ function ContractSection({ offer, setOffer, setBanner, setError }) {
           <div className="space-y-3 py-1">
             <div className="space-y-1">
               <label className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">Subject</label>
-              <Input
-                value={emailModal.subject}
-                onChange={(e) => setEmailModal((m) => ({ ...m, subject: e.target.value }))}
-                className="h-9 text-sm"
-                placeholder="Email subject…"
-              />
+              <div className="h-9 flex items-center px-3 rounded-md border bg-muted/30 text-sm text-foreground">
+                {emailModal.subject}
+              </div>
             </div>
             <div className="space-y-1">
               <label className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">Body</label>
-              <Textarea
-                value={emailModal.body}
-                onChange={(e) => setEmailModal((m) => ({ ...m, body: e.target.value }))}
-                rows={12}
-                className="text-sm font-mono leading-relaxed resize-y"
-                placeholder="Email body…"
-              />
-            </div>
-            {!emailModal.body.includes('{{LINK}}') && (
-              <div className="flex items-start gap-2 px-3 py-2 rounded-md border border-amber-200 bg-amber-50 text-[11px] text-amber-700">
-                <AlertTriangle className="h-3.5 w-3.5 shrink-0 mt-0.5" />
-                <span>
-                  <strong>{'{{LINK}}'}</strong> is missing from the body. The portal link will be appended automatically at the bottom of the email.
-                </span>
+              <div className="text-sm leading-relaxed whitespace-pre-wrap rounded-md border bg-muted/30 px-3 py-2 max-h-64 overflow-y-auto">
+                {emailModal.body}
               </div>
-            )}
+            </div>
+            <Link
+              to="/settings"
+              state={{ section: 'email-templates' }}
+              className="text-xs text-primary hover:underline inline-flex items-center gap-1"
+            >
+              <Pencil className="h-3 w-3" /> Edit this wording in Settings
+            </Link>
           </div>
           <DialogFooter className="gap-2">
             <Button

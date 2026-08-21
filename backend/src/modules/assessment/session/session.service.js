@@ -2,7 +2,7 @@ import Session from './session.model.js';
 import Participant from '../participant/participant.model.js';
 import { resolveParticipantByCandidate } from '../../../shared/services/candidate-resolver.js';
 import { sendTemplatedEmail } from '../../../shared/services/candidate-mailer.js';
-import EmailTemplateService from '../../email-template/email-template.service.js';
+import EmailTemplateService, { STAGE_ASSESSMENT } from '../../email-template/email-template.service.js';
 
 const EDITABLE_FIELDS = ['battery', 'participant_id', 'job_id', 'status', 'expired_at', 'notes'];
 const VALID_BATTERIES = ['A', 'B', 'C', 'D', 'I', 'T'];
@@ -77,9 +77,6 @@ class SessionService {
 
     const effectiveJobId = job_id ?? candidateJobId ?? null;
 
-    // One-battery-per-(candidate, job). Completed and live sessions both lock;
-    // recruiter must revoke before switching. Revoked/expired are excluded by
-    // getActiveByParticipantJob.
     const active = await Session.getActiveByParticipantJob(participant.candidate_id, effectiveJobId);
     const lockedBattery = active[0]?.battery ?? null;
     if (lockedBattery && lockedBattery !== battery) {
@@ -91,7 +88,6 @@ class SessionService {
       };
     }
 
-    // Idempotency: return live session if one already exists for this triple.
     const existing = await Session.getByParticipantJobBattery(participant.candidate_id, effectiveJobId, battery);
     if (existing) {
       return { session: existing, participant, created: false };
@@ -181,6 +177,43 @@ class SessionService {
     return session;
   }
 
+  async previewInvitation(session_id, company_id) {
+    const session = await Session.getById(session_id);
+    if (!session) throw { status: 404, message: 'Session not found' };
+
+    const ctx = await Session.getCandidateContext(session_id);
+    if (!ctx?.candidate_email) {
+      throw { status: 400, message: `Candidate "${ctx?.candidate_name || session_id}" has no email on file` };
+    }
+
+    const origin = (process.env.PORTAL_BASE_URL || 'http://localhost:5173')
+      .replace(/\/portal$/, '');
+    const dashless = String(session.token || '').replaceAll('-', '');
+    const link = `${origin}/portal/assessment-placement/${dashless}`;
+
+    const resolvedCompanyId = company_id ?? ctx.company_id;
+    const template = await EmailTemplateService.getResolved(resolvedCompanyId, STAGE_ASSESSMENT, 'invite');
+    const vars = {
+      CANDIDATE_NAME: ctx.candidate_name,
+      JOB_TITLE: ctx.job_title || 'the position',
+      BATTERY: session.battery,
+    };
+
+    const interpolate = (str) => {
+      let out = str;
+      for (const [key, val] of Object.entries(vars)) {
+        out = out.replaceAll(`{{${key.toUpperCase()}}}`, val ?? '');
+      }
+      return out.replace(/\{\{LINK\}\}/g, link);
+    };
+
+    return {
+      to: ctx.candidate_email,
+      subject: interpolate(template.subject),
+      body: interpolate(template.body),
+    };
+  }
+
   async sendInvitation(session_id) {
     const session = await Session.getById(session_id);
     if (!session) throw { status: 404, message: 'Session not found' };
@@ -198,7 +231,7 @@ class SessionService {
     const dashless = String(session.token || '').replaceAll('-', '');
     const link = `${origin}/portal/assessment-placement/${dashless}`;
 
-    const template = await EmailTemplateService.getResolved(ctx.company_id, 'assessment', 'invite');
+    const template = await EmailTemplateService.getResolved(ctx.company_id, STAGE_ASSESSMENT, 'invite');
     await sendTemplatedEmail({
       candidateName: ctx.candidate_name,
       candidateEmail: ctx.candidate_email,
@@ -213,6 +246,7 @@ class SessionService {
 
     return { sent_to: ctx.candidate_email, link };
   }
+
 }
 
 export default new SessionService();

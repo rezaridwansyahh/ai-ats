@@ -18,29 +18,27 @@ import { toast } from 'sonner';
 
 import { getEmailTemplates, saveEmailTemplate } from '@/api/email-template.api';
 
-const MODULE_LABELS = {
-  interview: 'Interview',
-  offer: 'Offer',
-  contract: 'Contract',
-  assessment: 'Assessment',
+const STAGE_LABELS = {
+  2: 'Screening & Matching',
+  4: 'Assessment',
+  6: 'Offering & Contract',
 };
 
 const TEMPLATE_LABELS = {
   qa_invite: 'Follow-up Questions',
-  stage_advance: 'Stage Advancement',
+  invite: 'Assessment Invitation',
   offer: 'Offer Letter Email',
   contract: 'Contract Email',
-  invite: 'Assessment Invitation',
 };
 
-const PLACEHOLDER_HINTS = ['{{CANDIDATE_NAME}}', '{{JOB_TITLE}}', '{{STAGE}}', '{{BATTERY}}', '{{LINK}}'];
+const PLACEHOLDER_HINTS = ['{{CANDIDATE_NAME}}', '{{JOB_TITLE}}', '{{BATTERY}}', '{{LINK}}'];
 
 export default function EmailTemplateSettings() {
-  const [modules, setModules] = useState([]);
+  const [stages, setStages] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
-  const [editing, setEditing] = useState(null); // { module_key, template_key, is_customized }
+  const [editing, setEditing] = useState(null); // { stage_type_id, template_key, is_customized }
   const [form, setForm] = useState({ subject: '', body: '' });
   const [submitting, setSubmitting] = useState(false);
 
@@ -49,7 +47,7 @@ export default function EmailTemplateSettings() {
     setError(null);
     try {
       const { data } = await getEmailTemplates();
-      setModules(data || []);
+      setStages(data || []);
     } catch (err) {
       setError(err.response?.data?.message || err.message || 'Failed to load email templates');
     } finally {
@@ -61,8 +59,8 @@ export default function EmailTemplateSettings() {
     fetchTemplates();
   }, [fetchTemplates]);
 
-  const openEdit = (module_key, tpl) => {
-    setEditing({ module_key, template_key: tpl.template_key, is_customized: tpl.is_customized });
+  const openEdit = (stage_type_id, tpl) => {
+    setEditing({ stage_type_id, template_key: tpl.template_key, is_customized: tpl.is_customized });
     setForm({ subject: tpl.subject, body: tpl.body });
   };
 
@@ -79,7 +77,7 @@ export default function EmailTemplateSettings() {
     }
     setSubmitting(true);
     try {
-      await saveEmailTemplate(editing.module_key, editing.template_key, {
+      await saveEmailTemplate(editing.stage_type_id, editing.template_key, {
         subject: form.subject.trim(),
         body: form.body,
       });
@@ -124,25 +122,25 @@ export default function EmailTemplateSettings() {
           </CardContent>
         </Card>
       ) : (
-        modules.map((mod) => (
-          <Card key={mod.module_key}>
+        stages.map((stage) => (
+          <Card key={stage.stage_type_id}>
             <CardHeader className="pb-3">
               <div className="flex items-center gap-2">
                 <Mail className="h-4 w-4 text-muted-foreground" />
                 <h3 className="font-semibold text-sm">
-                  {MODULE_LABELS[mod.module_key] || mod.module_key}
+                  {STAGE_LABELS[stage.stage_type_id] || `Stage ${stage.stage_type_id}`}
                 </h3>
               </div>
               <p className="text-sm text-muted-foreground">
-                Emails sent to candidates during the {(MODULE_LABELS[mod.module_key] || mod.module_key).toLowerCase()} step.
+                Emails sent to candidates during the {(STAGE_LABELS[stage.stage_type_id] || `stage ${stage.stage_type_id}`).toLowerCase()} step.
               </p>
             </CardHeader>
             <CardContent className="p-0">
-              {mod.templates.map((tpl, idx) => (
+              {stage.templates.map((tpl, idx) => (
                 <div
                   key={tpl.template_key}
                   className={`flex items-start justify-between gap-4 px-6 py-4 ${
-                    idx !== mod.templates.length - 1 ? 'border-b' : ''
+                    idx !== stage.templates.length - 1 ? 'border-b' : ''
                   }`}
                 >
                   <div className="min-w-0 flex-1">
@@ -169,7 +167,7 @@ export default function EmailTemplateSettings() {
                     variant="ghost"
                     size="sm"
                     className="shrink-0"
-                    onClick={() => openEdit(mod.module_key, tpl)}
+                    onClick={() => openEdit(stage.stage_type_id, tpl)}
                   >
                     <Pencil className="h-3.5 w-3.5 mr-1.5" />
                     Edit

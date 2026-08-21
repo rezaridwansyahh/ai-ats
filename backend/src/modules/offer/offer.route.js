@@ -164,5 +164,7 @@ router.post('/:offer_id/contract/executed/upload', authToken, checkPermission('O
 
 router.get('/:offer_id/contract/executed', authToken, checkPermission('Offer & Onboard', 'Offer & Contract', 'read'), OfferController.getContractExecutedDocument);
 router.get('/:offer_id/contract/executed/download', authToken, checkPermission('Offer & Onboard', 'Offer & Contract', 'read'), OfferController.downloadContractExecutedDocument);
+router.get('/:offer_id/send-preview', authToken, checkPermission('Offer & Onboard', 'Offer & Contract', 'read'), OfferController.previewOfferEmail);
+router.get('/:offer_id/contract/document/send-preview', authToken, checkPermission('Offer & Onboard', 'Offer & Contract', 'read'), OfferController.previewContractEmail);
 
 export default router;

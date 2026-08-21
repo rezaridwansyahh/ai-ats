@@ -145,6 +145,16 @@ class SessionController {
     }
   }
 
+  async previewInvitation(req, res) {
+    try {
+      const { company_id } = req.user;
+      const result = await sessionService.previewInvitation(req.params.id, company_id);
+      res.status(200).json({ message: 'Invitation preview', ...result });
+    } catch (err) {
+      res.status(err.status || 500).json({ message: err.message });
+    }
+  }
+
   async sendInvitation(req, res) {
     try {
       const result = await sessionService.sendInvitation(req.params.id);
