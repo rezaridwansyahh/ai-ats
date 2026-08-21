@@ -416,6 +416,7 @@ CREATE TABLE mapping_job_sourcing_seek (
   created_date_seek VARCHAR(255),
   created_by VARCHAR(255),
   candidate_count INTEGER DEFAULT 0,
+  progress INT,
   pay_min INT,
   pay_max INT,
   pay_display pay_display_type,

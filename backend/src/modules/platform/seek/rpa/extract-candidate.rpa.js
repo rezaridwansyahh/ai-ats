@@ -70,7 +70,7 @@ class ExtractCandidateService {
   // and returning it only once the whole bucket (all pages) finishes — so a
   // crash/timeout partway through a large candidate list doesn't lose
   // everything scraped so far.
-  async extractCandidates(page, candidateType, account_id, seek_id, job_name, { checkExists, onSave } = {}) {
+  async extractCandidates(page, candidateType, account_id, seek_id, job_name, { checkExists, onSave } = {}, progress) {
     console.log(candidateType);
     console.log("Starting candidate extraction with pagination");
 
@@ -281,8 +281,8 @@ class ExtractCandidateService {
         });
 
         await delay(500);
-
-        const candidate = { ...cardData, candidate_id: candidateId, attachment: resumeFileName };
+        progress++;
+        const candidate = { ...cardData, candidate_id: candidateId, progress, attachment: resumeFileName };
 
         // Save immediately rather than buffering — persists progress as we go
         // instead of holding the whole bucket in memory until it's all done.
@@ -315,12 +315,12 @@ class ExtractCandidateService {
 
       console.log('Going to next page...');
       await delay(3000);
-      await page.waitForSelector('[data-cy="job-application-list"]');
+      await page.waitForSelector('[data-testid="job-application-card"]');
       await delay(2000);
     }
 
     console.log(`\nTotal candidates saved: ${saved}, skipped: ${skipped}`);
-    return { saved, skipped };
+    return { saved, skipped, progress };
   }
 }
 

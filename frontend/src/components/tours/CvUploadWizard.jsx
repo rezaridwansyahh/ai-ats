@@ -56,17 +56,20 @@ const STEPS = [
 export function useCvUploadWizard() {
   const [run, setRun] = useState(false);
 
-  useEffect(() => {
-    const seen = localStorage.getItem(STORAGE_KEY);
-    if (!seen) {
-      const t = setTimeout(() => setRun(true), 1000);
-      return () => clearTimeout(t);
-    }
-  }, []);
-
   const markSeen = useCallback(() => {
     localStorage.setItem(STORAGE_KEY, '1');
   }, []);
+
+  useEffect(() => {
+    const seen = localStorage.getItem(STORAGE_KEY);
+    if (!seen) {
+      const t = setTimeout(() => {
+        setRun(true);
+        markSeen(); // ← ditambahkan, sama seperti fix SourceManagementWizard
+      }, 1000);
+      return () => clearTimeout(t);
+    }
+  }, [markSeen]);
 
   const restart = useCallback(() => {
     localStorage.removeItem(STORAGE_KEY);
