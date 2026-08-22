@@ -3,7 +3,7 @@ import CompensationEngine from '../../shared/services/compensation-engine.js';
 import OfferTemplateModel from '../offer-template/offer-template.model.js';
 import { mergeOfferLetter, htmlToDocxBuffer, convertHtmlToPdf } from '../../shared/services/document-merge.js';
 import { sendTemplatedEmail } from '../../shared/services/candidate-mailer.js';
-import EmailTemplateService from '../email-template/email-template.service.js';
+import EmailTemplateService, { STAGE_OFFERING_CONTRACT } from '../email-template/email-template.service.js';
 import mammoth from 'mammoth';
 import fs from 'fs';
 import path from 'path';
@@ -393,7 +393,7 @@ class OfferService {
     const baseUrl = process.env.FRONTEND_URL || 'http://localhost:5173';
     const link = `${baseUrl}/portal/offer/send/${send.token}`;
 
-    const template = await EmailTemplateService.getResolved(company_id, 'offer', 'offer');
+    const template = await EmailTemplateService.getResolved(company_id, STAGE_OFFERING_CONTRACT, 'offer');
     await sendTemplatedEmail({
       candidateName: offer.candidate_name,
       candidateEmail: offer.candidate_email,
@@ -712,7 +712,7 @@ class OfferService {
     const baseUrl = process.env.FRONTEND_URL || 'http://localhost:5173';
     const link = `${baseUrl}/portal/contract/send/${send.token}`;
 
-    const template = await EmailTemplateService.getResolved(company_id, 'contract', 'contract');
+    const template = await EmailTemplateService.getResolved(company_id, STAGE_OFFERING_CONTRACT, 'contract');
     await sendTemplatedEmail({
       candidateName: offer.candidate_name,
       candidateEmail: offer.candidate_email,
@@ -821,6 +821,41 @@ class OfferService {
     };
   }
 
+  async previewOfferEmail(offer_id, company_id) {
+    const offer = await OfferModel.getOfferById(offer_id, company_id);
+    if (!offer) throw { status: 404, message: 'Offer not found' };
+    if (!offer.candidate_email) throw { status: 400, message: 'Candidate has no email on file' };
+
+    const template = await EmailTemplateService.getResolved(company_id, STAGE_OFFERING_CONTRACT, 'offer');
+    const vars = { CANDIDATE_NAME: offer.candidate_name, JOB_TITLE: offer.position_title || offer.job_title };
+    const linkPlaceholder = '[secure link — generated when you click Confirm Send]';
+
+    const interpolate = (str) => {
+      let out = str;
+      for (const [k, v] of Object.entries(vars)) out = out.replaceAll(`{{${k}}}`, v ?? '');
+      return out.replace(/\{\{LINK\}\}/g, linkPlaceholder);
+    };
+
+    return { to: offer.candidate_email, subject: interpolate(template.subject), body: interpolate(template.body) };
+  }
+
+  async previewContractEmail(offer_id, company_id) {
+    const offer = await OfferModel.getOfferById(offer_id, company_id);
+    if (!offer) throw { status: 404, message: 'Offer not found' };
+    if (!offer.candidate_email) throw { status: 400, message: 'Candidate has no email on file' };
+
+    const template = await EmailTemplateService.getResolved(company_id, STAGE_OFFERING_CONTRACT, 'contract');
+    const vars = { CANDIDATE_NAME: offer.candidate_name, JOB_TITLE: offer.position_title || offer.job_title };
+    const linkPlaceholder = '[secure link — generated when you click Confirm Send]';
+
+    const interpolate = (str) => {
+      let out = str;
+      for (const [k, v] of Object.entries(vars)) out = out.replaceAll(`{{${k}}}`, v ?? '');
+      return out.replace(/\{\{LINK\}\}/g, linkPlaceholder);
+    };
+
+    return { to: offer.candidate_email, subject: interpolate(template.subject), body: interpolate(template.body) };
+  }
 }
 
 export default new OfferService();

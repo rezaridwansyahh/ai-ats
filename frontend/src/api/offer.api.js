@@ -92,3 +92,7 @@ export const uploadContractExecutedDocument = (offerId, formData) => api.post(`/
 export const getContractExecutedDocument = (offerId) => api.get(`/offer/${offerId}/contract/executed`);
 
 export const downloadContractExecutedDocument = (offerId) => api.get(`/offer/${offerId}/contract/executed/download`, { responseType: 'blob' });
+
+export const getOfferSendPreview = (offerId) => api.get(`/offer/${offerId}/send-preview`);
+
+export const getContractSendPreview = (offerId) => api.get(`/offer/${offerId}/contract/document/send-preview`);

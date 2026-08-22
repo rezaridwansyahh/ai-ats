@@ -105,3 +105,5 @@ export const sendQa = (screening_id) =>
 // Standard Application Form template (static) — recruiter read-only preview.
 export const getApplicationFormTemplate = () =>
   api.get('/screening/application-form/template');
+
+export const getQaPreview = (screening_id) => api.get(`/screening/screening/${screening_id}/qa/preview`);

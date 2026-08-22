@@ -412,6 +412,18 @@ class ScreeningController {
       res.status(err.status || 500).json({ message: err.message });
     }
   }
+
+  async previewQa(req, res) {
+    try {
+      const screening_id = Number(req.params.screening_id);
+      const { company_id } = req.user;
+      const result = await screeningService.previewQa(screening_id, company_id);
+      res.status(200).json({ message: 'Q&A email preview', ...result });
+    } catch (err) {
+      res.status(err.status || 500).json({ message: err.message });
+    }
+  }
+
 }
 
 export default new ScreeningController();

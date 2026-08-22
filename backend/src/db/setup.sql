@@ -71,6 +71,7 @@ DROP TABLE IF EXISTS core_job_template CASCADE;
 DROP TABLE IF EXISTS master_template_stage CASCADE;
 DROP TABLE IF EXISTS job_stage_category CASCADE;
 DROP TABLE IF EXISTS recruitment_stage_category CASCADE;
+DROP TABLE IF EXISTS company_email_template CASCADE;
 DROP TABLE IF EXISTS job_automation_settings CASCADE;
 DROP TABLE IF EXISTS candidate_job_score CASCADE;
 DROP TABLE IF EXISTS assessment_sessions CASCADE;
@@ -206,19 +207,6 @@ CREATE TABLE company_budgets (
 CREATE INDEX idx_company_budgets_company_month ON company_budgets (company_id, month_year DESC);
 CREATE INDEX idx_company_budgets_month_year ON company_budgets (month_year DESC);
 
-CREATE TABLE company_email_template (
-  id SERIAL PRIMARY KEY,
-  company_id INTEGER NOT NULL REFERENCES core_company(id) ON DELETE CASCADE,
-  module_key VARCHAR(50) NOT NULL,    
-  template_key VARCHAR(50) NOT NULL,  
-  subject TEXT NOT NULL,
-  body TEXT NOT NULL,
-  updated_by INTEGER REFERENCES master_users(id) ON DELETE SET NULL,
-  updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-  UNIQUE (company_id, module_key, template_key)
-);
-
 CREATE TABLE master_roles (
   id SERIAL PRIMARY KEY,
   name VARCHAR(100) NOT NULL,
@@ -296,6 +284,19 @@ CREATE TABLE recruitment_stage_category (
   name VARCHAR(100) NOT NULL UNIQUE,
   created_at TIMESTAMP NOT NULL DEFAULT NOW(),
   updated_at TIMESTAMP NOT NULL DEFAULT NOW()
+);
+
+CREATE TABLE company_email_template (
+  id SERIAL PRIMARY KEY,
+  company_id INTEGER NOT NULL REFERENCES core_company(id) ON DELETE CASCADE,
+  stage_type_id INTEGER NOT NULL REFERENCES recruitment_stage_category(id),    
+  template_key VARCHAR(50) NOT NULL,  
+  subject TEXT NOT NULL,
+  body TEXT NOT NULL,
+  updated_by INTEGER REFERENCES master_users(id) ON DELETE SET NULL,
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  UNIQUE (company_id, stage_type_id, template_key)
 );
 
 CREATE TABLE master_template_stage (

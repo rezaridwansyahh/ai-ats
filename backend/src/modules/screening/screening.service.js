@@ -4,7 +4,7 @@ import CandidatePipelineService from '../candidate-pipeline/candidate-pipeline.s
 import automationModel from '../automation-setting/automation.model.js';
 import aiService from '../../shared/services/ai.service.js';
 import { sendTemplatedEmail } from '../../shared/services/candidate-mailer.js';
-import EmailTemplateService from '../email-template/email-template.service.js';
+import EmailTemplateService, { STAGE_SCREENING } from '../email-template/email-template.service.js';
 import { getApplicationFormTemplate } from './screening-applicationForm.js';
 
 class ScreeningService {
@@ -583,7 +583,7 @@ class ScreeningService {
       .replace(/\/portal$/, '');
     const link = `${origin}/portal/qa/${qa.token}`;
 
-    const template = await EmailTemplateService.getResolved(company_id, 'interview', 'qa_invite');
+    const template = await EmailTemplateService.getResolved(company_id, STAGE_SCREENING, 'qa_invite');    
     await sendTemplatedEmail({
       candidateName: ctx.candidate_name,
       candidateEmail: ctx.candidate_email,
@@ -595,7 +595,31 @@ class ScreeningService {
     return { sent_to: ctx.candidate_email, link, status: sent.status, expired_at: sent.expired_at };
   }
 
+  async previewQa(screening_id, company_id) {
+    const qa = await screeningModel.getQaByScreening(screening_id);
+    if (!qa) throw { status: 404, message: 'No Q&A set for this screening — generate first' };
 
+    const ctx = await screeningModel.getQaContext(screening_id);
+    if (!ctx?.candidate_email) {
+      throw { status: 400, message: `Candidate "${ctx?.candidate_name || screening_id}" has no email on the linked applicant` };
+    }
+
+    const origin = (process.env.PORTAL_BASE_URL || 'http://localhost:5173')
+      .replace(/\/+$/, '')
+      .replace(/\/portal$/, '');
+    const link = `${origin}/portal/qa/${qa.token}`;
+
+    const template = await EmailTemplateService.getResolved(company_id, STAGE_SCREENING, 'qa_invite');
+    const vars = { CANDIDATE_NAME: ctx.candidate_name, JOB_TITLE: ctx.job_title };
+
+    const interpolate = (str) => {
+      let out = str;
+      for (const [k, v] of Object.entries(vars)) out = out.replaceAll(`{{${k}}}`, v ?? '');
+      return out.replace(/\{\{LINK\}\}/g, link);
+    };
+
+    return { to: ctx.candidate_email, subject: interpolate(template.subject), body: interpolate(template.body) };
+  }
 }
 
 export default new ScreeningService();

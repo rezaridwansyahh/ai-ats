@@ -2,4 +2,4 @@ import api from './axios';
 
 export const getEmailTemplates = () => api.get('/email-template');
 
-export const saveEmailTemplate = (moduleKey, templateKey, { subject, body }) => api.put(`/email-template/${moduleKey}/${templateKey}`, { subject, body });
+export const saveEmailTemplate = (stage_type_id, template_key, payload) => api.put(`/email-template/${stage_type_id}/${template_key}`, payload);

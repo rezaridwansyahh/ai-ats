@@ -534,6 +534,27 @@ class OfferController {
     }
   }
 
+  async previewOfferEmail(req, res) {
+    try {
+      const { offer_id } = req.params;
+      const { company_id } = req.user;
+      const result = await OfferService.previewOfferEmail(offer_id, company_id);
+      res.json(result);
+    } catch (error) {
+      res.status(error.status || 500).json({ message: error.message });
+    }
+  }
+
+  async previewContractEmail(req, res) {
+    try {
+      const { offer_id } = req.params;
+      const { company_id } = req.user;
+      const result = await OfferService.previewContractEmail(offer_id, company_id);
+      res.json(result);
+    } catch (error) {
+      res.status(error.status || 500).json({ message: error.message });
+    }
+  }
 }
 
 export default new OfferController();
