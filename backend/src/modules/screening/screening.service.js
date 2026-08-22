@@ -620,6 +620,16 @@ class ScreeningService {
 
     return { to: ctx.candidate_email, subject: interpolate(template.subject), body: interpolate(template.body) };
   }
+
+  async qaGetWithAnswers(screening_id) {
+    if (!screening_id) throw { status: 400, message: 'screening_id is required' };
+    return await screeningModel.getQaByScreening(screening_id);
+  }
+
+  async qaInbox(company_id) {
+    if (!company_id) throw { status: 400, message: 'company_id is required' };
+    return await screeningModel.qaInbox(company_id);
+  }
 }
 
 export default new ScreeningService();
