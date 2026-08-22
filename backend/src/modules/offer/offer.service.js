@@ -4,6 +4,7 @@ import OfferTemplateModel from '../offer-template/offer-template.model.js';
 import { mergeOfferLetter, htmlToDocxBuffer, convertHtmlToPdf } from '../../shared/services/document-merge.js';
 import { sendTemplatedEmail } from '../../shared/services/candidate-mailer.js';
 import EmailTemplateService, { STAGE_OFFERING_CONTRACT } from '../email-template/email-template.service.js';
+import { toRelativePath, toAbsolutePath } from '../../shared/middleware/offer.middleware.js';
 import mammoth from 'mammoth';
 import fs from 'fs';
 import path from 'path';
@@ -498,10 +499,11 @@ class OfferService {
         ? saved[field]
         : `[${field.replace(/_/g, ' ')} — not filled in]`;
     }
+    const templatePath = toAbsolutePath(template.file);
 
     let docxBuffer;
     try {
-      docxBuffer = await mergeOfferLetter({ templatePath: template.file, fieldValues });
+      docxBuffer = await mergeOfferLetter({ templatePath, fieldValues });
     } catch (err) {
       throw { status: 400, message: 'Failed to merge template — check the uploaded file is a valid .docx' };
     }
@@ -541,7 +543,8 @@ class OfferService {
         : `[${field.replace(/_/g, ' ')} — not filled in]`;
     }
 
-    return mergeOfferLetter({ templatePath: template.file, fieldValues });
+    const templatePath = toAbsolutePath(template.file);
+    return mergeOfferLetter({ templatePath, fieldValues });
   }
 
   async downloadOfferLetterPdf(offer_id, company_id) {
@@ -580,16 +583,19 @@ class OfferService {
       throw { status: 400, message: 'No file received' };
     }
 
+    const relativePath = toRelativePath(file.path);
+
     const existing = await OfferModel.getOfferDocument(offer_id, 'offer');
-    if (existing?.file && existing.file !== file.path) {
-      fs.unlink(existing.file, (err) => {
+    if (existing?.file && existing.file !== relativePath) {
+      const oldAbsolute = toAbsolutePath(existing.file);
+      fs.unlink(oldAbsolute, (err) => {
         if (err) console.error('Failed to remove previous offer document:', err);
       });
     }
 
     const doc = await OfferModel.upsertOfferDocument({
       offer_id,
-      file: file.path,
+      file: relativePath,
       method: 'upload',
       uploaded_by: user_id,
       document_type: 'offer',
@@ -618,7 +624,7 @@ class OfferService {
     }
 
     return {
-      filePath: latest.candidate_file,
+      filePath: toAbsolutePath(latest.candidate_file),
       fileName: `signed_offer_${offer.candidate_name || 'candidate'}_${offer_id}${path.extname(latest.candidate_file)}`,
     };
   }
@@ -645,16 +651,19 @@ class OfferService {
       throw { status: 400, message: 'No file received' };
     }
 
+    const relativePath = toRelativePath(file.path);
+
     const existing = await OfferModel.getOfferDocument(offer_id, 'contract');
-    if (existing?.file && existing.file !== file.path) {
-      fs.unlink(existing.file, (err) => {
+    if (existing?.file && existing.file !== relativePath) {
+      const oldAbsolute = toAbsolutePath(existing.file);
+      fs.unlink(oldAbsolute, (err) => {
         if (err) console.error('Failed to remove previous contract document:', err);
       });
     }
 
     const doc = await OfferModel.upsertOfferDocument({
       offer_id,
-      file: file.path,
+      file: relativePath,
       method: 'upload',
       uploaded_by: user_id,
       document_type: 'contract',
@@ -767,7 +776,7 @@ class OfferService {
     }
 
     return {
-      filePath: latest.candidate_file,
+      filePath: toAbsolutePath(latest.candidate_file),
       fileName: `signed_contract_${offer.candidate_name || 'candidate'}_${offer_id}${path.extname(latest.candidate_file)}`,
     };
   }
@@ -783,16 +792,19 @@ class OfferService {
       throw { status: 400, message: 'No file received' };
     }
 
+    const relativePath = toRelativePath(file.path);
+
     const existing = await OfferModel.getContractExecutedDocument(offer_id);
-    if (existing?.file && existing.file !== file.path) {
-      fs.unlink(existing.file, (err) => {
+    if (existing?.file && existing.file !== relativePath) {
+      const oldAbsolute = toAbsolutePath(existing.file);
+      fs.unlink(oldAbsolute, (err) => {
         if (err) console.error('Failed to remove previous executed contract:', err);
       });
     }
 
     const doc = await OfferModel.upsertContractExecutedDocument({
       offer_id,
-      file: file.path,
+      file: relativePath,
       uploaded_by: user_id,
       notes: notes || null,
     });
@@ -816,7 +828,7 @@ class OfferService {
     }
 
     return {
-      filePath: doc.file,
+      filePath: toAbsolutePath(doc.file),
       fileName: `executed_contract_${offer.candidate_name || 'candidate'}_${offer_id}${path.extname(doc.file)}`,
     };
   }

@@ -7,13 +7,15 @@ function slugify(text) {
     .toLowerCase()
     .trim()
     .replace(/\s+/g, '_')
-    .replace(/[^a-z0-9_-]/g, '') || 'company';
+    .replace(/[^a-z0-9_-]/g, '') || 'unknown';
 }
+
+const MB = 1024 * 1024;
+const MAX_SIZE = 10 * MB;
 
 const ALLOWED_MIME = 'application/vnd.openxmlformats-officedocument.wordprocessingml.document';
 const ALLOWED_EXT = '.docx';
 
-// No hardcoded path — set OFFER_TEMPLATE_ROOT in the environment on the VPS.
 const OFFER_TEMPLATE_ROOT = process.env.OFFER_TEMPLATE_ROOT
   || path.join(process.cwd(), 'offer_letter_templates');
 
@@ -32,7 +34,7 @@ const storage = multer.diskStorage({
       if (!company_id) {
         return cb(new Error('company_id is required for upload path'), null);
       }
-      const folderPath = path.join(OFFER_TEMPLATE_ROOT, slugify(`company_${company_id}`));
+      const folderPath = path.join(OFFER_TEMPLATE_ROOT, String(company_id));
       fs.mkdirSync(folderPath, { recursive: true });
       cb(null, folderPath);
     } catch (err) {
@@ -41,16 +43,28 @@ const storage = multer.diskStorage({
   },
 
   filename: (req, file, cb) => {
-    const company_id = req.user?.company_id || 'unknown';
+    const company_id = req.user?.company_id;
+    const companySlug = slugify(company_id);
     const timestamp = Date.now();
-    cb(null, `offer_letter_template_${company_id}_${timestamp}.docx`);
+
+    cb(null, `offer_letter_template_${companySlug}_${timestamp}${ALLOWED_EXT}`);
   },
 });
+
+export function toRelativePath(absolutePath) {
+  if (!absolutePath) return absolutePath;
+  return path.relative(OFFER_TEMPLATE_ROOT, absolutePath);
+}
+
+export function toAbsolutePath(storedPath) {
+  if (!storedPath) return storedPath;
+  return path.isAbsolute(storedPath) ? storedPath : path.join(OFFER_TEMPLATE_ROOT, storedPath);
+}
 
 const upload = multer({
   storage,
   fileFilter,
-  limits: { fileSize: 10 * 1024 * 1024, files: 1 },
+  limits: { fileSize: MAX_SIZE, files: 1 },
 });
 
 export default upload;
