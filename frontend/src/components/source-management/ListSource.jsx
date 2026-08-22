@@ -11,6 +11,7 @@ import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from '@/components/ui/select';
 import { AccountBanner } from '@/components/source-management/AccountBanner';
+import LinkJobModal from '@/components/source-management/LinkJobModal';
 import { JOB_STATUS_VARIANT } from '@/constants/job-status';
 import { getByAccountId } from '@/api/job-sourcing.api';
 import { extractSeekCandidates } from '@/api/job-posting-seek.api';
@@ -107,9 +108,14 @@ export default function ListSourceStep({ selectedAccount }) {
     }
   };
 
-  // Placeholder — link this sourcing to a job. No destination/behavior wired yet.
-  const handleLinkRow = (source) => {
-    // TODO: wire this up once the link-to-job flow is defined.
+  // Source currently targeted by the Link modal (null = modal closed).
+  const [linkingSource, setLinkingSource] = useState(null);
+
+  const handleLinkRow = (source) => setLinkingSource(source);
+
+  const handleLinked = () => {
+    setLinkingSource(null);
+    fetchSources({ silent: true });
   };
 
   if (!selectedAccount) {
@@ -329,6 +335,13 @@ export default function ListSourceStep({ selectedAccount }) {
           </div>
         </CardContent>
       </Card>
+
+      <LinkJobModal
+        open={!!linkingSource}
+        onOpenChange={(open) => { if (!open) setLinkingSource(null); }}
+        source={linkingSource}
+        onLinked={handleLinked}
+      />
     </div>
   );
 }
