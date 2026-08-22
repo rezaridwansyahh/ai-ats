@@ -1,3 +1,202 @@
+// import getDb from "../../config/postgres.js"
+
+// class JobSourceModel {
+//   async getAll() {
+//     const result = await getDb().query(`
+//       SELECT *
+//       FROM core_job_sourcing
+//       ORDER BY id ASC
+//     `);
+
+//     return result.rows;
+//   }
+
+//   async getById(id) {
+//     const result = await getDb().query(`
+//       SELECT *
+//       FROM core_job_sourcing
+//       WHERE id = $1
+//     `, [id]);
+
+//     return result.rows[0];
+//   }
+
+//   async getByAccountId(account_id) {
+//     const result = await getDb().query(`
+//       SELECT cjs.*,
+//       mjss.candidate_count,
+//       mjss.progress
+//       FROM core_job_sourcing cjs
+//       LEFT JOIN mapping_job_sourcing_seek mjss ON mjss.job_sourcing_id = cjs.id
+//       WHERE account_id = $1
+//       ORDER BY created_at ASC
+//     `, [account_id]);
+
+//     return result.rows;
+//   }
+
+//   async getByJobId(job_id) {
+//     const result = await getDb().query(`
+//       SELECT cjs.*
+//       FROM core_job_sourcing cjs
+//       JOIN job_post jp ON cjs.job_post_id = jp.id
+//       WHERE jp.job_id = $1
+//       ORDER BY cjs.created_at DESC
+//     `, [job_id]);
+
+//     return result.rows;
+//   }
+
+//   // Resolve the owning core_job for a sourcing, via its job_post link.
+//   // Returns the job_id (Number) for postings created in our platform, or
+//   // null for orphan sourcings (job_post_id IS NULL, e.g. discovered externally).
+//   async getLinkedJobId(sourcing_id) {
+//     const result = await getDb().query(`
+//       SELECT jp.job_id
+//       FROM core_job_sourcing cjs
+//       JOIN job_post jp ON jp.id = cjs.job_post_id
+//       WHERE cjs.id = $1
+//     `, [sourcing_id]);
+
+//     return result.rows[0]?.job_id ?? null;
+//   }
+
+//   async getByJobPostId(job_post_id) {
+//     const result = await getDb().query(`
+//       SELECT *
+//       FROM core_job_sourcing
+//       WHERE job_post_id = $1
+//       ORDER BY created_at DESC
+//     `, [job_post_id]);
+
+//     return result.rows;
+//   }
+
+//   async getByUserId(user_id) {
+//     const result = await getDb().query(`
+//       SELECT cjp.*
+//       FROM core_job_sourcing cjp
+//       JOIN master_job_account mja ON cjp.account_id = mja.id
+//       WHERE mja.user_id = $1
+//       ORDER BY cjp.created_at DESC
+//     `, [user_id]);
+
+//     return result.rows;
+//   }
+
+//   async getByUserIdAndStatus(user_id, status) {
+//     const result = await getDb().query(`
+//       SELECT cjp.*
+//       FROM core_job_sourcing cjp
+//       JOIN master_job_account mja ON cjp.account_id = mja.id
+//       WHERE mja.user_id = $1 AND cjp.status = $2
+//       ORDER BY cjp.created_at DESC
+//     `, [user_id, status]);
+
+//     return result.rows;
+//   }
+
+//   async getByPlatform(platform) {
+//     const result = await getDb().query(`
+//       SELECT *
+//       FROM core_job_sourcing
+//       WHERE platform = $1
+//       ORDER BY created_at DESC
+//     `, [platform]);
+
+//     return result.rows;
+//   }
+
+//   async create(account_id, job_post_id, platform, job_title, status = 'Active', additional = null, job_desc = null, job_location = null) {
+//     const result = await getDb().query(`
+//       INSERT INTO core_job_sourcing
+//         (account_id, job_post_id, platform, job_title, status, additional, job_desc, job_location)
+//       VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+//       RETURNING *
+//     `, [account_id, job_post_id, platform, job_title, status, additional, job_desc, job_location]);
+
+//     return result.rows[0];
+//   }
+
+//   async update(id, fields) {
+//     const keys = Object.keys(fields);
+//     const values = Object.values(fields);
+
+//     if (keys.length === 0) {
+//       throw new Error('No fields provided for update');
+//     }
+
+//     const setClause = keys
+//       .map((key, index) => `"${key}" = $${index + 1}`)
+//       .join(', ');
+
+//     const result = await getDb().query(`
+//       UPDATE core_job_sourcing
+//       SET ${setClause}, updated_at = NOW()
+//       WHERE id = $${keys.length + 1}
+//       RETURNING *
+//     `, [...values, id]);
+
+//     return result.rows[0];
+//   }
+
+//   // --- Live sync-state transitions (per channel) ---
+//   async markSyncing(id) {
+//     const result = await getDb().query(`
+//       UPDATE core_job_sourcing
+//       SET sync_state = 'syncing', sync_started_at = NOW(), updated_at = NOW()
+//       WHERE id = $1
+//       RETURNING *
+//     `, [id]);
+//     return result.rows[0];
+//   }
+
+//   async markSynced(id) {
+//     const result = await getDb().query(`
+//       UPDATE core_job_sourcing
+//       SET sync_state = 'idle', last_sync = NOW(), updated_at = NOW()
+//       WHERE id = $1
+//       RETURNING *
+//     `, [id]);
+//     return result.rows[0];
+//   }
+
+//   async markSyncError(id) {
+//     const result = await getDb().query(`
+//       UPDATE core_job_sourcing
+//       SET sync_state = 'error', updated_at = NOW()
+//       WHERE id = $1
+//       RETURNING *
+//     `, [id]);
+//     return result.rows[0];
+//   }
+
+//   async updateStatus(id, status) {
+//     const result = await getDb().query(`
+//       UPDATE core_job_sourcing
+//       SET status = $1, updated_at = NOW()
+//       WHERE id = $2
+//       RETURNING *
+//     `, [status, id]);
+
+//     return result.rows[0];
+//   }
+
+//   async delete(id) {
+//     const result = await getDb().query(`
+//       DELETE FROM core_job_sourcing
+//       WHERE id = $1
+//       RETURNING *
+//     `, [id]);
+
+//     return result.rows[0];
+//   }
+// }
+
+// export default new JobSourceModel();
+
+
+
 import getDb from "../../config/postgres.js"
 
 class JobSourceModel {
@@ -136,6 +335,20 @@ class JobSourceModel {
       WHERE id = $${keys.length + 1}
       RETURNING *
     `, [...values, id]);
+
+    return result.rows[0];
+  }
+
+  // Link this sourcing (channel/posting) to an internal job post.
+  // Sets core_job_sourcing.job_post_id — this is what "Linked to a job?"
+  // in the UI checks against.
+  async linkToJob(id, job_post_id) {
+    const result = await getDb().query(`
+      UPDATE core_job_sourcing
+      SET job_post_id = $1, updated_at = NOW()
+      WHERE id = $2
+      RETURNING *
+    `, [job_post_id, id]);
 
     return result.rows[0];
   }

@@ -5,6 +5,6 @@ import authToken from '../../shared/middleware/auth.middleware.js';
 const router = express.Router();
 
 router.get('/', authToken, EmailTemplateController.getAll);
-router.put('/:module_key/:template_key', authToken, EmailTemplateController.save);
+router.put('/:stage_type_id/:template_key', authToken, EmailTemplateController.save);
 
 export default router;

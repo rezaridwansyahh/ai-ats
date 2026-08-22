@@ -11,6 +11,7 @@ import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from '@/components/ui/select';
 import { AccountBanner } from '@/components/source-management/AccountBanner';
+import LinkJobModal from '@/components/source-management/LinkJobModal';
 import { JOB_STATUS_VARIANT } from '@/constants/job-status';
 import { getByAccountId } from '@/api/job-sourcing.api';
 import { extractSeekCandidates } from '@/api/job-posting-seek.api';
@@ -20,6 +21,9 @@ const STATUS_OPTIONS = ['Draft', 'Active', 'Running', 'Expired', 'Failed'];
 const SYNC_VARIANT = { idle: 'muted', syncing: 'warning', error: 'danger' };
 const SYNC_LABEL   = { idle: 'Idle', syncing: 'Syncing…', error: 'Error' };
 const PAGE_SIZE = 10;
+// Total number of columns in the table body — keep in sync with TableHeader below,
+// used for colSpan on the loading/empty-state rows.
+const COLUMN_COUNT = 8;
 // Poll while any row is mid-sync, since extraction runs async in a BullMQ
 // worker — this is the only way the row's sync_state/last_sync updates
 // without the user manually refreshing.
@@ -104,9 +108,14 @@ export default function ListSourceStep({ selectedAccount }) {
     }
   };
 
-  // Placeholder — link this sourcing to a job. No destination/behavior wired yet.
-  const handleLinkRow = (source) => {
-    // TODO: wire this up once the link-to-job flow is defined.
+  // Source currently targeted by the Link modal (null = modal closed).
+  const [linkingSource, setLinkingSource] = useState(null);
+
+  const handleLinkRow = (source) => setLinkingSource(source);
+
+  const handleLinked = () => {
+    setLinkingSource(null);
+    fetchSources({ silent: true });
   };
 
   if (!selectedAccount) {
@@ -173,27 +182,47 @@ export default function ListSourceStep({ selectedAccount }) {
         </CardHeader>
         <CardContent>
           <Table className="table-fixed w-full">
-            <TableCaption>Job sourcings synced from {selectedAccount.email}.</TableCaption>
+            <TableCaption className="text-[11px]">
+              Job sourcings synced from {selectedAccount.email}.
+            </TableCaption>
             <TableHeader className="bg-muted/40">
-              <TableRow>
-                <TableHead className="w-[26%]">Job Title</TableHead>
-                <TableHead className="w-[12%]">Status</TableHead>
-                <TableHead className="w-[14%]">Linked to a job?</TableHead>
-                <TableHead className="w-[10%]">Sync</TableHead>
-                <TableHead className="w-[18%]">Last Sync</TableHead>
-                <TableHead className="w-[20%] text-right">Action</TableHead>
+              <TableRow className="hover:bg-transparent">
+                <TableHead className="w-[20%] text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
+                  Job Title
+                </TableHead>
+                <TableHead className="w-[9%] text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
+                  Status
+                </TableHead>
+                <TableHead className="w-[10%] text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
+                  Linked to a job?
+                </TableHead>
+                <TableHead className="w-[8%] text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
+                  Sync
+                </TableHead>
+                <TableHead className="w-[9%] text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
+                  Progress
+                </TableHead>
+                <TableHead className="w-[10%] text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
+                  Candidate Count
+                </TableHead>
+                <TableHead className="w-[15%] text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
+                  Last Sync
+                </TableHead>
+                <TableHead className="w-[19%] text-right text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
+                  Action
+                </TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {loading ? (
                 <TableRow>
-                  <TableCell colSpan={6} className="text-center py-10">
+                  <TableCell colSpan={COLUMN_COUNT} className="text-center py-10">
                     <Loader2 className="h-4 w-4 animate-spin mx-auto text-muted-foreground" />
                   </TableCell>
                 </TableRow>
               ) : paginatedSources.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={6} className="text-center py-10 text-xs text-muted-foreground">
+                  <TableCell colSpan={COLUMN_COUNT} className="text-center py-10 text-xs text-muted-foreground">
                     {sources.length === 0
                       ? 'No sourcings found for this account yet. Try Refresh.'
                       : 'No sourcings match your filters.'}
@@ -202,7 +231,7 @@ export default function ListSourceStep({ selectedAccount }) {
               ) : paginatedSources.map(source => {
                 const isSyncing = source.sync_state === 'syncing' || syncingIds.has(source.id);
                 return (
-                  <TableRow key={source.id}>
+                  <TableRow key={source.id} className="hover:bg-muted/30 transition-colors">
                     <TableCell className="font-medium truncate pr-3">{source.job_title}</TableCell>
                     <TableCell>
                       <StatusBadge
@@ -224,6 +253,14 @@ export default function ListSourceStep({ selectedAccount }) {
                         variant={SYNC_VARIANT[source.sync_state] ?? 'muted'}
                         dot
                       />
+                    </TableCell>
+                    <TableCell className="text-xs font-mono tabular-nums text-muted-foreground">
+                      {source.candidate_count
+                        ? `${Math.round(((source.progress ?? 0) / source.candidate_count) * 100)}%`
+                        : '—'}
+                    </TableCell>
+                    <TableCell className="text-xs font-mono tabular-nums text-muted-foreground">
+                      {source.candidate_count ?? '—'}
                     </TableCell>
                     <TableCell className="text-xs text-muted-foreground truncate">
                       {source.last_sync ? new Date(source.last_sync).toLocaleString() : '—'}
@@ -298,6 +335,13 @@ export default function ListSourceStep({ selectedAccount }) {
           </div>
         </CardContent>
       </Card>
+
+      <LinkJobModal
+        open={!!linkingSource}
+        onOpenChange={(open) => { if (!open) setLinkingSource(null); }}
+        source={linkingSource}
+        onLinked={handleLinked}
+      />
     </div>
   );
 }

@@ -24,7 +24,7 @@ import {
   getScreening, setScreeningDecision, getRubric,
   getQa, getQaResponses, generateQa, updateQa, sendQa,
   getApplicationFormTemplate, extractFacetsFromFile, extractFacetsFromText,
-  getScreeningByCandidate, scoreCandidate,
+  getScreeningByCandidate, scoreCandidate, getQaPreview
 } from '@/api/screening.api';
 import {
   Select,
@@ -276,16 +276,11 @@ function useQa(screeningId, scored, enabled) {
       return;
     }
     try {
-      const { data } = await getEmailTemplates();
-      const mod = data.find((m) => m.module_key === 'interview');
-      const tpl = mod?.templates.find((t) => t.template_key === 'qa_invite');
-      setEmailModal({
-        open: true,
-        subject: (tpl?.subject || 'Follow-up Questions').replace('{{JOB_TITLE}}', jobTitle || 'the position'),
-        body: (tpl?.body || '').replace('{{CANDIDATE_NAME}}', candidateName || 'there').replace('{{JOB_TITLE}}', jobTitle || 'the position'),
-      });
-    } catch {
-      setError('Failed to load email template from Settings.');
+      await updateQa(screeningId, cleaned);
+      const { data } = await getQaPreview(screeningId);
+      setEmailModal({ open: true, subject: data.subject, body: data.body });
+    } catch (err) {
+      setError(err.response?.data?.message || err.message || 'Failed to load email preview.');
     }
   };
 
@@ -573,23 +568,19 @@ export default function AIScreeningCandidatePage() {
           <div className="space-y-3 py-1">
             <div className="space-y-1">
               <label className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">Subject</label>
-              <Input
-                value={qa.emailModal.subject}
-                onChange={(e) => qa.setEmailModal((m) => ({ ...m, subject: e.target.value }))}
-                className="h-9 text-sm"
-                placeholder="Email subject…"
-              />
+              <div className="h-9 flex items-center px-3 rounded-md border bg-muted/30 text-sm text-foreground">
+                {qa.emailModal.subject}
+              </div>
             </div>
             <div className="space-y-1">
               <label className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">Body</label>
-              <Textarea
-                value={qa.emailModal.body}
-                onChange={(e) => qa.setEmailModal((m) => ({ ...m, body: e.target.value }))}
-                rows={12}
-                className="text-sm font-mono leading-relaxed resize-y"
-                placeholder="Email body…"
-              />
+              <div className="text-sm leading-relaxed whitespace-pre-wrap rounded-md border bg-muted/30 px-3 py-2 max-h-64 overflow-y-auto">
+                {qa.emailModal.body}
+              </div>
             </div>
+            <Link to="/settings" state={{ section: 'email-templates' }} className="text-xs text-primary hover:underline inline-flex items-center gap-1">
+              <Pencil className="h-3 w-3" /> Edit this wording in Settings
+            </Link>
             {!qa.emailModal.body.includes('{{LINK}}') && (
               <div className="flex items-start gap-2 px-3 py-2 rounded-md border border-amber-200 bg-amber-50 text-[11px] text-amber-700">
                 <AlertTriangle className="h-3.5 w-3.5 shrink-0 mt-0.5" />
@@ -622,6 +613,7 @@ export default function AIScreeningCandidatePage() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+      
     </>
   );
 }

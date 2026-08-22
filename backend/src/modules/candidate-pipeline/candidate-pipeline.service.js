@@ -1,6 +1,5 @@
 import CandidatePipeline from './candidate-pipeline.model.js';
-import { sendTemplatedEmail } from '../../shared/services/candidate-mailer.js';
-import EmailTemplateService from '../email-template/email-template.service.js';
+import { sendScreeningEmail } from '../../shared/services/candidate-mailer.js';
 import screeningService from '../screening/screening.service.js';
 import getDb from '../../config/postgres.js';
 import interviewModel from '../interview/interview.model.js';
@@ -88,12 +87,16 @@ class CandidatePipelineService {
 
   async ScreeningEmail(candidate_id, decision) {
     if (decision?.result !== "match") return
-    try {
-      await this.email(candidate_id, { stageName: 'Screening' });
-    } catch (err) {
 
-      console.error('ScreeningEmail error:', err?.message || err);
-    }
+    const ctx = await CandidatePipeline.getNotificationContext(candidate_id)
+    if (!ctx || !ctx.email_notify) return
+
+    await sendScreeningEmail({
+      candidateName: ctx.candidate_name,
+      candidateEmail: ctx.candidate_email,
+      jobTitle: ctx.job_title,
+      stageName: "Screening",
+    })
   }
 
   async email(candidate_id, { stageName } = {}) {
@@ -103,13 +106,11 @@ class CandidatePipelineService {
       throw { status: 400, message: `Candidate "${ctx.candidate_name}" has no email on the linked applicant` };
     }
 
-    const template = await EmailTemplateService.getResolved(ctx.company_id, 'interview', 'stage_advance');
-    await sendTemplatedEmail({
+    await sendScreeningEmail({
       candidateName: ctx.candidate_name,
       candidateEmail: ctx.candidate_email,
-      template,
-      link: '',
-      vars: { CANDIDATE_NAME: ctx.candidate_name, JOB_TITLE: ctx.job_title, STAGE: stageName || 'Screening' },
+      jobTitle: ctx.job_title,
+      stageName: stageName || 'Screening',
     });
 
     return {

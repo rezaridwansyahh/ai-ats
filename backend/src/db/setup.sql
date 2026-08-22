@@ -71,6 +71,7 @@ DROP TABLE IF EXISTS core_job_template CASCADE;
 DROP TABLE IF EXISTS master_template_stage CASCADE;
 DROP TABLE IF EXISTS job_stage_category CASCADE;
 DROP TABLE IF EXISTS recruitment_stage_category CASCADE;
+DROP TABLE IF EXISTS company_email_template CASCADE;
 DROP TABLE IF EXISTS job_automation_settings CASCADE;
 DROP TABLE IF EXISTS candidate_job_score CASCADE;
 DROP TABLE IF EXISTS assessment_sessions CASCADE;
@@ -206,19 +207,6 @@ CREATE TABLE company_budgets (
 CREATE INDEX idx_company_budgets_company_month ON company_budgets (company_id, month_year DESC);
 CREATE INDEX idx_company_budgets_month_year ON company_budgets (month_year DESC);
 
-CREATE TABLE company_email_template (
-  id SERIAL PRIMARY KEY,
-  company_id INTEGER NOT NULL REFERENCES core_company(id) ON DELETE CASCADE,
-  module_key VARCHAR(50) NOT NULL,    
-  template_key VARCHAR(50) NOT NULL,  
-  subject TEXT NOT NULL,
-  body TEXT NOT NULL,
-  updated_by INTEGER REFERENCES master_users(id) ON DELETE SET NULL,
-  updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-  UNIQUE (company_id, module_key, template_key)
-);
-
 CREATE TABLE master_roles (
   id SERIAL PRIMARY KEY,
   name VARCHAR(100) NOT NULL,
@@ -296,6 +284,19 @@ CREATE TABLE recruitment_stage_category (
   name VARCHAR(100) NOT NULL UNIQUE,
   created_at TIMESTAMP NOT NULL DEFAULT NOW(),
   updated_at TIMESTAMP NOT NULL DEFAULT NOW()
+);
+
+CREATE TABLE company_email_template (
+  id SERIAL PRIMARY KEY,
+  company_id INTEGER NOT NULL REFERENCES core_company(id) ON DELETE CASCADE,
+  stage_type_id INTEGER NOT NULL REFERENCES recruitment_stage_category(id),    
+  template_key VARCHAR(50) NOT NULL,  
+  subject TEXT NOT NULL,
+  body TEXT NOT NULL,
+  updated_by INTEGER REFERENCES master_users(id) ON DELETE SET NULL,
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  UNIQUE (company_id, stage_type_id, template_key)
 );
 
 CREATE TABLE master_template_stage (
@@ -434,9 +435,26 @@ CREATE TABLE mapping_job_sourcing_linkedin (
   updated_at TIMESTAMP NOT NULL DEFAULT NOW()
 );
 
+CREATE TABLE cv_upload_batch (
+  id                 SERIAL PRIMARY KEY,
+  company_id         INTEGER REFERENCES core_company(id) ON DELETE CASCADE,
+  filename           VARCHAR(255) NOT NULL,
+  file_type          VARCHAR(10)  NOT NULL CHECK (file_type IN ('pdf', 'zip')),
+  status             sourcing_status_type NOT NULL DEFAULT 'Pending',
+  total_files        INTEGER DEFAULT 1,
+  processed_files    INTEGER DEFAULT 0,
+  applicant_name     VARCHAR(255),   -- PDF: extracted candidate name
+  applicant_position VARCHAR(255),   -- PDF: extracted last position
+  error_message      TEXT,
+  created_at         TIMESTAMP NOT NULL DEFAULT NOW(),
+  updated_at         TIMESTAMP NOT NULL DEFAULT NOW()
+);
+CREATE INDEX idx_cv_upload_batch_company ON cv_upload_batch (company_id, created_at DESC);
+
 CREATE TABLE master_applicant (
   id SERIAL PRIMARY KEY,
-  job_sourcing_id INTEGER NOT NULL REFERENCES core_job_sourcing(id) ON DELETE CASCADE,
+  job_sourcing_id INTEGER REFERENCES core_job_sourcing(id) ON DELETE CASCADE,
+  upload_batch_id INTEGER REFERENCES cv_upload_batch(id) ON DELETE CASCADE,
   company_id INTEGER REFERENCES core_company(id) ON DELETE CASCADE,
   name VARCHAR(255) NOT NULL,
   email VARCHAR(255),
@@ -1031,22 +1049,6 @@ CREATE INDEX idx_applicant_name_trgm          ON master_applicant USING GIN (nam
 CREATE INDEX idx_applicant_last_position_trgm ON master_applicant USING GIN (last_position gin_trgm_ops);
 CREATE INDEX idx_applicant_education_trgm     ON master_applicant USING GIN (education     gin_trgm_ops);
 CREATE INDEX idx_applicant_address_trgm       ON master_applicant USING GIN (address       gin_trgm_ops);
-
-CREATE TABLE cv_upload_batch (
-  id                 SERIAL PRIMARY KEY,
-  company_id         INTEGER REFERENCES core_company(id) ON DELETE CASCADE,
-  filename           VARCHAR(255) NOT NULL,
-  file_type          VARCHAR(10)  NOT NULL CHECK (file_type IN ('pdf', 'zip')),
-  status             sourcing_status_type NOT NULL DEFAULT 'Pending',
-  total_files        INTEGER DEFAULT 1,
-  processed_files    INTEGER DEFAULT 0,
-  applicant_name     VARCHAR(255),   -- PDF: extracted candidate name
-  applicant_position VARCHAR(255),   -- PDF: extracted last position
-  error_message      TEXT,
-  created_at         TIMESTAMP NOT NULL DEFAULT NOW(),
-  updated_at         TIMESTAMP NOT NULL DEFAULT NOW()
-);
-CREATE INDEX idx_cv_upload_batch_company ON cv_upload_batch (company_id, created_at DESC);
 
 CREATE TABLE master_skill_alias (
   alias        VARCHAR(100) PRIMARY KEY,
