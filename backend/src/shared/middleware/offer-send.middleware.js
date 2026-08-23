@@ -56,10 +56,7 @@ function createOfferSendUpload(documentType) {
         if (!send) return cb(new Error('Invalid or expired link'), null);
         req._offerSend = send;
 
-        const candidateSlug = slugify(send.candidate_name);
-        const folderPath = path.join(
-          OFFER_CONTRACT_ROOT, 'candidate_signed', documentType, `${candidateSlug}_${send.offer_id}`
-        );
+        const folderPath = path.join(OFFER_CONTRACT_ROOT, 'candidate_signed', documentType);
         fs.mkdirSync(folderPath, { recursive: true });
         cb(null, folderPath);
       } catch (err) {
@@ -82,6 +79,16 @@ function createOfferSendUpload(documentType) {
     fileFilter,
     limits: { fileSize: MAX_SIZE, files: 1 },
   });
+}
+
+export function toRelativePath(absolutePath) {
+  if (!absolutePath) return absolutePath;
+  return path.relative(OFFER_CONTRACT_ROOT, absolutePath);
+}
+
+export function toAbsolutePath(storedPath) {
+  if (!storedPath) return storedPath;
+  return path.isAbsolute(storedPath) ? storedPath : path.join(OFFER_CONTRACT_ROOT, storedPath);
 }
 
 const offerSendUpload = createOfferSendUpload('offer');

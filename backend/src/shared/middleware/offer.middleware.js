@@ -58,10 +58,7 @@ function createOfferUpload(documentType) {
         }
         req._offer = offer;
 
-        const jobSlug       = slugify(offer.job_title);
-        const candidateSlug = slugify(offer.candidate_name);
-
-        const folderPath = path.join(OFFER_CONTRACT_ROOT, documentType, jobSlug, candidateSlug);
+        const folderPath = path.join(OFFER_CONTRACT_ROOT, documentType);
         fs.mkdirSync(folderPath, { recursive: true });
         cb(null, folderPath);
       } catch (err) {
@@ -86,6 +83,16 @@ function createOfferUpload(documentType) {
     fileFilter,
     limits: { fileSize: MAX_SIZE, files: 1 },
   });
+}
+
+export function toRelativePath(absolutePath) {
+  if (!absolutePath) return absolutePath;
+  return path.relative(OFFER_CONTRACT_ROOT, absolutePath);
+}
+
+export function toAbsolutePath(storedPath) {
+  if (!storedPath) return storedPath;
+  return path.isAbsolute(storedPath) ? storedPath : path.join(OFFER_CONTRACT_ROOT, storedPath);
 }
 
 const upload = createOfferUpload('offer');

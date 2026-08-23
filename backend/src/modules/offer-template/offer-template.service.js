@@ -4,6 +4,7 @@ import PizZip from 'pizzip';
 import Docxtemplater from 'docxtemplater';
 import OfferTemplateModel from './offer-template.model.js';
 import { flattenMergeFields } from '../../shared/services/document-merge.js';
+import { toRelativePath, toAbsolutePath } from '../../shared/middleware/offer-template.middleware.js';
 
 async function getFlattenedText(filePath) {
   const buffer = fs.readFileSync(filePath);
@@ -60,12 +61,10 @@ class OfferTemplateService {
   async getTemplate(company_id) {
     return OfferTemplateModel.getByCompanyId(company_id);
   }
-
   async uploadTemplate(company_id, user_id, file) {
     if (!file) {
       throw { status: 400, message: 'No file received' };
     }
-
     let flattenedXml;
     try {
       flattenedXml = await getFlattenedText(file.path);
@@ -93,18 +92,19 @@ class OfferTemplateService {
       };
     }
 
+    const relativePath = toRelativePath(file.path);
+
     const existing = await OfferTemplateModel.getByCompanyId(company_id);
-    if (existing?.file && existing.file !== file.path) {
-      fs.unlink(existing.file, (err) => {
+    if (existing?.file && existing.file !== relativePath) {
+      const oldAbsolute = toAbsolutePath(existing.file);
+      fs.unlink(oldAbsolute, (err) => {
         if (err) console.error('Failed to remove previous offer letter template:', err);
       });
     }
 
-    // The file saved to disk is the ORIGINAL upload, untouched — flattening
-    // only ever happens in-memory, for detection here and for merge later.
     const template = await OfferTemplateModel.upsert({
       company_id,
-      file: file.path,
+      file: relativePath,
       fields,
       uploaded_by: user_id,
     });
