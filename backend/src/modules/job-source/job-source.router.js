@@ -47,12 +47,14 @@ router.get('/account/:account_id', jobSourcingController.getByAccountId);
 
 router.get('/:id', jobSourcingController.getById);
 router.get('/:id/full', jobSourcingController.getFullById);
+router.get('/:id/jobs', jobSourcingController.getLinkedJobs);
 
 router.post('/seek', jobSourcingController.submitSeek);
 
 router.put('/:id', jobSourcingController.update);
 router.put('/:id/status', jobSourcingController.updateStatus);
 router.put('/:id/link', jobSourcingController.linkToJob);
+router.delete('/:id/link/:job_id', jobSourcingController.unlinkFromJob);
 
 router.delete('/:id', jobSourcingController.delete);
 

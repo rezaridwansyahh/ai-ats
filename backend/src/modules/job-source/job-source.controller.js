@@ -119,12 +119,30 @@ class JobSourceController {
     }
   }
 
-  // Link a sourcing (channel/posting) to an internal job post — sets core_job_sourcing.job_post_id.
+  // Manually link a sourcing (channel/posting) to a job (many-to-many).
   async linkToJob(req, res) {
     try {
-      const { job_post_id } = req.body;
-      const updatedPosting = await jobSourceService.linkToJob(req.params.id, job_post_id);
-      res.status(200).json({ message: 'Job Posting linked to job', updatedPosting });
+      const { job_id } = req.body;
+      const mapping = await jobSourceService.linkToJob(req.params.id, job_id);
+      res.status(200).json({ message: 'Job Posting linked to job', mapping });
+    } catch (err) {
+      res.status(err.status || 500).json({ message: err.message });
+    }
+  }
+
+  async unlinkFromJob(req, res) {
+    try {
+      const mapping = await jobSourceService.unlinkFromJob(req.params.id, req.params.job_id);
+      res.status(200).json({ message: 'Job Posting unlinked from job', mapping });
+    } catch (err) {
+      res.status(err.status || 500).json({ message: err.message });
+    }
+  }
+
+  async getLinkedJobs(req, res) {
+    try {
+      const jobs = await jobSourceService.getLinkedJobs(req.params.id);
+      res.status(200).json({ message: 'Jobs linked to this sourcing', jobs });
     } catch (err) {
       res.status(err.status || 500).json({ message: err.message });
     }

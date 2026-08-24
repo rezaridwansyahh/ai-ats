@@ -17,7 +17,9 @@ SELECT setval('master_recruiters_id_seq',         COALESCE((SELECT MAX(id) FROM 
 SELECT setval('core_job_id_seq',                  (SELECT MAX(id) FROM core_job));
 SELECT setval('core_job_template_id_seq',         COALESCE((SELECT MAX(id) FROM core_job_template), 1));
 SELECT setval('job_stage_id_seq',                 COALESCE((SELECT MAX(id) FROM job_stage), 1));
+SELECT setval('job_post_id_seq',                  COALESCE((SELECT MAX(id) FROM job_post), 1));
 SELECT setval('core_job_sourcing_id_seq',         (SELECT MAX(id) FROM core_job_sourcing));
+SELECT setval('mapping_job_sourcing_job_id_seq',  COALESCE((SELECT MAX(id) FROM mapping_job_sourcing_job), 1));
 SELECT setval('master_applicant_id_seq',          (SELECT MAX(id) FROM master_applicant));
 SELECT setval('master_candidate_id_seq',          COALESCE((SELECT MAX(id) FROM master_candidate), 1));
 SELECT setval('master_assessment_id_seq',         (SELECT MAX(id) FROM master_assessment));

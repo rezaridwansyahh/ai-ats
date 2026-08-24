@@ -11,6 +11,7 @@ import userRolesData from '../data/user_role.js';
 import stageCategoriesData from '../data/stage_categories.js';
 import { templateStages, templateStageRows } from '../data/template_stages.js';
 import { jobAccounts, coreJobs, jobSourcing } from '../data/job_sourcing.js';
+import { jobPosts, jobSourcingJobMapping } from '../data/job_post.js';
 import applicantsData from '../data/applicants.js';
 import candidatesData from '../data/candidate.js';
 import skillAliasesData from '../data/skill_aliases.js';
@@ -50,7 +51,9 @@ const seed = async () => {
     await getDb().query('DELETE FROM master_candidate');
     await getDb().query('DELETE FROM master_applicant');
     await getDb().query('DELETE FROM master_recruiters');
+    await getDb().query('DELETE FROM mapping_job_sourcing_job');
     await getDb().query('DELETE FROM core_job_sourcing');
+    await getDb().query('DELETE FROM job_post');
     await getDb().query('DELETE FROM assessment_sessions');
     await getDb().query('DELETE FROM core_job_template');
     await getDb().query('DELETE FROM core_job');
@@ -219,6 +222,16 @@ const seed = async () => {
       );
     }
 
+    // 14a. job_post — internal pipelines + external platform postings (must
+    //      come before core_job_sourcing, whose job_post_id references these)
+    for (const jp of jobPosts) {
+      await getDb().query(
+        `INSERT INTO job_post (id, job_id, type, platform)
+         VALUES ($1, $2, $3, $4)`,
+        [jp.id, jp.job_id, jp.type, jp.platform]
+      );
+    }
+
     // 14b. core_job_template — link active jobs to a template so they have a pipeline
     for (const t of jobTemplatesData) {
       await getDb().query(
@@ -228,7 +241,7 @@ const seed = async () => {
       );
     }
 
-    // 15. core_job_sourcing (job_post_id left null — posts are created via SaaS publish flow)
+    // 15. core_job_sourcing
     for (const s of jobSourcing) {
       await getDb().query(
         `INSERT INTO core_job_sourcing (
@@ -236,6 +249,16 @@ const seed = async () => {
          )
          VALUES ($1, $2, $3, $4, $5, $6, $7, $8)`,
         [s.id, s.account_id, s.job_post_id, s.job_title, s.platform, s.platform_job_id, s.status, s.last_sync]
+      );
+    }
+
+    // 15b. mapping_job_sourcing_job — mirrors what JobSourceModel.create() auto-seeds
+    //      at runtime (is_origin rows), plus any manually-linked (non-origin) rows.
+    for (const m of jobSourcingJobMapping) {
+      await getDb().query(
+        `INSERT INTO mapping_job_sourcing_job (job_sourcing_id, job_id, is_origin)
+         VALUES ($1, $2, $3)`,
+        [m.job_sourcing_id, m.job_id, m.is_origin]
       );
     }
 

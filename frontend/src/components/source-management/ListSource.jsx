@@ -241,8 +241,11 @@ export default function ListSourceStep({ selectedAccount }) {
                       />
                     </TableCell>
                     <TableCell>
-                      {source.job_post_id ? (
-                        <StatusBadge label="Linked" variant="success" />
+                      {source.linked_job_count > 0 ? (
+                        <StatusBadge
+                          label={source.linked_job_count > 1 ? `Linked ×${source.linked_job_count}` : 'Linked'}
+                          variant="success"
+                        />
                       ) : (
                         <StatusBadge label="Not linked" variant="muted" />
                       )}

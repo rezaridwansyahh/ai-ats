@@ -1,5 +1,7 @@
 // Dummy seed data for core_job_sourcing + parents (master_job_account, core_job)
-// job_post is NOT seeded — those are created through the SaaS publish flow
+// job_post_id references data/job_post.js — each sourcing row below is wired
+// to the job_post it was actually published from (see mapping_job_sourcing_job
+// in job_post.js for the corresponding origin link).
 // Focus: platforms seek, linkedin, internal
 
 // Default AI-Screening rubric — Myralix jobs use this. Weights sum to 100.
@@ -141,17 +143,17 @@ export const coreJobs = [
 
 export const jobSourcing = [
   // --- Internal sourcing (no external account needed) ---
-  { id: 1, account_id: null, job_post_id: null, job_title: 'Senior Frontend Engineer', platform: 'internal', platform_job_id: 'INT-0001', status: 'Active',  last_sync: null },
-  { id: 2, account_id: null, job_post_id: null, job_title: 'Product Designer',          platform: 'internal', platform_job_id: 'INT-0002', status: 'Active',  last_sync: null },
+  { id: 1, account_id: null, job_post_id: 1, job_title: 'Senior Frontend Engineer', platform: 'internal', platform_job_id: 'INT-0001', status: 'Active',  last_sync: null },
+  { id: 2, account_id: null, job_post_id: 6, job_title: 'Product Designer',          platform: 'internal', platform_job_id: 'INT-0002', status: 'Active',  last_sync: null },
 
   // --- Seek sourcing ---
-  { id: 3, account_id: 1, job_post_id: null, job_title: 'Senior Frontend Engineer',     platform: 'seek', platform_job_id: 'SEEK-10001', status: 'Active',  last_sync: '2026-04-10 09:15:00' },
-  { id: 4, account_id: 1, job_post_id: null, job_title: 'Backend Engineer (Node.js)',   platform: 'seek', platform_job_id: 'SEEK-10002', status: 'Running', last_sync: '2026-04-11 14:30:00' },
-  { id: 5, account_id: 3, job_post_id: null, job_title: 'Talent Acquisition Specialist', platform: 'seek', platform_job_id: 'SEEK-10003', status: 'Draft',   last_sync: null },
+  { id: 3, account_id: 1, job_post_id: 2, job_title: 'Senior Frontend Engineer',     platform: 'seek', platform_job_id: 'SEEK-10001', status: 'Active',  last_sync: '2026-04-10 09:15:00' },
+  { id: 4, account_id: 1, job_post_id: 4, job_title: 'Backend Engineer (Node.js)',   platform: 'seek', platform_job_id: 'SEEK-10002', status: 'Running', last_sync: '2026-04-11 14:30:00' },
+  { id: 5, account_id: 3, job_post_id: 9, job_title: 'Talent Acquisition Specialist', platform: 'seek', platform_job_id: 'SEEK-10003', status: 'Draft',   last_sync: null },
 
   // --- LinkedIn sourcing ---
-  { id: 6, account_id: 2, job_post_id: null, job_title: 'Senior Frontend Engineer',     platform: 'linkedin', platform_job_id: 'LI-20001', status: 'Active',  last_sync: '2026-04-10 10:00:00' },
-  { id: 7, account_id: 2, job_post_id: null, job_title: 'Backend Engineer (Node.js)',   platform: 'linkedin', platform_job_id: 'LI-20002', status: 'Expired', last_sync: '2026-03-20 08:45:00' },
+  { id: 6, account_id: 2, job_post_id: 3, job_title: 'Senior Frontend Engineer',     platform: 'linkedin', platform_job_id: 'LI-20001', status: 'Active',  last_sync: '2026-04-10 10:00:00' },
+  { id: 7, account_id: 2, job_post_id: 5, job_title: 'Backend Engineer (Node.js)',   platform: 'linkedin', platform_job_id: 'LI-20002', status: 'Expired', last_sync: '2026-03-20 08:45:00' },
 ];
 
 export default { jobAccounts, coreJobs, jobSourcing };

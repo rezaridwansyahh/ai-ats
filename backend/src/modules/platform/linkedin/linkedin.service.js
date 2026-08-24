@@ -131,9 +131,9 @@ class LinkedInService {
       await loginRpa.authenticatedPage(page, account_id);
       await navigationRpa.redirectProjectJob(page, jobPostLinkedin.project_id, jobPostLinkedin.linkedin_id);
 
-      // Owned posting → resolves to a core_job; auto-promote synced applicants to
-      // candidates for that job (parity with the Seek sync hook). Orphan → null → skip.
-      const linkedJobId = await jobSourceModel.getLinkedJobId(job_sourcing_id);
+      // Jobs this sourcing is linked to (origin + manually-mapped) — auto-promote
+      // synced applicants to candidates for every one (parity with the Seek sync hook).
+      const linkedJobIds = await jobSourceModel.getLinkedJobIds(job_sourcing_id);
 
       // Resolve the owning company from the job account so synced applicants are
       // scoped correctly — without this, applicants insert with company_id=NULL
@@ -190,12 +190,14 @@ class LinkedInService {
           }
         }
 
-        if (linkedJobId && applicant?.id) {
-          try {
-            const created = await candidatePipelineModel.createFromApplicantIfAbsent(applicant.id, linkedJobId);
-            if (created) promoted++;
-          } catch (err) {
-            console.error(`Auto-promote failed for applicant ${applicant.id} → job ${linkedJobId}:`, err.message);
+        if (applicant?.id) {
+          for (const jobId of linkedJobIds) {
+            try {
+              const created = await candidatePipelineModel.createFromApplicantIfAbsent(applicant.id, jobId);
+              if (created) promoted++;
+            } catch (err) {
+              console.error(`Auto-promote failed for applicant ${applicant.id} → job ${jobId}:`, err.message);
+            }
           }
         }
       };
@@ -207,7 +209,7 @@ class LinkedInService {
         limit
       }, { checkExists, onSave });
 
-      return { saved, skipped, promoted, linkedJobId };
+      return { saved, skipped, promoted, linkedJobIds };
     } catch (err) {
       console.log(err);
       throw err;

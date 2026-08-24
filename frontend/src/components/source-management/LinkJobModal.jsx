@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo } from "react";
-import { Briefcase, Search, Loader2, Check } from 'lucide-react';
+import { Briefcase, Search, Loader2, Check, Lock, X } from 'lucide-react';
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter,
 } from '@/components/ui/dialog';
@@ -8,35 +8,48 @@ import { Button } from '@/components/ui/button';
 import { StatusBadge } from '@/components/common';
 import { JOB_STATUS_VARIANT } from '@/constants/job-status';
 import { getJobs } from '@/api/job.api';
-import { linkToJob } from '@/api/job-sourcing.api';
+import { linkToJob, unlinkFromJob, getLinkedJobs } from '@/api/job-sourcing.api';
 import { toast } from 'sonner';
 
 export default function LinkJobModal({ open, onOpenChange, source, onLinked }) {
   const [jobs, setJobs] = useState([]);
+  const [linkedJobs, setLinkedJobs] = useState([]); // [{ job_id, is_origin, ... }]
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
   const [searchQuery, setSearchQuery] = useState('');
-  const [selectedJobId, setSelectedJobId] = useState(null);
+  const [selectedJobIds, setSelectedJobIds] = useState(new Set());
   const [linking, setLinking] = useState(false);
+  const [unlinkingId, setUnlinkingId] = useState(null);
+
+  const loadLinkedJobs = async () => {
+    const res = await getLinkedJobs(source.id);
+    setLinkedJobs(res.data.jobs || []);
+  };
 
   useEffect(() => {
-    if(!open) return;
+    if(!open || !source?.id) return;
     setSearchQuery('');
-    setSelectedJobId(null);
+    setSelectedJobIds(new Set());
     setError(null);
 
     (async () => {
       setLoading(true);
       try {
-        const res = await getJobs();
-        setJobs(res.data.jobs || res.data.postings || []);
+        const [jobsRes] = await Promise.all([getJobs(), loadLinkedJobs()]);
+        setJobs(jobsRes.data.jobs || jobsRes.data.postings || []);
       } catch (err) {
         setError(err.response?.data?.message || err.message || 'Failed to load jobs');
       } finally {
         setLoading(false);
       }
     })();
-  }, [open]);
+  }, [open, source?.id]);
+
+  const linkedJobIds = useMemo(() => new Set(linkedJobs.map(l => l.job_id)), [linkedJobs]);
+  const originJobIds = useMemo(
+    () => new Set(linkedJobs.filter(l => l.is_origin).map(l => l.job_id)),
+    [linkedJobs]
+  );
 
   const filteredJobs = useMemo(() => {
     if(!searchQuery) return jobs;
@@ -44,12 +57,34 @@ export default function LinkJobModal({ open, onOpenChange, source, onLinked }) {
     return jobs.filter(job => job.job_title?.toLowerCase().includes(q));
   }, [jobs, searchQuery]);
 
+  const toggleSelected = (jobId) => {
+    setSelectedJobIds(prev => {
+      const next = new Set(prev);
+      if (next.has(jobId)) next.delete(jobId);
+      else next.add(jobId);
+      return next;
+    });
+  };
+
+  const handleUnlink = async (jobId) => {
+    setUnlinkingId(jobId);
+    try {
+      await unlinkFromJob(source.id, jobId);
+      await loadLinkedJobs();
+      onLinked?.();
+    } catch (err) {
+      toast.error(err.response?.data?.message || err.message || 'Failed to unlink job');
+    } finally {
+      setUnlinkingId(null);
+    }
+  };
+
   const handleConfirm = async () => {
-    if (!selectedJobId || !source?.id) return;
+    if (selectedJobIds.size === 0 || !source?.id) return;
     setLinking(true);
     try {
-      await linkToJob(source.id, selectedJobId);
-      toast.success(`"${source.job_title}" linked to job`);
+      await Promise.all([...selectedJobIds].map(jobId => linkToJob(source.id, jobId)));
+      toast.success(`"${source.job_title}" linked to ${selectedJobIds.size} job${selectedJobIds.size > 1 ? 's' : ''}`);
       onLinked?.();
       onOpenChange(false);
     } catch (err) {
@@ -67,7 +102,7 @@ export default function LinkJobModal({ open, onOpenChange, source, onLinked }) {
             <Briefcase className="h-4 w-4 text-emerald-600" />
             Link Sourcing to Job
           </DialogTitle>
-          <DialogDescription>Choose a job to link this sourcing to.</DialogDescription>
+          <DialogDescription>Choose one or more jobs to link this sourcing to.</DialogDescription>
         </DialogHeader>
  
         {source && (
@@ -99,16 +134,18 @@ export default function LinkJobModal({ open, onOpenChange, source, onLinked }) {
               No jobs found.
             </div>
           ) : filteredJobs.map(job => {
-            const alreadyLinked = job.id === source?.job_post_id;
-            const isSelected = job.id === selectedJobId;
+            const alreadyLinked = linkedJobIds.has(job.id);
+            const isOrigin = originJobIds.has(job.id);
+            const isSelected = selectedJobIds.has(job.id);
+            const isUnlinking = unlinkingId === job.id;
             return (
-              <button
+              <div
                 key={job.id}
-                type="button"
-                disabled={alreadyLinked}
-                onClick={() => setSelectedJobId(job.id)}
+                role={alreadyLinked ? undefined : 'button'}
+                tabIndex={alreadyLinked ? undefined : 0}
+                onClick={alreadyLinked ? undefined : () => toggleSelected(job.id)}
                 className={`w-full flex items-center justify-between gap-3 px-4 py-3 text-left transition-colors
-                  ${alreadyLinked ? 'opacity-50 cursor-not-allowed' : 'hover:bg-muted/40 cursor-pointer'}
+                  ${alreadyLinked ? '' : 'hover:bg-muted/40 cursor-pointer'}
                   ${isSelected ? 'bg-emerald-50' : ''}`}
               >
                 <div className="flex items-center gap-3 min-w-0">
@@ -121,7 +158,22 @@ export default function LinkJobModal({ open, onOpenChange, source, onLinked }) {
                   </div>
                 </div>
                 {alreadyLinked ? (
-                  <StatusBadge label="Already linked" variant="success" />
+                  isOrigin ? (
+                    <span className="flex items-center gap-1.5 text-xs text-muted-foreground">
+                      <Lock className="h-3.5 w-3.5" />
+                      Origin
+                    </span>
+                  ) : (
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="h-6 px-2 text-xs text-muted-foreground hover:text-red-600"
+                      disabled={isUnlinking}
+                      onClick={(e) => { e.stopPropagation(); handleUnlink(job.id); }}
+                    >
+                      {isUnlinking ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <><X className="h-3.5 w-3.5 mr-1" />Unlink</>}
+                    </Button>
+                  )
                 ) : isSelected ? (
                   <Check className="h-4 w-4 text-emerald-600 shrink-0" />
                 ) : (
@@ -130,16 +182,16 @@ export default function LinkJobModal({ open, onOpenChange, source, onLinked }) {
                     variant={JOB_STATUS_VARIANT[job.status] ?? 'muted'}
                   />
                 )}
-              </button>
+              </div>
             );
           })}
         </div>
- 
+
         <DialogFooter>
           <Button variant="outline" onClick={() => onOpenChange(false)}>Cancel</Button>
-          <Button onClick={handleConfirm} disabled={!selectedJobId || linking}>
+          <Button onClick={handleConfirm} disabled={selectedJobIds.size === 0 || linking}>
             {linking ? <Loader2 className="h-4 w-4 animate-spin mr-1.5" /> : null}
-            Link to Job
+            Link to {selectedJobIds.size > 1 ? `${selectedJobIds.size} Jobs` : 'Job'}
           </Button>
         </DialogFooter>
       </DialogContent>

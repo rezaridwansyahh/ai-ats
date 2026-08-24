@@ -104,9 +104,9 @@ class SeekService {
 
     const jobPostSeek = await jobPostSeekModel.getDetailsByJobSourcingId(job_sourcing_id);
 
-    // Owned posting (created in our platform) → resolves to a core_job; orphan → null.
-    // When linked, each synced applicant is auto-promoted to a candidate for that job.
-    const linkedJobId = await jobSourceModel.getLinkedJobId(job_sourcing_id);
+    // Jobs this sourcing is linked to (origin + manually-mapped). Each synced
+    // applicant is auto-promoted to a candidate for every linked job.
+    const linkedJobIds = await jobSourceModel.getLinkedJobIds(job_sourcing_id);
 
     // Resolve the owning company from the job account so synced applicants are
     // scoped correctly — without this, applicants insert with company_id=NULL
@@ -192,14 +192,17 @@ class SeekService {
             }
           }
 
-          // Auto-promote to candidate for owned postings only. Dup-safe (ON CONFLICT
-          // DO NOTHING) and individually guarded so one failure never aborts the batch.
-          if (linkedJobId && applicant?.id) {
-            try {
-              const created = await candidatePipelineModel.createFromApplicantIfAbsent(applicant.id, linkedJobId);
-              if (created) promoted++;
-            } catch (err) {
-              console.error(`Auto-promote failed for applicant ${applicant.id} → job ${linkedJobId}:`, err.message);
+          // Auto-promote to candidate for every job this sourcing is linked to.
+          // Dup-safe (ON CONFLICT DO NOTHING) and individually guarded so one
+          // failure never aborts the batch.
+          if (applicant?.id) {
+            for (const jobId of linkedJobIds) {
+              try {
+                const created = await candidatePipelineModel.createFromApplicantIfAbsent(applicant.id, jobId);
+                if (created) promoted++;
+              } catch (err) {
+                console.error(`Auto-promote failed for applicant ${applicant.id} → job ${jobId}:`, err.message);
+              }
             }
           }
         };
@@ -213,7 +216,7 @@ class SeekService {
         results.push({ bucket: bucket.name, saved, skipped, promoted });
       }
 
-      return { buckets, results, linkedJobId };
+      return { buckets, results, linkedJobIds };
     } catch (err) {
       throw err;
     } finally {

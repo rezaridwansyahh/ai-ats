@@ -25,11 +25,14 @@ class JobSourceModel {
     const result = await getDb().query(`
       SELECT cjs.*,
       mjss.candidate_count,
-      mjss.progress
+      mjss.progress,
+      COUNT(mjsj.id)::int AS linked_job_count
       FROM core_job_sourcing cjs
       LEFT JOIN mapping_job_sourcing_seek mjss ON mjss.job_sourcing_id = cjs.id
-      WHERE account_id = $1
-      ORDER BY created_at ASC
+      LEFT JOIN mapping_job_sourcing_job mjsj ON mjsj.job_sourcing_id = cjs.id
+      WHERE cjs.account_id = $1
+      GROUP BY cjs.id, mjss.candidate_count, mjss.progress
+      ORDER BY cjs.created_at ASC
     `, [account_id]);
 
     return result.rows;
@@ -37,28 +40,62 @@ class JobSourceModel {
 
   async getByJobId(job_id) {
     const result = await getDb().query(`
-      SELECT cjs.*
+      SELECT DISTINCT cjs.*
       FROM core_job_sourcing cjs
-      JOIN job_post jp ON cjs.job_post_id = jp.id
-      WHERE jp.job_id = $1
+      JOIN mapping_job_sourcing_job mjsj ON mjsj.job_sourcing_id = cjs.id
+      WHERE mjsj.job_id = $1
       ORDER BY cjs.created_at DESC
     `, [job_id]);
 
     return result.rows;
   }
 
-  // Resolve the owning core_job for a sourcing, via its job_post link.
-  // Returns the job_id (Number) for postings created in our platform, or
-  // null for orphan sourcings (job_post_id IS NULL, e.g. discovered externally).
-  async getLinkedJobId(sourcing_id) {
+  // All jobs this sourcing is associated with (origin + manually-linked).
+  async getLinkedJobs(sourcing_id) {
     const result = await getDb().query(`
-      SELECT jp.job_id
-      FROM core_job_sourcing cjs
-      JOIN job_post jp ON jp.id = cjs.job_post_id
-      WHERE cjs.id = $1
+      SELECT mjsj.job_id, mjsj.is_origin, mjsj.created_at, cj.job_title, cj.status
+      FROM mapping_job_sourcing_job mjsj
+      JOIN core_job cj ON cj.id = mjsj.job_id
+      WHERE mjsj.job_sourcing_id = $1
+      ORDER BY mjsj.is_origin DESC, mjsj.created_at ASC
     `, [sourcing_id]);
 
-    return result.rows[0]?.job_id ?? null;
+    return result.rows;
+  }
+
+  // Ids only — used by the sync auto-promote flow.
+  async getLinkedJobIds(sourcing_id) {
+    const result = await getDb().query(`
+      SELECT job_id
+      FROM mapping_job_sourcing_job
+      WHERE job_sourcing_id = $1
+    `, [sourcing_id]);
+
+    return result.rows.map(r => r.job_id);
+  }
+
+  async addJobMapping(sourcing_id, job_id, is_origin = false) {
+    const result = await getDb().query(`
+      INSERT INTO mapping_job_sourcing_job (job_sourcing_id, job_id, is_origin)
+      VALUES ($1, $2, $3)
+      ON CONFLICT (job_sourcing_id, job_id) DO NOTHING
+      RETURNING *
+    `, [sourcing_id, job_id, is_origin]);
+
+    return result.rows[0] ?? null;
+  }
+
+  // Only removes non-origin rows — the origin mapping (job this sourcing was
+  // published from) is protected and can't be unlinked. Returns the deleted
+  // row, or undefined if nothing matched (not linked, or origin-protected).
+  async removeJobMapping(sourcing_id, job_id) {
+    const result = await getDb().query(`
+      DELETE FROM mapping_job_sourcing_job
+      WHERE job_sourcing_id = $1 AND job_id = $2 AND is_origin = FALSE
+      RETURNING *
+    `, [sourcing_id, job_id]);
+
+    return result.rows[0];
   }
 
   async getByJobPostId(job_post_id) {
@@ -115,7 +152,18 @@ class JobSourceModel {
       RETURNING *
     `, [account_id, job_post_id, platform, job_title, status, additional, job_desc, job_location]);
 
-    return result.rows[0];
+    const sourcing = result.rows[0];
+
+    // Auto-seed the origin mapping — the job this sourcing was published from.
+    if (job_post_id) {
+      const jobPost = await getDb().query(`SELECT job_id FROM job_post WHERE id = $1`, [job_post_id]);
+      const job_id = jobPost.rows[0]?.job_id;
+      if (job_id) {
+        await this.addJobMapping(sourcing.id, job_id, true);
+      }
+    }
+
+    return sourcing;
   }
 
   async update(id, fields) {
@@ -136,20 +184,6 @@ class JobSourceModel {
       WHERE id = $${keys.length + 1}
       RETURNING *
     `, [...values, id]);
-
-    return result.rows[0];
-  }
-
-  // Link this sourcing (channel/posting) to an internal job post.
-  // Sets core_job_sourcing.job_post_id — this is what "Linked to a job?"
-  // in the UI checks against.
-  async linkToJob(id, job_post_id) {
-    const result = await getDb().query(`
-      UPDATE core_job_sourcing
-      SET job_post_id = $1, updated_at = NOW()
-      WHERE id = $2
-      RETURNING *
-    `, [job_post_id, id]);
 
     return result.rows[0];
   }

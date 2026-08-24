@@ -25,6 +25,7 @@ DROP TABLE IF EXISTS core_company CASCADE;
 DROP TABLE IF EXISTS company_setting CASCADE;
 DROP TABLE IF EXISTS mapping_applicant_linkedin CASCADE;
 DROP TABLE IF EXISTS mapping_applicant_seek CASCADE;
+DROP TABLE IF EXISTS mapping_job_sourcing_job CASCADE;
 DROP TABLE IF EXISTS mapping_job_sourcing_linkedin CASCADE;
 DROP TABLE IF EXISTS mapping_job_sourcing_seek CASCADE;
 DROP TABLE IF EXISTS master_applicant CASCADE;
@@ -394,6 +395,21 @@ CREATE TABLE core_job_sourcing (
   additional JSONB,
   UNIQUE (platform, account_id, platform_job_id)
 );
+
+-- Many-to-many: a sourcing can be associated with multiple internal jobs for
+-- candidate matching. is_origin marks the row auto-seeded from job_post_id at
+-- creation time (the job this sourcing was actually published from) — that
+-- row cannot be unlinked, only additional manually-added mappings can be.
+CREATE TABLE mapping_job_sourcing_job (
+  id SERIAL PRIMARY KEY,
+  job_sourcing_id INTEGER NOT NULL REFERENCES core_job_sourcing(id) ON DELETE CASCADE,
+  job_id INTEGER NOT NULL REFERENCES core_job(id) ON DELETE CASCADE,
+  is_origin BOOLEAN NOT NULL DEFAULT FALSE,
+  created_at TIMESTAMP NOT NULL DEFAULT NOW(),
+  UNIQUE (job_sourcing_id, job_id)
+);
+CREATE INDEX idx_mapping_job_sourcing_job_sourcing ON mapping_job_sourcing_job (job_sourcing_id);
+CREATE INDEX idx_mapping_job_sourcing_job_job ON mapping_job_sourcing_job (job_id);
 
 CREATE TABLE core_project_linkedin (
   id SERIAL PRIMARY KEY,
