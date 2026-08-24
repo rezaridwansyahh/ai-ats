@@ -53,6 +53,15 @@ class ApplicantController {
     }
   }
 
+  async getSourcingsByApplicantId(req, res) {
+    try {
+      const sourcings = await applicantService.getSourcingsByApplicantId(req.params.id);
+      res.status(200).json({ message: 'Sourcings linked to applicant', sourcings });
+    } catch (err) {
+      res.status(err.status || 500).json({ message: err.message });
+    }
+  }
+
   async getById(req, res) {
     try {
       const applicant = await applicantService.getById(req.params.id);

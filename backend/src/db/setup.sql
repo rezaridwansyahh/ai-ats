@@ -25,6 +25,7 @@ DROP TABLE IF EXISTS core_company CASCADE;
 DROP TABLE IF EXISTS company_setting CASCADE;
 DROP TABLE IF EXISTS mapping_applicant_linkedin CASCADE;
 DROP TABLE IF EXISTS mapping_applicant_seek CASCADE;
+DROP TABLE IF EXISTS mapping_applicant_sourcing CASCADE;
 DROP TABLE IF EXISTS mapping_job_sourcing_job CASCADE;
 DROP TABLE IF EXISTS mapping_job_sourcing_linkedin CASCADE;
 DROP TABLE IF EXISTS mapping_job_sourcing_seek CASCADE;
@@ -469,7 +470,6 @@ CREATE INDEX idx_cv_upload_batch_company ON cv_upload_batch (company_id, created
 
 CREATE TABLE master_applicant (
   id SERIAL PRIMARY KEY,
-  job_sourcing_id INTEGER REFERENCES core_job_sourcing(id) ON DELETE CASCADE,
   upload_batch_id INTEGER REFERENCES cv_upload_batch(id) ON DELETE CASCADE,
   company_id INTEGER REFERENCES core_company(id) ON DELETE CASCADE,
   name VARCHAR(255) NOT NULL,
@@ -479,10 +479,19 @@ CREATE TABLE master_applicant (
   education VARCHAR(255),
   information JSONB,
   date TIMESTAMPTZ,
-  attachment VARCHAR(255),
-  UNIQUE (name, job_sourcing_id)
+  attachment VARCHAR(255)
 );
 CREATE INDEX idx_master_applicant_company ON master_applicant (company_id);
+
+CREATE TABLE mapping_applicant_sourcing (
+  id SERIAL PRIMARY KEY,
+  applicant_id INTEGER NOT NULL REFERENCES master_applicant(id) ON DELETE CASCADE,
+  job_sourcing_id INTEGER NOT NULL REFERENCES core_job_sourcing(id) ON DELETE CASCADE,
+  created_at TIMESTAMP NOT NULL DEFAULT NOW(),
+  UNIQUE (applicant_id, job_sourcing_id)
+);
+CREATE INDEX idx_mapping_applicant_sourcing_applicant ON mapping_applicant_sourcing (applicant_id);
+CREATE INDEX idx_mapping_applicant_sourcing_sourcing ON mapping_applicant_sourcing (job_sourcing_id);
 
 CREATE TABLE master_candidate (
   id SERIAL PRIMARY KEY,

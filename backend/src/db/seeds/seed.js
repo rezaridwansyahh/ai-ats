@@ -49,6 +49,7 @@ const seed = async () => {
     await getDb().query('DELETE FROM core_applicant_assessment');
     await getDb().query('DELETE FROM master_assessment');
     await getDb().query('DELETE FROM master_candidate');
+    await getDb().query('DELETE FROM mapping_applicant_sourcing');
     await getDb().query('DELETE FROM master_applicant');
     await getDb().query('DELETE FROM master_recruiters');
     await getDb().query('DELETE FROM mapping_job_sourcing_job');
@@ -298,15 +299,27 @@ const seed = async () => {
       const company_id = sourcingToCompany.get(a.job_sourcing_id) ?? null;
       await getDb().query(
         `INSERT INTO master_applicant (
-           id, job_sourcing_id, company_id, name, email, last_position, address, education, information, date, attachment
+           id, company_id, name, email, last_position, address, education, information, date, attachment
          )
-         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)`,
+         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)`,
         [
-          a.id, a.job_sourcing_id, company_id, a.name, a.email || null, a.last_position, a.address,
+          a.id, company_id, a.name, a.email || null, a.last_position, a.address,
           a.education, a.information ? JSON.stringify(a.information) : null,
           a.date, a.attachment
         ]
       );
+    }
+
+    // 18b. mapping_applicant_sourcing — links each seed applicant to the
+    //      sourcing it came from (mirrors mapping_job_sourcing_job's seed step).
+    for (const a of applicantsData) {
+      if (a.job_sourcing_id) {
+        await getDb().query(
+          `INSERT INTO mapping_applicant_sourcing (applicant_id, job_sourcing_id)
+           VALUES ($1, $2)`,
+          [a.id, a.job_sourcing_id]
+        );
+      }
     }
 
     // 19. master_candidate — candidates live per job (job_id), may reference an
