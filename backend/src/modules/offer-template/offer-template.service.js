@@ -4,7 +4,7 @@ import PizZip from 'pizzip';
 import Docxtemplater from 'docxtemplater';
 import OfferTemplateModel from './offer-template.model.js';
 import { flattenMergeFields } from '../../shared/services/document-merge.js';
-import { toRelativePath, toAbsolutePath } from '../../shared/middleware/offer-template.middleware.js';
+import { toRelativePathTemplate, toAbsolutePathTemplate } from '../../shared/middleware/offer-template.middleware.js';
 
 async function getFlattenedText(filePath) {
   const buffer = fs.readFileSync(filePath);
@@ -92,11 +92,11 @@ class OfferTemplateService {
       };
     }
 
-    const relativePath = toRelativePath(file.path);
+    const relativePath = toRelativePathTemplate(file.path);
 
     const existing = await OfferTemplateModel.getByCompanyId(company_id);
     if (existing?.file && existing.file !== relativePath) {
-      const oldAbsolute = toAbsolutePath(existing.file);
+      const oldAbsolute = toAbsolutePathTemplate(existing.file);
       fs.unlink(oldAbsolute, (err) => {
         if (err) console.error('Failed to remove previous offer letter template:', err);
       });

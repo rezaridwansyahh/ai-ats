@@ -51,12 +51,12 @@ const storage = multer.diskStorage({
   },
 });
 
-export function toRelativePath(absolutePath) {
+export function toRelativePathTemplate(absolutePath) {
   if (!absolutePath) return absolutePath;
   return path.relative(OFFER_TEMPLATE_ROOT, absolutePath);
 }
 
-export function toAbsolutePath(storedPath) {
+export function toAbsolutePathTemplate(storedPath) {
   if (!storedPath) return storedPath;
   return path.isAbsolute(storedPath) ? storedPath : path.join(OFFER_TEMPLATE_ROOT, storedPath);
 }

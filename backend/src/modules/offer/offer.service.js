@@ -5,6 +5,7 @@ import { mergeOfferLetter, htmlToDocxBuffer, convertHtmlToPdf } from '../../shar
 import { sendTemplatedEmail } from '../../shared/services/candidate-mailer.js';
 import EmailTemplateService, { STAGE_OFFERING_CONTRACT } from '../email-template/email-template.service.js';
 import { toRelativePath, toAbsolutePath } from '../../shared/middleware/offer.middleware.js';
+import { toRelativePathTemplate ,toAbsolutePathTemplate } from '../../shared/middleware/offer-template.middleware.js';
 import mammoth from 'mammoth';
 import fs from 'fs';
 import path from 'path';
@@ -499,7 +500,7 @@ class OfferService {
         ? saved[field]
         : `[${field.replace(/_/g, ' ')} — not filled in]`;
     }
-    const templatePath = toAbsolutePath(template.file);
+    const templatePath = toAbsolutePathTemplate(template.file);
 
     let docxBuffer;
     try {
@@ -543,7 +544,7 @@ class OfferService {
         : `[${field.replace(/_/g, ' ')} — not filled in]`;
     }
 
-    const templatePath = toAbsolutePath(template.file);
+    const templatePath = toAbsolutePathTemplate(template.file);
     return mergeOfferLetter({ templatePath, fieldValues });
   }
 
