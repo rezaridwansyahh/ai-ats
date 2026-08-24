@@ -1,6 +1,7 @@
 import backgroundCheckModel from './background-check.model.js';
 import jobModel from '../job/job.model.js';
 import aiService from '../../shared/services/ai.service.js';
+import candidatePipelineService from '../candidate-pipeline/candidate-pipeline.service.js';
 
 class BackgroundCheckService {
   async getWorkboard(company_id) {
@@ -64,6 +65,16 @@ class BackgroundCheckService {
     return await backgroundCheckModel.updateStatus(bg_id, status);
   }
 
+  async _advancePipeline(candidate_id, decisionLabel) {
+    try {
+      const pipeline = await candidatePipelineService.getById(candidate_id);
+      if (pipeline?.latest_stage) {
+        await candidatePipelineService.addStage(candidate_id, pipeline.latest_stage, decisionLabel);
+      }
+    } catch (err) {
+      console.error(`Failed to advance pipeline for candidate ${candidate_id}:`, err?.message || err);
+    }
+  }
 
   async saveVerdict(bg_id, { verdict, verdict_note, decided_by, company_id = null } = {}) {
     if (!bg_id) throw { status: 400, message: 'bg_id is required' };
@@ -90,7 +101,13 @@ class BackgroundCheckService {
       throw { status: 400, message: 'Cannot save verdict — record is not at verdict stage' };
     }
 
-    return await backgroundCheckModel.saveVerdict(bg_id, { verdict, verdict_note, decided_by });
+    const updated = await backgroundCheckModel.saveVerdict(bg_id, { verdict, verdict_note, decided_by });
+
+    if (verdict === 'pass' || verdict === 'pass_with_concerns') {
+      await this._advancePipeline(existing.candidate_id, 'advanced');
+    }
+
+    return updated;
   }
 
   // ── Archive ────────────────────────────────────────────────────────────────
@@ -110,7 +127,13 @@ class BackgroundCheckService {
       throw { status: 403, message: 'Cross-tenant access denied' };
     }
 
-    return await backgroundCheckModel.archive(bg_id, archived_reason);
+    const result = await backgroundCheckModel.archive(bg_id, archived_reason);
+
+    if (archived_reason === 'calibration_advance') {
+      await this._advancePipeline(existing.candidate_id, 'advanced');
+    }
+
+    return result;
   }
 
   // ── Claims ─────────────────────────────────────────────────────────────────

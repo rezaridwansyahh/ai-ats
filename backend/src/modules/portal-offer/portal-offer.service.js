@@ -5,6 +5,7 @@ import mammoth from 'mammoth';
 import PortalOfferModel from './portal-offer.model.js';
 import OfferModel from '../offer/offer.model.js';
 import { convertHtmlToPdf } from '../../shared/services/document-merge.js';
+import { toRelativePath, toAbsolutePath } from '../../shared/middleware/offer-send.middleware.js';
 
 const JWT_SECRET = process.env.JWT_SECRET;
 
@@ -80,6 +81,7 @@ class PortalOfferService {
       throw { status: 400, message: 'No finalized offer letter is available yet — contact your recruiter.' };
     }
 
+    const absoluteLetterPath = toAbsolutePath(row.letter_file);
     const nativeExt    = path.extname(row.letter_file).replace('.', '').toLowerCase();
     const requestedExt = (format || nativeExt).toLowerCase();
     const safeName     = (row.candidate_name || 'candidate').trim().replace(/\s+/g, '_');
@@ -87,13 +89,13 @@ class PortalOfferService {
     if (requestedExt === nativeExt) {
       return {
         kind: 'file',
-        filePath: row.letter_file,
+        filePath: absoluteLetterPath,
         fileName: `Offer_Letter_${safeName}.${nativeExt}`,
       };
     }
 
     if (nativeExt === 'docx' && requestedExt === 'pdf') {
-      const docxBuffer = await fs.promises.readFile(row.letter_file);
+      const docxBuffer = await fs.promises.readFile(absoluteLetterPath);
       const { value: html } = await mammoth.convertToHtml({ buffer: docxBuffer });
       const pdfBuffer = await convertHtmlToPdf(html);
       return {
@@ -114,14 +116,16 @@ class PortalOfferService {
     if (!file) throw { status: 400, message: 'No file received.' };
 
     const row = await this._loadAuthorized(token, offer_send_id);
+    const relativePath = toRelativePath(file.path);
 
-    if (row.candidate_file && row.candidate_file !== file.path) {
-      fs.unlink(row.candidate_file, (err) => {
+    if (row.candidate_file && row.candidate_file !== relativePath) {
+      const oldAbsolute = toAbsolutePath(row.candidate_file);
+      fs.unlink(oldAbsolute, (err) => {
         if (err) console.error('Failed to remove previous candidate upload:', err);
       });
     }
 
-    const updated = await PortalOfferModel.setCandidateFile(row.id, file.path);
+    const updated = await PortalOfferModel.setCandidateFile(row.id, relativePath);
     return {
       candidate_file:        updated.candidate_file,
       candidate_uploaded_at: updated.candidate_uploaded_at,

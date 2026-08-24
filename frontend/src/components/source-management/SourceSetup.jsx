@@ -43,6 +43,21 @@ const PAGE_SIZE = 10;
 export default function SourceSetupStep({ selectedJob }) {
   const [range, setRange] = useState([30, 80]);
 
+  // TODO: Step 3 still expects a selectedJob the way the old wizard worked.
+  // Steps 1–2 were just rebuilt around selectedAccount/selectedSourcing
+  // instead — this step (and Step 4) haven't been migrated yet, so guard
+  // against the crash rather than leave it broken silently.
+  if (!selectedJob) {
+    return (
+      <div className="flex flex-col items-center justify-center py-20 text-center">
+        <AlertTriangle className="h-10 w-10 text-amber-400 mb-3" />
+        <h3 className="text-lg font-bold mb-1">This step is being reworked</h3>
+        <p className="text-sm text-muted-foreground max-w-md">
+          Source Setup hasn't been migrated to the new account/sourcing flow yet.
+        </p>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-5">

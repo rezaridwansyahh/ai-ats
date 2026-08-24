@@ -42,6 +42,7 @@ router.post('/job/:job_id/advance-bulk',              screeningController.advanc
 router.get('/qa/inbox',                               screeningController.qaInbox);
 router.get('/screening/:screening_id/qa',             screeningController.qaGet);
 router.get('/screening/:screening_id/qa/responses',   screeningController.qaResponses);
+router.get('/screening/:screening_id/qa/preview', screeningController.previewQa);
 router.post('/screening/:screening_id/qa/generate',   screeningController.qaGenerate);
 router.put('/screening/:screening_id/qa',             screeningController.qaUpdate);
 router.post('/screening/:screening_id/qa/send',       screeningController.qaSend);

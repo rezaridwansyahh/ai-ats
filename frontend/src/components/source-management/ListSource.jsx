@@ -1,145 +1,180 @@
-import { useState, useEffect, useRef, useMemo, useCallback } from 'react';
+import { useState, useEffect, useMemo, useCallback, useRef } from 'react';
+import { Loader2, AlertTriangle, RefreshCw } from 'lucide-react';
 import {
-  Plus, Loader2, Pencil, Trash2, Upload, Sparkles, X, Star, Check,
-  Bold, Italic, Underline, List, ListOrdered, Link, Bot, Briefcase, MapPin,
-  AlertTriangle
-} from 'lucide-react';
-import {
-  Table,
-  TableBody,
-  TableCaption,
-  TableCell,
-  TableFooter,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table"
+  Table, TableBody, TableCaption, TableCell, TableFooter, TableHead, TableHeader, TableRow,
+} from '@/components/ui/table';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-import { Textarea } from '@/components/ui/textarea';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import {
-  Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter,
-} from '@/components/ui/dialog';
-import { Badge } from '@/components/ui/badge';
+import { StatusBadge } from '@/components/common';
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from '@/components/ui/select';
+import { AccountBanner } from '@/components/source-management/AccountBanner';
+import LinkJobModal from '@/components/source-management/LinkJobModal';
+import { JOB_STATUS_VARIANT } from '@/constants/job-status';
+import { getByAccountId } from '@/api/job-sourcing.api';
+import { extractSeekCandidates } from '@/api/job-posting-seek.api';
+import { toast } from 'sonner';
 
-import { getSources } from '@/api/job-sourcing.api'
-
-const STATUS_COLORS = {
-  Draft: 'bg-orange-50 text-orange-600 border-orange-200',
-  Active: 'bg-emerald-50 text-emerald-600 border-emerald-200',
-  Running: 'bg-blue-50 text-blue-600 border-blue-200',
-  Expired: 'bg-gray-50 text-gray-500 border-gray-200',
-  Failed: 'bg-red-50 text-red-500 border-red-200',
-  Blocked: 'bg-gray-50 text-gray-500 border-gray-200',
-};
-
-const STATUS_OPTIONS = ['linkedin', 'seek', 'internal'];
+const STATUS_OPTIONS = ['Draft', 'Active', 'Running', 'Expired', 'Failed'];
+const SYNC_VARIANT = { idle: 'muted', syncing: 'warning', error: 'danger' };
+const SYNC_LABEL   = { idle: 'Idle', syncing: 'Syncing…', error: 'Error' };
 const PAGE_SIZE = 10;
+// Total number of columns in the table body — keep in sync with TableHeader below,
+// used for colSpan on the loading/empty-state rows.
+const COLUMN_COUNT = 8;
+// Poll while any row is mid-sync, since extraction runs async in a BullMQ
+// worker — this is the only way the row's sync_state/last_sync updates
+// without the user manually refreshing.
+const POLL_INTERVAL_MS = 4000;
 
-export default function ListSourceStep({ selectedJob }) {
-  const [jobSources, setJobSources] = useState([]);
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState(null);
+/**
+ * ListSourceStep — Step 2 of Source Management.
+ * Lists core_job_sourcing rows scoped to the selected account (Step 1).
+ *
+ * Re-sync (candidate extraction) is scoped PER ROW, not one blanket button
+ * for the whole account — a single sourcing can have a large number of
+ * candidates, so triggering extraction for every sourcing under an account
+ * at once would be slow/heavy. Each row fires its own
+ * POST /seek/candidates/rpa/extract, which the backend already tracks via
+ * core_job_sourcing.sync_state (idle/syncing/error) per row.
+ */
+export default function ListSourceStep({ selectedAccount }) {
+  const [sources, setSources]   = useState([]);
+  const [loading, setLoading]   = useState(false);
+  const [error, setError]       = useState(null);
+  const [refreshing, setRefreshing] = useState(false);
+  // Set of source ids currently being re-synced — drives per-row disabled/spinner state.
+  const [syncingIds, setSyncingIds] = useState(new Set());
 
-  // pagination
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
-  const [platformFilter, setPlatformFilter] = useState('all');
   const [page, setPage] = useState(1);
 
-  const filteredSources = useMemo(() => {
-    return jobSources.filter(jobSource => {
-      const matchesSearch = !searchQuery || jobSource.job_title?.toLowerCase().includes(searchQuery.toLowerCase());
-      const matchesStatus = statusFilter === 'all' || jobSource.status === statusFilter;
-      const matchesPlatform = platformFilter === 'all' || jobSource.platform === platformFilter;
+  const fetchSources = useCallback(async ({ silent = false } = {}) => {
+    if (!selectedAccount?.id) { setSources([]); return; }
+    if (!silent) setLoading(true);
+    setError(null);
+    try {
+      const res = await getByAccountId(selectedAccount.id);
+      setSources(res.data.postings || []);
+    } catch (err) {
+      if (!silent) setError(err.response?.data?.message || err.message || 'Failed to load sources');
+    } finally {
+      if (!silent) setLoading(false);
+    }
+  }, [selectedAccount?.id]);
 
-      return matchesSearch && matchesStatus && matchesPlatform;
+  useEffect(() => { fetchSources(); }, [fetchSources]);
+
+  // ── Poll quietly while anything is mid-sync ──────────────────────────
+  const hasSyncingRows = sources.some(s => s.sync_state === 'syncing');
+  const pollRef = useRef(null);
+  useEffect(() => {
+    if (!hasSyncingRows) return;
+    pollRef.current = setInterval(() => fetchSources({ silent: true }), POLL_INTERVAL_MS);
+    return () => clearInterval(pollRef.current);
+  }, [hasSyncingRows, fetchSources]);
+
+  const filteredSources = useMemo(() => {
+    return sources.filter(source => {
+      const matchesSearch = !searchQuery || source.job_title?.toLowerCase().includes(searchQuery.toLowerCase());
+      const matchesStatus = statusFilter === 'all' || source.status === statusFilter;
+      return matchesSearch && matchesStatus;
     });
-  }, [jobSources, searchQuery, statusFilter]);
+  }, [sources, searchQuery, statusFilter]);
 
   const totalPages = Math.ceil(filteredSources.length / PAGE_SIZE);
   const paginatedSources = filteredSources.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
 
-  // Reset page when filters change
-  useEffect(() => { setPage(1); }, [searchQuery, statusFilter]);
+  const handleRefresh = async () => {
+    setRefreshing(true);
+    try { await fetchSources(); } finally { setRefreshing(false); }
+  };
 
-  const fetchJobSource = useCallback(async () => {
-    setLoading(true);
+  const handleResyncRow = async (source) => {
+    if (!selectedAccount?.id || syncingIds.has(source.id)) return;
+    setSyncingIds(prev => new Set(prev).add(source.id));
     try {
-      const res = await getSources();
-      setJobSources(res.data.postings || []);
+      await extractSeekCandidates({ account_id: selectedAccount.id, job_sourcing_id: source.id });
+      toast.success(`Re-sync queued for "${source.job_title}"`);
+      // Backend marks sync_state='syncing' synchronously before responding — refetch to show it.
+      await fetchSources({ silent: true });
     } catch (err) {
-      // no-op
+      toast.error(err.response?.data?.message || err.message || 'Failed to queue re-sync');
     } finally {
-      setLoading(false);
+      setSyncingIds(prev => { const next = new Set(prev); next.delete(source.id); return next; });
     }
-  }, []);
+  };
 
-  useEffect(() => {
-    fetchJobSource()
-  }, [fetchJobSource])
+  // Source currently targeted by the Link modal (null = modal closed).
+  const [linkingSource, setLinkingSource] = useState(null);
+
+  const handleLinkRow = (source) => setLinkingSource(source);
+
+  const handleLinked = () => {
+    setLinkingSource(null);
+    fetchSources({ silent: true });
+  };
+
+  if (!selectedAccount) {
+    return (
+      <div className="flex flex-col items-center justify-center py-20 text-center">
+        <AlertTriangle className="h-10 w-10 text-amber-400 mb-3" />
+        <h3 className="text-lg font-bold mb-1">No Account Selected</h3>
+        <p className="text-sm text-muted-foreground">Go back to Step 1 and select a connected account first.</p>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-5">
-      {/* ── Section A: Selected Job Banner ── */}
-      <Card className="border-primary/20 bg-primary/5">
-        <CardContent className="py-4 px-5">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-3">
-              <div className="h-10 w-10 rounded-lg bg-primary/10 flex items-center justify-center">
-                <Briefcase className="h-5 w-5 text-primary" />
-              </div>
-              <div>
-                <div className="flex items-center gap-2">
-                  <h3 className="text-sm font-bold">{selectedJob.job_title}</h3>
-                  <Badge variant="outline" className={`text-[10px] px-2 py-0 ${STATUS_COLORS[selectedJob.status] || ''}`}>
-                    {selectedJob.status}
-                  </Badge>
-                </div>
-                <div className="flex items-center gap-3 mt-0.5 text-xs text-muted-foreground">
-                  {selectedJob.job_location && (
-                    <span className="flex items-center gap-1"><MapPin className="h-3 w-3" />{selectedJob.job_location}</span>
-                  )}
-                  {selectedJob.work_type && <span>{selectedJob.work_type}</span>}
-                  {selectedJob.work_option && <span>{selectedJob.work_option}</span>}
-                </div>
-              </div>
-            </div>
-            <span className="text-[10px] font-bold text-muted-foreground tracking-widest">STEP 2</span>
-          </div>
-        </CardContent>
-      </Card>
+      <AccountBanner account={selectedAccount} step={2} />
 
-      {/* ── Prerequisite Warning ── */}  
+      {/* ── Prerequisite Warning ── */}
       <div className="flex items-center gap-2 px-4 py-3 rounded-lg border-l-[3px] border-amber-400 bg-amber-50/60 text-[11px] text-muted-foreground">
         <AlertTriangle className="h-4 w-4 text-amber-500 shrink-0" />
         <span>
-          <strong>Prerequisite:</strong> Please Re-Sync Job Source in : {' '}
-          <span className="text-primary font-semibold cursor-pointer underline">Settings &rarr; Integrations</span>{' '}
-          to get newest data.
+          Each sourcing has its own <strong>Re-Sync</strong> — syncing pulls candidates for that
+          one posting, so run it per row rather than all at once.
         </span>
       </div>
 
-      {/* Content */}
+      {error && (
+        <div className="flex items-center gap-2 px-4 py-3 rounded-lg border border-red-200 bg-red-50 text-sm text-red-600">
+          <AlertTriangle className="h-4 w-4 shrink-0" />
+          <span>{error}</span>
+        </div>
+      )}
+
       <Card data-tour="source-mgmt-source-table">
         <CardHeader className="pb-3 space-y-3">
-          <CardTitle className="text-sm">All Source</CardTitle>
+          <div className="flex items-center justify-between gap-3 flex-wrap">
+            <CardTitle className="text-sm">
+              Sources for this account
+              {!loading && (
+                <span className="ml-2 text-[11px] font-normal text-muted-foreground">
+                  {filteredSources.length} {filteredSources.length === 1 ? 'result' : 'results'}
+                </span>
+              )}
+            </CardTitle>
+            <Button variant="outline" size="sm" onClick={handleRefresh} disabled={refreshing}>
+              <RefreshCw className={`h-3.5 w-3.5 mr-1.5 ${refreshing ? 'animate-spin' : ''}`} />
+              Refresh
+            </Button>
+          </div>
           <div className="flex items-center gap-3">
             <Input
-              placeholder="Search source..."
+              placeholder="Search by job title..."
               value={searchQuery}
-              onChange={e => setSearchQuery(e.target.value)}
+              onChange={e => { setSearchQuery(e.target.value); setPage(1); }}
               className="max-w-[250px] text-xs"
             />
-            <Select value={statusFilter} onValueChange={setStatusFilter}>
+            <Select value={statusFilter} onValueChange={v => { setStatusFilter(v); setPage(1); }}>
               <SelectTrigger className="w-[150px] text-xs"><SelectValue /></SelectTrigger>
               <SelectContent>
-                <SelectItem value="all">All Platform</SelectItem>
+                <SelectItem value="all">All Status</SelectItem>
                 {STATUS_OPTIONS.map(s => <SelectItem key={s} value={s}>{s}</SelectItem>)}
               </SelectContent>
             </Select>
@@ -147,30 +182,118 @@ export default function ListSourceStep({ selectedJob }) {
         </CardHeader>
         <CardContent>
           <Table className="table-fixed w-full">
-            <TableCaption>A list of All Job Sources.</TableCaption>
-            <TableHeader className="bg-gray-100">
-              <TableRow>
-                <TableHead>Job Title</TableHead>
-                <TableHead>Platform</TableHead>
-                <TableHead>Status</TableHead>
-                <TableHead>Last Sync</TableHead>
-                <TableHead className="text-center">Action</TableHead>
+            <TableCaption className="text-[11px]">
+              Job sourcings synced from {selectedAccount.email}.
+            </TableCaption>
+            <TableHeader className="bg-muted/40">
+              <TableRow className="hover:bg-transparent">
+                <TableHead className="w-[20%] text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
+                  Job Title
+                </TableHead>
+                <TableHead className="w-[9%] text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
+                  Status
+                </TableHead>
+                <TableHead className="w-[10%] text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
+                  Linked to a job?
+                </TableHead>
+                <TableHead className="w-[8%] text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
+                  Sync
+                </TableHead>
+                <TableHead className="w-[9%] text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
+                  Progress
+                </TableHead>
+                <TableHead className="w-[10%] text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
+                  Candidate Count
+                </TableHead>
+                <TableHead className="w-[15%] text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
+                  Last Sync
+                </TableHead>
+                <TableHead className="w-[19%] text-right text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
+                  Action
+                </TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
-              {paginatedSources.map(source => (
-                <TableRow key={source.id}>
-                  <TableCell className="font-medium">{source.job_title}</TableCell>
-                  <TableCell>{source.platform}</TableCell>
-                  <TableCell>{source.status}</TableCell>
-                  <TableCell>{source.last_sync}</TableCell>
-                  <TableCell className="text-center"><Button variant='outline'>Re-Sync</Button></TableCell>
+              {loading ? (
+                <TableRow>
+                  <TableCell colSpan={COLUMN_COUNT} className="text-center py-10">
+                    <Loader2 className="h-4 w-4 animate-spin mx-auto text-muted-foreground" />
+                  </TableCell>
                 </TableRow>
-              ))}
+              ) : paginatedSources.length === 0 ? (
+                <TableRow>
+                  <TableCell colSpan={COLUMN_COUNT} className="text-center py-10 text-xs text-muted-foreground">
+                    {sources.length === 0
+                      ? 'No sourcings found for this account yet. Try Refresh.'
+                      : 'No sourcings match your filters.'}
+                  </TableCell>
+                </TableRow>
+              ) : paginatedSources.map(source => {
+                const isSyncing = source.sync_state === 'syncing' || syncingIds.has(source.id);
+                return (
+                  <TableRow key={source.id} className="hover:bg-muted/30 transition-colors">
+                    <TableCell className="font-medium truncate pr-3">{source.job_title}</TableCell>
+                    <TableCell>
+                      <StatusBadge
+                        label={source.status}
+                        variant={JOB_STATUS_VARIANT[source.status] ?? 'muted'}
+                        dot
+                      />
+                    </TableCell>
+                    <TableCell>
+                      {source.linked_job_count > 0 ? (
+                        <StatusBadge
+                          label={source.linked_job_count > 1 ? `Linked ×${source.linked_job_count}` : 'Linked'}
+                          variant="success"
+                        />
+                      ) : (
+                        <StatusBadge label="Not linked" variant="muted" />
+                      )}
+                    </TableCell>
+                    <TableCell>
+                      <StatusBadge
+                        label={SYNC_LABEL[source.sync_state] ?? 'Idle'}
+                        variant={SYNC_VARIANT[source.sync_state] ?? 'muted'}
+                        dot
+                      />
+                    </TableCell>
+                    <TableCell className="text-xs font-mono tabular-nums text-muted-foreground">
+                      {source.candidate_count
+                        ? `${Math.round(((source.progress ?? 0) / source.candidate_count) * 100)}%`
+                        : '—'}
+                    </TableCell>
+                    <TableCell className="text-xs font-mono tabular-nums text-muted-foreground">
+                      {source.candidate_count ?? '—'}
+                    </TableCell>
+                    <TableCell className="text-xs text-muted-foreground truncate">
+                      {source.last_sync ? new Date(source.last_sync).toLocaleString() : '—'}
+                    </TableCell>
+                    <TableCell className="text-right pr-1">
+                      <div className="inline-flex items-center gap-1.5">
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          className="text-xs h-7 px-2.5"
+                          disabled={isSyncing}
+                          onClick={() => handleResyncRow(source)}
+                        >
+                          {isSyncing ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : 'Re-Sync'}
+                        </Button>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          className="text-xs h-7 px-2.5"
+                          onClick={() => handleLinkRow(source)}
+                        >
+                          Link
+                        </Button>
+                      </div>
+                    </TableCell>
+                  </TableRow>
+                );
+              })}
             </TableBody>
-            <TableFooter>
-              
-            </TableFooter>
+            <TableFooter></TableFooter>
           </Table>
 
           <div className="flex flex-col items-center gap-2 pt-3 border-t mt-3">
@@ -209,385 +332,19 @@ export default function ListSourceStep({ selectedJob }) {
             </div>
             <span className="text-[10px] text-muted-foreground">
               {filteredSources.length > 0
-                ? `Showing ${(page - 1) * PAGE_SIZE + 1}\u2013${Math.min(page * PAGE_SIZE, filteredSources.length)} of ${filteredSources.length}`
+                ? `Showing ${(page - 1) * PAGE_SIZE + 1}–${Math.min(page * PAGE_SIZE, filteredSources.length)} of ${filteredSources.length}`
                 : 'No results'}
             </span>
           </div>
         </CardContent>
       </Card>
 
-      {/* Manual CV Card */}
-      {/* TODO: not wired to a tour step yet — dropzone (onClick/onDrop) and
-          the duplicate Job Title fields aren't functional. Add a
-          data-tour marker + step here once this card actually works. */}
-      <Card>
-        <CardHeader className="border-b-1">
-          <CardTitle>
-            Manual CV Upload
-          </CardTitle>
-        </CardHeader>
-        <CardContent className="flex gap-5">
-          <div className="flex flex-col gap-1.5 w-1/2 h-auto">
-            <div
-              className="flex border-2 border-dashed border-border rounded-lg p-6 bg-muted/30 cursor-pointer hover:border-primary/40 transition-colors h-50 items-center justify-center"
-              onClick="" // Not done
-              onDragOver={e => e.preventDefault()}
-              onDrop="" // Not done
-            >
-              <div>
-                <Upload className="h-5 w-5 mx-auto mb-2 text-muted-foreground" />
-                <p className="text-xs font-semibold">
-                  {/* uploadedFile ? uploadedFile.name : 'Drag file here or click to browse'*/}
-                </p>
-                <p className="text-[10px] text-muted-foreground mt-1">
-                  Upload Source Job Desc: PDF, DOCX, TXT (max 10MB)
-                  <br />AI will auto-extract all fields from uploaded document
-                </p>
-                <input
-                  type="file"
-                  accept=".pdf,.docx,.txt"
-                  className="hidden"
-                  onChange=""
-                />
-              </div>
-            </div>
-          </div>
-          <div className="flex w-1/2">
-          <div className="flex flex-col gap-4 w-full">
-            <div className="flex flex-col gap-1.5">
-              <Label className="text-[12px] text-muted-foreground font-semibold">Job Title <span className="text-red-500">*</span></Label>
-              <Input
-                placeholder="e.g. Senior Frontend Developer"
-                value=""
-                onChange=""
-                required
-              />
-            </div>
-
-            <div className="flex flex-col gap-1.5">
-              <Label className="text-[12px] text-muted-foreground font-semibold">Job Title <span className="text-red-500">*</span></Label>
-              <Input
-                placeholder="e.g. Senior Frontend Developer"
-                value=""
-                onChange=""
-                required
-              />
-            </div>
-
-            <Button>
-              Upload & Queue Parsing
-            </Button>
-          </div>
-            
-          </div>
-        </CardContent>
-      </Card>
+      <LinkJobModal
+        open={!!linkingSource}
+        onOpenChange={(open) => { if (!open) setLinkingSource(null); }}
+        source={linkingSource}
+        onLinked={handleLinked}
+      />
     </div>
-  )
+  );
 }
-
-
-
-// import { useState, useEffect, useMemo, useCallback, useRef } from 'react';
-// import { Loader2, AlertTriangle, Upload } from 'lucide-react';
-// import {
-//   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
-// } from '@/components/ui/table';
-// import { Button } from '@/components/ui/button';
-// import { Input } from '@/components/ui/input';
-// import { Label } from '@/components/ui/label';
-// import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-// import {
-//   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
-// } from '@/components/ui/select';
-// import { StatusBadge } from '@/components/common';
-// import { JobBanner } from '@/components/source-management/JobBanner';
-// import { JOB_STATUS_VARIANT } from '@/constants/job-status';
-// import { getSources } from '@/api/job-sourcing.api';
-
-// const PLATFORM_OPTIONS = ['linkedin', 'seek', 'internal'];
-// const PAGE_SIZE = 10;
-
-// export default function ListSource({ selectedJob }) {
-//   const [jobSources, setJobSources]   = useState([]);
-//   const [loading, setLoading]         = useState(false);
-//   const [searchQuery, setSearchQuery] = useState('');
-//   const [platformFilter, setPlatformFilter] = useState('all');
-//   const [page, setPage]               = useState(1);
-
-//   // ── CV Upload state (wiring TODO) ─────────────────────────────
-//   const [uploadedFile, setUploadedFile] = useState(null);
-//   const [cvJobTitle, setCvJobTitle]     = useState('');
-//   const fileInputRef                    = useRef(null);
-
-//   // ── Fetch ──────────────────────────────────────────────────────
-//   const fetchJobSource = useCallback(async () => {
-//     setLoading(true);
-//     try {
-//       const res = await getSources();
-//       setJobSources(res.data.postings || []);
-//     } catch {
-//       // no-op
-//     } finally {
-//       setLoading(false);
-//     }
-//   }, []);
-
-//   useEffect(() => { fetchJobSource(); }, [fetchJobSource]);
-
-//   // ── Filter — platformFilter now actually applied ───────────────
-//   const filteredSources = useMemo(() => {
-//     return jobSources.filter(source => {
-//       const matchesSearch =
-//         !searchQuery ||
-//         source.job_title?.toLowerCase().includes(searchQuery.toLowerCase());
-//       const matchesPlatform =
-//         platformFilter === 'all' || source.platform === platformFilter;
-//       return matchesSearch && matchesPlatform;
-//     });
-//   }, [jobSources, searchQuery, platformFilter]);
-
-//   const totalPages      = Math.ceil(filteredSources.length / PAGE_SIZE);
-//   const paginatedSources = filteredSources.slice(
-//     (page - 1) * PAGE_SIZE,
-//     page * PAGE_SIZE,
-//   );
-
-//   useEffect(() => { setPage(1); }, [searchQuery, platformFilter]);
-
-//   // ── File drop handler ──────────────────────────────────────────
-//   const handleFileDrop = (e) => {
-//     e.preventDefault();
-//     const file = e.dataTransfer?.files?.[0] || e.target?.files?.[0];
-//     if (file) setUploadedFile(file);
-//   };
-
-//   const formatDate = (d) => {
-//     if (!d) return '—';
-//     try { return new Date(d).toLocaleDateString(); } catch { return '—'; }
-//   };
-
-//   return (
-//     <div className="space-y-5">
-
-//       {/* Job context banner */}
-//       <JobBanner job={selectedJob} step={2} />
-
-//       {/* Prerequisite warning */}
-//       <div className="flex items-center gap-2 px-4 py-3 rounded-lg border-l-[3px] border-amber-400 bg-amber-50/60 text-[11px] text-muted-foreground">
-//         <AlertTriangle className="h-4 w-4 text-amber-500 shrink-0" />
-//         <span>
-//           <strong>Prerequisite:</strong> Re-sync job sources under{' '}
-//           <span className="text-primary font-semibold cursor-pointer underline">
-//             Settings → Integrations
-//           </span>{' '}
-//           to get the latest data.
-//         </span>
-//       </div>
-
-//       {/* Sources table */}
-//       <Card>
-//         <CardHeader className="pb-3 border-b">
-//           <div className="flex items-center justify-between gap-3 flex-wrap">
-//             <CardTitle className="text-sm shrink-0">All Sources</CardTitle>
-//             <div className="flex items-center gap-3">
-//               <Input
-//                 placeholder="Search sources..."
-//                 value={searchQuery}
-//                 onChange={e => setSearchQuery(e.target.value)}
-//                 className="max-w-[250px] text-xs"
-//               />
-//               <Select value={platformFilter} onValueChange={setPlatformFilter}>
-//                 <SelectTrigger className="w-[150px] text-xs">
-//                   <SelectValue />
-//                 </SelectTrigger>
-//                 <SelectContent>
-//                   <SelectItem value="all">All Platforms</SelectItem>
-//                   {PLATFORM_OPTIONS.map(p => (
-//                     <SelectItem key={p} value={p}>{p}</SelectItem>
-//                   ))}
-//                 </SelectContent>
-//               </Select>
-//             </div>
-//           </div>
-//         </CardHeader>
-
-//         <CardContent className="p-0">
-//           <div className="overflow-x-auto">
-//             <Table className="table-fixed w-full">
-//               <TableHeader className="bg-muted/40">
-//                 <TableRow>
-//                   <TableHead className="text-[10px] font-bold uppercase pl-6 w-[30%]">Job Title</TableHead>
-//                   <TableHead className="text-[10px] font-bold uppercase w-[15%]">Platform</TableHead>
-//                   <TableHead className="text-[10px] font-bold uppercase w-[15%]">Status</TableHead>
-//                   <TableHead className="text-[10px] font-bold uppercase w-[20%]">Last Sync</TableHead>
-//                   <TableHead className="text-[10px] font-bold uppercase text-right pr-6 w-[20%]">Action</TableHead>
-//                 </TableRow>
-//               </TableHeader>
-//               <TableBody>
-//                 {loading ? (
-//                   <TableRow>
-//                     <TableCell colSpan={5} className="text-center py-10 text-xs text-muted-foreground">
-//                       <Loader2 className="h-4 w-4 animate-spin mx-auto" />
-//                     </TableCell>
-//                   </TableRow>
-//                 ) : paginatedSources.length === 0 ? (
-//                   <TableRow>
-//                     <TableCell colSpan={5} className="text-center py-10 text-xs text-muted-foreground">
-//                       {jobSources.length === 0
-//                         ? 'No sources found. Re-sync under Settings → Integrations.'
-//                         : 'No sources match your filters.'}
-//                     </TableCell>
-//                   </TableRow>
-//                 ) : paginatedSources.map(source => (
-//                   <TableRow key={source.id} className="hover:bg-muted/30 transition-colors">
-//                     <TableCell className="text-xs font-medium pl-6 truncate">
-//                       {source.job_title}
-//                     </TableCell>
-//                     <TableCell className="text-xs capitalize">
-//                       {source.platform || '—'}
-//                     </TableCell>
-//                     <TableCell>
-//                       <StatusBadge
-//                         label={source.status}
-//                         variant={JOB_STATUS_VARIANT[source.status] ?? 'muted'}
-//                         dot
-//                       />
-//                     </TableCell>
-//                     <TableCell className="text-xs text-muted-foreground">
-//                       {formatDate(source.last_sync)}
-//                     </TableCell>
-//                     <TableCell className="text-right pr-6">
-//                       {/* TODO: wire up re-sync endpoint */}
-//                       <Button variant="outline" size="sm" className="text-xs h-7 px-2.5">
-//                         Re-Sync
-//                       </Button>
-//                     </TableCell>
-//                   </TableRow>
-//                 ))}
-//               </TableBody>
-//             </Table>
-//           </div>
-
-//           {/* Pagination */}
-//           {totalPages > 1 && (
-//             <div className="flex flex-col items-center gap-2 py-4 border-t">
-//               <div className="flex items-center gap-1">
-//                 <Button
-//                   variant="outline" size="sm" className="h-7 text-xs"
-//                   disabled={page <= 1}
-//                   onClick={() => setPage(p => p - 1)}
-//                 >
-//                   Previous
-//                 </Button>
-//                 {(() => {
-//                   const pages = [];
-//                   pages.push(1);
-//                   if (page > 3) pages.push('...');
-//                   for (let i = Math.max(2, page - 1); i <= Math.min(totalPages - 1, page + 1); i++) {
-//                     pages.push(i);
-//                   }
-//                   if (page < totalPages - 2) pages.push('...');
-//                   if (totalPages > 1) pages.push(totalPages);
-//                   return pages.map((p, idx) =>
-//                     p === '...' ? (
-//                       <span key={`dots-${idx}`} className="text-xs text-muted-foreground px-1">...</span>
-//                     ) : (
-//                       <Button
-//                         key={p}
-//                         variant={page === p ? 'default' : 'outline'}
-//                         size="sm"
-//                         className="h-7 w-7 text-xs p-0"
-//                         onClick={() => setPage(p)}
-//                       >
-//                         {p}
-//                       </Button>
-//                     ),
-//                   );
-//                 })()}
-//                 <Button
-//                   variant="outline" size="sm" className="h-7 text-xs"
-//                   disabled={page >= totalPages}
-//                   onClick={() => setPage(p => p + 1)}
-//                 >
-//                   Next
-//                 </Button>
-//               </div>
-//               <span className="text-[10px] text-muted-foreground">
-//                 Showing {(page - 1) * PAGE_SIZE + 1}–{Math.min(page * PAGE_SIZE, filteredSources.length)} of {filteredSources.length}
-//               </span>
-//             </div>
-//           )}
-//         </CardContent>
-//       </Card>
-
-//       {/* Manual CV Upload — UI ready, submission TODO */}
-//       <Card>
-//         <CardHeader className="pb-3 border-b">
-//           <CardTitle className="text-sm">Manual CV Upload</CardTitle>
-//         </CardHeader>
-//         <CardContent className="pt-4">
-//           <div className="flex gap-5">
-
-//             {/* Drop zone */}
-//             <div className="w-1/2">
-//               <div
-//                 className="flex flex-col items-center justify-center border-2 border-dashed border-border rounded-lg p-6 bg-muted/30 cursor-pointer hover:border-primary/40 transition-colors min-h-[160px]"
-//                 onClick={() => fileInputRef.current?.click()}
-//                 onDragOver={e => e.preventDefault()}
-//                 onDrop={handleFileDrop}
-//               >
-//                 <Upload className="h-5 w-5 mb-2 text-muted-foreground" />
-//                 <p className="text-xs font-semibold text-center">
-//                   {uploadedFile ? uploadedFile.name : 'Drag file here or click to browse'}
-//                 </p>
-//                 <p className="text-[10px] text-muted-foreground mt-1 text-center">
-//                   PDF, DOCX, TXT — max 10MB
-//                   <br />AI will auto-extract fields from the document
-//                 </p>
-//                 <input
-//                   ref={fileInputRef}
-//                   type="file"
-//                   accept=".pdf,.docx,.txt"
-//                   className="hidden"
-//                   onChange={handleFileDrop}
-//                 />
-//               </div>
-//             </div>
-
-//             {/* Form fields */}
-//             <div className="flex flex-col gap-4 w-1/2">
-//               <div className="flex flex-col gap-1.5">
-//                 <Label className="text-[11px] text-muted-foreground font-semibold">
-//                   Job Title <span className="text-red-500">*</span>
-//                 </Label>
-//                 <Input
-//                   placeholder="e.g. Senior Frontend Developer"
-//                   value={cvJobTitle}
-//                   onChange={e => setCvJobTitle(e.target.value)}
-//                   className="text-xs"
-//                 />
-//               </div>
-
-//               {/* TODO: add remaining fields (candidate name, source, etc.)
-//                   once the upload endpoint spec is confirmed */}
-
-//               <Button
-//                 size="sm"
-//                 className="text-xs w-fit mt-auto"
-//                 disabled={!uploadedFile || !cvJobTitle.trim()}
-//                 onClick={() => {
-//                   // TODO: wire up upload & queue parsing endpoint
-//                 }}
-//               >
-//                 Upload & Queue Parsing
-//               </Button>
-//             </div>
-
-//           </div>
-//         </CardContent>
-//       </Card>
-
-//     </div>
-//   );
-// }

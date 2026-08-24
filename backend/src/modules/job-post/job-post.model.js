@@ -29,7 +29,7 @@ class JobPostModel {
       ORDER BY created_at DESC
     `, [job_id]);
 
-    return result.rows;
+    return result.rows[0];
   }
 
   async getByJobIdAndType(job_id, type) {

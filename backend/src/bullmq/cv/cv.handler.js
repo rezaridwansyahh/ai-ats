@@ -1,6 +1,5 @@
 import fs from 'fs';
 import SourcingModel from '../../modules/sourcing/sourcing.model.js';
-import JobSourceModel from '../../modules/job-source/job-source.model.js';
 import ApplicantModel from '../../modules/applicant/applicant.model.js';
 import aiService from '../../shared/services/ai.service.js';
 
@@ -61,10 +60,8 @@ const zipProcessHandler = async ({ batchId, tempFilePath, companyId }) => {
         pdfName.replace(/\.pdf$/i, '').replace(/[-_]/g, ' ').trim() ||
         'Unknown Candidate';
 
-      const sourcing = await JobSourceModel.create(null, null, 'internal', extracted.last_position || 'Manual Upload', 'Active', null);
-
       await ApplicantModel.create({
-        job_sourcing_id: sourcing.id,
+        upload_batch_id:  batchId,
         company_id:      companyId || null,
         name:            candidateName,
         email:           extracted.email,

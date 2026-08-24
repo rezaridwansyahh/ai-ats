@@ -1,21 +1,16 @@
 import { useState } from 'react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Textarea } from '@/components/ui/textarea';
 import {
-  Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter,
+  Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription,
 } from '@/components/ui/dialog';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { Copy, Check, Loader2, AlertTriangle, Sparkles, CheckCircle2, Ban, Send, Mail } from 'lucide-react';
+import { Copy, Check, Loader2, AlertTriangle, Sparkles, CheckCircle2, Ban, Send, Mail, Pencil } from 'lucide-react';
+import { Link } from 'react-router-dom';
 import { BATTERIES } from '@/lib/batteries';
-import { generateSessionFromCandidate, revokeSession, sendSessionInvitation } from '@/api/session.api';
+import { generateSessionFromCandidate, revokeSession, sendSessionInvitation, getSessionInvitationPreview } from '@/api/session.api';
 import { RevokeSessionDialog } from './RevokeSessionDialog';
 
-// Tab 2: portal-link generator + read-only per-subtest status.
-// Session state is owned by the parent (CandidateDetail) so it survives refresh —
-// this component just picks the row matching the active battery and asks the parent
-// to merge updates after Generate URL.
 export default function TakeTab({
   battery,
   subtestStatus,
@@ -33,10 +28,9 @@ export default function TakeTab({
   const [revoking, setRevoking]     = useState(false);
   const [revokeError, setRevokeError] = useState(null);
 
-  // Email invitation dialog
+  // Email invitation dialog — read-only preview, wording lives in Settings
   const [inviteOpen, setInviteOpen]   = useState(false);
-  const [inviteSubject, setInviteSubject] = useState('');
-  const [inviteBody, setInviteBody]   = useState('');
+  const [invitePreview, setInvitePreview] = useState({ subject: '', body: '' });
   const [inviteSending, setInviteSending] = useState(false);
   const [inviteError, setInviteError] = useState(null);
   const [inviteSent, setInviteSent]   = useState(false);
@@ -97,21 +91,19 @@ export default function TakeTab({
     }
   };
 
-  // Open invite dialog and pre-fill template
-  const handleOpenInvite = () => {
-    const jobTitle = ''; // parent could pass jobTitle if needed; falls back gracefully
-    setInviteSubject(`Assessment Invitation — ${def.label} (Battery ${def.code})`);
-    setInviteBody(
-      `Hi ${candidateName || 'there'},\n\n` +
-      `Thank you for your interest in our position. As part of our selection process, ` +
-      `we invite you to complete a psychometric assessment (Battery ${def.code} · ${def.label}).\n\n` +
-      `Please access the assessment portal via the link below:\n\n{{LINK}}\n\n` +
-      `This link is valid for 7 days and is personal — kindly do not share it with others.\n\n` +
-      `Thank you,\nThe Recruitment Team`
-    );
+  // Open invite dialog — pull the exact subject/body that will be sent
+  const handleOpenInvite = async () => {
+    if (!session?.id) return;
     setInviteError(null);
     setInviteSent(false);
-    setInviteOpen(true);
+    try {
+      const { data } = await getSessionInvitationPreview(session.id);
+      setInvitePreview({ subject: data.subject, body: data.body });
+      setInviteOpen(true);
+    } catch (err) {
+      setInviteError(err.response?.data?.message || 'Failed to load email preview.');
+      setInviteOpen(true);
+    }
   };
 
   const handleSendInvite = async () => {
@@ -119,10 +111,7 @@ export default function TakeTab({
     setInviteSending(true);
     setInviteError(null);
     try {
-      await sendSessionInvitation(session.id, {
-        subject: inviteSubject.trim(),
-        body:    inviteBody.trim(),
-      });
+      await sendSessionInvitation(session.id);
       setInviteSent(true);
       setTimeout(() => setInviteOpen(false), 1200);
     } catch (err) {
@@ -197,7 +186,7 @@ export default function TakeTab({
         </CardContent>
       </Card>
 
-      {/* Send Invitation Dialog */}
+      {/* Send Invitation Dialog — read-only preview, wording lives in Settings */}
       <Dialog open={inviteOpen} onOpenChange={setInviteOpen}>
         <DialogContent className="max-w-lg">
           <DialogHeader>
@@ -205,6 +194,10 @@ export default function TakeTab({
               <Mail className="h-4 w-4 text-primary" />
               Send Assessment Invitation
             </DialogTitle>
+            <DialogDescription className="text-xs text-muted-foreground">
+              This is the wording configured in Settings. The portal link is inserted automatically where you see{' '}
+              <code className="bg-muted px-1 rounded">{'{{LINK}}'}</code>.
+            </DialogDescription>
           </DialogHeader>
 
           {candidateEmail && (
@@ -218,28 +211,25 @@ export default function TakeTab({
               <label className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
                 Subject
               </label>
-              <Input
-                value={inviteSubject}
-                onChange={(e) => setInviteSubject(e.target.value)}
-                className="mt-1 text-sm h-9"
-                placeholder="Email subject"
-              />
+              <div className="mt-1 h-9 flex items-center px-3 rounded-md border bg-muted/30 text-sm text-foreground">
+                {invitePreview.subject}
+              </div>
             </div>
             <div>
               <label className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
                 Body
               </label>
-              <p className="text-[10px] text-muted-foreground mb-1">
-                Use <code className="bg-muted px-1 rounded">{'{{LINK}}'}</code> where the portal link should appear.
-              </p>
-              <Textarea
-                value={inviteBody}
-                onChange={(e) => setInviteBody(e.target.value)}
-                rows={10}
-                className="mt-1 text-sm font-mono"
-                placeholder="Email body…"
-              />
+              <div className="mt-1 text-sm leading-relaxed whitespace-pre-wrap rounded-md border bg-muted/30 px-3 py-2 max-h-64 overflow-y-auto">
+                {invitePreview.body}
+              </div>
             </div>
+            <Link
+              to="/settings"
+              state={{ section: 'email-templates' }}
+              className="text-xs text-primary hover:underline inline-flex items-center gap-1"
+            >
+              <Pencil className="h-3 w-3" /> Edit this wording in Settings
+            </Link>
 
             {inviteError && (
               <div className="flex items-center gap-1.5 text-[11px] text-red-600">
@@ -256,7 +246,7 @@ export default function TakeTab({
             <Button
               size="sm"
               onClick={handleSendInvite}
-              disabled={inviteSending || inviteSent || !inviteSubject.trim() || !inviteBody.trim()}
+              disabled={inviteSending || inviteSent}
             >
               {inviteSent ? (
                 <><CheckCircle2 className="h-3.5 w-3.5 mr-1.5 text-emerald-400" />Sent!</>

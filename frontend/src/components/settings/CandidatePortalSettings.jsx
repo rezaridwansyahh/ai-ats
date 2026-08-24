@@ -1,11 +1,15 @@
-import { useState } from 'react';
-import { Globe, ArrowRight, Check } from 'lucide-react';
+import { useState, useEffect, useCallback } from 'react';
+import { Globe, ArrowRight, Check, Save, Loader2 } from 'lucide-react';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Switch } from '@/components/ui/switch';
+import { Skeleton } from '@/components/ui/skeleton';
+import { toast } from 'sonner';
+import { getSetting, saveSetting } from '@/api/setting.api';
 
-// ── Static data — swap for API data when backend is ready ──
+// ── Static display data — no backend support yet (no upload mechanism,
+// no domain verification flow). Only `toggles` below is persisted. ──
 
 const PORTAL_DOMAIN = 'careers.acme.co.id';
 
@@ -23,7 +27,7 @@ const DEFAULT_TOGGLES = [
 
 // ── Field row ──
 
-function FieldRow({ label, value, verified, onEdit }) {
+function FieldRow({ label, value, verified }) {
   return (
     <div className="flex items-center justify-between px-4 py-3 border-b last:border-b-0">
       <div>
@@ -38,7 +42,7 @@ function FieldRow({ label, value, verified, onEdit }) {
           )}
         </div>
       </div>
-      <Button variant="link" size="sm" className="h-auto p-0 text-sm" onClick={onEdit}>
+      <Button variant="link" size="sm" className="h-auto p-0 text-sm">
         Edit
       </Button>
     </div>
@@ -60,11 +64,44 @@ function ToggleRow({ label, checked, onCheckedChange }) {
 
 export default function CandidatePortalSettings() {
   const [toggles, setToggles] = useState(DEFAULT_TOGGLES);
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
+  const [dirty, setDirty] = useState(false);
+
+  const fetchSetting = useCallback(async () => {
+    setLoading(true);
+    try {
+      const { data } = await getSetting('candidate_portal');
+      const saved = data.data || {};
+      setToggles(saved.toggles?.length ? saved.toggles : DEFAULT_TOGGLES);
+      setDirty(false);
+    } catch (err) {
+      toast.error(err.response?.data?.message || err.message || 'Failed to load candidate portal settings');
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  useEffect(() => { fetchSetting(); }, [fetchSetting]);
 
   const toggle = (id) => {
     setToggles((prev) =>
       prev.map((t) => (t.id === id ? { ...t, checked: !t.checked } : t))
     );
+    setDirty(true);
+  };
+
+  const handleSave = async () => {
+    setSaving(true);
+    try {
+      await saveSetting('candidate_portal', { toggles });
+      toast.success('Candidate portal settings saved');
+      setDirty(false);
+    } catch (err) {
+      toast.error(err.response?.data?.message || err.message || 'Failed to save candidate portal settings');
+    } finally {
+      setSaving(false);
+    }
   };
 
   return (
@@ -94,25 +131,39 @@ export default function CandidatePortalSettings() {
 
       {/* Portal settings */}
       <Card className="py-0 gap-0 overflow-hidden">
-        <div className="px-4 py-3 border-b">
-          <p className="text-sm font-semibold">Portal settings</p>
-          <p className="text-xs text-muted-foreground mt-0.5">
-            Applied to the candidate-facing site.
-          </p>
+        <div className="flex items-center justify-between px-4 py-3 border-b">
+          <div>
+            <p className="text-sm font-semibold">Portal settings</p>
+            <p className="text-xs text-muted-foreground mt-0.5">
+              Applied to the candidate-facing site.
+            </p>
+          </div>
+          <Button size="sm" onClick={handleSave} disabled={!dirty || saving || loading} className="bg-teal-700 hover:bg-teal-800">
+            {saving ? <Loader2 className="h-3.5 w-3.5 mr-1.5 animate-spin" /> : dirty ? <Save className="h-3.5 w-3.5 mr-1.5" /> : <Check className="h-3.5 w-3.5 mr-1.5" />}
+            {saving ? 'Saving…' : dirty ? 'Save changes' : 'Saved'}
+          </Button>
         </div>
 
-        {PORTAL_FIELDS.map((f) => (
-          <FieldRow key={f.id} label={f.label} value={f.value} verified={f.verified} />
-        ))}
+        {loading ? (
+          <div className="p-4 space-y-3">
+            {Array.from({ length: 6 }).map((_, i) => <Skeleton key={i} className="h-10 w-full" />)}
+          </div>
+        ) : (
+          <>
+            {PORTAL_FIELDS.map((f) => (
+              <FieldRow key={f.id} label={f.label} value={f.value} verified={f.verified} />
+            ))}
 
-        {toggles.map((t) => (
-          <ToggleRow
-            key={t.id}
-            label={t.label}
-            checked={t.checked}
-            onCheckedChange={() => toggle(t.id)}
-          />
-        ))}
+            {toggles.map((t) => (
+              <ToggleRow
+                key={t.id}
+                label={t.label}
+                checked={t.checked}
+                onCheckedChange={() => toggle(t.id)}
+              />
+            ))}
+          </>
+        )}
       </Card>
 
       {/* Branding */}

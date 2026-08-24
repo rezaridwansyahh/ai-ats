@@ -74,18 +74,21 @@ export function useFirstJobWizard() {
   const [run, setRun] = useState(false);
   const [showPrompt, setShowPrompt] = useState(false);
 
+  const markSeen = useCallback(() => {
+    localStorage.setItem(STORAGE_KEY, '1');
+  }, []);
+
   // Show the opt-in PROMPT (not the wizard itself) on first-ever visit.
   useEffect(() => {
     const seen = localStorage.getItem(STORAGE_KEY);
     if (!seen) {
-      const t = setTimeout(() => setShowPrompt(true), 600);
+      const t = setTimeout(() => {
+        setShowPrompt(true);
+        markSeen(); // ← ditambahkan: begitu banner tampil, langsung mark seen
+      }, 600);
       return () => clearTimeout(t);
     }
-  }, []);
-
-  const markSeen = useCallback(() => {
-    localStorage.setItem(STORAGE_KEY, '1');
-  }, []);
+  }, [markSeen]);
 
   // User clicked "Start guided setup" on the prompt card.
   const accept = useCallback(() => {
@@ -96,6 +99,8 @@ export function useFirstJobWizard() {
   // User clicked "No thanks, I'll explore myself" — dismiss for good.
   const decline = useCallback(() => {
     setShowPrompt(false);
+    // markSeen() sudah dipanggil saat auto-show; tetap dipanggil di sini
+    // untuk idempotency dan jaga-jaga kalau prompt di-trigger via restart().
     markSeen();
   }, [markSeen]);
 
@@ -121,7 +126,7 @@ export function FirstJobWizardPrompt({ onAccept, onDecline }) {
           <div>
             <p className="text-sm font-semibold">New here? Let us walk you through creating your first job.</p>
             <p className="text-xs text-muted-foreground mt-0.5">
-              We'll guide you step by step \u2014 you can skip anytime.
+              We'll guide you step by step — you can skip anytime.
             </p>
           </div>
         </div>
@@ -143,7 +148,10 @@ export default function FirstJobWizard({
   missingRequiredJD, invalidUrlFields, setStep, run, setRun,
   markSeen
 }) {
-  const ctx = { form, job, hasStages, isPublished, missingRequiredBasics, invalidUrlFields };
+  const ctx = {
+    form, job, hasStages, isPublished,
+    missingRequiredBasics, missingRequiredJD, invalidUrlFields,
+  };
 
   const { stepIndex }= useActionGatedTour(STEPS, ctx, {
     run, setRun, markSeen,

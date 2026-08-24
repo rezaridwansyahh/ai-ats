@@ -32,6 +32,14 @@ class JobSourceService {
     return { job, postings };
   }
 
+  async getByAccountId(account_id) {
+    const account = await JobAccount.getById(account_id);
+    if (!account) throw { status: 404, message: 'Job account not found' };
+
+    const postings = await JobSource.getByAccountId(account_id);
+    return { account, postings };
+  }
+
   async getByJobPostId(job_post_id) {
     const jobPost = await JobPost.getById(job_post_id);
     if(!jobPost) throw { status: 404, message: 'Job Post not found' };
@@ -143,6 +151,48 @@ class JobSourceService {
     if (!posting) throw { status: 404, message: 'Job Posting not found' };
 
     return await JobSource.updateStatus(id, status);
+  }
+
+  // Manually associate a sourcing with a job for candidate matching. A
+  // sourcing can be linked to any number of jobs (many-to-many) — this is
+  // separate from job_post_id, which just records which job_post (if any)
+  // this sourcing was originally published from.
+  async linkToJob(id, job_id) {
+    if (!job_id) throw { status: 400, message: 'job_id is required' };
+
+    const posting = await JobSource.getById(id);
+    if (!posting) throw { status: 404, message: 'Job Posting not found' };
+
+    const job = await Job.getById(job_id);
+    if (!job) throw { status: 404, message: 'Job not found' };
+
+    const existing = await JobSource.getLinkedJobs(id);
+    if (existing.some(link => link.job_id === Number(job_id))) {
+      throw { status: 400, message: 'Sourcing already linked to this job' };
+    }
+
+    return await JobSource.addJobMapping(id, job_id, false);
+  }
+
+  // Removes a manually-added job link. The origin link (the job this
+  // sourcing was published from) is protected and can't be unlinked.
+  async unlinkFromJob(id, job_id) {
+    const posting = await JobSource.getById(id);
+    if (!posting) throw { status: 404, message: 'Job Posting not found' };
+
+    const removed = await JobSource.removeJobMapping(id, job_id);
+    if (!removed) {
+      throw { status: 400, message: 'Not linked to this job, or it is the originating job and cannot be unlinked' };
+    }
+
+    return removed;
+  }
+
+  async getLinkedJobs(id) {
+    const posting = await JobSource.getById(id);
+    if (!posting) throw { status: 404, message: 'Job Posting not found' };
+
+    return await JobSource.getLinkedJobs(id);
   }
 
   async delete(id) {

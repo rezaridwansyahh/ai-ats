@@ -27,6 +27,7 @@ import jobSourcing from './src/modules/job-source/job-source.router.js'
 import job from "./src/modules/job/job.route.js"
 import applicant from "./src/modules/applicant/applicant.route.js"
 import candidatePipeline from "./src/modules/candidate-pipeline/candidate-pipeline.route.js"
+import assessment from "./src/modules/assessment/assessment.route.js"
 import participant from "./src/modules/assessment/participant/participant.route.js"
 import question from "./src/modules/assessment/question/question.route.js"
 import session from "./src/modules/assessment/session/session.route.js"
@@ -41,6 +42,7 @@ import automationSetting from "./src/modules/automation-setting/automation.route
 import screening from "./src/modules/screening/screening.route.js"
 import company from "./src/modules/company/company.route.js"
 import companyUsage from "./src/modules/company-usage/company-usage.route.js"
+import setting from "./src/modules/setting/setting.route.js"
 import portalAssessment from "./src/modules/portal-assessment/portal-assessment.route.js"
 import portalQa from "./src/modules/portal-qa/portal-qa.route.js"
 import interview from "./src/modules/interview/interview.route.js"
@@ -54,6 +56,7 @@ import interviewPack from "./src/modules/interview-pack/interview-pack.route.js"
 import portalInterview from "./src/modules/portal-interview/portal-interview.route.js"
 import offerPack from "./src/modules/offer-pack/offer-pack.route.js";
 import portalContract from "./src/modules/portal-contract/portal-contract.route.js";
+import emailTemplate from "./src/modules/email-template/email-template.route.js";
 
 app.use(express.json());
 
@@ -102,6 +105,8 @@ portal.use("/api/automation-setting", automationSetting);
 portal.use("/api/screening", screening);
 portal.use("/api/company", company);
 portal.use("/api/company-usage", companyUsage);
+portal.use("/api/setting", setting);
+portal.use("/api/assessment", assessment);
 portal.use("/api/participant", participant);
 portal.use("/api/question", question);
 portal.use("/api/session", session);
@@ -120,6 +125,7 @@ portal.use("/api/interview-pack", interviewPack);
 portal.use("/api/portal-interview", portalInterview);
 portal.use("/api/offer-pack", offerPack)
 portal.use("/api/portal-contract", portalContract);
+portal.use("/api/email-template", emailTemplate)
 app.use("/portal", portal);
 app.use("/api/auth", auth);
 app.use("/api/cookies", cookies);
@@ -132,9 +138,11 @@ app.use("/api/module", module);
 app.use("/api/menu", menu);
 app.use("/api/job-account", jobAccount);
 app.use("/api/job-posting", jobPosting);
+app.use("/api/job-sourcing", jobSourcing);
 app.use("/api/job", job);
 app.use("/api/applicant", applicant);
 app.use("/api/candidate-pipeline", candidatePipeline);
+app.use("/api/assessment", assessment);
 app.use("/api/participant", participant);
 app.use("/api/question", question);
 app.use("/api/session", session);
@@ -149,6 +157,7 @@ app.use("/api/automation-setting", automationSetting);
 app.use("/api/screening", screening);
 app.use("/api/company", company);
 app.use("/api/company-usage", companyUsage);
+app.use("/api/setting", setting);
 app.use("/api/portal-assessment", portalAssessment);
 app.use("/api/portal-qa", portalQa);
 app.use("/api/interview", interview);
@@ -162,6 +171,7 @@ app.use("/api/interview-pack", interviewPack);
 app.use("/api/portal-interview", portalInterview);
 app.use("/api/offer-pack", offerPack);
 app.use("/api/portal-contract", portalContract);
+app.use("/api/email-template", emailTemplate)
 
 
 const PORT = process.env.PORT || 3000;

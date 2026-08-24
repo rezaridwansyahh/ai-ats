@@ -7,17 +7,20 @@ const STORAGE_PREFIX = 'myralix.tour.seen.';
 export function usePipelineTour(tourKey) {
   const [run, setRun] = useState(false);
 
-  useEffect(() => {
-    const seen = localStorage.getItem(STORAGE_PREFIX + tourKey);
-    if (!seen) {
-      const t = setTimeout(() => setRun(true), 1200);
-      return () => clearTimeout(t);
-    }
-  }, [tourKey]);
-
   const markSeen = useCallback(() => {
     localStorage.setItem(STORAGE_PREFIX + tourKey, '1');
   }, [tourKey]);
+
+  useEffect(() => {
+    const seen = localStorage.getItem(STORAGE_PREFIX + tourKey);
+    if (!seen) {
+      const t = setTimeout(() => {
+        setRun(true);
+        markSeen(); // ← ditambahkan
+      }, 1200);
+      return () => clearTimeout(t);
+    }
+  }, [tourKey, markSeen]);
 
   const restart = useCallback(() => {
     localStorage.removeItem(STORAGE_PREFIX + tourKey);

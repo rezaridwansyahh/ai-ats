@@ -16,6 +16,7 @@ router.get('/from-candidate', sessionController.getActiveByCandidateJob);
 router.get('/participant/:participant_id', sessionController.getByParticipantId);
 router.get('/job/:job_id', sessionController.getByJobId);
 router.get('/:id', sessionController.getById);
+router.get('/:id/invitation-preview', sessionController.previewInvitation);
 
 router.post('/', sessionController.create);
 router.post('/from-candidate', sessionController.findOrCreateFromCandidate);

@@ -8,6 +8,7 @@ DROP TABLE IF EXISTS onboarding_day_one_schedule CASCADE;
 DROP TABLE IF EXISTS onboarding_checklist_item CASCADE;
 DROP TABLE IF EXISTS candidate_onboarding CASCADE;
 
+DROP TABLE IF EXISTS company_email_template CASCADE;
 DROP TABLE IF EXISTS company_budgets CASCADE;
 DROP TABLE IF EXISTS company_usage CASCADE;
 DROP TABLE IF EXISTS interview_round CASCADE;
@@ -21,8 +22,10 @@ DROP TABLE IF EXISTS applicant_job_score CASCADE;  -- orphan cleanup: old name (
 DROP TABLE IF EXISTS cv_upload_batch CASCADE;
 DROP TABLE IF EXISTS master_skill_alias CASCADE;
 DROP TABLE IF EXISTS core_company CASCADE;
+DROP TABLE IF EXISTS company_setting CASCADE;
 DROP TABLE IF EXISTS mapping_applicant_linkedin CASCADE;
 DROP TABLE IF EXISTS mapping_applicant_seek CASCADE;
+DROP TABLE IF EXISTS mapping_job_sourcing_job CASCADE;
 DROP TABLE IF EXISTS mapping_job_sourcing_linkedin CASCADE;
 DROP TABLE IF EXISTS mapping_job_sourcing_seek CASCADE;
 DROP TABLE IF EXISTS master_applicant CASCADE;
@@ -69,6 +72,7 @@ DROP TABLE IF EXISTS core_job_template CASCADE;
 DROP TABLE IF EXISTS master_template_stage CASCADE;
 DROP TABLE IF EXISTS job_stage_category CASCADE;
 DROP TABLE IF EXISTS recruitment_stage_category CASCADE;
+DROP TABLE IF EXISTS company_email_template CASCADE;
 DROP TABLE IF EXISTS job_automation_settings CASCADE;
 DROP TABLE IF EXISTS candidate_job_score CASCADE;
 DROP TABLE IF EXISTS assessment_sessions CASCADE;
@@ -155,6 +159,21 @@ CREATE TABLE master_users (
   email VARCHAR(100) NOT NULL,
   username VARCHAR(100) NOT NULL,
   company_id INTEGER REFERENCES core_company(id) ON DELETE SET NULL
+);
+
+-- Generic key/value store for Settings tabs that are pure toggle/preference
+-- state (Notifications, Candidate Portal). One JSONB blob per
+-- (company_id, key) — good enough to make these pages persist real data
+-- instead of resetting on every reload, without building a bespoke table
+-- for each one.
+CREATE TABLE company_setting (
+  id SERIAL PRIMARY KEY,
+  company_id INTEGER REFERENCES core_company(id) ON DELETE CASCADE,
+  key VARCHAR(100) NOT NULL,
+  value JSONB NOT NULL DEFAULT '{}'::jsonb,
+  created_at TIMESTAMP NOT NULL DEFAULT NOW(),
+  updated_at TIMESTAMP NOT NULL DEFAULT NOW(),
+  UNIQUE(company_id, key)
 );
 
 CREATE TABLE company_usage (
@@ -268,6 +287,19 @@ CREATE TABLE recruitment_stage_category (
   updated_at TIMESTAMP NOT NULL DEFAULT NOW()
 );
 
+CREATE TABLE company_email_template (
+  id SERIAL PRIMARY KEY,
+  company_id INTEGER NOT NULL REFERENCES core_company(id) ON DELETE CASCADE,
+  stage_type_id INTEGER NOT NULL REFERENCES recruitment_stage_category(id),    
+  template_key VARCHAR(50) NOT NULL,  
+  subject TEXT NOT NULL,
+  body TEXT NOT NULL,
+  updated_by INTEGER REFERENCES master_users(id) ON DELETE SET NULL,
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  UNIQUE (company_id, stage_type_id, template_key)
+);
+
 CREATE TABLE master_template_stage (
   id SERIAL PRIMARY KEY,
   name VARCHAR(255) NOT NULL UNIQUE,
@@ -350,6 +382,8 @@ CREATE TABLE core_job_sourcing (
   account_id INTEGER REFERENCES master_job_account(id) ON DELETE CASCADE,
   job_post_id INTEGER REFERENCES job_post(id) ON DELETE CASCADE,
   job_title VARCHAR(255) NOT NULL,
+  job_desc TEXT,          -- platform-agnostic: same concept regardless of source platform
+  job_location VARCHAR(255),
   platform platform_type NOT NULL,
   platform_job_id VARCHAR(255),
   status status_type NOT NULL DEFAULT 'Active',
@@ -361,6 +395,21 @@ CREATE TABLE core_job_sourcing (
   additional JSONB,
   UNIQUE (platform, account_id, platform_job_id)
 );
+
+-- Many-to-many: a sourcing can be associated with multiple internal jobs for
+-- candidate matching. is_origin marks the row auto-seeded from job_post_id at
+-- creation time (the job this sourcing was actually published from) — that
+-- row cannot be unlinked, only additional manually-added mappings can be.
+CREATE TABLE mapping_job_sourcing_job (
+  id SERIAL PRIMARY KEY,
+  job_sourcing_id INTEGER NOT NULL REFERENCES core_job_sourcing(id) ON DELETE CASCADE,
+  job_id INTEGER NOT NULL REFERENCES core_job(id) ON DELETE CASCADE,
+  is_origin BOOLEAN NOT NULL DEFAULT FALSE,
+  created_at TIMESTAMP NOT NULL DEFAULT NOW(),
+  UNIQUE (job_sourcing_id, job_id)
+);
+CREATE INDEX idx_mapping_job_sourcing_job_sourcing ON mapping_job_sourcing_job (job_sourcing_id);
+CREATE INDEX idx_mapping_job_sourcing_job_job ON mapping_job_sourcing_job (job_id);
 
 CREATE TABLE core_project_linkedin (
   id SERIAL PRIMARY KEY,
@@ -383,9 +432,12 @@ CREATE TABLE mapping_job_sourcing_seek (
   created_date_seek VARCHAR(255),
   created_by VARCHAR(255),
   candidate_count INTEGER DEFAULT 0,
+  progress INT,
   pay_min INT,
   pay_max INT,
   pay_display pay_display_type,
+  work_option work_option_type,
+  work_type work_type_type,
   created_at TIMESTAMP NOT NULL DEFAULT NOW(),
   updated_at TIMESTAMP NOT NULL DEFAULT NOW()
 );
@@ -399,9 +451,26 @@ CREATE TABLE mapping_job_sourcing_linkedin (
   updated_at TIMESTAMP NOT NULL DEFAULT NOW()
 );
 
+CREATE TABLE cv_upload_batch (
+  id                 SERIAL PRIMARY KEY,
+  company_id         INTEGER REFERENCES core_company(id) ON DELETE CASCADE,
+  filename           VARCHAR(255) NOT NULL,
+  file_type          VARCHAR(10)  NOT NULL CHECK (file_type IN ('pdf', 'zip')),
+  status             sourcing_status_type NOT NULL DEFAULT 'Pending',
+  total_files        INTEGER DEFAULT 1,
+  processed_files    INTEGER DEFAULT 0,
+  applicant_name     VARCHAR(255),   -- PDF: extracted candidate name
+  applicant_position VARCHAR(255),   -- PDF: extracted last position
+  error_message      TEXT,
+  created_at         TIMESTAMP NOT NULL DEFAULT NOW(),
+  updated_at         TIMESTAMP NOT NULL DEFAULT NOW()
+);
+CREATE INDEX idx_cv_upload_batch_company ON cv_upload_batch (company_id, created_at DESC);
+
 CREATE TABLE master_applicant (
   id SERIAL PRIMARY KEY,
-  job_sourcing_id INTEGER NOT NULL REFERENCES core_job_sourcing(id) ON DELETE CASCADE,
+  job_sourcing_id INTEGER REFERENCES core_job_sourcing(id) ON DELETE CASCADE,
+  upload_batch_id INTEGER REFERENCES cv_upload_batch(id) ON DELETE CASCADE,
   company_id INTEGER REFERENCES core_company(id) ON DELETE CASCADE,
   name VARCHAR(255) NOT NULL,
   email VARCHAR(255),
@@ -997,22 +1066,6 @@ CREATE INDEX idx_applicant_last_position_trgm ON master_applicant USING GIN (las
 CREATE INDEX idx_applicant_education_trgm     ON master_applicant USING GIN (education     gin_trgm_ops);
 CREATE INDEX idx_applicant_address_trgm       ON master_applicant USING GIN (address       gin_trgm_ops);
 
-CREATE TABLE cv_upload_batch (
-  id                 SERIAL PRIMARY KEY,
-  company_id         INTEGER REFERENCES core_company(id) ON DELETE CASCADE,
-  filename           VARCHAR(255) NOT NULL,
-  file_type          VARCHAR(10)  NOT NULL CHECK (file_type IN ('pdf', 'zip')),
-  status             sourcing_status_type NOT NULL DEFAULT 'Pending',
-  total_files        INTEGER DEFAULT 1,
-  processed_files    INTEGER DEFAULT 0,
-  applicant_name     VARCHAR(255),   -- PDF: extracted candidate name
-  applicant_position VARCHAR(255),   -- PDF: extracted last position
-  error_message      TEXT,
-  created_at         TIMESTAMP NOT NULL DEFAULT NOW(),
-  updated_at         TIMESTAMP NOT NULL DEFAULT NOW()
-);
-CREATE INDEX idx_cv_upload_batch_company ON cv_upload_batch (company_id, created_at DESC);
-
 CREATE TABLE master_skill_alias (
   alias        VARCHAR(100) PRIMARY KEY,
   canonical    VARCHAR(100) NOT NULL,
@@ -1136,6 +1189,7 @@ CREATE TABLE interview_pack_outcome (
   recommendation   VARCHAR(10) CHECK (recommendation IN ('advance', 'hold', 'reject')),
   strengths        TEXT,
   concerns         TEXT,
+  question_notes   JSONB DEFAULT '{}',
   created_at       TIMESTAMP NOT NULL DEFAULT NOW(),
   updated_at       TIMESTAMP NOT NULL DEFAULT NOW(),
   UNIQUE(pack_id, pack_candidate_id)

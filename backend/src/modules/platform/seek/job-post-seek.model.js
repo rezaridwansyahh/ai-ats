@@ -24,7 +24,12 @@ class JobPostSeekModel {
 
   async getBySeekId(seek_id) {
     const result = await getDb().query(`
-      SELECT cj.job_title, cjs.account_id, mjss.*
+      SELECT
+        cj.job_title,
+        cjs.account_id,
+        cjs.status,
+        cjs.job_title AS sourcing_job_title,
+        mjss.*
       FROM mapping_job_sourcing_seek mjss
       JOIN core_job_sourcing cjs ON mjss.job_sourcing_id = cjs.id
       LEFT JOIN job_post jp ON cjs.job_post_id = jp.id
@@ -95,13 +100,13 @@ class JobPostSeekModel {
     return result.rows;
   }
 
-  async create(job_sourcing_id, { seek_id = null, candidate_count = 0, created_date_seek = null, created_by = null, currency = null, pay_type = null, pay_min = null, pay_max = null, pay_display = null } = {}) {
+  async create(job_sourcing_id, { seek_id = null, candidate_count = 0, created_date_seek = null, created_by = null, currency = null, pay_type = null, pay_min = null, pay_max = null, pay_display = null, work_option = null, work_type = null } = {}) {
     const result = await getDb().query(`
       INSERT INTO mapping_job_sourcing_seek
-        (job_sourcing_id, seek_id, candidate_count, created_date_seek, created_by, currency, pay_type, pay_min, pay_max, pay_display)
-      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
+        (job_sourcing_id, seek_id, candidate_count, created_date_seek, created_by, currency, pay_type, pay_min, pay_max, pay_display, work_option, work_type)
+      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)
       RETURNING *
-    `, [job_sourcing_id, seek_id, candidate_count, created_date_seek, created_by, currency, pay_type, pay_min, pay_max, pay_display]);
+    `, [job_sourcing_id, seek_id, candidate_count, created_date_seek, created_by, currency, pay_type, pay_min, pay_max, pay_display, work_option, work_type]);
     return result.rows[0];
   }
 

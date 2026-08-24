@@ -100,9 +100,17 @@ class SeekController {
     const { account_id } = req.body;
 
     try {
-      const extractedJobPost = await seekProducer.syncSeekJobPost(account_id);
+      const { job, alreadyQueued } = await seekProducer.syncSeekJobPost(account_id);
 
-      return res.status(200).json({ message: "success", extractedJobPost });
+      if (alreadyQueued) {
+        return res.status(200).json({
+          message: "A sync for this account is already in progress",
+          job_id: job.id,
+          alreadyQueued: true,
+        });
+      }
+
+      return res.status(200).json({ message: "sync queued successfully", job_id: job.id, alreadyQueued: false });
     } catch(err) {
       return res.status(500).json({
         message: err.message

@@ -21,6 +21,8 @@ import instagram from '@/assets/logos/instagram.png';
 import facebook from '@/assets/logos/facebook.png';
 import whatsapp from '@/assets/logos/whatsapp.png';
 
+import JobPreviewModal from './JobPreviewModal';
+
 const LOGOS = { linkedin, seek, glints, instagram, facebook, whatsapp };
 
 // ── Constants ────────────────────────────────────────────────────────
@@ -59,6 +61,8 @@ export default function JobPosting({ selectedJob, onSelectionChange }) {
   const [loading,  setLoading]  = useState(true);
   const [error,    setError]    = useState(null);
   const [jobPost,  setJobPost]  = useState([]);
+
+  const [previewOpen, setPreviewOpen] = useState(false);
 
   const updatePublic = (id, field, value) => {
     setPublicChannels(prev => prev.map(ch => ch.id === id ? { ...ch, [field]: value } : ch));
@@ -180,7 +184,6 @@ export default function JobPosting({ selectedJob, onSelectionChange }) {
       </div>
     );
   }
-
   
 
   return (
@@ -329,7 +332,7 @@ export default function JobPosting({ selectedJob, onSelectionChange }) {
 
       {/* ── Action Buttons ── */}
       <div className="grid grid-cols-[1fr_1fr_2fr] gap-3">
-        <Button variant="outline" className="text-xs h-9" onClick={() => alert('Preview coming soon')}>
+        <Button variant="outline" className="text-xs h-9" onClick={() => setPreviewOpen(true)}>
           <Eye className="h-3.5 w-3.5 mr-1.5" /> Preview
         </Button>
         <Button variant="outline" className="text-xs h-9" onClick={() => alert('Draft saved (placeholder)')}>
@@ -339,6 +342,12 @@ export default function JobPosting({ selectedJob, onSelectionChange }) {
           <Rocket className="h-3.5 w-3.5 mr-1.5" /> Publish to All Channels
         </Button>
       </div>
+
+      <JobPreviewModal
+        open={previewOpen}
+        onOpenChange={setPreviewOpen}
+        job={selectedJob}
+      />
 
     </div>
   );

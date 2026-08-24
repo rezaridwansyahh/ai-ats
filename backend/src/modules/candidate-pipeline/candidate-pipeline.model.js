@@ -14,7 +14,7 @@ const CANDIDATE_PIPELINE_SELECT = `
          c.name AS candidate_name,
          c.last_position,
          c.address,
-         c.education,
+         c.education, 
          c.information,
          c.date,
          COALESCE(c.attachment, a.attachment) AS attachment,
@@ -205,11 +205,12 @@ class CandidatePipeline {
     return result.rows[0];
   }
 
-  static async getNotificationContext(candidate_id) {
+static async getNotificationContext(candidate_id) {
     const result = await getDb().query(`
       SELECT c.name AS candidate_name,
             a.email AS candidate_email,
             j.job_title,
+            j.company_id,
             COALESCE(auto.email_notify, false) AS email_notify
       FROM master_candidate c
       LEFT JOIN master_applicant a       ON a.id = c.applicant_id

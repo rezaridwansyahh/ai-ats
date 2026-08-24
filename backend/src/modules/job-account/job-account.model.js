@@ -41,12 +41,12 @@ class JobAccountModel {
     return result.rows[0];
   }
 
-  async create(user_id, portal_name, email, password) {
+  async create(user_id, portal_name, email, password, company_id = null) {
     const result = await getDb().query(`
-      INSERT INTO master_job_account (user_id, portal_name, email, password)
-      VALUES ($1, $2, $3, $4)
+      INSERT INTO master_job_account (user_id, portal_name, email, password, company_id)
+      VALUES ($1, $2, $3, $4, $5)
       RETURNING *
-    `, [user_id, portal_name, email, password]);
+    `, [user_id, portal_name, email, password, company_id]);
 
     return result.rows[0];
   }

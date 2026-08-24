@@ -2,7 +2,10 @@ import OfferModel from './offer.model.js';
 import CompensationEngine from '../../shared/services/compensation-engine.js';
 import OfferTemplateModel from '../offer-template/offer-template.model.js';
 import { mergeOfferLetter, htmlToDocxBuffer, convertHtmlToPdf } from '../../shared/services/document-merge.js';
-import { sendOfferEmail } from '../../shared/services/candidate-mailer.js';
+import { sendTemplatedEmail } from '../../shared/services/candidate-mailer.js';
+import EmailTemplateService, { STAGE_OFFERING_CONTRACT } from '../email-template/email-template.service.js';
+import { toRelativePath, toAbsolutePath } from '../../shared/middleware/offer.middleware.js';
+import { toRelativePathTemplate ,toAbsolutePathTemplate } from '../../shared/middleware/offer-template.middleware.js';
 import mammoth from 'mammoth';
 import fs from 'fs';
 import path from 'path';
@@ -93,9 +96,6 @@ class OfferService {
   async updateCompensation(offer_id, data, company_id, user_id) {
     const offer = await OfferModel.getOfferById(offer_id, company_id);
     if (!offer) throw { status: 404, message: 'Offer not found' };
-    if (offer.offer_status !== 'draft') {
-      throw { status: 400, message: 'Cannot update compensation after offer is sent' };
-    }
 
     const { base_salary, allowances, bonus_structure } = data;
     const calculated = CompensationEngine.calculate({ base_salary, allowances, bonus_structure });
@@ -362,7 +362,7 @@ class OfferService {
     return { approval: metadata.approval, message: `Step ${decision}` };
   }
 
-  async sendOffer(offer_id, company_id, user_id, emailOverride = {}) {
+  async sendOffer(offer_id, company_id, user_id) {
     const offer = await OfferModel.getOfferById(offer_id, company_id);
     if (!offer) throw { status: 404, message: 'Offer not found' };
 
@@ -393,15 +393,18 @@ class OfferService {
     });
 
     const baseUrl = process.env.FRONTEND_URL || 'http://localhost:5173';
-    const link = `${baseUrl}/offer/send/${send.token}`;
+    const link = `${baseUrl}/portal/offer/send/${send.token}`;
 
-    await sendOfferEmail({
+    const template = await EmailTemplateService.getResolved(company_id, STAGE_OFFERING_CONTRACT, 'offer');
+    await sendTemplatedEmail({
       candidateName: offer.candidate_name,
       candidateEmail: offer.candidate_email,
-      jobTitle: offer.position_title || offer.job_title,
+      template,
       link,
-      customSubject: emailOverride.subject || null,
-      customBody: emailOverride.body || null,
+      vars: {
+        CANDIDATE_NAME: offer.candidate_name,
+        JOB_TITLE: offer.position_title || offer.job_title,
+      },
     });
 
     if (isFirstSend) {
@@ -497,10 +500,11 @@ class OfferService {
         ? saved[field]
         : `[${field.replace(/_/g, ' ')} — not filled in]`;
     }
+    const templatePath = toAbsolutePathTemplate(template.file);
 
     let docxBuffer;
     try {
-      docxBuffer = await mergeOfferLetter({ templatePath: template.file, fieldValues });
+      docxBuffer = await mergeOfferLetter({ templatePath, fieldValues });
     } catch (err) {
       throw { status: 400, message: 'Failed to merge template — check the uploaded file is a valid .docx' };
     }
@@ -540,7 +544,8 @@ class OfferService {
         : `[${field.replace(/_/g, ' ')} — not filled in]`;
     }
 
-    return mergeOfferLetter({ templatePath: template.file, fieldValues });
+    const templatePath = toAbsolutePathTemplate(template.file);
+    return mergeOfferLetter({ templatePath, fieldValues });
   }
 
   async downloadOfferLetterPdf(offer_id, company_id) {
@@ -579,16 +584,19 @@ class OfferService {
       throw { status: 400, message: 'No file received' };
     }
 
+    const relativePath = toRelativePath(file.path);
+
     const existing = await OfferModel.getOfferDocument(offer_id, 'offer');
-    if (existing?.file && existing.file !== file.path) {
-      fs.unlink(existing.file, (err) => {
+    if (existing?.file && existing.file !== relativePath) {
+      const oldAbsolute = toAbsolutePath(existing.file);
+      fs.unlink(oldAbsolute, (err) => {
         if (err) console.error('Failed to remove previous offer document:', err);
       });
     }
 
     const doc = await OfferModel.upsertOfferDocument({
       offer_id,
-      file: file.path,
+      file: relativePath,
       method: 'upload',
       uploaded_by: user_id,
       document_type: 'offer',
@@ -617,7 +625,7 @@ class OfferService {
     }
 
     return {
-      filePath: latest.candidate_file,
+      filePath: toAbsolutePath(latest.candidate_file),
       fileName: `signed_offer_${offer.candidate_name || 'candidate'}_${offer_id}${path.extname(latest.candidate_file)}`,
     };
   }
@@ -644,16 +652,19 @@ class OfferService {
       throw { status: 400, message: 'No file received' };
     }
 
+    const relativePath = toRelativePath(file.path);
+
     const existing = await OfferModel.getOfferDocument(offer_id, 'contract');
-    if (existing?.file && existing.file !== file.path) {
-      fs.unlink(existing.file, (err) => {
+    if (existing?.file && existing.file !== relativePath) {
+      const oldAbsolute = toAbsolutePath(existing.file);
+      fs.unlink(oldAbsolute, (err) => {
         if (err) console.error('Failed to remove previous contract document:', err);
       });
     }
 
     const doc = await OfferModel.upsertOfferDocument({
       offer_id,
-      file: file.path,
+      file: relativePath,
       method: 'upload',
       uploaded_by: user_id,
       document_type: 'contract',
@@ -672,7 +683,7 @@ class OfferService {
     return OfferModel.getOfferDocument(offer_id, 'contract');
   }
 
-  async sendContractDocument(offer_id, company_id, user_id, emailOverride = {}) {
+  async sendContractDocument(offer_id, company_id, user_id) {
     const offer = await OfferModel.getOfferById(offer_id, company_id);
     if (!offer) throw { status: 404, message: 'Offer not found' };
 
@@ -709,15 +720,18 @@ class OfferService {
     });
 
     const baseUrl = process.env.FRONTEND_URL || 'http://localhost:5173';
-    const link = `${baseUrl}/contract/send/${send.token}`;
+    const link = `${baseUrl}/portal/contract/send/${send.token}`;
 
-    await sendOfferEmail({
+    const template = await EmailTemplateService.getResolved(company_id, STAGE_OFFERING_CONTRACT, 'contract');
+    await sendTemplatedEmail({
       candidateName: offer.candidate_name,
       candidateEmail: offer.candidate_email,
-      jobTitle: offer.position_title || offer.job_title,
+      template,
       link,
-      customSubject: emailOverride.subject || null,
-      customBody: emailOverride.body || null,
+      vars: {
+        CANDIDATE_NAME: offer.candidate_name,
+        JOB_TITLE: offer.position_title || offer.job_title,
+      },
     });
 
     await OfferModel.updateOfferContractStatus(offer_id, 'sent');
@@ -763,7 +777,7 @@ class OfferService {
     }
 
     return {
-      filePath: latest.candidate_file,
+      filePath: toAbsolutePath(latest.candidate_file),
       fileName: `signed_contract_${offer.candidate_name || 'candidate'}_${offer_id}${path.extname(latest.candidate_file)}`,
     };
   }
@@ -779,16 +793,19 @@ class OfferService {
       throw { status: 400, message: 'No file received' };
     }
 
+    const relativePath = toRelativePath(file.path);
+
     const existing = await OfferModel.getContractExecutedDocument(offer_id);
-    if (existing?.file && existing.file !== file.path) {
-      fs.unlink(existing.file, (err) => {
+    if (existing?.file && existing.file !== relativePath) {
+      const oldAbsolute = toAbsolutePath(existing.file);
+      fs.unlink(oldAbsolute, (err) => {
         if (err) console.error('Failed to remove previous executed contract:', err);
       });
     }
 
     const doc = await OfferModel.upsertContractExecutedDocument({
       offer_id,
-      file: file.path,
+      file: relativePath,
       uploaded_by: user_id,
       notes: notes || null,
     });
@@ -812,11 +829,46 @@ class OfferService {
     }
 
     return {
-      filePath: doc.file,
+      filePath: toAbsolutePath(doc.file),
       fileName: `executed_contract_${offer.candidate_name || 'candidate'}_${offer_id}${path.extname(doc.file)}`,
     };
   }
 
+  async previewOfferEmail(offer_id, company_id) {
+    const offer = await OfferModel.getOfferById(offer_id, company_id);
+    if (!offer) throw { status: 404, message: 'Offer not found' };
+    if (!offer.candidate_email) throw { status: 400, message: 'Candidate has no email on file' };
+
+    const template = await EmailTemplateService.getResolved(company_id, STAGE_OFFERING_CONTRACT, 'offer');
+    const vars = { CANDIDATE_NAME: offer.candidate_name, JOB_TITLE: offer.position_title || offer.job_title };
+    const linkPlaceholder = '[secure link — generated when you click Confirm Send]';
+
+    const interpolate = (str) => {
+      let out = str;
+      for (const [k, v] of Object.entries(vars)) out = out.replaceAll(`{{${k}}}`, v ?? '');
+      return out.replace(/\{\{LINK\}\}/g, linkPlaceholder);
+    };
+
+    return { to: offer.candidate_email, subject: interpolate(template.subject), body: interpolate(template.body) };
+  }
+
+  async previewContractEmail(offer_id, company_id) {
+    const offer = await OfferModel.getOfferById(offer_id, company_id);
+    if (!offer) throw { status: 404, message: 'Offer not found' };
+    if (!offer.candidate_email) throw { status: 400, message: 'Candidate has no email on file' };
+
+    const template = await EmailTemplateService.getResolved(company_id, STAGE_OFFERING_CONTRACT, 'contract');
+    const vars = { CANDIDATE_NAME: offer.candidate_name, JOB_TITLE: offer.position_title || offer.job_title };
+    const linkPlaceholder = '[secure link — generated when you click Confirm Send]';
+
+    const interpolate = (str) => {
+      let out = str;
+      for (const [k, v] of Object.entries(vars)) out = out.replaceAll(`{{${k}}}`, v ?? '');
+      return out.replace(/\{\{LINK\}\}/g, linkPlaceholder);
+    };
+
+    return { to: offer.candidate_email, subject: interpolate(template.subject), body: interpolate(template.body) };
+  }
 }
 
 export default new OfferService();

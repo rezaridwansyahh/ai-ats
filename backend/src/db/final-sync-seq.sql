@@ -4,6 +4,7 @@
 -- setval(seq, NULL) errors out in Postgres, which sync-seq.sql's unguarded
 -- lines would hit here.
 SELECT setval('core_company_id_seq',              COALESCE((SELECT MAX(id) FROM core_company), 1));
+SELECT setval('company_setting_id_seq',           COALESCE((SELECT MAX(id) FROM company_setting), 1));
 SELECT setval('master_users_id_seq',              COALESCE((SELECT MAX(id) FROM master_users), 1));
 SELECT setval('company_usage_id_seq',             COALESCE((SELECT MAX(id) FROM company_usage), 1));
 SELECT setval('candidate_screening_id_seq',       COALESCE((SELECT MAX(id) FROM candidate_screening), 1));

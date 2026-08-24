@@ -29,15 +29,6 @@ class JobSourceController {
     }
   }
 
-  async getByJobId(req, res) {
-    try {
-      const { job, postings } = await jobSourceService.getByJobId(req.params.job_id);
-      res.status(200).json({ message: 'List of Job Postings for this Job', postings });
-    } catch (err) {
-      res.status(err.status || 500).json({ message: err.message });
-    }
-  }
-
   async getByJobPostId(req, res) {
     try {
       const { jobPost, postings } = await jobSourceService.getByJobPostId(req.params.job_post_id);
@@ -51,6 +42,15 @@ class JobSourceController {
     try {
       const { job, postings } = await jobSourceService.getByJobId(req.params.job_id);
       res.status(200).json({ message: 'Sourcing channels for this job', job, postings });
+    } catch (err) {
+      res.status(err.status || 500).json({ message: err.message });
+    }
+  }
+
+  async getByAccountId(req, res) {
+    try {
+      const { account, postings } = await jobSourceService.getByAccountId(req.params.account_id);
+      res.status(200).json({ message: 'Sourcings for this account', account, postings });
     } catch (err) {
       res.status(err.status || 500).json({ message: err.message });
     }
@@ -103,7 +103,7 @@ class JobSourceController {
       if (work_option)  fields.work_option  = work_option;
       if (work_type)    fields.work_type    = work_type;
 
-      const updatedPosting = await jobPostService.update(req.params.id, fields);
+      const updatedPosting = await jobSourceService.update(req.params.id, fields);
       res.status(200).json({ message: 'Job Posting updated', updatedPosting });
     } catch (err) {
       res.status(err.status || 500).json({ message: err.message });
@@ -112,8 +112,37 @@ class JobSourceController {
 
   async updateStatus(req, res) {
     try {
-      const updatedPosting = await jobPostService.updateStatus(req.params.id, req.body.status);
+      const updatedPosting = await jobSourceService.updateStatus(req.params.id, req.body.status);
       res.status(200).json({ message: `Job Posting status updated to ${req.body.status}`, updatedPosting });
+    } catch (err) {
+      res.status(err.status || 500).json({ message: err.message });
+    }
+  }
+
+  // Manually link a sourcing (channel/posting) to a job (many-to-many).
+  async linkToJob(req, res) {
+    try {
+      const { job_id } = req.body;
+      const mapping = await jobSourceService.linkToJob(req.params.id, job_id);
+      res.status(200).json({ message: 'Job Posting linked to job', mapping });
+    } catch (err) {
+      res.status(err.status || 500).json({ message: err.message });
+    }
+  }
+
+  async unlinkFromJob(req, res) {
+    try {
+      const mapping = await jobSourceService.unlinkFromJob(req.params.id, req.params.job_id);
+      res.status(200).json({ message: 'Job Posting unlinked from job', mapping });
+    } catch (err) {
+      res.status(err.status || 500).json({ message: err.message });
+    }
+  }
+
+  async getLinkedJobs(req, res) {
+    try {
+      const jobs = await jobSourceService.getLinkedJobs(req.params.id);
+      res.status(200).json({ message: 'Jobs linked to this sourcing', jobs });
     } catch (err) {
       res.status(err.status || 500).json({ message: err.message });
     }
@@ -121,7 +150,7 @@ class JobSourceController {
 
   async delete(req, res) {
     try {
-      const posting = await jobPostService.delete(req.params.id);
+      const posting = await jobSourceService.delete(req.params.id);
       res.status(200).json({ message: 'Job Posting deleted', posting });
     } catch (err) {
       res.status(err.status || 500).json({ message: err.message });

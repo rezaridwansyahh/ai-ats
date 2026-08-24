@@ -64,8 +64,7 @@ class OfferController {
     try {
       const { offer_id } = req.params;
       const { company_id, user_id } = req.user;
-      const { subject, body } = req.body || {};
-      const result = await OfferService.sendOffer(offer_id, company_id, user_id, { subject, body });
+      const result = await OfferService.sendOffer(offer_id, company_id, user_id);
       res.json(result);
     } catch (error) {
       console.error('Error in sendOffer:', error);
@@ -437,8 +436,7 @@ class OfferController {
     try {
       const { offer_id } = req.params;
       const { company_id, user_id } = req.user;
-      const { subject, body } = req.body || {};
-      const result = await OfferService.sendContractDocument(offer_id, company_id, user_id, { subject, body });
+      const result = await OfferService.sendContractDocument(offer_id, company_id, user_id);
       res.json(result);
     } catch (error) {
       console.error('Error in sendContractDocument:', error);
@@ -536,6 +534,27 @@ class OfferController {
     }
   }
 
+  async previewOfferEmail(req, res) {
+    try {
+      const { offer_id } = req.params;
+      const { company_id } = req.user;
+      const result = await OfferService.previewOfferEmail(offer_id, company_id);
+      res.json(result);
+    } catch (error) {
+      res.status(error.status || 500).json({ message: error.message });
+    }
+  }
+
+  async previewContractEmail(req, res) {
+    try {
+      const { offer_id } = req.params;
+      const { company_id } = req.user;
+      const result = await OfferService.previewContractEmail(offer_id, company_id);
+      res.json(result);
+    } catch (error) {
+      res.status(error.status || 500).json({ message: error.message });
+    }
+  }
 }
 
 export default new OfferController();

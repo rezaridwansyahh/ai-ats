@@ -5,9 +5,9 @@
 
 export const ROLE_CLASSES = {
   internship:         { label: 'Intern',       dot: 'bg-amber-400',  pill: 'bg-amber-50 text-amber-700 border-amber-200' },
-  'entry level':      { label: 'Operator',     dot: 'bg-amber-500',  pill: 'bg-amber-50 text-amber-700 border-amber-200' },
+  'entry level':      { label: 'Entry',        dot: 'bg-amber-500',  pill: 'bg-amber-50 text-amber-700 border-amber-200' },
   associate:          { label: 'Associate',    dot: 'bg-sky-500',    pill: 'bg-sky-50 text-sky-700 border-sky-200' },
-  'mid-senior level': { label: 'Office Staff', dot: 'bg-blue-500',   pill: 'bg-blue-50 text-blue-700 border-blue-200' },
+  'mid-senior level': { label: 'Senior',       dot: 'bg-blue-500',   pill: 'bg-blue-50 text-blue-700 border-blue-200' },
   director:           { label: 'Leadership',   dot: 'bg-purple-500', pill: 'bg-purple-50 text-purple-700 border-purple-200' },
   executive:          { label: 'Executive',    dot: 'bg-purple-600', pill: 'bg-purple-50 text-purple-700 border-purple-200' },
 };

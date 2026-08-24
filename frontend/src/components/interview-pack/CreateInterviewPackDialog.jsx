@@ -191,7 +191,7 @@ export function CreateInterviewPackDialog({ open, onOpenChange, onCreated }) {
 
   function handleCopyLink() {
     if (!createdPack?.token) return;
-    const link = `${window.location.origin}/interview/${createdPack.token}`;
+    const link = `${window.location.origin}/portal/interview/${createdPack.token}`;
     navigator.clipboard.writeText(link).then(() => {
       setCopied(true);
       setTimeout(() => setCopied(false), 2000);
@@ -204,7 +204,7 @@ export function CreateInterviewPackDialog({ open, onOpenChange, onCreated }) {
   }
 
   const portalLink = createdPack?.token
-    ? `${window.location.origin}/interview/${createdPack.token}`
+    ? `${window.location.origin}/portal/interview/${createdPack.token}`
     : '';
 
   return (

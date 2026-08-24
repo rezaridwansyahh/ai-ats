@@ -1,20 +1,19 @@
 export default class SeekJobMapper {
-  static normalizeAll(scrapedList) {
+  static normalizeAll(scrapedList, type) {
     if (!Array.isArray(scrapedList)) return [];
-    return scrapedList.map((scraped) => this.normalize(scraped));
+    return scrapedList.map((scraped) => this.normalize(scraped, type));
   }
 
-  static normalize(scraped) {
-    console.log(scraped);
+  static normalize(scraped, type) {
     const salaryInfo = this.extractSalary(scraped.kisaran_upah);
 
     return {
       job_title: scraped.job_title,
       job_desc: scraped.job_desc || '',
-      job_location: scraped.lokasi || null,
-      work_option: this.mapWorkOption(scraped.opsi_tempat_kerja), 
+      job_location: scraped.lokasi || scraped.location || null,
+      work_option: this.mapWorkOption(scraped.opsi_tempat_kerja),
       work_type: this.mapWorkType(scraped.jenis_pekerjaan),
-      status: this.mapStatus(scraped.status, scraped.kedaluwarsa), 
+      status: this.mapStatusFromType(type),
       candidate_count: scraped.candidate_count ?? null,
       additional: { type: "scraped" },
       seek_id: scraped.seek_id?.toString() || scraped.id_iklan || null,
@@ -24,20 +23,17 @@ export default class SeekJobMapper {
       pay_max: salaryInfo.payMax,
       pay_display: salaryInfo.payDisplay,
       created_date_seek: scraped.dibuat || scraped.created_date || null,
-      created_by: scraped.created_by || null  
+      created_by: scraped.created_by || null
     };
   }
 
-  static mapStatus(status) {
-    if (!status) return 'Running';
-
-    const s = status.toLowerCase();
-
-    if (s.includes('kedaluwarsa'))  return 'Expired';
-    if (s.includes('draf'))       return 'Draft';
-    if (s.includes('diblokir'))       return 'Blocked';
-
-    return 'Active';
+  // Status comes from which bucket we scraped (Seek's own ?type=open/expired page
+  // filter), not from a "status" field in the scraped modal — that field never
+  // actually exists in the jobInformation panel's data, so deriving it from scraped
+  // text was silently always falling back to 'Running' for every job.
+  static mapStatusFromType(type) {
+    if (type === 'expired') return 'Expired';
+    return 'Active'; // 'open' bucket
   }
 
   static mapWorkOption(option) {

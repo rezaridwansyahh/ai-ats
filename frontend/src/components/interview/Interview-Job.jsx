@@ -889,7 +889,7 @@ function LinkSection({ jobId, waitingCandidates = [], setBanner, setError }) {
   }
 
   function copyLink(pack) {
-    const url = `${window.location.origin}/interview/${pack.token}`;
+    const url = `${window.location.origin}/portal/interview/${pack.token}`;
     navigator.clipboard.writeText(url).then(() => {
       setCopiedId(pack.id);
       setTimeout(() => setCopiedId(null), 2000);
@@ -1009,7 +1009,7 @@ function LinkSection({ jobId, waitingCandidates = [], setBanner, setError }) {
                       )}
                     </p>
                     <p className="text-[10px] text-muted-foreground mt-0.5 font-mono truncate">
-                      {window.location.origin}/interview/{pack.token}
+                      {window.location.origin}/portal/interview/{pack.token}
                     </p>
                   </div>
                   <Button variant="outline" size="sm" className="shrink-0" onClick={() => copyLink(pack)}>

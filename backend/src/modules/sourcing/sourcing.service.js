@@ -5,26 +5,10 @@ import SourcingModel from './sourcing.model.js';
 import SourcingRecruiteModel from './sourcing-recruite.model.js';
 import linkedinProducer from '../../bullmq/linkedin/linkedin.producer.js';
 import cvProducer from '../../bullmq/cv/cv.producer.js';
-import JobSourceModel from '../job-source/job-source.model.js';
 import ApplicantModel from '../applicant/applicant.model.js';
 import aiService from '../../shared/services/ai.service.js';
 import companyService from '../company/company.service.js';
-
-
-// ── Save an uploaded PDF buffer to permanent disk storage, return its path ──
-function saveCvBuffer(buffer, companyId, companyName, applicant) {
-  const safeCompanyName = (companyName || 'unknown').replace(/[^a-zA-Z0-9.\-_]/g, '_');
-  const companyFolder = `${companyId}_${safeCompanyName}`;
-
-  const uploadsDir = path.join(process.cwd(), 'uploads', 'cv', companyFolder);
-  fs.mkdirSync(uploadsDir, { recursive: true });
-
-  const savedFilename = `${applicant.id}_${applicant.name}.pdf`;
-  const savedPath = path.join(uploadsDir, savedFilename);
-
-  fs.writeFileSync(savedPath, buffer);
-  return savedPath;
-}
+import { saveCvBuffer } from '../../shared/utils/cv-storage.js';
 
 class SourcingService {
   // ─── Sourcing ───
@@ -219,11 +203,9 @@ class SourcingService {
         file.originalname.replace(/\.pdf$/i, '').replace(/[-_]/g, ' ').trim() ||
         'Unknown Candidate';
 
-      const sourcing = await JobSourceModel.create(null, null, 'internal', extracted.last_position || 'Manual Upload', 'Active', null);
-
       // Create applicant first (without attachment) so we have its id to name the file with
       const applicant = await ApplicantModel.create({
-        job_sourcing_id: sourcing.id,
+        upload_batch_id:  batch.id,
         company_id:      companyId || null,
         name:            candidateName,
         email:           extracted.email,
@@ -247,7 +229,7 @@ class SourcingService {
       }
 
       // Now save the file using the applicant's real id, then persist the path
-      const savedPath = saveCvBuffer(file.buffer, companyId, companyName, applicant);
+      const savedPath = saveCvBuffer(file.buffer, companyId, companyName, applicant.id, applicant.name);
       await ApplicantModel.updateAttachment(applicant.id, savedPath);
       applicant.attachment = savedPath;
 
@@ -258,7 +240,7 @@ class SourcingService {
         applicant_position: extracted.last_position,
       });
 
-      return { applicant: { ...applicant, name: candidateName }, sourcing, batch };
+      return { applicant: { ...applicant, name: candidateName }, batch };
     } catch (err) {
       await SourcingModel.updateBatch(batch.id, { status: 'Failed', error_message: err.message || 'Unknown error' });
       throw err;

@@ -62,13 +62,17 @@ class JobAccountController {
     }
 
     const user = await userModel.getById(user_id);
-    
+
     if (!user) {
-      return res.status(404).json({ message: 'User not found' });
+      throw { status: 404, message: 'User not found' };
     }
 
     const encryptedPassword = this.encrypt(password);
-    const newAccount = await jobAccountModel.create(user_id, portal_name, email, encryptedPassword);
+    // Inherit company_id from the creating user — without this, every job
+    // account has company_id=NULL, which cascades into every applicant synced
+    // through it also having company_id=NULL (invisible in Talent Pool) and
+    // resume PDFs landing in an "unassigned_unknown" storage folder.
+    const newAccount = await jobAccountModel.create(user_id, portal_name, email, encryptedPassword, user.company_id ?? null);
 
     return {
       message: 'Job Account created',

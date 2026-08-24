@@ -68,7 +68,7 @@ class OfferPackService {
             token_expires_at: viewLink.token_expires_at,
             sent_to_email: viewLink.sent_to_email,
             generated_at: viewLink.generated_at,
-            portal_link: `/offer/approve-view/${viewLink.token}`,
+            portal_link: `/portal/offer/approve-view/${viewLink.token}`,
           }
         : null,
     };
@@ -95,7 +95,7 @@ class OfferPackService {
     await OfferModel.mergeMetadata(offer_id, { approval_view: viewMeta });
 
     return {
-      portal_link: `/offer/approve-view/${viewMeta.token}`,
+      portal_link: `/portal/offer/approve-view/${viewMeta.token}`,
       token_expires_at: viewMeta.token_expires_at,
       sent_to_email: viewMeta.sent_to_email,
     };

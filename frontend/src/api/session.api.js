@@ -8,5 +8,7 @@ export const getSessionsFromCandidate = ({ candidate_id, job_id }) =>
 
 export const revokeSession = (id) => api.post(`/session/${id}/revoke`);
 
-export const sendSessionInvitation = (id, { subject, body }) =>
-  api.post(`/session/${id}/send-invitation`, { subject, body });
+export const getSessionInvitationPreview = (id) => api.get(`/session/${id}/invitation-preview`);
+
+export const sendSessionInvitation = (id) =>
+  api.post(`/session/${id}/send-invitation`);
