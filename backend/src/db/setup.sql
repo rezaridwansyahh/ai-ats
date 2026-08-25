@@ -1,5 +1,9 @@
 -- Drop tables in reverse dependency order (most dependent first)
 -- Onboarding tables (Migration 010)
+DROP TABLE IF EXISTS lms_progress CASCADE;
+DROP TABLE IF EXISTS lms_content CASCADE;
+DROP TABLE IF EXISTS lms_module CASCADE;
+DROP TABLE IF EXISTS lms_phase CASCADE;
 DROP TABLE IF EXISTS onboarding_hris_task CASCADE;
 DROP TABLE IF EXISTS onboarding_welcome_message CASCADE;
 DROP TABLE IF EXISTS onboarding_probation_checkin CASCADE;
@@ -1061,6 +1065,56 @@ CREATE TABLE onboarding_hris_task (
 
 CREATE INDEX idx_hris_task_onboarding ON onboarding_hris_task(onboarding_id);
 CREATE INDEX idx_hris_task_status ON onboarding_hris_task(status);
+
+CREATE TABLE lms_phase (
+  id SERIAL PRIMARY KEY,
+  company_id INTEGER NOT NULL REFERENCES core_company(id) ON DELETE CASCADE,
+  seq INTEGER NOT NULL,
+  label VARCHAR(100) NOT NULL,           -- e.g. "Pre-boarding", "Weeks 2-4"
+  day_offset_start INTEGER NOT NULL,     -- relative to hire's start_date, e.g. -7
+  day_offset_end INTEGER NOT NULL,       -- e.g. 0
+  created_at TIMESTAMP DEFAULT NOW(),
+  updated_at TIMESTAMP DEFAULT NOW(),
+  CONSTRAINT unique_phase_seq UNIQUE (company_id, seq)
+);
+ 
+ CREATE TABLE lms_module (
+  id SERIAL PRIMARY KEY,
+  phase_id INTEGER NOT NULL REFERENCES lms_phase(id) ON DELETE CASCADE,
+  title VARCHAR(255) NOT NULL,
+  category VARCHAR(50),                  -- Welcome | Tools | People | Compliance | Role | Growth
+  duration_min INTEGER,
+  sort_order INTEGER DEFAULT 0,
+  status VARCHAR(20) NOT NULL DEFAULT 'draft',  -- draft | published -- unpublished modules never reach candidates
+  created_by INTEGER REFERENCES master_users(id) ON DELETE SET NULL,
+  created_at TIMESTAMP DEFAULT NOW(),
+  updated_at TIMESTAMP DEFAULT NOW()
+);
+ 
+CREATE TABLE lms_content (
+  id SERIAL PRIMARY KEY,
+  module_id INTEGER NOT NULL REFERENCES lms_module(id) ON DELETE CASCADE,
+  seq INTEGER NOT NULL DEFAULT 0,
+  content_type VARCHAR(20) NOT NULL,     -- video | quiz | pdf | slides
+  title VARCHAR(255) NOT NULL,
+  payload JSONB NOT NULL DEFAULT '{}'::jsonb,
+  created_at TIMESTAMP DEFAULT NOW(),
+  updated_at TIMESTAMP DEFAULT NOW()
+);
+ 
+CREATE TABLE lms_progress (
+  id SERIAL PRIMARY KEY,
+  candidate_onboarding_id INTEGER NOT NULL REFERENCES candidate_onboarding(id) ON DELETE CASCADE,
+  module_id INTEGER NOT NULL REFERENCES lms_module(id) ON DELETE CASCADE,
+  status VARCHAR(20) NOT NULL DEFAULT 'locked',  -- locked | todo | active | done
+  score INTEGER,                          -- best quiz score, once done
+  started_at TIMESTAMP,
+  completed_at TIMESTAMP,
+  created_at TIMESTAMP DEFAULT NOW(),
+  updated_at TIMESTAMP DEFAULT NOW(),
+  CONSTRAINT unique_hire_module UNIQUE (candidate_onboarding_id, module_id)
+);
+
 
 -- =============================================================================
 -- END ONBOARDING MODULE
