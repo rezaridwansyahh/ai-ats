@@ -35,8 +35,6 @@ class OnboardingLmsController {
     }
   }
 
-  // ==================== MODULES ====================
-
   async getModulesByPhase(req, res) {
     try {
       const { phase_id } = req.params;
@@ -46,6 +44,18 @@ class OnboardingLmsController {
     } catch (error) {
       console.error('Error in getModulesByPhase:', error);
       res.status(error.status || 500).json({ success: false, message: error.message || 'Failed to get modules' });
+    }
+  }
+
+  async getModuleById(req, res) {
+    try {
+      const { module_id } = req.params;
+      const company_id = req.user.company_id;
+      const module = await OnboardingLmsService.getModuleById(module_id, company_id);
+      res.json({ success: true, data: module });
+    } catch (error) {
+      console.error('Error in getModuleById:', error);
+      res.status(error.status || 500).json({ success: false, message: error.message || 'Failed to get module' });
     }
   }
 
@@ -73,8 +83,6 @@ class OnboardingLmsController {
     }
   }
 
-  // ==================== CONTENT ITEMS ====================
-
   async getContent(req, res) {
     try {
       const { module_id } = req.params;
@@ -97,6 +105,20 @@ class OnboardingLmsController {
     }
   }
 
+  async uploadContent(req, res) {
+    try {
+      const { module_id } = req.params;
+      if (!req.file) {
+        return res.status(400).json({ success: false, message: 'No file uploaded' });
+      }
+      const item = await OnboardingLmsService.createContentFromUpload(module_id, req.file, req.body);
+      res.status(201).json({ success: true, data: item, message: 'Content item uploaded' });
+    } catch (error) {
+      console.error('Error in uploadContent:', error);
+      res.status(error.status || 500).json({ success: false, message: error.message || 'Failed to upload content item' });
+    }
+  }
+
   async updateContent(req, res) {
     try {
       const { content_id } = req.params;
@@ -107,8 +129,6 @@ class OnboardingLmsController {
       res.status(error.status || 500).json({ success: false, message: error.message || 'Failed to update content item' });
     }
   }
-
-  // ==================== HIRE CURRICULUM + PROGRESS ====================
 
   async getHireCurriculum(req, res) {
     try {

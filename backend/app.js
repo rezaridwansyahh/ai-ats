@@ -50,6 +50,7 @@ import backgroundCheck from "./src/modules/background-check/background-check.rou
 import portalBg from "./src/modules/portal-bg/portal-bg.route.js"
 import offer from "./src/modules/offer/offer.route.js"
 import onboarding from "./src/modules/onboarding/onboarding.route.js"
+import onboardingLms from "./src/modules/onboarding-lms/onboarding-lms.route.js"
 import portalOffer from "./src/modules/portal-offer/portal-offer.route.js"
 import offerTemplate from "./src/modules/offer-template/offer-template.route.js"
 import interviewPack from "./src/modules/interview-pack/interview-pack.route.js"
@@ -119,6 +120,7 @@ portal.use("/api/background-check", backgroundCheck);
 portal.use("/api/portal-bg-consent", portalBg);
 portal.use("/api/offer", offer);
 portal.use("/api/onboarding", onboarding);
+portal.use("/api/onboarding-lms", onboardingLms);
 portal.use("/api/portal-offer", portalOffer);
 portal.use("/api/offer-template", offerTemplate);
 portal.use("/api/interview-pack", interviewPack);
@@ -165,6 +167,7 @@ app.use("/api/background-check", backgroundCheck);
 app.use("/api/portal-bg-consent", portalBg);
 app.use("/api/offer", offer);
 app.use("/api/onboarding", onboarding);
+app.use("/api/onboarding-lms", onboardingLms);
 app.use("/api/portal-offer", portalOffer);
 app.use("/api/offer-template", offerTemplate);
 app.use("/api/interview-pack", interviewPack);

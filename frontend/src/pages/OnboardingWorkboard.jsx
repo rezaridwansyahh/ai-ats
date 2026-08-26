@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Loader2, Search, Calendar, User, Briefcase } from 'lucide-react';
+import { Loader2, Search, Calendar, User, Briefcase, Settings } from 'lucide-react';
 import { getOnboardingWorkboard } from '@/api/onboarding.api';
 import { PageHeader } from '@/components/common';
 
@@ -78,11 +78,19 @@ export default function OnboardingWorkboard() {
   return (
     <div className="p-6 space-y-6">
       {/* Header */}
-      <PageHeader
-        title="Onboarding"
-        highlight="Workboard"
-        subtitle="Track new hires through pre-boarding, first 30 days, and probation."
-      />
+      <div className="flex items-start justify-between">
+        <PageHeader
+          title="Onboarding"
+          highlight="Workboard"
+          subtitle="Track new hires through pre-boarding, first 30 days, and probation."
+        />
+        <button
+          onClick={() => navigate('/selection/onboarding/curriculum')}
+          className="inline-flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium border hover:bg-muted/30"
+        >
+          <Settings className="w-4 h-4" /> Manage curriculum
+        </button>
+      </div>
 
       {/* Filters */}
       <div className="flex gap-4 items-center">

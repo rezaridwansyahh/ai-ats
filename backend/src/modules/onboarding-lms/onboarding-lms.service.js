@@ -1,4 +1,5 @@
 import OnboardingLmsModel from './onboarding-lms.model.js';
+import { contentTypeForExt, toRelativePath } from '../../shared/middleware/onboarding-lms.middleware.js';
 
 class OnboardingLmsService {
   async getPhases(company_id) {
@@ -23,6 +24,13 @@ class OnboardingLmsService {
       throw { status: 404, message: 'Phase not found' };
     }
     return OnboardingLmsModel.getModulesByPhase(phase_id);
+  }
+  async getModuleById(module_id, company_id) {
+    const module = await OnboardingLmsModel.getModuleWithCompany(module_id);
+    if (!module || module.company_id !== company_id) {
+      throw { status: 404, message: 'Module not found' };
+    }
+    return module;
   }
 
   async createModule(phase_id, company_id, created_by, data) {
@@ -61,6 +69,28 @@ class OnboardingLmsService {
       throw { status: 400, message: 'content_type must be video, quiz, pdf, or slides' };
     }
     return OnboardingLmsModel.createContent(module_id, data);
+  }
+
+  async createContentFromUpload(module_id, file, data) {
+    const module = await OnboardingLmsModel.getModuleById(module_id);
+    if (!module) {
+      throw { status: 404, message: 'Module not found' };
+    }
+
+    const ext = file.originalname.slice(file.originalname.lastIndexOf('.')).toLowerCase();
+    const content_type = contentTypeForExt(ext);
+    const relativePath = toRelativePath(file.path);
+
+    return OnboardingLmsModel.createContent(module_id, {
+      seq: data.seq ? Number(data.seq) : 0,
+      content_type,
+      title: data.title || file.originalname,
+      payload: {
+        source_ref: relativePath,
+        original_name: file.originalname,
+        size_bytes: file.size,
+      },
+    });
   }
 
   async updateContent(content_id, data) {

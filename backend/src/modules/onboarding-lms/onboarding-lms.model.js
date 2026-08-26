@@ -1,7 +1,6 @@
 import getDb from '../../config/postgres.js';
 
 class OnboardingLmsModel {
-
   async getPhases(company_id) {
     const query = `
       SELECT * FROM lms_phase
@@ -74,6 +73,17 @@ class OnboardingLmsModel {
 
   async getModuleById(module_id) {
     const query = `SELECT * FROM lms_module WHERE id = $1`;
+    const result = await getDb().query(query, [module_id]);
+    return result.rows[0];
+  }
+
+  async getModuleWithCompany(module_id) {
+    const query = `
+      SELECT m.*, ph.company_id
+      FROM lms_module m
+      JOIN lms_phase ph ON ph.id = m.phase_id
+      WHERE m.id = $1
+    `;
     const result = await getDb().query(query, [module_id]);
     return result.rows[0];
   }
