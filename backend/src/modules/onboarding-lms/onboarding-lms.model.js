@@ -140,6 +140,18 @@ class OnboardingLmsModel {
     return result.rows;
   }
 
+  async getContentWithCompany(content_id) {
+    const query = `
+      SELECT c.*, ph.company_id
+      FROM lms_content c
+      JOIN lms_module m ON m.id = c.module_id
+      JOIN lms_phase ph ON ph.id = m.phase_id
+      WHERE c.id = $1
+    `;
+    const result = await getDb().query(query, [content_id]);
+    return result.rows[0];
+  }
+
   async createContent(module_id, data) {
     const { seq = 0, content_type, title, payload = {} } = data;
 

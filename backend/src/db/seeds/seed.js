@@ -32,6 +32,14 @@ import companyBudgetsData, { createCompanyBudget } from '../data/company_budgets
 import candidateInterviewData from '../data/candidate_interview.js';
 import candidateBgData from '../data/candidate_bg.js';
 import candidateOfferData from '../data/candidate_offer.js';
+import {
+  candidateOnboarding,
+  onboardingChecklistItems,
+  onboardingDayOneSchedule,
+  onboardingMilestones,
+  onboardingProbationCheckins,
+  onboardingWelcomeMessages,
+} from '../data/candidate-onboarding.js';
 
 const seed = async () => {
   await getDb().query('BEGIN');
@@ -39,6 +47,16 @@ const seed = async () => {
   try {
     await getDb().query('DELETE FROM company_budgets');
     await getDb().query('DELETE FROM company_usage');
+    // Onboarding tables -- children before candidate_onboarding, and
+    // candidate_onboarding itself before candidate_offer (which it
+    // references via offer_id).
+    await getDb().query('DELETE FROM onboarding_hris_task');
+    await getDb().query('DELETE FROM onboarding_welcome_message');
+    await getDb().query('DELETE FROM onboarding_probation_checkin');
+    await getDb().query('DELETE FROM onboarding_milestone');
+    await getDb().query('DELETE FROM onboarding_day_one_schedule');
+    await getDb().query('DELETE FROM onboarding_checklist_item');
+    await getDb().query('DELETE FROM candidate_onboarding');
     await getDb().query('DELETE FROM candidate_offer');
     await getDb().query('DELETE FROM bg_claim');       
     await getDb().query('DELETE FROM candidate_bg'); 
@@ -457,7 +475,86 @@ const seed = async () => {
           o.sent_at, o.accepted_at, o.rejected_at, o.expired_at, o.created_by ?? null,
         ]
       );
-    }    
+    }
+
+    // 21e. candidate_onboarding — only candidates who actually accepted an
+    //      offer (see candidate-onboarding.js header comment for which ones).
+    for (const ob of candidateOnboarding) {
+      await getDb().query(
+        `INSERT INTO candidate_onboarding (
+          id, company_id, candidate_id, job_id, offer_id, candidate_name, position_title,
+          start_date, probation_duration_days, probation_end_date, current_stage, onboarding_status,
+          buddy_user_id, buddy_name, manager_user_id, manager_name,
+          preboarding_completed_at, day_one_started_at, probation_started_at, confirmed_at, terminated_at
+        )
+        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21)
+        ON CONFLICT (candidate_id, offer_id) DO NOTHING`,
+        [
+          ob.id, ob.company_id, ob.candidate_id, ob.job_id, ob.offer_id, ob.candidate_name, ob.position_title,
+          ob.start_date, ob.probation_duration_days, ob.probation_end_date, ob.current_stage, ob.onboarding_status,
+          ob.buddy_user_id ?? null, ob.buddy_name ?? null, ob.manager_user_id ?? null, ob.manager_name ?? null,
+          ob.preboarding_completed_at, ob.day_one_started_at, ob.probation_started_at, ob.confirmed_at, ob.terminated_at,
+        ]
+      );
+    }
+
+    // 21f. onboarding_checklist_item
+    for (const item of onboardingChecklistItems) {
+      await getDb().query(
+        `INSERT INTO onboarding_checklist_item (
+          id, onboarding_id, label, category, owner, status, sort_order, completed_at
+        )
+        VALUES ($1, $2, $3, $4, $5, $6, $7, $8)`,
+        [item.id, item.onboarding_id, item.label, item.category, item.owner, item.status, item.sort_order, item.completed_at]
+      );
+    }
+
+    // 21g. onboarding_day_one_schedule
+    for (const s of onboardingDayOneSchedule) {
+      await getDb().query(
+        `INSERT INTO onboarding_day_one_schedule (
+          id, onboarding_id, time, activity, sort_order, completed
+        )
+        VALUES ($1, $2, $3, $4, $5, $6)`,
+        [s.id, s.onboarding_id, s.time, s.activity, s.sort_order, s.completed]
+      );
+    }
+
+    // 21h. onboarding_milestone
+    for (const m of onboardingMilestones) {
+      await getDb().query(
+        `INSERT INTO onboarding_milestone (
+          id, onboarding_id, week_label, week_number, item_label, status, sort_order, completed_at
+        )
+        VALUES ($1, $2, $3, $4, $5, $6, $7, $8)`,
+        [m.id, m.onboarding_id, m.week_label, m.week_number, m.item_label, m.status, m.sort_order, m.completed_at]
+      );
+    }
+
+    // 21i. onboarding_probation_checkin
+    for (const c of onboardingProbationCheckins) {
+      await getDb().query(
+        `INSERT INTO onboarding_probation_checkin (
+          id, onboarding_id, checkin_code, checkin_title, scheduled_date, status, manager_note, completed_at
+        )
+        VALUES ($1, $2, $3, $4, $5, $6, $7, $8)`,
+        [c.id, c.onboarding_id, c.checkin_code, c.checkin_title, c.scheduled_date, c.status, c.manager_note, c.completed_at]
+      );
+    }
+
+    // 21j. onboarding_welcome_message
+    for (const w of onboardingWelcomeMessages) {
+      await getDb().query(
+        `INSERT INTO onboarding_welcome_message (
+          id, onboarding_id, from_user_id, from_name, message_text
+        )
+        VALUES ($1, $2, $3, $4, $5)
+        ON CONFLICT (onboarding_id) DO NOTHING`,
+        [w.id, w.onboarding_id, w.from_user_id, w.from_name, w.message_text]
+      );
+    }
+
+    console.log(`Seeded ${candidateOnboarding.length} onboarding record(s)`);
 
     // 23. core_applicant_assessment — Insights results (assessment_id = 5). Status = 'completed'
     //     so the rows show up directly in Score & Decide. assessor JSONB pre-populates HR notes.

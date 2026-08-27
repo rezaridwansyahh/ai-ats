@@ -130,6 +130,18 @@ class OnboardingLmsController {
     }
   }
 
+  async downloadContent(req, res) {
+    try {
+      const { content_id } = req.params;
+      const company_id = req.user.company_id;
+      const { absolutePath, filename } = await OnboardingLmsService.getDownloadableFile(content_id, company_id);
+      res.download(absolutePath, filename);
+    } catch (error) {
+      console.error('Error in downloadContent:', error);
+      res.status(error.status || 500).json({ success: false, message: error.message || 'Failed to download file' });
+    }
+  }
+
   async getHireCurriculum(req, res) {
     try {
       const { candidate_onboarding_id } = req.params;

@@ -20,6 +20,7 @@ router.get('/modules/:module_id/content', onboardingLmsController.getContent);
 router.post('/modules/:module_id/content', onboardingLmsController.createContent);
 router.post('/modules/:module_id/content/upload', lmsUpload.single('file'), onboardingLmsController.uploadContent);
 router.put('/content/:content_id', onboardingLmsController.updateContent);
+router.get('/content/:content_id/file', onboardingLmsController.downloadContent);
 
 router.get('/hire/:candidate_onboarding_id/curriculum', onboardingLmsController.getHireCurriculum);
 router.patch('/hire/:candidate_onboarding_id/module/:module_id/progress', onboardingLmsController.updateHireProgress);

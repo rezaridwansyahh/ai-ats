@@ -1,5 +1,8 @@
 import OnboardingLmsModel from './onboarding-lms.model.js';
-import { contentTypeForExt, toRelativePath } from '../../shared/middleware/onboarding-lms.middleware.js';
+import { contentTypeForExt, toRelativePath, toAbsolutePath } from '../../shared/middleware/onboarding-lms.middleware.js';
+import fs from 'fs';
+
+const CONTENT_TYPES = ['video', 'pdf', 'slides', 'text'];
 
 class OnboardingLmsService {
   async getPhases(company_id) {
@@ -25,6 +28,7 @@ class OnboardingLmsService {
     }
     return OnboardingLmsModel.getModulesByPhase(phase_id);
   }
+
   async getModuleById(module_id, company_id) {
     const module = await OnboardingLmsModel.getModuleWithCompany(module_id);
     if (!module || module.company_id !== company_id) {
@@ -65,8 +69,8 @@ class OnboardingLmsService {
     if (!module) {
       throw { status: 404, message: 'Module not found' };
     }
-    if (!['video', 'quiz', 'pdf', 'slides'].includes(data.content_type)) {
-      throw { status: 400, message: 'content_type must be video, quiz, pdf, or slides' };
+    if (!CONTENT_TYPES.includes(data.content_type)) {
+      throw { status: 400, message: `content_type must be one of: ${CONTENT_TYPES.join(', ')}` };
     }
     return OnboardingLmsModel.createContent(module_id, data);
   }
@@ -94,14 +98,32 @@ class OnboardingLmsService {
   }
 
   async updateContent(content_id, data) {
-    if (data.content_type && !['video', 'quiz', 'pdf', 'slides'].includes(data.content_type)) {
-      throw { status: 400, message: 'content_type must be video, quiz, pdf, or slides' };
+    if (data.content_type && !CONTENT_TYPES.includes(data.content_type)) {
+      throw { status: 400, message: `content_type must be one of: ${CONTENT_TYPES.join(', ')}` };
     }
     const updated = await OnboardingLmsModel.updateContent(content_id, data);
     if (!updated) {
       throw { status: 404, message: 'Content item not found' };
     }
     return updated;
+  }
+
+  async getDownloadableFile(content_id, company_id) {
+    const content = await OnboardingLmsModel.getContentWithCompany(content_id);
+    if (!content || content.company_id !== company_id) {
+      throw { status: 404, message: 'Content item not found' };
+    }
+    const payload = content.payload || {};
+    if (!payload.source_ref || !payload.original_name) {
+      throw { status: 400, message: 'This content item is a link, not a downloadable file' };
+    }
+
+    const absolutePath = toAbsolutePath(payload.source_ref);
+    if (!fs.existsSync(absolutePath)) {
+      throw { status: 404, message: 'File is missing on disk' };
+    }
+
+    return { absolutePath, filename: payload.original_name };
   }
 
   async getHireCurriculum(candidate_onboarding_id, company_id) {

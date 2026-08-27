@@ -18,9 +18,19 @@ export const getContent = (module_id) => { return api.get(`/onboarding-lms/modul
 
 export const createContent = (module_id, data) => { return api.post(`/onboarding-lms/modules/${module_id}/content`, data); };
 
-export const uploadContent = (module_id, file, data = {}) => { const form = new FormData(); form.append('file', file); if (data.title) form.append('title', data.title); if (data.seq !== undefined) form.append('seq', data.seq); return api.post(`/onboarding-lms/modules/${module_id}/content/upload`, form, {  headers: { 'Content-Type': 'multipart/form-data' }, });};
+export const uploadContent = (module_id, file, data = {}) => {
+  const form = new FormData();
+  form.append('file', file);
+  if (data.title) form.append('title', data.title);
+  if (data.seq !== undefined) form.append('seq', data.seq);
+  return api.post(`/onboarding-lms/modules/${module_id}/content/upload`, form, {
+    headers: { 'Content-Type': 'multipart/form-data' },
+  });
+};
 
 export const updateContent = (content_id, data) => { return api.put(`/onboarding-lms/content/${content_id}`, data); };
+
+export const downloadContentFile = (content_id) => { return api.get(`/onboarding-lms/content/${content_id}/file`, { responseType: 'blob' });};
 
 export const getHireCurriculum = (candidate_onboarding_id) => { return api.get(`/onboarding-lms/hire/${candidate_onboarding_id}/curriculum`); };
 
