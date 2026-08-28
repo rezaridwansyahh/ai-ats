@@ -193,10 +193,31 @@ class CandidatePipeline {
     const result = await getDb().query(`
       INSERT INTO master_candidate (
         job_id, applicant_id, name, last_position, address,
-        education, information, date, attachment
+        education, information, date, attachment, latest_stage
       )
       SELECT $1, a.id, a.name, a.last_position, a.address,
-             a.education, a.information, a.date, a.attachment
+             a.education, a.information, a.date, a.attachment,
+             (
+               SELECT COALESCE(
+                 -- Case 1: If custom stages exist in job_stages
+                 (
+                   SELECT js.id
+                   FROM job_stage js
+                   WHERE js.job_id = $1
+                   ORDER BY js.stage_order ASC
+                   LIMIT 1
+                 ),
+                 -- Case 2: If using template-based stages
+                 (
+                   SELECT js.id
+                   FROM job_stage js
+                   LEFT JOIN core_job_template cjt ON cjt.job_id = $1
+                   WHERE js.master_id = cjt.template_stage_id
+                   ORDER BY js.stage_order ASC
+                   LIMIT 1
+                 )
+               )
+             ) AS latest_stage
       FROM master_applicant a
       WHERE a.id = $2
       ON CONFLICT (name, job_id) DO NOTHING

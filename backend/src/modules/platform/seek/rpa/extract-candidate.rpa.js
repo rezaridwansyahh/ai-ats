@@ -4,6 +4,21 @@ import os from 'os';
 
 const delay = (ms) => new Promise(r => setTimeout(r, ms));
 
+// Polls downloadDir until a file not present in filesBefore shows up and is no
+// longer .crdownload (i.e. Chrome finished writing it), instead of a fixed
+// delay that misses slow downloads and silently leaves them un-renamed under
+// their original filename.
+async function waitForNewDownload(downloadDir, filesBefore, timeoutMs = 30000, intervalMs = 500) {
+  const start = Date.now();
+  while (Date.now() - start < timeoutMs) {
+    const filesNow = fs.readdirSync(downloadDir).filter(f => !f.endsWith('.crdownload'));
+    const newFile = filesNow.find(f => !filesBefore.has(f));
+    if (newFile) return newFile;
+    await delay(intervalMs);
+  }
+  return null;
+}
+
 class ExtractCandidateService {
   async navigateToCandidatePage(page, seek_id) {
     console.log('Navigating to candidates for job ID:', seek_id);
@@ -79,15 +94,18 @@ class ExtractCandidateService {
     // Click to open filter for full candidate list
     try {
       await page.waitForSelector('[data-testid="status-folder-buttons"]');
-      const filter = await page.evaluate(() => {
+      const filterOn = await page.evaluate(() => {
         const filterBtn = document.querySelector('input[id="must-have-toggle"]');
-        if (filterBtn) return true;
-        return false;
+        return !!filterBtn && filterBtn.checked;
       });
 
-      if (filter) await page.click('input[id="must-have-toggle"]');
-      await delay(1000);
-      console.log('Filter toggle opened');
+      if (filterOn) {
+        await page.click('input[id="must-have-toggle"]');
+        await delay(1000);
+        console.log('Filter toggle was on, turned off');
+      } else {
+        console.log('Filter toggle already off');
+      }
     } catch (error) {
       console.log('Filter toggle not found or already open');
     }
@@ -253,14 +271,15 @@ class ExtractCandidateService {
 
               await page.click('#download-document-viewer');
               console.log(`Downloading: ${fileName}`);
-              await delay(5000);
 
               // Rename the newly downloaded file to our consistent naming convention
-              const filesAfter = fs.readdirSync(downloadDir).filter(f => !f.endsWith('.crdownload'));
-              const newFile = filesAfter.find(f => !filesBefore.has(f));
+              const newFile = await waitForNewDownload(downloadDir, filesBefore);
               if (newFile && newFile !== fileName) {
                 fs.renameSync(path.join(downloadDir, newFile), path.join(downloadDir, fileName));
                 console.log(`Renamed: ${newFile} → ${fileName}`);
+              } else if (!newFile) {
+                console.log(`Download timed out, no file appeared for candidate ${candidateId}`);
+                resumeFileName = null;
               }
             } else {
               console.log('No download button found - Resume not available');
