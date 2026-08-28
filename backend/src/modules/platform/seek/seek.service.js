@@ -195,7 +195,7 @@ class SeekService {
                 try {
                   const buffer = fs.readFileSync(savedPath);
                   const facets = await aiService.extractFacetsFromFile(
-                    buffer, path.basename(savedPath), { metadata: { applicant_id: applicant.id } }
+                    buffer, path.basename(savedPath), { company_id, metadata: { applicant_id: applicant.id } }
                   );
                   await screeningModel.setApplicantInformation(applicant.id, facets);
                 } catch (err) {
