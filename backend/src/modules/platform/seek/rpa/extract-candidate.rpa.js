@@ -79,15 +79,18 @@ class ExtractCandidateService {
     // Click to open filter for full candidate list
     try {
       await page.waitForSelector('[data-testid="status-folder-buttons"]');
-      const filter = await page.evaluate(() => {
+      const filterOn = await page.evaluate(() => {
         const filterBtn = document.querySelector('input[id="must-have-toggle"]');
-        if (filterBtn) return true;
-        return false;
+        return !!filterBtn && filterBtn.checked;
       });
 
-      if (filter) await page.click('input[id="must-have-toggle"]');
-      await delay(1000);
-      console.log('Filter toggle opened');
+      if (filterOn) {
+        await page.click('input[id="must-have-toggle"]');
+        await delay(1000);
+        console.log('Filter toggle was on, turned off');
+      } else {
+        console.log('Filter toggle already off');
+      }
     } catch (error) {
       console.log('Filter toggle not found or already open');
     }
