@@ -11,9 +11,7 @@ RETENTION_DAYS=7
 
 mkdir -p "$BACKUP_DIR"
 
-set -a
-source "$BACKEND_DIR/.env.dev" #Change this with real env location
-set +a
+DATABASEURL=$(grep -E '^DATABASEURL=' "$BACKEND_DIR/.env.dev" | head -1 | cut -d '=' -f2-) #Change this with real env location
 
 if [ -z "${DATABASEURL:-}" ]; then
   echo "$(date '+%Y-%m-%d %H:%M:%S') ERROR: DATABASEURL not set in .env" >&2
