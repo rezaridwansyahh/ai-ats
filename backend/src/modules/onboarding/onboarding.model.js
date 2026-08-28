@@ -9,16 +9,12 @@ class OnboardingModel {
         mc.name as candidate_name,
         ma.email as candidate_email,
         cj.job_title,
-        co.position_title,
-        buddy.name as buddy_name,
-        mgr.name as manager_name
+        co.position_title
       FROM candidate_onboarding ob
       JOIN master_candidate mc ON ob.candidate_id = mc.id
       LEFT JOIN master_applicant ma ON mc.applicant_id = ma.id
       JOIN core_job cj ON ob.job_id = cj.id
       JOIN candidate_offer co ON ob.offer_id = co.id
-      LEFT JOIN master_users buddy ON ob.buddy_user_id = buddy.id
-      LEFT JOIN master_users mgr ON ob.manager_user_id = mgr.id
       WHERE ob.id = $1 AND ob.company_id = $2
     `;
 
