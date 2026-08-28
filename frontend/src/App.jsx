@@ -55,6 +55,7 @@ import SettingsPage from "./pages/Settings"
 import OnboardingPage from "./pages/Onboarding"
 import OnboardingWorkboard from "./pages/OnboardingWorkboard"
 import ReportsPage from "./pages/Reports"
+import OnboardingLmsPreview from "./pages/OnboardingLmsPreview";
 
 import { EndToEndTourProvider } from '@/components/tours/EndToEndTour';
 import { Toaster } from '@/components/ui/sonner';
@@ -79,7 +80,8 @@ function App() {
         <Route path="/contract/send/:token" element={<ContractSendPage />} />
         <Route path="/offer/approve-view/:token" element={<OfferApprovalPage />} />
         <Route path="/interview/:token" element={<InterviewPackPortal />} />
-        <Route path="/selection/onboarding/curriculum" element={<OnboardingContent />} />
+        {/* <Route path="/selection/onboarding/curriculum" element={<OnboardingContent />} /> */}
+        <Route path="/selection/onboarding/curriculum" element={<OnboardingLmsPreview />} />
 
         {/* All authenticated routes share DashboardLayout */}
         <Route element={<DashboardLayout />}>
