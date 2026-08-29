@@ -80,7 +80,7 @@ function App() {
         <Route path="/contract/send/:token" element={<ContractSendPage />} />
         <Route path="/offer/approve-view/:token" element={<OfferApprovalPage />} />
         <Route path="/interview/:token" element={<InterviewPackPortal />} />
-        {/* <Route path="/selection/onboarding/curriculum" element={<OnboardingContent />} /> */}
+        <Route path="/selection/onboarding/curriculum-maker" element={<OnboardingContent />} />
         <Route path="/selection/onboarding/curriculum" element={<OnboardingLmsPreview />} />
 
         {/* All authenticated routes share DashboardLayout */}

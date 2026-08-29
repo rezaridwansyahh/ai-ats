@@ -12,7 +12,15 @@ const NAV_ICONS = {
   report: FileText,
 };
 
-export default function Sidebar({ route, setRoute, t, completion }) {
+function initials(name) {
+  if (!name) return '?';
+  const parts = name.trim().split(/\s+/);
+  return parts.length === 1
+    ? parts[0].slice(0, 2).toUpperCase()
+    : (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
+}
+
+export default function Sidebar({ route, setRoute, t, completion, onboarding }) {
   const links = [
     { key: 'home',        label: t.nav_home },
     { key: 'journey',     label: t.nav_journey },
@@ -20,6 +28,12 @@ export default function Sidebar({ route, setRoute, t, completion }) {
     { key: 'assistant',   label: t.nav_assistant, accent: true },
     { key: 'report',      label: t.nav_report },
   ];
+
+  const isMock = !onboarding;
+  const displayName = onboarding?.candidate_name || 'Maya Putri';
+  const displaySubtitle = onboarding?.position_title
+    ? onboarding.position_title
+    : 'Backend Engineer · #ENG-2089';
 
   return (
     <aside className="w-64 flex-shrink-0 border-r bg-card flex flex-col h-full">
@@ -112,11 +126,11 @@ export default function Sidebar({ route, setRoute, t, completion }) {
 
       <div className="mt-auto px-4 py-4 border-t flex items-center gap-3">
         <div className="h-9 w-9 rounded-full bg-foreground text-background flex items-center justify-center text-xs font-bold flex-shrink-0">
-          MP
+          {isMock ? 'MP' : initials(displayName)}
         </div>
         <div className="min-w-0">
-          <div className="text-sm font-semibold truncate">Maya Putri</div>
-          <div className="text-[11px] text-muted-foreground truncate">Backend Engineer · #ENG-2089</div>
+          <div className="text-sm font-semibold truncate">{displayName}</div>
+          <div className="text-[11px] text-muted-foreground truncate">{displaySubtitle}</div>
         </div>
       </div>
     </aside>

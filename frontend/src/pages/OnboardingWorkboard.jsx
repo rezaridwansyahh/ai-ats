@@ -84,12 +84,20 @@ export default function OnboardingWorkboard() {
           highlight="Workboard"
           subtitle="Track new hires through pre-boarding, first 30 days, and probation."
         />
-        <button
-          onClick={() => window.open('/selection/onboarding/curriculum', '_blank')}
-          className="inline-flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium border hover:bg-muted/30"
-        >
-          <Settings className="w-4 h-4" /> Manage curriculum
-        </button>
+        <div className="flex items-center gap-2">
+          <button
+            onClick={() => window.open('/selection/onboarding/curriculum-maker', '_blank')}
+            className="inline-flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium border hover:bg-muted/30"
+          >
+            <GraduationCap className="w-4 h-4" /> Manage Curriculum
+          </button>
+          <button
+            onClick={() => window.open('/selection/onboarding/curriculum', '_blank')}
+            className="inline-flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium border hover:bg-muted/30"
+          >
+            <Settings className="w-4 h-4" /> Candidate Dashboard
+          </button>
+        </div>
       </div>
 
       {/* Filters */}
