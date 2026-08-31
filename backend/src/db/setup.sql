@@ -596,14 +596,17 @@ CREATE TABLE candidate_job_score (
   job_id                   INTEGER NOT NULL REFERENCES core_job(id) ON DELETE CASCADE,
   overall_score            INTEGER NOT NULL CHECK (overall_score           BETWEEN 0 AND 100),
   skills_score             INTEGER          CHECK (skills_score            BETWEEN 0 AND 100),
+  skills_reason            TEXT,
   experience_score         INTEGER          CHECK (experience_score        BETWEEN 0 AND 100),
-  career_trajectory_score  INTEGER          CHECK (career_trajectory_score BETWEEN 0 AND 100),
+  experience_reason        TEXT,
+  career_trajectory_score  INTEGER          CHECK (career_trajectory_score BETWEEN 0 AND 100), -- unused going forward, kept for historical rows
   education_score          INTEGER          CHECK (education_score         BETWEEN 0 AND 100),
+  education_reason         TEXT,
   matched_skills           JSONB,
   missing_skills           JSONB,
   custom_criteria_results  JSONB,
   rubric_snapshot          JSONB,
-  role_profile             VARCHAR(50),
+  role_profile             VARCHAR(50), -- unused going forward, kept for historical rows
   summary                  TEXT,
   scored_at                TIMESTAMPTZ NOT NULL DEFAULT NOW(),
   UNIQUE (applicant_id, job_id)

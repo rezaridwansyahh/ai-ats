@@ -113,10 +113,9 @@ class ScreeningController {
   async scoreAllCandidates(req, res) {
     try {
       const job_id = Number(req.params.job_id);
-      const { rubric, role_profile } = req.body || {};
+      const { rubric } = req.body || {};
       const result = await screeningService.scoreAllCandidates(job_id, {
         rubric,
-        role_profile,
         context: ctxFromReq(req),
       });
       res.status(200).json({ message: 'All candidates scored', ...result });
@@ -132,10 +131,9 @@ class ScreeningController {
   async scoreCandidate(req, res) {
     try {
       const job_id      = Number(req.params.job_id);
-      const { applicant_id, rubric, role_profile } = req.body || {};
+      const { applicant_id, rubric } = req.body || {};
       const result = await screeningService.scoreCandidate(job_id, Number(applicant_id), {
         rubric,
-        role_profile,
         context: ctxFromReq(req),
       });
       res.status(200).json({ message: 'Candidate scored', ...result });

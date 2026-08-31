@@ -471,7 +471,7 @@ ${JSON.stringify(facets, null, 2)}`;
   // Layer 2 (rubric flow) — score one candidate against a job using a recruiter-defined rubric.
   // The LLM scores each criterion 0-100 independently. The backend computes overall_score
   // deterministically from the rubric weights, so the LLM doesn't have to do math.
-  async scoreWithRubric(job, facets, rubric, role_profile, context = {}) {
+  async scoreWithRubric(job, facets, rubric, context = {}) {
     if (!job || typeof job !== 'object') throw new Error('scoreWithRubric: job is required');
     if (!facets || typeof facets !== 'object') throw new Error('scoreWithRubric: facets are required');
     if (!rubric || typeof rubric !== 'object') throw new Error('scoreWithRubric: rubric is required');
@@ -479,7 +479,6 @@ ${JSON.stringify(facets, null, 2)}`;
     // Task 6.12: Check AI budget before OpenAI call
     await companyUsageService.checkBudgetOrThrow(context.company_id);
 
-    const fixed = rubric.fixed_criteria || {};
     const customCriteria = Array.isArray(rubric.custom_criteria) ? rubric.custom_criteria : [];
 
     const jobPayload = {
@@ -492,21 +491,16 @@ ${JSON.stringify(facets, null, 2)}`;
       work_type: job.work_type || '',
     };
 
-    const profile = role_profile === 'fresh_graduate' ? 'Fresh Graduate' : 'Experienced';
-    const profileGuidance = role_profile === 'fresh_graduate'
-      ? 'Score as a fresh graduate. Lack of senior titles or long tenures should NOT penalize. Weigh education and learning velocity higher.'
-      : 'Score as an experienced hire. Years, role progression, and prior responsibilities matter.';
-
+    // Weights are never shown to the model — they're a pure code-side multiplier
+    // applied afterward in computeOverall(). The model only ever sees criteria
+    // names/descriptions, never how much each one counts toward the total.
     const customBlock = customCriteria.length === 0
       ? '(none)'
       : customCriteria
-          .map((c, i) => `  ${i + 1}. "${c.description}" (weight ${c.weight}%)`)
+          .map((c, i) => `  ${i + 1}. "${c.description}"`)
           .join('\n');
 
-    const prompt = `You are an expert recruiter. Score this candidate against this job using the rubric below. Return STRICT JSON only.
-
-ROLE PROFILE: ${profile}
-${profileGuidance}
+    const prompt = `You are an expert recruiter. Score this candidate against this job using the criteria below. Return STRICT JSON only.
 
 JOB:
 ${JSON.stringify(jobPayload, null, 2)}
@@ -514,23 +508,27 @@ ${JSON.stringify(jobPayload, null, 2)}
 CANDIDATE FACETS:
 ${JSON.stringify(facets, null, 2)}
 
-RUBRIC — score each criterion independently from 0 to 100.
+CRITERIA — score each independently from 0 to 100, and give a short one-sentence reason for each score.
+Use the job's full job_desc and qualifications text as context for every criterion below, not just
+the structured required_skills/preferred_skills/seniority_level fields — the free-text description
+often carries nuance (specific tools, domain, day-to-day duties) those fields don't capture.
 
 Fixed criteria:
-1. skills (weight ${fixed.skills?.weight ?? 0}%) — Match against the job's required + preferred skills. Heavily favour required-skill coverage.
-2. experience (weight ${fixed.experience?.weight ?? 0}%) — Years total, role relevance, and progression vs the seniority asked.
-3. career_trajectory (weight ${fixed.career_trajectory?.weight ?? 0}%) — Tenure pattern, stability, growth across prior roles. If ambiguous from CV alone, mark in summary that this needs Q&A in the interview.
-4. education (weight ${fixed.education?.weight ?? 0}%) — Degree relevance, school tier vs qualifications.
+1. skills — Match against the job's required + preferred skills, and against any specific tools/technologies/domains called out in job_desc or qualifications. Heavily favour required-skill coverage.
+2. experience — Years total, role relevance, and progression vs the seniority asked — cross-check against what job_desc and qualifications actually describe the role doing day-to-day, not just the seniority_level label. Judge fresh graduates and experienced hires fairly on their own terms — lack of seniority should not penalize a fresh graduate, but should for a role that explicitly asks for it.
+3. education — Degree relevance, school tier vs qualifications — check job_desc and qualifications for any explicit degree/field requirements beyond the seniority_level label.
 
-Custom criteria (each scored 0-100):
+Custom criteria (each scored 0-100, with a one-sentence reason):
 ${customBlock}
 
 Return STRICT JSON:
 {
   "skills_score": 0-100,
+  "skills_reason": "<one short sentence>",
   "experience_score": 0-100,
-  "career_trajectory_score": 0-100,
+  "experience_reason": "<one short sentence>",
   "education_score": 0-100,
+  "education_reason": "<one short sentence>",
   "matched_skills": string[],
   "missing_skills": string[],
   "custom_criteria_results": [
@@ -554,7 +552,6 @@ Return STRICT JSON:
       request_id: response.id,
       metadata: {
         job_title: job.job_title || null,
-        role_profile,
         ...(context.metadata || {}),
       },
     });
@@ -578,10 +575,12 @@ Return STRICT JSON:
       : [];
 
     return {
-      skills_score:            safeNumber(parsed.skills_score)            ?? 0,
-      experience_score:        safeNumber(parsed.experience_score)        ?? 0,
-      career_trajectory_score: safeNumber(parsed.career_trajectory_score) ?? 0,
-      education_score:         safeNumber(parsed.education_score)         ?? 0,
+      skills_score:      safeNumber(parsed.skills_score)      ?? 0,
+      skills_reason:     typeof parsed.skills_reason === 'string' ? parsed.skills_reason : '',
+      experience_score:  safeNumber(parsed.experience_score)  ?? 0,
+      experience_reason: typeof parsed.experience_reason === 'string' ? parsed.experience_reason : '',
+      education_score:   safeNumber(parsed.education_score)  ?? 0,
+      education_reason:  typeof parsed.education_reason === 'string' ? parsed.education_reason : '',
       matched_skills: safeStringArray(parsed.matched_skills),
       missing_skills: safeStringArray(parsed.missing_skills),
       custom_criteria_results: customResults,

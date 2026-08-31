@@ -83,7 +83,6 @@ const DECISION_BADGE_CLS = {
 function useMatch(data, onScored) {
   const { job_id, applicant_id } = data || {};
 
-  const [roleProfileSel, setRoleProfileSel] = useState('experienced'); // now driven by the job's saved rubric, not clicked per-candidate
   const [rubric, setRubric] = useState(DEFAULT_RUBRIC);
   const [running, setRunning] = useState(false);
   const [runError, setRunError] = useState(null);
@@ -101,9 +100,6 @@ function useMatch(data, onScored) {
             fixed_criteria: { ...DEFAULT_RUBRIC.fixed_criteria, ...r.data.rubric.fixed_criteria },
             custom_criteria: Array.isArray(r.data.rubric.custom_criteria) ? r.data.rubric.custom_criteria : [],
           });
-          // Role profile is a job-level setting now — read it off the saved
-          // rubric, not left as something the recruiter picks per candidate.
-          setRoleProfileSel(r.data.rubric.role_profile === 'fresh_graduate' ? 'fresh_graduate' : 'experienced');
         }
       } catch { /* keep default rubric */ }
     })();
@@ -135,7 +131,7 @@ function useMatch(data, onScored) {
     setRunError(null);
     try {
       // Score only this candidate, sending the current UI rubric so it is saved + used.
-      await scoreCandidate(job_id, applicant_id, { rubric, role_profile: roleProfileSel });
+      await scoreCandidate(job_id, applicant_id, { rubric });
       await onScored?.();
     } catch (err) {
       setRunError(err.response?.data?.message || err.message || 'AI matching failed');
@@ -145,7 +141,6 @@ function useMatch(data, onScored) {
   };
 
   return {
-    roleProfileSel, setRoleProfileSel,
     rubric, setFixedWeight, addCustom, removeCustom, setCustomWeight,
     total, totalIs100, running, runError, handleRun,
   };
@@ -1082,14 +1077,13 @@ function FacetRow({ label, children }) {
 
 /* ─────────── Match panel (rubric config + fit breakdown) ─────────── */
 function MatchPanel({ data, match }) {
-  const { score_id, overall_score, skills_score, experience_score, career_trajectory_score, education_score,
-          matched_skills, missing_skills, score_summary, role_profile, scored_at,
+  const { score_id, overall_score,
+          skills_score, skills_reason, experience_score, experience_reason,
+          education_score, education_reason,
+          matched_skills, missing_skills, score_summary, scored_at,
           required_skills, preferred_skills, facets } = data;
 
-  const {
-    roleProfileSel,
-    rubric, total, totalIs100,
-  } = match;
+  const { rubric, total, totalIs100 } = match;
 
   const matched   = Array.isArray(matched_skills) ? matched_skills : [];
   const missing   = Array.isArray(missing_skills) ? missing_skills : [];
@@ -1104,7 +1098,7 @@ function MatchPanel({ data, match }) {
         </CardTitle>
         {score_id && (
           <span className="text-[10px] text-muted-foreground">
-            scored {fmt(scored_at)}{role_profile ? ` · ${role_profile}` : ''}
+            scored {fmt(scored_at)}
           </span>
         )}
       </CardHeader>
@@ -1113,37 +1107,6 @@ function MatchPanel({ data, match }) {
 
         {/* Rubric */}
         <div className="space-y-4">
-          {/* Role profile */}
-          <div>
-            <div className="text-[11px] font-medium text-muted-foreground uppercase mb-2">Role profile</div>
-            <div className="flex items-start gap-1.5 text-[10px] text-muted-foreground px-3 py-2 rounded-lg border bg-muted/20 mb-2">
-              <Info className="h-3 w-3 mt-0.5 shrink-0" />
-              <span>
-                This is shared by every candidate on this job — configure it from the job's
-                <span className="font-semibold not-italic"> Pipeline & AI </span>
-                setup step, not here.
-              </span>
-            </div>
-            <div className="flex gap-3">
-              {[
-                { value: 'experienced', label: 'Experienced', desc: 'Years, role progression, prior responsibilities matter.' },
-                { value: 'fresh_graduate', label: 'Fresh Graduate', desc: 'Lack of senior titles will not penalize. Education weighed higher.' },
-              ].map((opt) => (
-                <button
-                  key={opt.value}
-                  type="button"
-                  disabled
-                  className={`flex-1 text-left px-4 py-3 rounded-lg border transition-colors ${
-                    roleProfileSel === opt.value ? 'border-primary bg-primary/5' : 'border-border bg-muted/30 cursor-not-allowed'
-                  }`}
-                >
-                  <div className="text-xs font-semibold">{opt.label}</div>
-                  <div className="text-[10px] text-muted-foreground mt-0.5">{opt.desc}</div>
-                </button>
-              ))}
-            </div>
-          </div>
-
           {/* Skills from job */}
           <div className="pt-3 border-t space-y-2">
             <div className="text-[11px] font-medium text-muted-foreground uppercase">Skills (from job)</div>
@@ -1226,9 +1189,31 @@ function MatchPanel({ data, match }) {
                 <ScoreTile label="Overall"     score={overall_score} bold />
                 <ScoreTile label="Skills"      score={skills_score} />
                 <ScoreTile label="Experience"  score={experience_score} />
-                <ScoreTile label="Trajectory"  score={career_trajectory_score} />
                 <ScoreTile label="Education"   score={education_score} />
               </div>
+
+              {(skills_reason || experience_reason || education_reason) && (
+                <div className="space-y-1.5">
+                  {skills_reason && (
+                    <div className="text-[11px] px-3 py-2 rounded-md bg-muted/30 border">
+                      <span className="font-semibold uppercase tracking-wide text-muted-foreground text-[10px]">Skills — </span>
+                      <span className="text-muted-foreground italic">{skills_reason}</span>
+                    </div>
+                  )}
+                  {experience_reason && (
+                    <div className="text-[11px] px-3 py-2 rounded-md bg-muted/30 border">
+                      <span className="font-semibold uppercase tracking-wide text-muted-foreground text-[10px]">Experience — </span>
+                      <span className="text-muted-foreground italic">{experience_reason}</span>
+                    </div>
+                  )}
+                  {education_reason && (
+                    <div className="text-[11px] px-3 py-2 rounded-md bg-muted/30 border">
+                      <span className="font-semibold uppercase tracking-wide text-muted-foreground text-[10px]">Education — </span>
+                      <span className="text-muted-foreground italic">{education_reason}</span>
+                    </div>
+                  )}
+                </div>
+              )}
 
               {score_summary && (
                 <div className="text-[11px] text-muted-foreground italic px-3 py-2 rounded-md bg-muted/30 border">
@@ -1613,7 +1598,7 @@ function QAPanel({ qaCtl, jobTitle, scored }) {
 /* ─────────── Summary panel (step 4 — review + decide) ─────────── */
 function SummaryPanel({ data, qaCtl, decision, existingReason, onPick }) {
   const {
-    overall_score, skills_score, experience_score, career_trajectory_score,
+    overall_score, skills_score, experience_score, education_score,
     matched_skills, missing_skills, score_summary
   } = data;
 
@@ -1643,7 +1628,7 @@ function SummaryPanel({ data, qaCtl, decision, existingReason, onPick }) {
             <ScoreTile label="Overall"    score={overall_score} bold />
             <ScoreTile label="Skills"     score={skills_score} />
             <ScoreTile label="Experience" score={experience_score} />
-            <ScoreTile label="Trajectory" score={career_trajectory_score} />
+            <ScoreTile label="Education"  score={education_score} />
           </div>
           {rec && (
             <Badge className={`text-[10px] ${rec.tone}`}>{overall_score}% · {rec.label}</Badge>

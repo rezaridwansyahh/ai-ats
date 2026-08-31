@@ -366,19 +366,22 @@ const seed = async () => {
       await getDb().query(
         `INSERT INTO candidate_job_score (
            applicant_id, job_id,
-           overall_score, skills_score, experience_score, career_trajectory_score, education_score,
+           overall_score, skills_score, skills_reason, experience_score, experience_reason,
+           education_score, education_reason,
            matched_skills, missing_skills, custom_criteria_results,
-           rubric_snapshot, role_profile, summary, scored_at
+           rubric_snapshot, summary, scored_at
          )
-         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, NOW() - INTERVAL '2 hours')`,
+         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, NOW() - INTERVAL '2 hours')`,
         [
           s.applicant_id, s.job_id,
-          s.overall_score, s.skills_score, s.experience_score, s.career_trajectory_score, s.education_score,
+          s.overall_score, s.skills_score, s.skills_reason,
+          s.experience_score, s.experience_reason,
+          s.education_score, s.education_reason,
           JSON.stringify(s.matched_skills),
           JSON.stringify(s.missing_skills),
           JSON.stringify(s.custom_criteria_results),
           JSON.stringify(s.rubric_snapshot),
-          s.role_profile, s.summary,
+          s.summary,
         ]
       );
     }

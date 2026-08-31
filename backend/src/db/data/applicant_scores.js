@@ -46,16 +46,6 @@ function scoreExperience(info) {
   return 45;
 }
 
-function scoreCareerTrajectory(info) {
-  const positions = info.experience?.positions || [];
-  if (positions.length === 0) return 40;
-  if (positions.length === 1) return 55;
-  if (positions.length === 2) return 70;
-  const top = String(positions[0]?.title || '').toLowerCase();
-  const climbed = /senior|lead|principal|staff|head/.test(top);
-  return climbed ? 88 : 78;
-}
-
 function scoreEducation(info) {
   const edus = info.education || [];
   if (edus.length === 0) return 50;
@@ -68,16 +58,37 @@ function scoreEducation(info) {
 function computeOverall(rubric, sub) {
   const fx = rubric.fixed_criteria;
   const weightedSum =
-    sub.skills            * fx.skills.weight +
-    sub.experience        * fx.experience.weight +
-    sub.career_trajectory * fx.career_trajectory.weight +
-    sub.education         * fx.education.weight;
+    sub.skills     * fx.skills.weight +
+    sub.experience * fx.experience.weight +
+    sub.education  * fx.education.weight;
   return Math.max(0, Math.min(100, Math.round(weightedSum / 100)));
 }
 
-function roleProfileFor(info) {
+// Plausible one-sentence reasons per criterion — mirrors the shape
+// aiService.scoreWithRubric() returns, for a realistic-looking seed.
+function skillsReasonFor(sk, job) {
+  const reqCount = job.required_skills?.length || 0;
+  if (reqCount === 0) return 'No required skills set on this job to compare against.';
+  const matchedCount = sk.matched_skills.length;
+  if (matchedCount >= reqCount) return `Covers all ${reqCount} required skills for this role.`;
+  if (matchedCount > 0) return `Covers ${matchedCount}/${reqCount} required skills; some gaps remain.`;
+  return 'Little overlap with the required/preferred skill list.';
+}
+
+function experienceReasonFor(info, score) {
   const y = Number(info.experience?.years_total) || 0;
-  return y < 2 ? 'fresh_graduate' : 'experienced';
+  if (score >= 88) return `${y} years of directly relevant experience, well above the bar for this seniority.`;
+  if (score >= 65) return `${y} years of experience, roughly in line with what the role asks for.`;
+  return `${y} years of experience — on the lighter side for this role's seniority.`;
+}
+
+function educationReasonFor(info, score) {
+  const edus = info.education || [];
+  if (edus.length === 0) return 'No education history captured on the CV.';
+  const top = edus[0];
+  if (score >= 85) return `${top.degree || 'Degree'} from a highly-regarded institution.`;
+  if (score >= 65) return `${top.degree || 'Degree'} from a solid, well-known institution.`;
+  return `${top.degree || 'Degree'} noted, but not a strong match for this role's qualifications.`;
 }
 
 function summaryFor(applicant, job, matched, missing) {
@@ -120,10 +131,9 @@ const scoredRows = candidatesData
 
     const sk  = scoreSkills(info, job);
     const sub = {
-      skills:            sk.score,
-      experience:        scoreExperience(info),
-      career_trajectory: scoreCareerTrajectory(info),
-      education:         scoreEducation(info),
+      skills:     sk.score,
+      experience: scoreExperience(info),
+      education:  scoreEducation(info),
     };
     const overall = computeOverall(job.rubric, sub);
 
@@ -134,14 +144,15 @@ const scoredRows = candidatesData
       company_id: job.company_id ?? null,
       overall_score: overall,
       skills_score: sub.skills,
+      skills_reason: skillsReasonFor(sk, job),
       experience_score: sub.experience,
-      career_trajectory_score: sub.career_trajectory,
+      experience_reason: experienceReasonFor(info, sub.experience),
       education_score: sub.education,
+      education_reason: educationReasonFor(info, sub.education),
       matched_skills: sk.matched_skills,
       missing_skills: sk.missing_skills,
       custom_criteria_results: [],
       rubric_snapshot: job.rubric,
-      role_profile: roleProfileFor(info),
       summary: summaryFor(applicant, job, sk.matched_skills, sk.missing_skills),
     };
   })
@@ -149,7 +160,7 @@ const scoredRows = candidatesData
 
 // Self-test: catch CHECK-constraint violations at JS level before the SQL trip.
 for (const s of scoredRows) {
-  for (const k of ['overall_score', 'skills_score', 'experience_score', 'career_trajectory_score', 'education_score']) {
+  for (const k of ['overall_score', 'skills_score', 'experience_score', 'education_score']) {
     const v = s[k];
     if (!Number.isInteger(v) || v < 0 || v > 100) {
       throw new Error(`applicant_scores: ${k}=${v} out of [0,100] for applicant ${s.applicant_id}/job ${s.job_id}`);
@@ -162,14 +173,15 @@ export const applicantScores = scoredRows.map((s) => ({
   job_id: s.job_id,
   overall_score: s.overall_score,
   skills_score: s.skills_score,
+  skills_reason: s.skills_reason,
   experience_score: s.experience_score,
-  career_trajectory_score: s.career_trajectory_score,
+  experience_reason: s.experience_reason,
   education_score: s.education_score,
+  education_reason: s.education_reason,
   matched_skills: s.matched_skills,
   missing_skills: s.missing_skills,
   custom_criteria_results: s.custom_criteria_results,
   rubric_snapshot: s.rubric_snapshot,
-  role_profile: s.role_profile,
   summary: s.summary,
 }));
 

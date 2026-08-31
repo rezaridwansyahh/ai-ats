@@ -126,7 +126,7 @@ class ScreeningService {
       throw { status: 400, message: 'rubric is required' };
     }
     const fixed = rubric.fixed_criteria || {};
-    const required = ['skills', 'experience', 'career_trajectory', 'education'];
+    const required = ['skills', 'experience', 'education'];
     for (const key of required) {
       const w = Number(fixed[key]?.weight);
       if (!Number.isFinite(w) || w < 0 || w > 100) {
@@ -155,10 +155,9 @@ class ScreeningService {
     const customCriteria = Array.isArray(rubric.custom_criteria) ? rubric.custom_criteria : [];
 
     let weightedSum =
-      (llmResult.skills_score            || 0) * (Number(fixed.skills?.weight)            || 0) +
-      (llmResult.experience_score        || 0) * (Number(fixed.experience?.weight)        || 0) +
-      (llmResult.career_trajectory_score || 0) * (Number(fixed.career_trajectory?.weight) || 0) +
-      (llmResult.education_score         || 0) * (Number(fixed.education?.weight)         || 0);
+      (llmResult.skills_score     || 0) * (Number(fixed.skills?.weight)     || 0) +
+      (llmResult.experience_score || 0) * (Number(fixed.experience?.weight) || 0) +
+      (llmResult.education_score  || 0) * (Number(fixed.education?.weight) || 0);
 
     const resultsByDescription = new Map(
       (llmResult.custom_criteria_results || []).map((r) => [r.description, r])
@@ -188,7 +187,7 @@ class ScreeningService {
   }
 
   // Score ALL candidates in a job (uses / saves rubric). Previously named runMatching.
-  async scoreAllCandidates(job_id, { rubric: providedRubric, role_profile, context = {} } = {}) {
+  async scoreAllCandidates(job_id, { rubric: providedRubric, context = {} } = {}) {
     if (!job_id) throw { status: 400, message: 'job_id is required' };
 
     const job = await jobModel.getById(job_id);
@@ -204,8 +203,6 @@ class ScreeningService {
         throw { status: 400, message: 'No rubric provided and no saved rubric exists for this job' };
       }
     }
-
-    const roleProfile = role_profile === 'fresh_graduate' ? 'fresh_graduate' : 'experienced';
 
     const candidates = await screeningModel.getCandidatesByJob(job_id);
     const results = [];
@@ -223,7 +220,7 @@ class ScreeningService {
           ...context,
           metadata: { applicant_id: c.applicant_id, job_id, ...(context.metadata || {}) },
         };
-        const llm = await aiService.scoreWithRubric(job, applicant.information, rubric, roleProfile, aiContext);
+        const llm = await aiService.scoreWithRubric(job, applicant.information, rubric, aiContext);
         const overall_score = this.computeOverall(rubric, llm);
 
         const stored = await screeningModel.upsertScore({
@@ -231,14 +228,15 @@ class ScreeningService {
           job_id,
           overall_score,
           skills_score: llm.skills_score,
+          skills_reason: llm.skills_reason,
           experience_score: llm.experience_score,
-          career_trajectory_score: llm.career_trajectory_score,
+          experience_reason: llm.experience_reason,
           education_score: llm.education_score,
+          education_reason: llm.education_reason,
           matched_skills: llm.matched_skills,
           missing_skills: llm.missing_skills,
           custom_criteria_results: llm.custom_criteria_results,
           rubric_snapshot: rubric,
-          role_profile: roleProfile,
           summary: llm.summary,
         });
         results.push(stored);
@@ -252,7 +250,7 @@ class ScreeningService {
 
   // Score ONE candidate against a job. Saves rubric if provided (so UI changes persist).
   // Use this from the candidate detail page so the UI rubric is respected.
-  async scoreCandidate(job_id, applicant_id, { rubric: providedRubric, role_profile, context = {} } = {}) {
+  async scoreCandidate(job_id, applicant_id, { rubric: providedRubric, context = {} } = {}) {
     if (!job_id)      throw { status: 400, message: 'job_id is required' };
     if (!applicant_id) throw { status: 400, message: 'applicant_id is required' };
 
@@ -268,8 +266,6 @@ class ScreeningService {
       if (!rubric) throw { status: 400, message: 'No rubric provided and no saved rubric exists for this job' };
     }
 
-    const roleProfile = role_profile === 'fresh_graduate' ? 'fresh_graduate' : 'experienced';
-
     const applicant = await screeningModel.getApplicant(applicant_id);
     if (!applicant?.information) {
       throw { status: 400, message: 'No CV facets — run Extract CV first' };
@@ -279,7 +275,7 @@ class ScreeningService {
       ...context,
       metadata: { applicant_id, job_id, ...(context.metadata || {}) },
     };
-    const llm = await aiService.scoreWithRubric(job, applicant.information, rubric, roleProfile, aiContext);
+    const llm = await aiService.scoreWithRubric(job, applicant.information, rubric, aiContext);
     const overall_score = this.computeOverall(rubric, llm);
 
     const stored = await screeningModel.upsertScore({
@@ -287,14 +283,15 @@ class ScreeningService {
       job_id,
       overall_score,
       skills_score:              llm.skills_score,
+      skills_reason:             llm.skills_reason,
       experience_score:          llm.experience_score,
-      career_trajectory_score:   llm.career_trajectory_score,
+      experience_reason:         llm.experience_reason,
       education_score:           llm.education_score,
+      education_reason:          llm.education_reason,
       matched_skills:            llm.matched_skills,
       missing_skills:            llm.missing_skills,
       custom_criteria_results:   llm.custom_criteria_results,
       rubric_snapshot:           rubric,
-      role_profile:              roleProfile,
       summary:                   llm.summary,
     });
 
@@ -432,7 +429,6 @@ class ScreeningService {
     if (!rubric) throw { status: 400, message: 'Job has no rubric — save one from AI Screening first' };
     this.validateRubric(rubric);
 
-    const roleProfile = 'experienced';
     const results = [];
     const errors = [];
 
@@ -453,7 +449,7 @@ class ScreeningService {
           ...context,
           metadata: { applicant_id, job_id, ...(context.metadata || {}) },
         };
-        const llm = await aiService.scoreWithRubric(job, applicant.information, rubric, roleProfile, aiContext);
+        const llm = await aiService.scoreWithRubric(job, applicant.information, rubric, aiContext);
         const overall_score = this.computeOverall(rubric, llm);
 
         const stored = await screeningModel.upsertScore({
@@ -461,14 +457,15 @@ class ScreeningService {
           job_id,
           overall_score,
           skills_score: llm.skills_score,
+          skills_reason: llm.skills_reason,
           experience_score: llm.experience_score,
-          career_trajectory_score: llm.career_trajectory_score,
+          experience_reason: llm.experience_reason,
           education_score: llm.education_score,
+          education_reason: llm.education_reason,
           matched_skills: llm.matched_skills,
           missing_skills: llm.missing_skills,
           custom_criteria_results: llm.custom_criteria_results,
           rubric_snapshot: rubric,
-          role_profile: roleProfile,
           summary: llm.summary,
         });
         results.push(stored);

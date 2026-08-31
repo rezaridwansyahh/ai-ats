@@ -6,34 +6,37 @@ class ScreeningModel {
     job_id,
     overall_score,
     skills_score,
+    skills_reason,
     experience_score,
-    career_trajectory_score,
+    experience_reason,
     education_score,
+    education_reason,
     matched_skills,
     missing_skills,
     custom_criteria_results,
     rubric_snapshot,
-    role_profile,
     summary,
   }) {
     const result = await getDb().query(
       `INSERT INTO candidate_job_score (
          applicant_id, job_id,
-         overall_score, skills_score, experience_score, career_trajectory_score, education_score,
+         overall_score, skills_score, skills_reason, experience_score, experience_reason,
+         education_score, education_reason,
          matched_skills, missing_skills, custom_criteria_results,
-         rubric_snapshot, role_profile, summary, scored_at
-       ) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13, NOW())
+         rubric_snapshot, summary, scored_at
+       ) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14, NOW())
        ON CONFLICT (applicant_id, job_id) DO UPDATE SET
          overall_score            = EXCLUDED.overall_score,
          skills_score             = EXCLUDED.skills_score,
+         skills_reason            = EXCLUDED.skills_reason,
          experience_score         = EXCLUDED.experience_score,
-         career_trajectory_score  = EXCLUDED.career_trajectory_score,
+         experience_reason        = EXCLUDED.experience_reason,
          education_score          = EXCLUDED.education_score,
+         education_reason         = EXCLUDED.education_reason,
          matched_skills           = EXCLUDED.matched_skills,
          missing_skills           = EXCLUDED.missing_skills,
          custom_criteria_results  = EXCLUDED.custom_criteria_results,
          rubric_snapshot          = EXCLUDED.rubric_snapshot,
-         role_profile             = EXCLUDED.role_profile,
          summary                  = EXCLUDED.summary,
          scored_at                = NOW()
        RETURNING *`,
@@ -42,14 +45,15 @@ class ScreeningModel {
         job_id,
         overall_score,
         skills_score,
+        skills_reason || null,
         experience_score,
-        career_trajectory_score,
+        experience_reason || null,
         education_score,
+        education_reason || null,
         matched_skills ? JSON.stringify(matched_skills) : null,
         missing_skills ? JSON.stringify(missing_skills) : null,
         custom_criteria_results ? JSON.stringify(custom_criteria_results) : null,
         rubric_snapshot ? JSON.stringify(rubric_snapshot) : null,
-        role_profile || null,
         summary || null,
       ]
     );
@@ -168,14 +172,15 @@ class ScreeningModel {
         s.id                       AS score_id,
         s.overall_score,
         s.skills_score,
+        s.skills_reason,
         s.experience_score,
-        s.career_trajectory_score,
+        s.experience_reason,
         s.education_score,
+        s.education_reason,
         s.matched_skills,
         s.missing_skills,
         s.custom_criteria_results,
         s.rubric_snapshot,
-        s.role_profile,
         s.summary              AS score_summary,
         s.scored_at,
         CASE
@@ -215,7 +220,6 @@ class ScreeningModel {
         s.overall_score,
         s.skills_score,
         s.experience_score,
-        s.career_trajectory_score,
         s.education_score,
         s.matched_skills,
         s.missing_skills,
@@ -487,10 +491,11 @@ class ScreeningModel {
   async getResultsByJob(job_id) {
     const result = await getDb().query(
       `SELECT s.id, s.applicant_id, s.job_id,
-              s.overall_score, s.skills_score, s.experience_score,
-              s.career_trajectory_score, s.education_score,
+              s.overall_score, s.skills_score, s.skills_reason,
+              s.experience_score, s.experience_reason,
+              s.education_score, s.education_reason,
               s.matched_skills, s.missing_skills, s.custom_criteria_results,
-              s.rubric_snapshot, s.role_profile, s.summary, s.scored_at,
+              s.rubric_snapshot, s.summary, s.scored_at,
               a.name AS applicant_name
        FROM candidate_job_score s
        LEFT JOIN master_applicant a ON a.id = s.applicant_id
@@ -671,9 +676,11 @@ class ScreeningModel {
         a.information,
         s.overall_score,
         s.skills_score,
+        s.skills_reason,
         s.experience_score,
-        s.career_trajectory_score,
+        s.experience_reason,
         s.education_score,
+        s.education_reason,
         s.matched_skills,
         s.missing_skills,
         s.custom_criteria_results,

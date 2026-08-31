@@ -1,4 +1,4 @@
-import { Code2, Briefcase, TrendingUp, GraduationCap } from 'lucide-react';
+import { Code2, Briefcase, GraduationCap } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
 
 /*
@@ -56,21 +56,18 @@ export function scoreRecommendation(score) {
   return { label: 'Reject · below threshold', tone: 'bg-rose-50 text-rose-700 border-rose-200', bucket: 'archive' };
 }
 
-export const FIXED_KEYS = ['skills', 'experience', 'career_trajectory', 'education'];
+export const FIXED_KEYS = ['skills', 'experience', 'education'];
 
 export const FIXED_META = {
   skills:            { label: 'Skills',            icon: Code2,         description: 'Match against the required + preferred skills' },
   experience:        { label: 'Experience',        icon: Briefcase,     description: 'Years, role relevance, progression vs seniority' },
-  career_trajectory: { label: 'Career Trajectory', icon: TrendingUp,    description: 'Tenure pattern, stability, growth (validate via Q&A)' },
   education:         { label: 'Education',         icon: GraduationCap, description: 'Degree relevance + school tier vs qualifications' },
 };
 
 export const DEFAULT_RUBRIC = {
-  role_profile: 'experienced',
   fixed_criteria: {
-    skills:            { weight: 45 },
-    experience:        { weight: 35 },
-    career_trajectory: { weight: 15 },
+    skills:            { weight: 55 },
+    experience:        { weight: 40 },
     education:         { weight: 5  },
   },
   custom_criteria: [],
