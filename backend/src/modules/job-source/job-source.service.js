@@ -6,6 +6,7 @@ import User from '../user/user.model.js';
 import Job from '../job/job.model.js';
 import applicantModel from '../applicant/applicant.model.js';
 import candidatePipelineModel from '../candidate-pipeline/candidate-pipeline.model.js';
+import screeningService from '../screening/screening.service.js';
 
 class JobSourceService {
   async getAll() {
@@ -182,7 +183,8 @@ class JobSourceService {
     const applicants = await applicantModel.getByJobSourcingId(id);
     for (const applicant of applicants) {
       try {
-        await candidatePipelineModel.createFromApplicantIfAbsent(applicant.id, job_id);
+        const created = await candidatePipelineModel.createFromApplicantIfAbsent(applicant.id, job_id);
+        if (created) await screeningService.autoScoreIfPossible(applicant.id, job_id);
       } catch (err) {
         console.error(`Backfill promote failed for applicant ${applicant.id} → job ${job_id}:`, err.message);
       }

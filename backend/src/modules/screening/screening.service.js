@@ -298,6 +298,22 @@ class ScreeningService {
     return { scored: 1, result: stored };
   }
 
+  // Best-effort auto-match, called right after a candidate is added to a
+  // job's pipeline (sync auto-promote, backfill, or manual "Add to Candidate")
+  // so a score shows up without a manual "Run Matching" click. Silently no-ops
+  // — never throws — if the job has no saved rubric yet or the applicant has
+  // no parsed facets yet; those are normal, expected states, not failures.
+  async autoScoreIfPossible(applicant_id, job_id) {
+    try {
+      const job = await jobModel.getById(job_id);
+      const context = { company_id: job?.company_id ?? null };
+      return await this.scoreCandidate(job_id, applicant_id, { context });
+    } catch (err) {
+      console.error(`Auto-match skipped for applicant ${applicant_id} → job ${job_id}: ${err.message}`);
+      return null;
+    }
+  }
+
   async getMatchingResults(job_id) {
     if (!job_id) throw { status: 400, message: 'job_id is required' };
     const job = await jobModel.getById(job_id);

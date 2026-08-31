@@ -13,6 +13,7 @@ import companyService from "../../company/company.service.js"
 import { promoteDownloadedCv } from "../../../shared/utils/cv-storage.js"
 import aiService from "../../../shared/services/ai.service.js"
 import screeningModel from "../../screening/screening.model.js"
+import screeningService from "../../screening/screening.service.js"
 import fs from "fs"
 import path from "path"
 
@@ -213,7 +214,10 @@ class SeekService {
             for (const jobId of linkedJobIds) {
               try {
                 const created = await candidatePipelineModel.createFromApplicantIfAbsent(applicant.id, jobId);
-                if (created) promoted++;
+                if (created) {
+                  promoted++;
+                  await screeningService.autoScoreIfPossible(applicant.id, jobId);
+                }
               } catch (err) {
                 console.error(`Auto-promote failed for applicant ${applicant.id} → job ${jobId}:`, err.message);
               }
