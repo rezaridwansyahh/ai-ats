@@ -15,7 +15,7 @@ import {
 import { Popover, PopoverTrigger, PopoverContent } from '@/components/ui/popover';
 import { Calendar } from '@/components/ui/calendar';
 
-import { getJobById, createJob, updateJob, updateJobStatus, generateJobAI } from '@/api/job.api';
+import { getJobById, createJob, updateJob, updateJobStatus, generateJobAI, generateJobSkillsAI } from '@/api/job.api';
 import { getJobPipeline } from '@/api/pipeline.api';
 
 import JobStages from '@/components/job-management/JobStages';
@@ -104,6 +104,8 @@ export default function JobEditPage() {
   const [validationErrors, setValidationErrors] = useState([]);
   const [generating, setGenerating] = useState(false);
   const [generateError, setGenerateError] = useState(null);
+  const [generatingSkills, setGeneratingSkills] = useState(false);
+  const [generateSkillsError, setGenerateSkillsError] = useState(null);
   const [step, setStep] = useState(0); // active step: 0=Basics 1=JD 2=Pipeline 3=Posting
   const [hasStages, setHasStages] = useState(false); // server-confirmed pipeline presence
 
@@ -276,6 +278,35 @@ export default function JobEditPage() {
       );
     } finally {
       setGenerating(false);
+    }
+  };
+
+  // AI Generate for skills — sends the current Description + Responsibilities
+  // & qualifications text and merges the suggested skills in (keeps any
+  // skills already typed manually, just appends new ones without duplicates).
+  const handleGenerateSkillsAI = async () => {
+    if (generatingSkills) return;
+    setGeneratingSkills(true);
+    setGenerateSkillsError(null);
+    try {
+      const res = await generateJobSkillsAI(form.job_desc, form.qualifications);
+      const { required_skills = [], preferred_skills = [] } = res.data || {};
+      setForm((f) => {
+        const mergeSkills = (existing, incoming) => {
+          const cur = Array.isArray(existing) ? existing : [];
+          const additions = incoming.filter((s) => !cur.includes(s));
+          return [...cur, ...additions];
+        };
+        return {
+          ...f,
+          required_skills: mergeSkills(f.required_skills, required_skills),
+          preferred_skills: mergeSkills(f.preferred_skills, preferred_skills),
+        };
+      });
+    } catch (err) {
+      setGenerateSkillsError(err.response?.data?.message || err.message || 'AI generation failed');
+    } finally {
+      setGeneratingSkills(false);
     }
   };
 
@@ -456,6 +487,10 @@ export default function JobEditPage() {
                 generating={generating}
                 generateError={generateError}
                 canGenerate={!!job?.id}
+                onGenerateSkillsAI={handleGenerateSkillsAI}
+                generatingSkills={generatingSkills}
+                generateSkillsError={generateSkillsError}
+                canGenerateSkills={!!(form.job_desc?.trim() || form.qualifications?.trim())}
                 step={step}
                 totalSteps={SECTIONS.length}
                 onStepChange={(s) => { setStep(s); window.scrollTo({ top: 0, behavior: 'smooth' }); }}
@@ -985,6 +1020,7 @@ function BasicsSection({ form, setField, isLocked, missingRequired, invalidUrlFi
 function JDSection({
   form, setField, missingRequired, showValidation,
   onGenerateAI, generating, generateError, canGenerate,
+  onGenerateSkillsAI, generatingSkills, generateSkillsError, canGenerateSkills,
   step = 1, totalSteps = 4, onStepChange,
 }) {
   const isMissing = (k) => showValidation && missingRequired.includes(k);
@@ -1057,7 +1093,7 @@ function JDSection({
             value={form.job_desc || ''}
             onChange={(e) => setField('job_desc', e.target.value)}
             placeholder="2–3 sentence overview of the role."
-            rows={4}
+            rows={8}
             className="text-sm"
           />
         </Field>
@@ -1067,10 +1103,34 @@ function JDSection({
             value={form.qualifications || ''}
             onChange={(e) => setField('qualifications', e.target.value)}
             placeholder="Bullet points — what they'll do and what they need."
-            rows={6}
+            rows={12}
             className="text-sm"
           />
         </Field>
+
+        <div className="flex items-center justify-between gap-3">
+          <div className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">Skills</div>
+          <Button
+            size="sm"
+            variant="outline"
+            className="text-xs"
+            onClick={onGenerateSkillsAI}
+            disabled={!canGenerateSkills || generatingSkills}
+            title={!canGenerateSkills ? 'Fill in the description or qualifications first.' : ''}
+          >
+            {generatingSkills ? (
+              <><Loader2 className="h-3.5 w-3.5 mr-1.5 animate-spin" /> Generating…</>
+            ) : (
+              <><Sparkles className="h-3.5 w-3.5 mr-1.5 text-primary" /> AI Generate</>
+            )}
+          </Button>
+        </div>
+        {generateSkillsError && (
+          <div className="flex items-center gap-2 px-3 py-2 rounded-md border border-red-200 bg-red-50 text-xs text-red-600">
+            <AlertTriangle className="h-3.5 w-3.5 shrink-0" />
+            {generateSkillsError}
+          </div>
+        )}
 
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <Field label="Required skills" required missing={isMissing('required_skills')}>

@@ -121,6 +121,72 @@ class AIService {
     });
   }
 
+  // Suggests required/preferred skills from the job's own description +
+  // qualifications text — used by the "AI Generate" button above the skills
+  // fields in Job Management, separate from the job_desc/qualifications
+  // generation above.
+  async generateJobSkills(jobDesc, qualifications, context = {}) {
+    if (!jobDesc?.trim() && !qualifications?.trim()) {
+      throw new Error('generateJobSkills: job_desc or qualifications is required');
+    }
+
+    await companyUsageService.checkBudgetOrThrow(context.company_id);
+
+    const prompt = `You are an expert HR recruiter. Based on the job description and responsibilities/qualifications below, extract the relevant technical/professional skills for this role.
+
+Return STRICT JSON only (no prose, no markdown):
+{
+  "required_skills": string[],
+  "preferred_skills": string[]
+}
+
+Rules:
+- "required_skills": must-have skills clearly essential to the role.
+- "preferred_skills": nice-to-have skills mentioned as a bonus/plus.
+- Skills should be concise tags (e.g. "React", "PostgreSQL"), not sentences.
+- Never list the same skill in both arrays.
+- If nothing qualifies for a list, return an empty array. No commentary.
+
+Job Description:
+"""
+${(jobDesc || '').slice(0, 4000)}
+"""
+
+Responsibilities & Qualifications:
+"""
+${(qualifications || '').slice(0, 4000)}
+"""`;
+
+    const response = await openai.chat.completions.create({
+      model: SCORING_MODEL,
+      messages: [{ role: 'user', content: prompt }],
+      response_format: { type: 'json_object' },
+      temperature: 0.2,
+    });
+
+    await this._logUsage({
+      context,
+      model: SCORING_MODEL,
+      operation: 'generate_job_skills',
+      usage: response.usage,
+      request_id: response.id,
+      metadata: context.metadata || null,
+    });
+
+    const raw = response.choices[0]?.message?.content || '{}';
+    let parsed;
+    try {
+      parsed = JSON.parse(raw);
+    } catch {
+      throw new Error('generateJobSkills: model returned non-JSON');
+    }
+
+    const required_skills = await normalizeSkills(parsed.required_skills);
+    const preferred_skills = await normalizeSkills(parsed.preferred_skills);
+
+    return { required_skills, preferred_skills };
+  }
+
   // Layer 1 — extract structured facets from raw CV text.
   async extractFacets(cvText, context = {}) {
     if (!cvText || typeof cvText !== 'string') {
