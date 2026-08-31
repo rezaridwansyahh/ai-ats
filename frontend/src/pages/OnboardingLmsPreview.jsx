@@ -2,6 +2,11 @@ import { useState } from 'react';
 import AppShell from '../components/onboarding-lms/Appshell';
 import HomeScreen from '../components/onboarding-lms/Homescreen';
 import { LMS_DATA } from '../components/onboarding-lms/mockData';
+import Journey from '@/components/onboarding-lms/Journey';
+import ModuleDetail from '@/components/onboarding-lms/ModuleDetail';
+
+// Fixed language — language toggle removed for now
+const LANG = 'id';
 
 // Screens not built yet fall back to this
 function ComingSoon({ label }) {
@@ -16,9 +21,8 @@ function ComingSoon({ label }) {
 export default function OnboardingLmsPreview() {
   const [route, setRoute] = useState('home');
   const [params, setParams] = useState({});
-  const [lang, setLang] = useState('en');
 
-  const t = LMS_DATA.T[lang];
+  const t = LMS_DATA.T[LANG];
 
   const goTo = (nextRoute, nextParams = {}) => {
     setRoute(nextRoute);
@@ -28,11 +32,11 @@ export default function OnboardingLmsPreview() {
   const renderScreen = () => {
     switch (route) {
       case 'home':
-        return <HomeScreen data={LMS_DATA} t={t} lang={lang} goTo={goTo} />;
+        return <HomeScreen data={LMS_DATA} t={t} lang={LANG} goTo={goTo} />;
       case 'journey':
-        return <ComingSoon label="My Journey" />;
+        return <Journey t={t} lang={LANG} goTo={goTo} />;
       case 'module':
-        return <ComingSoon label={`Module ${params.moduleId ?? ''}`} />;
+        return <ModuleDetail moduleId={params.moduleId} t={t} lang={LANG} goTo={goTo} />;
       case 'viewer':
         return <ComingSoon label="Content Viewer" />;
       case 'quiz':
@@ -51,12 +55,12 @@ export default function OnboardingLmsPreview() {
       case 'assessment':
         return <ComingSoon label="Assessments" />;
       default:
-        return <HomeScreen data={LMS_DATA} t={t} lang={lang} goTo={goTo} />;
+        return <HomeScreen data={LMS_DATA} t={t} lang={LANG} goTo={goTo} />;
     }
   };
 
   return (
-    <AppShell route={route} goTo={goTo} lang={lang} setLang={setLang} t={t}>
+    <AppShell route={route} goTo={goTo} t={t}>
       {renderScreen()}
     </AppShell>
   );

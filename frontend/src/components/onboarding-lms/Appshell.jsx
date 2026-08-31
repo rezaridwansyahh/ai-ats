@@ -3,7 +3,7 @@ import Sidebar from './SidebarOnboarding';
 import Topbar from './TopbarOnboarding';
 import { LMS_DATA } from './mockData';
 
-export default function AppShell({ route, goTo, lang, setLang, t, children }) {
+export default function AppShell({ route, goTo, t, children }) {
   const completion = useMemo(() => {
     const total = LMS_DATA.MODULES.length;
     const done = LMS_DATA.MODULES.filter((m) => m.status === 'done').length;
@@ -41,7 +41,7 @@ export default function AppShell({ route, goTo, lang, setLang, t, children }) {
     <div className="flex h-screen bg-background text-foreground">
       <Sidebar route={sbRoute} setRoute={(r) => goTo(r)} t={t} completion={completion} />
       <div className="flex-1 flex flex-col min-w-0">
-        <Topbar crumbs={crumbs} lang={lang} setLang={setLang} />
+        <Topbar crumbs={crumbs} />
         <div className="flex-1 overflow-y-auto p-6">
           {children}
         </div>
