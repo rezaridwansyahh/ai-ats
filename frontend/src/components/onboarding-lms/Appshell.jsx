@@ -5,10 +5,11 @@ import { LMS_DATA } from './mockData';
 
 export default function AppShell({ route, goTo, t, children }) {
   const completion = useMemo(() => {
-    const total = LMS_DATA.MODULES.length;
-    const done = LMS_DATA.MODULES.filter((m) => m.status === 'done').length;
-    return { total, done, pct: Math.round((done / total) * 100) };
-  }, []);
+    const source = modules ?? LMS_DATA.MODULES;
+    const total = source.length;
+    const done = source.filter((m) => m.status === 'done').length;
+    return { total, done, pct: total > 0 ? Math.round((done / total) * 100) : 0 };
+  }, [modules]);
 
   const sbRoute =
     route === 'home' ? 'home'
@@ -39,7 +40,7 @@ export default function AppShell({ route, goTo, t, children }) {
 
   return (
     <div className="flex h-screen bg-background text-foreground">
-      <Sidebar route={sbRoute} setRoute={(r) => goTo(r)} t={t} completion={completion} />
+      <Sidebar route={sbRoute} setRoute={(r) => goTo(r)} t={t} completion={completion} onboarding={onboarding} />
       <div className="flex-1 flex flex-col min-w-0">
         <Topbar crumbs={crumbs} />
         <div className="flex-1 overflow-y-auto p-6">

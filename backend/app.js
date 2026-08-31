@@ -58,6 +58,7 @@ import portalInterview from "./src/modules/portal-interview/portal-interview.rou
 import offerPack from "./src/modules/offer-pack/offer-pack.route.js";
 import portalContract from "./src/modules/portal-contract/portal-contract.route.js";
 import emailTemplate from "./src/modules/email-template/email-template.route.js";
+import portalOnboarding from "./src/modules/portal-onboarding/portal-onboarding.route.js";
 
 app.use(express.json());
 
@@ -128,6 +129,7 @@ portal.use("/api/portal-interview", portalInterview);
 portal.use("/api/offer-pack", offerPack)
 portal.use("/api/portal-contract", portalContract);
 portal.use("/api/email-template", emailTemplate)
+portal.use("/api/portal-onboarding", portalOnboarding);
 app.use("/portal", portal);
 app.use("/api/auth", auth);
 app.use("/api/cookies", cookies);
@@ -175,7 +177,7 @@ app.use("/api/portal-interview", portalInterview);
 app.use("/api/offer-pack", offerPack);
 app.use("/api/portal-contract", portalContract);
 app.use("/api/email-template", emailTemplate)
-
+app.use("/api/portal-onboarding", portalOnboarding);
 
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => {
