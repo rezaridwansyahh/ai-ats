@@ -15,6 +15,10 @@ import candidatePipelineModel from "../../candidate-pipeline/candidate-pipeline.
 import jobAccountModel from "../../job-account/job-account.model.js"
 import companyService from "../../company/company.service.js"
 import { promoteDownloadedCv } from "../../../shared/utils/cv-storage.js"
+import aiService from "../../../shared/services/ai.service.js"
+import screeningModel from "../../screening/screening.model.js"
+import fs from "fs"
+import path from "path"
 
 import { joinArrayFields } from '../../../shared/utils/format.js';
 
@@ -184,6 +188,17 @@ class LinkedInService {
             if (savedPath) {
               await applicantModel.updateAttachment(applicant.id, savedPath);
               applicant.attachment = savedPath;
+
+              // Guarded separately so a parse failure doesn't abort onSave.
+              try {
+                const buffer = fs.readFileSync(savedPath);
+                const facets = await aiService.extractFacetsFromFile(
+                  buffer, path.basename(savedPath), { company_id, metadata: { applicant_id: applicant.id } }
+                );
+                await screeningModel.setApplicantInformation(applicant.id, facets);
+              } catch (err) {
+                console.error(`Failed to parse CV for applicant ${applicant.id}:`, err.message);
+              }
             }
           } catch (err) {
             console.error(`Failed to promote resume for applicant ${applicant.id}:`, err.message);

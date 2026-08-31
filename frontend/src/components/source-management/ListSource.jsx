@@ -277,7 +277,7 @@ export default function ListSourceStep({ selectedAccount }) {
                           disabled={isSyncing}
                           onClick={() => handleResyncRow(source)}
                         >
-                          {isSyncing ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : 'Re-Sync'}
+                          {isSyncing ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : (source.last_sync ? 'Re-Sync' : 'Sync')}
                         </Button>
                         <Button
                           variant="outline"
