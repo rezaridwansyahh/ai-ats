@@ -204,11 +204,11 @@ ${(qualifications || '').slice(0, 4000)}
   "job_position": { "current": string, "category": string },
   "skills": string[],
   "education": [
-    { "school": string, "degree": string, "year": number|null, "tier": "top"|"mid"|"other" }
+    { "school": string, "degree": string, "year": number|null, "tier": "top"|"mid"|"other", "description": string }
   ],
   "experience": {
     "years_total": number,
-    "positions": [ { "title": string, "company": string, "years": number } ]
+    "positions": [ { "title": string, "company": string, "years": number, "description": string } ]
   }
 }
 
@@ -217,6 +217,8 @@ Rules:
 - "tier" classifies the school: top (globally renowned, e.g. Harvard, MIT, Stanford, NUS), mid (well-known regional/national universities), other.
 - "years_total" is approximate total years of professional experience.
 - Skills should be concise tags (e.g. "React", "PostgreSQL"), not sentences.
+- Each position's "description": 1-2 sentence summary of actual responsibilities/achievements in that role, pulled from the CV's bullet points under it. Empty string if the CV gives no detail beyond the title.
+- Each education entry's "description": 1 sentence for any notable detail beyond degree/school — honors, thesis, relevant coursework, activities. Empty string if none mentioned.
 - If a field is unknown, return a sensible default ("" for strings, 0 for numbers, [] for arrays). Do NOT add commentary.
 
 CV:
@@ -264,6 +266,7 @@ ${trimmed}
               degree: typeof e.degree === 'string' ? e.degree : '',
               year: Number.isFinite(Number(e.year)) ? Number(e.year) : null,
               tier: ['top', 'mid', 'other'].includes(e.tier) ? e.tier : 'other',
+              description: typeof e.description === 'string' ? e.description : '',
             }))
         : [],
       experience: {
@@ -275,6 +278,7 @@ ${trimmed}
                 title: typeof p.title === 'string' ? p.title : '',
                 company: typeof p.company === 'string' ? p.company : '',
                 years: safeNumber(p.years, 0, 60) ?? 0,
+                description: typeof p.description === 'string' ? p.description : '',
               }))
           : [],
       },
@@ -298,11 +302,11 @@ ${trimmed}
   "job_position": { "current": string, "category": string },
   "skills": string[],
   "education": [
-    { "school": string, "degree": string, "year": number|null, "tier": "top"|"mid"|"other" }
+    { "school": string, "degree": string, "year": number|null, "tier": "top"|"mid"|"other", "description": string }
   ],
   "experience": {
     "years_total": number,
-    "positions": [ { "title": string, "company": string, "years": number } ]
+    "positions": [ { "title": string, "company": string, "years": number, "description": string } ]
   }
 }
 
@@ -310,6 +314,8 @@ Rules:
 - "category": coarse role — "Frontend", "Backend", "Full Stack", "Data", "Product Design", "Mobile", "DevOps", "Product Management", "QA", "Recruiting".
 - "tier": top (globally renowned e.g. Harvard, MIT, NUS), mid (well-known regional/national), other.
 - Skills: concise tags (e.g. "React", "PostgreSQL"), not sentences.
+- Each position's "description": 1-2 sentence summary of actual responsibilities/achievements in that role, pulled from the CV's bullet points under it. Empty string if the CV gives no detail beyond the title.
+- Each education entry's "description": 1 sentence for any notable detail beyond degree/school — honors, thesis, relevant coursework, activities. Empty string if none mentioned.
 - Unknown fields: return sensible defaults ("" for strings, 0 for numbers, [] for arrays). No commentary.`;
 
     const mimeType = filename.toLowerCase().endsWith('.pdf') ? 'application/pdf'
@@ -371,6 +377,7 @@ Rules:
             degree: typeof e.degree === 'string' ? e.degree : '',
             year:   Number.isFinite(Number(e.year)) ? Number(e.year) : null,
             tier:   ['top', 'mid', 'other'].includes(e.tier) ? e.tier : 'other',
+            description: typeof e.description === 'string' ? e.description : '',
           }))
         : [],
       experience: {
@@ -380,6 +387,7 @@ Rules:
               title:   typeof p.title   === 'string' ? p.title   : '',
               company: typeof p.company === 'string' ? p.company : '',
               years:   safeNumber(p.years, 0, 60) ?? 0,
+              description: typeof p.description === 'string' ? p.description : '',
             }))
           : [],
       },
@@ -515,8 +523,8 @@ often carries nuance (specific tools, domain, day-to-day duties) those fields do
 
 Fixed criteria:
 1. skills — Match against the job's required + preferred skills, and against any specific tools/technologies/domains called out in job_desc or qualifications. Heavily favour required-skill coverage.
-2. experience — Years total, role relevance, and progression vs the seniority asked — cross-check against what job_desc and qualifications actually describe the role doing day-to-day, not just the seniority_level label. Judge fresh graduates and experienced hires fairly on their own terms — lack of seniority should not penalize a fresh graduate, but should for a role that explicitly asks for it.
-3. education — Degree relevance, school tier vs qualifications — check job_desc and qualifications for any explicit degree/field requirements beyond the seniority_level label.
+2. experience — Years total, role relevance, and progression vs the seniority asked — cross-check against what job_desc and qualifications actually describe the role doing day-to-day, not just the seniority_level label. Also read each entry's "description" under experience.positions (if present) for what the candidate actually did in that role, not just years/title. Judge fresh graduates and experienced hires fairly on their own terms — lack of seniority should not penalize a fresh graduate, but should for a role that explicitly asks for it.
+3. education — Degree relevance, school tier vs qualifications — check job_desc and qualifications for any explicit degree/field requirements beyond the seniority_level label. Also read each entry's "description" under education (if present) for honors/thesis/coursework that may strengthen or weaken the match.
 
 Custom criteria (each scored 0-100, with a one-sentence reason):
 ${customBlock}
@@ -884,10 +892,10 @@ Return STRICT JSON:
   "facets": {
     "job_position": { "current": "string", "category": "string" },
     "skills": ["string"],
-    "education": [{ "school": "string", "degree": "string", "year": null, "tier": "top|mid|other" }],
+    "education": [{ "school": "string", "degree": "string", "year": null, "tier": "top|mid|other", "description": "string" }],
     "experience": {
       "years_total": 0,
-      "positions": [{ "title": "string", "company": "string", "years": 0 }]
+      "positions": [{ "title": "string", "company": "string", "years": 0, "description": "string" }]
     }
   }
 }
@@ -896,6 +904,8 @@ Rules:
 - "category": coarse role — "Frontend", "Backend", "Full Stack", "Data", "Product Design", "Mobile", "DevOps", "Product Management", "QA", or "Recruiting".
 - "tier": top (globally renowned e.g. Harvard, MIT, NUS), mid (well-known regional/national), other.
 - Skills: concise tags only (e.g. "React", "PostgreSQL"), not full sentences.
+- Each position's "description": 1-2 sentence summary of actual responsibilities/achievements in that role, pulled from the CV's bullet points under it. Empty string if the CV gives no detail beyond the title.
+- Each education entry's "description": 1 sentence for any notable detail beyond degree/school — honors, thesis, relevant coursework, activities. Empty string if none mentioned.
 - Return sensible defaults for unknown fields. No commentary outside the JSON.`;
 
     // Upload PDF to OpenAI Files API so the model can OCR it directly
@@ -967,6 +977,7 @@ Rules:
               degree: typeof e.degree === 'string' ? e.degree : '',
               year:   Number.isFinite(Number(e.year)) ? Number(e.year) : null,
               tier:   ['top', 'mid', 'other'].includes(e.tier) ? e.tier : 'other',
+              description: typeof e.description === 'string' ? e.description : '',
             }))
           : [],
         experience: {
@@ -976,6 +987,7 @@ Rules:
                 title:   typeof p.title   === 'string' ? p.title   : '',
                 company: typeof p.company === 'string' ? p.company : '',
                 years:   safeNumber(p.years, 0, 60) ?? 0,
+                description: typeof p.description === 'string' ? p.description : '',
               }))
             : [],
         },
