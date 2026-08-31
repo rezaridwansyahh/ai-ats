@@ -13,6 +13,7 @@ import companyService from "../../company/company.service.js"
 import { promoteDownloadedCv } from "../../../shared/utils/cv-storage.js"
 import aiService from "../../../shared/services/ai.service.js"
 import screeningModel from "../../screening/screening.model.js"
+import screeningService from "../../screening/screening.service.js"
 import fs from "fs"
 import path from "path"
 
@@ -173,13 +174,12 @@ class SeekService {
             last_position: candidate.last_position,
             address: candidate.address,
             education: candidate.education || null,
-            information: candidate.information || null,
+            // Raw scraped screening Q&A is application-specific (this job's
+            // custom questions), so it goes on the sourcing mapping — not on
+            // this applicant row, which is shared across all their applications.
+            sourcing_information: candidate.information || null,
             date: candidate.date || null,
             attachment: null,
-          });
-
-          await jobPostSeekModel.update(job_sourcing_id, {
-            progress: candidate.progress
           });
 
           if (candidate.attachment && applicant?.id) {
@@ -214,7 +214,10 @@ class SeekService {
             for (const jobId of linkedJobIds) {
               try {
                 const created = await candidatePipelineModel.createFromApplicantIfAbsent(applicant.id, jobId);
-                if (created) promoted++;
+                if (created) {
+                  promoted++;
+                  await screeningService.autoScoreIfPossible(applicant.id, jobId);
+                }
               } catch (err) {
                 console.error(`Auto-promote failed for applicant ${applicant.id} → job ${jobId}:`, err.message);
               }

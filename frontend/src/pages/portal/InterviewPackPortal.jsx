@@ -2,12 +2,12 @@ import { useEffect, useState, useRef, useCallback } from 'react';
 import { useParams } from 'react-router-dom';
 import {
   Loader2, AlertTriangle, CheckCircle2, ChevronDown, ChevronUp,
-  Clock, User, Briefcase, Calendar, Send, Lock,
+  Clock, User, Briefcase, Calendar, Send, Lock, Download,
 } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 
-import { getPackByToken, saveOutcome, submitPack } from '@/api/interview-pack.api';
+import { getPackByToken, saveOutcome, submitPack, downloadPackCandidateCv } from '@/api/interview-pack.api';
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
@@ -237,6 +237,7 @@ export default function InterviewPackPortal() {
   const [confirmSubmit, setConfirmSubmit] = useState(false);
 
   const [savingId, setSavingId] = useState(null);
+  const [downloadingCv, setDownloadingCv] = useState(false);
   const [savedId, setSavedId] = useState(null);
 
   // Debounce timers per candidate
@@ -421,6 +422,26 @@ export default function InterviewPackPortal() {
 
   const isReadOnly = submitted;
 
+  const handleDownloadCv = async () => {
+    if (!activePcId) return;
+    setDownloadingCv(true);
+    try {
+      const res = await downloadPackCandidateCv(token, activePcId);
+      const blobUrl = URL.createObjectURL(res.data);
+      const a = document.createElement('a');
+      a.href = blobUrl;
+      a.download = `${activeCandidate?.applicant_name ?? 'candidate'}-cv.pdf`;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      URL.revokeObjectURL(blobUrl);
+    } catch {
+      // no-op — button stays available to retry, matches CandidateProfile's tolerant pattern
+    } finally {
+      setDownloadingCv(false);
+    }
+  };
+
   return (
     <div className="min-h-screen bg-background pb-24">
       <div className="max-w-4xl mx-auto px-4 py-6 space-y-4">
@@ -577,7 +598,20 @@ export default function InterviewPackPortal() {
                       <p className="text-xs text-muted-foreground">{activeCandidate.last_position}</p>
                     )}
                   </div>
-                  <SaveIndicator savingId={savingId} savedId={savedId} candidateId={activePcId} />
+                  <div className="flex items-center gap-2">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="text-xs h-7 px-2.5"
+                      disabled={downloadingCv}
+                      onClick={handleDownloadCv}
+                    >
+                      {downloadingCv
+                        ? <><Loader2 className="h-3.5 w-3.5 mr-1.5 animate-spin" /> Downloading…</>
+                        : <><Download className="h-3.5 w-3.5 mr-1.5" /> Download CV</>}
+                    </Button>
+                    <SaveIndicator savingId={savingId} savedId={savedId} candidateId={activePcId} />
+                  </div>
                 </CardContent>
               </Card>
 

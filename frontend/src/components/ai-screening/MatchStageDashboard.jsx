@@ -140,11 +140,10 @@ export default function MatchStageDashboard({ jobId, pendingRows = [], scoredRow
               <TableHeader className="bg-muted/30">
                 <TableRow>
                   <TableHead className="text-[10px] font-bold uppercase pl-4">Candidate</TableHead>
-                  <SortHead label="Fit"        col="overall_score"           sortKey={sortKey} sortDir={sortDir} onClick={toggleSort} />
-                  <SortHead label="Skills"     col="skills_score"            sortKey={sortKey} sortDir={sortDir} onClick={toggleSort} />
-                  <SortHead label="Experience" col="experience_score"        sortKey={sortKey} sortDir={sortDir} onClick={toggleSort} />
-                  <SortHead label="Trajectory" col="career_trajectory_score" sortKey={sortKey} sortDir={sortDir} onClick={toggleSort} />
-                  <SortHead label="Education"  col="education_score"         sortKey={sortKey} sortDir={sortDir} onClick={toggleSort} />
+                  <SortHead label="Fit"        col="overall_score"    sortKey={sortKey} sortDir={sortDir} onClick={toggleSort} />
+                  <SortHead label="Skills"     col="skills_score"     sortKey={sortKey} sortDir={sortDir} onClick={toggleSort} />
+                  <SortHead label="Experience" col="experience_score" sortKey={sortKey} sortDir={sortDir} onClick={toggleSort} />
+                  <SortHead label="Education"  col="education_score"  sortKey={sortKey} sortDir={sortDir} onClick={toggleSort} />
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -161,7 +160,6 @@ export default function MatchStageDashboard({ jobId, pendingRows = [], scoredRow
                     <TableCell className="text-center"><ScoreBadge score={r.overall_score} bold /></TableCell>
                     <TableCell className="text-center"><ScoreBadge score={r.skills_score} /></TableCell>
                     <TableCell className="text-center"><ScoreBadge score={r.experience_score} /></TableCell>
-                    <TableCell className="text-center"><ScoreBadge score={r.career_trajectory_score} /></TableCell>
                     <TableCell className="text-center"><ScoreBadge score={r.education_score} /></TableCell>
                   </TableRow>
                 ))}

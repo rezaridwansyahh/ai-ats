@@ -22,13 +22,13 @@ export const scoreCandidateLegacy = (applicant_id, job_id) =>
 
 // Score ALL candidates in a job using the supplied (or saved) rubric.
 // Equivalent to the old `runMatching`.
-export const scoreAllCandidates = (job_id, { rubric, role_profile } = {}) =>
-  api.post(`/screening/match/${job_id}`, { rubric, role_profile });
+export const scoreAllCandidates = (job_id, { rubric } = {}) =>
+  api.post(`/screening/match/${job_id}`, { rubric });
 
 // Score ONE candidate in a job — saves the rubric so the UI rubric is respected.
 // Use this from the candidate detail page.
-export const scoreCandidate = (job_id, applicant_id, { rubric, role_profile } = {}) =>
-  api.post(`/screening/job/${job_id}/score-candidate`, { applicant_id, rubric, role_profile });
+export const scoreCandidate = (job_id, applicant_id, { rubric } = {}) =>
+  api.post(`/screening/job/${job_id}/score-candidate`, { applicant_id, rubric });
 
 // Score a specific list of candidates using the saved rubric (no rubric in request).
 // Equivalent to the old `matchBulk`. Use this from the workboard bulk-run action.

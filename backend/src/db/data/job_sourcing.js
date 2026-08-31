@@ -7,9 +7,8 @@
 // Default AI-Screening rubric — Myralix jobs use this. Weights sum to 100.
 const DEFAULT_RUBRIC = {
   fixed_criteria: {
-    skills:            { weight: 45 },
-    experience:        { weight: 35 },
-    career_trajectory: { weight: 15 },
+    skills:            { weight: 55 },
+    experience:        { weight: 40 },
     education:         { weight: 5 },
   },
   custom_criteria: [],
@@ -18,9 +17,8 @@ const DEFAULT_RUBRIC = {
 // Skills-heavy variant — Acme jobs use this. Weights sum to 100.
 const SKILLS_HEAVY_RUBRIC = {
   fixed_criteria: {
-    skills:            { weight: 60 },
+    skills:            { weight: 70 },
     experience:        { weight: 25 },
-    career_trajectory: { weight: 10 },
     education:         { weight: 5 },
   },
   custom_criteria: [],

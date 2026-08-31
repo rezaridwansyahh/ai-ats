@@ -133,6 +133,32 @@ class JobController {
       res.end();
     }
   }
+
+  async generateSkills(req, res) {
+    const { job_desc, qualifications } = req.body;
+
+    if (!job_desc?.trim() && !qualifications?.trim()) {
+      return res.status(400).json({ message: 'job_desc or qualifications is required' });
+    }
+
+    try {
+      const aiContext = {
+        company_id: req.user?.company_id ?? null,
+        user_id:    req.user?.user_id    ?? null,
+      };
+      const result = await aiService.generateJobSkills(job_desc, qualifications, aiContext);
+      res.status(200).json(result);
+    } catch (err) {
+      if (err.status === 402) {
+        return res.status(402).json({
+          message: err.message,
+          budget: err.budget,
+          spent: err.spent
+        });
+      }
+      res.status(err.status || 500).json({ message: err.message });
+    }
+  }
 }
 
 export default new JobController();
