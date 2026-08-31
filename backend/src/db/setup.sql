@@ -1,5 +1,7 @@
 -- Drop tables in reverse dependency order (most dependent first)
 -- Onboarding tables (Migration 010)
+DROP TABLE IF EXISTS onboarding_assessment_result CASCADE; 
+DROP TABLE IF EXISTS onboarding_assessment CASCADE;
 DROP TABLE IF EXISTS lms_progress CASCADE;
 DROP TABLE IF EXISTS lms_content CASCADE;
 DROP TABLE IF EXISTS lms_module CASCADE;
@@ -1113,6 +1115,32 @@ CREATE TABLE lms_progress (
   created_at TIMESTAMP DEFAULT NOW(),
   updated_at TIMESTAMP DEFAULT NOW(),
   CONSTRAINT unique_hire_module UNIQUE (candidate_onboarding_id, module_id)
+);
+
+CREATE TABLE onboarding_assessment (
+  id SERIAL PRIMARY KEY,
+  assessment_code VARCHAR(50) UNIQUE NOT NULL,   
+  name VARCHAR(255) NOT NULL,
+  milestone VARCHAR(20) NOT NULL,                
+  duration_minutes INT,
+  options JSONB NOT NULL,                       
+  is_active BOOLEAN DEFAULT true,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+CREATE TABLE onboarding_assessment_result (
+  id SERIAL PRIMARY KEY,
+  candidate_onboarding_id INTEGER NOT NULL REFERENCES candidate_onboarding(id) ON DELETE CASCADE,
+  assessment_id INTEGER NOT NULL REFERENCES onboarding_assessment(id),
+  status assessment_status_type NOT NULL DEFAULT 'in_progress',  -- reuse existing enum
+  results JSONB NOT NULL,
+  summary JSONB,
+  started_at TIMESTAMPTZ,
+  completed_at TIMESTAMPTZ,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  UNIQUE (candidate_onboarding_id, assessment_id)
 );
 
 
