@@ -20,6 +20,17 @@ function formatDate(d) {
   try { return new Date(d).toLocaleDateString(); } catch { return '—'; }
 }
 
+// NEW: maps the raw source_type / source_platform / source_job_title fields
+// (expected from getAllByCompanyWithScore) into a label + sub-label pair.
+function formatSource(r) {
+  if (r.source_type === 'external_platform') {
+    const platformLabelMap = { seek: 'Seek', linkedin: 'LinkedIn' };
+    const label = platformLabelMap[r.source_platform] || r.source_platform || 'External Platform';
+    return { label, sub: r.source_job_title || null };
+  }
+  return { label: 'CV Upload', sub: null };
+}
+
 export default function TalentPoolTable({
   rows,
   total,
@@ -120,25 +131,26 @@ export default function TalentPoolTable({
                     className="border-2 border-slate-400 data-[state=checked]:border-primary data-[state=checked]:bg-primary"
                   />
                 </TableHead>
-                <TableHead className="w-[17%] text-[10px] font-bold uppercase pl-0">Name</TableHead>
-                <TableHead className="w-[15%] text-[10px] font-bold uppercase">Last Position</TableHead>
-                <TableHead className="w-[19%] text-[10px] font-bold uppercase">Skills</TableHead>
-                <TableHead className="w-[12%] text-[10px] font-bold uppercase">Location</TableHead>
-                <TableHead className="w-[9%] text-[10px] font-bold uppercase text-center">Score</TableHead>
-                <TableHead className="w-[9%] text-[10px] font-bold uppercase pr-4">Applied</TableHead>
-                <TableHead data-tour="talent-action-header" className="w-[9%] text-[10px] font-bold uppercase text-right pr-6">Action</TableHead>
+                <TableHead className="w-[16%] text-[10px] font-bold uppercase pl-0">Name</TableHead>
+                <TableHead className="w-[13%] text-[10px] font-bold uppercase">Last Position</TableHead>
+                <TableHead className="w-[17%] text-[10px] font-bold uppercase">Skills</TableHead>
+                <TableHead className="w-[13%] text-[10px] font-bold uppercase">Location</TableHead>
+                <TableHead className="w-[13%] text-[10px] font-bold uppercase">Source</TableHead>
+                <TableHead className="w-[7%] text-[10px] font-bold uppercase text-center">Score</TableHead>
+                <TableHead className="w-[10%] text-[10px] font-bold uppercase">Applied</TableHead>
+                <TableHead data-tour="talent-action-header" className="w-[11%] text-[10px] font-bold uppercase text-right pr-4">Action</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {loading ? (
                 <TableRow>
-                  <TableCell colSpan={8} className="text-center py-10 text-xs text-muted-foreground">
+                  <TableCell colSpan={9} className="text-center py-10 text-xs text-muted-foreground">
                     Loading applicants...
                   </TableCell>
                 </TableRow>
               ) : rows.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={8} className="text-center py-10 text-xs text-muted-foreground">
+                  <TableCell colSpan={9} className="text-center py-10 text-xs text-muted-foreground">
                     {hasActiveFilters ? 'No applicants match your filters.' : 'No applicants found.'}
                   </TableCell>
                 </TableRow>
@@ -149,6 +161,7 @@ export default function TalentPoolTable({
                 const positionLabel  = info.job_position?.current || r.last_position || '—';
                 const categoryLabel  = info.job_position?.category;
                 const isSelected = selectedIds.has(r.id);
+                const { label: sourceLabel, sub: sourceSub } = formatSource(r);
 
                 return (
                   <TableRow key={r.id} className={`hover:bg-muted/30 transition-colors ${isSelected ? 'bg-primary/5' : ''}`}>
@@ -194,6 +207,14 @@ export default function TalentPoolTable({
                         <MapPin className="h-3 w-3 text-muted-foreground shrink-0 mt-0.5" />
                         <span className="break-words">{r.address || '—'}</span>
                       </div>
+                    </TableCell>
+
+                    {/* NEW: Source column — shows CV Upload, or the external platform + originating job posting */}
+                    <TableCell className="text-xs py-2 whitespace-normal">
+                      <div className="font-medium break-words">{sourceLabel}</div>
+                      {sourceSub && (
+                        <div className="text-[10px] text-muted-foreground break-words">{sourceSub}</div>
+                      )}
                     </TableCell>
 
                     <TableCell className="text-center py-2">

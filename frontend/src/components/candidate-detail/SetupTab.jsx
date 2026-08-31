@@ -7,7 +7,7 @@ import { BATTERIES } from '@/lib/batteries';
 // Tab 1: battery picker. Four cards (A/B/C/D) selectable. Below: test sequence of the chosen battery.
 // "Send invitation" → parent advances to Take tab.
 export default function SetupTab({ selectedBattery, onSelectBattery, onSendInvitation, lockedBattery = null }) {
-  const codes = ['A', 'B', 'C', 'D', 'I', 'T'];
+  const codes = ['A', 'B', 'C', 'D'];
   const active = selectedBattery ? BATTERIES[selectedBattery] : null;
   const canInvite = active ? active.invitable !== false : false;
 

@@ -3,7 +3,7 @@ import Sidebar from './SidebarOnboarding';
 import Topbar from './TopbarOnboarding';
 import { LMS_DATA } from './mockData';
 
-export default function AppShell({ route, goTo, t, children }) {
+export default function AppShell({ route, goTo, t, children, modules, onboarding }) {
   const completion = useMemo(() => {
     const source = modules ?? LMS_DATA.MODULES;
     const total = source.length;

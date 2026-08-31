@@ -6,6 +6,15 @@ import OnboardingLogin from '../components/onboarding-lms/OnboardingLogin';
 import { LMS_DATA } from '../components/onboarding-lms/mockData';
 import Journey from '@/components/onboarding-lms/Journey';
 import ModuleDetail from '@/components/onboarding-lms/ModuleDetail';
+import Viewer from '@/components/onboarding-lms/Viewer';
+import Quiz from '@/components/onboarding-lms/Quiz';
+import Feedback from '@/components/onboarding-lms/Feedback';
+import Report from '@/components/onboarding-lms/Report';
+import Assessments from '@/components/onboarding-lms/Assessments';
+import AssessmentDetail from '@/components/onboarding-lms/AssessmentDetail';
+
+import { getOnboardingToken } from '@/lib/onboardingPortalAuth';
+import { getMe, getCurriculum } from '@/api/portal-onboarding.api';
 
 // Fixed language — language toggle removed for now
 const LANG = 'id';
@@ -80,13 +89,13 @@ export default function OnboardingLmsPreview() {
       case 'module':
         return <ModuleDetail moduleId={params.moduleId} t={t} lang={LANG} goTo={goTo} />;
       case 'viewer':
-        return <ComingSoon label="Content Viewer" />;
+        return <Viewer moduleId={params.moduleId} t={t} lang={lang} goTo={goTo} />;
       case 'quiz':
-        return <ComingSoon label="Assessment" />;
+        return <Quiz moduleId={params.moduleId} t={t} lang={lang} goTo={goTo} />;
       case 'feedback':
-        return <ComingSoon label="Feedback" />;
+        return <Feedback moduleId={params.moduleId} t={t} lang={lang} goTo={goTo} />;
       case 'report':
-        return <ComingSoon label="My Report" />;
+        return <Report t={t} lang={lang} goTo={goTo} />;
       case 'assistant':
         return <ComingSoon label="Assistant" />;
       case 'help':
@@ -94,15 +103,16 @@ export default function OnboardingLmsPreview() {
       case 'settings':
         return <ComingSoon label="Settings" />;
       case 'assessments':
+        return <Assessments lang={LANG} goTo={goTo} />;
       case 'assessment':
-        return <ComingSoon label="Assessments" />;
+        return <AssessmentDetail assessmentId={params.assessmentId} lang={LANG} goTo={goTo} />;
       default:
         return <HomeScreen data={LMS_DATA} t={t} lang={LANG} goTo={goTo} />;
     }
   };
 
   return (
-    <AppShell route={route} goTo={goTo} t={t}>
+    <AppShell route={route} goTo={goTo} t={t} modules={curriculum?.MODULES} onboarding={onboarding}>
       {renderScreen()}
     </AppShell>
   );
