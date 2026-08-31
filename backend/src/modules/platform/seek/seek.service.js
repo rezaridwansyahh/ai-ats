@@ -178,10 +178,6 @@ class SeekService {
             attachment: null,
           });
 
-          await jobPostSeekModel.update(job_sourcing_id, {
-            progress: candidate.progress
-          });
-
           if (candidate.attachment && applicant?.id) {
             try {
               const savedPath = promoteDownloadedCv(
