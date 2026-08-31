@@ -68,7 +68,7 @@ class ApplicantModel {
 
   async getSourcingsByApplicantId(applicant_id) {
     const result = await getDb().query(`
-      SELECT mas.job_sourcing_id, mas.created_at, cjs.platform, cjs.status, cjs.platform_job_id
+      SELECT mas.job_sourcing_id, mas.information, mas.created_at, cjs.platform, cjs.status, cjs.platform_job_id
       FROM mapping_applicant_sourcing mas
       JOIN core_job_sourcing cjs ON cjs.id = mas.job_sourcing_id
       WHERE mas.applicant_id = $1
@@ -77,13 +77,17 @@ class ApplicantModel {
     return result.rows;
   }
 
-  async addSourcingMapping(applicant_id, job_sourcing_id) {
+  // `information` here is the raw scraped screening Q&A for THIS application —
+  // refreshed on conflict (re-sync) so it stays current with the latest scrape,
+  // rather than left stuck on whatever was first recorded.
+  async addSourcingMapping(applicant_id, job_sourcing_id, information = null) {
     const result = await getDb().query(`
-      INSERT INTO mapping_applicant_sourcing (applicant_id, job_sourcing_id)
-      VALUES ($1, $2)
-      ON CONFLICT (applicant_id, job_sourcing_id) DO NOTHING
+      INSERT INTO mapping_applicant_sourcing (applicant_id, job_sourcing_id, information)
+      VALUES ($1, $2, $3)
+      ON CONFLICT (applicant_id, job_sourcing_id) DO UPDATE SET
+        information = EXCLUDED.information
       RETURNING *
-    `, [applicant_id, job_sourcing_id]);
+    `, [applicant_id, job_sourcing_id, information ? JSON.stringify(information) : null]);
     return result.rows[0] ?? null;
   }
 
@@ -106,7 +110,12 @@ class ApplicantModel {
   // record is overwritten with the new data (newest sync/upload always wins) and,
   // if `job_sourcing_id` is provided, linked to it via mapping_applicant_sourcing
   // instead of creating a duplicate person. Otherwise inserts a new applicant.
-  async create({ job_sourcing_id, upload_batch_id, company_id, name, email, last_position, address, education, information, date, attachment }) {
+  // `sourcing_information` is the raw scraped screening Q&A for this specific
+  // application — stored on mapping_applicant_sourcing (per job_sourcing_id),
+  // not on this applicant row, since it's application-specific (RPA sources
+  // like Seek/LinkedIn). `information` here stays the person-level AI-parsed
+  // CV facets, shared across every application this applicant has.
+  async create({ job_sourcing_id, upload_batch_id, company_id, name, email, last_position, address, education, information, date, attachment, sourcing_information = null }) {
     const infoJson = information ? JSON.stringify(information) : null;
 
     let applicant;
@@ -159,7 +168,7 @@ class ApplicantModel {
     }
 
     if (job_sourcing_id) {
-      await this.addSourcingMapping(applicant.id, job_sourcing_id);
+      await this.addSourcingMapping(applicant.id, job_sourcing_id, sourcing_information);
     }
 
     return applicant;

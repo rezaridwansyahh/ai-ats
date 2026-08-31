@@ -182,8 +182,17 @@ class ExtractCandidateService {
               const q = row.querySelector('[data-cy="question"] span')?.innerText.trim();
               const a = row.querySelector('[data-cy="answer-0"] span')?.innerText.trim();
 
+              // Seek shows a Match/No Match icon next to each screening question,
+              // indicating whether the candidate's answer meets the job's stated
+              // requirement for it — identified by the <svg><title> text since the
+              // surrounding CSS classes are auto-generated/unstable.
+              const iconTitle = row.querySelector('svg title')?.textContent?.trim();
+              let meets_requirement = null;
+              if (iconTitle === 'Match Icon') meets_requirement = true;
+              else if (iconTitle === 'No Match Icon') meets_requirement = false;
+
               if (q) {
-                information[q] = a || "";
+                information[q] = { answer: a || "", meets_requirement };
               }
             });
           }

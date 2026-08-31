@@ -45,6 +45,7 @@ class CandidatePipelineService {
       if (!candidate) {
         throw { status: 404, message: 'Applicant not found' };
       }
+      await screeningService.autoScoreIfPossible(applicant_id, job_id);
       return candidate;
     } catch (err) {
       if (err.code === '23505') {
