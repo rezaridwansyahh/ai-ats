@@ -1,5 +1,5 @@
 //PERLU DIUPDATE
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import {
   Loader2, AlertTriangle, ArrowLeft, ArrowRight, Check,
@@ -7,7 +7,7 @@ import {
   ThumbsUp, ThumbsDown, Pause, MessageSquare,
   Plus, X, Target, Info,
   Send, RefreshCw, Mail, Clock, Pencil,
-  ClipboardList, ChevronDown, ChevronRight, Upload, HelpCircle
+  ClipboardList, ChevronDown, ChevronRight, HelpCircle
 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -23,7 +23,7 @@ import {
 import {
   getScreening, setScreeningDecision, getRubric,
   getQa, getQaResponses, generateQa, updateQa, sendQa,
-  getApplicationFormTemplate, extractFacetsFromFile, extractFacetsFromText,
+  getApplicationFormTemplate,
   getScreeningByCandidate, scoreCandidate, getQaPreview
 } from '@/api/screening.api';
 import {
@@ -42,7 +42,6 @@ import { getEmailTemplates } from '@/api/email-template.api';
 
 /* ─── Engine config (mirrors the spec) ─── */
 const ENGINES = [
-  { key: 'parse', label: 'Parse',  sub: 'extract CV',  icon: FileText },
   { key: 'match', label: 'Match',  sub: 'score fit',   icon: Wand2 },
   { key: 'qa',    label: 'Q&A',    sub: 'follow-up',   icon: MessageSquare, comingSoon: true },
   { key: 'summary', label: 'Summary', sub: 'review + decide', icon: ClipboardList },
@@ -323,7 +322,7 @@ export default function AIScreeningCandidatePage() {
   const [error, setError] = useState(null);
 
   // Active engine panel — defaults to the candidate's current engine.
-  const [activeEngine, setActiveEngine] = useState('parse');
+  const [activeEngine, setActiveEngine] = useState('match');
 
   // Decision drawer state
   const [decisionDraft, setDecisionDraft] = useState(null);
@@ -340,7 +339,11 @@ export default function AIScreeningCandidatePage() {
       const res = await getScreeningByCandidate(candidateId);
       const row = res.data?.screening;
       setData(row);
-      if (row?.engine) setActiveEngine(row.engine === 'done' ? 'qa' : row.engine);
+      if (row?.engine) {
+        // 'parse' is no longer a UI step (parsing is automatic on sync/upload now) —
+        // land on Match instead if the backend still reports that lane.
+        setActiveEngine(row.engine === 'done' ? 'qa' : row.engine === 'parse' ? 'match' : row.engine);
+      }
     } catch (err) {
       setError(err.response?.data?.message || err.message || 'Failed to load screening');
     } finally {
@@ -393,11 +396,7 @@ export default function AIScreeningCandidatePage() {
 
     const { candidate_name, applicant_id, applied_at,
           job_id, job_title, job_location, work_type, seniority_level,
-          engine, decision, decision_reason: existingReason, decided_at, rubric_is_stale,
-          facets, attachment } = data;
-
-  const cvText = [data.last_position, data.address, data.education_text]
-  .filter(Boolean).join('\n');
+          engine, decision, decision_reason: existingReason, decided_at, rubric_is_stale } = data;
 
   const initials = (candidate_name || '?').split(/\s+/).map((s) => s[0]).join('').slice(0, 2).toUpperCase();
   const scored = engine === 'done';
@@ -466,15 +465,6 @@ export default function AIScreeningCandidatePage() {
 
             {/* Engine panel (re-animates on each step switch) */}
             <div data-tour="candidate-engine-panel" key={activeEngine} className="animate-fade-in-up">
-              {activeEngine === 'parse' && (
-                <ParsePanel
-                  facets={facets}
-                  applicant_id={applicant_id}
-                  cv_text={cvText}
-                  attachment={attachment}
-                  onParsed={load}
-                />
-              )}
               {activeEngine === 'match' && <MatchPanel data={data} match={match} />}
               {activeEngine === 'qa'    && (
                 <QAPanel
@@ -495,7 +485,7 @@ export default function AIScreeningCandidatePage() {
             </div>
 
             {/* Step paginator (mirrors JobEdit) */}
-            <StepPaginator activeEngine={activeEngine} onStep={goToStep} engine={engine} parsed={!!facets} scored={scored} qaResponded={qa.status === 'responded'} />
+            <StepPaginator activeEngine={activeEngine} onStep={goToStep} engine={engine} scored={scored} qaResponded={qa.status === 'responded'} />
           </div>
 
           {/* SIDEBAR — contextual primary action + steps nav.
@@ -508,7 +498,6 @@ export default function AIScreeningCandidatePage() {
                   match={match}
                   qa={qa}
                   scored={scored}
-                  parsed={!!facets}
                   overall_score={data.overall_score}
                   onStep={goToStep}
                   candidateName={candidate_name}
@@ -528,7 +517,6 @@ export default function AIScreeningCandidatePage() {
                 activeEngine={activeEngine}
                 onStep={goToStep}
                 engine={engine}
-                parsed={!!facets}
                 scored={scored}
                 qaResponded={qa.status === 'responded'}
               />
@@ -619,34 +607,7 @@ export default function AIScreeningCandidatePage() {
 }
 
 /* ─────────── Sidebar: contextual primary action ─────────── */
-function SidebarAction({ activeEngine, match, qa, scored, parsed, overall_score, onStep, candidateName, jobTitle }) {
-  if (activeEngine === 'parse') {
-    return (
-      <Card className="animate-scale-in">
-        <CardContent className="p-3 space-y-2">
-          <p className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">Next step</p>
-          <Button
-            size="sm"
-            className="w-full text-xs"
-            onClick={() => onStep('match')}
-            disabled={!parsed}
-          >
-            Continue to Match <ArrowRight className="h-3.5 w-3.5 ml-1.5" />
-          </Button>
-          {!parsed ? (
-            <p className="text-[10px] text-amber-600 flex items-start gap-1 leading-snug">
-              <AlertTriangle className="h-3 w-3 mt-0.5 shrink-0" /> Parse the CV first before proceeding to Match.
-            </p>
-          ) : (
-            <p className="text-[10px] text-muted-foreground leading-snug">
-              CV parsed. Configure the rubric and score this candidate in Match.
-            </p>
-          )}
-        </CardContent>
-      </Card>
-    );
-  }
-
+function SidebarAction({ activeEngine, match, qa, scored, overall_score, onStep, candidateName, jobTitle }) {
   if (activeEngine === 'match') {
     return (
       <Card className="animate-scale-in">
@@ -925,7 +886,7 @@ function DecisionDialog({ decision, reason, setReason, saving, onConfirm, onClos
 }
 
 /* ─────────── Step paginator (numbered, JobEdit-style) ─────────── */
-function StepPaginator({ activeEngine, onStep, engine, parsed, scored, qaResponded }) {
+function StepPaginator({ activeEngine, onStep, engine, scored, qaResponded }) {
   const activeIdx = ENGINES.findIndex((e) => e.key === activeEngine);
   return (
     <div className="border-t border-border/60 pt-4 space-y-2">
@@ -943,15 +904,14 @@ function StepPaginator({ activeEngine, onStep, engine, parsed, scored, qaRespond
         {ENGINES.map((eng, i) => {
           const active = i === activeIdx;
           const isDone =
-            (engine === 'match' && i === 0) ||
-            (engine === 'done'  && i <= 1) ||
-            (i === 2 && qaResponded);
-          const locked = (i === 1 && !parsed) || (i === 2 && !scored) || (i === 3 && !qaResponded);
+            (i === 0 && scored) ||
+            (i === 1 && qaResponded);
+          const locked = (i === 1 && !scored) || (i === 2 && !qaResponded);
           return (
             <button
               key={eng.key}
               type="button"
-              title={locked ? (i === 3 ? 'Candidate must respond to Q&A first' : 'Parse CV first') : eng.label}
+              title={locked ? (i === 2 ? 'Candidate must respond to Q&A first' : 'Score this candidate first') : eng.label}
               onClick={() => !locked && onStep(eng.key)}
               disabled={locked}
               className={`h-8 w-8 rounded-md text-xs font-semibold flex items-center justify-center transition-colors disabled:opacity-40 disabled:cursor-not-allowed ${
@@ -973,9 +933,8 @@ function StepPaginator({ activeEngine, onStep, engine, parsed, scored, qaRespond
           className="h-8 w-8"
           disabled={
             activeIdx >= ENGINES.length - 1 ||
-            (activeIdx === 0 && !parsed) ||
-            (activeIdx === 1 && !scored) ||
-            (activeIdx === 2 && !qaResponded)
+            (activeIdx === 0 && !scored) ||
+            (activeIdx === 1 && !qaResponded)
           }
           onClick={() => onStep(ENGINES[activeIdx + 1].key)}
         >
@@ -990,7 +949,7 @@ function StepPaginator({ activeEngine, onStep, engine, parsed, scored, qaRespond
 }
 
 /* ─────────── Sidebar: vertical steps nav ─────────── */
-function StepsNav({ activeEngine, onStep, engine, parsed, scored, qaResponded }) {
+function StepsNav({ activeEngine, onStep, engine, scored, qaResponded }) {
   return (
     <Card>
       <CardContent className="p-3 space-y-1">
@@ -998,18 +957,17 @@ function StepsNav({ activeEngine, onStep, engine, parsed, scored, qaResponded })
         {ENGINES.map((eng, idx) => {
           const Icon = eng.icon;
           const isDone =
-            (engine === 'match' && idx === 0) ||
-            (engine === 'done'  && idx <= 1) ||
-            (idx === 2 && qaResponded);
+            (idx === 0 && scored) ||
+            (idx === 1 && qaResponded);
           const active = eng.key === activeEngine;
-          const locked = (idx === 1 && !parsed) || (idx === 2 && !scored) || (idx === 3 && !qaResponded);
+          const locked = (idx === 1 && !scored) || (idx === 2 && !qaResponded);
           return (
             <button
               key={eng.key}
               type="button"
               disabled={locked}
               onClick={() => !locked && onStep(eng.key)}
-              title={locked ? (idx === 3 ? 'Candidate must respond to Q&A first' : 'Parse CV first') : undefined}
+              title={locked ? (idx === 2 ? 'Candidate must respond to Q&A first' : 'Score this candidate first') : undefined}
               className={`w-full flex items-center gap-2 px-2 py-1.5 rounded-md text-left transition-colors disabled:opacity-40 disabled:cursor-not-allowed ${
                 active ? 'bg-primary/10 text-primary' : 'hover:bg-muted/50 text-foreground'
               }`}
@@ -1036,113 +994,19 @@ function StepsNav({ activeEngine, onStep, engine, parsed, scored, qaResponded })
   );
 }
 
-/* ─────────── Parse panel ─────────── */
-function ParsePanel({ facets, applicant_id, cv_text, attachment, onParsed }) {
-  const [parsing, setParsing] = useState(false);
-  const [parseError, setParseError] = useState(null);
-  const fileRef = useRef(null);
-
-  const parseFromText = async () => {
-    if (!cv_text?.trim()) return;
-    setParsing(true);
-    setParseError(null);
-    try {
-      await extractFacetsFromText(applicant_id, cv_text);
-      onParsed?.();
-    } catch (err) {
-      setParseError(err.response?.data?.message || err.message || 'Parse failed');
-    } finally {
-      setParsing(false);
-    }
-  };
-
-  const parseFromFile = async (file) => {
-    setParsing(true);
-    setParseError(null);
-    try {
-      await extractFacetsFromFile(applicant_id, file);
-      onParsed?.();
-    } catch (err) {
-      setParseError(err.response?.data?.message || err.message || 'Parse failed');
-    } finally {
-      setParsing(false);
-    }
-  };
-
+/* ─────────── Parsed CV facets — read-only, folded into the Match panel.
+   Parsing itself now runs automatically on sync/upload (Seek, LinkedIn, and
+   manual Talent Pool CV upload all extract facets server-side), so there's
+   no manual trigger here anymore — just a snapshot of what was extracted. */
+function ParsedFacetsSection({ facets }) {
   if (!facets) {
     return (
-      <Card>
-        <CardHeader className="pb-3">
-          <CardTitle className="text-sm flex items-center gap-2">
-            <FileText className="h-4 w-4 text-primary" /> Parse
-          </CardTitle>
-        </CardHeader>
-        <CardContent className="py-8">
-          <div className="flex flex-col items-center gap-4 text-center max-w-xs mx-auto">
-            <div className="h-12 w-12 rounded-full bg-muted flex items-center justify-center">
-              <FileText className="h-5 w-5 text-muted-foreground" />
-            </div>
-            <div className="space-y-1">
-              <p className="text-sm font-medium">CV not parsed yet</p>
-              <p className="text-xs text-muted-foreground">
-                Extract skills, experience and education so the Match engine can score this candidate.
-              </p>
-            </div>
-
-            {parseError && (
-              <div className="flex items-center gap-2 px-3 py-2 rounded-md border border-red-200 bg-red-50 text-xs text-red-600 w-full text-left">
-                <AlertTriangle className="h-3.5 w-3.5 shrink-0" /> {parseError}
-              </div>
-            )}
-
-            <div className="flex flex-col gap-2 w-full">
-              {/* Primary — parse from existing row data */}
-              {cv_text?.trim() && (
-                <Button
-                  size="sm"
-                  onClick={parseFromText}
-                  disabled={parsing}
-                  className="gap-2 w-full"
-                >
-                  {parsing
-                    ? <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                    : <Wand2 className="h-3.5 w-3.5" />}
-                  {parsing ? 'Parsing…' : 'Parse from profile data'}
-                </Button>
-              )}
-
-              {/* Secondary — upload a better file */}
-              <input
-                ref={fileRef}
-                type="file"
-                accept=".pdf,.docx,.doc,.txt"
-                className="hidden"
-                onChange={(e) => {
-                  const f = e.target.files?.[0];
-                  if (f) parseFromFile(f);
-                  e.target.value = '';
-                }}
-              />
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => fileRef.current?.click()}
-                disabled={parsing}
-                className="gap-2 w-full"
-              >
-                <Upload className="h-3.5 w-3.5" />
-                Upload CV file
-              </Button>
-            </div>
-
-            {attachment && (
-              <p className="text-[10px] text-muted-foreground italic">
-                Stored attachment: <span className="font-mono">{attachment}</span>
-              </p>
-            )}
-          </div>
-        </CardContent>
-      </Card>
+      <div className="pt-3 border-t">
+        <div className="flex items-center gap-2 text-xs text-muted-foreground italic">
+          <FileText className="h-3.5 w-3.5 shrink-0" />
+          CV parsing runs automatically shortly after this candidate is added — check back soon.
+        </div>
+      </div>
     );
   }
 
@@ -1153,61 +1017,57 @@ function ParsePanel({ facets, applicant_id, cv_text, attachment, onParsed }) {
   const jobPos    = facets.job_position || {};
 
   return (
-    <Card>
-      <CardHeader className="pb-3">
-        <CardTitle className="text-sm flex items-center gap-2">
-          <FileText className="h-4 w-4 text-primary" /> Parse — extracted facets
-        </CardTitle>
-      </CardHeader>
-      <CardContent className="space-y-4">
-        <FacetRow label="Current role">
-          <span className="font-medium">{jobPos.current || '—'}</span>
-          {jobPos.category && <span className="text-muted-foreground ml-2">· {jobPos.category}</span>}
-        </FacetRow>
-        <FacetRow label="Total experience">
-          <span className="font-medium font-mono">{exp.years_total ?? '—'}y</span>
-          {positions.length > 0 && (
-            <span className="text-muted-foreground ml-2">across {positions.length} role{positions.length === 1 ? '' : 's'}</span>
-          )}
-        </FacetRow>
-        <FacetRow label="Skills">
-          {skills.length === 0 ? <span className="text-muted-foreground text-[11px] italic">none extracted</span> : (
-            <div className="flex flex-wrap gap-1">
-              {skills.map((s) => (
-                <Badge key={s} variant="secondary" className="text-[10px]">{s}</Badge>
-              ))}
-            </div>
-          )}
-        </FacetRow>
-        <FacetRow label="Education">
-          {education.length === 0 ? <span className="text-muted-foreground text-[11px] italic">none</span> : (
-            <ul className="space-y-1">
-              {education.map((e, i) => (
-                <li key={i} className="text-xs">
-                  <span className="font-medium">{e.school || '—'}</span>
-                  {e.degree && <span className="text-muted-foreground"> · {e.degree}</span>}
-                  {e.year && <span className="text-muted-foreground font-mono"> · {e.year}</span>}
-                  {e.tier && <Badge variant="outline" className="text-[9px] ml-1.5">{e.tier}</Badge>}
-                </li>
-              ))}
-            </ul>
-          )}
-        </FacetRow>
+    <div className="pt-3 border-t space-y-4">
+      <div className="text-[11px] font-medium text-muted-foreground uppercase flex items-center gap-1.5">
+        <FileText className="h-3.5 w-3.5 text-primary" /> CV facets
+      </div>
+      <FacetRow label="Current role">
+        <span className="font-medium">{jobPos.current || '—'}</span>
+        {jobPos.category && <span className="text-muted-foreground ml-2">· {jobPos.category}</span>}
+      </FacetRow>
+      <FacetRow label="Total experience">
+        <span className="font-medium font-mono">{exp.years_total ?? '—'}y</span>
         {positions.length > 0 && (
-          <FacetRow label="Positions">
-            <ul className="space-y-1">
-              {positions.map((p, i) => (
-                <li key={i} className="text-xs">
-                  <span className="font-medium">{p.title || '—'}</span>
-                  {p.company && <span className="text-muted-foreground"> · {p.company}</span>}
-                  {p.years != null && <span className="text-muted-foreground font-mono"> · {p.years}y</span>}
-                </li>
-              ))}
-            </ul>
-          </FacetRow>
+          <span className="text-muted-foreground ml-2">across {positions.length} role{positions.length === 1 ? '' : 's'}</span>
         )}
-      </CardContent>
-    </Card>
+      </FacetRow>
+      <FacetRow label="Skills">
+        {skills.length === 0 ? <span className="text-muted-foreground text-[11px] italic">none extracted</span> : (
+          <div className="flex flex-wrap gap-1">
+            {skills.map((s) => (
+              <Badge key={s} variant="secondary" className="text-[10px]">{s}</Badge>
+            ))}
+          </div>
+        )}
+      </FacetRow>
+      <FacetRow label="Education">
+        {education.length === 0 ? <span className="text-muted-foreground text-[11px] italic">none</span> : (
+          <ul className="space-y-1">
+            {education.map((e, i) => (
+              <li key={i} className="text-xs">
+                <span className="font-medium">{e.school || '—'}</span>
+                {e.degree && <span className="text-muted-foreground"> · {e.degree}</span>}
+                {e.year && <span className="text-muted-foreground font-mono"> · {e.year}</span>}
+                {e.tier && <Badge variant="outline" className="text-[9px] ml-1.5">{e.tier}</Badge>}
+              </li>
+            ))}
+          </ul>
+        )}
+      </FacetRow>
+      {positions.length > 0 && (
+        <FacetRow label="Positions">
+          <ul className="space-y-1">
+            {positions.map((p, i) => (
+              <li key={i} className="text-xs">
+                <span className="font-medium">{p.title || '—'}</span>
+                {p.company && <span className="text-muted-foreground"> · {p.company}</span>}
+                {p.years != null && <span className="text-muted-foreground font-mono"> · {p.years}y</span>}
+              </li>
+            ))}
+          </ul>
+        </FacetRow>
+      )}
+    </div>
   );
 }
 
@@ -1224,7 +1084,7 @@ function FacetRow({ label, children }) {
 function MatchPanel({ data, match }) {
   const { score_id, overall_score, skills_score, experience_score, career_trajectory_score, education_score,
           matched_skills, missing_skills, score_summary, role_profile, scored_at,
-          required_skills, preferred_skills } = data;
+          required_skills, preferred_skills, facets } = data;
 
   const {
     roleProfileSel,
@@ -1249,6 +1109,8 @@ function MatchPanel({ data, match }) {
         )}
       </CardHeader>
       <CardContent className="space-y-4">
+        <ParsedFacetsSection facets={facets} />
+
         {/* Rubric */}
         <div className="space-y-4">
           {/* Role profile */}
