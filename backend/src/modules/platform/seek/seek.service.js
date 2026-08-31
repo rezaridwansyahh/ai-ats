@@ -173,7 +173,10 @@ class SeekService {
             last_position: candidate.last_position,
             address: candidate.address,
             education: candidate.education || null,
-            information: candidate.information || null,
+            // Raw scraped screening Q&A is application-specific (this job's
+            // custom questions), so it goes on the sourcing mapping — not on
+            // this applicant row, which is shared across all their applications.
+            sourcing_information: candidate.information || null,
             date: candidate.date || null,
             attachment: null,
           });

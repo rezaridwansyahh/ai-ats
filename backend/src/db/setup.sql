@@ -491,6 +491,9 @@ CREATE TABLE mapping_applicant_sourcing (
   id SERIAL PRIMARY KEY,
   applicant_id INTEGER NOT NULL REFERENCES master_applicant(id) ON DELETE CASCADE,
   job_sourcing_id INTEGER NOT NULL REFERENCES core_job_sourcing(id) ON DELETE CASCADE,
+  information JSONB, -- raw scraped screening Q&A for THIS application (per job posting) —
+                      -- distinct from master_applicant.information, which holds the
+                      -- person-level AI-parsed CV facets shared across all their applications
   created_at TIMESTAMP NOT NULL DEFAULT NOW(),
   UNIQUE (applicant_id, job_sourcing_id)
 );

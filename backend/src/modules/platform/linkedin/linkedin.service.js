@@ -176,7 +176,10 @@ class LinkedInService {
           name: candidate.name,
           last_position: candidate.last_position,
           address: candidate.address,
-          information: candidate.information ? JSON.stringify(candidate.information) : null,
+          // Raw scraped screening Q&A is application-specific (this job's
+          // custom questions), so it goes on the sourcing mapping — not on
+          // this applicant row, which is shared across all their applications.
+          sourcing_information: candidate.information || null,
           attachment: null,
         });
 
