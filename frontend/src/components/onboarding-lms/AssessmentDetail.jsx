@@ -42,10 +42,11 @@ function ResultBars({ bars, lang }) {
   );
 }
 
-export default function AssessmentDetail({ assessmentId, lang, goTo }) {
+export default function AssessmentDetail({ assessmentId, lang, goTo, assessments, assessT }) {
   const { ASSESS_T, ASSESSMENTS } = LMS_DATA;
-  const at = ASSESS_T[lang];
-  const a = ASSESSMENTS.find((x) => x.id === assessmentId);
+  const at = assessT || ASSESS_T[lang];
+  const list = assessments || ASSESSMENTS;
+  const a = list.find((x) => x.id === assessmentId);
 
   if (!a) {
     return (
@@ -61,6 +62,7 @@ export default function AssessmentDetail({ assessmentId, lang, goTo }) {
   const outputsLabel = lang === 'id' ? a.outputsLabel_id : a.outputsLabel_en;
   const isDone = a.status === 'done';
   const isLocked = a.status === 'locked' || a.status === 'leadership-only';
+  const isLive = !!a.battery;
 
   return (
     <div className="max-w-2xl mx-auto pb-12">
@@ -136,8 +138,9 @@ export default function AssessmentDetail({ assessmentId, lang, goTo }) {
 
       {!isLocked && !isDone && (
         <button
-          className="w-full rounded-lg bg-emerald-700 text-white text-sm font-semibold py-3"
-          onClick={() => { /* not wired to a backend flow yet — placeholder for the actual test-taking screen */ }}
+          className="w-full rounded-lg bg-emerald-700 text-white text-sm font-semibold py-3 disabled:opacity-50 disabled:cursor-not-allowed"
+          disabled={!isLive}
+          onClick={() => isLive && goTo('assessment-take', { assessmentId: a.id })}
         >
           {at.asx_take_now}
         </button>

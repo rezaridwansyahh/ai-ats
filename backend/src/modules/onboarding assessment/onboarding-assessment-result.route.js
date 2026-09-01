@@ -6,9 +6,8 @@ import requireCandidatePortalAuth from '../../shared/middleware/auth-onboarding.
 
 router.use(requireCandidatePortalAuth);
 
-router.get('/catalog', OnboardingAssessmentResultController.getCatalog);
 router.get('/results', OnboardingAssessmentResultController.getMyResults);
-router.get('/results/:assessment_code', OnboardingAssessmentResultController.getByCode);
+router.get('/results/:battery', OnboardingAssessmentResultController.getByCode);
 router.post('/submit', OnboardingAssessmentResultController.submit);
 
 export default router;

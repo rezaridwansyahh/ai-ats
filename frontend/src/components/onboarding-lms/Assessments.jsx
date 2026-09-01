@@ -83,16 +83,17 @@ function AssessmentCard({ a, lang, at, onOpen }) {
   );
 }
 
-export default function Assessments({ lang, goTo }) {
+export default function Assessments({ lang, goTo, assessments, assessT }) {
   const { ASSESS_T, ASSESSMENTS } = LMS_DATA;
-  const at = ASSESS_T[lang];
+  const at = assessT || ASSESS_T[lang];
+  const list = assessments || ASSESSMENTS;
 
-  const doneCount = ASSESSMENTS.filter((a) => a.status === 'done').length;
-  const minutesSpent = ASSESSMENTS.filter((a) => a.status === 'done').reduce((s, a) => s + a.minutes, 0);
+  const doneCount = list.filter((a) => a.status === 'done').length;
+  const minutesSpent = list.filter((a) => a.status === 'done').reduce((s, a) => s + a.minutes, 0);
 
   const grouped = MILESTONE_ORDER.map((key) => ({
     key,
-    items: ASSESSMENTS.filter((a) => a.milestone === key),
+    items: list.filter((a) => a.milestone === key),
   })).filter((g) => g.items.length > 0);
 
   const milestoneLabel = {
@@ -127,12 +128,12 @@ export default function Assessments({ lang, goTo }) {
         </div>
         <div className="grid grid-cols-3 gap-4">
           <div>
-            <div className="font-serif text-2xl font-bold">{doneCount}/{ASSESSMENTS.length}</div>
+            <div className="font-serif text-2xl font-bold">{doneCount}/{list.length}</div>
             <div className="text-[11px] text-muted-foreground">{at.asx_milestones}</div>
           </div>
           <div>
             <div className="font-serif text-2xl font-bold">
-              {ASSESSMENTS.reduce((s, a) => s + a.items, 0)}
+              {list.reduce((s, a) => s + a.items, 0)}
             </div>
             <div className="text-[11px] text-muted-foreground">{at.asx_total_items}</div>
           </div>
