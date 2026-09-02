@@ -12,6 +12,7 @@ import Feedback from '@/components/onboarding-lms/Feedback';
 import Report from '@/components/onboarding-lms/Report';
 import Assessments from '@/components/onboarding-lms/Assessments';
 import AssessmentDetail from '@/components/onboarding-lms/AssessmentDetail';
+import Settings from '@/components/onboarding-lms/Settings';
 
 import { getOnboardingToken } from '@/lib/onboardingPortalAuth';
 import { getMe, getCurriculum } from '@/api/portal-onboarding.api';
@@ -89,19 +90,19 @@ export default function OnboardingLmsPreview() {
       case 'module':
         return <ModuleDetail moduleId={params.moduleId} t={t} lang={LANG} goTo={goTo} />;
       case 'viewer':
-        return <Viewer moduleId={params.moduleId} t={t} lang={lang} goTo={goTo} />;
+        return <Viewer moduleId={params.moduleId} t={t} lang={LANG} goTo={goTo} />;
       case 'quiz':
-        return <Quiz moduleId={params.moduleId} t={t} lang={lang} goTo={goTo} />;
+        return <Quiz moduleId={params.moduleId} t={t} lang={LANG} goTo={goTo} />;
       case 'feedback':
-        return <Feedback moduleId={params.moduleId} t={t} lang={lang} goTo={goTo} />;
+        return <Feedback moduleId={params.moduleId} t={t} lang={LANG} goTo={goTo} />;
       case 'report':
-        return <Report t={t} lang={lang} goTo={goTo} />;
+        return <Report t={t} lang={LANG} goTo={goTo} />;
       case 'assistant':
         return <ComingSoon label="Assistant" />;
       case 'help':
         return <ComingSoon label="Help & Buddy" />;
       case 'settings':
-        return <ComingSoon label="Settings" />;
+       return <Settings t={t} />;
       case 'assessments':
         return <Assessments lang={LANG} goTo={goTo} />;
       case 'assessment':

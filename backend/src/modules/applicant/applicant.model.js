@@ -21,22 +21,31 @@ class ApplicantModel {
 
   async getAllByCompanyWithScore(company_id) {
     const result = await getDb().query(`
-      SELECT
-          ma.*,
-          (
-              SELECT overall_score
-              FROM candidate_job_score cjs
-              WHERE cjs.applicant_id = ma.id
-              ORDER BY cjs.scored_at DESC  -- or updated_at, or whichever date column
-              LIMIT 1
-          ) AS latest_score
-      FROM master_applicant ma
-      WHERE ma.company_id = $1
-      ORDER BY latest_score DESC NULLS LAST;  -- Sort by the latest score
-    `, [company_id]);
+    SELECT
+        ma.*,
+        (
+            SELECT overall_score
+            FROM candidate_job_score cjs2
+            WHERE cjs2.applicant_id = ma.id
+            ORDER BY cjs2.scored_at DESC  -- or updated_at, or whichever date column
+            LIMIT 1
+        ) AS latest_score,
+        cjs.platform AS source_platform,
+        cjs.job_title AS source_job_title,
+        CASE
+            WHEN cjs.platform IN ('seek', 'linkedin') THEN 'external_platform'
+            ELSE NULL
+        END AS source_type
+    FROM master_applicant ma
+    LEFT JOIN mapping_applicant_sourcing mas ON mas.applicant_id = ma.id
+    LEFT JOIN core_job_sourcing cjs ON cjs.id = mas.job_sourcing_id
+    WHERE ma.company_id = $1
+    ORDER BY latest_score DESC NULLS LAST;  -- Sort by the latest score
+  `, [company_id]);
 
     return result.rows;
   }
+
   async getById(id) {
     const result = await getDb().query(`
       SELECT * FROM master_applicant

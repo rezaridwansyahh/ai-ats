@@ -22,11 +22,11 @@ function formatDate(d) {
 
 // NEW: maps the raw source_type / source_platform / source_job_title fields
 // (expected from getAllByCompanyWithScore) into a label + sub-label pair.
-function formatSource(r) {
-  if (r.source_type === 'external_platform') {
-    const platformLabelMap = { seek: 'Seek', linkedin: 'LinkedIn' };
+function formatSource(r){
+  if(r.source_type === 'external_platform'){
+    const platformLabelMap = { seek: 'Seek', linkedin: 'LinkedIn'};
     const label = platformLabelMap[r.source_platform] || r.source_platform || 'External Platform';
-    return { label, sub: r.source_job_title || null };
+    return{label, sub: null};
   }
   return { label: 'CV Upload', sub: null };
 }
