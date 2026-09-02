@@ -12,9 +12,13 @@ import Feedback from '@/components/onboarding-lms/Feedback';
 import Report from '@/components/onboarding-lms/Report';
 import Assessments from '@/components/onboarding-lms/Assessments';
 import AssessmentDetail from '@/components/onboarding-lms/AssessmentDetail';
+import { getMyAssessmentResults } from '@/api/onboarding-assessment-result.api';
+import { mergeLiveAssessments } from '@/components/onboarding-lms/utils/assessmentResultAdapter';
+import InsightsCandidateCard from '@/components/assessment-insights/CandidateCard';
+import TkiCandidateCard from '@/components/assessment-tki/CandidateCard';
 import Settings from '@/components/onboarding-lms/Settings';
 
-import { getOnboardingToken } from '@/lib/onboardingPortalAuth';
+import { getOnboardingToken, clearOnboardingToken } from '@/lib/onboardingPortalAuth';
 import { getMe, getCurriculum } from '@/api/portal-onboarding.api';
 
 // Fixed language — language toggle removed for now
@@ -33,11 +37,21 @@ export default function OnboardingLmsPreview() {
   const [authChecked, setAuthChecked] = useState(false);
   const [onboarding, setOnboarding] = useState(null);
   const [curriculum, setCurriculum] = useState(null);
+  const [assessmentResults, setAssessmentResults] = useState([]);
 
   const [route, setRoute] = useState('home');
   const [params, setParams] = useState({});
 
   const t = LMS_DATA.T[LANG];
+  const refreshAssessmentResults = async () => {
+    try {
+      const token = getOnboardingToken();
+      const res = await getMyAssessmentResults(token);
+      setAssessmentResults(res.data.results || []);
+    } catch (err) {
+      console.error('Failed to load assessment results:', err);
+    }
+  };
 
   useEffect(() => {
     const token = getOnboardingToken();
@@ -53,6 +67,8 @@ export default function OnboardingLmsPreview() {
       })
       .catch(() => clearOnboardingToken())
       .finally(() => setAuthChecked(true));
+
+    refreshAssessmentResults();
   }, []);
 
   const handleLoginSuccess = async (onboardingData) => {
@@ -60,6 +76,7 @@ export default function OnboardingLmsPreview() {
     const token = getOnboardingToken();
     const curRes = await getCurriculum(token);
     setCurriculum(curRes.data);
+    refreshAssessmentResults();
   };
 
   const goTo = (nextRoute, nextParams = {}) => {
@@ -80,6 +97,8 @@ export default function OnboardingLmsPreview() {
   }
 
   const data = { ...LMS_DATA, MODULES: curriculum.MODULES, PHASES: curriculum.PHASES };
+  const resultsByBattery = Object.fromEntries(assessmentResults.map((r) => [r.battery, r]));
+  const mergedAssessments = mergeLiveAssessments(LMS_DATA.ASSESSMENTS, resultsByBattery);
 
   const renderScreen = () => {
     switch (route) {
@@ -104,9 +123,30 @@ export default function OnboardingLmsPreview() {
       case 'settings':
        return <Settings t={t} />;
       case 'assessments':
-        return <Assessments lang={LANG} goTo={goTo} />;
+        return <Assessments lang={LANG} goTo={goTo} assessments={mergedAssessments} />;
       case 'assessment':
-        return <AssessmentDetail assessmentId={params.assessmentId} lang={LANG} goTo={goTo} />;
+        return (
+          <AssessmentDetail
+            assessmentId={params.assessmentId}
+            lang={LANG}
+            goTo={goTo}
+            assessments={mergedAssessments}
+          />
+        );
+      case 'assessment-take': {
+        const a = mergedAssessments.find((x) => x.id === params.assessmentId);
+        const commonProps = {
+          mode: 'onboarding',
+          prefilledProfile: { name: onboarding.candidate_name },
+          onExit: async () => {
+            await refreshAssessmentResults();
+            goTo('assessment', { assessmentId: a?.id });
+          },
+        };
+        if (a?.battery === 'I') return <InsightsCandidateCard {...commonProps} />;
+        if (a?.battery === 'T') return <TkiCandidateCard {...commonProps} />;
+        return <ComingSoon label="Assessment" />;
+      }
       default:
         return <HomeScreen data={LMS_DATA} t={t} lang={LANG} goTo={goTo} />;
     }

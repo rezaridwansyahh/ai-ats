@@ -40,6 +40,7 @@ import {
   onboardingProbationCheckins,
   onboardingWelcomeMessages,
 } from '../data/candidate-onboarding.js';
+import onboardingAssessmentsData from '../data/battery-onboarding.js';
 
 const seed = async () => {
   await getDb().query('BEGIN');
@@ -47,9 +48,8 @@ const seed = async () => {
   try {
     await getDb().query('DELETE FROM company_budgets');
     await getDb().query('DELETE FROM company_usage');
-    // Onboarding tables -- children before candidate_onboarding, and
-    // candidate_onboarding itself before candidate_offer (which it
-    // references via offer_id).
+    await getDb().query('DELETE FROM onboarding_assessment_result');
+    await getDb().query('DELETE FROM onboarding_assessment');
     await getDb().query('DELETE FROM onboarding_hris_task');
     await getDb().query('DELETE FROM onboarding_welcome_message');
     await getDb().query('DELETE FROM onboarding_probation_checkin');
@@ -297,6 +297,15 @@ const seed = async () => {
         `INSERT INTO master_assessment (id, assessment_code, name, description, duration_minutes, options, is_active)
          VALUES ($1, $2, $3, $4, $5, $6, $7)`,
         [a.id, a.assessment_code, a.name, a.description, a.duration_minutes, JSON.stringify(a.options || {}), a.is_active]
+      );
+    }
+    
+    // 17b. onboarding_assessment — pre-boarding batteries (TKI + Insight)
+    for (const a of onboardingAssessmentsData) {
+      await getDb().query(
+        `INSERT INTO onboarding_assessment (id, assessment_code, name, milestone, duration_minutes, options, is_active)
+         VALUES ($1, $2, $3, $4, $5, $6, $7)`,
+        [a.id, a.assessment_code, a.name, a.milestone, a.duration_minutes, JSON.stringify(a.options || {}), a.is_active]
       );
     }
 

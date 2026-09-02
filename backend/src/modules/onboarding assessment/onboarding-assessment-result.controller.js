@@ -21,8 +21,8 @@ class OnboardingAssessmentResultController {
 
   async getByCode(req, res) {
     try {
-      const { assessment_code } = req.params;
-      const result = await OnboardingAssessmentResultService.getByCode(req.onboardingId, assessment_code);
+      const { battery } = req.params;
+      const result = await OnboardingAssessmentResultService.getByBattery(req.onboardingId, battery);
       res.status(200).json({ message: 'Result fetched', result });
     } catch (err) {
       res.status(err.status || 500).json({ message: err.message });
@@ -31,13 +31,10 @@ class OnboardingAssessmentResultController {
 
   async submit(req, res) {
     try {
-      const { assessment_code, results, summary, started_at } = req.body;
+      const { battery, results, summary, started_at } = req.body;
       const result = await OnboardingAssessmentResultService.submit({
         candidate_onboarding_id: req.onboardingId,
-        assessment_code,
-        results,
-        summary,
-        started_at,
+        battery, results, summary, started_at,
       });
       res.status(201).json({ message: 'Assessment submitted', result });
     } catch (err) {

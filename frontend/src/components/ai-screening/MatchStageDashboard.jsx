@@ -1,12 +1,32 @@
 import { useMemo, useState } from 'react';
-import { Wand2, ChevronUp, ChevronDown, Info, Loader2, PlayCircle } from 'lucide-react';
+import {
+  ChevronUp, ChevronDown, Loader2, PlayCircle, ArrowRight, Eye, MapPin, CalendarDays,
+  Check, X, Minus,
+} from 'lucide-react';
 import { toast } from 'sonner';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { StatCard, FIXED_KEYS, FIXED_META } from './shared';
-import { scoreCandidatesList } from '@/api/screening.api';
+import { Checkbox } from '@/components/ui/checkbox';
+import {
+  Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
+} from '@/components/ui/select';
+import { Table, TableBody, TableCell, TableRow } from '@/components/ui/table';
+import { StatCard } from './shared';
+import { scoreCandidatesList, generateQa, sendQa } from '@/api/screening.api';
+import MatchPreviewModal from './MatchPreviewModal';
+
+const SORT_OPTIONS = [
+  { value: 'overall_score', label: 'Sort: Fit' },
+  { value: 'skills_score', label: 'Sort: Skills' },
+  { value: 'experience_score', label: 'Sort: Experience' },
+  { value: 'education_score', label: 'Sort: Education' },
+];
+
+function fmtDate(d) {
+  if (!d) return null;
+  try { return new Date(d).toISOString().slice(0, 10); } catch { return null; }
+}
 
 /*
  * Job-level "AI Matching" dashboard.
@@ -24,6 +44,9 @@ export default function MatchStageDashboard({ jobId, pendingRows = [], scoredRow
   const [sortKey, setSortKey] = useState('overall_score');
   const [sortDir, setSortDir] = useState('desc');
   const [running, setRunning] = useState(false);
+  const [previewRow, setPreviewRow] = useState(null);
+  const [selectedIds, setSelectedIds] = useState(() => new Set());
+  const [advancing, setAdvancing] = useState(false);
 
   const sorted = useMemo(() => {
     const list = [...scoredRows];
@@ -37,9 +60,60 @@ export default function MatchStageDashboard({ jobId, pendingRows = [], scoredRow
     return list;
   }, [scoredRows, sortKey, sortDir]);
 
-  const toggleSort = (key) => {
-    if (sortKey === key) setSortDir((d) => (d === 'desc' ? 'asc' : 'desc'));
-    else { setSortKey(key); setSortDir('desc'); }
+  const rowId = (r) => r.screening_id ?? r.applicant_id;
+  const allSelected = sorted.length > 0 && sorted.every((r) => selectedIds.has(rowId(r)));
+
+  const toggleSelectAll = () => {
+    setSelectedIds(allSelected ? new Set() : new Set(sorted.map(rowId)));
+  };
+
+  const toggleSelectRow = (r) => {
+    setSelectedIds((prev) => {
+      const next = new Set(prev);
+      const id = rowId(r);
+      if (next.has(id)) next.delete(id); else next.add(id);
+      return next;
+    });
+  };
+
+  const handleAdvanceToQa = async () => {
+    const selectedRows = sorted.filter((r) => selectedIds.has(rowId(r)));
+    // Generating Q&A on a screening that already has one resets its answers/token —
+    // only touch candidates who've never had a Q&A set generated for them.
+    const eligible = selectedRows.filter((r) => !r.qa_status && r.screening_id);
+    const skipped = selectedRows.length - eligible.length;
+
+    if (eligible.length === 0) {
+      toast.error('Nothing to advance', {
+        description: skipped > 0 ? 'Selected candidates already have Follow-up Q&A in progress.' : 'Select at least one candidate first.',
+      });
+      return;
+    }
+
+    setAdvancing(true);
+    try {
+      const outcomes = await Promise.allSettled(
+        eligible.map(async (r) => {
+          await generateQa(r.screening_id, {});
+          await sendQa(r.screening_id);
+        })
+      );
+      const failed = outcomes.filter((o) => o.status === 'rejected');
+      if (failed.length > 0) {
+        toast.error('Some candidates failed to advance', {
+          description: `${eligible.length - failed.length}/${eligible.length} advanced to QA · ${failed.length} failed.`,
+        });
+        console.warn('Advance to QA errors:', failed.map((f) => f.reason));
+      } else {
+        toast.success('Advanced to QA', {
+          description: `${eligible.length} candidate${eligible.length === 1 ? '' : 's'} sent Follow-up Q&A.${skipped > 0 ? ` ${skipped} skipped (already in progress).` : ''}`,
+        });
+      }
+      setSelectedIds(new Set());
+      await onScored?.();
+    } finally {
+      setAdvancing(false);
+    }
   };
 
   const topScore = scoredRows.reduce((m, r) => Math.max(m, r.overall_score ?? 0), 0);
@@ -76,37 +150,6 @@ export default function MatchStageDashboard({ jobId, pendingRows = [], scoredRow
 
   return (
     <div className="space-y-4 p-4">
-      {/* Stats row */}
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-        <StatCard label="Awaiting Score" value={pendingRows.length} />
-        <StatCard label="Scored" value={scoredRows.length} />
-        <StatCard label="Top score" value={scoredRows.length ? topScore : '—'} />
-        <StatCard label="Avg score" value={scoredRows.length ? avgScore : '—'} />
-      </div>
-
-      {/* Rubric criteria reference — unchanged */}
-      <Card>
-        <CardHeader className="pb-2">
-          <CardTitle className="text-xs uppercase tracking-wide text-muted-foreground">
-            Matching criteria
-          </CardTitle>
-        </CardHeader>
-        <CardContent className="flex flex-wrap gap-2">
-          {FIXED_KEYS.map((key) => {
-            const meta = FIXED_META[key];
-            const Icon = meta.icon;
-            return (
-              <Badge key={key} variant="outline" className="text-[10px] gap-1.5 py-1">
-                <Icon className="h-3 w-3" /> {meta.label}
-              </Badge>
-            );
-          })}
-          <span className="text-[10px] text-muted-foreground italic flex items-center gap-1 ml-1">
-            <Info className="h-3 w-3" /> Edit weights per-candidate on their Match tab — job-wide rubric editing isn't wired here.
-          </span>
-        </CardContent>
-      </Card>
-
       {/* NEW: bulk run action, only shown when there's something pending */}
       {pendingRows.length > 0 && (
         <Card className="border-primary/30 bg-primary/5">
@@ -124,50 +167,89 @@ export default function MatchStageDashboard({ jobId, pendingRows = [], scoredRow
         </Card>
       )}
 
-      {/* Ranking table — unchanged */}
-      <Card>
-        <CardHeader className="pb-2 flex flex-row items-center justify-between">
-          <CardTitle className="text-xs uppercase tracking-wide text-muted-foreground flex items-center gap-1.5">
-            <Wand2 className="h-3.5 w-3.5 text-primary" /> Ranking — scored candidates
-          </CardTitle>
-          <span className="text-[10px] text-muted-foreground">{scoredRows.length} candidates</span>
-        </CardHeader>
-        <CardContent className="p-0">
-          {sorted.length === 0 ? (
-            <p className="py-8 text-center text-xs text-muted-foreground italic">No candidates scored yet.</p>
-          ) : (
-            <Table className="w-full">
-              <TableHeader className="bg-muted/30">
-                <TableRow>
-                  <TableHead className="text-[10px] font-bold uppercase pl-4">Candidate</TableHead>
-                  <SortHead label="Fit"        col="overall_score"    sortKey={sortKey} sortDir={sortDir} onClick={toggleSort} />
-                  <SortHead label="Skills"     col="skills_score"     sortKey={sortKey} sortDir={sortDir} onClick={toggleSort} />
-                  <SortHead label="Experience" col="experience_score" sortKey={sortKey} sortDir={sortDir} onClick={toggleSort} />
-                  <SortHead label="Education"  col="education_score"  sortKey={sortKey} sortDir={sortDir} onClick={toggleSort} />
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {sorted.map((r) => (
-                  <TableRow
-                    key={r.screening_id}
-                    className="cursor-pointer hover:bg-muted/30 transition-colors"
-                    onClick={() => onOpen(r)}
-                  >
-                    <TableCell className="text-xs pl-4">
-                      <div className="font-medium truncate">{r.applicant_name || `#${r.applicant_id}`}</div>
-                      <div className="text-[10px] text-muted-foreground truncate">{r.last_position || '—'}</div>
-                    </TableCell>
-                    <TableCell className="text-center"><ScoreBadge score={r.overall_score} bold /></TableCell>
-                    <TableCell className="text-center"><ScoreBadge score={r.skills_score} /></TableCell>
-                    <TableCell className="text-center"><ScoreBadge score={r.experience_score} /></TableCell>
-                    <TableCell className="text-center"><ScoreBadge score={r.education_score} /></TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-          )}
-        </CardContent>
-      </Card>
+      {/* Stats (1/4) + Ranking table (3/4) */}
+      <div className="grid grid-cols-1 lg:grid-cols-4 gap-3 items-start">
+        <div className="grid grid-cols-2 gap-3">
+          <StatCard label="Awaiting Score" value={pendingRows.length} />
+          <StatCard label="Scored" value={scoredRows.length} />
+          <StatCard label="Top score" value={scoredRows.length ? topScore : '—'} />
+          <StatCard label="Avg score" value={scoredRows.length ? avgScore : '—'} />
+        </div>
+
+        <Card className="lg:col-span-3">
+          <CardContent className="space-y-3 pt-6">
+            {sorted.length === 0 ? (
+              <p className="py-8 text-center text-xs text-muted-foreground italic">No candidates scored yet.</p>
+            ) : (
+              <>
+                {/* Toolbar: select-all + sort */}
+                <div className="flex items-center justify-between gap-3 flex-wrap">
+                  <div className="flex items-center gap-2">
+                    <Checkbox id="select-all-scored" checked={allSelected} onCheckedChange={toggleSelectAll} />
+                    <label htmlFor="select-all-scored" className="text-xs text-muted-foreground cursor-pointer select-none">
+                      {selectedIds.size > 0 ? `${selectedIds.size} selected` : 'Select all'}
+                    </label>
+                    {selectedIds.size > 0 && (
+                      <Button
+                        size="sm"
+                        className="h-7 text-[11px] gap-1"
+                        onClick={handleAdvanceToQa}
+                        disabled={advancing}
+                      >
+                        {advancing
+                          ? <><Loader2 className="h-3 w-3 animate-spin" /> Advancing…</>
+                          : <>Advance to QA <ArrowRight className="h-3 w-3" /></>}
+                      </Button>
+                    )}
+                  </div>
+                  <div className="flex items-center gap-1.5">
+                    <Select value={sortKey} onValueChange={setSortKey}>
+                      <SelectTrigger className="h-7 w-[150px] text-[11px]">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {SORT_OPTIONS.map((o) => (
+                          <SelectItem key={o.value} value={o.value} className="text-xs">{o.label}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="h-7 w-7"
+                      title={sortDir === 'desc' ? 'Descending' : 'Ascending'}
+                      onClick={() => setSortDir((d) => (d === 'desc' ? 'asc' : 'desc'))}
+                    >
+                      {sortDir === 'desc' ? <ChevronDown className="h-3.5 w-3.5" /> : <ChevronUp className="h-3.5 w-3.5" />}
+                    </Button>
+                  </div>
+                </div>
+
+                {/* Candidate cards */}
+                <div className="space-y-2.5">
+                  {sorted.map((r) => (
+                    <CandidateCard
+                      key={rowId(r)}
+                      row={r}
+                      selected={selectedIds.has(rowId(r))}
+                      onToggleSelect={() => toggleSelectRow(r)}
+                      onView={() => setPreviewRow(r)}
+                      onContinue={() => onOpen(r)}
+                    />
+                  ))}
+                </div>
+              </>
+            )}
+          </CardContent>
+        </Card>
+      </div>
+
+      <MatchPreviewModal
+        open={!!previewRow}
+        onOpenChange={(v) => { if (!v) setPreviewRow(null); }}
+        row={previewRow}
+        jobId={jobId}
+      />
 
       {/* Pending list — unchanged, just no longer the only way to trigger matching */}
       {pendingRows.length > 0 && (
@@ -195,22 +277,113 @@ export default function MatchStageDashboard({ jobId, pendingRows = [], scoredRow
   );
 }
 
-function SortHead({ label, col, sortKey, sortDir, onClick }) {
-  const active = sortKey === col;
+function CandidateCard({ row: r, selected, onToggleSelect, onView, onContinue }) {
+  const matched = Array.isArray(r.matched_skills) ? r.matched_skills : [];
+  const missing = Array.isArray(r.missing_skills) ? r.missing_skills : [];
+  const appliedAt = fmtDate(r.applied_at);
+
   return (
-    <TableHead className="text-[10px] font-bold uppercase text-center cursor-pointer select-none" onClick={() => onClick(col)}>
-      <span className="inline-flex items-center gap-1 justify-center">
-        {label}
-        {active && (sortDir === 'desc' ? <ChevronDown className="h-3 w-3" /> : <ChevronUp className="h-3 w-3" />)}
-      </span>
-    </TableHead>
+    <Card className={selected ? 'border-primary/40 bg-primary/5' : ''}>
+      <CardContent className="p-3 space-y-2.5">
+        <div className="flex items-start justify-between gap-3 flex-wrap">
+          <div className="flex items-start gap-2.5 min-w-0">
+            <Checkbox checked={selected} onCheckedChange={onToggleSelect} className="mt-0.5 shrink-0" />
+            <div className="min-w-0">
+              <div className="text-sm font-medium truncate">{r.applicant_name || `#${r.applicant_id}`}</div>
+              <div className="text-[11px] text-muted-foreground truncate">{r.last_position || '—'}</div>
+              <div className="mt-1 flex items-center gap-3 flex-wrap text-[10px] text-muted-foreground">
+                {r.address && (
+                  <span className="inline-flex items-center gap-1"><MapPin className="h-3 w-3" /> {r.address}</span>
+                )}
+                {appliedAt && (
+                  <span className="inline-flex items-center gap-1"><CalendarDays className="h-3 w-3" /> Applied {appliedAt}</span>
+                )}
+              </div>
+            </div>
+          </div>
+          <div className="flex items-center gap-1.5 shrink-0">
+            <Button variant="outline" size="sm" className="h-7 text-[11px] gap-1" onClick={onView}>
+              <Eye className="h-3 w-3" /> View
+            </Button>
+            <Button size="sm" className="h-7 text-[11px] gap-1" onClick={onContinue}>
+              Progress <ArrowRight className="h-3 w-3" />
+            </Button>
+          </div>
+        </div>
+
+        <div className="grid grid-cols-4 gap-2">
+          <ScoreTile label="Fit" score={r.overall_score} bold />
+          <ScoreTile label="Skills" score={r.skills_score} />
+          <ScoreTile label="Experience" score={r.experience_score} />
+          <ScoreTile label="Education" score={r.education_score} />
+        </div>
+
+        {(matched.length > 0 || missing.length > 0) && (
+          <div className="flex flex-wrap gap-1 pt-2 border-t">
+            {matched.slice(0, 8).map((s) => (
+              <Badge key={`m-${s}`} className="text-[10px] bg-emerald-50 text-emerald-700 border-emerald-200">{s}</Badge>
+            ))}
+            {missing.slice(0, 4).map((s) => (
+              <Badge key={`x-${s}`} variant="outline" className="text-[10px] bg-rose-50 text-rose-700 border-rose-200">{s}</Badge>
+            ))}
+          </div>
+        )}
+
+        <PreferenceMatch information={r.application_qa} />
+      </CardContent>
+    </Card>
   );
 }
 
-function ScoreBadge({ score, bold }) {
-  if (score == null) return <span className="text-xs text-muted-foreground">—</span>;
-  const cls = score >= 80 ? 'bg-emerald-100 text-emerald-700 border-emerald-200'
-    : score >= 60 ? 'bg-amber-100 text-amber-700 border-amber-200'
-    : 'bg-rose-100 text-rose-700 border-rose-200';
-  return <Badge className={`text-[10px] font-mono ${bold ? 'font-bold' : ''} ${cls}`}>{score}</Badge>;
+function PreferenceMatch({ information }) {
+  const [open, setOpen] = useState(true);
+  const entries = information && typeof information === 'object' ? Object.entries(information) : [];
+  const matchCount = entries.filter(([, v]) => v?.meets_requirement === true).length;
+
+  return (
+    <div className="pt-2 border-t">
+      <button
+        type="button"
+        onClick={() => setOpen((o) => !o)}
+        className="flex items-center gap-1.5 text-[11px] font-medium hover:text-primary"
+      >
+        {open ? <ChevronUp className="h-3 w-3" /> : <ChevronDown className="h-3 w-3" />}
+        Kecocokan preferensi ({matchCount}/{entries.length} cocok)
+      </button>
+      {open && (
+        <div className="mt-2 space-y-1.5">
+          {entries.length === 0 ? (
+            <p className="text-[11px] text-muted-foreground italic">No screening questions recorded.</p>
+          ) : (
+            entries.map(([question, v]) => {
+              const meets = v?.meets_requirement;
+              const Icon = meets === true ? Check : meets === false ? X : Minus;
+              const iconCls = meets === true ? 'text-emerald-600' : meets === false ? 'text-rose-600' : 'text-muted-foreground';
+              return (
+                <div key={question} className="grid grid-cols-[10px_160px_1fr] gap-2 text-[11px]">
+                  <span className="text-muted-foreground">•</span>
+                  <span className="text-muted-foreground break-words">{question}</span>
+                  <span className="flex items-center gap-1 font-medium break-words">
+                    <Icon className={`h-3 w-3 shrink-0 ${iconCls}`} />
+                    {v?.answer || '—'}
+                  </span>
+                </div>
+              );
+            })
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
+function ScoreTile({ label, score, bold }) {
+  return (
+    <div className="rounded-md border bg-muted/20 p-2 text-center">
+      <div className="text-[9px] font-semibold uppercase tracking-wide text-muted-foreground">{label}</div>
+      <div className={`mt-0.5 font-mono ${bold ? 'text-sm font-bold' : 'text-xs font-semibold'}`}>
+        {score ?? '—'}
+      </div>
+    </div>
+  );
 }

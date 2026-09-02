@@ -225,13 +225,24 @@ class ScreeningModel {
         s.missing_skills,
         s.summary            AS score_summary,
         s.scored_at,
-        s.rubric_snapshot IS DISTINCT FROM cj.rubric AS rubric_is_stale
+        s.rubric_snapshot IS DISTINCT FROM cj.rubric AS rubric_is_stale,
+        sq.status            AS qa_status,
+        app_qa.information    AS application_qa
       FROM candidate_screening cs
       JOIN master_candidate mc       ON mc.id = cs.candidate_id
       JOIN core_job cj                ON cj.id = cs.job_id
       LEFT JOIN master_applicant a    ON a.id  = mc.applicant_id
       JOIN candidate_job_score s
         ON s.applicant_id = mc.applicant_id AND s.job_id = cs.job_id
+      LEFT JOIN screening_qa sq ON sq.screening_id = cs.id
+      LEFT JOIN LATERAL (
+        SELECT mas.information
+        FROM mapping_applicant_sourcing mas
+        JOIN mapping_job_sourcing_job mjsj ON mjsj.job_sourcing_id = mas.job_sourcing_id
+        WHERE mas.applicant_id = mc.applicant_id AND mjsj.job_id = cs.job_id
+        ORDER BY mas.created_at DESC
+        LIMIT 1
+      ) app_qa ON true
       WHERE cs.job_id = $1 AND cs.decision IS NULL
       ORDER BY s.overall_score DESC NULLS LAST, cs.id ASC
       `,
@@ -460,9 +471,16 @@ class ScreeningModel {
         a.information IS NOT NULL AS is_parsed,
         s.id           AS score_id,
         s.overall_score,
+        s.skills_score,
+        s.experience_score,
+        s.education_score,
+        s.matched_skills,
+        s.missing_skills,
         s.scored_at,
         cs.id          AS screening_id,
         cs.decision,
+        sq.status      AS qa_status,
+        app_qa.information AS application_qa,
         CASE
           WHEN a.information IS NULL    THEN 'parse'
           WHEN s.id IS NULL             THEN 'match'
@@ -477,6 +495,14 @@ class ScreeningModel {
       LEFT JOIN screening_qa sq ON sq.screening_id = cs.id
       LEFT JOIN job_stage js ON js.id = mc.latest_stage
       LEFT JOIN recruitment_stage_category rsc ON rsc.id = js.stage_type_id
+      LEFT JOIN LATERAL (
+        SELECT mas.information
+        FROM mapping_applicant_sourcing mas
+        JOIN mapping_job_sourcing_job mjsj ON mjsj.job_sourcing_id = mas.job_sourcing_id
+        WHERE mas.applicant_id = mc.applicant_id AND mjsj.job_id = mc.job_id
+        ORDER BY mas.created_at DESC
+        LIMIT 1
+      ) app_qa ON true
       WHERE mc.job_id = $1
         AND mc.applicant_id IS NOT NULL
         AND rsc.name = 'Screening & Matching'

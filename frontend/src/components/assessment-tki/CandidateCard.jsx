@@ -3,6 +3,8 @@ import { loadCardData, saveCardData, clearCardData, SKEY } from './utils/storage
 import { computeTKI, fmtDateID } from './utils/scoring';
 import { updatePortalParticipant } from '@/api/portal-assessment.api';
 import { submitAssessment, updateAssessmentReport } from '@/api/assessment-battery-result.api';
+import { submitAssessmentResult } from '@/api/onboarding-assessment-result.api';
+import { getOnboardingToken } from '@/lib/onboardingPortalAuth';
 import { unpackAssessorState, packAssessorState } from './report/assessor-state';
 import Setup from './candidate/Setup';
 import Briefing from './candidate/Briefing';
@@ -16,22 +18,30 @@ const ASSESSMENT_ID_TKI = 6;
 const SAVE_DEBOUNCE_MS = 600;
 
 export default function CandidateCard({
-  mode = 'standalone',
+  mode = 'standalone', // 'standalone' | 'portal' | 'onboarding'
   prefilledProfile = null,
   onPortalSubmit = null,
   portalHash = null,
   allowViewReport = true,
+  onExit = null,
 } = {}) {
   const isPortal = mode === 'portal';
-  // Scope localStorage per portal session so multiple invitations in the same browser don't collide.
+  const isOnboarding = mode === 'onboarding';
+  const skipsSetup = isPortal || isOnboarding;
+
   const storageKey = isPortal && portalHash ? `${SKEY}::portal::${portalHash}` : SKEY;
 
-  // TKI ReportView is the HR-only editor (no separate CandidateReportView). Force-off
-  // in portal mode so kandidat never sees HR-editable fields.
-  const showReportButton = !isPortal && allowViewReport;
+  const showReportButton = !skipsSetup && allowViewReport;
 
   const initial = (() => {
     const data = loadCardData(storageKey);
+    if (isOnboarding && prefilledProfile) {
+      return {
+        profile: data?.profile || prefilledProfile,
+        results: data?.results || {},
+        screen: 'briefing',
+      };
+    }
     if (isPortal && prefilledProfile) {
       const savedProfile = data?.profile || null;
       return {
@@ -55,7 +65,6 @@ export default function CandidateCard({
   const [submitError, setSubmitError] = useState(null);
   const submitOnceRef = useRef(false);
 
-  // ── HR-annotation state (standalone only) ──
   const [resultRow, setResultRow] = useState(null);
   const [assessorState, setAssessorState] = useState({});
   const [isDirty, setIsDirty] = useState(false);
@@ -69,7 +78,6 @@ export default function CandidateCard({
     if (profile) saveCardData(profile, results, storageKey);
   }, [profile, results, storageKey]);
 
-  // Tab-switch detector while taking the test (logged into the report).
   useEffect(() => {
     const handler = () => {
       if (document.hidden && screen === 'test') setTabSwitches((n) => n + 1);
@@ -107,7 +115,7 @@ export default function CandidateCard({
   const handleReset = useCallback(() => {
     if (!window.confirm('Reset semua data dan progres asesmen ini?')) return;
     clearCardData(storageKey);
-    if (!isPortal) setProfile(null);
+    if (!isPortal && !isOnboarding) setProfile(null);
     setResults({});
     setTabSwitches(0);
     setSubmitStatus('idle');
@@ -118,8 +126,8 @@ export default function CandidateCard({
     setSaveStatus('idle');
     setSaveError(null);
     submitOnceRef.current = false;
-    goTo(isPortal ? 'intro' : 'setup');
-  }, [goTo, storageKey, isPortal]);
+    goTo(skipsSetup ? 'intro' : 'setup');
+  }, [goTo, storageKey, isPortal, isOnboarding, skipsSetup]);
 
   const handleTestComplete = useCallback((answers) => {
     const r = computeTKI(answers);
@@ -127,9 +135,6 @@ export default function CandidateCard({
     goTo('complete');
   }, [tabSwitches, goTo]);
 
-  // Submit pre-computed result + summary. Portal hands off to onPortalSubmit (flips session
-  // to 'completed'); standalone posts to /assessment-battery-result and captures the row id
-  // so HR can PUT annotations against /:id/report.
   const submitResults = useCallback(async () => {
     const r = results.tki;
     if (!r) return;
@@ -147,7 +152,9 @@ export default function CandidateCard({
 
       if (isPortal && onPortalSubmit) {
         await onPortalSubmit(payload);
-        // Portal: don't capture the row — kandidat shouldn't see HR-editable fields.
+      } else if (isOnboarding) {
+        const token = getOnboardingToken();
+        await submitAssessmentResult(token, { battery: 'T', ...payload });
       } else {
         const res = await submitAssessment({
           assessment_id: ASSESSMENT_ID_TKI,
@@ -168,7 +175,7 @@ export default function CandidateCard({
       setSubmitStatus('error');
       setSubmitError(e?.response?.data?.message || e?.message || 'Gagal mengirim hasil ke server.');
     }
-  }, [profile, results, isPortal, onPortalSubmit]);
+  }, [profile, results, isPortal, isOnboarding, onPortalSubmit]);
 
   useEffect(() => {
     if (screen === 'complete' && !submitOnceRef.current && submitStatus === 'idle') {
@@ -177,7 +184,6 @@ export default function CandidateCard({
     }
   }, [screen, submitStatus, submitResults]);
 
-  // ── HR-annotation save loop (standalone only — resultRow.id is never set in portal) ──
   const doSave = useCallback(async () => {
     if (!resultRow?.id) return { ok: false };
     setSaveStatus('saving');
@@ -215,7 +221,6 @@ export default function CandidateCard({
     return doSave();
   }, [doSave]);
 
-  // ── Routing ──
   if (screen === 'setup') {
     return <Setup initial={profile} onSubmit={handleSetupSubmit} emailReadOnly={isPortal} />;
   }
@@ -237,7 +242,7 @@ export default function CandidateCard({
       <Complete
         profile={profile}
         onViewReport={results.tki && showReportButton ? () => goTo('report') : null}
-        onRestart={handleReset}
+        onRestart={isOnboarding && onExit ? onExit : handleReset}
         submitStatus={submitStatus}
         submitError={submitError}
         onRetrySubmit={submitResults}

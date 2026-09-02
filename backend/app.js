@@ -59,6 +59,9 @@ import offerPack from "./src/modules/offer-pack/offer-pack.route.js";
 import portalContract from "./src/modules/portal-contract/portal-contract.route.js";
 import emailTemplate from "./src/modules/email-template/email-template.route.js";
 import portalOnboarding from "./src/modules/portal-onboarding/portal-onboarding.route.js";
+import onboardingAssessmentResult from "./src/modules/onboarding assessment/onboarding-assessment-result.route.js";
+import onboardingQuestion from "./src/modules/onboarding assessment/question/onboarding-question.route.js";
+
 
 app.use(express.json());
 
@@ -130,6 +133,8 @@ portal.use("/api/offer-pack", offerPack)
 portal.use("/api/portal-contract", portalContract);
 portal.use("/api/email-template", emailTemplate)
 portal.use("/api/portal-onboarding", portalOnboarding);
+portal.use("/api/onboarding-assessment-result", onboardingAssessmentResult);
+portal.use("/api/onboarding-question", onboardingQuestion);
 app.use("/portal", portal);
 app.use("/api/auth", auth);
 app.use("/api/cookies", cookies);
@@ -178,6 +183,8 @@ app.use("/api/offer-pack", offerPack);
 app.use("/api/portal-contract", portalContract);
 app.use("/api/email-template", emailTemplate)
 app.use("/api/portal-onboarding", portalOnboarding);
+app.use("/api/onboarding-assessment-result", onboardingAssessmentResult);
+app.use("/api/onboarding-question", onboardingQuestion);
 
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => {
