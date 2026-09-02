@@ -31,7 +31,7 @@ export function StatCard({ label, value, tone = 'default', hint }) {
   return (
     <Card>
       <CardContent className="p-3">
-        <div className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">{label}</div>
+        <div className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground break-words">{label}</div>
         <div className={`mt-1 text-2xl font-bold font-mono ${toneCls}`}>{value}</div>
         {hint && <div className="mt-0.5 text-[10px] text-muted-foreground">{hint}</div>}
       </CardContent>
