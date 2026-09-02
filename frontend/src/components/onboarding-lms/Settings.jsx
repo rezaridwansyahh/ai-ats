@@ -1,8 +1,10 @@
-import { useState } from "react";
-import { Upload, Download, Activity, Trash2 } from "lucide-react";
-import { Button } from "@/components/ui/button";
+import { useState } from 'react';
+import { Upload, Download, Activity, Trash2 } from 'lucide-react';
+import { Button } from '@/components/ui/button';
 
-function SectionCard({ seq, title, subtitle, right, children}){
+/* ---------- shared building blocks ---------- */
+
+function SectionCard({ seq, title, subtitle, right, children }) {
   return (
     <div className="rounded-xl border bg-card overflow-hidden">
       <div className="flex items-start gap-4 px-6 py-5 border-b">
@@ -18,7 +20,7 @@ function SectionCard({ seq, title, subtitle, right, children}){
   );
 }
 
-function FieldRow({label, value, editable = true, onEdit}){
+function FieldRow({ label, value, editable = true, onEdit }) {
   return (
     <div className="flex items-center justify-between py-3 border-b last:border-b-0">
       <span className="text-[10px] font-bold uppercase tracking-wide text-muted-foreground">{label}</span>
@@ -37,7 +39,7 @@ function FieldRow({label, value, editable = true, onEdit}){
   );
 }
 
-function Segmented({options, value, onChange}){
+function Segmented({ options, value, onChange }) {
   return (
     <div className="inline-flex items-center rounded-lg border p-0.5 bg-muted/30 flex-shrink-0">
       {options.map((opt) => (
@@ -57,7 +59,7 @@ function Segmented({options, value, onChange}){
   );
 }
 
-function Toggle({ checked, onChange}){
+function Toggle({ checked, onChange }) {
   return (
     <button
       onClick={() => onChange(!checked)}
@@ -66,15 +68,15 @@ function Toggle({ checked, onChange}){
       }`}
     >
       <span
-        className={`absolute top-0.5 h-4 w-4 rounded-full bg-white shadow transition-transform ${
-          checked ? 'translate-x-4' : 'translate-x-0.5'
+        className={`absolute top-0.5 left-0.5 h-4 w-4 rounded-full bg-white shadow transition-transform ${
++          checked ? 'translate-x-4' : 'translate-x-0'
         }`}
       />
     </button>
   );
 }
 
-function PrefRow({ label, hint, control }){
+function PrefRow({ label, hint, control }) {
   return (
     <div className="flex items-center justify-between gap-6 py-4 border-b last:border-b-0">
       <div className="min-w-0">
@@ -86,8 +88,10 @@ function PrefRow({ label, hint, control }){
   );
 }
 
+/* ---------- section 3: notification matrix ---------- */
+
 const NOTIF_OPTIONS = {
-    full: [
+  full: [
     { value: 'email_push', label: 'Email + push' },
     { value: 'email', label: 'Email' },
     { value: 'push', label: 'Push' },
@@ -125,8 +129,9 @@ const NOTIF_EVENTS = [
   { key: 'cert_earned', label: 'New certificate earned', hint: 'Phase end-of-period and final track completion.', options: NOTIF_OPTIONS.cert, defaultValue: 'email' },
 ];
 
-// Main Component
-export default function Settings({ t }){
+/* ---------- main component ---------- */
+
+export default function Settings({ t }) {
   const [lang, setLang] = useState('en');
   const [density, setDensity] = useState('comfortable');
   const [theme, setTheme] = useState('light');
@@ -141,12 +146,12 @@ export default function Settings({ t }){
   const [retention, setRetention] = useState('90');
   const [showAvatar, setShowAvatar] = useState(true);
   const [anonFeedback, setAnonFeedback] = useState(true);
- 
+
   const [notifValues, setNotifValues] = useState(
     Object.fromEntries(NOTIF_EVENTS.map((e) => [e.key, e.defaultValue]))
   );
   const setNotif = (key, value) => setNotifValues((prev) => ({ ...prev, [key]: value }));
- 
+
   const accentColors = [
     { key: 'emerald', hex: '#0A6E5C' },
     { key: 'blue', hex: '#2147A1' },
@@ -201,6 +206,295 @@ export default function Settings({ t }){
           </div>
         </div>
       </SectionCard>
+
+      {/* 02 — Interface preferences */}
+      <SectionCard
+        seq="02"
+        title="Interface preferences"
+        subtitle="Applies just to this device. Switch back anytime — your data is unaffected."
+      >
+        <PrefRow
+          label="Language"
+          hint="Affects nav, module titles, assistant. Materials stay in their source language."
+          control={
+            <Segmented
+              value={lang}
+              onChange={setLang}
+              options={[
+                { value: 'id', label: 'Bahasa Indonesia' },
+                { value: 'en', label: 'English' },
+              ]}
+            />
+          }
+        />
+        <PrefRow
+          label="Density"
+          hint="Compact fits more on screen; comfortable is the default for new hires."
+          control={
+            <Segmented
+              value={density}
+              onChange={setDensity}
+              options={[
+                { value: 'compact', label: 'Compact' },
+                { value: 'comfortable', label: 'Comfortable' },
+                { value: 'spacious', label: 'Spacious' },
+              ]}
+            />
+          }
+        />
+        <PrefRow
+          label="Theme"
+          hint="Auto follows your OS setting. Dark mode is in beta — some modules render in light."
+          control={
+            <Segmented
+              value={theme}
+              onChange={setTheme}
+              options={[
+                { value: 'light', label: 'Light (default)' },
+                { value: 'auto', label: 'Auto' },
+                { value: 'dark', label: 'Dark · beta' },
+              ]}
+            />
+          }
+        />
+        <PrefRow
+          label="Brand accent"
+          hint="Cosmetic only. Used for primary buttons and the progress bar."
+          control={
+            <div className="flex items-center gap-2">
+              {accentColors.map((c) => (
+                <button
+                  key={c.key}
+                  onClick={() => setAccent(c.key)}
+                  style={{ backgroundColor: c.hex }}
+                  className={`h-6 w-6 rounded-md border-2 ${
+                    accent === c.key ? 'border-foreground' : 'border-transparent'
+                  }`}
+                  aria-label={c.key}
+                />
+              ))}
+            </div>
+          }
+        />
+      </SectionCard>
+
+      {/* 03 — How we reach you */}
+      <SectionCard
+        seq="03"
+        title="How we reach you"
+        subtitle="Per-event delivery channel. We never send marketing — only onboarding-related."
+        right={
+          <button className="text-xs font-semibold text-emerald-700 hover:underline">
+            Mute everything for a week →
+          </button>
+        }
+      >
+        <div className="flex items-center justify-between py-2 border-b text-[10px] font-bold uppercase tracking-wide text-muted-foreground">
+          <span>Event</span>
+          <span>Delivery</span>
+        </div>
+        {NOTIF_EVENTS.map((ev) => (
+          <div key={ev.key} className="flex items-center justify-between gap-6 py-3.5 border-b last:border-b-0">
+            <div className="min-w-0">
+              <div className="text-sm font-medium">{ev.label}</div>
+              <div className="text-xs text-muted-foreground mt-0.5">{ev.hint}</div>
+            </div>
+            <Segmented
+              value={notifValues[ev.key]}
+              onChange={(v) => setNotif(ev.key, v)}
+              options={ev.options}
+            />
+          </div>
+        ))}
+      </SectionCard>
+
+      {/* 04 — Accessibility */}
+      <SectionCard
+        seq="04"
+        title="Accessibility"
+        subtitle="Changes apply immediately. Persisted to this account across devices."
+      >
+        <PrefRow
+          label="Text size"
+          hint="Scales body copy across the app. Module materials use their source size."
+          control={
+            <Segmented
+              value={textSize}
+              onChange={setTextSize}
+              options={[
+                { value: 'sm', label: 'A-' },
+                { value: 'base', label: 'A' },
+                { value: 'lg', label: 'A+' },
+                { value: 'xl', label: 'A++' },
+              ]}
+            />
+          }
+        />
+        <PrefRow
+          label="Contrast"
+          hint="High contrast meets WCAG AAA for body text."
+          control={
+            <Segmented
+              value={contrast}
+              onChange={setContrast}
+              options={[
+                { value: 'standard', label: 'Standard' },
+                { value: 'high', label: 'High' },
+              ]}
+            />
+          }
+        />
+        <PrefRow
+          label="Reduce motion"
+          hint="Disables page transitions, sparkle effects, animated progress fills."
+          control={<Toggle checked={reduceMotion} onChange={setReduceMotion} />}
+        />
+        <PrefRow
+          label="Captions on by default"
+          hint="Closed captions on for every module video. Languages: EN, ID, JP."
+          control={<Toggle checked={captions} onChange={setCaptions} />}
+        />
+      </SectionCard>
+
+      {/* 05 — Privacy & data */}
+      <SectionCard
+        seq="05"
+        title="Privacy & data"
+        subtitle="What others see, and how long we keep things. PII is auto-redacted everywhere in the assistant."
+      >
+        <PrefRow
+          label="Who sees my progress"
+          hint="HR sees a roll-up regardless — required for compliance reporting."
+          control={
+            <Segmented
+              value={visibility}
+              onChange={setVisibility}
+              options={[
+                { value: 'just_me', label: 'Just me' },
+                { value: 'manager_buddy', label: 'Manager + buddy' },
+                { value: 'team', label: 'My team' },
+              ]}
+            />
+          }
+        />
+        <PrefRow
+          label="Assistant history retention"
+          hint="After this window, only aggregate analytics remain. You can purge anytime."
+          control={
+            <Segmented
+              value={retention}
+              onChange={setRetention}
+              options={[
+                { value: 'session', label: 'This session only' },
+                { value: '30', label: '30 days' },
+                { value: '90', label: '90 days (default)' },
+              ]}
+            />
+          }
+        />
+        <PrefRow
+          label="Show my avatar to peers"
+          hint="Off shows initials only — on leaderboards and module discussions."
+          control={<Toggle checked={showAvatar} onChange={setShowAvatar} />}
+        />
+        <PrefRow
+          label="Submit feedback anonymously"
+          hint="Always anonymous to your manager. HR sees aggregates by default."
+          control={<Toggle checked={anonFeedback} onChange={setAnonFeedback} />}
+        />
+        <div className="flex flex-wrap gap-2 py-4">
+          <button className="inline-flex items-center gap-1.5 text-xs font-semibold border rounded-lg px-3 py-1.5 hover:bg-muted/40">
+            <Download className="h-3.5 w-3.5" />
+            Download my data
+          </button>
+          <button className="inline-flex items-center gap-1.5 text-xs font-semibold border rounded-lg px-3 py-1.5 hover:bg-muted/40">
+            <Activity className="h-3.5 w-3.5" />
+            Activity log
+          </button>
+          <button className="inline-flex items-center gap-1.5 text-xs font-semibold border border-red-200 text-red-700 rounded-lg px-3 py-1.5 hover:bg-red-50">
+            <Trash2 className="h-3.5 w-3.5" />
+            Purge assistant history
+          </button>
+        </div>
+      </SectionCard>
+
+      {/* 06 — Sign-in & security */}
+      <SectionCard
+        seq="06"
+        title="Sign-in & security"
+        subtitle="SSO is the only path in. Backup methods help when SSO is unavailable on a trip."
+      >
+        <div className="grid grid-cols-2 gap-4 py-5 border-b">
+          <div className="rounded-lg border bg-muted/20 p-4">
+            <div className="text-[10px] font-bold uppercase tracking-wide text-muted-foreground mb-1.5">
+              Primary sign-in
+            </div>
+            <div className="text-sm font-semibold">Google Workspace SSO</div>
+            <div className="text-xs text-muted-foreground mt-0.5">
+              maya.putri@abhimeta.id · last sign-in 4 min ago, Jakarta
+            </div>
+            <div className="text-xs font-semibold text-emerald-700 mt-2">✓ Active</div>
+          </div>
+          <div className="rounded-lg border bg-muted/20 p-4">
+            <div className="text-[10px] font-bold uppercase tracking-wide text-muted-foreground mb-1.5">
+              2-factor backup
+            </div>
+            <div className="text-sm font-semibold">Authenticator app</div>
+            <div className="text-xs text-muted-foreground mt-0.5">
+              Configured Mar 9. Codes refresh every 30 seconds.
+            </div>
+            <button className="text-xs font-semibold text-emerald-700 hover:underline mt-2">
+              Regenerate backup codes
+            </button>
+          </div>
+        </div>
+
+        <div className="grid grid-cols-2 gap-4 py-5 border-b">
+          <div>
+            <div className="text-[10px] font-bold uppercase tracking-wide text-muted-foreground mb-2">
+              Connected accounts
+            </div>
+            <div className="space-y-2">
+              {[
+                { name: 'Slack', connected: true },
+                { name: 'GitHub', connected: true },
+                { name: 'Calendar', connected: true },
+                { name: 'SharePoint', connected: false },
+              ].map((acc) => (
+                <div key={acc.name} className="flex items-center justify-between text-sm">
+                  <span>{acc.name}</span>
+                  <span className={acc.connected ? 'text-xs font-semibold text-emerald-700' : 'text-xs text-muted-foreground'}>
+                    {acc.connected ? 'Connected' : 'Not connected'}
+                  </span>
+                </div>
+              ))}
+            </div>
+          </div>
+          <div className="rounded-lg border border-red-100 bg-red-50/40 p-4">
+            <div className="text-[10px] font-bold uppercase tracking-wide text-muted-foreground mb-1.5">
+              Active sessions
+            </div>
+            <div className="text-sm font-semibold mb-1">3 devices</div>
+            <div className="text-xs text-muted-foreground">
+              MacBook, Jakarta · current. iPhone, Jakarta · 2h ago. Office desktop · last week.
+            </div>
+            <button className="text-xs font-semibold text-red-700 hover:underline mt-2">
+              Sign out other devices
+            </button>
+          </div>
+        </div>
+      </SectionCard>
+
+      {/* Footer */}
+      <div className="flex items-center justify-between rounded-xl border bg-muted/20 px-6 py-4">
+        <p className="text-xs text-muted-foreground max-w-sm">
+          These settings are version-controlled. Every change is logged and reversible from the activity log.
+        </p>
+        <div className="flex items-center gap-2 flex-shrink-0">
+          <Button variant="outline">Reset to defaults</Button>
+          <Button>Save all changes</Button>
+        </div>
+      </div>
     </div>
-  )
+  );
 }
