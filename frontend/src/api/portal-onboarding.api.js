@@ -5,3 +5,5 @@ export const login = (email) => portalApi.post('/portal-onboarding/login', { ema
 export const getMe = (onboardingToken) => portalApi.get('/portal-onboarding/me', { headers: { Authorization: `Bearer ${onboardingToken}` }, });
 
 export const getCurriculum = (onboardingToken) => portalApi.get('/portal-onboarding/curriculum', { headers: { Authorization: `Bearer ${onboardingToken}` },});
+
+export const getJourney = (onboardingToken) => portalApi.get('/portal-onboarding/journey', { headers: { Authorization: `Bearer ${onboardingToken}` },});

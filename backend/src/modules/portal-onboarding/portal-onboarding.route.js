@@ -8,5 +8,6 @@ router.post('/login', PortalOnboardingController.login);
 
 router.get('/me', requireCandidatePortalAuth, PortalOnboardingController.getMe);
 router.get('/curriculum', requireCandidatePortalAuth, PortalOnboardingController.getCurriculum);
+router.get('/journey', requireCandidatePortalAuth, PortalOnboardingController.getJourney);
 
 export default router;

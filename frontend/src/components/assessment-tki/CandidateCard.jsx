@@ -131,7 +131,7 @@ export default function CandidateCard({
 
   const handleTestComplete = useCallback((answers) => {
     const r = computeTKI(answers);
-    setResults({ tki: { ...r, date: fmtDateID(), tabSwitches } });
+    setResults({ tki: { ...r, date: fmtDateID(), tabSwitches, answers } });
     goTo('complete');
   }, [tabSwitches, goTo]);
 

@@ -135,7 +135,7 @@ export default function CandidateCard({
 
   const handleTestComplete = useCallback((answers) => {
     const r = computeProfile(answers);
-    setResults({ insights: { ...r, date: fmtDateID(), tabSwitches } });
+    setResults({ insights: { ...r, date: fmtDateID(), tabSwitches, answers } });
     goTo('complete');
   }, [tabSwitches, goTo]);
 

@@ -1,4 +1,3 @@
-// src/db/data/battery-onboarding.js
 export default [
   {
     id: 1,

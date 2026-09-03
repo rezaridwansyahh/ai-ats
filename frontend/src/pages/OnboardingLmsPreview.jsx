@@ -105,7 +105,7 @@ export default function OnboardingLmsPreview() {
       case 'home':
         return <HomeScreen data={LMS_DATA} t={t} lang={LANG} goTo={goTo} />;
       case 'journey':
-        return <Journey t={t} lang={LANG} goTo={goTo} />;
+        return <Journey data={data} onboarding={onboarding} t={t} lang={LANG} goTo={goTo} />;
       case 'module':
         return <ModuleDetail moduleId={params.moduleId} t={t} lang={LANG} goTo={goTo} />;
       case 'viewer':
