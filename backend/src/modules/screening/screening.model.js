@@ -228,23 +228,26 @@ class ScreeningModel {
         s.rubric_snapshot IS DISTINCT FROM cj.rubric AS rubric_is_stale,
         sq.status            AS qa_status,
         app_qa.information    AS application_qa
-      FROM candidate_screening cs
-      JOIN master_candidate mc       ON mc.id = cs.candidate_id
-      JOIN core_job cj                ON cj.id = cs.job_id
-      LEFT JOIN master_applicant a    ON a.id  = mc.applicant_id
+      FROM master_candidate mc
+      JOIN core_job cj                ON cj.id = mc.job_id
       JOIN candidate_job_score s
-        ON s.applicant_id = mc.applicant_id AND s.job_id = cs.job_id
+        ON s.applicant_id = mc.applicant_id AND s.job_id = mc.job_id
+      LEFT JOIN master_applicant a    ON a.id  = mc.applicant_id
+      -- candidate_screening is lazily created on first L3 (candidate-detail)
+      -- visit — LEFT JOIN so a scored candidate isn't hidden from the ranking
+      -- just because nobody has opened their profile yet.
+      LEFT JOIN candidate_screening cs ON cs.candidate_id = mc.id
       LEFT JOIN screening_qa sq ON sq.screening_id = cs.id
       LEFT JOIN LATERAL (
         SELECT mas.information
         FROM mapping_applicant_sourcing mas
         JOIN mapping_job_sourcing_job mjsj ON mjsj.job_sourcing_id = mas.job_sourcing_id
-        WHERE mas.applicant_id = mc.applicant_id AND mjsj.job_id = cs.job_id
+        WHERE mas.applicant_id = mc.applicant_id AND mjsj.job_id = mc.job_id
         ORDER BY mas.created_at DESC
         LIMIT 1
       ) app_qa ON true
-      WHERE cs.job_id = $1 AND cs.decision IS NULL
-      ORDER BY s.overall_score DESC NULLS LAST, cs.id ASC
+      WHERE mc.job_id = $1 AND cs.decision IS NULL
+      ORDER BY s.overall_score DESC NULLS LAST, cs.id ASC NULLS LAST
       `,
       [job_id]
     );
