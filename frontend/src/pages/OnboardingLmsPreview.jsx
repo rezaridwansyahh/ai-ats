@@ -17,6 +17,7 @@ import { mergeLiveAssessments } from '@/components/onboarding-lms/utils/assessme
 import InsightsCandidateCard from '@/components/assessment-insights/CandidateCard';
 import TkiCandidateCard from '@/components/assessment-tki/CandidateCard';
 import Settings from '@/components/onboarding-lms/Settings';
+import Assistant from '@/components/onboarding-lms/Assistant';
 
 import { getOnboardingToken, clearOnboardingToken } from '@/lib/onboardingPortalAuth';
 import { getMe, getCurriculum, getJourney } from '@/api/portal-onboarding.api';
@@ -120,7 +121,7 @@ export default function OnboardingLmsPreview() {
       case 'report':
         return <Report t={t} lang={LANG} goTo={goTo} />;
       case 'assistant':
-        return <ComingSoon label="Assistant" />;
+        return <Assistant t={t} lang={LANG} goTo={goTo} />;
       case 'help':
         return <ComingSoon label="Help & Buddy" />;
       case 'settings':

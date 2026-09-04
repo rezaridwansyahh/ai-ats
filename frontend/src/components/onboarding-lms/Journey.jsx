@@ -94,7 +94,7 @@ function PhaseCard({ phase, modules, t, lang, goTo }) {
 
         <div className="flex-1 min-w-0">
           <div className="font-serif text-lg font-semibold truncate">
-            {phase.key} · {phase.when}
+            {phase.when}
           </div>
           <div className="text-xs text-muted-foreground mt-0.5">
             {modules.length} {t.modules} · {hours}{t.hours} · {phase.range}

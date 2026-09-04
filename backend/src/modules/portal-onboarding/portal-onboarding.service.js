@@ -36,17 +36,24 @@ class PortalOnboardingService {
 
   async getCurriculum(onboarding_id) {
     const row = await PortalOnboardingModel.getById(onboarding_id);
-    if (!row) throw { status: 404, message: 'Onboarding record not found.' };
+    if(!row) throw {status: 404, message: 'Onboarding record not found'};
 
     const phases = await OnboardingLmsService.getHireCurriculum(onboarding_id, row.company_id);
 
     const startDate = row.start_date ? new Date(row.start_date) : null;
 
-    const PHASES = phases.map(p => ({
-      id: p.seq,
-      when: p.label,
-      status: p.status, 
-    }));
+    const PHASES = phases.map(p => {
+      const rangeStart = startDate && p.dayOffsetStart != null ? this._addDays(startDate, p.dayOffsetStart) : null;
+      const rangeEnd = startDate && p.dayOffsetEnd != null ? this._addDays(startDate, p.dayOffsetEnd) : null;
+
+      return {
+        id: p.seq,
+        key: p.label,
+        when: p.label,
+        range: rangeStart && rangeEnd ? `${this._formatDue(rangeStart)} - ${this._formatDue(rangeEnd)}` : null,
+        status: p.status,
+      };
+    });
 
     const MODULES = phases.flatMap(p => {
       const due = startDate && p.dayOffsetEnd != null
@@ -66,7 +73,7 @@ class PortalOnboardingService {
       }));
     });
 
-    return { PHASES, MODULES };
+    return {PHASES, MODULES};
   }
 
   _addDays(date, days) {
