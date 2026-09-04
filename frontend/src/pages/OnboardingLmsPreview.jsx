@@ -19,7 +19,7 @@ import TkiCandidateCard from '@/components/assessment-tki/CandidateCard';
 import Settings from '@/components/onboarding-lms/Settings';
 
 import { getOnboardingToken, clearOnboardingToken } from '@/lib/onboardingPortalAuth';
-import { getMe, getCurriculum } from '@/api/portal-onboarding.api';
+import { getMe, getCurriculum, getJourney } from '@/api/portal-onboarding.api';
 
 // Fixed language — language toggle removed for now
 const LANG = 'id';
@@ -37,6 +37,7 @@ export default function OnboardingLmsPreview() {
   const [authChecked, setAuthChecked] = useState(false);
   const [onboarding, setOnboarding] = useState(null);
   const [curriculum, setCurriculum] = useState(null);
+  const [journey, setJourney] = useState([]);
   const [assessmentResults, setAssessmentResults] = useState([]);
 
   const [route, setRoute] = useState('home');
@@ -60,10 +61,11 @@ export default function OnboardingLmsPreview() {
       return;
     }
 
-    Promise.all([getMe(token), getCurriculum(token)])
-      .then(([meRes, curRes]) => {
+    Promise.all([getMe(token), getCurriculum(token), getJourney(token)])
+      .then(([meRes, curRes, journeyRes]) => {
         setOnboarding(meRes.data.onboarding);
         setCurriculum(curRes.data);
+        setJourney(journeyRes.data.journey || []);
       })
       .catch(() => clearOnboardingToken())
       .finally(() => setAuthChecked(true));
@@ -74,8 +76,9 @@ export default function OnboardingLmsPreview() {
   const handleLoginSuccess = async (onboardingData) => {
     setOnboarding(onboardingData);
     const token = getOnboardingToken();
-    const curRes = await getCurriculum(token);
+    const [curRes, journeyRes] = await Promise.all([getCurriculum(token), getJourney(token)])
     setCurriculum(curRes.data);
+    setJourney(journeyRes.data.journey || []);
     refreshAssessmentResults();
   };
 
@@ -105,7 +108,7 @@ export default function OnboardingLmsPreview() {
       case 'home':
         return <HomeScreen data={LMS_DATA} t={t} lang={LANG} goTo={goTo} />;
       case 'journey':
-        return <Journey data={data} onboarding={onboarding} t={t} lang={LANG} goTo={goTo} />;
+        return <Journey data={data} onboarding={onboarding} journey={journey} t={t} lang={LANG} goTo={goTo} />;
       case 'module':
         return <ModuleDetail moduleId={params.moduleId} t={t} lang={LANG} goTo={goTo} />;
       case 'viewer':

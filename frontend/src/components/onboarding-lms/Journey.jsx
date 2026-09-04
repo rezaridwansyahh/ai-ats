@@ -1,12 +1,38 @@
 import { useState } from 'react';
-import { Check, Lock, ChevronDown, ChevronUp } from 'lucide-react';
-import { LMS_DATA } from './mockData';
+import { Check, Lock, ChevronDown, ChevronUp, Clock } from 'lucide-react';
 
 const STATUS_BADGE = {
   done:   { key: 'complete',    className: 'bg-emerald-50 text-emerald-700 border-emerald-200' },
   active: { key: 'in_progress', className: 'bg-blue-50 text-blue-700 border-blue-200' },
   locked: { key: 'locked',      className: 'bg-muted text-muted-foreground border-transparent' },
 };
+
+const EVENT_LABELS = {
+  preboarding_complete: { id: 'Preboarding selesai', en: 'Preboarding complete' },
+  day_one_started:      { id: 'Hari pertama dimulai', en: 'Day one started' },
+  probation_started:    { id: 'Masa probation dimulai', en: 'Probation started' },
+  confirmed:             { id: 'Dikonfirmasi jadi karyawan tetap', en: 'Confirmed as permanent employee' },
+  terminated:            { id: 'Onboarding dihentikan', en: 'Onboarding terminated' },
+  checklist_item_done:   { id: 'Checklist selesai', en: 'Checklist item done' },
+  milestone_done:        { id: 'Milestone tercapai', en: 'Milestone reached' },
+  lms_module_done:       { id: 'Modul LMS selesai', en: 'LMS module completed' },
+  assessment_done:       { id: 'Assessment selesai', en: 'Assessment completed' },
+  checkin_done:          { id: 'Check-in selesai', en: 'Check-in completed' },
+  hris_task_done:        { id: 'Tugas HRIS selesai', en: 'HRIS task done' },
+  welcome_message_sent:  { id: 'Pesan selamat datang terkirim', en: 'Welcome message sent' },
+};
+
+function formatEventLabel(event, lang){
+  const base = EVENT_LABELS[event.event_type];
+  const label = base ? base[lang] || base.en : event.event_type.replace(/_/g, ' ');
+  return event.title ? `${label} — ${event.title}` : label;
+}
+
+function formatEventDate(dateStr, lang) {
+  return new Date(dateStr).toLocaleString(lang === 'id' ? 'id-ID' : 'en-US', {
+    day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit',
+  });
+}
 
 function ModuleRow({ mod, t, lang, goTo }) {
   const title = lang === 'id' ? mod.t_id : mod.t_en;
@@ -105,13 +131,52 @@ function PhaseCard({ phase, modules, t, lang, goTo }) {
   );
 }
 
-export default function Journey({ t, lang, goTo }) {
-  const { PHASES, MODULES } = LMS_DATA;
+function JourneyHistory({ journey, lang }){
+  const[open, setOpen] = useState(false);
+  if(!journey || journey.length === 0) return null;
+
+  return(
+     <div className="rounded-xl border bg-card overflow-hidden mt-6">
+      <button
+        onClick={() => setOpen((o) => !o)}
+        className="w-full flex items-center gap-3 px-6 py-4 text-left hover:bg-muted/20"
+      >
+        <Clock className="h-4 w-4 text-muted-foreground flex-shrink-0" />
+        <span className="flex-1 font-serif text-base font-semibold">
+          {lang === 'id' ? 'Riwayat Onboarding' : 'Onboarding History'}
+        </span>
+        <span className="text-xs text-muted-foreground">{journey.length}</span>
+        {open ? <ChevronUp className="h-4 w-4 text-muted-foreground" /> : <ChevronDown className="h-4 w-4 text-muted-foreground" />}
+      </button>
+
+      {open && (
+        <div className="pb-1">
+          {journey.map((event, i) => (
+            <div
+              key={`${event.event_type}-${event.ref_id ?? i}`}
+              className="flex items-start gap-3 px-6 py-3 border-t text-sm"
+            >
+              <span className="h-2 w-2 rounded-full bg-emerald-600 mt-1.5 flex-shrink-0" />
+              <div className="flex-1 min-w-0">
+                <div>{formatEventLabel(event, lang)}</div>
+                <div className="text-xs text-muted-foreground mt-0.5">{formatEventDate(event.occurred_at, lang)}</div>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+export default function Journey({ data, onboarding, journey = [], t, lang, goTo }) {
+  const { PHASES, MODULES } = data;
   const currentPhase = PHASES.find((p) => p.status === 'active');
 
   const trackLabel = lang === 'id' ? 'Jalur Backend Engineer · 6 Bulan' : 'Backend Engineer Track · 6 Months';
   const sixMonthLabel = lang === 'id' ? 'Jalur enam bulan' : 'Six-month track';
   const trackDates = lang === 'id' ? '9 Mar 2026 → 8 Sep 2026' : 'Mar 9, 2026 → Sep 8, 2026';
+
 
   return (
     <div className="max-w-3xl mx-auto pb-12">
@@ -169,6 +234,8 @@ export default function Journey({ t, lang, goTo }) {
           />
         ))}
       </div>
+
+      <JourneyHistory journey={journey} lang={lang} />
     </div>
   );
 }
