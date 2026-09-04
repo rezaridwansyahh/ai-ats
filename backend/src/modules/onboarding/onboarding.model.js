@@ -129,32 +129,42 @@ class OnboardingModel {
 
   // Update onboarding stage/status
   async updateStageStatus(onboarding_id, company_id, data) {
-    const { current_stage, onboarding_status } = data;
-
+    const { current_stage, onboarding_status, confirmed_at, terminated_at } = data;
+  
     const updates = [];
     const values = [];
     let paramCount = 1;
-
+  
     if (current_stage) {
       updates.push(`current_stage = $${paramCount++}`);
       values.push(current_stage);
     }
-
+  
     if (onboarding_status) {
       updates.push(`onboarding_status = $${paramCount++}`);
       values.push(onboarding_status);
     }
-
+  
+    if (confirmed_at) {
+      updates.push(`confirmed_at = $${paramCount++}`);
+      values.push(confirmed_at);
+    }
+  
+    if (terminated_at) {
+      updates.push(`terminated_at = $${paramCount++}`);
+      values.push(terminated_at);
+    }
+  
     updates.push(`updated_at = NOW()`);
     values.push(onboarding_id, company_id);
-
+  
     const query = `
       UPDATE candidate_onboarding
       SET ${updates.join(', ')}
       WHERE id = $${paramCount++} AND company_id = $${paramCount++}
       RETURNING *
     `;
-
+  
     const result = await getDb().query(query, values);
     return result.rows[0];
   }

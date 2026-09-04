@@ -41,6 +41,9 @@ import {
   onboardingWelcomeMessages,
 } from '../data/candidate-onboarding.js';
 import onboardingAssessmentsData from '../data/battery-onboarding.js';
+import onboardingHrisTasksData from '../data/onboarding_hris_task.js';
+import lmsPhasesData from '../data/lms_phases.js';
+import lmsModulesData from '../data/lms_modules.js';
 
 const seed = async () => {
   await getDb().query('BEGIN');
@@ -308,6 +311,25 @@ const seed = async () => {
         [a.id, a.assessment_code, a.name, a.milestone, a.duration_minutes, JSON.stringify(a.options || {}), a.is_active]
       );
     }
+    
+    // 17c. lms_phase
+    for (const p of lmsPhasesData) {
+      await getDb().query(
+        `INSERT INTO lms_phase (id, company_id, seq, label, day_offset_start, day_offset_end)
+        VALUES ($1, $2, $3, $4, $5, $6)`,
+        [p.id, p.company_id, p.seq, p.label, p.day_offset_start, p.day_offset_end]
+      );
+    }
+    
+    // 17d. lms_module
+    for (const m of lmsModulesData) {
+      await getDb().query(
+        `INSERT INTO lms_module (id, phase_id, title, category, duration_min, sort_order, status, created_by)
+        VALUES ($1, $2, $3, $4, $5, $6, $7, $8)`,
+        [m.id, m.phase_id, m.title, m.category, m.duration_min, m.sort_order, m.status, m.created_by]
+      );
+    }
+
 
     // 18. master_applicant — derive company_id via sourcing → account → company,
     //     falling back to matching the sourcing's job_title to core_job for internal sourcings.
@@ -565,6 +587,23 @@ const seed = async () => {
         [w.id, w.onboarding_id, w.from_user_id, w.from_name, w.message_text]
       );
     }
+
+    // 21k. onboarding_hris_task
+    for (const h of onboardingHrisTasksData) {
+      await getDb().query(
+        `INSERT INTO onboarding_hris_task (
+          id, onboarding_id, task_code, task_title, task_description,
+          status, integration_data, error_message, retry_count, executed_at, completed_at
+        )
+        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)`,
+        [
+          h.id, h.onboarding_id, h.task_code, h.task_title, h.task_description,
+          h.status, JSON.stringify(h.integration_data || {}), h.error_message,
+          h.retry_count ?? 0, h.executed_at, h.completed_at,
+        ]
+      );
+    }
+
 
     console.log(`Seeded ${candidateOnboarding.length} onboarding record(s)`);
 
