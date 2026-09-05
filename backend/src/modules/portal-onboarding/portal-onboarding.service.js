@@ -1,6 +1,7 @@
 import jwt from 'jsonwebtoken';
 import PortalOnboardingModel from './portal-onboarding.model.js';
 import OnboardingLmsService from '../onboarding-lms/onboarding-lms.service.js';
+import OnboardingLmsModel from '../onboarding-lms/onboarding-lms.model.js';
 
 const JWT_SECRET = process.env.JWT_SECRET;
 
@@ -32,6 +33,13 @@ class PortalOnboardingService {
     const row = await PortalOnboardingModel.getById(onboarding_id);
     if (!row) throw { status: 404, message: 'Onboarding record not found.' };
     return this._present(row);
+  }
+
+  async getCurriculumData(onboarding_id) {
+    const row = await PortalOnboardingModel.getById(onboarding_id);
+    if (!row) throw { status: 404, message: 'Onboarding record not found.' };
+    const phases = await OnboardingLmsService.getHireCurriculum(onboarding_id, row.company_id);
+    return { row, phases };
   }
 
   async getCurriculum(onboarding_id) {
@@ -96,6 +104,33 @@ class PortalOnboardingService {
       onboarding_status: row.onboarding_status,
     };
   }
+
+  async getModuleDetail(onboarding_id, module_id) {
+    const row = await PortalOnboardingModel.getById(onboarding_id);
+    if (!row) throw { status: 404, message: 'Onboarding record not found.' };
+  
+    const module = await OnboardingLmsModel.getPublishedModuleForCandidate(module_id, onboarding_id, row.company_id);
+    if (!module) throw { status: 404, message: 'Module not found.' };
+  
+    return {
+      id: module.id,
+      title: module.title,
+      category: module.category,
+      durationMin: module.duration_min,
+      status: module.status,
+      score: module.score ?? null,
+      startedAt: module.started_at ?? null,
+      completedAt: module.completed_at ?? null,
+      content: module.content.map((c) => ({
+        id: c.id,
+        seq: c.seq,
+        contentType: c.content_type,
+        title: c.title,
+        payload: c.payload,
+      })),
+    };
+  }
+
 }
 
 export default new PortalOnboardingService();

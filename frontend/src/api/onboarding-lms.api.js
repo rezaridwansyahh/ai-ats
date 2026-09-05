@@ -35,3 +35,5 @@ export const downloadContentFile = (content_id) => { return api.get(`/onboarding
 export const getHireCurriculum = (candidate_onboarding_id) => { return api.get(`/onboarding-lms/hire/${candidate_onboarding_id}/curriculum`); };
 
 export const updateHireProgress = (candidate_onboarding_id, module_id, data) => { return api.patch(`/onboarding-lms/hire/${candidate_onboarding_id}/module/${module_id}/progress`, data); };
+
+export const reorderPhases = (orderedPhaseIds) => { return api.put('/onboarding-lms/phases/reorder', { orderedPhaseIds });};

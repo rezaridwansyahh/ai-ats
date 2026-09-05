@@ -5,7 +5,7 @@ import {
   Link as LinkIcon, Download, ExternalLink, X,
 } from 'lucide-react';
 import {
-  getPhases, createPhase, updatePhase,
+  getPhases, createPhase, reorderPhases,
   getModulesByPhase, createModule, updateModule,
   getContent, createContent, uploadContent, updateContent, downloadContentFile,
 } from '@/api/onboarding-lms.api';
@@ -148,10 +148,12 @@ export default function OnboardingContent() {
   const movePhase = async (index, direction) => {
     const target = index + direction;
     if (target < 0 || target >= phases.length) return;
-    const a = phases[index];
-    const b = phases[target];
+  
+    const reordered = [...phases];
+    [reordered[index], reordered[target]] = [reordered[target], reordered[index]];
+  
     try {
-      await Promise.all([updatePhase(a.id, { seq: b.seq }), updatePhase(b.id, { seq: a.seq })]);
+      await reorderPhases(reordered.map((p) => p.id));
       await loadPhases();
     } catch (err) {
       setError(err.response?.data?.message || err.message || 'Failed to reorder phases');

@@ -164,6 +164,19 @@ class OnboardingLmsController {
       res.status(error.status || 500).json({ success: false, message: error.message || 'Failed to update progress' });
     }
   }
+
+  async reorderPhases(req, res) {
+    try {
+      const company_id = req.user.company_id;
+      const { orderedPhaseIds } = req.body;
+      const phases = await OnboardingLmsService.reorderPhases(company_id, orderedPhaseIds);
+      res.json({ success: true, data: phases, message: 'Phases reordered' });
+    } catch (error) {
+      console.error('Error in reorderPhases:', error);
+      res.status(error.status || 500).json({ success: false, message: error.message || 'Failed to reorder phases' });
+    }
+  }
+
 }
 
 export default new OnboardingLmsController();

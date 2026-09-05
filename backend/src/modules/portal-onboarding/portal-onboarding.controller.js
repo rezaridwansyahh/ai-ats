@@ -40,6 +40,15 @@ class PortalOnboardingController {
     }
   }
 
+  async getModuleDetail(req, res) {
+    try {
+      const { module_id } = req.params;
+      const result = await PortalOnboardingService.getModuleDetail(req.onboardingId, module_id);
+      res.status(200).json({ message: 'Module fetched', module: result });
+    } catch (err) {
+      res.status(err.status || 500).json({ message: err.message });
+    }
+  }
 }
 
 export default new PortalOnboardingController();

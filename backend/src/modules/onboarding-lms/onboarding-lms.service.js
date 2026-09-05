@@ -189,6 +189,14 @@ class OnboardingLmsService {
       completed_at,
     });
   }
+
+  async reorderPhases(company_id, orderedPhaseIds) {
+    if (!Array.isArray(orderedPhaseIds) || orderedPhaseIds.length === 0) {
+      throw { status: 400, message: 'orderedPhaseIds must be a non-empty array' };
+    }
+    return OnboardingLmsModel.reorderPhases(company_id, orderedPhaseIds);
+  }
+
 }
 
 export default new OnboardingLmsService();

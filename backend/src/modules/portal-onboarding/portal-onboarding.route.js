@@ -9,5 +9,6 @@ router.post('/login', PortalOnboardingController.login);
 router.get('/me', requireCandidatePortalAuth, PortalOnboardingController.getMe);
 router.get('/curriculum', requireCandidatePortalAuth, PortalOnboardingController.getCurriculum);
 router.get('/journey', requireCandidatePortalAuth, PortalOnboardingController.getJourney);
+router.get('/module/:module_id', requireCandidatePortalAuth, PortalOnboardingController.getModuleDetail);
 
 export default router;

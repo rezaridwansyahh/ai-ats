@@ -9,6 +9,7 @@ router.use(authToken);
 
 router.get('/phases', onboardingLmsController.getPhases);
 router.post('/phases', onboardingLmsController.createPhase);
+router.put('/phases/reorder', onboardingLmsController.reorderPhases);
 router.put('/phases/:phase_id', onboardingLmsController.updatePhase);
 
 router.get('/phases/:phase_id/modules', onboardingLmsController.getModulesByPhase);

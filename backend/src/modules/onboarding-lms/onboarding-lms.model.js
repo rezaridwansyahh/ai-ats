@@ -206,7 +206,14 @@ class OnboardingLmsModel {
         m.category,
         m.duration_min,
         m.sort_order,
-        COALESCE(p.status, 'locked') AS status,
+        COALESCE(
+          p.status,
+          CASE
+            WHEN ph.seq = (SELECT MIN(seq) FROM lms_phase WHERE company_id = $2)
+            THEN 'todo'
+            ELSE 'locked'
+          END
+        ) AS status,
         p.score,
         p.started_at,
         p.completed_at
@@ -251,6 +258,69 @@ class OnboardingLmsModel {
     ]);
     return result.rows[0];
   }
+
+  async reorderPhases(company_id, orderedPhaseIds) {
+    const client = await getDb().connect();
+    try {
+      await client.query('BEGIN');
+  
+      for (let i = 0; i < orderedPhaseIds.length; i++) {
+        await client.query(
+          `UPDATE lms_phase SET seq = $1 WHERE id = $2 AND company_id = $3`,
+          [-(i + 1), orderedPhaseIds[i], company_id]
+        );
+      }
+  
+      for (let i = 0; i < orderedPhaseIds.length; i++) {
+        await client.query(
+          `UPDATE lms_phase SET seq = $1, updated_at = NOW() WHERE id = $2 AND company_id = $3`,
+          [i + 1, orderedPhaseIds[i], company_id]
+        );
+      }
+  
+      const result = await client.query(
+        `SELECT * FROM lms_phase WHERE company_id = $1 ORDER BY seq`,
+        [company_id]
+      );
+  
+      await client.query('COMMIT');
+      return result.rows;
+    } catch (err) {
+      await client.query('ROLLBACK');
+      throw err;
+    } finally {
+      client.release();
+    }
+  }
+
+  async getPublishedModuleForCandidate(module_id, candidate_onboarding_id, company_id) {
+    const query = `
+      SELECT
+        m.id, m.phase_id, m.title, m.category, m.duration_min, m.sort_order, m.status AS publish_status,
+        ph.company_id, ph.seq AS phase_seq,
+        COALESCE(
+          p.status,
+          CASE
+            WHEN ph.seq = (SELECT MIN(seq) FROM lms_phase WHERE company_id = $3)
+            THEN 'todo'
+            ELSE 'locked'
+          END
+        ) AS status,
+        p.score, p.started_at, p.completed_at
+      FROM lms_module m
+      JOIN lms_phase ph ON ph.id = m.phase_id
+      LEFT JOIN lms_progress p ON p.module_id = m.id AND p.candidate_onboarding_id = $2
+      WHERE m.id = $1
+    `;
+    const result = await getDb().query(query, [module_id, candidate_onboarding_id, company_id]);
+    const module = result.rows[0];
+    if (!module || module.company_id !== company_id || module.publish_status !== 'published') {
+      return null; 
+    }
+    const content = await this.getContent(module_id);
+    return { ...module, content };
+  }
+
 }
 
 export default new OnboardingLmsModel();
