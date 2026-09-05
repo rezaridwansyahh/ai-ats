@@ -18,6 +18,7 @@ import InsightsCandidateCard from '@/components/assessment-insights/CandidateCar
 import TkiCandidateCard from '@/components/assessment-tki/CandidateCard';
 import Settings from '@/components/onboarding-lms/Settings';
 import Assistant from '@/components/onboarding-lms/Assistant';
+import Help from '@/components/onboarding-lms/Help';
 
 import { getOnboardingToken, clearOnboardingToken } from '@/lib/onboardingPortalAuth';
 import { getMe, getCurriculum, getJourney } from '@/api/portal-onboarding.api';
@@ -123,7 +124,7 @@ export default function OnboardingLmsPreview() {
       case 'assistant':
         return <Assistant t={t} lang={LANG} goTo={goTo} />;
       case 'help':
-        return <ComingSoon label="Help & Buddy" />;
+        return <Help t={t} lang={LANG} goTo={goTo} />;
       case 'settings':
        return <Settings t={t} />;
       case 'assessments':
