@@ -2,6 +2,8 @@ import fs from 'fs';
 import SourcingModel from '../../modules/sourcing/sourcing.model.js';
 import ApplicantModel from '../../modules/applicant/applicant.model.js';
 import aiService from '../../shared/services/ai.service.js';
+import companyService from '../../modules/company/company.service.js';
+import { saveCvBuffer } from '../../shared/utils/cv-storage.js';
 
 const zipProcessHandler = async ({ batchId, tempFilePath, companyId }) => {
   console.log(`[CV Worker] Processing ZIP batch ${batchId} from ${tempFilePath}`);
@@ -45,6 +47,18 @@ const zipProcessHandler = async ({ batchId, tempFilePath, companyId }) => {
   // Update total count now that we know it
   await SourcingModel.updateBatch(batchId, { total_files: pdfEntries.length });
 
+  // Resolve once for the whole batch — same folder-naming convention as the
+  // single-PDF upload flow (sourcing.service.js#uploadCv).
+  let companyName = 'unknown';
+  if (companyId) {
+    try {
+      const company = await companyService.getById(companyId);
+      companyName = company.name;
+    } catch {
+      // company lookup failing shouldn't block CV processing
+    }
+  }
+
   let processed = 0;
   let failed    = 0;
 
@@ -60,7 +74,7 @@ const zipProcessHandler = async ({ batchId, tempFilePath, companyId }) => {
         pdfName.replace(/\.pdf$/i, '').replace(/[-_]/g, ' ').trim() ||
         'Unknown Candidate';
 
-      await ApplicantModel.create({
+      const applicant = await ApplicantModel.create({
         upload_batch_id:  batchId,
         company_id:      companyId || null,
         name:            candidateName,
@@ -72,6 +86,11 @@ const zipProcessHandler = async ({ batchId, tempFilePath, companyId }) => {
         date:            new Date(),
         attachment:      null,
       });
+
+      // Persist the PDF to disk now that we have the applicant's real id,
+      // same as the single-PDF flow — otherwise attachment stays null forever.
+      const savedPath = saveCvBuffer(pdfBuffer, companyId, companyName, applicant.id, applicant.name);
+      await ApplicantModel.updateAttachment(applicant.id, savedPath);
 
       processed++;
       await SourcingModel.updateBatch(batchId, { processed_files: processed });
