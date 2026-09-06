@@ -403,7 +403,7 @@ export default function ContractSendPage() {
                   <p className="text-xs font-semibold">Unggah salinan yang telah ditandatangani</p>
                 </div>
                 <p className="text-[11px] text-muted-foreground leading-relaxed">
-                  Unggah kontrak yang sudah Anda tanda tangani (PDF atau DOCX maks. 10MB).
+                  Unggah kontrak yang sudah Anda tanda tangani (PDF atau DOCX maks. 100MB).
                 </p>
 
                 {hasUploaded && (

@@ -87,8 +87,8 @@ export default function CvUploadCard() {
       setFileError('Only PDF or ZIP files are supported.');
       return;
     }
-    if (selectedFile.size > 10 * 1024 * 1024) {
-      setFileError('File size exceeds 10MB limit.');
+    if (selectedFile.size > 100 * 1024 * 1024) {
+      setFileError('File size exceeds 100MB limit.');
       return;
     }
     setFile(selectedFile);
@@ -254,7 +254,7 @@ export default function CvUploadCard() {
                       Drag file here or click to browse
                     </p>
                     <p className="text-[10px] text-muted-foreground mt-1 text-center">
-                      PDF or ZIP — max 10MB
+                      PDF or ZIP — max 100MB
                     </p>
                   </>
                 )}

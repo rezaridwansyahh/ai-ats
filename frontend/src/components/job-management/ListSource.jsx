@@ -237,7 +237,7 @@ export default function ListSourceStep({ selectedJob }) {
                   {/* uploadedFile ? uploadedFile.name : 'Drag file here or click to browse'*/}
                 </p>
                 <p className="text-[10px] text-muted-foreground mt-1">
-                  Upload Source Job Desc: PDF, DOCX, TXT (max 10MB)
+                  Upload Source Job Desc: PDF, DOCX, TXT (max 100MB)
                   <br />AI will auto-extract all fields from uploaded document
                 </p>
                 <input
