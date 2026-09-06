@@ -131,6 +131,23 @@ class PortalOnboardingService {
     };
   }
 
+  async markModuleDone(onboarding_id, module_id) {
+    const row = await PortalOnboardingModel.getById(onboarding_id);
+    if (!row) throw { status: 404, message: 'Onboarding record not found.' };
+  
+    const module = await OnboardingLmsModel.getPublishedModuleForCandidate(module_id, onboarding_id, row.company_id);
+    if (!module) throw { status: 404, message: 'Module not found.' };
+  
+    if (module.status === 'locked') {
+      throw { status: 403, message: 'This module is locked.' };
+    }
+    if (module.status === 'done') {
+      return { id: module.id, status: 'done', score: module.score, completedAt: module.completed_at };
+    }
+  
+    const updated = await OnboardingLmsService.updateHireProgress(onboarding_id, module_id, { status: 'done' });
+    return { id: module_id, status: updated.status, score: updated.score, completedAt: updated.completed_at };
+  }
 }
 
 export default new PortalOnboardingService();

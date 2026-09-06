@@ -11,4 +11,6 @@ router.get('/curriculum', requireCandidatePortalAuth, PortalOnboardingController
 router.get('/journey', requireCandidatePortalAuth, PortalOnboardingController.getJourney);
 router.get('/module/:module_id', requireCandidatePortalAuth, PortalOnboardingController.getModuleDetail);
 
+router.patch('/module/:module_id/complete', requireCandidatePortalAuth, PortalOnboardingController.markModuleDone);
+
 export default router;

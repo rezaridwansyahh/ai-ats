@@ -9,3 +9,5 @@ export const getCurriculum = (onboardingToken) => portalApi.get('/portal-onboard
 export const getJourney = (onboardingToken) => portalApi.get('/portal-onboarding/journey', { headers: { Authorization: `Bearer ${onboardingToken}` },});
 
 export const getModule = (onboardingToken, moduleId) => portalApi.get(`/portal-onboarding/module/${moduleId}`, { headers: { Authorization: `Bearer ${onboardingToken}` } });
+
+export const markModuleDone = (onboardingToken, moduleId) => portalApi.patch(`/portal-onboarding/module/${moduleId}/complete`, {}, { headers: { Authorization: `Bearer ${onboardingToken}` }, });

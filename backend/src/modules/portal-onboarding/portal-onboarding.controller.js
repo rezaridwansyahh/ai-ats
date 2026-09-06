@@ -49,6 +49,17 @@ class PortalOnboardingController {
       res.status(err.status || 500).json({ message: err.message });
     }
   }
+
+  async markModuleDone(req, res) {
+    try {
+      const { module_id } = req.params;
+      const result = await PortalOnboardingService.markModuleDone(req.onboardingId, module_id);
+      res.status(200).json({ message: 'Module marked complete', module: result });
+    } catch (err) {
+      res.status(err.status || 500).json({ message: err.message });
+    }
+  }
+
 }
 
 export default new PortalOnboardingController();

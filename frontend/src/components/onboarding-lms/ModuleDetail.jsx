@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { ChevronLeft, Play, FileText, Presentation, MessageSquare, Check, Lock, ExternalLink } from 'lucide-react';
-import { getModule } from '@/api/portal-onboarding.api';
+import { getModule, markModuleDone } from '@/api/portal-onboarding.api';
 import { getOnboardingToken } from '@/lib/onboardingPortalAuth';
 
 const CONTENT_ICON = { video: Play, pdf: FileText, slides: Presentation, text: MessageSquare };
@@ -70,14 +70,34 @@ export default function ModuleDetail({ moduleId, t, lang, goTo }) {
   const [module, setModule] = useState(null); // null = loading
   const [error, setError] = useState(null);
 
-  useEffect(() => {
-    setModule(null);
-    setError(null);
-    const token = getOnboardingToken();
-    getModule(token, moduleId)
-      .then((res) => setModule(res.data.module))
-      .catch((err) => setError(err.response?.data?.message || 'Module not found.'));
-  }, [moduleId]);
+useEffect(() => {
+  let cancelled = false;
+  setModule(null);
+  setError(null);
+  const token = getOnboardingToken();
+ 
+  getModule(token, moduleId)
+    .then(async (res) => {
+      if (cancelled) return;
+      let m = res.data.module;
+ 
+      if (m.status === 'todo' || m.status === 'active') {
+        try {
+          const completed = await markModuleDone(token, moduleId);
+          m = { ...m, status: completed.data.module.status, score: completed.data.module.score, completedAt: completed.data.module.completedAt };
+        } catch (err) {
+          console.error('Failed to mark module complete:', err);
+        }
+      }
+ 
+      if (!cancelled) setModule(m);
+    })
+    .catch((err) => {
+      if (!cancelled) setError(err.response?.data?.message || 'Module not found.');
+    });
+ 
+  return () => { cancelled = true; };
+}, [moduleId]);
 
   if (error) {
     return (
@@ -103,43 +123,45 @@ export default function ModuleDetail({ moduleId, t, lang, goTo }) {
         <ChevronLeft className="h-3.5 w-3.5" />
         {t.back_journey}
       </button>
-
+ 
       <div className="flex items-center gap-2 mb-3">
         <span className="text-[11px] font-semibold tracking-wide text-muted-foreground uppercase">{module.category}</span>
         <StatusBadge status={module.status} t={t} />
       </div>
-
+ 
       <h1 className="font-serif text-3xl mb-6">{module.title}</h1>
-
+ 
       <div className="rounded-xl border bg-card px-6 mb-6">
         {module.durationMin != null && <InfoRow label={t.duration} value={`${module.durationMin} min`} />}
         <InfoRow label={t.category} value={module.category} />
         {module.score != null && <InfoRow label={t.quiz_score} value={`${module.score}%`} />}
       </div>
-
+ 
       {isLocked ? (
         <div className="rounded-xl border bg-card px-6 py-8 text-center text-muted-foreground text-sm">
           {t.locked}
-        </div>
-      ) : isDone ? (
-        <div className="rounded-xl border bg-card px-6 py-8 text-center">
-          <div className="inline-flex items-center gap-1.5 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200 px-3 py-1 text-xs font-semibold mb-3">
-            <Check className="h-3.5 w-3.5" /> {t.complete}
-          </div>
-          {module.score != null && (
-            <p className="text-sm text-muted-foreground">{t.quiz_score}: {module.score}%</p>
-          )}
         </div>
       ) : module.content.length === 0 ? (
         <div className="rounded-xl border bg-card px-6 py-8 text-center text-muted-foreground text-sm">
           {lang === 'id' ? 'Belum ada materi untuk modul ini.' : 'No content in this module yet.'}
         </div>
       ) : (
-        <div className="rounded-xl border bg-card overflow-hidden">
-          {module.content.map((item) => (
-            <ContentItem key={item.id} item={item} t={t} />
-          ))}
-        </div>
+        <>
+          {isDone && (
+            <div className="flex items-center gap-2 rounded-xl border border-emerald-200 bg-emerald-50 px-6 py-3 mb-4 text-sm font-semibold text-emerald-700">
+              <Check className="h-4 w-4 flex-shrink-0" />
+              {t.complete}
+              {module.score != null && (
+                <span className="font-normal text-emerald-700/80">· {t.quiz_score}: {module.score}%</span>
+              )}
+            </div>
+          )}
+          <div className="rounded-xl border bg-card overflow-hidden">
+            {module.content.map((item) => (
+              <ContentItem key={item.id} item={item} t={t} />
+            ))}
+          </div>
+        </>
       )}
     </div>
   );
