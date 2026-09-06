@@ -7,8 +7,8 @@ import backgroundCheckModel from '../background-check/background-check.model.js'
 import OfferModel from '../offer/offer.model.js';
 
 class CandidatePipelineService {
-  async getAll() {
-    return await CandidatePipeline.getAll();
+  async getAll(company_id) {
+    return await CandidatePipeline.getAll(company_id);
   }
 
   async getById(id) {
@@ -17,18 +17,18 @@ class CandidatePipelineService {
     return pipeline;
   }
 
-  async getSummary(query) {
+  async getSummary(query, company_id) {
     const { category } = query
-    if(category) return await CandidatePipeline.getSummaryFiltered(category);
-    return await CandidatePipeline.getSummary();
+    if(category) return await CandidatePipeline.getSummaryFiltered(category, company_id);
+    return await CandidatePipeline.getSummary(company_id);
   }
 
-  async getByJobId(job_id, query) {
+  async getByJobId(job_id, query, company_id) {
     const { category } = query
     if (!job_id) throw { status: 400, message: 'job_id is required' };
 
-    if(category) return await CandidatePipeline.getByJobIdCategory(job_id, category);
-    return await CandidatePipeline.getByJobId(job_id);
+    if(category) return await CandidatePipeline.getByJobIdCategory(job_id, category, company_id);
+    return await CandidatePipeline.getByJobId(job_id, company_id);
   }
 
   async getByApplicantId(applicant_id) {

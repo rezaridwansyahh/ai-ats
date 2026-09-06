@@ -4,7 +4,7 @@ import aiService from '../../shared/services/ai.service.js';
 class JobController {
   async getAll(req, res) {
     try {
-      const jobs = await jobService.getAll();
+      const jobs = await jobService.getAll(req.user?.company_id);
       res.status(200).json({ message: 'List all Jobs', jobs });
     } catch (err) {
       res.status(err.status || 500).json({ message: err.message });
@@ -22,7 +22,7 @@ class JobController {
 
   async getByStatus(req, res) {
     try {
-      const jobs = await jobService.getByStatus(req.query.status);
+      const jobs = await jobService.getByStatus(req.query.status, req.user?.company_id);
       res.status(200).json({ message: `List of ${req.query.status} Jobs`, jobs });
     } catch (err) {
       res.status(err.status || 500).json({ message: err.message });

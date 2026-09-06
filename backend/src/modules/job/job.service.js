@@ -1,8 +1,8 @@
 import JobModel from './job.model.js';
 
 class JobService {
-  async getAll() {
-    return await JobModel.getAll();
+  async getAll(company_id) {
+    return await JobModel.getAll(company_id);
   }
 
   async getById(id) {
@@ -11,12 +11,12 @@ class JobService {
     return job;
   }
 
-  async getByStatus(status) {
+  async getByStatus(status, company_id) {
     const validStatuses = ['Draft', 'Active', 'Running', 'Expired', 'Failed', 'Blocked'];
     if (!validStatuses.includes(status)) {
       throw { status: 400, message: `status must be one of: ${validStatuses.join(', ')}` };
     }
-    return await JobModel.getByStatus(status);
+    return await JobModel.getByStatus(status, company_id);
   }
 
   async getWithCandidates(id) {

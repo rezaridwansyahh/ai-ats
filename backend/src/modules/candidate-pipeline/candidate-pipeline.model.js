@@ -33,6 +33,7 @@ const CANDIDATE_PIPELINE_SELECT = `
   LEFT JOIN job_stage js       ON js.id = c.latest_stage
   LEFT JOIN recruitment_stage_category rsc ON rsc.id = js.stage_type_id
   LEFT JOIN master_applicant a ON a.id  = c.applicant_id
+  LEFT JOIN core_job cj        ON cj.id = c.job_id
   LEFT JOIN LATERAL (
     SELECT s.status
     FROM assessment_sessions s
@@ -47,11 +48,11 @@ const CANDIDATE_PIPELINE_SELECT = `
 `;
 
 class CandidatePipeline {
-  static async getAll() {
+  static async getAll(company_id) {
     const result = await getDb().query(`
       SELECT c.id,
          c.job_id,
-         cj.job_title,  
+         cj.job_title,
          c.name AS candidate_name,
          c.last_position,
          c.address,
@@ -67,9 +68,10 @@ class CandidatePipeline {
       FROM master_candidate c
       LEFT JOIN job_stage js       ON js.id = c.latest_stage
       LEFT JOIN master_applicant a ON a.id  = c.applicant_id
-      LEFT JOIN core_job cj ON cj.id = c.job_id
+      JOIN core_job cj ON cj.id = c.job_id
+      WHERE cj.company_id = $1
       ORDER BY c.created_at DESC
-    `);
+    `, [company_id]);
     return result.rows;
   }
 
@@ -81,20 +83,21 @@ class CandidatePipeline {
     return result.rows[0];
   }
 
-  static async getSummary() {
+  static async getSummary(company_id) {
     const result = await getDb().query(`
       SELECT j.id          AS job_id,
              j.job_title,
              COUNT(c.id)::int AS total
       FROM core_job j
       LEFT JOIN master_candidate c ON c.job_id = j.id
+      WHERE j.company_id = $1
       GROUP BY j.id, j.job_title
       ORDER BY j.id ASC
-    `);
+    `, [company_id]);
     return result.rows;
   }
 
-  static async getSummaryFiltered(category) {
+  static async getSummaryFiltered(category, company_id) {
     const result = await getDb().query(`
       SELECT j.id AS job_id,
              j.job_title,
@@ -103,29 +106,29 @@ class CandidatePipeline {
       LEFT JOIN master_candidate c ON c.job_id = j.id
       LEFT JOIN job_stage js ON js.id = c.latest_stage
       LEFT JOIN recruitment_stage_category rsc ON rsc.id = js.stage_type_id
-      WHERE rsc.name = $1
+      WHERE rsc.name = $1 AND j.company_id = $2
       GROUP BY j.id, j.job_title
       ORDER BY j.id ASC
-    `, [category]);
-    
+    `, [category, company_id]);
+
     return result.rows;
   }
 
-  static async getByJobId(job_id) {
+  static async getByJobId(job_id, company_id) {
     const result = await getDb().query(`
       ${CANDIDATE_PIPELINE_SELECT}
-      WHERE c.job_id = $1
+      WHERE c.job_id = $1 AND cj.company_id = $2
       ORDER BY c.created_at DESC
-    `, [job_id]);
+    `, [job_id, company_id]);
     return result.rows;
   }
 
-  static async getByJobIdCategory(job_id, category) {
+  static async getByJobIdCategory(job_id, category, company_id) {
     const result = await getDb().query(`
       ${CANDIDATE_PIPELINE_SELECT}
-      WHERE c.job_id = $1 AND rsc.name = $2
+      WHERE c.job_id = $1 AND rsc.name = $2 AND cj.company_id = $3
       ORDER BY c.created_at DESC
-    `, [job_id, category]);
+    `, [job_id, category, company_id]);
     return result.rows;
   }
 
