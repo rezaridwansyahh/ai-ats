@@ -13,6 +13,7 @@ import PositionsRail from '@/components/shared/PositionsRail';
 import { getInitials } from '@/lib/batteries';
 
 import { getWorkboard, getLaneCandidates } from '@/api/screening.api';
+import { scoreRecommendation } from '@/components/ai-screening/shared';
 
 import { PageHeader } from '@/components/common';
 
@@ -258,6 +259,13 @@ export default function AIScreeningWorkboard() {
                         const stageLabel = c.engine === 'ready' && c.overall_score != null
                           ? `${meta.label} · ${c.overall_score}%`
                           : meta.label;
+                        // Once a candidate is scored ('ready'), color the badge by score
+                        // tier (red/yellow/green) instead of a flat green — same
+                        // thresholds as the score recommendation used elsewhere
+                        // (PipelineStageDashboard / AIScreeningCandidate).
+                        const badgeColor = c.engine === 'ready'
+                          ? `border ${scoreRecommendation(c.overall_score).tone}`
+                          : meta.color;
                         return (
                           <TableRow
                             key={key}
@@ -279,7 +287,7 @@ export default function AIScreeningWorkboard() {
                               {c.job_title || '—'}
                             </TableCell>
                             <TableCell>
-                              <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-semibold ${meta.color}`}>
+                              <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-semibold ${badgeColor}`}>
                                 {stageLabel}
                               </span>
                             </TableCell>
