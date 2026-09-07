@@ -210,7 +210,7 @@ class ScreeningModel {
       `
       SELECT
         cs.id                AS screening_id,
-        cs.candidate_id,
+        mc.id                AS candidate_id,
         cs.company_id,
         cs.decision,
         mc.applicant_id,
