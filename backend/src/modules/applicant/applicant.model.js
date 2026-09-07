@@ -193,6 +193,16 @@ class ApplicantModel {
     return result.rows[0];
   }
 
+  async updateEmail(id, email) {
+    const result = await getDb().query(`
+      UPDATE master_applicant
+      SET email = $1
+      WHERE id = $2
+      RETURNING *
+    `, [email, id]);
+    return result.rows[0];
+  }
+
   async delete(id) {
     const result = await getDb().query(`
       DELETE FROM master_applicant

@@ -171,6 +171,7 @@ class SeekService {
             job_sourcing_id,
             company_id,
             name: candidate.name,
+            email: candidate.email || null,
             last_position: candidate.last_position,
             address: candidate.address,
             education: candidate.education || null,

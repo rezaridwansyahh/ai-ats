@@ -22,11 +22,11 @@ import '../../config/env.js';
 import getDb from '../../config/postgres.js';
 
 // ---- Edit these before running ---------------------------------------------
-const JOB_ID = 11;         // <-- set to the job you want seeded
-const STAGE  = 'screening'; // <-- one of: screening | interview | assessment | background_check | offering
+const JOB_ID = 12;         // <-- set to the job you want seeded
+const STAGE  = 'assessment'; // <-- one of: screening | interview | assessment | background_check | offering
 // -----------------------------------------------------------------------------
 
-const CANDIDATE_NAME = 'Seed Candidate';
+const CANDIDATE_NAME = 'Zebedeus Candra Hadiyanto';
 
 const STAGE_CONFIG = {
   screening:         { category: 'Screening & Matching', seed: seedScreening },

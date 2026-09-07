@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import {
   ChevronUp, ChevronDown, Loader2, PlayCircle, ArrowRight, Eye, MapPin, CalendarDays,
   Check, X, Minus,
@@ -12,6 +12,7 @@ import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from '@/components/ui/select';
 import { Table, TableBody, TableCell, TableRow } from '@/components/ui/table';
+import { TablePagination } from '@/components/shared/TablePagination';
 import { StatCard } from './shared';
 import { scoreCandidatesList, generateQa, sendQa } from '@/api/screening.api';
 import MatchPreviewModal from './MatchPreviewModal';
@@ -47,6 +48,8 @@ export default function MatchStageDashboard({ jobId, pendingRows = [], scoredRow
   const [previewRow, setPreviewRow] = useState(null);
   const [selectedIds, setSelectedIds] = useState(() => new Set());
   const [advancing, setAdvancing] = useState(false);
+  const [page, setPage] = useState(1);
+  const [pageSize, setPageSize] = useState(10);
 
   const sorted = useMemo(() => {
     const list = [...scoredRows];
@@ -59,6 +62,14 @@ export default function MatchStageDashboard({ jobId, pendingRows = [], scoredRow
     });
     return list;
   }, [scoredRows, sortKey, sortDir]);
+
+  // Reset to page 1 whenever the sort or the underlying job/candidate set changes,
+  // so we never strand the view on a now-empty page.
+  useEffect(() => { setPage(1); }, [jobId, sortKey, sortDir, scoredRows.length]);
+
+  const totalPages = Math.max(1, Math.ceil(sorted.length / pageSize));
+  const pageClamped = Math.min(page, totalPages);
+  const paged = sorted.slice((pageClamped - 1) * pageSize, pageClamped * pageSize);
 
   const rowId = (r) => r.screening_id ?? r.applicant_id;
   const allSelected = sorted.length > 0 && sorted.every((r) => selectedIds.has(rowId(r)));
@@ -227,7 +238,7 @@ export default function MatchStageDashboard({ jobId, pendingRows = [], scoredRow
 
                 {/* Candidate cards */}
                 <div className="space-y-2.5">
-                  {sorted.map((r) => (
+                  {paged.map((r) => (
                     <CandidateCard
                       key={rowId(r)}
                       row={r}
@@ -238,6 +249,15 @@ export default function MatchStageDashboard({ jobId, pendingRows = [], scoredRow
                     />
                   ))}
                 </div>
+
+                <TablePagination
+                  page={pageClamped}
+                  totalPages={totalPages}
+                  totalItems={sorted.length}
+                  pageSize={pageSize}
+                  setPage={setPage}
+                  setPageSize={setPageSize}
+                />
               </>
             )}
           </CardContent>
