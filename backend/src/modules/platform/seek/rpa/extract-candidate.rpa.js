@@ -241,6 +241,19 @@ class ExtractCandidateService {
 
         console.log(`Candidate ID: ${candidateId}`);
 
+        // Email isn't shown on the card, only inside the opened detail drawer —
+        // Seek renders it as an aria-label like `Email someone@example.com`
+        // rather than plain text, so match on the label prefix and strip it off.
+        const email = await page.evaluate(() => {
+          const el = document.querySelector('[aria-label^="Email "]');
+          if (!el) return null;
+          const label = el.getAttribute('aria-label') || '';
+          const value = label.replace(/^Email\s*/i, '').trim();
+          return value || null;
+        });
+
+        console.log(`Email: ${email}`);
+
         if (!candidateId) {
           console.log('No candidate_id found, skipping...');
           await page.evaluate(() => {
@@ -310,7 +323,7 @@ class ExtractCandidateService {
 
         await delay(500);
         progress++;
-        const candidate = { ...cardData, candidate_id: candidateId, progress, attachment: resumeFileName };
+        const candidate = { ...cardData, candidate_id: candidateId, progress, attachment: resumeFileName, email };
 
         // Save immediately rather than buffering — persists progress as we go
         // instead of holding the whole bucket in memory until it's all done.
@@ -349,6 +362,79 @@ class ExtractCandidateService {
 
     console.log(`\nTotal candidates saved: ${saved}, skipped: ${skipped}`);
     return { saved, skipped, progress };
+  }
+
+  // One-off backfill for candidates synced before email scraping existed.
+  // `targetNames` is a Map<name, applicantId> — mutated in place (entries
+  // removed as they're found) so the caller can stop early / know what's
+  // left over. Unlike extractCandidates, this only opens the modal for
+  // names that are actually in targetNames, and does nothing else (no
+  // resume download, no re-creating/updating any other field).
+  async backfillEmails(page, targetNames, onFound) {
+    await page.waitForSelector('[data-testid="job-application-card"]');
+
+    while (targetNames.size > 0) {
+      await delay(1000);
+      const totalCards = await page.evaluate(() => {
+        return document.querySelectorAll('[data-testid="job-application-card"]').length;
+      });
+
+      for (let i = 0; i < totalCards && targetNames.size > 0; i++) {
+        const cardSelector = `[data-testid="job-application-card-${i}"]`;
+
+        const name = await page.evaluate((selector) => {
+          const card = document.querySelector(selector);
+          if (!card) return null;
+          const spans = Array.from(card.querySelectorAll('span'))
+            .map(s => s.innerText.trim())
+            .filter(t => t.length > 1);
+          return spans[0] || null;
+        }, cardSelector);
+
+        if (!name || !targetNames.has(name)) continue;
+
+        await page.evaluate((selector) => {
+          document.querySelector(selector)?.click();
+        }, cardSelector);
+
+        await page.waitForSelector('[id="details-view-drawer"]', { timeout: 10000 });
+        await delay(1000);
+
+        const email = await page.evaluate(() => {
+          const el = document.querySelector('[aria-label^="Email "]');
+          if (!el) return null;
+          const label = el.getAttribute('aria-label') || '';
+          const value = label.replace(/^Email\s*/i, '').trim();
+          return value || null;
+        });
+
+        await page.evaluate(() => {
+          const btn = document.querySelector('button[aria-label="Tutup halaman"]');
+          if (btn) btn.click();
+        });
+        await delay(500);
+
+        if (email) {
+          await onFound(name, email);
+        } else {
+          console.log(`No email found on Seek for "${name}"`);
+        }
+        targetNames.delete(name);
+      }
+
+      if (targetNames.size === 0) break;
+
+      const nextBtn = await page.$('a[rel="next"][aria-hidden="false"]');
+      if (!nextBtn) break;
+
+      await Promise.all([
+        nextBtn.click(),
+        page.waitForNetworkIdle({ idleTime: 500, timeout: 10000 }).catch(() => {}),
+      ]);
+      await delay(3000);
+      await page.waitForSelector('[data-testid="job-application-card"]');
+      await delay(2000);
+    }
   }
 }
 
