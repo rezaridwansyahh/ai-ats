@@ -23,7 +23,7 @@ import getDb from '../../config/postgres.js';
 
 // ---- Edit these before running ---------------------------------------------
 const JOB_ID = 12;         // <-- set to the job you want seeded
-const STAGE  = 'assessment'; // <-- one of: screening | interview | assessment | background_check | offering
+const STAGE  = 'interview'; // <-- one of: screening | interview | assessment | background_check | offering
 // -----------------------------------------------------------------------------
 
 const CANDIDATE_NAME = 'Zebedeus Candra Hadiyanto';
@@ -155,16 +155,48 @@ async function seedScreening(db, { job, candidate }) {
 }
 
 async function seedInterview(db, { job, candidate }) {
-  const exists = await db.query(
-    `SELECT 1 FROM candidate_interview WHERE candidate_id = $1 AND job_id = $2`,
+  const existing = await db.query(
+    `SELECT id, current_round_id FROM candidate_interview WHERE candidate_id = $1 AND job_id = $2`,
     [candidate.id, job.id]
   );
-  if (!exists.rows.length) {
+
+  let interview = existing.rows[0];
+  if (!interview) {
     // status/round/decision take their table defaults (setup / 1 / pending).
-    await db.query(
-      `INSERT INTO candidate_interview (candidate_id, job_id, company_id) VALUES ($1, $2, $3)`,
+    const inserted = await db.query(
+      `INSERT INTO candidate_interview (candidate_id, job_id, company_id)
+       VALUES ($1, $2, $3)
+       RETURNING id, current_round_id`,
       [candidate.id, job.id, job.company_id]
     );
+    interview = inserted.rows[0];
+  }
+
+  // Mirrors interview.model.js#ensureInterviewForCandidate — a candidate_interview
+  // row alone isn't enough, the Interview detail page reads its active round via
+  // current_round_id, which stays NULL (and the page effectively empty) unless
+  // an interview_round row is created and linked back.
+  if (!interview.current_round_id) {
+    const round = await db.query(
+      `INSERT INTO interview_round (interview_id, round_number, status)
+       VALUES ($1, 1, 'setup')
+       ON CONFLICT (interview_id, round_number) DO NOTHING
+       RETURNING id`,
+      [interview.id]
+    );
+    const roundId = round.rows[0]?.id ?? (
+      await db.query(
+        `SELECT id FROM interview_round WHERE interview_id = $1 AND round_number = 1`,
+        [interview.id]
+      )
+    ).rows[0]?.id;
+
+    if (roundId) {
+      await db.query(
+        `UPDATE candidate_interview SET current_round_id = $2, updated_at = NOW() WHERE id = $1`,
+        [interview.id, roundId]
+      );
+    }
   }
 }
 
