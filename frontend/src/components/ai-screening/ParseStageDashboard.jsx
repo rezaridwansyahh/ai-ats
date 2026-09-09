@@ -108,11 +108,11 @@ function StageList({ title, listId, icon: Icon, rows, onOpen, tone, emptyText })
         {rows.length === 0 ? (
           <p className="py-8 text-center text-xs text-muted-foreground italic">{emptyText}</p>
         ) : (
-          <Table className="w-full">
+          <Table className="table-fixed w-full">
             <TableHeader className="bg-muted/30">
               <TableRow>
-                <TableHead className="text-[10px] font-bold uppercase pl-4">Candidate</TableHead>
-                <TableHead className="text-[10px] font-bold uppercase">Last position</TableHead>
+                <TableHead className="w-[45%] text-[10px] font-bold uppercase pl-4">Candidate</TableHead>
+                <TableHead className="w-[55%] text-[10px] font-bold uppercase">Last position</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -127,10 +127,14 @@ function StageList({ title, listId, icon: Icon, rows, onOpen, tone, emptyText })
                     className="cursor-pointer hover:bg-muted/30 transition-colors"
                     onClick={() => onOpen(r)}
                   >
-                    <TableCell className="text-xs pl-4">
-                      <div className="font-medium truncate">{r.applicant_name || `#${r.applicant_id}`}</div>
+                    <TableCell className="text-xs pl-4 overflow-hidden">
+                      <div className="font-medium truncate" title={r.applicant_name || `#${r.applicant_id}`}>
+                        {r.applicant_name || `#${r.applicant_id}`}
+                      </div>
                     </TableCell>
-                    <TableCell className="text-xs text-muted-foreground truncate">{r.last_position || '—'}</TableCell>
+                    <TableCell className="text-xs text-muted-foreground truncate overflow-hidden" title={r.last_position || '—'}>
+                      {r.last_position || '—'}
+                    </TableCell>
                   </TableRow>
                 );
               })}
