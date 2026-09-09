@@ -1,8 +1,9 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Loader2, Search, Calendar, User, Briefcase, Settings, GraduationCap } from 'lucide-react';
+import { Loader2, Search, Calendar, User, Briefcase, Settings, GraduationCap, MessageSquare } from 'lucide-react';
 import { getOnboardingWorkboard } from '@/api/onboarding.api';
 import { PageHeader } from '@/components/common';
+import OnboardingChatbotSources from '@/components/onboarding/OnboardingChatbotSources';
 
 export default function OnboardingWorkboard() {
   const [loading, setLoading] = useState(true);
@@ -10,6 +11,7 @@ export default function OnboardingWorkboard() {
   const [onboardings, setOnboardings] = useState([]);
   const [searchTerm, setSearchTerm] = useState('');
   const [filterStage, setFilterStage] = useState('all');
+  const [showChatbotSources, setShowChatbotSources] = useState(false);
 
   const navigate = useNavigate();
 
@@ -85,6 +87,12 @@ export default function OnboardingWorkboard() {
           subtitle="Track new hires through pre-boarding, first 30 days, and probation."
         />
         <div className="flex items-center gap-2">
+          <button
+            onClick={() => setShowChatbotSources(true)}
+            className="inline-flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium border hover:bg-muted/30"
+          >
+            <MessageSquare className="w-4 h-4" /> Chatbot Documents
+          </button>
           <button
             onClick={() => window.open('/selection/onboarding/curriculum-maker', '_blank')}
             className="inline-flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium border hover:bg-muted/30"
@@ -266,6 +274,9 @@ export default function OnboardingWorkboard() {
             </tbody>
           </table>
         </div>
+      )}
+      {showChatbotSources && (
+        <OnboardingChatbotSources onClose={() => setShowChatbotSources(false)} />
       )}
     </div>
   );
