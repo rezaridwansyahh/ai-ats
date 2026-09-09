@@ -1,10 +1,8 @@
 import fs from 'fs';
-import { createRequire } from 'module';
+import { PDFParse } from 'pdf-parse';
 import SourceModel from './source.model.js';
 import WeaviateService from '../../../shared/services/weavite.service.js';
 
-const require = createRequire(import.meta.url);
-const pdfParse = require('pdf-parse');
 const CHUNK_SIZE = 500;
 
 function chunkText(text) {
@@ -24,8 +22,16 @@ class SourceService {
       await SourceModel.updateStatus(record.id, { status: 'processing' });
 
       const buffer = fs.readFileSync(filePath);
-      const parsed = await pdfParse(buffer);
-      const chunks = chunkText(parsed.text);
+      const parser = new PDFParse({ data: buffer });
+      let parsedText;
+      try {
+        const result = await parser.getText();
+        parsedText = result.text;
+      } finally {
+        await parser.destroy();
+      }
+
+      const chunks = chunkText(parsedText);
 
       if (chunks.length === 0) {
         throw new Error('No extractable text found in this PDF.');
