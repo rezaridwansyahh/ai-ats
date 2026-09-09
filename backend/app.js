@@ -61,7 +61,9 @@ import emailTemplate from "./src/modules/email-template/email-template.route.js"
 import portalOnboarding from "./src/modules/portal-onboarding/portal-onboarding.route.js";
 import onboardingAssessmentResult from "./src/modules/onboarding assessment/onboarding-assessment-result.route.js";
 import onboardingQuestion from "./src/modules/onboarding assessment/question/onboarding-question.route.js";
-
+import chatBotSource from "./src/modules/chat-bot/source/source.route.js";
+import chatBotConversation from "./src/modules/chat-bot/conversation/conversation.route.js";
+import chatBotMessage from "./src/modules/chat-bot/message/message.route.js";
 
 app.use(express.json());
 
@@ -135,6 +137,9 @@ portal.use("/api/email-template", emailTemplate)
 portal.use("/api/portal-onboarding", portalOnboarding);
 portal.use("/api/onboarding-assessment-result", onboardingAssessmentResult);
 portal.use("/api/onboarding-question", onboardingQuestion);
+portal.use("/api/chat-bot/source", chatBotSource);
+portal.use("/api/chat-bot/conversation", chatBotConversation);
+portal.use("/api/chat-bot/message", chatBotMessage);
 app.use("/portal", portal);
 app.use("/api/auth", auth);
 app.use("/api/cookies", cookies);
@@ -185,6 +190,9 @@ app.use("/api/email-template", emailTemplate)
 app.use("/api/portal-onboarding", portalOnboarding);
 app.use("/api/onboarding-assessment-result", onboardingAssessmentResult);
 app.use("/api/onboarding-question", onboardingQuestion);
+app.use("/api/chat-bot/source", chatBotSource);
+app.use("/api/chat-bot/conversation", chatBotConversation);
+app.use("/api/chat-bot/message", chatBotMessage);
 
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => {
