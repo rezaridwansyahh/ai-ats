@@ -21,6 +21,7 @@ export default function SourceManagementPage() {
   const [accounts, setAccounts]     = useState([]);
   const [loading, setLoading]       = useState(true);
   const [selectedAccount, setSelectedAccount] = useState(null);
+  const [selectedSource, setSelectedSource] = useState(null);
 
   const {
     run: wizardRun,
@@ -128,7 +129,7 @@ export default function SourceManagementPage() {
             variant="ghost"
             size="sm"
             className="text-xs"
-            disabled={activeStep === 0 && !selectedAccount}
+            disabled={(activeStep === 0 && !selectedAccount) || (activeStep === 1 && !selectedSource)}
             onClick={handleNext}
           >
             Next: {STEPS[activeStep + 1].label}
@@ -147,7 +148,11 @@ export default function SourceManagementPage() {
         />
       )}
       {activeStep === 1 && (
-        <ListSource selectedAccount={selectedAccount} />
+        <ListSource
+          selectedAccount={selectedAccount}
+          selectedSource={selectedSource}
+          onSelectSource={setSelectedSource}
+        />
       )}
       {activeStep === 2 && (
         <SourceSetup selectedJob={null} />

@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo, useCallback } from 'react';
-import { Loader2, User } from 'lucide-react';
+import { Loader2, User, AlertTriangle } from 'lucide-react';
 import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from '@/components/ui/table';
@@ -7,23 +7,10 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Slider } from '@/components/ui/slider';
-import {
-  Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
-} from '@/components/ui/select';
 import { JobBanner } from '@/components/source-management/JobBanner';
-import { getAllByCompany } from '@/api/applicant.api';
+import { getByJobSourcingId } from '@/api/applicant.api';
 
-const PLATFORM_OPTIONS = ['linkedin', 'seek', 'internal'];
 const PAGE_SIZE = 10;
-
-// ── Dummy data — shown when API returns empty ──────────────────────
-const DUMMY_APPLICANTS = [
-  { id: 1, name: 'Ayu Pratiwi',    address: 'Jakarta, Indonesia',   last_position: 'Frontend Engineer', education: 'Universitas Indonesia' },
-  { id: 2, name: 'Budi Santoso',   address: 'Bandung, Indonesia',   last_position: 'UI Engineer',        education: 'Institut Teknologi Bandung' },
-  { id: 3, name: 'Citra Lestari',  address: 'Singapore',            last_position: 'Product Designer',  education: 'NUS' },
-  { id: 4, name: 'Dewi Anggraini', address: 'Jakarta, Indonesia',   last_position: 'Frontend Developer', education: 'Universitas Gadjah Mada' },
-  { id: 5, name: 'Eko Nugroho',    address: 'Surabaya, Indonesia',  last_position: 'React Engineer',     education: 'Politeknik Elektronika Negeri Surabaya' },
-];
 
 export default function ListCandidate({ selectedJob }) {
   const [applicants, setApplicants] = useState([]);
@@ -31,24 +18,22 @@ export default function ListCandidate({ selectedJob }) {
   const [error, setError]           = useState(null);
 
   const [searchQuery, setSearchQuery]       = useState('');
-  const [platformFilter, setPlatformFilter] = useState('all');
   const [page, setPage]                     = useState(1);
 
   // ── Fetch ──────────────────────────────────────────────────────
   const fetchApplicants = useCallback(async () => {
+    if(!selectedJob?.id) { setApplicants([]); return; }
     setLoading(true);
     setError(null);
-    try {
-      const storage = JSON.parse(localStorage.getItem("user"));
-      const res = await getAllByCompany(storage.company_id);
+    try{
+      const res = await getByJobSourcingId(selectedJob.id);
       setApplicants(res.data.applicants || []);
     } catch (err) {
       setError(err.response?.data?.message || err.message || 'Failed to load applicants');
-      setApplicants([]);
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [selectedJob?.id]);
 
   useEffect(() => { fetchApplicants(); }, [fetchApplicants]);
 
@@ -58,11 +43,9 @@ export default function ListCandidate({ selectedJob }) {
       const matchesSearch =
         !searchQuery ||
         applicant.name?.toLowerCase().includes(searchQuery.toLowerCase());
-      const matchesPlatform =
-        platformFilter === 'all' || applicant.platform === platformFilter;
-      return matchesSearch && matchesPlatform;
+      return matchesSearch;
     });
-  }, [applicants, searchQuery, platformFilter]);
+  }, [applicants, searchQuery]);
 
   const totalPages        = Math.ceil(filteredApplicants.length / PAGE_SIZE);
   const paginatedApplicants = filteredApplicants.slice(
@@ -71,7 +54,17 @@ export default function ListCandidate({ selectedJob }) {
   );
 
   // Reset to page 1 when filters change
-  useEffect(() => { setPage(1); }, [searchQuery, platformFilter]);
+  useEffect(() => { setPage(1); }, [searchQuery]);
+
+  if(!selectedJob){
+    return (
+      <div className="flex flex-col items-center justify-center py-20 text-center">
+        <AlertTriangle className="h-10 w-10 text-amber-400 mb-3" />
+        <h3 className="text-lg font-bold mb-1">No Source Selected</h3>
+        <p className="text-sm text-muted-foreground">Go back to Step 2 and select a job source first.</p>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-5">
@@ -137,17 +130,6 @@ export default function ListCandidate({ selectedJob }) {
                 onChange={e => setSearchQuery(e.target.value)}
                 className="max-w-[250px] text-xs"
               />
-              <Select value={platformFilter} onValueChange={setPlatformFilter}>
-                <SelectTrigger className="w-[150px] text-xs">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">All Platforms</SelectItem>
-                  {PLATFORM_OPTIONS.map(p => (
-                    <SelectItem key={p} value={p}>{p}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
             </div>
           </div>
         </CardHeader>

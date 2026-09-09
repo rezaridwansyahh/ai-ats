@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import {
   ChevronUp, ChevronDown, Loader2, PlayCircle, ArrowRight, Eye, MapPin, CalendarDays,
-  Check, X, Minus,
+  Check, X, Minus, Search,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -13,6 +13,7 @@ import {
 } from '@/components/ui/select';
 import { Table, TableBody, TableCell, TableRow } from '@/components/ui/table';
 import { TablePagination } from '@/components/shared/TablePagination';
+import { Slider } from '@/components/ui/slider';
 import { StatCard } from './shared';
 import { scoreCandidatesList, generateQa, sendQa } from '@/api/screening.api';
 import MatchPreviewModal from './MatchPreviewModal';
@@ -42,7 +43,7 @@ function fmtDate(d) {
  * read-only pending/scored lists, still no job-wide rubric editing here.
  */
 export default function MatchStageDashboard({ jobId, pendingRows = [], scoredRows = [], onOpen, onScored }) {
-  const [sortKey, setSortKey] = useState('overall_score');
+  const [sortKey, setSortKey] = useState('overall-score');
   const [sortDir, setSortDir] = useState('desc');
   const [running, setRunning] = useState(false);
   const [previewRow, setPreviewRow] = useState(null);
@@ -51,8 +52,77 @@ export default function MatchStageDashboard({ jobId, pendingRows = [], scoredRow
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(10);
 
+  // FILTERS JobStreet style
+  const [locationFilter, setLocationFilter] = useState('all');
+  const [appliedWithin, setAppliedWithin] = useState('all');
+  const [minScore, setMinScore] = useState(0);
+  const [skillFilters, setSkillFilters] = useState(() => new Set());
+  const [filterKeyword, setFilterKeyword] = useState('');
+
+  const locationCounts = useMemo(() => {
+    const counts = {};
+    for (const r of scoredRows) {
+      if (!r.address) continue;
+      counts[r.address] = (counts[r.address] || 0) + 1;
+    }
+    return counts;
+  }, [scoredRows]);
+  const uniqueLocations = useMemo(() => Object.keys(locationCounts), [locationCounts]);
+
+  const skillCounts = useMemo(() => {
+    const counts = {};
+    for (const r of scoredRows) {
+      const matched = Array.isArray(r.matched_skills) ? r.matched_skills : [];
+      for (const s of matched) counts[s] = (counts[s] || 0) + 1;
+    }
+    return counts;
+  }, [scoredRows]);
+
+  const uniqueSkills = useMemo(
+    () => Object.keys(skillCounts).sort((a, b) => skillCounts[b] - skillCounts[a]),
+    [skillCounts]
+  );
+
+  const toggleSkillFilter = (skill) => {
+    setSkillFilters((prev) => {
+      const next = new Set(prev);
+      if(next.has(skill)) next.delete(skill); else next.add(skill);
+      return next;
+    });
+  };
+
+  const resetFilters = () => {
+    setLocationFilter('all');
+    setAppliedWithin('all');
+    setMinScore(0);
+    setSkillFilters(new Set());
+    setFilterKeyword('');
+  };
+
+  const filteredRows = useMemo(() => {
+    const kw = filterKeyword.trim().toLowerCase();
+    return scoredRows.filter((r) => {
+      if(kw){
+        const hay = `${r.applicant_name || ''} ${r.last_position || ''}`.toLowerCase();
+        if(!hay.includes(kw)) return false;
+      }
+      if(locationFilter !== 'all' && r.address !== locationFilter) return false;
+      if((r.overall_score ?? 0) < minScore) return false;
+      if(skillFilters.size > 0) {
+        const matched = Array.isArray(r.matched_skills) ? r.matched_skills : [];
+        if(![...skillFilters].every((s) => matched.includes(s))) return false;
+      }
+      if(appliedWithin !== 'all' && r.applied_at) {
+        const days = Number(appliedWithin);
+        const diffDays = (Date.now() - new Date(r.applied_at).getTime()) / (1000 * 60 * 60 * 24);
+        if(diffDays > days) return false;
+      }
+      return true;
+    });
+  }, [scoredRows, filterKeyword, locationFilter, minScore, skillFilters, appliedWithin]);
+
   const sorted = useMemo(() => {
-    const list = [...scoredRows];
+    const list = [...filteredRows];
     list.sort((a, b) => {
       const av = a[sortKey] ?? -1;
       const bv = b[sortKey] ?? -1;
@@ -61,11 +131,11 @@ export default function MatchStageDashboard({ jobId, pendingRows = [], scoredRow
       return sortDir === 'desc' ? -diff : diff;
     });
     return list;
-  }, [scoredRows, sortKey, sortDir]);
+  }, [filteredRows, sortKey, sortDir]);
 
   // Reset to page 1 whenever the sort or the underlying job/candidate set changes,
   // so we never strand the view on a now-empty page.
-  useEffect(() => { setPage(1); }, [jobId, sortKey, sortDir, scoredRows.length]);
+  useEffect(() => { setPage(1); }, [jobId, sortKey, sortDir, scoredRows.length, filterKeyword, locationFilter, appliedWithin, minScore, skillFilters]);
 
   const totalPages = Math.max(1, Math.ceil(sorted.length / pageSize));
   const pageClamped = Math.min(page, totalPages);
@@ -179,18 +249,110 @@ export default function MatchStageDashboard({ jobId, pendingRows = [], scoredRow
       )}
 
       {/* Stats (1/4) + Ranking table (3/4) */}
-      <div className="grid grid-cols-1 lg:grid-cols-4 gap-3 items-start">
-        <div className="grid grid-cols-2 gap-3">
-          <StatCard label="Awaiting Score" value={pendingRows.length} />
-          <StatCard label="Scored" value={scoredRows.length} />
-          <StatCard label="Top score" value={scoredRows.length ? topScore : '—'} />
-          <StatCard label="Avg score" value={scoredRows.length ? avgScore : '—'} />
+            <div className="grid grid-cols-1 lg:grid-cols-4 gap-3 items-start">
+        <div className="space-y-3">
+          <div className="grid grid-cols-2 gap-3">
+            <StatCard label="Awaiting Score" value={pendingRows.length} />
+            <StatCard label="Scored" value={scoredRows.length} />
+            <StatCard label="Top score" value={scoredRows.length ? topScore : '—'} />
+            <StatCard label="Avg score" value={scoredRows.length ? avgScore : '—'} />
+          </div>
+
+          {scoredRows.length > 0 && (
+            <Card>
+              <CardContent className="p-3 space-y-3">
+                <div className="flex items-center justify-between">
+                  <span className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wide">Filters</span>
+                  {(filterKeyword || locationFilter !== 'all' || appliedWithin !== 'all' || minScore > 0 || skillFilters.size > 0) && (
+                    <Button variant="ghost" size="sm" className="h-6 text-[10px] gap-1 px-1.5" onClick={resetFilters}>
+                      <X className="h-3 w-3" /> Clear
+                    </Button>
+                  )}
+                </div>
+
+                <div className="space-y-1.5">
+                  <span className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wide">Keyword</span>
+                  <div className="relative">
+                    <Search className="absolute left-2 top-1/2 -translate-y-1/2 h-3 w-3 text-muted-foreground" />
+                    <input
+                      type="text"
+                      placeholder="Name or last position…"
+                      value={filterKeyword}
+                      onChange={(e) => setFilterKeyword(e.target.value)}
+                      className="h-7 w-full rounded-md border border-input bg-transparent pl-7 pr-2 text-[11px] outline-none focus-visible:ring-1 focus-visible:ring-ring"
+                    />
+                  </div>
+                </div>
+
+                <div className="space-y-1.5">
+                  <span className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wide">Location</span>
+                  <Select value={locationFilter} onValueChange={setLocationFilter}>
+                    <SelectTrigger className="h-7 w-full text-[11px]"><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all" className="text-xs">All locations</SelectItem>
+                      {uniqueLocations.map((loc) => (
+                        <SelectItem key={loc} value={loc} className="text-xs">{loc}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                <div className="space-y-1.5">
+                  <span className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wide">Applied</span>
+                  <Select value={appliedWithin} onValueChange={setAppliedWithin}>
+                    <SelectTrigger className="h-7 w-full text-[11px]"><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all" className="text-xs">Any time</SelectItem>
+                      <SelectItem value="7" className="text-xs">Last 7 days</SelectItem>
+                      <SelectItem value="30" className="text-xs">Last 30 days</SelectItem>
+                      <SelectItem value="90" className="text-xs">Last 90 days</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                <div className="space-y-1.5">
+                  <div className="flex items-center justify-between">
+                    <span className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wide">Min. Fit</span>
+                    <span className="text-[11px] font-mono text-muted-foreground">{minScore}+</span>
+                  </div>
+                  <Slider value={[minScore]} min={0} max={100} step={5} onValueChange={([v]) => setMinScore(v)} />
+                </div>
+
+                {uniqueSkills.length > 0 && (
+                  <div className="space-y-1.5">
+                    <span className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wide">Skills</span>
+                    <div className="flex flex-wrap gap-1.5">
+                      {uniqueSkills.slice(0, 12).map((skill) => {
+                        const active = skillFilters.has(skill);
+                        return (
+                          <button
+                            key={skill}
+                            type="button"
+                            onClick={() => toggleSkillFilter(skill)}
+                            className={`text-[10px] px-2 py-0.5 rounded-full border transition-colors ${
+                              active
+                                ? 'bg-primary text-primary-foreground border-primary'
+                                : 'bg-muted text-muted-foreground border-transparent hover:brightness-95'
+                            }`}
+                          >
+                            {skill} ({skillCounts[skill]})
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          )}
         </div>
 
         <Card className="lg:col-span-3">
           <CardContent className="space-y-3 pt-6">
             {sorted.length === 0 ? (
-              <p className="py-8 text-center text-xs text-muted-foreground italic">No candidates scored yet.</p>
+              <p className="py-8 text-center text-xs text-muted-foreground italic">
+                {scoredRows.length === 0 ? 'No candidates scored yet.' : 'No candidates match your filters.'}
+              </p>
             ) : (
               <>
                 {/* Toolbar: select-all + sort */}

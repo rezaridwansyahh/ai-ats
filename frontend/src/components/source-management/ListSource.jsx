@@ -40,7 +40,7 @@ const POLL_INTERVAL_MS = 4000;
  * POST /seek/candidates/rpa/extract, which the backend already tracks via
  * core_job_sourcing.sync_state (idle/syncing/error) per row.
  */
-export default function ListSourceStep({ selectedAccount }) {
+export default function ListSourceStep({ selectedAccount, selectedSource, onSelectSource }) {
   const [sources, setSources]   = useState([]);
   const [loading, setLoading]   = useState(false);
   const [error, setError]       = useState(null);
@@ -286,6 +286,14 @@ export default function ListSourceStep({ selectedAccount }) {
                           onClick={() => handleLinkRow(source)}
                         >
                           Link
+                        </Button>
+                        <Button
+                          variant={selectedSource?.id === source.id ? 'default' : 'outline'}
+                          size="sm"
+                          className="text-xs h-7 px-2.5"
+                          onClick={() => onSelectSource?.(source)}
+                        >
+                          {selectedSource?.id === source.id ? 'Selected' : 'Select'}
                         </Button>
                       </div>
                     </TableCell>
