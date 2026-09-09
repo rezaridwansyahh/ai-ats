@@ -244,7 +244,7 @@ export default function AIScreeningWorkboard() {
                       <TableRow>
                         <TableHead className="w-[30%] text-[10px] font-bold uppercase pl-6">Name</TableHead>
                         <TableHead className="w-[25%] text-[10px] font-bold uppercase">Last Position</TableHead>
-                        <TableHead className="w-[25%] text-[10px] font-bold uppercase">Job</TableHead>
+                        <TableHead className="w-[20%] text-[10px] font-bold uppercase">Job</TableHead>
                         <TableHead className="w-[20%] text-[10px] font-bold uppercase">Stage</TableHead>
                         <TableHead className="w-[5%]" />
                       </TableRow>
