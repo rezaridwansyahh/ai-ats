@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import {
   ChevronUp, ChevronDown, Loader2, PlayCircle, ArrowRight, Eye, MapPin, CalendarDays,
-  Check, X, Minus, Search,
+  Check, X, Minus, Search, Info
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -30,20 +30,28 @@ function fmtDate(d) {
   try { return new Date(d).toISOString().slice(0, 10); } catch { return null; }
 }
 
-/*
- * Job-level "AI Matching" dashboard.
- *
- * ✅ WIRED (this pass): "Run Matching for all pending" button below calls the
- * real matchBulk(job_id, applicant_ids) endpoint — confirmed complete on the
- * backend (screening.service.js > matchBulk) and signature-matched against
- * screening.api.js. On success, calls onScored() so the parent (AIScreeningPage)
- * reloads parseRows/matchRows/qaRows/cohortRows and this list updates itself.
- *
- * Everything else in this file is unchanged from the previous pass — still
- * read-only pending/scored lists, still no job-wide rubric editing here.
- */
+/** Helper to extract standardized preference items from application_qa */
+function parsePreferences(information) {
+  if (!information) return [];
+  if (Array.isArray(information)) {
+    return information.map((item) => ({
+      question: item.question || item.label || '—',
+      answer: item.answer || item.value || '—',
+      meets_requirement: item.meets_requirement ?? item.is_match ?? true,
+    }));
+  }
+  if (typeof information === 'object') {
+    return Object.entries(information).map(([question, v]) => ({
+      question,
+      answer: typeof v === 'object' ? v?.answer || '—' : String(v),
+      meets_requirement: typeof v === 'object' ? v?.meets_requirement : true,
+    }));
+  }
+  return [];
+}
+
 export default function MatchStageDashboard({ jobId, pendingRows = [], scoredRows = [], onOpen, onScored }) {
-  const [sortKey, setSortKey] = useState('overall-score');
+  const [sortKey, setSortKey] = useState('overall_score');
   const [sortDir, setSortDir] = useState('desc');
   const [running, setRunning] = useState(false);
   const [previewRow, setPreviewRow] = useState(null);
@@ -52,13 +60,19 @@ export default function MatchStageDashboard({ jobId, pendingRows = [], scoredRow
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(10);
 
-  // FILTERS JobStreet style
+  // FILTERS
   const [locationFilter, setLocationFilter] = useState('all');
   const [appliedWithin, setAppliedWithin] = useState('all');
   const [minScore, setMinScore] = useState(0);
   const [skillFilters, setSkillFilters] = useState(() => new Set());
   const [filterKeyword, setFilterKeyword] = useState('');
+  
+  // NEW: Must-have toggle & preference checkboxes filter
+  const [mustHaveOnly, setMustHaveOnly] = useState(false);
+  const [preferenceFilters, setPreferenceFilters] = useState(() => new Set());
+  const [preferenceAccordionOpen, setPreferenceAccordionOpen] = useState(true);
 
+  // Collect location counts
   const locationCounts = useMemo(() => {
     const counts = {};
     for (const r of scoredRows) {
@@ -69,6 +83,7 @@ export default function MatchStageDashboard({ jobId, pendingRows = [], scoredRow
   }, [scoredRows]);
   const uniqueLocations = useMemo(() => Object.keys(locationCounts), [locationCounts]);
 
+  // Collect skill counts
   const skillCounts = useMemo(() => {
     const counts = {};
     for (const r of scoredRows) {
@@ -83,10 +98,36 @@ export default function MatchStageDashboard({ jobId, pendingRows = [], scoredRow
     [skillCounts]
   );
 
+  // Collect unique preference questions & count candidates matching each preference
+  const preferenceCounts = useMemo(() => {
+    const counts = {};
+    for (const r of scoredRows) {
+      const prefs = parsePreferences(r.application_qa);
+      for (const p of prefs) {
+        if (p.meets_requirement) {
+          counts[p.question] = (counts[p.question] || 0) + 1;
+        } else if (!(p.question in counts)) {
+          counts[p.question] = 0;
+        }
+      }
+    }
+    return counts;
+  }, [scoredRows]);
+
+  const uniquePreferences = useMemo(() => Object.keys(preferenceCounts), [preferenceCounts]);
+
   const toggleSkillFilter = (skill) => {
     setSkillFilters((prev) => {
       const next = new Set(prev);
-      if(next.has(skill)) next.delete(skill); else next.add(skill);
+      if (next.has(skill)) next.delete(skill); else next.add(skill);
+      return next;
+    });
+  };
+
+  const togglePreferenceFilter = (prefQuestion) => {
+    setPreferenceFilters((prev) => {
+      const next = new Set(prev);
+      if (next.has(prefQuestion)) next.delete(prefQuestion); else next.add(prefQuestion);
       return next;
     });
   };
@@ -97,29 +138,49 @@ export default function MatchStageDashboard({ jobId, pendingRows = [], scoredRow
     setMinScore(0);
     setSkillFilters(new Set());
     setFilterKeyword('');
+    setMustHaveOnly(false);
+    setPreferenceFilters(new Set());
   };
 
   const filteredRows = useMemo(() => {
     const kw = filterKeyword.trim().toLowerCase();
     return scoredRows.filter((r) => {
-      if(kw){
+      if (kw) {
         const hay = `${r.applicant_name || ''} ${r.last_position || ''}`.toLowerCase();
-        if(!hay.includes(kw)) return false;
+        if (!hay.includes(kw)) return false;
       }
-      if(locationFilter !== 'all' && r.address !== locationFilter) return false;
-      if((r.overall_score ?? 0) < minScore) return false;
-      if(skillFilters.size > 0) {
+      if (locationFilter !== 'all' && r.address !== locationFilter) return false;
+      if ((r.overall_score ?? 0) < minScore) return false;
+      if (skillFilters.size > 0) {
         const matched = Array.isArray(r.matched_skills) ? r.matched_skills : [];
-        if(![...skillFilters].every((s) => matched.includes(s))) return false;
+        if (![...skillFilters].every((s) => matched.includes(s))) return false;
       }
-      if(appliedWithin !== 'all' && r.applied_at) {
+      if (appliedWithin !== 'all' && r.applied_at) {
         const days = Number(appliedWithin);
         const diffDays = (Date.now() - new Date(r.applied_at).getTime()) / (1000 * 60 * 60 * 24);
-        if(diffDays > days) return false;
+        if (diffDays > days) return false;
       }
+
+      const prefs = parsePreferences(r.application_qa);
+
+      // Must-have filter: Candidate must meet 100% of preferences (e.g., 8/8)
+      if (mustHaveOnly && prefs.length > 0) {
+        const allMatched = prefs.every((p) => p.meets_requirement === true);
+        if (!allMatched) return false;
+      }
+
+      // Individual preference checkboxes filter
+      if (preferenceFilters.size > 0) {
+        const matchesAllSelectedPrefs = [...preferenceFilters].every((qKey) => {
+          const matchItem = prefs.find((p) => p.question === qKey);
+          return matchItem && matchItem.meets_requirement === true;
+        });
+        if (!matchesAllSelectedPrefs) return false;
+      }
+
       return true;
     });
-  }, [scoredRows, filterKeyword, locationFilter, minScore, skillFilters, appliedWithin]);
+  }, [scoredRows, filterKeyword, locationFilter, minScore, skillFilters, appliedWithin, mustHaveOnly, preferenceFilters]);
 
   const sorted = useMemo(() => {
     const list = [...filteredRows];
@@ -133,9 +194,9 @@ export default function MatchStageDashboard({ jobId, pendingRows = [], scoredRow
     return list;
   }, [filteredRows, sortKey, sortDir]);
 
-  // Reset to page 1 whenever the sort or the underlying job/candidate set changes,
-  // so we never strand the view on a now-empty page.
-  useEffect(() => { setPage(1); }, [jobId, sortKey, sortDir, scoredRows.length, filterKeyword, locationFilter, appliedWithin, minScore, skillFilters]);
+  useEffect(() => {
+    setPage(1);
+  }, [jobId, sortKey, sortDir, scoredRows.length, filterKeyword, locationFilter, appliedWithin, minScore, skillFilters, mustHaveOnly, preferenceFilters]);
 
   const totalPages = Math.max(1, Math.ceil(sorted.length / pageSize));
   const pageClamped = Math.min(page, totalPages);
@@ -159,8 +220,6 @@ export default function MatchStageDashboard({ jobId, pendingRows = [], scoredRow
 
   const handleAdvanceToQa = async () => {
     const selectedRows = sorted.filter((r) => selectedIds.has(rowId(r)));
-    // Generating Q&A on a screening that already has one resets its answers/token —
-    // only touch candidates who've never had a Q&A set generated for them.
     const eligible = selectedRows.filter((r) => !r.qa_status && r.screening_id);
     const skipped = selectedRows.length - eligible.length;
 
@@ -184,7 +243,6 @@ export default function MatchStageDashboard({ jobId, pendingRows = [], scoredRow
         toast.error('Some candidates failed to advance', {
           description: `${eligible.length - failed.length}/${eligible.length} advanced to QA · ${failed.length} failed.`,
         });
-        console.warn('Advance to QA errors:', failed.map((f) => f.reason));
       } else {
         toast.success('Advanced to QA', {
           description: `${eligible.length} candidate${eligible.length === 1 ? '' : 's'} sent Follow-up Q&A.${skipped > 0 ? ` ${skipped} skipped (already in progress).` : ''}`,
@@ -211,15 +269,14 @@ export default function MatchStageDashboard({ jobId, pendingRows = [], scoredRow
       const { scored = 0, total = 0, errors = [] } = res.data || {};
       if (errors.length > 0) {
         toast.error('Bulk scoring finished with errors', {
-          description: `${scored}/${total} scored · ${errors.length} failed. Check console for details.`,
+          description: `${scored}/${total} scored · ${errors.length} failed.`,
         });
-        console.warn('scoreCandidatesList errors:', errors);
       } else {
         toast.success('Bulk scoring complete', {
           description: `${scored} of ${total} candidates scored.`,
         });
       }
-      await onScored?.(); // ask AIScreeningPage to reload lane data
+      await onScored?.();
     } catch (err) {
       toast.error('Bulk scoring failed', {
         description: err.response?.data?.message || err.message || 'Unknown error',
@@ -229,9 +286,10 @@ export default function MatchStageDashboard({ jobId, pendingRows = [], scoredRow
     }
   };
 
+  const isFiltered = filterKeyword || locationFilter !== 'all' || appliedWithin !== 'all' || minScore > 0 || skillFilters.size > 0 || mustHaveOnly || preferenceFilters.size > 0;
+
   return (
     <div className="space-y-4 p-4">
-      {/* NEW: bulk run action, only shown when there's something pending */}
       {pendingRows.length > 0 && (
         <Card className="border-primary/30 bg-primary/5">
           <CardContent className="p-3 flex items-center justify-between gap-3 flex-wrap">
@@ -248,8 +306,8 @@ export default function MatchStageDashboard({ jobId, pendingRows = [], scoredRow
         </Card>
       )}
 
-      {/* Stats (1/4) + Ranking table (3/4) */}
-            <div className="grid grid-cols-1 lg:grid-cols-4 gap-3 items-start">
+      <div className="grid grid-cols-1 lg:grid-cols-4 gap-3 items-start">
+        {/* Left Sidebar Filters */}
         <div className="space-y-3">
           <div className="grid grid-cols-2 gap-3">
             <StatCard label="Awaiting Score" value={pendingRows.length} />
@@ -260,16 +318,17 @@ export default function MatchStageDashboard({ jobId, pendingRows = [], scoredRow
 
           {scoredRows.length > 0 && (
             <Card>
-              <CardContent className="p-3 space-y-3">
+              <CardContent className="p-3 space-y-4">
                 <div className="flex items-center justify-between">
                   <span className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wide">Filters</span>
-                  {(filterKeyword || locationFilter !== 'all' || appliedWithin !== 'all' || minScore > 0 || skillFilters.size > 0) && (
+                  {isFiltered && (
                     <Button variant="ghost" size="sm" className="h-6 text-[10px] gap-1 px-1.5" onClick={resetFilters}>
                       <X className="h-3 w-3" /> Clear
                     </Button>
                   )}
                 </div>
 
+                {/* Keyword Search */}
                 <div className="space-y-1.5">
                   <span className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wide">Keyword</span>
                   <div className="relative">
@@ -284,7 +343,61 @@ export default function MatchStageDashboard({ jobId, pendingRows = [], scoredRow
                   </div>
                 </div>
 
-                <div className="space-y-1.5">
+                {/* MUST-HAVE FILTER TOGGLE (image_ef4702 style) */}
+                <div className="pt-2 border-t space-y-2">
+                  <div className="flex items-center justify-between">
+                    <label htmlFor="must-have-toggle" className="text-xs font-medium cursor-pointer flex items-center gap-1.5">
+                      <Checkbox
+                        id="must-have-toggle"
+                        checked={mustHaveOnly}
+                        onCheckedChange={(v) => setMustHaveOnly(!!v)}
+                      />
+                      <span>Terapkan filter "persyaratan harus dimiliki"</span>
+                    </label>
+                    <Info className="h-3.5 w-3.5 text-muted-foreground shrink-0" title="Kandidat harus memenuhi 100% kecocokan preferensi" />
+                  </div>
+                </div>
+
+                {/* PREFERENCES / SCREENING QUESTIONS FILTER ACCORDION */}
+                {uniquePreferences.length > 0 && (
+                  <div className="pt-2 border-t space-y-2">
+                    <button
+                      type="button"
+                      onClick={() => setPreferenceAccordionOpen((o) => !o)}
+                      className="flex items-center justify-between w-full text-xs font-medium hover:text-primary"
+                    >
+                      <span>Pertanyaan untuk kandidat</span>
+                      {preferenceAccordionOpen ? <ChevronUp className="h-3.5 w-3.5" /> : <ChevronDown className="h-3.5 w-3.5" />}
+                    </button>
+
+                    {preferenceAccordionOpen && (
+                      <div className="space-y-2 pl-1 pt-1">
+                        {uniquePreferences.map((qKey) => {
+                          const isChecked = preferenceFilters.has(qKey);
+                          const count = preferenceCounts[qKey] || 0;
+                          return (
+                            <div key={qKey} className="flex items-center justify-between gap-2">
+                              <label className="flex items-start gap-2 text-[11px] cursor-pointer text-muted-foreground hover:text-foreground leading-tight">
+                                <Checkbox
+                                  checked={isChecked}
+                                  onCheckedChange={() => togglePreferenceFilter(qKey)}
+                                  className="mt-0.5 shrink-0"
+                                />
+                                <span className="break-words">{qKey}</span>
+                              </label>
+                              <span className="text-[10px] font-mono text-muted-foreground bg-muted px-1.5 py-0.5 rounded shrink-0">
+                                {count}
+                              </span>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    )}
+                  </div>
+                )}
+
+                {/* Location Filter */}
+                <div className="pt-2 border-t space-y-1.5">
                   <span className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wide">Location</span>
                   <Select value={locationFilter} onValueChange={setLocationFilter}>
                     <SelectTrigger className="h-7 w-full text-[11px]"><SelectValue /></SelectTrigger>
@@ -297,6 +410,7 @@ export default function MatchStageDashboard({ jobId, pendingRows = [], scoredRow
                   </Select>
                 </div>
 
+                {/* Applied Filter */}
                 <div className="space-y-1.5">
                   <span className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wide">Applied</span>
                   <Select value={appliedWithin} onValueChange={setAppliedWithin}>
@@ -310,6 +424,7 @@ export default function MatchStageDashboard({ jobId, pendingRows = [], scoredRow
                   </Select>
                 </div>
 
+                {/* Min Fit Slider */}
                 <div className="space-y-1.5">
                   <div className="flex items-center justify-between">
                     <span className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wide">Min. Fit</span>
@@ -318,6 +433,7 @@ export default function MatchStageDashboard({ jobId, pendingRows = [], scoredRow
                   <Slider value={[minScore]} min={0} max={100} step={5} onValueChange={([v]) => setMinScore(v)} />
                 </div>
 
+                {/* Skill Badges Filter */}
                 {uniqueSkills.length > 0 && (
                   <div className="space-y-1.5">
                     <span className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wide">Skills</span>
@@ -347,6 +463,7 @@ export default function MatchStageDashboard({ jobId, pendingRows = [], scoredRow
           )}
         </div>
 
+        {/* Main Ranking Table / Candidate Cards */}
         <Card className="lg:col-span-3">
           <CardContent className="space-y-3 pt-6">
             {sorted.length === 0 ? (
@@ -355,7 +472,6 @@ export default function MatchStageDashboard({ jobId, pendingRows = [], scoredRow
               </p>
             ) : (
               <>
-                {/* Toolbar: select-all + sort */}
                 <div className="flex items-center justify-between gap-3 flex-wrap">
                   <div className="flex items-center gap-2">
                     <Checkbox id="select-all-scored" checked={allSelected} onCheckedChange={toggleSelectAll} />
@@ -398,7 +514,6 @@ export default function MatchStageDashboard({ jobId, pendingRows = [], scoredRow
                   </div>
                 </div>
 
-                {/* Candidate cards */}
                 <div className="space-y-2.5">
                   {paged.map((r) => (
                     <CandidateCard
@@ -433,7 +548,6 @@ export default function MatchStageDashboard({ jobId, pendingRows = [], scoredRow
         jobId={jobId}
       />
 
-      {/* Pending list — unchanged, just no longer the only way to trigger matching */}
       {pendingRows.length > 0 && (
         <Card>
           <CardHeader className="pb-2">
@@ -460,6 +574,7 @@ export default function MatchStageDashboard({ jobId, pendingRows = [], scoredRow
 }
 
 function CandidateCard({ row: r, selected, onToggleSelect, onView, onContinue }) {
+  console.log("Candidate row data:", r);
   const matched = Array.isArray(r.matched_skills) ? r.matched_skills : [];
   const missing = Array.isArray(r.missing_skills) ? r.missing_skills : [];
   const appliedAt = fmtDate(r.applied_at);
@@ -517,10 +632,11 @@ function CandidateCard({ row: r, selected, onToggleSelect, onView, onContinue })
   );
 }
 
+/** Component for rendering Candidate Preference Matches (image_ef46e6 style) */
 function PreferenceMatch({ information }) {
   const [open, setOpen] = useState(true);
-  const entries = information && typeof information === 'object' ? Object.entries(information) : [];
-  const matchCount = entries.filter(([, v]) => v?.meets_requirement === true).length;
+  const preferences = parsePreferences(information);
+  const matchCount = preferences.filter((p) => p.meets_requirement === true).length;
 
   return (
     <div className="pt-2 border-t">
@@ -530,24 +646,24 @@ function PreferenceMatch({ information }) {
         className="flex items-center gap-1.5 text-[11px] font-medium hover:text-primary"
       >
         {open ? <ChevronUp className="h-3 w-3" /> : <ChevronDown className="h-3 w-3" />}
-        Kecocokan preferensi ({matchCount}/{entries.length} cocok)
+        Kecocokan preferensi ({matchCount}/{preferences.length} cocok)
       </button>
       {open && (
         <div className="mt-2 space-y-1.5">
-          {entries.length === 0 ? (
+          {preferences.length === 0 ? (
             <p className="text-[11px] text-muted-foreground italic">No screening questions recorded.</p>
           ) : (
-            entries.map(([question, v]) => {
-              const meets = v?.meets_requirement;
+            preferences.map((p, idx) => {
+              const meets = p.meets_requirement;
               const Icon = meets === true ? Check : meets === false ? X : Minus;
               const iconCls = meets === true ? 'text-emerald-600' : meets === false ? 'text-rose-600' : 'text-muted-foreground';
               return (
-                <div key={question} className="grid grid-cols-[10px_160px_1fr] gap-2 text-[11px]">
+                <div key={idx} className="grid grid-cols-[10px_180px_1fr] gap-2 text-[11px]">
                   <span className="text-muted-foreground">•</span>
-                  <span className="text-muted-foreground break-words">{question}</span>
+                  <span className="text-muted-foreground break-words">{p.question}</span>
                   <span className="flex items-center gap-1 font-medium break-words">
-                    <Icon className={`h-3 w-3 shrink-0 ${iconCls}`} />
-                    {v?.answer || '—'}
+                    <Icon className={`h-3.5 w-3.5 shrink-0 ${iconCls}`} />
+                    {p.answer}
                   </span>
                 </div>
               );
