@@ -271,12 +271,6 @@ export default function PositionSetupSheet({ open, onOpenChange, position, onUpd
                               className="flex items-center justify-between gap-3 px-3 py-2 rounded-lg border bg-muted/20"
                             >
                               <div className="flex items-center gap-2 min-w-0">
-                                <Badge
-                                  variant="outline"
-                                  className="text-[9px] border-blue-200 text-blue-700 font-mono shrink-0"
-                                >
-                                  {item.competency_code}
-                                </Badge>
                                 <span className="text-xs font-medium truncate">
                                   {item.competency_name}
                                 </span>

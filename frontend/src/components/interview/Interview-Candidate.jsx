@@ -367,10 +367,9 @@ function PrepSection({ jobId, interviewId, prep, customQuestions: initCustom, se
               {prep.rubric_items.map((item) => (
                 <div key={item.competency_code} className="rounded-md border bg-muted/20 px-2.5 py-2">
                   <div className="flex items-center justify-between gap-1">
-                    <Badge variant="outline" className="text-[9px] border-blue-200 text-blue-700 font-mono">{item.competency_code}</Badge>
-                    <span className="text-[9px] font-mono text-muted-foreground">×{item.weight}</span>
+                    <p className="text-[10px] font-medium truncate">{item.competency_name}</p>
+                    <span className="text-[9px] font-mono text-muted-foreground shrink-0">×{item.weight}</span>
                   </div>
-                  <p className="text-[10px] font-medium mt-0.5 truncate">{item.competency_name}</p>
                   {item.anchor_1 && <p className="text-[9px] text-muted-foreground mt-0.5 truncate">1: {item.anchor_1}</p>}
                 </div>
               ))}
@@ -1242,7 +1241,6 @@ function EvaluateSection({ interviewId, interview, setInterview, prep, setBanner
                 <div className="flex items-start justify-between gap-3">
                   <div className="min-w-0 flex-1">
                     <div className="flex items-center gap-1.5 flex-wrap">
-                      <Badge variant="outline" className="text-[9px] border-blue-200 text-blue-700 font-mono">{item.competency_code}</Badge>
                       <span className="text-xs font-semibold">{item.competency_name}</span>
                       <span className="text-[9px] font-mono text-muted-foreground">×{item.weight}</span>
                       {isLow && <Badge variant="outline" className="text-[9px] border-amber-300 text-amber-700 bg-amber-50">Low score — review</Badge>}
