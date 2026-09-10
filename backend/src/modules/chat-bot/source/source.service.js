@@ -30,7 +30,6 @@ class SourceService {
       } finally {
         await parser.destroy();
       }
-
       const chunks = chunkText(parsedText);
 
       if (chunks.length === 0) {

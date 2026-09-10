@@ -15,8 +15,10 @@ class MessageController {
     try {
       const { conversation_id } = req.params;
       const { content } = req.body || {};
-      const userMessage = await MessageService.saveUserMessage(conversation_id, req.onboardingId, content);
-      res.status(201).json({ message: 'Message sent', userMessage });
+      const { userMessage, assistantMessage } = await MessageService.respondToMessage(
+        conversation_id, req.onboardingId, content
+      );
+      res.status(201).json({ message: 'Message sent', userMessage, assistantMessage });
     } catch (err) {
       res.status(err.status || 500).json({ message: err.message });
     }
