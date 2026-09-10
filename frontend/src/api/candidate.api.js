@@ -21,8 +21,11 @@ export const addApplicantToJob = (applicant_id, job_id) =>
 export const getCandidatesByApplicantId = (applicant_id) =>
   api.get(`/candidate-pipeline/applicant/${applicant_id}`);
 
-export const sendCandidateEmail = (candidate_id, body = {}) =>
-  api.post(`/candidate-pipeline/${candidate_id}/email`, body);
+export const sendCandidateEmail = (candidate_id) =>
+  api.post(`/candidate-pipeline/${candidate_id}/email`);
+
+export const getCandidateEmailPreview = (candidate_id) =>
+  api.get(`/candidate-pipeline/${candidate_id}/email/preview`);
 
 // Report page: per-job candidate counts for the left rail.
 export const getCandidatePipelineSummary = (category = null) => {

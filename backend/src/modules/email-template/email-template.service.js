@@ -10,6 +10,10 @@ const DEFAULTS = {
       subject: 'Follow-up Questions — {{JOB_TITLE}}',
       body: `{{CANDIDATE_NAME}},\n\nPlease answer a few follow-up questions for the {{JOB_TITLE}} position. You have 48 hours to respond:\n\n{{LINK}}`,
     },
+    stage_advance: {
+      subject: 'Invitation to next stage — {{JOB_TITLE}}',
+      body: `{{CANDIDATE_NAME}},\n\nYou have been invited to the next stage of the hiring process for the position of {{JOB_TITLE}}.`,
+    },
   },
   [STAGE_ASSESSMENT]: {
     invite: {
