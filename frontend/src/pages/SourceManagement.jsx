@@ -5,14 +5,12 @@ import { PageHeader } from '@/components/common';
 import { getJobAccountsByUserId } from '@/api/job-accounts.api';
 import AccountSelection from '@/components/source-management/AccountSelection';
 import ListSource from '@/components/source-management/ListSource';
-import SourceSetup from '@/components/source-management/SourceSetup';
 import ListCandidate from '@/components/source-management/ListCandidate';
 import SourceManagementWizard, { useSourceManagementWizard } from '@/components/tours/SourceManagementWizard';
 
 const STEPS = [
   { key: 'selection', label: 'Account Select'},
   { key: 'sourcing',  label: 'List Source'   },
-  { key: 'setting',   label: 'Source Setup'  },
   { key: 'candidate', label: 'List Candidate'},
 ];
 
@@ -155,10 +153,7 @@ export default function SourceManagementPage() {
         />
       )}
       {activeStep === 2 && (
-        <SourceSetup selectedJob={null} />
-      )}
-      {activeStep === 3 && (
-        <ListCandidate selectedJob={null} />
+        <ListCandidate selectedJob={selectedSource} />
       )}
 
       <SourceManagementWizard

@@ -6,7 +6,6 @@ import {
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Slider } from '@/components/ui/slider';
 import { JobBanner } from '@/components/source-management/JobBanner';
 import { getByJobSourcingId } from '@/api/applicant.api';
 
@@ -70,46 +69,7 @@ export default function ListCandidate({ selectedJob }) {
     <div className="space-y-5">
 
       {/* Job context banner */}
-      <JobBanner job={selectedJob} step={4} />
-
-      {/* Threshold display — read-only, value set in SourceSetup (Step 3) */}
-      {/* TODO: receive threshold range as a prop from SourceManagementPage
-          once Step 3 saves to state/backend */}
-      <Card>
-        <CardHeader className="pb-3 border-b">
-          <CardTitle className="text-sm">Threshold Score</CardTitle>
-        </CardHeader>
-        <CardContent className="pt-4 space-y-3">
-          <p className="text-xs text-muted-foreground">
-            Candidates within this AI screening score range will appear below.
-            Adjust the range in Step 3.
-          </p>
-          <div className="flex items-center gap-4">
-            <div className="flex flex-col items-center gap-1 min-w-[64px]">
-              <span className="text-[10px] text-muted-foreground font-semibold uppercase tracking-wide">Min</span>
-              <span className="text-lg font-bold text-primary">70</span>
-            </div>
-            <div className="flex-1">
-              <Slider
-                value={[70, 100]}
-                min={0}
-                max={100}
-                step={1}
-                disabled
-              />
-              <div className="flex justify-between mt-1.5">
-                <span className="text-[9px] text-muted-foreground">0</span>
-                <span className="text-[9px] text-muted-foreground">50</span>
-                <span className="text-[9px] text-muted-foreground">100</span>
-              </div>
-            </div>
-            <div className="flex flex-col items-center gap-1 min-w-[64px]">
-              <span className="text-[10px] text-muted-foreground font-semibold uppercase tracking-wide">Max</span>
-              <span className="text-lg font-bold text-primary">100</span>
-            </div>
-          </div>
-        </CardContent>
-      </Card>
+      <JobBanner job={selectedJob} step={3} />
 
       {/* Applicants table */}
       <Card data-tour="source-mgmt-candidate-table">

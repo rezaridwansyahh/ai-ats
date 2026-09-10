@@ -3,7 +3,7 @@ import { useNavigate, useParams } from 'react-router-dom';
 import {
   ArrowLeft, Loader2, AlertTriangle, Wand2, RotateCw,
   Lock, Unlock, Plus, X, Pencil, Check, ChevronRight,
-  CalendarCheck, Users, ClipboardList, Link2, Copy,
+  CalendarCheck, Users, ClipboardList, Link2, Copy, Trash2,
 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -646,7 +646,7 @@ function RubricSection({ jobId, prep, setPrep, setBanner, setError, hasSubmitted
       return;
     }
     if (isLocked) return;
-    const allReady = items.every((it) => it.anchor_1?.trim() && it.anchor_7?.trim());
+    const allReady = items.every((it) => it.competency_name?.trim() && it.anchor_1?.trim() && it.anchor_7?.trim());
     if (!allReady) return;
 
     const t = setTimeout(async () => {
@@ -666,9 +666,27 @@ function RubricSection({ jobId, prep, setPrep, setBanner, setError, hasSubmitted
   const setField = (idx, field, val) =>
     setItems((its) => its.map((it, i) => (i === idx ? { ...it, [field]: val } : it)));
 
+  const addItem = () => {
+    if (isLocked) return;
+    const code = `CUSTOM-${Math.random().toString(36).slice(2, 6).toUpperCase()}`;
+    setItems((its) => [...its, { competency_code: code, competency_name: '', weight: 1, anchor_1: '', anchor_7: '' }]);
+    setEditingIdx(items.length);
+  };
+
+  const removeItem = (idx) => {
+    if (isLocked || items.length <= 1) return;
+    setItems((its) => its.filter((_, i) => i !== idx));
+    setEditingIdx((prev) => (prev === idx ? null : prev));
+  };
+
   const handleSave = async () => {
     if (saving || isLocked) return;
-    // Validate anchors
+    // Validate names + anchors
+    const unnamed = items.filter((it) => !it.competency_name?.trim());
+    if (unnamed.length > 0) {
+      setError('Every competency needs a name.');
+      return;
+    }
     const missing = items.filter((it) => !it.anchor_1?.trim() || !it.anchor_7?.trim());
     if (missing.length > 0) {
       setError(`Fill in both anchors for: ${missing.map((m) => m.competency_name).join(', ')}`);
@@ -722,7 +740,7 @@ function RubricSection({ jobId, prep, setPrep, setBanner, setError, hasSubmitted
             <CardTitle className="text-sm">
               Competency Framework
               <span className="ml-2 text-[11px] font-normal text-muted-foreground">
-                FRM.PTAP.HRD.01-06 · scored 1–7 by interviewer
+                {items.length} competenc{items.length === 1 ? 'y' : 'ies'} · scored 1–7 by interviewer
               </span>
             </CardTitle>
             <div className="flex items-center gap-3">
@@ -738,6 +756,9 @@ function RubricSection({ jobId, prep, setPrep, setBanner, setError, hasSubmitted
               )}
               {!isLocked && (
                 <div className="flex gap-2">
+                  <Button size="sm" variant="outline" className="text-xs" onClick={addItem}>
+                    <Plus className="h-3.5 w-3.5 mr-1.5" /> Add competency
+                  </Button>
                   <Button size="sm" variant="outline" className="text-xs" onClick={handleGenerateAnchors} disabled={generating}>
                     {generating
                       ? <><Loader2 className="h-3.5 w-3.5 mr-1.5 animate-spin" /> Generating…</>
@@ -762,22 +783,43 @@ function RubricSection({ jobId, prep, setPrep, setBanner, setError, hasSubmitted
                   onClick={() => !isLocked && setEditingIdx((prev) => (prev === i ? null : i))}
                   className={`flex items-center gap-2 min-w-0 p-3 ${!isLocked ? 'cursor-pointer hover:bg-muted/20 transition-colors' : ''}`}
                 >
-                  <Badge variant="outline" className="text-[9px] border-blue-200 text-blue-700 bg-blue-50 font-mono shrink-0">
-                    {item.competency_code}
-                  </Badge>
-                  <span className="text-xs font-semibold truncate">{item.competency_name}</span>
+                  <span className="text-xs font-semibold truncate">
+                    {item.competency_name || <span className="italic text-muted-foreground">Untitled competency</span>}
+                  </span>
                   {!isLocked && editingIdx !== i && (
                     <span className="text-[10px] text-muted-foreground italic">· click to edit</span>
                   )}
-                  {missingAnchor && (
-                    <span className="ml-auto text-[10px] text-amber-600 font-medium shrink-0">anchors required</span>
-                  )}
+                  <div className="ml-auto flex items-center gap-2 shrink-0">
+                    {missingAnchor && (
+                      <span className="text-[10px] text-amber-600 font-medium">anchors required</span>
+                    )}
+                    {!isLocked && (
+                      <button
+                        type="button"
+                        onClick={(e) => { e.stopPropagation(); removeItem(i); }}
+                        disabled={items.length <= 1}
+                        title={items.length <= 1 ? 'At least one competency is required' : 'Remove competency'}
+                        className="text-muted-foreground hover:text-rose-600 disabled:opacity-30 disabled:hover:text-muted-foreground disabled:cursor-not-allowed"
+                      >
+                        <Trash2 className="h-3.5 w-3.5" />
+                      </button>
+                    )}
+                  </div>
                 </div>
 
                 <div className={`grid transition-all duration-200 ease-in-out ${editingIdx === i ? 'grid-rows-[1fr]' : 'grid-rows-[0fr]'}`}>
                   <div className="overflow-hidden">
                     <div className="space-y-2 px-3 pb-3 border-t border-border/60">
-                      <div className="space-y-0.5 pt-2">
+                      <div className="space-y-1 pt-2">
+                        <label className="text-[9px] text-muted-foreground font-medium">Competency name</label>
+                        <Input
+                          value={item.competency_name || ''}
+                          onChange={(e) => setField(i, 'competency_name', e.target.value)}
+                          placeholder="e.g. Communication Skills"
+                          className="h-7 text-xs"
+                        />
+                      </div>
+                      <div className="space-y-0.5">
                         <label className="text-[9px] text-muted-foreground font-medium">
                           Weight · <span className="text-foreground font-semibold">{item.weight}×</span>
                         </label>

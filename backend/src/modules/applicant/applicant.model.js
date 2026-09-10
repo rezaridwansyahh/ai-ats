@@ -115,6 +115,21 @@ class ApplicantModel {
     return result.rowCount > 0;
   }
 
+  // Same lookup as existsByNameAndJobSourcing, but returns the row (with its
+  // cv_download_status) instead of a boolean — lets a re-sync tell "already
+  // fully synced, skip" apart from "resume download failed last time, retry
+  // it" for the same (name, job_sourcing_id).
+  async getByNameAndJobSourcing(name, job_sourcing_id) {
+    const result = await getDb().query(`
+      SELECT ma.*
+      FROM master_applicant ma
+      JOIN mapping_applicant_sourcing mas ON mas.applicant_id = ma.id
+      WHERE ma.name = $1 AND mas.job_sourcing_id = $2
+      LIMIT 1
+    `, [name, job_sourcing_id]);
+    return result.rows[0] || null;
+  }
+
   // Upserts by email: if `email` matches an existing applicant, that applicant's
   // record is overwritten with the new data (newest sync/upload always wins) and,
   // if `job_sourcing_id` is provided, linked to it via mapping_applicant_sourcing
@@ -124,7 +139,7 @@ class ApplicantModel {
   // not on this applicant row, since it's application-specific (RPA sources
   // like Seek/LinkedIn). `information` here stays the person-level AI-parsed
   // CV facets, shared across every application this applicant has.
-  async create({ job_sourcing_id, upload_batch_id, company_id, name, email, last_position, address, education, information, date, attachment, sourcing_information = null }) {
+  async create({ job_sourcing_id, upload_batch_id, company_id, name, email, last_position, address, education, information, date, attachment, sourcing_information = null, cv_download_status = null }) {
     const infoJson = information ? JSON.stringify(information) : null;
 
     let applicant;
@@ -141,8 +156,9 @@ class ApplicantModel {
           education        = $6,
           information      = $7,
           date             = $8,
-          attachment       = $9
-        WHERE id = $10
+          attachment       = $9,
+          cv_download_status = $10
+        WHERE id = $11
         RETURNING *
       `, [
         upload_batch_id || null,
@@ -153,14 +169,15 @@ class ApplicantModel {
         infoJson,
         date || null,
         attachment || null,
+        cv_download_status,
         existing.id,
       ]);
       applicant = result.rows[0];
     } else {
       const result = await getDb().query(`
         INSERT INTO master_applicant
-          (upload_batch_id, company_id, name, email, last_position, address, education, information, date, attachment)
-        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
+          (upload_batch_id, company_id, name, email, last_position, address, education, information, date, attachment, cv_download_status)
+        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
         RETURNING *
       `, [
         upload_batch_id || null,
@@ -172,6 +189,7 @@ class ApplicantModel {
         infoJson,
         date || null,
         attachment || null,
+        cv_download_status,
       ]);
       applicant = result.rows[0];
     }
@@ -200,6 +218,16 @@ class ApplicantModel {
       WHERE id = $2
       RETURNING *
     `, [email, id]);
+    return result.rows[0];
+  }
+
+  async updateCvDownloadStatus(id, cv_download_status) {
+    const result = await getDb().query(`
+      UPDATE master_applicant
+      SET cv_download_status = $1
+      WHERE id = $2
+      RETURNING *
+    `, [cv_download_status, id]);
     return result.rows[0];
   }
 
