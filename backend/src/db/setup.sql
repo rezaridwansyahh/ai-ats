@@ -338,6 +338,7 @@ CREATE TABLE core_job (
   seniority_level VARCHAR(255),
   company_url VARCHAR(255),
   -- Job Details
+  work_type_type TEXT,
   qualifications TEXT,
   required_skills JSONB,
   preferred_skills JSONB,
