@@ -47,7 +47,9 @@ export default function ParseStageDashboard({ pendingRows = [], parsedRows = [],
   const pendingPageClamped = Math.min(pendingPage, pendingTotalPages);
   const parsedPageClamped = Math.min(parsedPage, parsedTotalPages);
 
-
+  const pagedPending = filteredPending.slice((pendingPageClamped - 1) * PAGE_SIZE, pendingPageClamped * PAGE_SIZE);
+  const pagedParsed  = filteredParsed.slice((parsedPageClamped - 1) * PAGE_SIZE, parsedPageClamped * PAGE_SIZE);
+  
   return (
     <div className="space-y-4 p-4">
       {/* Stats row — only real, changeable numbers */}

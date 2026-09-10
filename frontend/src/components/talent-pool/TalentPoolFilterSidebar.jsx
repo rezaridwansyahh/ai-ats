@@ -1,9 +1,11 @@
-import { Users } from 'lucide-react';
+import { Users, X } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Slider } from '@/components/ui/slider';
+import {
+  Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
+} from '@/components/ui/select';
 
-const CITY_CHIPS  = ['Jakarta', 'Bandung', 'Surabaya'];
-const SKILL_CHIPS = ['React', 'TypeScript', 'Next.js', 'Node.js', 'Vue', 'JavaScript', 'Tailwind'];
+const CITY_CHIPS = ['Jakarta', 'Bandung', 'Surabaya'];
 
 export default function TalentPoolFilterSidebar({
   totalCount,
@@ -12,9 +14,15 @@ export default function TalentPoolFilterSidebar({
   minScore,
   onMinScoreChange,
   activeLocation,
-  activeSkill,
   onChipClick,
+  skillFilters = new Set(),
+  availableSkills = [],
+  onToggleSkill,
+  onRemoveSkill,
 }) {
+  // Skills not yet picked — these populate the "+ Add skill" dropdown.
+  const addableSkills = availableSkills.filter(({ skill }) => !skillFilters.has(skill));
+
   return (
     <Card className="lg:sticky lg:top-4">
       <CardContent className="p-4 space-y-5">
@@ -74,21 +82,54 @@ export default function TalentPoolFilterSidebar({
         </div>
 
         <div data-tour="talent-skill-chips">
-          <div className="text-[10px] font-bold uppercase text-muted-foreground mb-2">Skills</div>
-          <div className="flex flex-wrap gap-1.5">
-            {SKILL_CHIPS.map(skill => (
-              <button
-                key={skill}
-                onClick={() => onChipClick('skill_q', skill)}
-                className={`px-2 py-1 rounded-md border text-[11px] transition-colors
-                  ${activeSkill === skill
-                    ? 'bg-primary text-primary-foreground border-primary'
-                    : 'border-border hover:bg-muted/60'}`}
-              >
-                {skill}
-              </button>
-            ))}
+          <div className="flex items-center justify-between mb-2">
+            <div className="text-[10px] font-bold uppercase text-muted-foreground">Skills</div>
+            {skillFilters.size > 0 && (
+              <span className="text-[10px] text-muted-foreground">{skillFilters.size} selected</span>
+            )}
           </div>
+
+          {/* Selected skills — removable pills. Not capped: user can add as many as they want. */}
+          {skillFilters.size > 0 && (
+            <div className="flex flex-wrap gap-1.5 mb-2">
+              {[...skillFilters].map((skill) => (
+                <button
+                  key={skill}
+                  onClick={() => onRemoveSkill(skill)}
+                  className="inline-flex items-center gap-1 px-2 py-1 rounded-md border border-primary bg-primary text-primary-foreground text-[11px]"
+                  title="Remove filter"
+                >
+                  {skill} <X className="h-3 w-3" />
+                </button>
+              ))}
+            </div>
+          )}
+
+          {/* Add-skill dropdown */}
+          {addableSkills.length > 0 ? (
+            <Select value="" onValueChange={onToggleSkill}>
+              <SelectTrigger className="h-8 w-full text-[11px]">
+                <SelectValue placeholder="+ Add skill filter…" />
+              </SelectTrigger>
+              <SelectContent
+                position="popper"
+                side="bottom"
+                align="start"
+                avoidCollisions={false}
+                className="max-h-64 overflow-y-auto"
+              >
+                {addableSkills.map(({ skill, count }) => (
+                  <SelectItem key={skill} value={skill} className="text-xs">
+                    {skill} ({count})
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          ) : (
+            <p className="text-[10px] text-muted-foreground italic">
+              {skillFilters.size > 0 ? 'All available skills selected.' : 'No skill data yet.'}
+            </p>
+          )}
         </div>
 
       </CardContent>

@@ -1,9 +1,18 @@
 import { useState, useEffect, useRef } from 'react';
 import {
-  Plus, X, Lock, ArrowUp, ArrowDown, Check,
+  Plus, X, Lock, ArrowUp, ArrowDown, Check, GripVertical,
   Briefcase, MapPin, AlertTriangle, Zap, Clock, Mail, Save, Loader2,
   ShieldCheck,
 } from 'lucide-react';
+import {
+  DndContext, closestCenter, PointerSensor, KeyboardSensor,
+  useSensor, useSensors,
+} from '@dnd-kit/core';
+import {
+  SortableContext, verticalListSortingStrategy, useSortable,
+  arrayMove, sortableKeyboardCoordinates,
+} from '@dnd-kit/sortable';
+import { CSS } from '@dnd-kit/utilities';
 import { getJobPipeline, saveJobPipeline } from '@/api/pipeline.api';
 import { getStageCategories } from '@/api/stage-category.api';
 import { getTemplateStages, getTemplateStageById } from '@/api/template-stage.api';
@@ -347,6 +356,23 @@ export default function JobStagesStep({ selectedJob, onPipelineChange }) {
     setStages(updated);
   };
 
+  //Drag-and-drop reordering (custom pipeline only) 
+  const sensors = useSensors(
+    useSensor(PointerSensor, { activationConstraint: { distance: 5 } }),
+    useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates })
+  );
+
+  const handleDragEnd = (event) => {
+    const {active, over} = event;
+    if(!over || active.id === over.id) return;
+    setStages((prev) => {
+      const oldIndex = prev.findIndex((s) => s.id === active.id);
+      const newIndex = prev.findIndex((s) => s.id === over.id);
+      if(oldIndex === -1 || newIndex === -1) return prev;
+      return arrayMove(prev, oldIndex, newIndex);
+    });
+  };
+
   // ── No job selected guard ──
   if (!selectedJob) {
     return (
@@ -489,85 +515,32 @@ export default function JobStagesStep({ selectedJob, onPipelineChange }) {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {stages.map((stage, idx) => (
-                <TableRow key={stage.id} className="border-border/40 hover:bg-primary/[0.03]">
-                  <TableCell className="text-center">
-                    <span className={`text-[10px] font-bold tracking-wide ${STAGE_COLORS[idx % STAGE_COLORS.length]}`}>
-                      Stage {idx + 1}
-                    </span>
-                  </TableCell>
-                  <TableCell>
-                    {isCustom && !isPipelineLocked ? (
-                      <Select
-                        value={String(stage.stage_type_id)}
-                        onValueChange={v => {
-                          const cat = categories.find(c => c.id === Number(v));
-                          updateStage(stage.id, 'stage_type_id', Number(v));
-                          if (cat) updateStage(stage.id, 'category', cat.name);
-                        }}
-                      >
-                        <SelectTrigger className="h-9 text-xs">
-                          <SelectValue />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {categories.map(cat => (
-                            <SelectItem key={cat.id} value={String(cat.id)} className="text-xs">{cat.name}</SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                    ) : (
-                      <span className="text-xs font-semibold text-muted-foreground">{stage.category}</span>
-                    )}
-                  </TableCell>
-                  <TableCell>
-                    {isCustom && !isPipelineLocked ? (
-                      <Input
-                        value={stage.name}
-                        onChange={e => updateStage(stage.id, 'name', e.target.value)}
-                        placeholder="Stage name"
-                        className="h-9 text-xs"
-                      />
-                    ) : (
-                      <span className="text-xs">{stage.name}</span>
-                    )}
-                  </TableCell>
-                  {isCustom && !isPipelineLocked && (
-                    <TableCell className="text-center">
-                      <div className="flex items-center justify-center gap-1">
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          className="h-7 w-7"
-                          onClick={() => moveStage(idx, -1)}
-                          disabled={idx === 0}
-                          title="Move up"
-                        >
-                          <ArrowUp className="h-3.5 w-3.5" />
-                        </Button>
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          className="h-7 w-7"
-                          onClick={() => moveStage(idx, 1)}
-                          disabled={idx === stages.length - 1}
-                          title="Move down"
-                        >
-                          <ArrowDown className="h-3.5 w-3.5" />
-                        </Button>
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          className="h-7 w-7 hover:text-destructive"
-                          onClick={() => removeStage(stage.id)}
-                          title="Remove"
-                        >
-                          <X className="h-3.5 w-3.5" />
-                        </Button>
-                      </div>
-                    </TableCell>
-                  )}
-                </TableRow>
-              ))}
+              <DndContext
+                sensors={sensors}
+                collisionDetection={closestCenter}
+                onDragEnd={handleDragEnd}
+              >
+                <SortableContext
+                  items={stages.map((s) => s.id)}
+                  strategy={verticalListSortingStrategy}
+                  disabled={!isCustom || isPipelineLocked}
+                >
+                  {stages.map((stage, idx) => (
+                    <SortableStageRow
+                      key={stage.id}
+                      stage={stage}
+                      idx={idx}
+                      stagesLength={stages.length}
+                      isCustom={isCustom}
+                      isPipelineLocked={isPipelineLocked}
+                      categories={categories}
+                      updateStage={updateStage}
+                      moveStage={moveStage}
+                      removeStage={removeStage}
+                    />
+                  ))}
+                </SortableContext>
+              </DndContext>
 
               {/* Add Stage (custom mode only, not locked) */}
               {isCustom && !isPipelineLocked && (
@@ -609,6 +582,122 @@ export default function JobStagesStep({ selectedJob, onPipelineChange }) {
 }
 
 // ── Sub-components ───────────────────────────────────────────────────
+
+// ── Sub-components ───────────────────────────────────────────────────
+
+function SortableStageRow({
+  stage, idx, stagesLength, isCustom, isPipelineLocked,
+  categories, updateStage, moveStage, removeStage,
+}) {
+  const dragEnabled = isCustom && !isPipelineLocked;
+
+  const {
+    attributes, listeners, setNodeRef, transform, transition, isDragging,
+  } = useSortable({ id: stage.id, disabled: !dragEnabled });
+
+  const style = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+    opacity: isDragging ? 0.5 : 1,
+  };
+
+  return (
+    <TableRow
+      ref={setNodeRef}
+      style={style}
+      className="border-border/40 hover:bg-primary/[0.03]"
+    >
+      <TableCell className="text-center">
+        <div className="flex items-center justify-center gap-1.5">
+          {dragEnabled && (
+            <button
+              type="button"
+              {...attributes}
+              {...listeners}
+              className="cursor-grab active:cursor-grabbing text-muted-foreground hover:text-foreground touch-none"
+              title="Drag to reorder"
+            >
+              <GripVertical className="h-3.5 w-3.5" />
+            </button>
+          )}
+          <span className={`text-[10px] font-bold tracking-wide ${STAGE_COLORS[idx % STAGE_COLORS.length]}`}>
+            Stage {idx + 1}
+          </span>
+        </div>
+      </TableCell>
+      <TableCell>
+        {isCustom && !isPipelineLocked ? (
+          <Select
+            value={String(stage.stage_type_id)}
+            onValueChange={v => {
+              const cat = categories.find(c => c.id === Number(v));
+              updateStage(stage.id, 'stage_type_id', Number(v));
+              if (cat) updateStage(stage.id, 'category', cat.name);
+            }}
+          >
+            <SelectTrigger className="h-9 text-xs">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              {categories.map(cat => (
+                <SelectItem key={cat.id} value={String(cat.id)} className="text-xs">{cat.name}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        ) : (
+          <span className="text-xs font-semibold text-muted-foreground">{stage.category}</span>
+        )}
+      </TableCell>
+      <TableCell>
+        {isCustom && !isPipelineLocked ? (
+          <Input
+            value={stage.name}
+            onChange={e => updateStage(stage.id, 'name', e.target.value)}
+            placeholder="Stage name"
+            className="h-9 text-xs"
+          />
+        ) : (
+          <span className="text-xs">{stage.name}</span>
+        )}
+      </TableCell>
+      {isCustom && !isPipelineLocked && (
+        <TableCell className="text-center">
+          <div className="flex items-center justify-center gap-1">
+            <Button
+              variant="ghost"
+              size="icon"
+              className="h-7 w-7"
+              onClick={() => moveStage(idx, -1)}
+              disabled={idx === 0}
+              title="Move up"
+            >
+              <ArrowUp className="h-3.5 w-3.5" />
+            </Button>
+            <Button
+              variant="ghost"
+              size="icon"
+              className="h-7 w-7"
+              onClick={() => moveStage(idx, 1)}
+              disabled={idx === stagesLength - 1}
+              title="Move down"
+            >
+              <ArrowDown className="h-3.5 w-3.5" />
+            </Button>
+            <Button
+              variant="ghost"
+              size="icon"
+              className="h-7 w-7 hover:text-destructive"
+              onClick={() => removeStage(stage.id)}
+              title="Remove"
+            >
+              <X className="h-3.5 w-3.5" />
+            </Button>
+          </div>
+        </TableCell>
+      )}
+    </TableRow>
+  );
+}
 
 function AutoRow({ title, desc, checked, onChange, icon }) {
   return (

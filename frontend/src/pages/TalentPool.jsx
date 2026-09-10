@@ -17,7 +17,6 @@ const PAGE_SIZE = 10;
 
 const EMPTY_FILTERS = {
   position_q: '',
-  skill_q: '',
   education_q: '',
   location_q:'',
 };
@@ -31,6 +30,10 @@ export default function TalentPoolPage(){
   const [activeFilters, setActiveFilters] = useState(EMPTY_FILTERS);
   const [minScore, setMinScore] = useState(0);
   const [page, setPage] = useState(1);
+
+  // Multi-select skill filter — a candidate must have ALL selected skills
+  // to match (AND). Kept separate from activeFilters since it's a set, not text.
+  const [skillFilters, setSkillFilters] = useState(() => new Set());
 
   const [dialogOpen, setDialogOpen] = useState(false);
   const [selectedApplicants, setSelectedApplicants] = useState([]);
@@ -57,13 +60,13 @@ export default function TalentPoolPage(){
   useEffect(() => { loadApplicants(); }, []);
 
   const hasActiveFilters = useMemo(
-   () => Object.values(activeFilters).some(v => v.trim().length > 0 || minScore > 0, [activeFilters, minScore]) 
+    () => Object.values(activeFilters).some((v) => v.trim().length > 0) || minScore > 0 || skillFilters.size > 0,
+    [activeFilters, minScore, skillFilters]
   );
 
   // Client side filtering
   const filteredRows = useMemo(() => {
     const posQ = activeFilters.position_q.trim().toLowerCase();
-    const skQ = activeFilters.skill_q.trim().toLowerCase();
     const eduQ = activeFilters.education_q.trim().toLowerCase();
     const locQ = activeFilters.location_q.trim().toLowerCase();
 
@@ -75,10 +78,10 @@ export default function TalentPoolPage(){
         if (!hay.includes(posQ)) return false;
       }
 
-      if(skQ) {
-        const skills = Array.isArray(info.skills) ? info.skills : [];
-        const hasSkill = skills.some((s) => (s || '').toLowerCase().includes(skQ));
-        if (!hasSkill) return false;
+      if (skillFilters.size > 0) {
+        const skills = (Array.isArray(info.skills) ? info.skills : []).map((s) => (s || '').toLowerCase());
+        const hasAllSelected = [...skillFilters].every((sel) => skills.includes(sel.toLowerCase()));
+        if (!hasAllSelected) return false;
       }
 
       if(eduQ){
@@ -102,7 +105,7 @@ export default function TalentPoolPage(){
       const dateB = b.date ? new Date(b.date).getTime() : 0;
       return dateB - dateA;
     });
-  }, [allApplicants, activeFilters, minScore]);
+  }, [allApplicants, activeFilters, minScore, skillFilters]);
 
   const total = filteredRows.length;
   const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE));
@@ -139,6 +142,23 @@ export default function TalentPoolPage(){
     return { total: totalApplicants, newThisWeek, positionCategories, avgExperience };
   }, [allApplicants]);
 
+  // All distinct skills across the whole pool, with candidate counts —
+  // powers the "+ Add skill filter" dropdown so options always reflect
+  // real data instead of a hardcoded list.
+  const availableSkills = useMemo(() => {
+    const counts = {};
+    for (const a of allApplicants) {
+      const skills = Array.isArray(a.information?.skills) ? a.information.skills : [];
+      for (const s of skills) {
+        if (!s) continue;
+        counts[s] = (counts[s] || 0) + 1;
+      }
+    }
+    return Object.entries(counts)
+      .sort((a, b) => b[1] - a[1])
+      .map(([skill, count]) => ({ skill, count }));
+  }, [allApplicants]);
+
   // Handlers passed down to children
   const setDraftField = (key) => (e) =>
     setFilterDraft(f => ({ ...f, [key]: e.target.value }));
@@ -153,6 +173,7 @@ export default function TalentPoolPage(){
     setFilterDraft(EMPTY_FILTERS);
     setActiveFilters(EMPTY_FILTERS);
     setMinScore(0);
+    setSkillFilters(new Set());
     setPage(1);
   };
 
@@ -170,6 +191,20 @@ export default function TalentPoolPage(){
     setMinScore(value);
     setPage(1);
   }
+
+  const handleToggleSkillFilter = (skill) => {
+    setSkillFilters((prev) => new Set(prev).add(skill));
+    setPage(1);
+  };
+
+  const handleRemoveSkillFilter = (skill) => {
+    setSkillFilters((prev) => {
+      const next = new Set(prev);
+      next.delete(skill);
+      return next;
+    });
+    setPage(1);
+  };
 
   // ── Single-candidate "Add" (per-row button) — wraps in a 1-item array
   // so AddToJobDialog only has one code path (bulk or not, doesn't matter).
@@ -251,8 +286,11 @@ export default function TalentPoolPage(){
           minScore={minScore}
           onMinScoreChange={handleMinScoreChange}
           activeLocation={activeFilters.location_q}
-          activeSkill={activeFilters.skill_q}
           onChipClick={handleChipClick}
+          skillFilters={skillFilters}
+          availableSkills={availableSkills}
+          onToggleSkill={handleToggleSkillFilter}
+          onRemoveSkill={handleRemoveSkillFilter}
         />
  
         <TalentPoolTable
