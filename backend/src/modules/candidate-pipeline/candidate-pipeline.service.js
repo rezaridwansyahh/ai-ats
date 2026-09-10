@@ -1,5 +1,6 @@
 import CandidatePipeline from './candidate-pipeline.model.js';
-import { sendScreeningEmail } from '../../shared/services/candidate-mailer.js';
+import { sendTemplatedEmail } from '../../shared/services/candidate-mailer.js';
+import EmailTemplateService, { STAGE_SCREENING } from '../email-template/email-template.service.js';
 import screeningService from '../screening/screening.service.js';
 import getDb from '../../config/postgres.js';
 import interviewModel from '../interview/interview.model.js';
@@ -90,35 +91,61 @@ class CandidatePipelineService {
     if (decision?.result !== "match") return
 
     const ctx = await CandidatePipeline.getNotificationContext(candidate_id)
-    if (!ctx || !ctx.email_notify) return
+    if (!ctx || !ctx.email_notify || !ctx.candidate_email) return
 
-    await sendScreeningEmail({
+    const template = await EmailTemplateService.getResolved(ctx.company_id, STAGE_SCREENING, 'stage_advance');
+    await sendTemplatedEmail({
       candidateName: ctx.candidate_name,
       candidateEmail: ctx.candidate_email,
-      jobTitle: ctx.job_title,
-      stageName: "Screening",
-    })
+      template,
+      vars: { CANDIDATE_NAME: ctx.candidate_name, JOB_TITLE: ctx.job_title },
+    });
   }
 
-  async email(candidate_id, { stageName } = {}) {
+  // Resolves + interpolates the "stage advance" template with this candidate's
+  // real data, without sending — lets the frontend show what will actually be
+  // sent (Settings' template, not a from-scratch draft) before the recruiter
+  // commits to sending it.
+  async previewEmail(candidate_id) {
     const ctx = await CandidatePipeline.getNotificationContext(candidate_id);
     if (!ctx) throw { status: 404, message: 'Candidate not found' };
     if (!ctx.candidate_email) {
       throw { status: 400, message: `Candidate "${ctx.candidate_name}" has no email on the linked applicant` };
     }
 
-    await sendScreeningEmail({
+    const template = await EmailTemplateService.getResolved(ctx.company_id, STAGE_SCREENING, 'stage_advance');
+    const vars = { CANDIDATE_NAME: ctx.candidate_name, JOB_TITLE: ctx.job_title };
+    const interpolate = (str) => {
+      let out = str;
+      for (const [k, v] of Object.entries(vars)) out = out.replaceAll(`{{${k}}}`, v ?? '');
+      return out;
+    };
+
+    return { to: ctx.candidate_email, subject: interpolate(template.subject), body: interpolate(template.body) };
+  }
+
+  // Always sends the current Settings template — no per-send subject/body
+  // override, matching how the Follow-up Q&A / Assessment / Offer emails
+  // already work (screening.service.js#qaSend et al.).
+  async email(candidate_id) {
+    const ctx = await CandidatePipeline.getNotificationContext(candidate_id);
+    if (!ctx) throw { status: 404, message: 'Candidate not found' };
+    if (!ctx.candidate_email) {
+      throw { status: 400, message: `Candidate "${ctx.candidate_name}" has no email on the linked applicant` };
+    }
+
+    const template = await EmailTemplateService.getResolved(ctx.company_id, STAGE_SCREENING, 'stage_advance');
+    await sendTemplatedEmail({
       candidateName: ctx.candidate_name,
       candidateEmail: ctx.candidate_email,
-      jobTitle: ctx.job_title,
-      stageName: stageName || 'Screening',
+      template,
+      vars: { CANDIDATE_NAME: ctx.candidate_name, JOB_TITLE: ctx.job_title },
     });
 
     return {
       sent_to: ctx.candidate_email,
       candidate_name: ctx.candidate_name,
       job_title: ctx.job_title,
-      stage_name: stageName || 'Screening',
     };
   }
 

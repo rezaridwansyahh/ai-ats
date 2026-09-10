@@ -96,8 +96,17 @@ class CandidatePipelineController {
 
   async email(req, res) {
     try {
-      const result = await candidatePipelineService.email(req.params.id, req.body || {});
-      res.status(200).json({ message: 'Test email sent', ...result });
+      const result = await candidatePipelineService.email(req.params.id);
+      res.status(200).json({ message: 'Email sent', ...result });
+    } catch (err) {
+      res.status(err.status || 500).json({ message: err.message });
+    }
+  }
+
+  async previewEmail(req, res) {
+    try {
+      const result = await candidatePipelineService.previewEmail(req.params.id);
+      res.status(200).json({ message: 'Email preview', ...result });
     } catch (err) {
       res.status(err.status || 500).json({ message: err.message });
     }

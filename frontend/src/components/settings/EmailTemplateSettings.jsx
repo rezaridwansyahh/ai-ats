@@ -26,6 +26,7 @@ const STAGE_LABELS = {
 
 const TEMPLATE_LABELS = {
   qa_invite: 'Follow-up Questions',
+  stage_advance: 'Stage Advance Notification',
   invite: 'Assessment Invitation',
   offer: 'Offer Letter Email',
   contract: 'Contract Email',

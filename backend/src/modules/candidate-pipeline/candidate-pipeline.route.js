@@ -13,6 +13,7 @@ router.get('/applicant/:applicant_id', candidatePipelineController.getByApplican
 router.get('/:id/stages', candidatePipelineController.getStages);
 router.get('/:id', candidatePipelineController.getById);
 router.get('/:id/progress', candidatePipelineController.getProgress);
+router.get('/:id/email/preview', candidatePipelineController.previewEmail);
 
 router.post('/', candidatePipelineController.create);
 router.post('/:id/stages', candidatePipelineController.addStage);
