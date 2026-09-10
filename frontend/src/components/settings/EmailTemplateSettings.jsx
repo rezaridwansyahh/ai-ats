@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
-import { Mail, Pencil, Loader2, XCircle, RefreshCw } from 'lucide-react';
+import { Mail, Pencil, Loader2, XCircle, RefreshCw, Eye } from 'lucide-react';
 import { Card, CardContent, CardHeader } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -33,6 +33,24 @@ const TEMPLATE_LABELS = {
 
 const PLACEHOLDER_HINTS = ['{{CANDIDATE_NAME}}', '{{JOB_TITLE}}', '{{BATTERY}}', '{{LINK}}'];
 
+// Preview substitutes sample data — no real candidate/link context exists
+// here in Settings, unlike the per-candidate previews used when actually
+// sending (e.g. screening.service.js's previewQa).
+const SAMPLE_VARS = {
+  CANDIDATE_NAME: 'John Doe',
+  JOB_TITLE: 'Senior Software Engineer',
+  BATTERY: 'A',
+  LINK: 'https://app.example.com/portal/sample-link',
+};
+
+function interpolate(str) {
+  let out = str || '';
+  for (const [key, value] of Object.entries(SAMPLE_VARS)) {
+    out = out.replaceAll(`{{${key}}}`, value);
+  }
+  return out;
+}
+
 export default function EmailTemplateSettings() {
   const [stages, setStages] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -41,6 +59,7 @@ export default function EmailTemplateSettings() {
   const [editing, setEditing] = useState(null); // { stage_type_id, template_key, is_customized }
   const [form, setForm] = useState({ subject: '', body: '' });
   const [submitting, setSubmitting] = useState(false);
+  const [previewing, setPreviewing] = useState(null); // { subject, body } — already interpolated
 
   const fetchTemplates = useCallback(async () => {
     setLoading(true);
@@ -67,6 +86,10 @@ export default function EmailTemplateSettings() {
   const closeEdit = () => {
     setEditing(null);
     setForm({ subject: '', body: '' });
+  };
+
+  const openPreview = ({ subject, body }) => {
+    setPreviewing({ subject: interpolate(subject), body: interpolate(body) });
   };
 
   const handleSave = async () => {
@@ -163,15 +186,20 @@ export default function EmailTemplateSettings() {
                       {tpl.body.replace(/<[^>]*>/g, ' ').trim()}
                     </p>
                   </div>
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    className="shrink-0"
-                    onClick={() => openEdit(stage.stage_type_id, tpl)}
-                  >
-                    <Pencil className="h-3.5 w-3.5 mr-1.5" />
-                    Edit
-                  </Button>
+                  <div className="flex items-center gap-1 shrink-0">
+                    <Button variant="ghost" size="sm" onClick={() => openPreview(tpl)}>
+                      <Eye className="h-3.5 w-3.5 mr-1.5" />
+                      Preview
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => openEdit(stage.stage_type_id, tpl)}
+                    >
+                      <Pencil className="h-3.5 w-3.5 mr-1.5" />
+                      Edit
+                    </Button>
+                  </div>
                 </div>
               ))}
             </CardContent>
@@ -223,6 +251,10 @@ export default function EmailTemplateSettings() {
           </div>
 
           <DialogFooter>
+            <Button variant="outline" onClick={() => openPreview(form)} disabled={submitting}>
+              <Eye className="h-3.5 w-3.5 mr-1.5" />
+              Preview
+            </Button>
             <Button variant="outline" onClick={closeEdit} disabled={submitting}>
               Cancel
             </Button>
@@ -230,6 +262,34 @@ export default function EmailTemplateSettings() {
               {submitting ? <Loader2 className="h-4 w-4 mr-1.5 animate-spin" /> : null}
               Save
             </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={!!previewing} onOpenChange={(open) => !open && setPreviewing(null)}>
+        <DialogContent className="sm:max-w-lg">
+          <DialogHeader>
+            <DialogTitle>Email Preview</DialogTitle>
+            <DialogDescription>
+              Sample data shown below — {'{{CANDIDATE_NAME}}'}, {'{{JOB_TITLE}}'}, etc. are replaced with
+              placeholder values for illustration only.
+            </DialogDescription>
+          </DialogHeader>
+
+          {previewing && (
+            <div className="rounded-lg border overflow-hidden">
+              <div className="px-4 py-2.5 border-b bg-muted/40">
+                <span className="text-xs text-muted-foreground">Subject</span>
+                <p className="text-sm font-semibold">{previewing.subject}</p>
+              </div>
+              <div className="px-4 py-3 text-sm whitespace-pre-wrap max-h-[50vh] overflow-y-auto">
+                {previewing.body}
+              </div>
+            </div>
+          )}
+
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setPreviewing(null)}>Close</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
