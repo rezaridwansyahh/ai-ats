@@ -489,7 +489,15 @@ CREATE TABLE master_applicant (
   education VARCHAR(255),
   information JSONB,
   date TIMESTAMPTZ,
-  attachment VARCHAR(255)
+  attachment VARCHAR(255),
+  -- Outcome of the last resume download attempt (Seek RPA / any source that
+  -- populates `attachment`): 'downloaded' | 'not_available' | 'failed'.
+  -- 'not_available' = source genuinely has no resume to offer (no download
+  -- control at all) — nothing to retry. 'failed' = a resume existed but the
+  -- download errored/timed out — re-sync will retry these instead of
+  -- skipping them like an already-fully-synced candidate. NULL = legacy rows
+  -- from before this column existed, or sources that don't track this.
+  cv_download_status VARCHAR(20)
 );
 CREATE INDEX idx_master_applicant_company ON master_applicant (company_id);
 

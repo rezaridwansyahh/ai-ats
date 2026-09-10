@@ -265,6 +265,12 @@ class ExtractCandidateService {
         }
 
         let resumeFileName = null;
+        // 'not_available' = source genuinely has no resume to offer (no
+        // resume tab, or a tab with no download control) — nothing to
+        // retry. 'failed' = a resume existed but the download itself
+        // errored/timed out — a re-sync should retry these instead of
+        // treating them as fully synced.
+        let cvStatus = 'not_available';
 
         // Check if resume tab exists
         const hasResumeTab = await page.$('#tab-select-detail-view_3');
@@ -296,12 +302,16 @@ class ExtractCandidateService {
 
               // Rename the newly downloaded file to our consistent naming convention
               const newFile = await waitForNewDownload(downloadDir, filesBefore);
-              if (newFile && newFile !== fileName) {
-                fs.renameSync(path.join(downloadDir, newFile), path.join(downloadDir, fileName));
-                console.log(`Renamed: ${newFile} → ${fileName}`);
-              } else if (!newFile) {
+              if (newFile) {
+                if (newFile !== fileName) {
+                  fs.renameSync(path.join(downloadDir, newFile), path.join(downloadDir, fileName));
+                  console.log(`Renamed: ${newFile} → ${fileName}`);
+                }
+                cvStatus = 'downloaded';
+              } else {
                 console.log(`Download timed out, no file appeared for candidate ${candidateId}`);
                 resumeFileName = null;
+                cvStatus = 'failed';
               }
             } else {
               console.log('No download button found - Resume not available');
@@ -310,6 +320,7 @@ class ExtractCandidateService {
           } catch (error) {
             console.log(`Error downloading resume: ${error.message}`);
             resumeFileName = null;
+            cvStatus = 'failed';
           }
         } else {
           console.log(`No resume tab found for candidate ${candidateId}`);
@@ -323,7 +334,7 @@ class ExtractCandidateService {
 
         await delay(500);
         progress++;
-        const candidate = { ...cardData, candidate_id: candidateId, progress, attachment: resumeFileName, email };
+        const candidate = { ...cardData, candidate_id: candidateId, progress, attachment: resumeFileName, email, cv_status: cvStatus };
 
         // Save immediately rather than buffering — persists progress as we go
         // instead of holding the whole bucket in memory until it's all done.

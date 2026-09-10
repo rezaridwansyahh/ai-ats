@@ -154,7 +154,15 @@ class SeekService {
         // Skip candidates already saved for this job_sourcing_id — checked by
         // the RPA layer before it clicks into the card, so a re-sync doesn't
         // re-open the modal / re-download the resume for people we already have.
-        const checkExists = (name) => applicantModel.existsByNameAndJobSourcing(name, job_sourcing_id);
+        // Exception: a candidate whose last resume download attempt failed
+        // (cv_download_status = 'failed') is NOT skipped — a candidate that
+        // genuinely has no resume ('not_available') or already downloaded
+        // fine is left alone as before.
+        const checkExists = async (name) => {
+          const existing = await applicantModel.getByNameAndJobSourcing(name, job_sourcing_id);
+          if (!existing) return false;
+          return existing.cv_download_status !== 'failed';
+        };
 
         // Called by the RPA layer immediately per candidate (not buffered into
         // an array and processed only after the whole bucket finishes) — so
@@ -162,26 +170,43 @@ class SeekService {
         const onSave = async (candidate) => {
           if (!candidate.candidate_id) return;
 
-          // Create without attachment first — the resume PDF (if any) is still
-          // sitting in a temp staging dir at this point (extract-candidate.rpa.js
-          // can't name/place it into permanent storage before the applicant's
-          // real DB id exists). Same two-step pattern the manual Talent Pool CV
-          // upload uses (sourcing.service.js:uploadCv).
-          const applicant = await applicantModel.create({
-            job_sourcing_id,
-            company_id,
-            name: candidate.name,
-            email: candidate.email || null,
-            last_position: candidate.last_position,
-            address: candidate.address,
-            education: candidate.education || null,
-            // Raw scraped screening Q&A is application-specific (this job's
-            // custom questions), so it goes on the sourcing mapping — not on
-            // this applicant row, which is shared across all their applications.
-            sourcing_information: candidate.information || null,
-            date: candidate.date || null,
-            attachment: null,
-          });
+          // Retry path: this (name, job_sourcing_id) already has an applicant
+          // row whose resume download previously failed — reuse that row
+          // instead of inserting a duplicate person, and just retry the
+          // attachment + status.
+          const existing = await applicantModel.getByNameAndJobSourcing(candidate.name, job_sourcing_id);
+          const isRetry = !!existing && existing.cv_download_status === 'failed';
+
+          let applicant;
+          if (isRetry) {
+            applicant = existing;
+            await applicantModel.updateCvDownloadStatus(applicant.id, candidate.cv_status);
+            if (candidate.information) {
+              await applicantModel.addSourcingMapping(applicant.id, job_sourcing_id, candidate.information);
+            }
+          } else {
+            // Create without attachment first — the resume PDF (if any) is still
+            // sitting in a temp staging dir at this point (extract-candidate.rpa.js
+            // can't name/place it into permanent storage before the applicant's
+            // real DB id exists). Same two-step pattern the manual Talent Pool CV
+            // upload uses (sourcing.service.js:uploadCv).
+            applicant = await applicantModel.create({
+              job_sourcing_id,
+              company_id,
+              name: candidate.name,
+              email: candidate.email || null,
+              last_position: candidate.last_position,
+              address: candidate.address,
+              education: candidate.education || null,
+              // Raw scraped screening Q&A is application-specific (this job's
+              // custom questions), so it goes on the sourcing mapping — not on
+              // this applicant row, which is shared across all their applications.
+              sourcing_information: candidate.information || null,
+              date: candidate.date || null,
+              attachment: null,
+              cv_download_status: candidate.cv_status,
+            });
+          }
 
           if (candidate.attachment && applicant?.id) {
             try {
@@ -190,6 +215,7 @@ class SeekService {
               );
               if (savedPath) {
                 await applicantModel.updateAttachment(applicant.id, savedPath);
+                await applicantModel.updateCvDownloadStatus(applicant.id, 'downloaded');
                 applicant.attachment = savedPath;
 
                 // Guarded separately so a parse failure doesn't abort onSave.
@@ -205,6 +231,7 @@ class SeekService {
               }
             } catch (err) {
               console.error(`Failed to promote resume for applicant ${applicant.id}:`, err.message);
+              await applicantModel.updateCvDownloadStatus(applicant.id, 'failed');
             }
           }
 
