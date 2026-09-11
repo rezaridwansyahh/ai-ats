@@ -2,6 +2,7 @@ import jwt from 'jsonwebtoken';
 import PortalOnboardingModel from './portal-onboarding.model.js';
 import OnboardingLmsService from '../onboarding-lms/onboarding-lms.service.js';
 import OnboardingLmsModel from '../onboarding-lms/onboarding-lms.model.js';
+import CertificateService from './certificate/certificate.service.js';
 
 const JWT_SECRET = process.env.JWT_SECRET;
 
@@ -146,6 +147,9 @@ class PortalOnboardingService {
     }
   
     const updated = await OnboardingLmsService.updateHireProgress(onboarding_id, module_id, { status: 'done' });
+    const phases = await OnboardingLmsService.getHireCurriculum(onboarding_id, row.company_id);
+    await CertificateService.syncFromPhases(onboarding_id, row.company_id, phases);
+
     return { id: module_id, status: updated.status, score: updated.score, completedAt: updated.completed_at };
   }
 }

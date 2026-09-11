@@ -1,5 +1,6 @@
 -- Drop tables in reverse dependency order (most dependent first)
 -- Onboarding tables (Migration 010)
+DROP TABLE IF EXISTS onboarding_certificate CASCADE;
 DROP TABLE IF EXISTS onboarding_chat_message CASCADE;
 DROP TABLE IF EXISTS onboarding_chat_conversation CASCADE;
 DROP TABLE IF EXISTS onboarding_source CASCADE;
@@ -1191,6 +1192,16 @@ CREATE TABLE onboarding_source (
   uploaded_by INTEGER REFERENCES master_users(id) ON DELETE SET NULL,
   created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
   updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+CREATE TABLE onboarding_certificate (
+  id SERIAL PRIMARY KEY,
+  onboarding_id INT NOT NULL REFERENCES candidate_onboarding(id),
+  company_id INT NOT NULL,
+  phase_id INT NULL,      
+  title VARCHAR(255) NOT NULL,
+  issued_at TIMESTAMP NOT NULL DEFAULT now(),
+  UNIQUE (onboarding_id, phase_id)
 );
 
 -- =============================================================================

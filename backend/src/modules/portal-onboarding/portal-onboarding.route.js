@@ -10,6 +10,8 @@ router.get('/me', requireCandidatePortalAuth, PortalOnboardingController.getMe);
 router.get('/curriculum', requireCandidatePortalAuth, PortalOnboardingController.getCurriculum);
 router.get('/journey', requireCandidatePortalAuth, PortalOnboardingController.getJourney);
 router.get('/module/:module_id', requireCandidatePortalAuth, PortalOnboardingController.getModuleDetail);
+router.get('/certificates', requireCandidatePortalAuth, PortalOnboardingController.listCertificates);
+router.get('/certificates/:certificate_id', requireCandidatePortalAuth, PortalOnboardingController.getCertificate);
 
 router.patch('/module/:module_id/complete', requireCandidatePortalAuth, PortalOnboardingController.markModuleDone);
 

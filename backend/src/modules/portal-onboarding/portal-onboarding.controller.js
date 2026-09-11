@@ -1,5 +1,6 @@
 import PortalOnboardingService from './portal-onboarding.service.js';
 import OnboardingJourneyService from './onboarding-journey/onboarding-journey.service.js';
+import CertificateService from './certificate/certificate.service.js';
 
 class PortalOnboardingController {
 
@@ -55,6 +56,25 @@ class PortalOnboardingController {
       const { module_id } = req.params;
       const result = await PortalOnboardingService.markModuleDone(req.onboardingId, module_id);
       res.status(200).json({ message: 'Module marked complete', module: result });
+    } catch (err) {
+      res.status(err.status || 500).json({ message: err.message });
+    }
+  }
+
+  async listCertificates(req, res) {
+    try {
+      const result = await CertificateService.listForCandidate(req.onboardingId);
+      res.status(200).json({ message: 'Certificates fetched', certificates: result });
+    } catch (err) {
+      res.status(err.status || 500).json({ message: err.message });
+    }
+  }
+
+  async getCertificate(req, res) {
+    try {
+      const { certificate_id } = req.params;
+      const result = await CertificateService.getOne(req.onboardingId, certificate_id);
+      res.status(200).json({ message: 'Certificate fetched', certificate: result });
     } catch (err) {
       res.status(err.status || 500).json({ message: err.message });
     }
