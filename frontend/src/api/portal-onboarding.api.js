@@ -11,3 +11,7 @@ export const getJourney = (onboardingToken) => portalApi.get('/portal-onboarding
 export const getModule = (onboardingToken, moduleId) => portalApi.get(`/portal-onboarding/module/${moduleId}`, { headers: { Authorization: `Bearer ${onboardingToken}` } });
 
 export const markModuleDone = (onboardingToken, moduleId) => portalApi.patch(`/portal-onboarding/module/${moduleId}/complete`, {}, { headers: { Authorization: `Bearer ${onboardingToken}` }, });
+
+export const getCertificates = (onboardingToken) => portalApi.get('/portal-onboarding/certificates', { headers: { Authorization: `Bearer ${onboardingToken}` },});
+
+export const getCertificate = (onboardingToken, certificateId) => portalApi.get(`/portal-onboarding/certificates/${certificateId}`, { headers: { Authorization: `Bearer ${onboardingToken}` } });

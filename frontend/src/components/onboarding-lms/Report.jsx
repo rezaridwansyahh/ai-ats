@@ -3,14 +3,26 @@ import { Award, Download, X, TrendingUp } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { LMS_DATA } from './mockData';
 
-function CertModal({ cert, t, onClose }) {
+function CertModal({ cert, name, t, onClose }) {
   return (
     <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4" onClick={onClose}>
+      <style>{`
+        @media print {
+          body * { visibility: hidden; }
+          #cert-print-area, #cert-print-area * { visibility: visible; }
+          #cert-print-area {
+            position: fixed; inset: 0; margin: auto;
+            box-shadow: none !important;
+          }
+          .no-print { display: none !important; }
+        }
+      `}</style>
       <div
+        id="cert-print-area"
         className="bg-white rounded-xl shadow-xl w-full max-w-lg p-8 text-center"
         onClick={(e) => e.stopPropagation()}
       >
-        <div className="flex justify-end mb-2">
+        <div className="flex justify-end mb-2 no-print">
           <button onClick={onClose} className="text-muted-foreground hover:text-foreground">
             <X className="w-4 h-4" />
           </button>
@@ -21,26 +33,20 @@ function CertModal({ cert, t, onClose }) {
         <div className="text-[11px] font-bold uppercase tracking-wide text-muted-foreground mb-2">
           {t.cert_modal_l}
         </div>
-        <div className="font-serif text-2xl font-bold mb-1">Maya Putri</div>
+        <div className="font-serif text-2xl font-bold mb-1">{name}</div>
         <div className="text-sm text-muted-foreground mb-6">
-          {t.cert_modal_for} <span className="font-medium text-foreground">{cert.label}</span>
+          {t.cert_modal_for} <span className="font-medium text-foreground">{cert.title}</span>
         </div>
-        <div className="border-t pt-4 grid grid-cols-2 gap-4 text-left">
-          <div>
-            <div className="text-[10px] font-bold uppercase tracking-wide text-muted-foreground mb-0.5">
-              {t.cert_modal_signed}
-            </div>
-            <div className="text-sm font-medium">{cert.date}</div>
+        <div className="border-t pt-4 text-left">
+          <div className="text-[10px] font-bold uppercase tracking-wide text-muted-foreground mb-0.5">
+            {t.cert_modal_signed}
           </div>
-          <div>
-            <div className="text-[10px] font-bold uppercase tracking-wide text-muted-foreground mb-0.5">
-              {t.cert_modal_id}
-            </div>
-            <div className="text-sm font-medium font-mono">{cert.id}</div>
+          <div className="text-sm font-medium">
+            {new Date(cert.issued_at).toLocaleDateString(undefined, { year: 'numeric', month: 'long', day: 'numeric' })}
           </div>
         </div>
         <div className="text-xs text-muted-foreground mt-4">{t.cert_modal_authority}</div>
-        <Button className="mt-6 w-full">
+        <Button className="mt-6 w-full no-print" onClick={() => window.print()}>
           <Download className="h-3.5 w-3.5 mr-1.5" />
           {t.download}
         </Button>
@@ -49,24 +55,25 @@ function CertModal({ cert, t, onClose }) {
   );
 }
 
-export default function Report({ t, lang, goTo }) {
+export default function Report({ t, lang, goTo, onboarding, certificates }) {
   const { PHASES, MODULES } = LMS_DATA;
   const [activeCert, setActiveCert] = useState(null);
 
   const doneModules = MODULES.filter((m) => m.status === 'done');
   const scoredModules = doneModules.filter((m) => m.score != null);
-  const donePhases = PHASES.filter((p) => p.status === 'done');
   const avgScore = Math.round(
     scoredModules.reduce((sum, m) => sum + m.score, 0) / scoredModules.length
   );
 
-  const certs = donePhases.map((p) => ({
-    key: `phase-${p.id}`,
-    label: `${t.phase} ${p.id} — ${p.key}`,
-    date: p.range.split('–')[1]?.trim() ?? p.range,
-    id: `CERT-P${p.id}-MP2026`,
-    type: 'phase',
-  }));
+  const certs = certificates.map((c) => {
+    const isFinal = c.phase_id == null;
+    const phase = isFinal ? null : PHASES.find((p) => p.id === c.phase_id);
+    return {
+      ...c,
+      isFinal,
+      label: isFinal ? c.title : `${t.phase} ${c.phase_id} — ${phase?.key ?? c.title}`,
+    };
+  });
 
   return (
     <div className="max-w-4xl mx-auto pb-12 space-y-6">
@@ -131,13 +138,13 @@ export default function Report({ t, lang, goTo }) {
         ) : (
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             {certs.map((c) => (
-              <div key={c.key} className="border rounded-xl bg-card p-4 flex items-center gap-3">
+              <div key={c.id} className="border rounded-xl bg-card p-4 flex items-center gap-3">
                 <div className="h-10 w-10 rounded-lg bg-amber-50 border border-amber-200 flex items-center justify-center flex-shrink-0">
                   <Award className="h-5 w-5 text-amber-600" />
                 </div>
                 <div className="flex-1 min-w-0">
                   <div className="text-[10px] font-bold uppercase tracking-wide text-muted-foreground">
-                    {t.cert_phase}
+                    {c.isFinal ? 'Program' : t.cert_phase}
                   </div>
                   <div className="text-sm font-semibold truncate">{c.label}</div>
                 </div>
@@ -188,7 +195,9 @@ export default function Report({ t, lang, goTo }) {
         </div>
       </div>
 
-      {activeCert && <CertModal cert={activeCert} t={t} onClose={() => setActiveCert(null)} />}
+      {activeCert && (
+        <CertModal cert={activeCert} name={onboarding?.candidate_name} t={t} onClose={() => setActiveCert(null)} />
+      )}
     </div>
   );
 }

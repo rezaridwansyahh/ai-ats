@@ -21,7 +21,7 @@ import Assistant from '@/components/onboarding-lms/Assistant';
 import Help from '@/components/onboarding-lms/Help';
 
 import { getOnboardingToken, clearOnboardingToken } from '@/lib/onboardingPortalAuth';
-import { getMe, getCurriculum, getJourney } from '@/api/portal-onboarding.api';
+import { getMe, getCurriculum, getJourney, getCertificates } from '@/api/portal-onboarding.api';
 
 // Fixed language — language toggle removed for now
 const LANG = 'id';
@@ -40,6 +40,7 @@ export default function OnboardingLmsPreview() {
   const [onboarding, setOnboarding] = useState(null);
   const [curriculum, setCurriculum] = useState(null);
   const [journey, setJourney] = useState([]);
+  const [certificates, setCertificates] = useState([]);
   const [assessmentResults, setAssessmentResults] = useState([]);
 
   const [route, setRoute] = useState('home');
@@ -63,11 +64,12 @@ export default function OnboardingLmsPreview() {
       return;
     }
 
-    Promise.all([getMe(token), getCurriculum(token), getJourney(token)])
-      .then(([meRes, curRes, journeyRes]) => {
+    Promise.all([getMe(token), getCurriculum(token), getJourney(token), getCertificates(token)])
+      .then(([meRes, curRes, journeyRes, certRes]) => {
         setOnboarding(meRes.data.onboarding);
         setCurriculum(curRes.data);
         setJourney(journeyRes.data.journey || []);
+        setCertificates(certRes.data.certificates || []);
       })
       .catch(() => clearOnboardingToken())
       .finally(() => setAuthChecked(true));
@@ -78,9 +80,14 @@ export default function OnboardingLmsPreview() {
   const handleLoginSuccess = async (onboardingData) => {
     setOnboarding(onboardingData);
     const token = getOnboardingToken();
-    const [curRes, journeyRes] = await Promise.all([getCurriculum(token), getJourney(token)])
+    const [curRes, journeyRes, certRes] = await Promise.all([
+      getCurriculum(token),
+      getJourney(token),
+      getCertificates(token),
+    ]);
     setCurriculum(curRes.data);
     setJourney(journeyRes.data.journey || []);
+    setCertificates(certRes.data.certificates || []);
     refreshAssessmentResults();
   };
 
@@ -120,7 +127,7 @@ export default function OnboardingLmsPreview() {
       case 'feedback':
         return <Feedback moduleId={params.moduleId} t={t} lang={LANG} goTo={goTo} />;
       case 'report':
-        return <Report t={t} lang={LANG} goTo={goTo} />;
+        return <Report t={t} lang={LANG} goTo={goTo} onboarding={onboarding} certificates={certificates} />;      
       case 'assistant':
         return <Assistant t={t} lang={LANG} goTo={goTo} />;
       case 'help':
