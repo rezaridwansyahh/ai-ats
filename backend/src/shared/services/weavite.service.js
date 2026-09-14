@@ -9,6 +9,7 @@ function getClient() {
     clientPromise = weaviate.connectToLocal({
       host: process.env.WEAVIATE_HOST || 'localhost',
       port: Number(process.env.WEAVIATE_PORT) || 8080,
+      headers: process.env.OPENAI_API_KEY ? { 'X-OpenAI-Api-Key': process.env.OPENAI_API_KEY } : undefined,
       grpc: false,
     });
   }
