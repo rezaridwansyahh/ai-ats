@@ -485,10 +485,10 @@ class ScreeningModel {
         sq.status      AS qa_status,
         app_qa.information AS application_qa,
         CASE
-          WHEN a.information IS NULL    THEN 'parse'
-          WHEN s.id IS NULL             THEN 'match'
-          WHEN sq.status != 'responded' THEN 'qa'
-          ELSE                               'ready'
+          WHEN a.information IS NULL                        THEN 'parse'
+          WHEN s.id IS NULL                                  THEN 'match'
+          WHEN sq.status IS DISTINCT FROM 'responded'        THEN 'qa'
+          ELSE                                                    'ready'
         END AS engine
       FROM master_candidate mc
       LEFT JOIN master_applicant a ON a.id = mc.applicant_id
