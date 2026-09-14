@@ -120,6 +120,7 @@ DROP TYPE IF EXISTS contract_status_type CASCADE;
 DROP TYPE IF EXISTS contract_type_enum CASCADE;
 DROP TYPE IF EXISTS negotiation_initiator_type CASCADE;
 DROP TYPE IF EXISTS document_type_enum CASCADE;
+DROP TYPE IF EXISTS match_rescore_status_type CASCADE;
 
 -- Create ENUM type
 CREATE TYPE status_type AS ENUM ('Draft', 'Active', 'Running', 'Expired', 'Failed', 'Blocked');
@@ -150,6 +151,7 @@ CREATE TYPE contract_status_type AS ENUM ('draft', 'ready', 'sent', 'signed', 'e
 CREATE TYPE contract_type_enum AS ENUM ('PKWT', 'PKWTT'); -- PKWT = Fixed-term, PKWTT = Permanent
 CREATE TYPE negotiation_initiator_type AS ENUM ('candidate', 'recruiter');
 CREATE TYPE document_type_enum AS ENUM ('offer', 'contract');
+CREATE TYPE match_rescore_status_type AS ENUM ('idle', 'running', 'done', 'failed');
 CREATE EXTENSION IF NOT EXISTS pgcrypto;
 CREATE EXTENSION IF NOT EXISTS pg_trgm;
 
@@ -349,6 +351,13 @@ CREATE TABLE core_job (
   status status_type NOT NULL DEFAULT 'Draft',
   sla_start_date DATE NULL DEFAULT NOW(),
   sla_end_date DATE NULL DEFAULT NOW(),
+  -- Async "re-score everyone" job (AI Matching -> Edit Job Details modal)
+  match_rescore_status match_rescore_status_type NOT NULL DEFAULT 'idle',
+  match_rescore_total INTEGER,
+  match_rescore_processed INTEGER,
+  match_rescore_error TEXT,
+  match_rescore_started_at TIMESTAMP,
+  match_rescore_finished_at TIMESTAMP,
 
   created_at TIMESTAMP NOT NULL DEFAULT NOW(),
   updated_at TIMESTAMP NOT NULL DEFAULT NOW()

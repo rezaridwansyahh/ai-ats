@@ -56,15 +56,19 @@ export default function AIScreeningPage() {
   // Accordion open state — Parse open by default
   const [activeStage, setActiveStage] = useState('parse');
 
-  // Refresh just the stage tables (after run / advance)
+  // Refresh just the stage tables (after run / advance) — also refetches the
+  // job row so match_rescore_status updates on every poll tick, not just full
+  // page loads.
   const loadStages = useCallback(async () => {
     if (!jobId) return;
-    const [calRes, parseRes, matchRes, qaRes] = await Promise.all([
+    const [jobRes, calRes, parseRes, matchRes, qaRes] = await Promise.all([
+      getJobById(jobId),
       getCalibration(jobId),
       getLaneCandidates(jobId, 'parse'),
       getLaneCandidates(jobId, 'match'),
       getLaneCandidates(jobId, 'qa'),
     ]);
+    setJob(jobRes.data?.job || jobRes.data || null);
     setCohortRows(Array.isArray(calRes.data?.rows)           ? calRes.data.rows           : []);
     setParseRows(Array.isArray(parseRes.data?.candidates)   ? parseRes.data.candidates   : []);
     setMatchRows(Array.isArray(matchRes.data?.candidates)   ? matchRes.data.candidates   : []);
@@ -259,6 +263,7 @@ export default function AIScreeningPage() {
       {activeStage === 'match' && (
         <MatchStageDashboard
           jobId={jobId}
+          job={job}
           pendingRows={matchRows}
           scoredRows={[...qaRows, ...cohortRows]}
           onOpen={openCandidate}

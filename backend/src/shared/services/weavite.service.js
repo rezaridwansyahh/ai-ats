@@ -11,6 +11,8 @@ function getClient() {
       port: Number(process.env.WEAVIATE_PORT) || 8080,
       headers: process.env.OPENAI_API_KEY ? { 'X-OpenAI-Api-Key': process.env.OPENAI_API_KEY } : undefined,
       grpc: false,
+
+      headers: process.env.OPENAI_API_KEY ? { 'X-OpenAI-Api-Key': process.env.OPENAI_API_KEY } : undefined,
     });
   }
   return clientPromise;

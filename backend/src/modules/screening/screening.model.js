@@ -517,6 +517,23 @@ class ScreeningModel {
     return engine ? rows.filter((r) => r.engine === engine) : rows;
   }
 
+  // Every applicant_id on this job (any engine stage) — used by the
+  // match-rescore worker to derive a fresh "everyone" list right before
+  // force-rescoring, immune to staleness vs. whatever the browser had loaded
+  // when the modal was opened.
+  async getApplicantIdsForJob(job_id) {
+    const result = await getDb().query(`
+      SELECT mc.applicant_id
+      FROM master_candidate mc
+      LEFT JOIN job_stage js ON js.id = mc.latest_stage
+      LEFT JOIN recruitment_stage_category rsc ON rsc.id = js.stage_type_id
+      WHERE mc.job_id = $1
+        AND mc.applicant_id IS NOT NULL
+        AND rsc.name = 'Screening & Matching'
+    `, [job_id]);
+    return result.rows.map((r) => r.applicant_id);
+  }
+
   async getResultsByJob(job_id) {
     const result = await getDb().query(
       `SELECT s.id, s.applicant_id, s.job_id,

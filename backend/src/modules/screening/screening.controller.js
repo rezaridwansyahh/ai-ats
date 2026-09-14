@@ -1,4 +1,5 @@
 import screeningService from './screening.service.js';
+import matchRescoreProducer from '../../bullmq/match-rescore/match-rescore.producer.js';
 
 function ctxFromReq(req) {
   return {
@@ -273,6 +274,20 @@ class ScreeningController {
         context: ctxFromReq(req),
       });
       res.status(200).json({ message: 'Match-bulk complete', ...result });
+    } catch (err) {
+      res.status(err.status || 500).json({ message: err.message });
+    }
+  }
+
+  // POST /screening/job/:job_id/match-bulk/rerun-all — queue a force re-score
+  // of every candidate on the job (not just the ones the browser had loaded).
+  // Returns immediately; core_job.match_rescore_status tracks progress.
+  async rerunAllForJob(req, res) {
+    try {
+      const job_id = Number(req.params.job_id);
+      if (!job_id) throw { status: 400, message: 'job_id is required' };
+      await matchRescoreProducer.rerunAll({ job_id });
+      res.status(202).json({ message: 'Re-scoring queued for all candidates on this job' });
     } catch (err) {
       res.status(err.status || 500).json({ message: err.message });
     }

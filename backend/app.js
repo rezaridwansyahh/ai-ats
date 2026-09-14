@@ -3,6 +3,7 @@ import "./src/config/env.js"; // must be first
 import "./src/bullmq/seek/seek.worker.js";
 import "./src/bullmq/linkedin/linkedin.worker.js";
 import "./src/bullmq/cv/cv.worker.js";
+import "./src/bullmq/match-rescore/match-rescore.worker.js";
 
 import express from "express";
 import cors from 'cors';

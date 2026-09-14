@@ -1,7 +1,7 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import {
   ChevronUp, ChevronDown, Loader2, PlayCircle, ArrowRight, Eye, MapPin, CalendarDays,
-  Check, X, Minus, Search, Info
+  Check, X, Minus, Search, Info, Pencil,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -15,8 +15,10 @@ import { Table, TableBody, TableCell, TableRow } from '@/components/ui/table';
 import { TablePagination } from '@/components/shared/TablePagination';
 import { Slider } from '@/components/ui/slider';
 import { StatCard } from './shared';
-import { scoreCandidatesList, generateQa, sendQa } from '@/api/screening.api';
+import { scoreCandidatesList, generateQa, sendQa, rerunAllMatchForJob } from '@/api/screening.api';
+import { updateJob } from '@/api/job.api';
 import MatchPreviewModal from './MatchPreviewModal';
+import EditJobDetailsModal from './EditJobDetailsModal';
 
 const SORT_OPTIONS = [
   { value: 'overall_score', label: 'Sort: Fit' },
@@ -50,7 +52,7 @@ function parsePreferences(information) {
   return [];
 }
 
-export default function MatchStageDashboard({ jobId, pendingRows = [], scoredRows = [], onOpen, onScored }) {
+export default function MatchStageDashboard({ jobId, job, pendingRows = [], scoredRows = [], onOpen, onScored }) {
   const [sortKey, setSortKey] = useState('overall_score');
   const [sortDir, setSortDir] = useState('desc');
   const [running, setRunning] = useState(false);
@@ -59,6 +61,9 @@ export default function MatchStageDashboard({ jobId, pendingRows = [], scoredRow
   const [advancing, setAdvancing] = useState(false);
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(10);
+  const [editModalOpen, setEditModalOpen] = useState(false);
+  const [savingJobEdit, setSavingJobEdit] = useState(false);
+  const rescoreNotifiedRef = useRef(false);
 
   // FILTERS
   const [locationFilter, setLocationFilter] = useState('all');
@@ -286,6 +291,43 @@ export default function MatchStageDashboard({ jobId, pendingRows = [], scoredRow
     }
   };
 
+  const handleSaveJobDetails = async (fields) => {
+    setSavingJobEdit(true);
+    try {
+      await updateJob(jobId, fields);
+      await rerunAllMatchForJob(jobId);
+      rescoreNotifiedRef.current = false; // arm the "rescore finished" toast for the next poll
+      toast.success('Job updated — re-scoring queued', {
+        description: 'Re-scoring every candidate on this job in the background. This may take a few minutes.',
+      });
+      await onScored?.();
+    } finally {
+      setSavingJobEdit(false);
+    }
+  };
+
+  // Poll quietly while a full-job re-score is running, so match_rescore_status
+  // (and the resulting scores) update without a manual page reload.
+  useEffect(() => {
+    if (job?.match_rescore_status !== 'running') return undefined;
+    const id = setInterval(() => { onScored?.(); }, 4000);
+    return () => clearInterval(id);
+  }, [job?.match_rescore_status, onScored]);
+
+  // One-shot completion toast when the queued re-score finishes.
+  useEffect(() => {
+    if (!job || rescoreNotifiedRef.current) return;
+    if (job.match_rescore_status === 'done') {
+      rescoreNotifiedRef.current = true;
+      toast.success('Re-score complete', {
+        description: `${job.match_rescore_processed ?? 0} of ${job.match_rescore_total ?? 0} candidates re-scored.`,
+      });
+    } else if (job.match_rescore_status === 'failed') {
+      rescoreNotifiedRef.current = true;
+      toast.error('Re-score failed', { description: job.match_rescore_error || 'Unknown error' });
+    }
+  }, [job, job?.match_rescore_status, job?.match_rescore_processed, job?.match_rescore_total, job?.match_rescore_error]);
+
   const isFiltered = filterKeyword || locationFilter !== 'all' || appliedWithin !== 'all' || minScore > 0 || skillFilters.size > 0 || mustHaveOnly || preferenceFilters.size > 0;
 
   return (
@@ -305,6 +347,18 @@ export default function MatchStageDashboard({ jobId, pendingRows = [], scoredRow
           </CardContent>
         </Card>
       )}
+
+      <div className="flex items-center justify-end">
+        <Button
+          variant="outline"
+          size="sm"
+          className="text-xs gap-1.5"
+          onClick={() => setEditModalOpen(true)}
+          disabled={job?.match_rescore_status === 'running'}
+        >
+          <Pencil className="h-3.5 w-3.5" /> Edit Job Details & Re-score All
+        </Button>
+      </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-4 gap-3 items-start">
         {/* Left Sidebar Filters */}
@@ -546,6 +600,14 @@ export default function MatchStageDashboard({ jobId, pendingRows = [], scoredRow
         onOpenChange={(v) => { if (!v) setPreviewRow(null); }}
         row={previewRow}
         jobId={jobId}
+      />
+
+      <EditJobDetailsModal
+        open={editModalOpen}
+        onOpenChange={setEditModalOpen}
+        job={job}
+        onSubmit={handleSaveJobDetails}
+        loading={savingJobEdit}
       />
 
       {pendingRows.length > 0 && (

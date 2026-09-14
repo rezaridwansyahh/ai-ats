@@ -35,6 +35,12 @@ export const scoreCandidate = (job_id, applicant_id, { rubric } = {}) =>
 export const scoreCandidatesList = (job_id, applicant_ids, { force } = {}) =>
   api.post(`/screening/job/${job_id}/match-bulk`, { applicant_ids, force: !!force });
 
+// Force re-score every candidate on a job (parsed or not, scored or not) through
+// the async match-rescore BullMQ queue. Returns immediately (202); poll
+// job.match_rescore_status for progress instead of awaiting completion here.
+export const rerunAllMatchForJob = (job_id) =>
+  api.post(`/screening/job/${job_id}/match-bulk/rerun-all`);
+
 export const scoreBulkForJob = (job_id) =>
   api.post(`/screening/score-bulk/${job_id}`);
 
