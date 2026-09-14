@@ -29,9 +29,14 @@ Module ini handle 3 tahapan onboarding setelah candidate menerima offer & menand
 cd backend && node src/db/run-script.js
 ```
 
-Schema juga tersedia standalone di:
-- `backend/src/db/onboarding-schema.sql` (standalone version)
-- `backend/src/db/migrations/010_onboarding_module.sql` (migration file)
+`backend/src/db/setup.sql` is the single source of truth for a fresh
+install (what `run-script.js` applies). `backend/src/db/migrations/010_onboarding_module.sql`
+is kept for incrementally patching an existing database that predates this
+module — it had drifted out of sync (referenced a `master_companies` table
+that never existed; fixed to `core_company`, matching setup.sql). The
+standalone `onboarding-schema.sql` duplicate (same content, no DROP
+statements, not used by any run path) was removed since two copies of the
+same migration is how it drifted in the first place.
 
 ## API Endpoints
 

@@ -55,9 +55,14 @@ offer produces.
 ## Heads-up: stale schema files
 
 While building this, found that `backend/src/db/onboarding-schema.sql` and
-`backend/src/db/migrations/010_onboarding_module.sql` both still reference
-a `master_companies` table that doesn't exist (should be `core_company`) —
-running either against a fresh database would fail outright. Not fixed as
-part of this task since `setup.sql` (what `run-script.js` actually applies)
-already has the correct, consolidated version — but those two files are
-stale/dead and worth deleting or fixing if anyone goes looking at them later.
+`backend/src/db/migrations/010_onboarding_module.sql` both still referenced
+a `master_companies` table that never existed (should've been `core_company`)
+— running either against a fresh database would have failed outright.
+
+- `migrations/010_onboarding_module.sql` — **kept and fixed** (`core_company`
+  now, matching `setup.sql`), since it's needed to patch an existing database
+  that predates this module rather than resetting it from scratch.
+- `onboarding-schema.sql` — **removed**. It was an identical standalone copy
+  of the same migration (no DROP statements, not used by any run path) —
+  keeping two copies of the same schema in sync by hand is exactly how this
+  bug happened in the first place.

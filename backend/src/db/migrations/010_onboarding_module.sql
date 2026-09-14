@@ -22,7 +22,7 @@ DROP TABLE IF EXISTS candidate_onboarding CASCADE;
 -- ----------------------------------------------------------------------------
 CREATE TABLE candidate_onboarding (
   id SERIAL PRIMARY KEY,
-  company_id INTEGER NOT NULL REFERENCES master_companies(id) ON DELETE CASCADE,
+  company_id INTEGER NOT NULL REFERENCES core_company(id) ON DELETE CASCADE,
   candidate_id INTEGER NOT NULL REFERENCES master_candidate(id) ON DELETE CASCADE,
   job_id INTEGER NOT NULL REFERENCES core_job(id) ON DELETE CASCADE,
   offer_id INTEGER NOT NULL REFERENCES candidate_offer(id) ON DELETE CASCADE,
