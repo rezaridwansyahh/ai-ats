@@ -94,13 +94,13 @@ export default function OnboardingWorkboard() {
             <MessageSquare className="w-4 h-4" /> Chatbot Documents
           </button>
           <button
-            onClick={() => window.open('/selection/onboarding/curriculum-maker', '_blank')}
+            onClick={() => window.open('/portal/selection/onboarding/curriculum-maker', '_blank')}
             className="inline-flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium border hover:bg-muted/30"
           >
             <GraduationCap className="w-4 h-4" /> Manage Curriculum
           </button>
           <button
-            onClick={() => window.open('/selection/onboarding/curriculum', '_blank')}
+            onClick={() => window.open('/portal/selection/onboarding/curriculum', '_blank')}
             className="inline-flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium border hover:bg-muted/30"
           >
             <Settings className="w-4 h-4" /> Candidate Dashboard
