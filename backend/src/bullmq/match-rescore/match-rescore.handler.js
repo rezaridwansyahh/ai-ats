@@ -16,7 +16,13 @@ const rerunAllHandler = async ({ job_id }) => {
   await jobModel.markMatchRescoreRunning(job_id, applicantIds.length);
 
   try {
-    const result = await screeningService.scoreCandidatesList(job_id, applicantIds, { force: true });
+    // No req.user here (this runs off the queue, not an HTTP request) — the
+    // AI budget check needs company_id, so pull it from the job itself.
+    const job = await jobModel.getById(job_id);
+    const result = await screeningService.scoreCandidatesList(job_id, applicantIds, {
+      force: true,
+      context: { company_id: job?.company_id ?? null },
+    });
     await jobModel.markMatchRescoreDone(job_id, {
       processed: result.scored,
       total: result.total,
@@ -47,7 +53,11 @@ const scorePendingHandler = async ({ job_id }) => {
   await jobModel.markMatchRescoreRunning(job_id, applicantIds.length);
 
   try {
-    const result = await screeningService.scoreCandidatesList(job_id, applicantIds, { force: false });
+    const job = await jobModel.getById(job_id);
+    const result = await screeningService.scoreCandidatesList(job_id, applicantIds, {
+      force: false,
+      context: { company_id: job?.company_id ?? null },
+    });
     await jobModel.markMatchRescoreDone(job_id, {
       processed: result.scored,
       total: result.total,
