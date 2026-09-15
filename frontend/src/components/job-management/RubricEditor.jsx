@@ -32,6 +32,12 @@ export default function RubricEditor({ jobId }) {
             fixed_criteria: { ...DEFAULT_RUBRIC.fixed_criteria, ...res.data.rubric.fixed_criteria },
             custom_criteria: Array.isArray(res.data.rubric.custom_criteria) ? res.data.rubric.custom_criteria : [],
           });
+        } else {
+          // Persist the default now, since this form was about to display it
+          // as if already saved.
+          await saveRubric(jobId, DEFAULT_RUBRIC);
+          if (cancelled) return;
+          setRubric(DEFAULT_RUBRIC);
         }
       } catch { /* keep default rubric */ }
       finally { if (!cancelled) setLoading(false); }
