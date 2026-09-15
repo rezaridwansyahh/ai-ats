@@ -30,7 +30,7 @@ class JobService {
             pay_type, currency, pay_min, pay_max, pay_display,
             company, seniority_level, company_url,
             qualifications, required_skills, preferred_skills, benefits,
-            sla_start_date, sla_end_date, company_id } = data;
+            sla_start_date, sla_end_date, company_id, assessment_battery } = data;
 
     if (!job_title) throw { status: 400, message: 'job_title is required' };
 
@@ -55,6 +55,7 @@ class JobService {
     if (benefits) fields.benefits = JSON.stringify(benefits);
     if (sla_start_date) fields.sla_start_date = sla_start_date;
     if (sla_end_date) fields.sla_end_date = sla_end_date;
+    if (assessment_battery) fields.assessment_battery = assessment_battery;
 
     return await JobModel.create(fields);
   }
@@ -67,9 +68,15 @@ class JobService {
                            'pay_type', 'currency', 'pay_min', 'pay_max', 'pay_display',
                            'company', 'seniority_level', 'company_url', 'status',
                            'qualifications', 'required_skills', 'preferred_skills', 'benefits',
-                           'sla_start_date', 'sla_end_date'];
+                           'sla_start_date', 'sla_end_date', 'assessment_battery'];
 
     const jsonFields = new Set(['required_skills', 'preferred_skills', 'benefits']);
+
+    const VALID_BATTERIES = new Set(['A', 'B', 'C', 'D']);
+    if (data.assessment_battery !== undefined && data.assessment_battery !== null
+        && !VALID_BATTERIES.has(data.assessment_battery)) {
+      throw { status: 400, message: 'assessment_battery must be one of A, B, C, D' };
+    }    
 
     const fields = {};
     for (const key of allowedFields) {

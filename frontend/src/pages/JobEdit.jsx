@@ -3,6 +3,7 @@ import { useNavigate, useParams } from 'react-router-dom';
 import {
   Loader2, AlertTriangle, ArrowLeft, ArrowRight, Check, Save, Send, ChevronUp,
   Briefcase, FileText, Workflow, Megaphone, Sparkles, Calendar as CalendarIcon,
+  ClipboardCheck,
 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -26,6 +27,7 @@ import { StatusBadge } from '@/components/common';
 import { SkillChips } from '@/components/shared/SkillChips';
 import { isValid } from 'date-fns';
 import FirstJobWizard, { useFirstJobWizard, FirstJobWizardPrompt } from '@/components/tours/FirstJobWizard';
+import { BATTERIES } from '@/lib/batteries';
 
 const WORK_OPTIONS = ['On-site', 'Hybrid', 'Remote'];
 const WORK_TYPES = ['Full-time', 'Part-time', 'Contract', 'Casual'];
@@ -40,6 +42,7 @@ const SECTIONS = [
   { id: 'basics',   label: 'Basics',           icon: Briefcase },
   { id: 'jd',       label: 'Job description',  icon: FileText },
   { id: 'pipeline', label: 'Pipeline & AI',    icon: Workflow },
+  { id: 'battery',  label: 'Assessment',       icon: ClipboardCheck },
   { id: 'posting',  label: 'Posting',          icon: Megaphone },
 ];
 
@@ -50,6 +53,7 @@ const TRACKED_FIELDS = [
   'company', 'seniority_level', 'company_url',
   'qualifications', 'required_skills', 'preferred_skills',
   'sla_start_date', 'sla_end_date',
+  'assessment_battery',
 ];
 
 // Required fields for Publish (must be filled). Pipeline + posting validation
@@ -60,6 +64,7 @@ const REQUIRED_BASICS = [
   'pay_type', 'currency', 'pay_min', 'pay_max', 'pay_display',
 ];
 const REQUIRED_JD = ['job_desc', 'qualifications', 'required_skills'];
+const REQUIRED_BATTERY = ['assessment_battery'];
 
 // Date helpers (timezone-safe YYYY-MM-DD ↔ Date)
 const parseLocalDate = (str) => {
@@ -107,7 +112,7 @@ export default function JobEditPage() {
   const [generateError, setGenerateError] = useState(null);
   const [generatingSkills, setGeneratingSkills] = useState(false);
   const [generateSkillsError, setGenerateSkillsError] = useState(null);
-  const [step, setStep] = useState(0); // active step: 0=Basics 1=JD 2=Pipeline 3=Posting
+  const [step, setStep] = useState(0); // active step: 0=Basics 1=JD 2=Pipeline 3=Battery 4=Posting
   const [hasStages, setHasStages] = useState(false); // server-confirmed pipeline presence
 
   // Ref to coalesce auto-save requests
@@ -132,6 +137,7 @@ export default function JobEditPage() {
         required_skills: [],
         preferred_skills: [],
         sla_start_date: '', sla_end_date: '',
+        assessment_battery: null,
       });
       setLoading(false);
       return;
@@ -153,6 +159,7 @@ export default function JobEditPage() {
           preferred_skills: Array.isArray(j.preferred_skills) ? j.preferred_skills : [],
           sla_start_date: j.sla_start_date ? formatLocalDate(new Date(j.sla_start_date)) : '',
           sla_end_date:   j.sla_end_date   ? formatLocalDate(new Date(j.sla_end_date))   : '',
+          assessment_battery: j.assessment_battery ?? null,
         });
       } catch (err) {
         if (!cancelled) setError(err.response?.data?.message || err.message || 'Failed to load job');
@@ -176,10 +183,16 @@ export default function JobEditPage() {
   }, [job?.id]);
 
   // --- Field locks for non-Draft jobs (plan §6) ---
+  // assessment_battery is locked once the job is live: candidates may already
+  // have submitted results under whatever battery was chosen at publish time,
+  // and switching it afterward would orphan those results (no way to "undo"
+  // a submitted assessment) or leave the job pointing at an instrument some
+  // candidates were never evaluated on.
   const isLocked = useCallback((field) => {
     if (!job || job.status === 'Draft') return false;
     const LOCKED_ON_ACTIVE = new Set([
       'job_title', 'company', 'pay_min', 'pay_max', 'pay_type', 'currency',
+      'assessment_battery',
     ]);
     return LOCKED_ON_ACTIVE.has(field);
   }, [job]);
@@ -315,7 +328,7 @@ export default function JobEditPage() {
   const missingRequired = useMemo(() => {
     if (!form) return [];
     const missing = [];
-    for (const k of [...REQUIRED_BASICS, ...REQUIRED_JD]) {
+    for (const k of [...REQUIRED_BASICS, ...REQUIRED_JD, ...REQUIRED_BATTERY]) {
       const v = form[k];
       if (
         v == null ||
@@ -347,6 +360,7 @@ export default function JobEditPage() {
       if (missingRequired.some((k) => REQUIRED_BASICS.includes(k)) || invalidUrlFields.length > 0) firstStep = 0;
       else if (missingRequired.some((k) => REQUIRED_JD.includes(k))) firstStep = 1;
       else if (!hasStages) firstStep = 2;
+      else if (missingRequired.some((k) => REQUIRED_BATTERY.includes(k))) firstStep = 3;
       setStep(firstStep);
       window.scrollTo({ top: 0, behavior: 'smooth' });
       return;
@@ -402,6 +416,16 @@ export default function JobEditPage() {
   const isFirstStep = step === 0;
   const isLastStep = step === SECTIONS.length - 1;
 
+  // Shared "missing count per section" used by both the bottom paginator and
+  // the sidebar Steps card.
+  const missingForSection = (sectionId) => {
+    if (sectionId === 'basics')   return missingRequired.filter((k) => REQUIRED_BASICS.includes(k)).length;
+    if (sectionId === 'jd')       return missingRequired.filter((k) => REQUIRED_JD.includes(k)).length;
+    if (sectionId === 'pipeline') return hasStages ? 0 : 1;
+    if (sectionId === 'battery')  return missingRequired.filter((k) => REQUIRED_BATTERY.includes(k)).length;
+    return 0;
+  };
+
   return (
     <>
       {/* Sticky header — sibling of (not nested inside) the padded content wrapper
@@ -424,11 +448,6 @@ export default function JobEditPage() {
           <div className="min-w-0 flex-1">
             <div className="flex items-center gap-2 flex-wrap mb-0.5">
               <h1 className="text-xl font-bold tracking-tight">{titleText}</h1>
-              {/* {job?.status && (
-                <Badge variant="outline" className="text-[10px] uppercase tracking-wide">
-                  {job.status}
-                </Badge>
-              )} */}
               {job?.status && (
                 <StatusBadge
                   label={job.status}
@@ -541,8 +560,22 @@ export default function JobEditPage() {
               </Card>
             )}
 
-            {/* STEP 3 · POSTING */}
+            {/* STEP 3 · ASSESSMENT BATTERY */}
             {step === 3 && (
+              <BatterySection
+                form={form}
+                setField={setField}
+                isLocked={isLocked}
+                missingRequired={missingRequired}
+                showValidation={validationErrors.length > 0}
+                step={step}
+                totalSteps={SECTIONS.length}
+                onStepChange={(s) => { setStep(s); window.scrollTo({ top: 0, behavior: 'smooth' }); }}
+              />
+            )}
+
+            {/* STEP 4 · POSTING */}
+            {step === 4 && (
               <Card className="py-4 gap-3">
                 <CardHeader className="flex flex-row items-center gap-2 pb-2">
                   <Button
@@ -583,13 +616,7 @@ export default function JobEditPage() {
               <div className="flex items-center justify-center gap-2.5">
                 {SECTIONS.map((s, i) => {
                   const active = step === i;
-                  const missing = s.id === 'basics'
-                    ? missingRequired.filter((k) => REQUIRED_BASICS.includes(k)).length
-                    : s.id === 'jd'
-                      ? missingRequired.filter((k) => REQUIRED_JD.includes(k)).length
-                      : s.id === 'pipeline'
-                        ? (hasStages ? 0 : 1)
-                        : 0;
+                  const missing = missingForSection(s.id);
                   return (
                     <button
                       key={s.id}
@@ -659,13 +686,7 @@ export default function JobEditPage() {
                   {SECTIONS.map((s, i) => {
                     const Icon = s.icon;
                     const active = step === i;
-                    const missing = s.id === 'basics'
-                      ? missingRequired.filter((k) => REQUIRED_BASICS.includes(k)).length
-                      : s.id === 'jd'
-                        ? missingRequired.filter((k) => REQUIRED_JD.includes(k)).length
-                        : s.id === 'pipeline'
-                          ? (hasStages ? 0 : 1)
-                          : 0;
+                    const missing = missingForSection(s.id);
                     return (
                       <button
                         key={s.id}
@@ -700,7 +721,7 @@ export default function JobEditPage() {
 
               <CompletenessCard
                 missing={missingRequired.length + invalidUrlFields.length + (hasStages ? 0 : 1)}
-                total={REQUIRED_BASICS.length + REQUIRED_JD.length + 1}
+                total={REQUIRED_BASICS.length + REQUIRED_JD.length + REQUIRED_BATTERY.length + 1}
               />
 
               {isPublished && (
@@ -710,7 +731,7 @@ export default function JobEditPage() {
                       {job.status}
                     </Badge>
                     <p className="text-[10px] text-muted-foreground mt-2 leading-relaxed">
-                      Compensation and core identity fields are locked. Pause the job to unlock them.
+                      Compensation, core identity, and assessment battery are locked. Pause the job to unlock them.
                     </p>
                   </CardContent>
                 </Card>
@@ -771,7 +792,7 @@ function StepNavButtons({ onPrev, onNext, disablePrev, disableNext }) {
 }
 
 /* ───── Basics section ───── */
-function BasicsSection({ form, setField, isLocked, missingRequired, invalidUrlFields, showValidation, step = 0, totalSteps = 4, onStepChange }) {
+function BasicsSection({ form, setField, isLocked, missingRequired, invalidUrlFields, showValidation, step = 0, totalSteps = 5, onStepChange }) {
   const isMissing = (k) => showValidation && missingRequired.includes(k);
 
   // Live salary band preview shown beneath the pay fields.
@@ -1022,7 +1043,7 @@ function JDSection({
   form, setField, missingRequired, showValidation,
   onGenerateAI, generating, generateError, canGenerate,
   onGenerateSkillsAI, generatingSkills, generateSkillsError, canGenerateSkills,
-  step = 1, totalSteps = 4, onStepChange,
+  step = 1, totalSteps = 5, onStepChange,
 }) {
   const isMissing = (k) => showValidation && missingRequired.includes(k);
 
@@ -1153,6 +1174,112 @@ function JDSection({
             />
           </Field>
         </div>
+      </CardContent>
+    </Card>
+  );
+}
+
+function BatterySection({ form, setField, isLocked, missingRequired, showValidation, step = 3, totalSteps = 5, onStepChange }) {
+  const isMissing = showValidation && missingRequired.includes('assessment_battery');
+  const locked = isLocked('assessment_battery');
+  const codes = ['A', 'B', 'C', 'D'];
+  const active = form.assessment_battery ? BATTERIES[form.assessment_battery] : null;
+
+  return (
+    <Card data-wizard="battery-card" className="py-4 gap-3">
+      <CardHeader className="flex flex-row items-center gap-2 pb-2">
+        <Button
+          variant="ghost" size="icon" className="h-7 w-7 shrink-0"
+          disabled={step === 0}
+          onClick={() => onStepChange?.(Math.max(0, step - 1))}
+        >
+          <ArrowLeft className="h-4 w-4" />
+        </Button>
+        <CardTitle className="text-sm flex items-center gap-2 flex-1 justify-center">
+          <ClipboardCheck className="h-4 w-4 text-primary" /> Assessment battery
+          <span className="text-rose-600">*</span>
+        </CardTitle>
+        <Button
+          variant="ghost" size="icon" className="h-7 w-7 shrink-0"
+          disabled={step === totalSteps - 1}
+          onClick={() => onStepChange?.(Math.min(totalSteps - 1, step + 1))}
+        >
+          <ArrowRight className="h-4 w-4" />
+        </Button>
+      </CardHeader>
+      <CardContent className="space-y-4">
+        <p className="text-xs text-muted-foreground">
+          Every candidate invited to Psych Assessment for this job takes this battery.
+          Choose it now — recruiters won't need to pick it per candidate anymore.
+        </p>
+
+        {isMissing && (
+          <div className="flex items-center gap-1.5 text-[11px] text-rose-600">
+            <AlertTriangle className="h-3.5 w-3.5" /> Select a battery to publish this job.
+          </div>
+        )}
+
+        {locked && (
+          <div className="rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-[11px] text-amber-800">
+            Locked — this job is published and candidates may already have results under{' '}
+            <strong>Battery {form.assessment_battery}</strong>. Changing it isn't allowed once live.
+          </div>
+        )}
+
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+          {codes.map((code) => {
+            const b = BATTERIES[code];
+            const isActive = code === form.assessment_battery;
+            return (
+              <button
+                key={code}
+                type="button"
+                disabled={locked}
+                aria-disabled={locked}
+                onClick={() => !locked && setField('assessment_battery', code)}
+                className={[
+                  'text-left rounded-lg border p-4 transition-colors',
+                  locked
+                    ? 'border-border bg-muted/40 opacity-50 cursor-not-allowed'
+                    : isActive
+                      ? 'border-primary bg-primary/5 ring-1 ring-primary/30'
+                      : 'border-border bg-card hover:border-primary/40',
+                ].join(' ')}
+              >
+                <div className="flex items-center justify-between mb-1">
+                  <span className="text-[10px] font-bold tracking-widest uppercase text-muted-foreground">
+                    Battery {b.code} · {b.label}
+                  </span>
+                  {isActive && (
+                    <span className="text-[9px] font-bold tracking-wider uppercase text-primary">selected</span>
+                  )}
+                </div>
+                <div className="text-xs text-muted-foreground mt-1">
+                  {b.test_count} tests · {b.duration} · {b.blurb}
+                </div>
+              </button>
+            );
+          })}
+        </div>
+
+        {active && (
+          <div className="rounded-lg border bg-muted/20 p-4">
+            <div className="text-[10px] font-bold tracking-widest uppercase text-muted-foreground mb-2">
+              Test sequence in Battery {active.code}
+            </div>
+            <ol className="space-y-1.5">
+              {active.tests.map((t, i) => (
+                <li key={t.key} className="flex items-start gap-2 text-xs">
+                  <span className="font-bold text-muted-foreground w-4 shrink-0">{i + 1}.</span>
+                  <span>
+                    <span className="font-bold">{t.name}</span>
+                    <span className="text-muted-foreground"> · {t.detail}</span>
+                  </span>
+                </li>
+              ))}
+            </ol>
+          </div>
+        )}
       </CardContent>
     </Card>
   );

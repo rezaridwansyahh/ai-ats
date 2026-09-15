@@ -229,9 +229,9 @@ const seed = async () => {
         `INSERT INTO core_job (
            id, company_id, job_title, job_desc, job_location, work_option, work_type,
            pay_type, currency, pay_min, pay_max, pay_display, status,
-           required_skills, preferred_skills, rubric, qualifications
+           required_skills, preferred_skills, rubric, qualifications, assessment_battery
          )
-         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17)`,
+         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18)`,
         [
           job.id, job.company_id ?? null,
           job.job_title, job.job_desc, job.job_location, job.work_option, job.work_type,
@@ -240,6 +240,7 @@ const seed = async () => {
           job.preferred_skills ? JSON.stringify(job.preferred_skills) : null,
           job.rubric ? JSON.stringify(job.rubric) : null,
           job.qualifications ?? null,
+          job.assessment_battery ?? null,
         ]
       );
     }
