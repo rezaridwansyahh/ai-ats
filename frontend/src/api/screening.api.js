@@ -41,6 +41,10 @@ export const scoreCandidatesList = (job_id, applicant_ids, { force } = {}) =>
 export const rerunAllMatchForJob = (job_id) =>
   api.post(`/screening/job/${job_id}/match-bulk/rerun-all`);
 
+// Score just the pending candidates on a job, through the same async queue.
+export const scorePendingForJob = (job_id) =>
+  api.post(`/screening/job/${job_id}/match-bulk/score-pending`);
+
 export const scoreBulkForJob = (job_id) =>
   api.post(`/screening/score-bulk/${job_id}`);
 
