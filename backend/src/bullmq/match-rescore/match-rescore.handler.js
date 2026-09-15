@@ -23,6 +23,9 @@ const rerunAllHandler = async ({ job_id }) => {
       errorCount: result.errors.length,
     });
     console.log(`[Match-Rescore Worker] Job ${job_id} done — ${result.scored}/${result.total} scored, ${result.errors.length} errors.`);
+    if (result.errors.length > 0) {
+      console.log(`[Match-Rescore Worker] Job ${job_id} errors:`, JSON.stringify(result.errors));
+    }
   } catch (err) {
     await jobModel.markMatchRescoreFailed(job_id, err.message || String(err));
     throw err;
@@ -51,6 +54,9 @@ const scorePendingHandler = async ({ job_id }) => {
       errorCount: result.errors.length,
     });
     console.log(`[Match-Rescore Worker] Job ${job_id} done — ${result.scored}/${result.total} scored, ${result.errors.length} errors.`);
+    if (result.errors.length > 0) {
+      console.log(`[Match-Rescore Worker] Job ${job_id} errors:`, JSON.stringify(result.errors));
+    }
   } catch (err) {
     await jobModel.markMatchRescoreFailed(job_id, err.message || String(err));
     throw err;
