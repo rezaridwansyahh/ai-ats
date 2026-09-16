@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { Button } from '@/components/ui/button';
-import { X, ArrowLeft } from 'lucide-react';
+import { X, ArrowLeft, Info, CheckCircle2, ClipboardList } from 'lucide-react';
 import {
   getVerdict,
   getGrade,
@@ -20,6 +20,8 @@ import { SCALE_ORDER, SCALES } from '../data/epps';
 import { ROLE_DIMS, NEED_DIMS, DIMS } from '../data/papi';
 import { COMPS, COMP_ORDER, PROFILES, COMP_TOTAL_MAX } from '../data/sjt';
 import ManagerView from './ManagerView';
+
+import { SectionCard, ChipScore, ChipEmpty } from '../../assessment/reportShared';
 
 const BATTERY = 'C';
 const SUB_NAMES = { GI: 'Kemampuan Umum', PV: 'Penalaran Verbal', KN: 'Kemampuan Numerik', PA: 'Penalaran Abstrak', KA: 'Kecepatan & Akurasi' };
@@ -99,8 +101,7 @@ export default function CandidateReportView({ profile, results, onClose }) {
       </div>
 
       <div className="bg-blue-50 border border-blue-200 rounded-lg px-4 py-2.5 text-xs text-blue-900 leading-relaxed mb-4">
-        <strong>ℹ️ Catatan:</strong> Ini adalah laporan hasil asesmen Anda. Laporan lengkap dengan interpretasi dan rekomendasi
-        hanya dapat diakses oleh rekruter dan tim HR.
+        <strong className="inline-flex items-center gap-1"><Info className="w-3.5 h-3.5" /> Catatan:</strong> Ini adalah laporan hasil asesmen Anda.Laporan lengkap dengan interpretasi dan rekomendasi hanya dapat diakses oleh rekruter dan tim HR.
       </div>
 
       {/* Quick Score Chips */}
@@ -119,7 +120,7 @@ export default function CandidateReportView({ profile, results, onClose }) {
             <div className="font-serif text-xl font-bold leading-none">{sjtProfile.name}</div>
             <div className="text-[10.5px] mt-1 opacity-75">{sjtProfile.emoji} {sjtProfile.short}</div>
             <div className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold mt-1 bg-white/30">
-              ℹ️ Penilaian Situasional
+              <Info className="w-3 h-3" /> Penilaian Situasional
             </div>
           </div>
         ) : (
@@ -134,7 +135,7 @@ export default function CandidateReportView({ profile, results, onClose }) {
             <div className="font-serif text-xl font-bold leading-none">15 Skala</div>
             <div className="text-[10.5px] mt-1 opacity-75">Profil motivasi & kebutuhan</div>
             <div className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold mt-1 bg-orange-200/40">
-              ✓ Selesai
+              <CheckCircle2 className="w-3 h-3" /> Selesai
             </div>
           </div>
         ) : (
@@ -148,7 +149,7 @@ export default function CandidateReportView({ profile, results, onClose }) {
       <details open={showDetail} onToggle={(e) => setShowDetail(e.currentTarget.open)} className="my-5">
         <summary className="cursor-pointer px-5 py-3.5 bg-white border border-slate-200 rounded-xl flex items-center gap-3 text-sm font-semibold list-none select-none hover:bg-teal-50 hover:border-teal-200 transition">
           <span className="text-teal-600 text-xs transition-transform" style={{ transform: showDetail ? 'rotate(90deg)' : 'rotate(0deg)' }}>▶</span>
-          <span className="text-lg">📋</span>
+          <ClipboardList className="w-4 h-4 text-slate-500" />
           <span className="flex-1">Detail Skor Asesmen</span>
           <span className="text-[11.5px] font-medium text-slate-500">— Klik untuk membuka / menutup</span>
         </summary>
@@ -323,52 +324,6 @@ export default function CandidateReportView({ profile, results, onClose }) {
           Kembali ke Ringkasan
         </Button>
       </div>
-    </div>
-  );
-}
-
-function ChipScore({ label, value, sub, verdict, badge }) {
-  return (
-    <div
-      className="rounded-xl border-[1.5px] p-3.5 px-4 relative overflow-hidden"
-      style={{ background: verdict.bg, borderColor: verdict.br, color: verdict.br }}
-    >
-      <div className="text-[10px] font-bold uppercase tracking-wider mb-1">{label}</div>
-      <div className="font-serif text-3xl font-bold leading-none">{value}<span className="text-base text-slate-400 font-normal ml-1">/10</span></div>
-      <div className="text-[10.5px] mt-1 opacity-75">{sub}</div>
-      <div className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold mt-1" style={{ background: verdict.br + '22' }}>
-        {verdict.emoji} {verdict.short}
-      </div>
-      {badge && <div className="absolute top-2 right-2 bg-white/90 px-1.5 py-0.5 rounded text-[9px] font-bold">{badge}</div>}
-    </div>
-  );
-}
-
-function ChipEmpty({ label }) {
-  return (
-    <div className="rounded-xl border-[1.5px] border-slate-200 bg-slate-50 p-3.5 px-4 text-slate-400">
-      <div className="text-[10px] font-bold uppercase tracking-wider mb-1">{label}</div>
-      <div className="font-serif text-2xl font-bold leading-none">—</div>
-      <div className="text-[10.5px] mt-1">Belum dikerjakan</div>
-    </div>
-  );
-}
-
-function SectionCard({ num, title, subtitle, color, bg, children }) {
-  return (
-    <div className="bg-white border-2 rounded-xl overflow-hidden" style={{ borderColor: color }}>
-      <div className="px-5 py-3.5" style={{ background: bg }}>
-        <div className="flex items-center gap-3">
-          <div className="w-8 h-8 rounded-full grid place-items-center font-serif text-sm font-bold" style={{ background: color, color: 'white' }}>
-            {num}
-          </div>
-          <div className="flex-1">
-            <div className="font-serif text-base font-bold leading-tight" style={{ color }}>{title}</div>
-            <div className="text-[10.5px] text-slate-500 mt-0.5">{subtitle}</div>
-          </div>
-        </div>
-      </div>
-      <div className="p-5">{children}</div>
     </div>
   );
 }
