@@ -347,6 +347,8 @@ CREATE TABLE core_job (
   preferred_skills JSONB,
   benefits JSONB,
   rubric JSONB,
+
+  assessment_battery battery_type NULL,
   -- Status
   status status_type NOT NULL DEFAULT 'Draft',
   sla_start_date DATE NULL DEFAULT NOW(),

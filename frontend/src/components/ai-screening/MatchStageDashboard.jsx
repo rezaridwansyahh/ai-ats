@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import {
   ChevronUp, ChevronDown, Loader2, PlayCircle, ArrowRight, Eye, MapPin, CalendarDays,
-  Check, X, Minus, Search, Info, Pencil,
+  Check, X, Minus, Search, Info, Pencil, CheckCircle2,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -15,7 +15,12 @@ import { Table, TableBody, TableCell, TableRow } from '@/components/ui/table';
 import { TablePagination } from '@/components/shared/TablePagination';
 import { Slider } from '@/components/ui/slider';
 import { StatCard } from './shared';
-import { scoreCandidatesList, generateQa, sendQa, rerunAllMatchForJob } from '@/api/screening.api';
+import {
+  generateQa, sendQa, rerunAllMatchForJob, scorePendingForJob,
+} from '@/api/screening.api';
+import {
+  Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter,
+} from '@/components/ui/dialog';
 import { updateJob } from '@/api/job.api';
 import MatchPreviewModal from './MatchPreviewModal';
 import EditJobDetailsModal from './EditJobDetailsModal';
@@ -63,6 +68,7 @@ export default function MatchStageDashboard({ jobId, job, pendingRows = [], scor
   const [pageSize, setPageSize] = useState(10);
   const [editModalOpen, setEditModalOpen] = useState(false);
   const [savingJobEdit, setSavingJobEdit] = useState(false);
+  const [queuedInfo, setQueuedInfo] = useState(null); // { title, description } | null
   const rescoreNotifiedRef = useRef(false);
 
   // FILTERS
@@ -269,21 +275,15 @@ export default function MatchStageDashboard({ jobId, job, pendingRows = [], scor
     if (!jobId || pendingRows.length === 0 || running) return;
     setRunning(true);
     try {
-      const applicant_ids = pendingRows.map((r) => r.applicant_id);
-      const res = await scoreCandidatesList(jobId, applicant_ids);
-      const { scored = 0, total = 0, errors = [] } = res.data || {};
-      if (errors.length > 0) {
-        toast.error('Bulk scoring finished with errors', {
-          description: `${scored}/${total} scored · ${errors.length} failed.`,
-        });
-      } else {
-        toast.success('Bulk scoring complete', {
-          description: `${scored} of ${total} candidates scored.`,
-        });
-      }
+      await scorePendingForJob(jobId);
+      rescoreNotifiedRef.current = false; // arm the "rescore finished" toast for the next poll
+      setQueuedInfo({
+        title: 'Scoring queued',
+        description: `${pendingRows.length} pending candidate${pendingRows.length === 1 ? '' : 's'} will be scored in the background. This may take a few minutes.`,
+      });
       await onScored?.();
     } catch (err) {
-      toast.error('Bulk scoring failed', {
+      toast.error('Failed to queue scoring', {
         description: err.response?.data?.message || err.message || 'Unknown error',
       });
     } finally {
@@ -297,8 +297,9 @@ export default function MatchStageDashboard({ jobId, job, pendingRows = [], scor
       await updateJob(jobId, fields);
       await rerunAllMatchForJob(jobId);
       rescoreNotifiedRef.current = false; // arm the "rescore finished" toast for the next poll
-      toast.success('Job updated — re-scoring queued', {
-        description: 'Re-scoring every candidate on this job in the background. This may take a few minutes.',
+      setQueuedInfo({
+        title: 'Job updated — re-scoring queued',
+        description: 'Every candidate on this job will be re-scored in the background. This may take a few minutes.',
       });
       await onScored?.();
     } finally {
@@ -339,9 +340,14 @@ export default function MatchStageDashboard({ jobId, job, pendingRows = [], scor
               <span className="font-semibold text-foreground">{pendingRows.length} candidate{pendingRows.length === 1 ? '' : 's'}</span>
               {' '}waiting to be scored against this job's saved rubric.
             </div>
-            <Button size="sm" className="text-xs" onClick={handleRunPending} disabled={running}>
+            <Button
+              size="sm"
+              className="text-xs"
+              onClick={handleRunPending}
+              disabled={running || job?.match_rescore_status === 'running'}
+            >
               {running
-                ? <><Loader2 className="h-3.5 w-3.5 mr-1.5 animate-spin" /> Scoring…</>
+                ? <><Loader2 className="h-3.5 w-3.5 mr-1.5 animate-spin" /> Queuing…</>
                 : <><PlayCircle className="h-3.5 w-3.5 mr-1.5" /> Score All Pending Candidates</>}
             </Button>
           </CardContent>
@@ -609,6 +615,20 @@ export default function MatchStageDashboard({ jobId, job, pendingRows = [], scor
         onSubmit={handleSaveJobDetails}
         loading={savingJobEdit}
       />
+
+      <Dialog open={!!queuedInfo} onOpenChange={(v) => { if (!v) setQueuedInfo(null); }}>
+        <DialogContent className="sm:max-w-sm">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <CheckCircle2 className="h-4 w-4 text-emerald-600" /> {queuedInfo?.title}
+            </DialogTitle>
+            <DialogDescription>{queuedInfo?.description}</DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button size="sm" onClick={() => setQueuedInfo(null)}>OK</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       {pendingRows.length > 0 && (
         <Card>

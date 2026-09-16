@@ -293,6 +293,19 @@ class ScreeningController {
     }
   }
 
+  // POST /screening/job/:job_id/match-bulk/score-pending — queue scoring of
+  // just the pending (never-scored) candidates on the job.
+  async scorePendingForJob(req, res) {
+    try {
+      const job_id = Number(req.params.job_id);
+      if (!job_id) throw { status: 400, message: 'job_id is required' };
+      await matchRescoreProducer.scorePending({ job_id });
+      res.status(202).json({ message: 'Scoring queued for pending candidates on this job' });
+    } catch (err) {
+      res.status(err.status || 500).json({ message: err.message });
+    }
+  }
+
   async search(req, res) {
     try {
       const {

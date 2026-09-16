@@ -11,6 +11,7 @@ import { BATTERIES, getInitials } from '@/lib/batteries';
 import { getCandidateById, addCandidateStage } from '@/api/candidate.api';
 import { getSessionsFromCandidate } from '@/api/session.api';
 import { getResultFromCandidate } from '@/api/assessment-battery-result.api';
+import { getJobById } from '@/api/job.api';
 
 export default function CandidateDetailPage() {
   const navigate = useNavigate();
@@ -27,6 +28,7 @@ export default function CandidateDetailPage() {
 
   const [activeKey, setActiveKey]   = useState('setup');
   const [battery, setBattery]       = useState(null);
+  const [jobBattery, setJobBattery] = useState(null); // job's assigned battery (Job Management)
   const [existingSessions, setExistingSessions] = useState([]);
 
   const restoredOnceRef   = useRef(false);
@@ -64,6 +66,20 @@ export default function CandidateDetailPage() {
     return () => { cancelled = true; };
   }, [candidateId]);
 
+  useEffect(() => {
+    if (!jobId) { setJobBattery(null); return undefined; }
+    let cancelled = false;
+    (async () => {
+      try {
+        const res = await getJobById(jobId);
+        if (!cancelled) setJobBattery(res.data?.job?.assessment_battery ?? null);
+      } catch {
+        if (!cancelled) setJobBattery(null);
+      }
+    })();
+    return () => { cancelled = true; };
+  }, [jobId]);
+
   /* ── Restore session state ───────────────────────────────────── */
   useEffect(() => {
     if (!candidateId) return undefined;
@@ -88,6 +104,14 @@ export default function CandidateDetailPage() {
     })();
     return () => { cancelled = true; };
   }, [candidateId, jobId]);
+
+  /* ── Fall back to the job's battery when no session exists yet ── */
+  // Runs after both the session-restore effect (which sets `battery` from an
+  // existing session, if any) and the job fetch above. Only fills `battery`
+  // when nothing has claimed it yet, so it never overrides a real session.
+  useEffect(() => {
+    if (battery == null && jobBattery) setBattery(jobBattery);
+  }, [jobBattery, battery]);
 
   /* ── Fetch latest result ─────────────────────────────────────── */
   useEffect(() => {
@@ -252,10 +276,9 @@ export default function CandidateDetailPage() {
             <div key={activeKey} className="animate-fade-in-up">
               {activeKey === 'setup' && (
                 <SetupTab
-                  selectedBattery={battery}
-                  onSelectBattery={setBattery}
+                  jobId={jobId}
+                  jobBattery={jobBattery}
                   onSendInvitation={handleSendInvitation}
-                  lockedBattery={lockedBattery}
                 />
               )}
               {activeKey === 'take' && (
@@ -412,7 +435,7 @@ function AssessmentActionCard({ activeKey, completed, battery, onSelect, saveSta
           </Button>
           {!battery && (
             <p className="text-[10px] text-amber-600 leading-snug">
-              Select a battery above first.
+              No battery assigned to this job yet.
             </p>
           )}
         </CardContent>

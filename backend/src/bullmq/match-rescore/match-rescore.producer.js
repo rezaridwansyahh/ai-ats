@@ -5,6 +5,11 @@ class MatchRescoreProducer {
     const job = await matchRescoreQueue.add('match-rescore-all', { job_id });
     return job;
   }
+
+  async scorePending({ job_id }) {
+    const job = await matchRescoreQueue.add('match-score-pending', { job_id });
+    return job;
+  }
 }
 
 export default new MatchRescoreProducer();

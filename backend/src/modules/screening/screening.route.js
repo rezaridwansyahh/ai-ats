@@ -28,6 +28,7 @@ router.get('/job/:job_id/lane',                    screeningController.getLaneCa
 router.post('/parse-bulk',                         screeningController.parseBulk);
 router.post('/job/:job_id/match-bulk',             screeningController.scoreCandidatesList);  // score specific list
 router.post('/job/:job_id/match-bulk/rerun-all',   screeningController.rerunAllForJob);         // force re-score EVERY candidate (queued)
+router.post('/job/:job_id/match-bulk/score-pending', screeningController.scorePendingForJob);    // score just the pending candidates (queued)
 
 // L3 Candidate detail (Phase 3)
 router.get('/screening/:screening_id',                screeningController.getScreening);

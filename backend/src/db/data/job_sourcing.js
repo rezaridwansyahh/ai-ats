@@ -49,6 +49,7 @@ export const coreJobs = [
     required_skills: ['React', 'TypeScript', 'JavaScript', 'HTML', 'CSS', 'Git'],
     preferred_skills: ['Next.js', 'Tailwind CSS', 'Redux', 'Vite', 'Jest'],
     rubric: DEFAULT_RUBRIC,
+    assessment_battery: 'B', // Specialist — mid-senior IC
   },
   {
     id: 2, company_id: 1, job_title: 'Backend Engineer (Node.js)',
@@ -59,6 +60,7 @@ export const coreJobs = [
     required_skills: ['Node.js', 'JavaScript', 'PostgreSQL', 'REST APIs', 'Git'],
     preferred_skills: ['Express', 'Docker', 'Redis', 'GraphQL', 'AWS'],
     rubric: DEFAULT_RUBRIC,
+    assessment_battery: 'B', // Specialist — mid-senior IC
   },
   {
     id: 3, company_id: 1, job_title: 'Product Designer',
@@ -69,6 +71,9 @@ export const coreJobs = [
     required_skills: ['Figma', 'UI/UX Design', 'Prototyping', 'Design Systems'],
     preferred_skills: ['Adobe XD', 'Sketch', 'User Research', 'Accessibility'],
     rubric: DEFAULT_RUBRIC,
+    // No battery assigned yet — Active job published before this job used the battery
+    // field, or recruiter simply hasn't set one. Exercises the "not configured" state
+    // in Psych Assessment's SetupTab even though the job itself is live.
   },
   {
     id: 4, company_id: 2, job_title: 'DevOps Engineer',
@@ -79,6 +84,7 @@ export const coreJobs = [
     required_skills: ['AWS', 'Docker', 'Kubernetes', 'CI/CD', 'Linux', 'Terraform'],
     preferred_skills: ['GitHub Actions', 'Prometheus', 'Grafana', 'Ansible'],
     rubric: SKILLS_HEAVY_RUBRIC,
+    assessment_battery: 'C', // Manajerial — owns infra strategy, senior IC leaning into leadership
   },
   {
     id: 5, company_id: 2, job_title: 'QA Automation Engineer',
@@ -89,6 +95,7 @@ export const coreJobs = [
     required_skills: ['Cypress', 'Selenium', 'JavaScript', 'Test Automation', 'Git'],
     preferred_skills: ['Playwright', 'Jest', 'Postman', 'CI/CD'],
     rubric: SKILLS_HEAVY_RUBRIC,
+    assessment_battery: 'A', // Generalis — entry/early-career IC
   },
 
   // --- Draft jobs ---
@@ -100,6 +107,7 @@ export const coreJobs = [
     pay_type: 'Annually', currency: 'AUD', pay_min: 80000, pay_max: 110000, pay_display: 'Show', status: 'Draft',
     required_skills: ['Recruiting', 'Sourcing', 'LinkedIn Recruiter', 'Interviewing'],
     preferred_skills: ['ATS Tools', 'Boolean Search', 'Employer Branding'],
+    assessment_battery: 'A', // Generalis — set during Draft, before publish
   },
   {
     id: 7, company_id: 2, job_title: 'HR Business Partner',
@@ -109,6 +117,7 @@ export const coreJobs = [
     pay_type: 'Annually', currency: 'MYR', pay_min: 120000, pay_max: 160000, pay_display: 'Hide', status: 'Draft',
     required_skills: ['HR Strategy', 'Employee Relations', 'Performance Management', 'Communication'],
     preferred_skills: ['Compensation', 'Workday', 'Change Management'],
+    assessment_battery: 'D', // Senior / Executive — partners with senior leadership
   },
   {
     id: 8, company_id: 1, job_title: 'Marketing Content Writer',
@@ -118,6 +127,7 @@ export const coreJobs = [
     pay_type: 'Monthly', currency: 'THB', pay_min: 60000, pay_max: 85000, pay_display: 'Show', status: 'Draft',
     required_skills: ['Content Writing', 'SEO', 'Editing', 'Storytelling'],
     preferred_skills: ['WordPress', 'Google Analytics', 'HubSpot', 'B2B SaaS'],
+    // Still Draft, recruiter hasn't gotten to the Assessment step yet — unset.
   },
   {
     id: 9, company_id: 2, job_title: 'Junior Data Analyst',
@@ -127,6 +137,7 @@ export const coreJobs = [
     pay_type: 'Hourly', currency: 'PHP', pay_min: 450, pay_max: 650, pay_display: 'Show', status: 'Draft',
     required_skills: ['SQL', 'Excel', 'Data Visualization', 'Analytical Thinking'],
     preferred_skills: ['Python', 'Tableau', 'Power BI', 'Looker'],
+    assessment_battery: 'A', // Generalis — junior/entry-level
   },
   {
     id: 10, company_id: 2, job_title: 'Mobile Engineer (React Native)',
@@ -136,6 +147,7 @@ export const coreJobs = [
     pay_type: 'Annually', currency: 'USD', pay_min: 45000, pay_max: 65000, pay_display: 'Hide', status: 'Draft',
     required_skills: ['React Native', 'JavaScript', 'TypeScript', 'iOS', 'Android'],
     preferred_skills: ['Redux', 'Expo', 'Native Modules', 'Fastlane'],
+    // Still Draft, unset.
   },
 ];
 
