@@ -1,10 +1,10 @@
-import { useState } from 'react';
-import { Card, CardContent } from '@/components/ui/card';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-import { Button } from '@/components/ui/button';
+import { useState } from "react";
+import { Card, CardContent } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
+import { Label } from "recharts";
+import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { fmtDateID } from '../utils/scoring';
+import { fmtDateID } from "../utils/scoring";
 
 export default function Setup({ initial, onSubmit, emailReadOnly = false }) {
   const [name, setName] = useState(initial?.name || '');
@@ -16,9 +16,27 @@ export default function Setup({ initial, onSubmit, emailReadOnly = false }) {
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState(null);
 
-  const handleSubmit = async () => {
-    if (!name.trim() || !email.trim() || !position.trim() || !department.trim() || !education || !dateBirth) {
-      setError('Mohon lengkapi semua data peserta.');
+  //Field error: drive the red border + inline message on the exact field
+  const [fieldErrors, setFieldErrors] = useState({});
+
+  const validate = () => {
+    const errs = {};
+    if (!name.trim()) errs.name = 'Nama wajib diisi';
+    if (!email.trim()) errs.email = 'Email wajib diisi';
+    else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim())) errs.email = 'Format email tidak valid.';
+    if (!position.trim()) errs.position = 'Posisi wajib diisi.';
+    if (!department.trim()) errs.department = 'Departemen wajib diisi.';
+    if (!education.trim()) errs.education = 'Pendidikan wajib dipilih.';
+    if (!dateBirth.trim()) errs.dateBirth = 'Tanggal lahir wajib diisi.';
+    return errs;
+  };
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    const errs = validate();
+    setFieldErrors(errs);
+    if (Object.keys(errs).length > 0) {
+      setError('Mohon lengkapi semua data peserta');
       return;
     }
     setSubmitting(true);
@@ -34,12 +52,16 @@ export default function Setup({ initial, onSubmit, emailReadOnly = false }) {
         tglTesRaw: new Date().toISOString().split('T')[0],
         date: fmtDateID(),
       });
-    } catch (e) {
-      setError(e?.response?.data?.message || e?.message || 'Gagal menyimpan data peserta. Silakan coba lagi.');
+    } catch (e2) {
+      setError(e2?.response?.data?.message || e2?.message || 'Gagal menyimpan data peserta. Silakan coba lagi.');
     } finally {
       setSubmitting(false);
     }
   };
+
+  // small helpers so red border + inline message dont repeat per field
+  const errClass = (field) =>
+    fieldErrors[field] ? 'border-red-400 focus-visible:ring-red-300' : undefined;
 
   return (
     <div className="max-w-[900px] mx-auto px-4 py-6">
@@ -67,80 +89,115 @@ export default function Setup({ initial, onSubmit, emailReadOnly = false }) {
           <span className="bg-white/12 border border-white/20 px-3.5 py-1.5 rounded-full text-[11px] font-semibold">v10</span>
         </div>
       </div>
-
+ 
       <Card>
-        <CardContent className="pt-6 space-y-4">
-          <div className="text-xs font-bold tracking-wider uppercase text-slate-500">Data Peserta</div>
-
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-            <div>
-              <Label className="mb-1.5 block">Nama Lengkap *</Label>
-              <Input value={name} onChange={(e) => setName(e.target.value)} placeholder="Nama lengkap" />
+        <form onSubmit={handleSubmit} noValidate>
+          <CardContent className="pt-6 space-y-4">
+            <div className="text-xs font-bold tracking-wider uppercase text-slate-500">Data Peserta</div>
+ 
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+              <div>
+                <Label className="mb-1.5 block">Nama Lengkap *</Label>
+                <Input
+                  required
+                  value={name}
+                  onChange={(e) => setName(e.target.value)}
+                  placeholder="Nama lengkap"
+                  className={errClass('name')}
+                />
+                {fieldErrors.name && <p className="text-[11px] text-red-600 mt-1">{fieldErrors.name}</p>}
+              </div>
+              <div>
+                <Label className="mb-1.5 block">Email *</Label>
+                <Input
+                  type="email"
+                  required
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  placeholder="email@contoh.com"
+                  disabled={emailReadOnly}
+                  readOnly={emailReadOnly}
+                  className={emailReadOnly ? 'bg-slate-50 text-slate-500 cursor-not-allowed' : errClass('email')}
+                />
+                {emailReadOnly && (
+                  <p className="text-[11px] text-slate-400 mt-1">Email undangan terverifikasi — tidak dapat diubah.</p>
+                )}
+                {!emailReadOnly && fieldErrors.email && (
+                  <p className="text-[11px] text-red-600 mt-1">{fieldErrors.email}</p>
+                )}
+              </div>
             </div>
-            <div>
-              <Label className="mb-1.5 block">Email *</Label>
-              <Input
-                type="email"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                placeholder="email@contoh.com"
-                disabled={emailReadOnly}
-                readOnly={emailReadOnly}
-                className={emailReadOnly ? 'bg-slate-50 text-slate-500 cursor-not-allowed' : undefined}
-              />
-              {emailReadOnly && (
-                <p className="text-[11px] text-slate-400 mt-1">Email undangan terverifikasi — tidak dapat diubah.</p>
-              )}
+ 
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+              <div>
+                <Label className="mb-1.5 block">Posisi *</Label>
+                <Input
+                  required
+                  value={position}
+                  onChange={(e) => setPosition(e.target.value)}
+                  placeholder="Contoh: Supervisor HRD"
+                  className={errClass('position')}
+                />
+                {fieldErrors.position && <p className="text-[11px] text-red-600 mt-1">{fieldErrors.position}</p>}
+              </div>
+              <div>
+                <Label className="mb-1.5 block">Departemen *</Label>
+                <Input
+                  required
+                  value={department}
+                  onChange={(e) => setDepartment(e.target.value)}
+                  placeholder="Contoh: Human Resources"
+                  className={errClass('department')}
+                />
+                {fieldErrors.department && <p className="text-[11px] text-red-600 mt-1">{fieldErrors.department}</p>}
+              </div>
             </div>
-          </div>
-
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-            <div>
-              <Label className="mb-1.5 block">Posisi *</Label>
-              <Input value={position} onChange={(e) => setPosition(e.target.value)} placeholder="Contoh: Supervisor HRD" />
+ 
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+              <div>
+                <Label className="mb-1.5 block">Pendidikan *</Label>
+                <Select value={education} onValueChange={setEducation} required>
+                  <SelectTrigger className={errClass('education')}>
+                    <SelectValue placeholder="Pilih jenjang" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="SMA/SMK">SMA/SMK</SelectItem>
+                    <SelectItem value="D3">D3</SelectItem>
+                    <SelectItem value="S1">S1</SelectItem>
+                    <SelectItem value="S2">S2</SelectItem>
+                    <SelectItem value="S3">S3</SelectItem>
+                  </SelectContent>
+                </Select>
+                {fieldErrors.education && <p className="text-[11px] text-red-600 mt-1">{fieldErrors.education}</p>}
+              </div>
+              <div>
+                <Label className="mb-1.5 block">Tanggal Lahir *</Label>
+                <Input
+                  type="date"
+                  required
+                  value={dateBirth}
+                  onChange={(e) => setDateBirth(e.target.value)}
+                  className={errClass('dateBirth')}
+                />
+                {fieldErrors.dateBirth && <p className="text-[11px] text-red-600 mt-1">{fieldErrors.dateBirth}</p>}
+              </div>
             </div>
-            <div>
-              <Label className="mb-1.5 block">Departemen *</Label>
-              <Input value={department} onChange={(e) => setDepartment(e.target.value)} placeholder="Contoh: Human Resources" />
-            </div>
-          </div>
-
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-            <div>
-              <Label className="mb-1.5 block">Pendidikan *</Label>
-              <Select value={education} onValueChange={setEducation}>
-                <SelectTrigger>
-                  <SelectValue placeholder="Pilih jenjang" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="SMA/SMK">SMA/SMK</SelectItem>
-                  <SelectItem value="D3">D3</SelectItem>
-                  <SelectItem value="S1">S1</SelectItem>
-                  <SelectItem value="S2">S2</SelectItem>
-                  <SelectItem value="S3">S3</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-            <div>
-              <Label className="mb-1.5 block">Tanggal Lahir *</Label>
-              <Input type="date" value={dateBirth} onChange={(e) => setDateBirth(e.target.value)} />
-            </div>
-          </div>
-
-          {error && (
-            <div className="rounded-lg border border-red-200 bg-red-50 px-3.5 py-2.5 text-xs text-red-700">
-              {error}
-            </div>
-          )}
-
-          <Button
-            onClick={handleSubmit}
-            disabled={submitting}
-            className="w-full mt-4 bg-gradient-to-br from-teal-800 to-teal-600 hover:opacity-90 h-11 disabled:opacity-60"
-          >
-            {submitting ? 'Menyimpan…' : 'Mulai Asesmen →'}
-          </Button>
-        </CardContent>
+ 
+            {error && (
+              <div className="rounded-lg border border-red-200 bg-red-50 px-3.5 py-2.5 text-xs text-red-700">
+                {error}
+              </div>
+            )}
+ 
+            <Button
+              type="submit"
+              disabled={submitting}
+              className="w-full mt-4 bg-gradient-to-br from-teal-800 to-teal-600 hover:opacity-90 h-11 disabled:opacity-60"
+            >
+              {submitting ? 'Menyimpan…' : 'Mulai Asesmen →'}
+            </Button>
+          </CardContent>
+        </form>
       </Card>
     </div>
   );
