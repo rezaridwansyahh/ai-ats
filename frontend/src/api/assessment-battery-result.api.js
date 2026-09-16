@@ -22,3 +22,7 @@ export const regenerateNarrative = (id) =>
   api.post(`/assessment-battery-result/${id}/regenerate-narrative`);
 
 export const deleteAssessmentResult = (id) => api.delete(`/assessment-battery-result/${id}`);
+
+// Server-generated (pdfmake) PDF export of the report — replaces window.print().
+export const downloadReportPdf = (id) =>
+  api.get(`/assessment-battery-result/${id}/pdf`, { responseType: 'blob' });

@@ -16,6 +16,7 @@ router.post('/', assessmentBatteryResultController.submit);
 
 router.put('/:id/report', assessmentBatteryResultController.updateReport);
 router.post('/:id/regenerate-narrative', assessmentBatteryResultController.regenerateAiReport);
+router.get('/:id/pdf', assessmentBatteryResultController.downloadPdf);
 
 router.delete('/:id', assessmentBatteryResultController.delete);
 
