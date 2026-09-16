@@ -495,36 +495,36 @@ export default function JobStagesStep({ selectedJob, onPipelineChange }) {
           </div>
         </CardHeader>
         <CardContent className="p-0">
-          <Table>
-            <TableHeader>
-              <TableRow className="bg-muted/40 hover:bg-muted/40 border-border/60">
-                <TableHead className="w-20 text-center text-[11px] font-bold uppercase tracking-wide text-muted-foreground">
-                  Stage
-                </TableHead>
-                <TableHead className="text-[11px] font-bold uppercase tracking-wide text-muted-foreground">
-                  Category
-                </TableHead>
-                <TableHead className="text-[11px] font-bold uppercase tracking-wide text-muted-foreground">
-                  Stage Name
-                </TableHead>
-                {isCustom && !isPipelineLocked && (
-                  <TableHead className="w-28 text-center text-[11px] font-bold uppercase tracking-wide text-muted-foreground">
-                    Actions
-                  </TableHead>
-                )}
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              <DndContext
-                sensors={sensors}
-                collisionDetection={closestCenter}
-                onDragEnd={handleDragEnd}
-              >
-                <SortableContext
-                  items={stages.map((s) => s.id)}
-                  strategy={verticalListSortingStrategy}
-                  disabled={!isCustom || isPipelineLocked}
-                >
+          <DndContext
+            sensors={sensors}
+            collisionDetection={closestCenter}
+            onDragEnd={handleDragEnd}
+          >
+            <SortableContext
+              items={stages.map((s) => s.id)}
+              strategy={verticalListSortingStrategy}
+              disabled={!isCustom || isPipelineLocked}
+            >
+              <Table>
+                <TableHeader>
+                  <TableRow className="bg-muted/40 hover:bg-muted/40 border-border/60">
+                    <TableHead className="w-20 text-center text-[11px] font-bold uppercase tracking-wide text-muted-foreground">
+                      Stage
+                    </TableHead>
+                    <TableHead className="text-[11px] font-bold uppercase tracking-wide text-muted-foreground">
+                      Category
+                    </TableHead>
+                    <TableHead className="text-[11px] font-bold uppercase tracking-wide text-muted-foreground">
+                      Stage Name
+                    </TableHead>
+                    {isCustom && !isPipelineLocked && (
+                      <TableHead className="w-28 text-center text-[11px] font-bold uppercase tracking-wide text-muted-foreground">
+                        Actions
+                      </TableHead>
+                    )}
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
                   {stages.map((stage, idx) => (
                     <SortableStageRow
                       key={stage.id}
@@ -539,40 +539,40 @@ export default function JobStagesStep({ selectedJob, onPipelineChange }) {
                       removeStage={removeStage}
                     />
                   ))}
-                </SortableContext>
-              </DndContext>
 
-              {/* Add Stage (custom mode only, not locked) */}
-              {isCustom && !isPipelineLocked && (
-                <TableRow className="hover:bg-primary/5 cursor-pointer border-border/40" onClick={addStage}>
-                  <TableCell colSpan={4} className="text-center py-3">
-                    <span className="text-xs font-semibold text-primary">
-                      <Plus className="h-3.5 w-3.5 inline mr-1" />
-                      Add Stage
-                    </span>
-                  </TableCell>
-                </TableRow>
-              )}
+                  {/* Add Stage (custom mode only, not locked) */}
+                  {isCustom && !isPipelineLocked && (
+                    <TableRow className="hover:bg-primary/5 cursor-pointer border-border/40" onClick={addStage}>
+                      <TableCell colSpan={4} className="text-center py-3">
+                        <span className="text-xs font-semibold text-primary">
+                          <Plus className="h-3.5 w-3.5 inline mr-1" />
+                          Add Stage
+                        </span>
+                      </TableCell>
+                    </TableRow>
+                  )}
 
-              {/* Final Stage (locked) */}
-              <TableRow className="bg-muted/40 hover:bg-muted/40">
-                <TableCell className="text-center">
-                  <span className="text-[10px] font-bold tracking-wide text-emerald-600">Final</span>
-                </TableCell>
-                <TableCell>
-                  <span className="text-xs font-semibold text-muted-foreground">Final</span>
-                </TableCell>
-                <TableCell>
-                  <span className="text-xs text-muted-foreground">Final</span>
-                </TableCell>
-                {isCustom && (
-                  <TableCell className="text-center">
-                    <Lock className="h-3.5 w-3.5 text-muted-foreground inline" />
-                  </TableCell>
-                )}
-              </TableRow>
-            </TableBody>
-          </Table>
+                  {/* Final Stage (locked) */}
+                  <TableRow className="bg-muted/40 hover:bg-muted/40">
+                    <TableCell className="text-center">
+                      <span className="text-[10px] font-bold tracking-wide text-emerald-600">Final</span>
+                    </TableCell>
+                    <TableCell>
+                      <span className="text-xs font-semibold text-muted-foreground">Final</span>
+                    </TableCell>
+                    <TableCell>
+                      <span className="text-xs text-muted-foreground">Final</span>
+                    </TableCell>
+                    {isCustom && (
+                      <TableCell className="text-center">
+                        <Lock className="h-3.5 w-3.5 text-muted-foreground inline" />
+                      </TableCell>
+                    )}
+                  </TableRow>
+                </TableBody>
+              </Table>
+            </SortableContext>
+          </DndContext>
         </CardContent>
       </Card>
 
