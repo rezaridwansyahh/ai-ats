@@ -125,9 +125,9 @@ export default function AIScreeningPage() {
     [cohortRows]
   );
 
-  const total_candidates = parseRows.length + matchRows.length + qaRows.length + cohortRows.length;
-  const parsedDone = matchRows.length + qaRows.length + cohortRows.length;
-  const scoredDone = qaRows.length + cohortRows.length;
+  const total_candidates =  cohortRows.length;
+  const parsedDone = matchRows.length + qaRows.length ;
+  const scoredDone = qaRows.length ;
   const qaDone     = qaRespondedRows.length;
   const pctOf = (n) => (total_candidates > 0 ? Math.round((n / total_candidates) * 100) : 0);
 
@@ -255,7 +255,7 @@ export default function AIScreeningPage() {
       {activeStage === 'parse' && (
         <ParseStageDashboard
           pendingRows={parseRows}
-          parsedRows={[...matchRows, ...qaRows, ...cohortRows]}
+          parsedRows={[...matchRows, ...qaRows]}
           onOpen={openCandidate}
         />
       )}
@@ -265,7 +265,7 @@ export default function AIScreeningPage() {
           jobId={jobId}
           job={job}
           pendingRows={matchRows}
-          scoredRows={[...qaRows, ...cohortRows]}
+          scoredRows={[...qaRows]}
           onOpen={openCandidate}
           onScored={loadStages}
         />
