@@ -8,32 +8,6 @@ html {
   overflow-y: scroll; /* always reserve scrollbar gutter — prevents layout shift */
 }
 
-@media print {
-  /* App shell (sidebar) has no print-hiding class of its own — target its
-     Shadcn data-slot directly so window.print() on any page only prints the
-     page's own content, not the surrounding nav chrome. */
-  [data-slot="sidebar"],
-  [data-slot="sidebar-rail"],
-  [data-slot="sidebar-trigger"] {
-    display: none !important;
-  }
-
-  /* A collapsed <details> hides its children via the UA stylesheet even
-     though they're still in the DOM — force them visible for print so a
-     report section that was never manually expanded still shows up. */
-  details:not([open]) > *:not(summary) {
-    display: block !important;
-  }
-
-  /* Report heroes/badges rely on background colors (often with white text)
-     to convey meaning — without this, browsers skip printing backgrounds by
-     default and that text renders invisible on blank paper. */
-  * {
-    -webkit-print-color-adjust: exact !important;
-    print-color-adjust: exact !important;
-  }
-}
-
 @theme inline {
   --radius-sm: calc(var(--radius) - 4px);
   --radius-md: calc(var(--radius) - 2px);

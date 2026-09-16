@@ -1,4 +1,5 @@
 import assessmentBatteryResultService from './assessment-battery-result.service.js';
+import { buildAssessmentReportPdf } from './assessment-report.pdf.js';
 
 class AssessmentBatteryResultController {
   async getAll(req, res) {
@@ -82,6 +83,19 @@ class AssessmentBatteryResultController {
       const result = await assessmentBatteryResultService.regenerateAiReport(req.params.id);
       res.status(202).json({ message: 'AI report generation queued', result });
     } catch (err) {
+      res.status(err.status || 500).json({ message: err.message });
+    }
+  }
+
+  async downloadPdf(req, res) {
+    try {
+      const result = await assessmentBatteryResultService.getById(req.params.id);
+      const pdfBuffer = await buildAssessmentReportPdf(result);
+      res.setHeader('Content-Type', 'application/pdf');
+      res.setHeader('Content-Disposition', `attachment; filename="assessment-report-${req.params.id}.pdf"`);
+      res.send(pdfBuffer);
+    } catch (err) {
+      console.error(`[PDF Export] Failed for result ${req.params.id}:`, err);
       res.status(err.status || 500).json({ message: err.message });
     }
   }

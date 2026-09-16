@@ -10,8 +10,9 @@ import { STEPS } from '@/components/candidate-detail/steps';
 import { BATTERIES, getInitials } from '@/lib/batteries';
 import { getCandidateById, addCandidateStage } from '@/api/candidate.api';
 import { getSessionsFromCandidate } from '@/api/session.api';
-import { getResultFromCandidate } from '@/api/assessment-battery-result.api';
+import { getResultFromCandidate, downloadReportPdf } from '@/api/assessment-battery-result.api';
 import { getJobById } from '@/api/job.api';
+import { toast } from 'sonner';
 
 export default function CandidateDetailPage() {
   const navigate = useNavigate();
@@ -44,6 +45,7 @@ export default function CandidateDetailPage() {
   const finalRecRef = useRef({ get: () => null, set: () => {} });
   const [sidebarFinalRec, setSidebarFinalRec] = useState(null);
   const [advanceStatus, setAdvanceStatus] = useState('idle'); // idle|loading|done|error
+  const [printing, setPrinting] = useState(false);
 
   /* ── Fetch candidate ─────────────────────────────────────────── */
   useEffect(() => {
@@ -234,6 +236,35 @@ export default function CandidateDetailPage() {
     }
   };
 
+  /* ── Server-generated PDF export (replaces window.print()) ────── */
+  const handlePrintPdf = async () => {
+    if (!latestResult?.id) return;
+    setPrinting(true);
+    try {
+      const res = await downloadReportPdf(latestResult.id);
+      const url = URL.createObjectURL(new Blob([res.data], { type: 'application/pdf' }));
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `assessment-report-${candidateView.name || latestResult.id}.pdf`;
+      a.click();
+      URL.revokeObjectURL(url);
+    } catch (err) {
+      let message = 'Failed to generate PDF';
+      const errBlob = err?.response?.data;
+      if (errBlob instanceof Blob) {
+        try {
+          const parsed = JSON.parse(await errBlob.text());
+          if (parsed?.message) message = parsed.message;
+        } catch { /* keep default message */ }
+      } else if (err?.message) {
+        message = err.message;
+      }
+      toast.error(message);
+    } finally {
+      setPrinting(false);
+    }
+  };
+
   return (
     <>
       {/* ── Sticky Header ─────────────────────────────────────── */}
@@ -338,6 +369,8 @@ export default function CandidateDetailPage() {
                 onSelect={handleNavigate}
                 saveStatus={decideSaveStatus}
                 onSaveNow={handleSaveNow}
+                onPrint={handlePrintPdf}
+                printing={printing}
               />
               <AssessmentStepsNav
                 activeKey={activeKey}
@@ -419,7 +452,7 @@ function TindakLanjutCard({ finalRec, onPick, onAdvance, advanceStatus, hasStage
 }
 
 /* ── Sidebar: contextual action card ─────────────────────────────── */
-function AssessmentActionCard({ activeKey, completed, battery, onSelect, saveStatus, onSaveNow }) {
+function AssessmentActionCard({ activeKey, completed, battery, onSelect, saveStatus, onSaveNow, onPrint, printing }) {
   if (activeKey === 'setup') {
     return (
       <Card>
@@ -492,9 +525,12 @@ function AssessmentActionCard({ activeKey, completed, battery, onSelect, saveSta
             variant="outline"
             size="sm"
             className="w-full text-xs"
-            onClick={() => window.print()}
+            onClick={onPrint}
+            disabled={printing}
           >
-            <Printer className="h-3.5 w-3.5 mr-1.5" /> Print / Save PDF
+            {printing
+              ? <><Loader2 className="h-3.5 w-3.5 mr-1.5 animate-spin" />Generating…</>
+              : <><Printer className="h-3.5 w-3.5 mr-1.5" /> Print / Save PDF</>}
           </Button>
           {saveStatus === 'saved' && (
             <p className="text-[10px] text-emerald-600 flex items-center gap-1">
