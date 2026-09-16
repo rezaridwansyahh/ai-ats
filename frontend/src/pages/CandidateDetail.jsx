@@ -241,7 +241,7 @@ export default function CandidateDetailPage() {
         <Button
           variant="ghost"
           size="sm"
-          className="text-xs -ml-2 w-fit"
+          className="text-xs -ml-2 w-fit print:hidden"
           onClick={() => navigate(backPath)}
         >
           <ArrowLeft className="h-3.5 w-3.5 mr-1" /> Back to candidates
@@ -269,7 +269,7 @@ export default function CandidateDetailPage() {
 
       {/* ── Two-column layout ─────────────────────────────────── */}
       <div className="px-6 pb-6 pt-4">
-        <div className="grid grid-cols-1 lg:grid-cols-[minmax(0,1fr)_260px] gap-6">
+        <div className="grid grid-cols-1 lg:grid-cols-[minmax(0,1fr)_260px] gap-6 print:block">
 
           {/* Main content */}
           <div className="min-w-0 space-y-4">
@@ -310,15 +310,17 @@ export default function CandidateDetailPage() {
             </div>
 
             {/* Step paginator */}
-            <StepPaginator
-              activeKey={activeKey}
-              onSelect={handleNavigate}
-              completed={completed}
-            />
+            <div className="print:hidden">
+              <StepPaginator
+                activeKey={activeKey}
+                onSelect={handleNavigate}
+                completed={completed}
+              />
+            </div>
           </div>
 
           {/* Sticky Sidebar */}
-          <aside>
+          <aside className="print:hidden">
             <div className="sticky top-[184px] space-y-3">
               {activeKey === 'decide' && completed.take && (
                 <TindakLanjutCard

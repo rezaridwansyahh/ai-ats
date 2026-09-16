@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { Button } from '@/components/ui/button';
-import { X, ArrowLeft } from 'lucide-react';
+import { X, ArrowLeft, Info, ClipboardList, Printer } from 'lucide-react';
 import {
   getVerdict,
   getGrade,
@@ -14,6 +14,8 @@ import { TRAITS } from '../data/bigfive';
 import { DISC_DIMS, DISC_PROFILES } from '../data/disc';
 import { HOL_TYPES } from '../data/holland';
 import ManagerView from './ManagerView';
+
+import { SectionCard, Chip, ChipScore, ChipEmpty } from '../../assessment/reportShared';
 
 const BATTERY = 'A';
 const SUB_NAMES = { GI: 'Kemampuan Umum', KA: 'Kecepatan & Akurasi' };
@@ -65,7 +67,7 @@ export default function CandidateReportView({ profile, results, onClose }) {
             <div className="grid grid-cols-2 gap-x-3.5 gap-y-1.5 max-w-[420px]">
               {[
                 ['Tanggal Lahir', profile?.date_birth ? new Date(profile.date_birth).toLocaleDateString('id-ID', { day: '2-digit', month: 'long', year: 'numeric' }) : '—'],
-                ['Tanggal Tes', profile?.date || fmtDateID()],
+                ['Tanggal Tes', results.holland?.date || results.disc?.date || results.bigfive?.date || results.tk?.date || fmtDateID()],
                 ['Email', profile?.email || '—'],
               ].map(([lbl, val]) => (
                 <div key={lbl} className="bg-white/10 rounded-lg px-3 py-1.5">
@@ -94,8 +96,7 @@ export default function CandidateReportView({ profile, results, onClose }) {
       </div>
 
       <div className="bg-blue-50 border border-blue-200 rounded-lg px-4 py-2.5 text-xs text-blue-900 leading-relaxed mb-4">
-        <strong>ℹ️ Catatan:</strong> Ini adalah laporan hasil asesmen Anda. Laporan lengkap dengan interpretasi dan rekomendasi
-        hanya dapat diakses oleh rekruter dan tim HR.
+        <strong className="inline-flex items-center gap-1"><Info className="w-3.5 h-3.5" /> Catatan:</strong> Ini adalah laporan hasil asesmen Anda...
       </div>
 
       {/* Quick Score Chips */}
@@ -125,7 +126,7 @@ export default function CandidateReportView({ profile, results, onClose }) {
             <div className="font-serif text-2xl font-bold tracking-widest leading-none">{hol.code3 || '—'}</div>
             <div className="text-[10.5px] mt-1 opacity-75">Konsistensi: {hol.consistency || '—'}</div>
             <div className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold mt-1 bg-indigo-200/40">
-              ℹ️ Informatif
+              <Info className="w-3 h-3" /> Informatif
             </div>
           </div>
         ) : (
@@ -139,7 +140,7 @@ export default function CandidateReportView({ profile, results, onClose }) {
       <details open={showDetail} onToggle={(e) => setShowDetail(e.currentTarget.open)} className="my-5">
         <summary className="cursor-pointer px-5 py-3.5 bg-white border border-slate-200 rounded-xl flex items-center gap-3 text-sm font-semibold list-none select-none hover:bg-teal-50 hover:border-teal-200 transition">
           <span className="text-teal-600 text-xs transition-transform" style={{ transform: showDetail ? 'rotate(90deg)' : 'rotate(0deg)' }}>▶</span>
-          <span className="text-lg">📋</span>
+          <ClipboardList className="w-4 h-4 text-slate-500" />
           <span className="flex-1">Detail Skor Asesmen</span>
           <span className="text-[11.5px] font-medium text-slate-500">— Klik untuk membuka / menutup</span>
         </summary>
@@ -407,75 +408,15 @@ export default function CandidateReportView({ profile, results, onClose }) {
       </div>
 
       <div className="flex flex-wrap items-center gap-2 mt-3">
-        <Button variant="outline" size="sm" onClick={() => window.print()}>🖨 Cetak / Simpan PDF</Button>
+        <Button variant="outline" size="sm" onClick={() => window.print()} className="gap-1.5">
+          <Printer className="w-3.5 h-3.5" /> Cetak / Simpan PDF
+        </Button>
         {onClose && (
           <Button variant="outline" size="sm" onClick={onClose} className="ml-auto gap-2">
             <ArrowLeft className="w-4 h-4" /> Kembali
           </Button>
         )}
       </div>
-    </div>
-  );
-}
-
-// ── Helper components ──
-
-function ChipScore({ label, value, sub, verdict, badge }) {
-  return (
-    <div
-      className="rounded-xl border-[1.5px] p-3.5 px-4 relative overflow-hidden"
-      style={{ background: verdict.bg, borderColor: verdict.br, color: verdict.color }}
-    >
-      <div className="text-[10px] font-bold uppercase tracking-wider mb-1">{label}</div>
-      <div className="font-serif text-2xl font-bold leading-none">
-        {value}
-        <span className="text-sm font-medium"> /10</span>
-      </div>
-      <div className="text-[10.5px] mt-1 opacity-75">{sub}</div>
-      <div className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold mt-1" style={{ background: verdict.color + '20', color: verdict.color }}>
-        {badge ? badge : `${verdict.emoji} ${verdict.label}`}
-      </div>
-    </div>
-  );
-}
-
-function ChipEmpty({ label }) {
-  return (
-    <div className="rounded-xl border-[1.5px] border-slate-200 bg-slate-50 p-3.5 px-4 text-slate-400">
-      <div className="text-[10px] font-bold uppercase tracking-wider mb-1">{label}</div>
-      <div className="font-serif text-base">—</div>
-      <div className="text-[10.5px]">Data tidak lengkap</div>
-    </div>
-  );
-}
-
-function Chip({ vd }) {
-  return (
-    <span
-      className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-bold border"
-      style={{ background: vd.bg, borderColor: vd.br, color: vd.color }}
-    >
-      {vd.emoji} {vd.label}
-    </span>
-  );
-}
-
-function SectionCard({ num, title, subtitle, color, bg, children }) {
-  return (
-    <div className="bg-white rounded-xl shadow-sm overflow-hidden border border-slate-200">
-      <div className="flex items-center gap-3.5 px-5 py-4" style={{ background: `linear-gradient(90deg, ${bg}, transparent)` }}>
-        <div
-          className="w-10 h-10 rounded-full grid place-items-center font-serif text-[17px] font-bold flex-shrink-0 border-2"
-          style={{ borderColor: color, color: color }}
-        >
-          {num}
-        </div>
-        <div className="flex-1">
-          <div className="font-serif text-lg font-semibold leading-tight">{title}</div>
-          <div className="text-[11px] font-medium opacity-70 mt-0.5">{subtitle}</div>
-        </div>
-      </div>
-      <div className="px-5 pb-5">{children}</div>
     </div>
   );
 }

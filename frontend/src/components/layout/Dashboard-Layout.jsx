@@ -70,7 +70,7 @@ export default function DashboardLayout() {
             via var(--app-header-h) instead of a hardcoded/guessed pixel value.
             Custom-property keys must be quoted strings in a React style object. */}
         <header
-          className="flex h-12 items-center gap-3 border-b border-border/70 px-4 sticky top-0 z-20 backdrop-blur-md bg-card/90"
+          className="flex h-12 items-center gap-3 border-b border-border/70 px-4 sticky top-0 z-20 backdrop-blur-md bg-card/90 print:hidden"
           style={{ '--app-header-h': 'calc(3rem + 1px)' }}
         >
           <SidebarTrigger className="-ml-1 text-muted-foreground hover:text-foreground transition-colors" />
@@ -106,10 +106,12 @@ export default function DashboardLayout() {
         </header>
 
         {/* ── Pipeline bar — appears on every page ── */}
-        <PipelineBar />
+        <div className="print:hidden">
+          <PipelineBar />
+        </div>
 
         {/* ── Main content ── */}
-        <main className="p-5 min-h-[calc(100vh-6.5rem)]">
+        <main className="p-5 min-h-[calc(100vh-6.5rem)] print:p-0 print:min-h-0">
           <Toaster />
           <BreadcrumbContext.Provider value={breadcrumbCtx}>
             <Outlet />

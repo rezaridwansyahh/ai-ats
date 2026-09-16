@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Sparkles, X } from 'lucide-react';
+import { Sparkles, X, Lock, AlertTriangle, ClipboardList, CheckCircle2, XCircle, Pencil, Scale, StickyNote, User, Target } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { useNarrativeAI } from '@/components/assessment/hooks/useNarrativeAI';
@@ -20,13 +20,13 @@ import ManagerView from './ManagerView';
 // Narrative slots (8 IDs, matching the Battery D mockup). Each is an editable Textarea
 // whose contents persist via `updateState({edit_<id>: value})` (handled by AssessmentDetailDialog).
 const NARR_LABELS = {
-  'narr-tk':       '📝 Interpretasi — Kemampuan Kognitif',
-  'narr-sjt':      '📝 Interpretasi — Penilaian Situasional Kepemimpinan',
-  'narr-pf':       '📝 Interpretasi — Kepribadian 16PF',
-  'narr-msdt':     '📝 Interpretasi — Gaya Kepemimpinan MSDT',
-  'narr-papil':    '📝 Interpretasi — Preferensi Kepemimpinan PAPI-L',
-  'narr-konsol':   '📊 Ringkasan Profil Terintegrasi',
-  'narr-strength': '⚡ Kekuatan Utama Kandidat',
+  'narr-tk':       'Interpretasi — Kemampuan Kognitif',
+  'narr-sjt':      'Interpretasi — Penilaian Situasional Kepempimpinan',
+  'narr-pf':       'Interpretasi — Kepribadian 16PF',
+  'narr-msdt':     'Interpretasi — Gaya Kepemimpinan MSDT',
+  'narr-papil':    'Interpretasi — Preferensi Kepemimpinan PAPI-L',
+  'narr-konsol':   'Ringkasan Profil Terintegrasi',
+  'narr-strength': 'Kekuatan Utama Kandidat',
 };
 
 const SUB_NAMES = { GI: 'Kemampuan Umum', PV: 'Penalaran Verbal', KN: 'Kemampuan Numerik', PA: 'Penalaran Abstrak' };
@@ -128,7 +128,7 @@ export default function ReportView({ profile, results, state, updateState, saveN
             <span className="bg-white/15 border border-white/20 rounded-full px-3 py-1 text-[11px] font-bold">
               Battery D · Senior Manajerial & Eksekutif
             </span>
-            <span className="bg-white/15 border border-white/25 rounded-full px-3 py-1 text-[11px] font-bold">🔒 RAHASIA</span>
+            <span className="bg-white/15 border border-white/25 rounded-full px-3 py-1 text-[11px] font-bold"><Lock className="w-3 h-3" />RAHASIA</span>
           </div>
         </div>
         <div className="grid md:grid-cols-[1fr_auto] gap-5 px-6 py-5 items-start">
@@ -142,7 +142,7 @@ export default function ReportView({ profile, results, state, updateState, saveN
             <div className="grid grid-cols-2 gap-x-3.5 gap-y-1.5 max-w-[420px]">
               {[
                 ['Tanggal Lahir', profile?.date_birth ? new Date(profile.date_birth).toLocaleDateString('id-ID', { day: '2-digit', month: 'long', year: 'numeric' }) : '—'],
-                ['Tanggal Tes', profile?.date || fmtDateID()],
+                ['Tanggal Tes', profile?.date ? fmtDateID(new Date(profile.date)) : (results.papil?.date || results.msdt?.date || results.pf?.date || results.sjt?.date || results.tk?.date || fmtDateID())],
                 ['Email', profile?.email || '—'],
                 ['No. Kandidat', state.nomerKandidat || '—'],
                 ['Asesor', state.asesor || '—'],
@@ -173,7 +173,7 @@ export default function ReportView({ profile, results, state, updateState, saveN
       </div>
 
       <div className="bg-amber-50 border border-amber-200 rounded-lg px-4 py-2.5 text-xs text-amber-900 leading-relaxed mb-4">
-        <strong>⚠️ Catatan:</strong> Laporan ini merupakan alat bantu profesional. Interpretasi akhir tetap memerlukan penilaian
+        <strong className="inline-flex items-center gap-1"><AlertTriangle className="w-3.5 h-3.5" /> Catatan:</strong><strong>⚠️ Catatan:</strong>Laporan ini merupakan alat bantu profesional. Interpretasi akhir tetap memerlukan penilaian
         psikolog atau rekruter berpengalaman. Narasi pada laporan ini dapat diedit langsung — semua perubahan tersimpan otomatis di
         browser ini. Dokumen bersifat <strong>rahasia</strong> dan hanya untuk keperluan seleksi internal.
       </div>
@@ -224,7 +224,7 @@ export default function ReportView({ profile, results, state, updateState, saveN
       <details open={showDetail} onToggle={(e) => setShowDetail(e.currentTarget.open)} className="my-5">
         <summary className="cursor-pointer px-5 py-3.5 bg-white border border-slate-200 rounded-xl flex items-center gap-3 text-sm font-semibold list-none select-none hover:bg-teal-50 hover:border-teal-200 transition">
           <span className="text-teal-600 text-xs transition-transform" style={{ transform: showDetail ? 'rotate(90deg)' : 'rotate(0deg)' }}>▶</span>
-          <span className="text-lg">📋</span>
+          <ClipboardList className="w-4 h-4 text-slate-500" />
           <span className="flex-1">Detail Psikologis untuk HR / Psikolog</span>
           <span className="text-[11.5px] font-medium text-slate-500">— Klik untuk membuka / menutup</span>
         </summary>
@@ -462,7 +462,7 @@ export default function ReportView({ profile, results, state, updateState, saveN
                   return (
                     <div key={groupType} className="mb-3">
                       <div className="text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-1.5">
-                        {groupType === 'ROLE' ? '👤 Dimensi Peran' : '🎯 Dimensi Kebutuhan'}
+                        {groupType === 'ROLE' ? <><User className="w-3 h-3 inline mr-1" />Dimensi Peran</> : <><Target className="w-3 h-3 inline mr-1" />Dimensi Kebutuhan</>}
                       </div>
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-1.5">
                         {dims.map((code) => {
@@ -527,9 +527,9 @@ export default function ReportView({ profile, results, state, updateState, saveN
               <div className="text-[11px] font-bold uppercase tracking-wider text-slate-500 mb-2">Keputusan Akhir Rekruter</div>
               <div className="grid grid-cols-1 md:grid-cols-3 gap-2">
                 {[
-                  { val: 'direkomendasikan', label: '✅ Direkomendasikan',  cls: 'border-green-600 bg-green-50 text-green-700' },
-                  { val: 'pertimbangkan',    label: '⚠️ Perlu Dipertimbangkan', cls: 'border-amber-600 bg-amber-50 text-amber-700' },
-                  { val: 'tidak',            label: '❌ Tidak Direkomendasikan', cls: 'border-red-600 bg-red-50 text-red-700' },
+                  { val: 'direkomendasikan', label: 'Direkomendasikan',  cls: 'border-green-600 bg-green-50 text-green-700' },
+                  { val: 'pertimbangkan',    label: 'Perlu Dipertimbangkan', cls: 'border-amber-600 bg-amber-50 text-amber-700' },
+                  { val: 'tidak',            label: 'Tidak Direkomendasikan', cls: 'border-red-600 bg-red-50 text-red-700' },
                 ].map((opt) => (
                   <button
                     key={opt.val}
@@ -624,7 +624,7 @@ function NarrativeBlock({ id, state, setNarr, onGenerate, generating, onCancel }
             </Button>
           )
         ) : (
-          <span className="text-[10.5px] text-slate-400 italic">✏️ klik untuk mengedit</span>
+          <span className="text-[10.5px] text-slate-400 italic inline-flex items-center gap-1"><Pencil className="w-3 h-3" /> klik untuk mengedit</span>
         )}
       </div>
       <Textarea
@@ -640,13 +640,13 @@ function NarrativeBlock({ id, state, setNarr, onGenerate, generating, onCancel }
 function RcrBlock({ section, state, setRcr }) {
   const value = state['rcr_' + section] || null;
   const options = [
-    { key: 'sesuai',         label: '✅ Sesuai',            cls: 'border-green-600 text-green-700 bg-green-50' },
-    { key: 'pertimbangkan',  label: '⚠️ Perlu Pertimbangan', cls: 'border-amber-600 text-amber-700 bg-amber-50' },
-    { key: 'tidak',          label: '❌ Tidak Sesuai',       cls: 'border-red-600 text-red-700 bg-red-50' },
+    { key: 'sesuai',         label: 'Sesuai',            cls: 'border-green-600 text-green-700 bg-green-50' },
+    { key: 'pertimbangkan',  label: 'Perlu Pertimbangan', cls: 'border-amber-600 text-amber-700 bg-amber-50' },
+    { key: 'tidak',          label: 'Tidak Sesuai',       cls: 'border-red-600 text-red-700 bg-red-50' },
   ];
   return (
     <div className="bg-slate-50 rounded-lg px-4 py-3 mt-3 border border-slate-200">
-      <div className="text-[11px] font-bold uppercase tracking-wider text-slate-500 mb-2">⚖️ Penilaian Rekruter — Bagian Ini</div>
+      <div className="text-[11px] font-bold uppercase tracking-wider text-slate-500 mb-2 inline-flex items-center gap-1"><Scale className="w-3.5 h-3.5" /> Penilaian Rekruter — Bagian Ini</div>
       <div className="flex flex-wrap gap-2">
         {options.map((o) => (
           <button
@@ -666,7 +666,7 @@ function NotesBlock({ id, state, setNotes, placeholder }) {
   const value = state['notes_' + id] || '';
   return (
     <div className="mt-3">
-      <div className="text-[11px] font-bold tracking-wider uppercase text-slate-500 mb-1.5">📌 Catatan Asesor</div>
+      <div className="text-[11px] font-bold tracking-wider uppercase text-slate-500 mb-1.5 inline-flex items-center gap-1"><StickyNote className="w-3 h-3" /> Catatan Asesor</div>
       <Textarea
         value={value}
         onChange={(e) => setNotes(id, e.target.value)}
