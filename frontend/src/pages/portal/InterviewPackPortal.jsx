@@ -155,6 +155,23 @@ function SaveIndicator({ savingId, savedId, candidateId }) {
   return null;
 }
 
+function AlertModal({ title, message, onClose }) {
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 px-4">
+      <Card className="w-full max-w-sm">
+        <CardContent className="p-5 space-y-3 text-center">
+          <AlertTriangle className="h-8 w-8 text-amber-500 mx-auto" />
+          <p className="text-sm font-semibold text-foreground">{title}</p>
+          <p className="text-xs text-muted-foreground leading-relaxed">{message}</p>
+          <Button size="sm" onClick={onClose} className="w-full">
+            OK
+          </Button>
+        </CardContent>
+      </Card>
+    </div>
+  );
+}
+
 const QUESTION_NOTE_LIMIT = 500;
 
 function QuestionsPanel({ questions = [], outcome, packCandidateId, onNoteChange, isReadOnly }) {
@@ -239,6 +256,7 @@ export default function InterviewPackPortal() {
   const [savingId, setSavingId] = useState(null);
   const [downloadingCv, setDownloadingCv] = useState(false);
   const [savedId, setSavedId] = useState(null);
+  const [cvAlert, setCvAlert] = useState(null); 
 
   // Debounce timers per candidate
   const debounceTimers = useRef({});
@@ -435,8 +453,14 @@ export default function InterviewPackPortal() {
       a.click();
       a.remove();
       URL.revokeObjectURL(blobUrl);
-    } catch {
-      // no-op — button stays available to retry, matches CandidateProfile's tolerant pattern
+    } catch (err) {
+      const status = err.response?.status;
+      setCvAlert({
+        title: status === 404 ? 'No CV available' : 'Download failed',
+        message: status === 404
+          ? `${activeCandidate?.applicant_name || 'This candidate'} doesn't have a CV on file.`
+          : 'Something went wrong downloading the CV. Please try again.',
+      });
     } finally {
       setDownloadingCv(false);
     }
@@ -809,6 +833,13 @@ export default function InterviewPackPortal() {
             )}
           </div>
         </div>
+      )}
+      {cvAlert && (
+        <AlertModal
+          title={cvAlert.title}
+          message={cvAlert.message}
+          onClose={() => setCvAlert(null)}
+        />
       )}
     </div>
   );

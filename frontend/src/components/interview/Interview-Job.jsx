@@ -108,7 +108,7 @@ export default function InterviewJobPage() {
   // Candidates eligible for a pack: any active interview stage (confirmed session or outcome recorded),
   // not yet assigned to an open pack, and not already decided.
   const waitingCandidates = interviews.filter(
-    (i) => ['scheduled', 'ongoing', 'result'].includes(i.status) && !i.pack_id
+    (i) => ['scheduled', 'ongoing', 'result'].includes(i.status) && !i.pack_id && i.result_state !== 'scored'
   );
 
  const load = useCallback(async () => {
@@ -133,7 +133,7 @@ export default function InterviewJobPage() {
     }
   }, [jobId]);
   
-  const hasActivePacks = packs.length > 0;
+  const hasActivePacks = packs.some((p) => p.status === 'open');
 
   useEffect(() => { load(); }, [load]);
 
