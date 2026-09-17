@@ -17,7 +17,7 @@ export default function Setup({ initial, onSubmit, emailReadOnly = false }) {
   const [error, setError] = useState(null);
 
   // Per-field error flags — drives the red border + inline message on the exact field.
-  const [fieldErrors, setFieldErros] = useState({});
+  const [fieldErrors, setFieldErrors] = useState({});
 
   const validate = () => {
     const errs = {};
