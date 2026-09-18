@@ -82,6 +82,15 @@ class PortalAssessmentController {
     }
   }
 
+  async getProgress(req, res) {
+    try {
+      const result = await portalAssessmentService.getProgress({ sessionId: req.portalSessionId });
+      res.status(200).json({ message: 'Progress for attempt', ...result });
+    } catch (err) {
+      res.status(err.status || 500).json({ message: err.message, ...(err.code ? { code: err.code } : {}) });
+    }
+  }
+
   async saveAnswer(req, res) {
     try {
       const { result_id, question_id, answer, is_correct, score_earned } = req.body;

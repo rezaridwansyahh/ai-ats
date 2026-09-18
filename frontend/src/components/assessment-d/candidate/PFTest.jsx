@@ -4,7 +4,8 @@ import { FACTORS, FACTOR_MAX, FACTOR_ORDER } from '../data/pf';
 import { getQuestionsByAssessmentCode } from '@/api/question.api';
 import { saveAnswer } from '@/api/assessment-answer.api';
 import { saveSubtestScore } from '@/api/assessment-score.api';
-import { getPortalQuestions, savePortalAnswer, savePortalSubtestScore } from '@/api/portal-assessment.api';
+import { getPortalQuestions, getPortalProgress, savePortalAnswer, savePortalSubtestScore } from '@/api/portal-assessment.api';
+import { findExistingScore, answersByQuestionId } from '@/utils/assessment-resume';
 
 // 16PF — up to 105 items, 3 options (a/b/c). Auto-advance on pick.
 // Scores off each question's fetched content (seeded from the old KEY map):
@@ -27,20 +28,39 @@ export default function PFTest({ resultId, assessmentCode, portalHash, onComplet
     let cancelled = false;
     (async () => {
       try {
-        const { data } = portalHash ? await getPortalQuestions(portalHash) : await getQuestionsByAssessmentCode(assessmentCode);
+        const [{ data }, progress] = await Promise.all([
+          portalHash ? getPortalQuestions(portalHash) : getQuestionsByAssessmentCode(assessmentCode),
+          portalHash ? getPortalProgress(portalHash).then((r) => r.data) : Promise.resolve({ answers: [], scores: [] }),
+        ]);
         const group = data?.questions?.pf;
         if (cancelled) return;
         if (!group?.items?.length) throw new Error('No 16PF questions found');
         const sorted = [...group.items].sort((a, b) => a.order_index - b.order_index);
         setItems(sorted);
         setSubtestId(group.subtest.id);
-        setAnswers(Array(sorted.length).fill(null));
+
+        const existingScore = findExistingScore(progress.scores, group.subtest.id);
+        if (existingScore) {
+          onComplete(existingScore);
+          return;
+        }
+
+        const answerMap = answersByQuestionId(progress.answers, sorted.map((it) => it.id));
+        const restored = Array(sorted.length).fill(null);
+        sorted.forEach((it, idx) => {
+          const saved = answerMap.get(it.id);
+          if (saved) restored[idx] = saved.answer;
+        });
+        setAnswers(restored);
+        const firstUnanswered = restored.findIndex((a) => a == null);
+        setCurQ(firstUnanswered === -1 ? sorted.length - 1 : firstUnanswered);
         setPhase('active');
       } catch {
         if (!cancelled) setPhase('error');
       }
     })();
     return () => { cancelled = true; };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [assessmentCode, portalHash]);
 
   if (phase === 'loading') {

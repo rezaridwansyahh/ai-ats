@@ -60,7 +60,7 @@ function datqsRows(items) {
   }));
 }
 
-async function run() {
+export async function run() {
   const db = getDb();
 
   const assessmentRes = await db.query('SELECT id FROM master_assessment WHERE assessment_code = $1', [ASSESSMENT_CODE]);
@@ -172,10 +172,14 @@ async function run() {
   console.log(`papil: ${papilRows.length} questions seeded (subtest_id=${papilId})`);
 
   console.log('Battery D question bank seeded successfully.');
-  process.exit(0);
 }
 
-run().catch((err) => {
-  console.error('Battery D seed failed:', err);
-  process.exit(1);
-});
+const isMain = import.meta.url === `file://${process.argv[1]}`;
+if (isMain) {
+  run()
+    .then(() => process.exit(0))
+    .catch((err) => {
+      console.error('Battery D seed failed:', err);
+      process.exit(1);
+    });
+}

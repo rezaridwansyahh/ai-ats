@@ -44,6 +44,10 @@ import onboardingAssessmentsData from '../data/battery-onboarding.js';
 import onboardingHrisTasksData from '../data/onboarding_hris_task.js';
 import lmsPhasesData from '../data/lms_phases.js';
 import lmsModulesData from '../data/lms_modules.js';
+import { run as seedBatteryAQuestions } from './assessment-questions/01-battery-a.js';
+import { run as seedBatteryBQuestions } from './assessment-questions/02-battery-b.js';
+import { run as seedBatteryCQuestions } from './assessment-questions/03-battery-c.js';
+import { run as seedBatteryDQuestions } from './assessment-questions/04-battery-d.js';
 
 const seed = async () => {
   await getDb().query('BEGIN');
@@ -303,7 +307,15 @@ const seed = async () => {
         [a.id, a.assessment_code, a.name, a.description, a.duration_minutes, JSON.stringify(a.options || {}), a.is_active]
       );
     }
-    
+
+    // 17a. assessment_subtest + assessment_question — question banks for
+    //      Batteries A-D, transformed from each battery's frontend data files.
+    await seedBatteryAQuestions();
+    await seedBatteryBQuestions();
+    await seedBatteryCQuestions();
+    await seedBatteryDQuestions();
+    console.log('Seeded assessment question banks for Batteries A-D');
+
     // 17b. onboarding_assessment — pre-boarding batteries (TKI + Insight)
     for (const a of onboardingAssessmentsData) {
       await getDb().query(

@@ -199,6 +199,31 @@ class PortalAssessmentService {
     return await assessmentAnswerService.upsert({ result_id, question_id, answer, is_correct, score_earned });
   }
 
+  // Resume support — lets a Test component rehydrate its in-progress state (which
+  // atomic subtests are already scored, which questions already have an answer)
+  // after a refresh/reload, instead of always starting the current subtest over.
+  // Resolves result_id from the session itself (candidate_id + assessment_id),
+  // never from client input, since this is a read the candidate can't spoof.
+  async getProgress({ sessionId }) {
+    if (!sessionId) throw { status: 400, message: 'session_id is required' };
+    const raw = await Session.getById(sessionId);
+    if (!raw) throw { status: 404, message: 'Session not found' };
+    const session = await lazyExpire(raw);
+    if (!session.candidate_id) return { result_id: null, answers: [], scores: [] };
+
+    const assessmentId = ASSESSMENT_ID_BY_BATTERY[session.battery];
+    if (!assessmentId) throw { status: 400, message: `Unknown battery: ${session.battery}` };
+
+    const result = await AssessmentBatteryResult.getByParticipantAndAssessment(session.candidate_id, assessmentId);
+    if (!result) return { result_id: null, answers: [], scores: [] };
+
+    const [answers, scores] = await Promise.all([
+      assessmentAnswerService.getByResultId(result.id),
+      assessmentScoreService.getByResultId(result.id),
+    ]);
+    return { result_id: result.id, answers, scores };
+  }
+
   async saveSubtestScore({ result_id, subtest_id, score }) {
     return await assessmentScoreService.upsert({ result_id, subtest_id, score });
   }
