@@ -1,19 +1,67 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Button } from '@/components/ui/button';
-import { PAPI_QS, SCORING_KEY, ROLE_DIMS, NEED_DIMS, ASPECTS, ASPECT_COLORS } from '../data/papi';
+import { ROLE_DIMS, NEED_DIMS, ASPECTS, ASPECT_COLORS } from '../data/papi';
+import { getQuestionsByAssessmentCode } from '@/api/question.api';
+import { saveAnswer } from '@/api/assessment-answer.api';
+import { saveSubtestScore } from '@/api/assessment-score.api';
+import { getPortalQuestions, savePortalAnswer, savePortalSubtestScore } from '@/api/portal-assessment.api';
 
-export default function PAPITest({ onComplete, onAbort }) {
-  const [answers, setAnswers] = useState(Array(90).fill(null));
+// Scores off each question's fetched content.a.scale/content.b.scale (seeded from
+// SCORING_KEY) — same reasoning as EPPSTest. ROLE_DIMS/NEED_DIMS/ASPECTS/
+// ASPECT_COLORS stay static — presentational grouping/color config, not content.
+
+export default function PAPITest({ resultId, assessmentCode, portalHash, onComplete, onAbort }) {
+  const [phase, setPhase] = useState('loading');
+  const [items, setItems] = useState(null); // [{id, order_index, content:{a:{text,scale},b:{text,scale}}}]
+  const [subtestId, setSubtestId] = useState(null);
+  const [answers, setAnswers] = useState([]);
   const [curQ, setCurQ] = useState(0);
 
-  const total = PAPI_QS.length;
-  const q = PAPI_QS[curQ];
-  const key = SCORING_KEY[curQ];
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      try {
+        const { data } = portalHash ? await getPortalQuestions(portalHash) : await getQuestionsByAssessmentCode(assessmentCode);
+        const group = data?.questions?.papi;
+        if (cancelled) return;
+        if (!group?.items?.length) throw new Error('No PAPI questions found');
+        const sorted = [...group.items].sort((a, b) => a.order_index - b.order_index);
+        setItems(sorted);
+        setSubtestId(group.subtest.id);
+        setAnswers(Array(sorted.length).fill(null));
+        setPhase('active');
+      } catch {
+        if (!cancelled) setPhase('error');
+      }
+    })();
+    return () => { cancelled = true; };
+  }, [assessmentCode, portalHash]);
+
+  if (phase === 'loading') {
+    return <div className="max-w-[440px] mx-auto px-4 py-20 text-center text-sm text-slate-500">Memuat soal…</div>;
+  }
+  if (phase === 'error') {
+    return (
+      <div className="max-w-[440px] mx-auto px-4 py-20 text-center">
+        <p className="text-sm text-rose-600 mb-4">Gagal memuat soal. Silakan coba lagi.</p>
+        <Button variant="outline" onClick={onAbort}>← Kembali</Button>
+      </div>
+    );
+  }
+
+  const total = items.length;
+  const q = items[curQ].content;
   const ans = answers[curQ];
   const pct = Math.round((curQ / total) * 100);
   const isLast = curQ === total - 1;
-  const asp = ASPECTS.find((a) => a.dims.includes(key[1])) || ASPECTS[0];
+  const asp = ASPECTS.find((a) => a.dims.includes(q.a.scale)) || ASPECTS[0];
   const aspColor = ASPECT_COLORS[asp.id] || '#0891B2';
+
+  const persistAnswer = (v) => {
+    if (!resultId) return;
+    const payload = { result_id: resultId, question_id: items[curQ].id, answer: v, is_correct: null, score_earned: null };
+    (portalHash ? savePortalAnswer(portalHash, payload) : saveAnswer(payload)).catch(() => {});
+  };
 
   const setAns = (v) => {
     setAnswers((p) => {
@@ -21,6 +69,7 @@ export default function PAPITest({ onComplete, onAbort }) {
       next[curQ] = v;
       return next;
     });
+    persistAnswer(v);
     if (curQ < total - 1) {
       setCurQ(curQ + 1);
     } else {
@@ -33,13 +82,18 @@ export default function PAPITest({ onComplete, onAbort }) {
     [...ROLE_DIMS, ...NEED_DIMS].forEach((d) => (scores[d] = 0));
     final.forEach((a, i) => {
       if (!a) return;
-      const k = SCORING_KEY[i];
-      const dim = a === 'A' ? k[1] : k[2];
+      const c = items[i].content;
+      const dim = a === 'A' ? c.a.scale : c.b.scale;
       scores[dim]++;
     });
     const roleTotal = ROLE_DIMS.reduce((s, d) => s + scores[d], 0);
     const needTotal = NEED_DIMS.reduce((s, d) => s + scores[d], 0);
-    onComplete({ scores, roleTotal, needTotal });
+    const res = { scores, roleTotal, needTotal };
+    if (resultId && subtestId) {
+      const payload = { result_id: resultId, subtest_id: subtestId, score: res };
+      (portalHash ? savePortalSubtestScore(portalHash, payload) : saveSubtestScore(payload)).catch(() => {});
+    }
+    onComplete(res);
   };
 
   return (
@@ -74,8 +128,8 @@ export default function PAPITest({ onComplete, onAbort }) {
 
           <div className="flex flex-col gap-2.5">
             {[
-              { key: 'A', txt: q.a, label: 'a' },
-              { key: 'B', txt: q.b, label: 'b' },
+              { key: 'A', txt: q.a.text, label: 'a' },
+              { key: 'B', txt: q.b.text, label: 'b' },
             ].map(({ key: k, txt, label }) => {
               const sel = ans === k;
               return (

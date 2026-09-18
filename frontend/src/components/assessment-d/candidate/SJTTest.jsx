@@ -1,27 +1,56 @@
 import { useEffect, useRef, useState } from 'react';
 import { Button } from '@/components/ui/button';
-import { SJT_QS, COMPS } from '../data/sjt';
+import { COMPS } from '../data/sjt';
 import { fmtTime, scoreSJT } from '../utils/scoring';
+import { getQuestionsByAssessmentCode } from '@/api/question.api';
+import { saveAnswer } from '@/api/assessment-answer.api';
+import { saveSubtestScore } from '@/api/assessment-score.api';
+import { getPortalQuestions, savePortalAnswer, savePortalSubtestScore } from '@/api/portal-assessment.api';
 
 const TOTAL_TIME = 30 * 60; // 1800 seconds, single global timer for the whole SJT
 const FLASH_MS = 180;       // visual flash on selected option before auto-advance
 
-export default function SJTTest({ onComplete, onAbort }) {
-  const [phase, setPhase] = useState('active'); // active | timeup
-  const [answers, setAnswers] = useState(Array(SJT_QS.length).fill(null));
+// scoreSJT() takes the question list as a parameter (unlike scoreBigFive/DISC/
+// Holland) — build a compatible shape from the fetched content so scoring reads
+// the DB-seeded competency/points directly. COMPS (name/color/maxScore) stays
+// static — competency-level config, not per-question content.
+function toScoringShape(items) {
+  return items.map((it) => ({
+    comp: it.content.competency,
+    opts: it.content.options.map((o) => ({ s: o.score })),
+  }));
+}
+
+export default function SJTTest({ resultId, assessmentCode, portalHash, onComplete, onAbort }) {
+  const [phase, setPhase] = useState('loading'); // loading | error | active | timeup
+  const [items, setItems] = useState(null); // [{id, order_index, content:{situation,question,competency,options}}]
+  const [subtestId, setSubtestId] = useState(null);
+  const [answers, setAnswers] = useState([]);
   const [curQ, setCurQ] = useState(0);
   const [timeLeft, setTimeLeft] = useState(TOTAL_TIME);
   const [flashing, setFlashing] = useState(null); // option index being flashed
   const tickRef = useRef(null);
   const flashRef = useRef(null);
 
-  const total = SJT_QS.length; // 22
-  const q = SJT_QS[curQ];
-  const comp = COMPS[q.comp] || { color: '#6366F1', colorLt: '#EEF2FF', name: q.comp };
-  const ans = answers[curQ];
-  const pct = Math.round((curQ / total) * 100);
-  const lowTime = timeLeft <= 60;
-  const isLast = curQ === total - 1;
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      try {
+        const { data } = portalHash ? await getPortalQuestions(portalHash) : await getQuestionsByAssessmentCode(assessmentCode);
+        const group = data?.questions?.sjt;
+        if (cancelled) return;
+        if (!group?.items?.length) throw new Error('No SJT questions found');
+        const sorted = [...group.items].sort((a, b) => a.order_index - b.order_index);
+        setItems(sorted);
+        setSubtestId(group.subtest.id);
+        setAnswers(Array(sorted.length).fill(null));
+        setPhase('active');
+      } catch {
+        if (!cancelled) setPhase('error');
+      }
+    })();
+    return () => { cancelled = true; };
+  }, [assessmentCode, portalHash]);
 
   // Sticky countdown — auto-submit when timer hits zero.
   useEffect(() => {
@@ -31,9 +60,8 @@ export default function SJTTest({ onComplete, onAbort }) {
         if (t <= 1) {
           clearInterval(tickRef.current);
           setPhase('timeup');
-          // Auto-submit current state with whatever's been answered.
           setAnswers((curr) => {
-            onComplete(scoreSJT(curr, SJT_QS, COMPS));
+            finish(curr);
             return curr;
           });
           return 0;
@@ -49,6 +77,41 @@ export default function SJTTest({ onComplete, onAbort }) {
     if (flashRef.current) clearTimeout(flashRef.current);
   }, []);
 
+  if (phase === 'loading') {
+    return <div className="max-w-[440px] mx-auto px-4 py-20 text-center text-sm text-slate-500">Memuat soal…</div>;
+  }
+  if (phase === 'error') {
+    return (
+      <div className="max-w-[440px] mx-auto px-4 py-20 text-center">
+        <p className="text-sm text-rose-600 mb-4">Gagal memuat soal. Silakan coba lagi.</p>
+        <Button variant="outline" onClick={onAbort}>← Kembali</Button>
+      </div>
+    );
+  }
+
+  const total = items.length; // 22
+  const q = items[curQ].content;
+  const comp = COMPS[q.competency] || { color: '#6366F1', colorLt: '#EEF2FF', name: q.competency };
+  const ans = answers[curQ];
+  const pct = Math.round((curQ / total) * 100);
+  const lowTime = timeLeft <= 60;
+  const isLast = curQ === total - 1;
+
+  const persistAnswer = (idx) => {
+    if (!resultId) return;
+    const payload = { result_id: resultId, question_id: items[curQ].id, answer: idx, is_correct: null, score_earned: q.options[idx]?.score ?? null };
+    (portalHash ? savePortalAnswer(portalHash, payload) : saveAnswer(payload)).catch(() => {});
+  };
+
+  const finish = (finalAnswers) => {
+    const res = scoreSJT(finalAnswers, toScoringShape(items), COMPS);
+    if (resultId && subtestId) {
+      const payload = { result_id: resultId, subtest_id: subtestId, score: res };
+      (portalHash ? savePortalSubtestScore(portalHash, payload) : saveSubtestScore(payload)).catch(() => {});
+    }
+    onComplete(res);
+  };
+
   const pick = (idx) => {
     if (flashing != null) return; // ignore rapid double-clicks during flash
     setFlashing(idx);
@@ -57,14 +120,14 @@ export default function SJTTest({ onComplete, onAbort }) {
       next[curQ] = idx;
       return next;
     });
+    persistAnswer(idx);
     flashRef.current = setTimeout(() => {
       setFlashing(null);
       if (curQ < total - 1) {
         setCurQ(curQ + 1);
       } else {
-        // Last question: compute final using the just-built answers.
         setAnswers((curr) => {
-          onComplete(scoreSJT(curr, SJT_QS, COMPS));
+          finish(curr);
           return curr;
         });
       }
@@ -75,7 +138,7 @@ export default function SJTTest({ onComplete, onAbort }) {
     const answered = answers.filter((a) => a != null).length;
     if (!window.confirm(`Selesaikan tes SJT?\n\nTerjawab: ${answered}/${total}\nWaktu tersisa: ${fmtTime(timeLeft)}`)) return;
     clearInterval(tickRef.current);
-    onComplete(scoreSJT(answers, SJT_QS, COMPS));
+    finish(answers);
   };
 
   return (
@@ -84,7 +147,7 @@ export default function SJTTest({ onComplete, onAbort }) {
       <div className="sticky top-0 z-10 px-4 py-2.5 text-white" style={{ background: '#312E81' }}>
         <div className="max-w-[900px] mx-auto flex items-center gap-3">
           <div className="text-[10px] font-bold px-2 py-1 rounded-full" style={{ background: comp.color, color: '#fff' }}>
-            {q.comp}
+            {q.competency}
           </div>
           <div className={`font-serif text-xl font-bold tracking-wider min-w-[60px] ${lowTime ? 'text-red-300 animate-pulse' : ''}`}>
             {fmtTime(timeLeft)}
@@ -136,10 +199,10 @@ export default function SJTTest({ onComplete, onAbort }) {
             {q.situation}
           </div>
 
-          <div className="text-sm font-semibold text-slate-700 mb-3">{q.q}</div>
+          <div className="text-sm font-semibold text-slate-700 mb-3">{q.question}</div>
 
           <div className="flex flex-col gap-2">
-            {q.opts.map((opt, idx) => {
+            {q.options.map((opt, idx) => {
               const sel = ans === idx;
               const isFlashing = flashing === idx;
               return (
@@ -166,9 +229,9 @@ export default function SJTTest({ onComplete, onAbort }) {
                       border: `1.5px solid ${sel || isFlashing ? comp.color : '#E9E3D5'}`,
                     }}
                   >
-                    {opt.l}
+                    {opt.label}
                   </div>
-                  <div className="text-sm leading-relaxed">{opt.t}</div>
+                  <div className="text-sm leading-relaxed">{opt.text}</div>
                 </button>
               );
             })}

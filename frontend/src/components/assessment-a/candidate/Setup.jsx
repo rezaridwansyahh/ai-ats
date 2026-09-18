@@ -30,7 +30,7 @@ export default function Setup({ initial, onSubmit, emailReadOnly = false }) {
     return errs;
   }
 
-  const handleSubmit = async () => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
     const errs = validate();
     setFieldErrors(errs);

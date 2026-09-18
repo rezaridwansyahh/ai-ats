@@ -64,6 +64,44 @@ class PortalAssessmentController {
     }
   }
 
+  async startAttempt(req, res) {
+    try {
+      const result = await portalAssessmentService.startAttempt({ sessionId: req.portalSessionId });
+      res.status(200).json({ message: 'Attempt started', ...result });
+    } catch (err) {
+      res.status(err.status || 500).json({ message: err.message, ...(err.code ? { code: err.code } : {}) });
+    }
+  }
+
+  async getQuestions(req, res) {
+    try {
+      const result = await portalAssessmentService.getQuestions({ sessionId: req.portalSessionId });
+      res.status(200).json({ message: 'Questions for assessment', ...result });
+    } catch (err) {
+      res.status(err.status || 500).json({ message: err.message, ...(err.code ? { code: err.code } : {}) });
+    }
+  }
+
+  async saveAnswer(req, res) {
+    try {
+      const { result_id, question_id, answer, is_correct, score_earned } = req.body;
+      const row = await portalAssessmentService.saveAnswer({ result_id, question_id, answer, is_correct, score_earned });
+      res.status(200).json({ message: 'Answer saved', answer: row });
+    } catch (err) {
+      res.status(err.status || 500).json({ message: err.message, ...(err.code ? { code: err.code } : {}) });
+    }
+  }
+
+  async saveSubtestScore(req, res) {
+    try {
+      const { result_id, subtest_id, score } = req.body;
+      const row = await portalAssessmentService.saveSubtestScore({ result_id, subtest_id, score });
+      res.status(200).json({ message: 'Score saved', score: row });
+    } catch (err) {
+      res.status(err.status || 500).json({ message: err.message, ...(err.code ? { code: err.code } : {}) });
+    }
+  }
+
   async submit(req, res) {
     try {
       const { results, summary } = req.body || {};

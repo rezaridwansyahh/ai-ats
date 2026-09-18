@@ -1,23 +1,63 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Button } from '@/components/ui/button';
-import { FACTORS, KEY, FACTOR_MAX, PF_QS, FACTOR_ORDER } from '../data/pf';
+import { FACTORS, FACTOR_MAX, FACTOR_ORDER } from '../data/pf';
+import { getQuestionsByAssessmentCode } from '@/api/question.api';
+import { saveAnswer } from '@/api/assessment-answer.api';
+import { saveSubtestScore } from '@/api/assessment-score.api';
+import { getPortalQuestions, savePortalAnswer, savePortalSubtestScore } from '@/api/portal-assessment.api';
 
-// 16PF — 105 items, 3 options (a/b/c). Auto-advance on pick.
-// Scoring per Battery D mockup line 2034-2044:
-//  - KEY[i+1] is the scoring entry for item index i (1-indexed: KEY[1] is for question 0).
-//  - Trichotomous form: [factor, aScore, cScore] (length 3). 'a' → +aScore, 'b' → +1, 'c' → +cScore.
-//  - B-factor "reasoning" form: [factor, correctLetter] (length 2). The matching letter → +2, 'b' (unless 'b' is the correct one) → +1.
+// 16PF — up to 105 items, 3 options (a/b/c). Auto-advance on pick.
+// Scores off each question's fetched content (seeded from the old KEY map):
+//  - Non-reasoning items: content.score_first/score_last are the a/c option points; 'b' (mid) always +1.
+//  - Reasoning items (content.is_reasoning): content.correct_index (0/1/2) names the objectively
+//    correct option — picking it → +2; picking 'b' (index 1) when it ISN'T correct → +1.
 //  - Each raw[factor] is then standardized to 1–10 sten by raw / FACTOR_MAX[factor] × 10, clamped.
+// FACTORS/FACTOR_MAX/FACTOR_ORDER stay static — presentational/scoring config, not question content.
 
-export default function PFTest({ onComplete, onAbort }) {
-  const [answers, setAnswers] = useState(Array(105).fill(null));
+const CHOICE_INDEX = { a: 0, b: 1, c: 2 };
+
+export default function PFTest({ resultId, assessmentCode, portalHash, onComplete, onAbort }) {
+  const [phase, setPhase] = useState('loading');
+  const [items, setItems] = useState(null); // [{id, order_index, content:{text,choices,factor,is_reasoning,score_first,score_last,correct_index}}]
+  const [subtestId, setSubtestId] = useState(null);
+  const [answers, setAnswers] = useState([]);
   const [curQ, setCurQ] = useState(0);
 
-  const total = PF_QS.length;
-  const q = PF_QS[curQ];
-  const itemNum = curQ + 1;
-  const key = KEY[itemNum];
-  const factorCode = key?.[0];
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      try {
+        const { data } = portalHash ? await getPortalQuestions(portalHash) : await getQuestionsByAssessmentCode(assessmentCode);
+        const group = data?.questions?.pf;
+        if (cancelled) return;
+        if (!group?.items?.length) throw new Error('No 16PF questions found');
+        const sorted = [...group.items].sort((a, b) => a.order_index - b.order_index);
+        setItems(sorted);
+        setSubtestId(group.subtest.id);
+        setAnswers(Array(sorted.length).fill(null));
+        setPhase('active');
+      } catch {
+        if (!cancelled) setPhase('error');
+      }
+    })();
+    return () => { cancelled = true; };
+  }, [assessmentCode, portalHash]);
+
+  if (phase === 'loading') {
+    return <div className="max-w-[440px] mx-auto px-4 py-20 text-center text-sm text-slate-500">Memuat soal…</div>;
+  }
+  if (phase === 'error') {
+    return (
+      <div className="max-w-[440px] mx-auto px-4 py-20 text-center">
+        <p className="text-sm text-rose-600 mb-4">Gagal memuat soal. Silakan coba lagi.</p>
+        <Button variant="outline" onClick={onAbort}>← Kembali</Button>
+      </div>
+    );
+  }
+
+  const total = items.length;
+  const q = items[curQ].content;
+  const factorCode = q.factor;
   const factor = FACTORS[factorCode] || { color: '#7C3AED', bg: '#F5F3FF', nameID: factorCode };
   const ans = answers[curQ];
   const pct = Math.round((curQ / total) * 100);
@@ -25,12 +65,19 @@ export default function PFTest({ onComplete, onAbort }) {
   const color = factor.color;
   const bg = factor.bg;
 
+  const persistAnswer = (v) => {
+    if (!resultId) return;
+    const payload = { result_id: resultId, question_id: items[curQ].id, answer: v, is_correct: null, score_earned: null };
+    (portalHash ? savePortalAnswer(portalHash, payload) : saveAnswer(payload)).catch(() => {});
+  };
+
   const setAns = (v) => {
     setAnswers((p) => {
       const next = [...p];
       next[curQ] = v;
       return next;
     });
+    persistAnswer(v);
     if (curQ < total - 1) {
       setCurQ(curQ + 1);
     } else {
@@ -43,18 +90,16 @@ export default function PFTest({ onComplete, onAbort }) {
     FACTOR_ORDER.forEach((f) => (raw[f] = 0));
     final.forEach((choice, i) => {
       if (!choice) return;
-      const k = KEY[i + 1];
-      if (!k) return;
-      const f = k[0];
-      if (k.length === 3) {
-        // Trichotomous: a → +aScore, b → +1, c → +cScore
-        if (choice === 'a') raw[f] += k[1];
+      const c = items[i].content;
+      const f = c.factor;
+      if (!c.is_reasoning) {
+        if (choice === 'a') raw[f] += c.score_first;
         else if (choice === 'b') raw[f] += 1;
-        else if (choice === 'c') raw[f] += k[2];
+        else if (choice === 'c') raw[f] += c.score_last;
       } else {
-        // B-factor letter form: correct letter → +2; otherwise 'b' (mid) → +1 if not also the correct one
-        if (choice === k[1]) raw[f] += 2;
-        else if (choice === 'b' && k[1] !== 'b') raw[f] += 1;
+        const choiceIdx = CHOICE_INDEX[choice];
+        if (choiceIdx === c.correct_index) raw[f] += 2;
+        else if (choice === 'b' && c.correct_index !== 1) raw[f] += 1;
       }
     });
     const std = {};
@@ -62,13 +107,18 @@ export default function PFTest({ onComplete, onAbort }) {
       const max = FACTOR_MAX[f] || 1;
       std[f] = Math.max(1, Math.min(10, Math.round((raw[f] / max) * 10)));
     });
-    onComplete({ raw, std });
+    const res = { raw, std };
+    if (resultId && subtestId) {
+      const payload = { result_id: resultId, subtest_id: subtestId, score: res };
+      (portalHash ? savePortalSubtestScore(portalHash, payload) : saveSubtestScore(payload)).catch(() => {});
+    }
+    onComplete(res);
   };
 
   const opts = [
-    { key: 'a', txt: q.o[0] },
-    { key: 'b', txt: q.o[1] },
-    { key: 'c', txt: q.o[2] },
+    { key: 'a', txt: q.choices[0] },
+    { key: 'b', txt: q.choices[1] },
+    { key: 'c', txt: q.choices[2] },
   ];
 
   return (
@@ -100,7 +150,7 @@ export default function PFTest({ onComplete, onAbort }) {
             <strong>Petunjuk:</strong> Pilih satu pilihan (a/b/c) yang paling mencerminkan diri Anda — jawaban langsung lanjut otomatis.
           </div>
 
-          <div className="text-sm md:text-base font-medium text-slate-700 leading-relaxed mb-4">{q.s}</div>
+          <div className="text-sm md:text-base font-medium text-slate-700 leading-relaxed mb-4">{q.text}</div>
 
           <div className="flex flex-col gap-2.5">
             {opts.map(({ key: k, txt }) => {

@@ -1,18 +1,75 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Button } from '@/components/ui/button';
-import { GROUPS } from '../data/disc';
 import { scoreDISC } from '../utils/scoring';
+import { getQuestionsByAssessmentCode } from '@/api/question.api';
+import { saveAnswer } from '@/api/assessment-answer.api';
+import { saveSubtestScore } from '@/api/assessment-score.api';
+import { getPortalQuestions, savePortalAnswer, savePortalSubtestScore } from '@/api/portal-assessment.api';
+
+// scoreDISC() still reads groups from the static data/disc.js file directly —
+// same reasoning as BigFiveTest: DB content is a verbatim seed of that file.
 
 // Each entry: { m: optionIdx|null, l: optionIdx|null }
-const initAnswers = () => Array(GROUPS.length).fill(null).map(() => ({ m: null, l: null }));
+const initAnswers = (n) => Array(n).fill(null).map(() => ({ m: null, l: null }));
 
-export default function DISCTest({ onComplete, onAbort }) {
-  const [answers, setAnswers] = useState(initAnswers);
+export default function DISCTest({ resultId, assessmentCode, portalHash, onComplete, onAbort }) {
+  const [phase, setPhase] = useState('loading');
+  const [items, setItems] = useState(null); // [{id, order_index, content:{options:[{text,most_dim,least_dim}]}}]
+  const [subtestId, setSubtestId] = useState(null);
+  const [answers, setAnswers] = useState([]);
   const [curQ, setCurQ] = useState(0);
 
-  const total = GROUPS.length; // 24
-  const group = GROUPS[curQ];
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      try {
+        const { data } = portalHash ? await getPortalQuestions(portalHash) : await getQuestionsByAssessmentCode(assessmentCode);
+        const group = data?.questions?.disc;
+        if (cancelled) return;
+        if (!group?.items?.length) throw new Error('No DISC questions found');
+        const sorted = [...group.items].sort((a, b) => a.order_index - b.order_index);
+        setItems(sorted);
+        setSubtestId(group.subtest.id);
+        setAnswers(initAnswers(sorted.length));
+        setPhase('active');
+      } catch {
+        if (!cancelled) setPhase('error');
+      }
+    })();
+    return () => { cancelled = true; };
+  }, [assessmentCode, portalHash]);
+
+  if (phase === 'loading') {
+    return <div className="max-w-[440px] mx-auto px-4 py-20 text-center text-sm text-slate-500">Memuat soal…</div>;
+  }
+  if (phase === 'error') {
+    return (
+      <div className="max-w-[440px] mx-auto px-4 py-20 text-center">
+        <p className="text-sm text-rose-600 mb-4">Gagal memuat soal. Silakan coba lagi.</p>
+        <Button variant="outline" onClick={onAbort}>← Kembali</Button>
+      </div>
+    );
+  }
+
+  const total = items.length;
+  const q = items[curQ];
+  const group = { options: q.content.options.map((o) => ({ t: o.text, p: o.most_dim, k: o.least_dim })) };
   const ans = answers[curQ];
+
+  const persistAnswer = (m, l) => {
+    if (!resultId) return;
+    const payload = { result_id: resultId, question_id: q.id, answer: { m, l }, is_correct: null, score_earned: null };
+    (portalHash ? savePortalAnswer(portalHash, payload) : saveAnswer(payload)).catch(() => {});
+  };
+
+  const finishAndScore = (finalAnswers) => {
+    const res = scoreDISC(finalAnswers);
+    if (resultId && subtestId) {
+      const payload = { result_id: resultId, subtest_id: subtestId, score: res };
+      (portalHash ? savePortalSubtestScore(portalHash, payload) : saveSubtestScore(payload)).catch(() => {});
+    }
+    onComplete(res);
+  };
   const pct = Math.round((curQ / total) * 100);
   const isLast = curQ === total - 1;
 
@@ -20,6 +77,7 @@ export default function DISCTest({ onComplete, onAbort }) {
   const pickMost = (idx) => {
     setAnswers((prev) => {
       const next = prev.map((row, i) => (i === curQ ? { m: idx, l: row.l === idx ? null : row.l } : row));
+      persistAnswer(idx, next[curQ].l);
       maybeAdvance(next, idx, next[curQ].l);
       return next;
     });
@@ -28,6 +86,7 @@ export default function DISCTest({ onComplete, onAbort }) {
   const pickLeast = (idx) => {
     setAnswers((prev) => {
       const next = prev.map((row, i) => (i === curQ ? { l: idx, m: row.m === idx ? null : row.m } : row));
+      persistAnswer(next[curQ].m, idx);
       maybeAdvance(next, next[curQ].m, idx);
       return next;
     });
@@ -40,7 +99,7 @@ export default function DISCTest({ onComplete, onAbort }) {
       if (curQ < total - 1) {
         setCurQ(curQ + 1);
       } else {
-        onComplete(scoreDISC(nextAns));
+        finishAndScore(nextAns);
       }
     }, 250);
   };
@@ -126,7 +185,7 @@ export default function DISCTest({ onComplete, onAbort }) {
               <Button
                 size="sm"
                 disabled={ans.m == null || ans.l == null}
-                onClick={() => onComplete(scoreDISC(answers))}
+                onClick={() => finishAndScore(answers)}
                 className="bg-purple-600 hover:bg-purple-700"
               >
                 Selesai →

@@ -12,6 +12,7 @@ router.get('/candidate/:candidate_id/active', assessmentBatteryResultController.
 router.get('/candidate/:candidate_id', assessmentBatteryResultController.getByCandidateId);
 router.get('/:id', assessmentBatteryResultController.getById);
 
+router.post('/start', assessmentBatteryResultController.startAttempt);
 router.post('/', assessmentBatteryResultController.submit);
 
 router.put('/:id/report', assessmentBatteryResultController.updateReport);

@@ -87,6 +87,10 @@ DROP TABLE IF EXISTS company_email_template CASCADE;
 DROP TABLE IF EXISTS job_automation_settings CASCADE;
 DROP TABLE IF EXISTS candidate_job_score CASCADE;
 DROP TABLE IF EXISTS assessment_sessions CASCADE;
+DROP TABLE IF EXISTS assessment_score CASCADE;
+DROP TABLE IF EXISTS assessment_answer CASCADE;
+DROP TABLE IF EXISTS assessment_question CASCADE;
+DROP TABLE IF EXISTS assessment_subtest CASCADE;
 DROP TABLE IF EXISTS core_applicant_assessment CASCADE;
 DROP TABLE IF EXISTS master_assessment CASCADE;
 DROP TABLE IF EXISTS participants CASCADE; -- For cleanup only
@@ -121,6 +125,7 @@ DROP TYPE IF EXISTS contract_type_enum CASCADE;
 DROP TYPE IF EXISTS negotiation_initiator_type CASCADE;
 DROP TYPE IF EXISTS document_type_enum CASCADE;
 DROP TYPE IF EXISTS match_rescore_status_type CASCADE;
+DROP TYPE IF EXISTS question_type_enum CASCADE;
 
 -- Create ENUM type
 CREATE TYPE status_type AS ENUM ('Draft', 'Active', 'Running', 'Expired', 'Failed', 'Blocked');
@@ -1283,6 +1288,65 @@ CREATE TABLE core_applicant_assessment(
 CREATE INDEX idx_applicant_assessment ON core_applicant_assessment(candidate_id);
 CREATE INDEX idx_assessment_date      ON core_applicant_assessment(assessment_date);
 CREATE INDEX idx_assessment_type      ON core_applicant_assessment(assessment_id);
+
+-- Normalized question bank (replaces hardcoded per-battery JS data files) + candidate
+-- answer/score persistence (previously discarded after scoring — only the final
+-- aggregate landed in core_applicant_assessment.results/summary above).
+CREATE TYPE question_type_enum AS ENUM (
+  'mc', 'input', 'likert', 'forced_choice_pair', 'forced_choice_quad',
+  'scenario_mc', 'yes_no', 'trichotomous_rated'
+);
+
+-- One row per atomic, independently-timed testable unit (e.g. GI and KA are separate
+-- rows even though both are commonly labeled "tk" — group_key carries that label).
+CREATE TABLE assessment_subtest (
+  id SERIAL PRIMARY KEY,
+  assessment_id INT NOT NULL REFERENCES master_assessment(id),
+  subtest_key   VARCHAR(20) NOT NULL,
+  group_key     VARCHAR(20),
+  name          VARCHAR(255) NOT NULL,
+  weight        NUMERIC,
+  time_limit_seconds INT,
+  order_index   INT NOT NULL,
+  created_at    TIMESTAMP NOT NULL DEFAULT NOW(),
+  updated_at    TIMESTAMP NOT NULL DEFAULT NOW(),
+  UNIQUE (assessment_id, subtest_key)
+);
+
+CREATE TABLE assessment_question (
+  id SERIAL PRIMARY KEY,
+  subtest_id    INT NOT NULL REFERENCES assessment_subtest(id),
+  question_type question_type_enum NOT NULL,
+  order_index   INT NOT NULL,
+  content       JSONB NOT NULL,
+  is_active     BOOLEAN NOT NULL DEFAULT true,
+  created_at    TIMESTAMP NOT NULL DEFAULT NOW(),
+  updated_at    TIMESTAMP NOT NULL DEFAULT NOW(),
+  UNIQUE (subtest_id, order_index)
+);
+
+CREATE TABLE assessment_answer (
+  id           SERIAL PRIMARY KEY,
+  result_id    INT NOT NULL REFERENCES core_applicant_assessment(id) ON DELETE CASCADE,
+  question_id  INT NOT NULL REFERENCES assessment_question(id),
+  answer       JSONB NOT NULL,
+  is_correct   BOOLEAN,
+  score_earned NUMERIC,
+  answered_at  TIMESTAMP NOT NULL DEFAULT NOW(),
+  UNIQUE (result_id, question_id)
+);
+
+-- One row per (attempt, subtest) — written once, when the candidate finishes that
+-- subtest, from the same client-side scoring pass that also feeds
+-- core_applicant_assessment.results.by_subtest at final submit.
+CREATE TABLE assessment_score (
+  id          SERIAL PRIMARY KEY,
+  result_id   INT NOT NULL REFERENCES core_applicant_assessment(id) ON DELETE CASCADE,
+  subtest_id  INT NOT NULL REFERENCES assessment_subtest(id),
+  score       JSONB NOT NULL,
+  computed_at TIMESTAMP NOT NULL DEFAULT NOW(),
+  UNIQUE (result_id, subtest_id)
+);
 
 CREATE TABLE assessment_sessions(
   id SERIAL PRIMARY KEY,

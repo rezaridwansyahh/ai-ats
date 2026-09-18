@@ -31,6 +31,8 @@ import candidatePipeline from "./src/modules/candidate-pipeline/candidate-pipeli
 import assessment from "./src/modules/assessment/assessment.route.js"
 import participant from "./src/modules/assessment/participant/participant.route.js"
 import question from "./src/modules/assessment/question/question.route.js"
+import assessmentAnswer from "./src/modules/assessment/assessment-answer/assessment-answer.route.js"
+import assessmentScore from "./src/modules/assessment/assessment-score/assessment-score.route.js"
 import session from "./src/modules/assessment/session/session.route.js"
 import assessmentBatteryResult from "./src/modules/assessment/assessment-battery-result/assessment-battery-result.route.js"
 import assessmentAI from "./src/modules/assessment/assessment-ai/assessment-ai.route.js"
@@ -117,6 +119,8 @@ portal.use("/api/setting", setting);
 portal.use("/api/assessment", assessment);
 portal.use("/api/participant", participant);
 portal.use("/api/question", question);
+portal.use("/api/assessment-answer", assessmentAnswer);
+portal.use("/api/assessment-score", assessmentScore);
 portal.use("/api/session", session);
 portal.use("/api/assessment-battery-result", assessmentBatteryResult);
 portal.use("/api/assessment-ai", assessmentAI);
@@ -160,6 +164,8 @@ app.use("/api/candidate-pipeline", candidatePipeline);
 app.use("/api/assessment", assessment);
 app.use("/api/participant", participant);
 app.use("/api/question", question);
+app.use("/api/assessment-answer", assessmentAnswer);
+app.use("/api/assessment-score", assessmentScore);
 app.use("/api/session", session);
 app.use("/api/assessment-battery-result", assessmentBatteryResult);
 app.use("/api/assessment-ai", assessmentAI);

@@ -17,7 +17,30 @@ export const getPortalForm = (hash) =>
 export const updatePortalParticipant = (hash, fields) =>
   portalApi.put(`/portal-assessment/${hash}/participant`, fields);
 
-// JWT-protected — body: { results, summary }. Inserts a new result row each call,
-// marks the session 'completed'. Always allows re-take.
+// JWT-protected — creates (or returns the existing) result row before any
+// subtest is answered, so assessment_answer/assessment_score saves have a real
+// result_id to point at from the first question. Call once, right after the
+// candidate confirms their profile and before the first subtest begins.
+export const startPortalAssessment = (hash) =>
+  portalApi.post(`/portal-assessment/${hash}/start`);
+
+// JWT-protected — body: { results, summary }. Updates the draft row from
+// startAttempt() if one exists (the normal path), otherwise creates one.
+// Marks the session 'completed'.
 export const submitPortalAssessment = (hash, { results, summary }) =>
   portalApi.post(`/portal-assessment/${hash}/submit`, { results, summary });
+
+// JWT-protected — question bank for this candidate's battery, grouped by
+// subtest_key: { questions: { GI: {subtest, items}, KA: {...}, ... } }.
+// The staff-facing /api/question routes are unreachable here (different JWT
+// scope entirely), so this is the portal-authenticated equivalent.
+export const getPortalQuestions = (hash) =>
+  portalApi.get(`/portal-assessment/${hash}/questions`);
+
+// JWT-protected — upsert one answer for the current attempt.
+export const savePortalAnswer = (hash, { result_id, question_id, answer, is_correct, score_earned }) =>
+  portalApi.post(`/portal-assessment/${hash}/answer`, { result_id, question_id, answer, is_correct, score_earned });
+
+// JWT-protected — upsert one subtest's score for the current attempt.
+export const savePortalSubtestScore = (hash, { result_id, subtest_id, score }) =>
+  portalApi.post(`/portal-assessment/${hash}/score`, { result_id, subtest_id, score });

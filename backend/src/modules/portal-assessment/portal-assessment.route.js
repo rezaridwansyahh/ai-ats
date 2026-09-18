@@ -19,6 +19,30 @@ router.put(
 );
 
 router.post(
+  '/:hash/start',
+  portalAssessmentController.requirePortalAuth.bind(portalAssessmentController),
+  portalAssessmentController.startAttempt
+);
+
+router.get(
+  '/:hash/questions',
+  portalAssessmentController.requirePortalAuth.bind(portalAssessmentController),
+  portalAssessmentController.getQuestions
+);
+
+router.post(
+  '/:hash/answer',
+  portalAssessmentController.requirePortalAuth.bind(portalAssessmentController),
+  portalAssessmentController.saveAnswer
+);
+
+router.post(
+  '/:hash/score',
+  portalAssessmentController.requirePortalAuth.bind(portalAssessmentController),
+  portalAssessmentController.saveSubtestScore
+);
+
+router.post(
   '/:hash/submit',
   portalAssessmentController.requirePortalAuth.bind(portalAssessmentController),
   portalAssessmentController.submit

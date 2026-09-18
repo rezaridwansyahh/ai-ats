@@ -1,17 +1,68 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Button } from '@/components/ui/button';
-import { ITEMS, EPPS_ANSKEY, SCALE_ORDER, CON_PAIRS } from '../data/epps';
+import { SCALE_ORDER, CON_PAIRS } from '../data/epps';
+import { getQuestionsByAssessmentCode } from '@/api/question.api';
+import { saveAnswer } from '@/api/assessment-answer.api';
+import { saveSubtestScore } from '@/api/assessment-score.api';
+import { getPortalQuestions, savePortalAnswer, savePortalSubtestScore } from '@/api/portal-assessment.api';
 
-export default function EPPSTest({ onComplete, onAbort }) {
-  const [answers, setAnswers] = useState(Array(225).fill(null));
+// Unlike BigFive/DISC/Holland, EPPS scores directly off each question's fetched
+// `content.a.scale`/`content.b.scale` — the answer key travels with the question
+// row itself (seeded from EPPS_ANSKEY), so an edited scale mapping in the DB
+// actually takes effect here. CON_PAIRS/SCALE_ORDER stay static — they're
+// subtest-level scoring config (which items pair up), not per-question content.
+
+export default function EPPSTest({ resultId, assessmentCode, portalHash, onComplete, onAbort }) {
+  const [phase, setPhase] = useState('loading');
+  const [items, setItems] = useState(null); // [{id, order_index, content:{a:{text,scale},b:{text,scale}}}]
+  const [subtestId, setSubtestId] = useState(null);
+  const [answers, setAnswers] = useState([]);
   const [curQ, setCurQ] = useState(0);
 
-  const total = ITEMS.length; // 225
-  const q = ITEMS[curQ];
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      try {
+        const { data } = portalHash ? await getPortalQuestions(portalHash) : await getQuestionsByAssessmentCode(assessmentCode);
+        const group = data?.questions?.epps;
+        if (cancelled) return;
+        if (!group?.items?.length) throw new Error('No EPPS questions found');
+        const sorted = [...group.items].sort((a, b) => a.order_index - b.order_index);
+        setItems(sorted);
+        setSubtestId(group.subtest.id);
+        setAnswers(Array(sorted.length).fill(null));
+        setPhase('active');
+      } catch {
+        if (!cancelled) setPhase('error');
+      }
+    })();
+    return () => { cancelled = true; };
+  }, [assessmentCode, portalHash]);
+
+  if (phase === 'loading') {
+    return <div className="max-w-[440px] mx-auto px-4 py-20 text-center text-sm text-slate-500">Memuat soal…</div>;
+  }
+  if (phase === 'error') {
+    return (
+      <div className="max-w-[440px] mx-auto px-4 py-20 text-center">
+        <p className="text-sm text-rose-600 mb-4">Gagal memuat soal. Silakan coba lagi.</p>
+        <Button variant="outline" onClick={onAbort}>← Kembali</Button>
+      </div>
+    );
+  }
+
+  const total = items.length; // 225
+  const q = items[curQ].content;
   const ans = answers[curQ];
   const pct = Math.round((curQ / total) * 100);
   const blk = Math.floor(curQ / 15) + 1;
   const isLast = curQ === total - 1;
+
+  const persistAnswer = (v) => {
+    if (!resultId) return;
+    const payload = { result_id: resultId, question_id: items[curQ].id, answer: v, is_correct: null, score_earned: null };
+    (portalHash ? savePortalAnswer(portalHash, payload) : saveAnswer(payload)).catch(() => {});
+  };
 
   const setAns = (v) => {
     setAnswers((p) => {
@@ -19,6 +70,7 @@ export default function EPPSTest({ onComplete, onAbort }) {
       next[curQ] = v;
       return next;
     });
+    persistAnswer(v);
     if (curQ < total - 1) {
       setCurQ(curQ + 1);
     } else {
@@ -32,21 +84,24 @@ export default function EPPSTest({ onComplete, onAbort }) {
     let conScore = 0;
     final.forEach((a, i) => {
       if (!a) return;
-      const k = EPPS_ANSKEY[i];
-      const correct = (a === 'A' && k.a === 'a') || (a === 'B' && k.a === 'b');
-      if (correct) scores[k.s]++;
+      const c = items[i].content;
+      const scale = a === 'A' ? c.a.scale : c.b.scale;
+      if (scale) scores[scale]++;
     });
     CON_PAIRS.forEach(([i1, i2]) => {
-      const k1 = EPPS_ANSKEY[i1 - 1];
-      const k2 = EPPS_ANSKEY[i2 - 1];
       const a1 = final[i1 - 1];
       const a2 = final[i2 - 1];
       if (!a1 || !a2) return;
-      const c1 = (a1 === 'A' && k1.a === 'a') || (a1 === 'B' && k1.a === 'b');
-      const c2 = (a2 === 'A' && k2.a === 'a') || (a2 === 'B' && k2.a === 'b');
+      const c1 = a1 === 'A' ? !!items[i1 - 1].content.a.scale : !!items[i1 - 1].content.b.scale;
+      const c2 = a2 === 'A' ? !!items[i2 - 1].content.a.scale : !!items[i2 - 1].content.b.scale;
       if (c1 === c2) conScore++;
     });
-    onComplete({ scores, conScore });
+    const res = { scores, conScore };
+    if (resultId && subtestId) {
+      const payload = { result_id: resultId, subtest_id: subtestId, score: res };
+      (portalHash ? savePortalSubtestScore(portalHash, payload) : saveSubtestScore(payload)).catch(() => {});
+    }
+    onComplete(res);
   };
 
   return (
@@ -76,8 +131,8 @@ export default function EPPSTest({ onComplete, onAbort }) {
 
           <div className="flex flex-col gap-2.5">
             {[
-              { key: 'A', txt: q.a, label: 'a' },
-              { key: 'B', txt: q.b, label: 'b' },
+              { key: 'A', txt: q.a.text, label: 'a' },
+              { key: 'B', txt: q.b.text, label: 'b' },
             ].map(({ key, txt, label }) => {
               const sel = ans === key;
               return (

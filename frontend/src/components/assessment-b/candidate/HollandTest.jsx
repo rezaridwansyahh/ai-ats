@@ -1,16 +1,66 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Button } from '@/components/ui/button';
-import { HOL_QS, CONSISTENCY } from '../data/holland';
+import { CONSISTENCY } from '../data/holland';
+import { getQuestionsByAssessmentCode } from '@/api/question.api';
+import { saveAnswer } from '@/api/assessment-answer.api';
+import { saveSubtestScore } from '@/api/assessment-score.api';
+import { getPortalQuestions, savePortalAnswer, savePortalSubtestScore } from '@/api/portal-assessment.api';
 
-export default function HollandTest({ onComplete, onAbort }) {
-  const [answers, setAnswers] = useState(Array(108).fill(null));
+// Scores off each question's fetched content.dimension (seeded from HOL_QS.t) —
+// same reasoning as EPPSTest: the answer key travels with the question row.
+// CONSISTENCY stays static — it's a fixed lookup table over RIASEC pair codes,
+// not per-question content.
+
+export default function HollandTest({ resultId, assessmentCode, portalHash, onComplete, onAbort }) {
+  const [phase, setPhase] = useState('loading');
+  const [items, setItems] = useState(null); // [{id, order_index, content:{text,dimension}}]
+  const [subtestId, setSubtestId] = useState(null);
+  const [answers, setAnswers] = useState([]);
   const [curQ, setCurQ] = useState(0);
 
-  const total = HOL_QS.length;
-  const q = HOL_QS[curQ];
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      try {
+        const { data } = portalHash ? await getPortalQuestions(portalHash) : await getQuestionsByAssessmentCode(assessmentCode);
+        const group = data?.questions?.holland;
+        if (cancelled) return;
+        if (!group?.items?.length) throw new Error('No Holland questions found');
+        const sorted = [...group.items].sort((a, b) => a.order_index - b.order_index);
+        setItems(sorted);
+        setSubtestId(group.subtest.id);
+        setAnswers(Array(sorted.length).fill(null));
+        setPhase('active');
+      } catch {
+        if (!cancelled) setPhase('error');
+      }
+    })();
+    return () => { cancelled = true; };
+  }, [assessmentCode, portalHash]);
+
+  if (phase === 'loading') {
+    return <div className="max-w-[440px] mx-auto px-4 py-20 text-center text-sm text-slate-500">Memuat soal…</div>;
+  }
+  if (phase === 'error') {
+    return (
+      <div className="max-w-[440px] mx-auto px-4 py-20 text-center">
+        <p className="text-sm text-rose-600 mb-4">Gagal memuat soal. Silakan coba lagi.</p>
+        <Button variant="outline" onClick={onAbort}>← Kembali</Button>
+      </div>
+    );
+  }
+
+  const total = items.length;
+  const q = items[curQ].content;
   const ans = answers[curQ];
   const pct = Math.round((curQ / total) * 100);
   const isLast = curQ === total - 1;
+
+  const persistAnswer = (v) => {
+    if (!resultId) return;
+    const payload = { result_id: resultId, question_id: items[curQ].id, answer: v, is_correct: null, score_earned: null };
+    (portalHash ? savePortalAnswer(portalHash, payload) : saveAnswer(payload)).catch(() => {});
+  };
 
   const setAns = (v) => {
     setAnswers((p) => {
@@ -18,6 +68,7 @@ export default function HollandTest({ onComplete, onAbort }) {
       next[curQ] = v;
       return next;
     });
+    persistAnswer(v);
     if (curQ < total - 1) {
       setCurQ(curQ + 1);
     } else {
@@ -28,7 +79,7 @@ export default function HollandTest({ onComplete, onAbort }) {
   const finish = (final) => {
     const scores = { R: 0, I: 0, A: 0, S: 0, E: 0, C: 0 };
     final.forEach((a, i) => {
-      if (a === true) scores[HOL_QS[i].t]++;
+      if (a === true) scores[items[i].content.dimension]++;
     });
     const ranked = Object.entries(scores).sort((a, b) => b[1] - a[1]);
     const code3 = ranked.slice(0, 3).map((x) => x[0]).join('');
@@ -38,7 +89,12 @@ export default function HollandTest({ onComplete, onAbort }) {
     const consistency = CONSISTENCY[combo2] || CONSISTENCY[top2 + top1] || 'Tidak Diketahui';
     const top2Score = ranked.slice(0, 2).reduce((s, [, v]) => s + v, 0);
     const composite = Math.max(1, Math.min(10, Math.round(((top2Score / (18 * 2)) * 100) / 10)));
-    onComplete({ scores, ranked, code3, top1, top2, combo2, consistency, composite });
+    const res = { scores, ranked, code3, top1, top2, combo2, consistency, composite };
+    if (resultId && subtestId) {
+      const payload = { result_id: resultId, subtest_id: subtestId, score: res };
+      (portalHash ? savePortalSubtestScore(portalHash, payload) : saveSubtestScore(payload)).catch(() => {});
+    }
+    onComplete(res);
   };
 
   return (
@@ -62,7 +118,7 @@ export default function HollandTest({ onComplete, onAbort }) {
             Anda — <strong>TIDAK</strong> jika tidak.
           </div>
           <div className="text-base font-medium text-slate-700 leading-relaxed mb-4 p-3.5 bg-[#FAFAF8] rounded-lg border border-slate-200">
-            {curQ + 1}. {q.q}
+            {curQ + 1}. {q.text}
           </div>
 
           <div className="flex gap-2.5 mb-3">

@@ -11,6 +11,12 @@ export const getResultFromCandidate = ({ candidate_id, battery }) =>
   api.get('/assessment-battery-result/from-candidate', { params: { candidate_id, battery } });
 export const getActiveProgress = (participant_id, assessment_id) =>
   api.get(`/assessment-battery-result/participant/${participant_id}/active`, { params: { assessment_id } });
+// Creates (or returns the existing) result row before any subtest is answered,
+// so assessment_answer/assessment_score saves have a real result_id to point at
+// from the very first question — otherwise that row wouldn't exist until submit().
+export const startAssessmentAttempt = ({ candidate_id, assessment_id }) =>
+  api.post('/assessment-battery-result/start', { candidate_id, assessment_id });
+
 export const submitAssessment = (data) => api.post('/assessment-battery-result', data);
 export const updateAssessmentReport = (id, data) =>
   api.put(`/assessment-battery-result/${id}/report`, data);

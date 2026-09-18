@@ -1,6 +1,10 @@
 import jwt from 'jsonwebtoken';
 import PortalAssessment from './portal-assessment.model.js';
 import AssessmentBatteryResult from '../assessment/assessment-battery-result/assessment-battery-result.model.js';
+import assessmentBatteryResultService from '../assessment/assessment-battery-result/assessment-battery-result.service.js';
+import questionService from '../assessment/question/question.service.js';
+import assessmentAnswerService from '../assessment/assessment-answer/assessment-answer.service.js';
+import assessmentScoreService from '../assessment/assessment-score/assessment-score.service.js';
 import Session from '../assessment/session/session.model.js';
 import getDb from '../../config/postgres.js';
 
@@ -9,6 +13,10 @@ const PORTAL_TOKEN_TTL_SECONDS = 4 * 60 * 60; // 4 hours
 
 // Battery code → master_assessment.id (seeded in db/data/assessments.js).
 const ASSESSMENT_ID_BY_BATTERY = { A: 1, B: 2, C: 3, D: 4, I: 5, T: 6 };
+const ASSESSMENT_CODE_BY_BATTERY = {
+  A: 'myralix_battery_a', B: 'myralix_battery_b', C: 'myralix_battery_c', D: 'myralix_battery_d',
+  I: 'myralix_insights_discovery', T: 'myralix_thomas_kilmann',
+};
 
 // Accept a hash with or without dashes; reject anything else.
 function isHashFormat(s) {
@@ -133,6 +141,68 @@ class PortalAssessmentService {
     return { candidate_id: session.candidate_id };
   }
 
+  // Creates (or returns the existing) result row before any subtest is answered,
+  // so assessment_answer/assessment_score saves have a real result_id from the
+  // very first question — mirrors assessmentBatteryResultService.startAttempt(),
+  // just resolving candidate_id/assessment_id from the portal session instead of
+  // the request body (a candidate on this path never sends their own candidate_id).
+  async startAttempt({ sessionId }) {
+    if (!sessionId) throw { status: 400, message: 'session_id is required' };
+
+    const raw = await Session.getById(sessionId);
+    if (!raw) throw { status: 404, message: 'Session not found' };
+    const session = await lazyExpire(raw);
+    if (!session.candidate_id) throw { status: 400, message: 'Session is not bound to a candidate.' };
+    if (session.status === 'completed') {
+      throw { status: 409, message: 'This assessment has already been submitted.' };
+    }
+    if (session.status === 'revoked') {
+      throw { status: 410, message: 'This invitation has been revoked by the recruiter.', code: 'revoked' };
+    }
+    if (session.status === 'expired') {
+      throw { status: 410, message: 'This invitation has expired.', code: 'expired' };
+    }
+
+    const assessmentId = ASSESSMENT_ID_BY_BATTERY[session.battery];
+    if (!assessmentId) throw { status: 400, message: `Unknown battery: ${session.battery}` };
+
+    const result = await assessmentBatteryResultService.startAttempt({
+      candidate_id: session.candidate_id,
+      assessment_id: assessmentId,
+    });
+    return { result, session_id: sessionId };
+  }
+
+  // Read-only question bank access for the candidate taking the test — the
+  // staff-facing /api/question routes are authToken-gated (recruiter JWT) and
+  // unreachable from the portal session (a different JWT scope entirely), so
+  // this is a portal-authenticated passthrough to the same underlying service.
+  async getQuestions({ sessionId }) {
+    if (!sessionId) throw { status: 400, message: 'session_id is required' };
+    const raw = await Session.getById(sessionId);
+    if (!raw) throw { status: 404, message: 'Session not found' };
+    const session = await lazyExpire(raw);
+
+    const code = ASSESSMENT_CODE_BY_BATTERY[session.battery];
+    if (!code) throw { status: 400, message: `Unknown battery: ${session.battery}` };
+
+    const questions = await questionService.getQuestionsByCode(code);
+    return { questions };
+  }
+
+  // Passthrough saves for per-question answers / per-subtest scores — same
+  // reasoning as getQuestions above. result_id comes from the client, which
+  // already holds it from startAttempt(); the portal JWT (verified by
+  // requirePortalAuth before this is ever called) is what proves this
+  // candidate legitimately owns that attempt.
+  async saveAnswer({ result_id, question_id, answer, is_correct, score_earned }) {
+    return await assessmentAnswerService.upsert({ result_id, question_id, answer, is_correct, score_earned });
+  }
+
+  async saveSubtestScore({ result_id, subtest_id, score }) {
+    return await assessmentScoreService.upsert({ result_id, subtest_id, score });
+  }
+
   async submit({ sessionId, results, summary }) {
     if (!sessionId)               throw { status: 400, message: 'session_id is required' };
     if (!results?.by_subtest)     throw { status: 400, message: 'results.by_subtest is required' };
@@ -159,15 +229,27 @@ class PortalAssessmentService {
     try {
       await client.query('BEGIN');
 
-      const row = await AssessmentBatteryResult.create(client, {
-        candidate_id: session.candidate_id,
-        assessment_id:  assessmentId,
-        status:         'completed',
-        results,
-        summary,
-        started_at:     null,
-        completed_at:   new Date().toISOString(),
-      });
+      // A draft row may already exist from startAttempt() — update it in place
+      // instead of inserting a second row, which would hit the
+      // UNIQUE (candidate_id, assessment_id) constraint.
+      const existing = await AssessmentBatteryResult.getForUpdate(client, session.candidate_id, assessmentId);
+      const row = existing
+        ? await AssessmentBatteryResult.update(client, existing.id, {
+            status: 'completed',
+            results,
+            summary,
+            started_at: existing.started_at || null,
+            completed_at: new Date().toISOString(),
+          })
+        : await AssessmentBatteryResult.create(client, {
+            candidate_id: session.candidate_id,
+            assessment_id:  assessmentId,
+            status:         'completed',
+            results,
+            summary,
+            started_at:     null,
+            completed_at:   new Date().toISOString(),
+          });
 
       // Flip session lifecycle — recruiter Take tab depends on this.
       await client.query(

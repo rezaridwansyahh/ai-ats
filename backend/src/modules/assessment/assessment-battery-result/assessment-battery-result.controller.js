@@ -54,6 +54,16 @@ class AssessmentBatteryResultController {
     }
   }
 
+  async startAttempt(req, res) {
+    try {
+      const { candidate_id, assessment_id } = req.body;
+      const result = await assessmentBatteryResultService.startAttempt({ candidate_id, assessment_id });
+      res.status(200).json({ message: 'Attempt started', result });
+    } catch (err) {
+      res.status(err.status || 500).json({ message: err.message });
+    }
+  }
+
   async submit(req, res) {
     try {
       const { candidate_id, assessment_id, answers, started_at, results, summary } = req.body;

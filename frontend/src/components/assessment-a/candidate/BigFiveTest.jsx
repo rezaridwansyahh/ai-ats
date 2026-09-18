@@ -1,17 +1,78 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Button } from '@/components/ui/button';
-import { BF_ITEMS, BF_QS, LIKERT, TRAITS } from '../data/bigfive';
+import { LIKERT, TRAITS } from '../data/bigfive';
 import { scoreBigFive } from '../utils/scoring';
+import { getQuestionsByAssessmentCode } from '@/api/question.api';
+import { saveAnswer } from '@/api/assessment-answer.api';
+import { saveSubtestScore } from '@/api/assessment-score.api';
+import { getPortalQuestions, savePortalAnswer, savePortalSubtestScore } from '@/api/portal-assessment.api';
 
-export default function BigFiveTest({ onComplete, onAbort }) {
-  const [answers, setAnswers] = useState(Array(BF_ITEMS.length).fill(null));
+// scoreBigFive() still reads trait/reverse mapping from the static data/bigfive.js
+// file directly (not passed as a parameter, unlike TK's checkGIAnswer) — since the
+// DB content is a verbatim seed of that same file, scoring stays correct as-is.
+// An edit to a trait/reverse flag via the DB wouldn't affect scoring until
+// scoreBigFive is also updated to take the mapping as an argument.
+
+export default function BigFiveTest({ resultId, assessmentCode, portalHash, onComplete, onAbort }) {
+  const [phase, setPhase] = useState('loading'); // loading | error | active
+  const [items, setItems] = useState(null); // [{id, order_index, content:{text,trait,reverse}}, ...]
+  const [subtestId, setSubtestId] = useState(null);
+  const [answers, setAnswers] = useState([]);
   const [curQ, setCurQ] = useState(0);
 
-  const total = BF_ITEMS.length; // 44
-  const [, trait] = BF_ITEMS[curQ]; // [qnum, trait, reversed]
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      try {
+        const { data } = portalHash ? await getPortalQuestions(portalHash) : await getQuestionsByAssessmentCode(assessmentCode);
+        const group = data?.questions?.bigfive;
+        if (cancelled) return;
+        if (!group?.items?.length) throw new Error('No Big Five questions found');
+        const sorted = [...group.items].sort((a, b) => a.order_index - b.order_index);
+        setItems(sorted);
+        setSubtestId(group.subtest.id);
+        setAnswers(Array(sorted.length).fill(null));
+        setPhase('active');
+      } catch {
+        if (!cancelled) setPhase('error');
+      }
+    })();
+    return () => { cancelled = true; };
+  }, [assessmentCode, portalHash]);
+
+  if (phase === 'loading') {
+    return <div className="max-w-[440px] mx-auto px-4 py-20 text-center text-sm text-slate-500">Memuat soal…</div>;
+  }
+  if (phase === 'error') {
+    return (
+      <div className="max-w-[440px] mx-auto px-4 py-20 text-center">
+        <p className="text-sm text-rose-600 mb-4">Gagal memuat soal. Silakan coba lagi.</p>
+        <Button variant="outline" onClick={onAbort}>← Kembali</Button>
+      </div>
+    );
+  }
+
+  const total = items.length;
+  const q = items[curQ];
+  const trait = q.content.trait;
   const traitMeta = TRAITS[trait] || {};
-  const text = BF_QS[curQ] || '';
+  const text = q.content.text;
   const ans = answers[curQ];
+
+  const persistAnswer = (v) => {
+    if (!resultId) return;
+    const payload = { result_id: resultId, question_id: q.id, answer: v, is_correct: null, score_earned: null };
+    (portalHash ? savePortalAnswer(portalHash, payload) : saveAnswer(payload)).catch(() => {});
+  };
+
+  const finishAndScore = (finalAnswers) => {
+    const res = scoreBigFive(finalAnswers);
+    if (resultId && subtestId) {
+      const payload = { result_id: resultId, subtest_id: subtestId, score: res };
+      (portalHash ? savePortalSubtestScore(portalHash, payload) : saveSubtestScore(payload)).catch(() => {});
+    }
+    onComplete(res);
+  };
   const pct = Math.round((curQ / total) * 100);
   const isLast = curQ === total - 1;
 
@@ -21,11 +82,12 @@ export default function BigFiveTest({ onComplete, onAbort }) {
       next[curQ] = v;
       return next;
     });
+    persistAnswer(v);
     if (curQ < total - 1) {
       setCurQ(curQ + 1);
     } else {
       const finalAnswers = [...answers.slice(0, curQ), v, ...answers.slice(curQ + 1)];
-      onComplete(scoreBigFive(finalAnswers));
+      finishAndScore(finalAnswers);
     }
   };
 
@@ -100,7 +162,7 @@ export default function BigFiveTest({ onComplete, onAbort }) {
               <Button
                 size="sm"
                 disabled={ans == null}
-                onClick={() => onComplete(scoreBigFive(answers))}
+                onClick={() => finishAndScore(answers)}
                 className="bg-sky-600 hover:bg-sky-700"
               >
                 Selesai →
