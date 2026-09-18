@@ -4,7 +4,8 @@ import { Input } from '@/components/ui/input';
 import { getQuestionsByAssessmentCode } from '@/api/question.api';
 import { saveAnswer } from '@/api/assessment-answer.api';
 import { saveSubtestScore } from '@/api/assessment-score.api';
-import { getPortalQuestions, savePortalAnswer, savePortalSubtestScore } from '@/api/portal-assessment.api';
+import { getPortalQuestions, getPortalProgress, savePortalAnswer, savePortalSubtestScore } from '@/api/portal-assessment.api';
+import { findExistingScore, answersByQuestionId, resumeTimeLeft } from '@/utils/assessment-resume';
 import {
   rawToPercentile,
   pctToScore10,
@@ -44,6 +45,47 @@ function emptyAnswers() {
   return { GI: {}, KA: [] };
 }
 
+// Pure — takes explicit answers instead of reading component state, so the same
+// scoring logic can run both from the normal "Selesai" click (against live state)
+// and, on resume, against answers just rehydrated from the server before that
+// state has even committed (e.g. auto-timeout-on-resume, see the mount effect).
+function computeSubScore(subCode, items, ansForSub) {
+  let ok = 0;
+  if (subCode === 'GI') {
+    const giKeys = buildGiKeys(items);
+    items.forEach((it, idx) => {
+      if (checkGIAnswer(idx + 1, ansForSub[idx + 1] || '', giKeys)) ok++;
+    });
+  } else {
+    ansForSub.forEach((ans, idx) => {
+      if (!ans) return;
+      const q = items[idx];
+      if (q && ans === q.content.correct) ok++;
+    });
+  }
+  const pct = rawToPercentile(ok, items.length);
+  const score10 = pctToScore10(pct);
+  const grade = getGrade(pct);
+  const verdict = getVerdict(score10);
+  const res = { ok, items: items.length, pct, score10, g: grade.g, label: grade.l, verdict: verdict.v };
+  if (subCode === 'GI') {
+    res.iq = getIQ(ok);
+    res.iqCls = getIQClass(res.iq);
+  }
+  return res;
+}
+
+function computeComposite(allDone, tkOrder, subtests) {
+  const composite =
+    Math.round(
+      (tkOrder.reduce((s, k) => s + (allDone[k]?.score10 || 0) * Number(subtests[k].subtest.weight), 0) /
+        tkOrder.reduce((s, k) => s + Number(subtests[k].subtest.weight), 0)) *
+        10,
+    ) / 10;
+  const compVerdict = getVerdict(Math.round(composite));
+  return { sub: allDone, composite, compVerdict: compVerdict.v };
+}
+
 export default function TKTest({ resultId, assessmentCode, portalHash, onComplete, onAbort }) {
   const [phase, setPhase] = useState('loading'); // loading | error | sub-intro | sub-active | sub-done
   const [subtests, setSubtests] = useState(null); // { GI: {subtest, items}, KA: {subtest, items} }
@@ -59,7 +101,10 @@ export default function TKTest({ resultId, assessmentCode, portalHash, onComplet
     let cancelled = false;
     (async () => {
       try {
-        const { data } = portalHash ? await getPortalQuestions(portalHash) : await getQuestionsByAssessmentCode(assessmentCode);
+        const [{ data }, progress] = await Promise.all([
+          portalHash ? getPortalQuestions(portalHash) : getQuestionsByAssessmentCode(assessmentCode),
+          portalHash ? getPortalProgress(portalHash).then((r) => r.data) : Promise.resolve({ answers: [], scores: [] }),
+        ]);
         const grouped = data?.questions ?? {};
         const tkParts = Object.values(grouped)
           .filter((g) => g.subtest.group_key === 'tk')
@@ -68,17 +113,87 @@ export default function TKTest({ resultId, assessmentCode, portalHash, onComplet
         if (tkParts.length === 0) throw new Error('No TK subtests found');
         const bySubtestKey = {};
         tkParts.forEach((g) => { bySubtestKey[g.subtest.subtest_key] = g; });
+        const order = tkParts.map((g) => g.subtest.subtest_key);
         setSubtests(bySubtestKey);
-        setTkOrder(tkParts.map((g) => g.subtest.subtest_key));
-        setAnswers({ GI: {}, KA: Array(bySubtestKey.KA?.items.length ?? 0).fill(null) });
-        setCode(tkParts[0].subtest.subtest_key);
-        setTimeLeft(tkParts[0].subtest.time_limit_seconds);
-        setPhase('sub-intro');
+        setTkOrder(order);
+
+        // Resume: skip any atomic subtest already scored server-side, and — if
+        // the very next one has partial answers saved — rehydrate them instead
+        // of restarting it from question 1.
+        const doneMap = {};
+        order.forEach((k) => {
+          const existing = findExistingScore(progress.scores, bySubtestKey[k].subtest.id);
+          if (existing) doneMap[k] = existing;
+        });
+        setDone(doneMap);
+
+        const current = order.find((k) => !doneMap[k]);
+        if (!current) {
+          // Every atomic subtest already scored (e.g. refreshed right after the
+          // last one finished, before the composite could be computed) — finish
+          // TK outright instead of showing a subtest that no longer exists.
+          onComplete(computeComposite(doneMap, order, bySubtestKey));
+          return;
+        }
+
+        const group = bySubtestKey[current];
+        const itemIds = group.items.map((it) => it.id);
+        const answerMap = answersByQuestionId(progress.answers, itemIds);
+
+        const initAnswers = { GI: {}, KA: Array(bySubtestKey.KA?.items.length ?? 0).fill(null) };
+        let firstUnansweredIdx = 0;
+        if (answerMap.size > 0) {
+          if (current === 'GI') {
+            group.items.forEach((it) => {
+              const saved = answerMap.get(it.id);
+              if (saved) initAnswers.GI[it.order_index] = saved.answer;
+            });
+            firstUnansweredIdx = group.items.findIndex((it) => !answerMap.has(it.id));
+          } else {
+            group.items.forEach((it, idx) => {
+              const saved = answerMap.get(it.id);
+              if (saved) initAnswers[current][idx] = saved.answer;
+            });
+            firstUnansweredIdx = group.items.findIndex((it) => !answerMap.has(it.id));
+          }
+          if (firstUnansweredIdx === -1) firstUnansweredIdx = group.items.length - 1;
+        }
+        setAnswers(initAnswers);
+
+        if (answerMap.size === 0) {
+          // Nothing answered yet in this subtest — normal fresh start.
+          setCode(current);
+          setCurQ(0);
+          setTimeLeft(group.subtest.time_limit_seconds);
+          setPhase('sub-intro');
+          return;
+        }
+
+        const remaining = resumeTimeLeft(progress.answers, itemIds, group.subtest.time_limit_seconds);
+        setCode(current);
+        setCurQ(firstUnansweredIdx);
+        setTimeLeft(remaining);
+        if (remaining <= 0) {
+          // Time was already up while disconnected — score with what was saved
+          // rather than granting a fresh full timer on reconnect.
+          const res = computeSubScore(current, group.items, initAnswers[current]);
+          if (resultId && group.subtest.id) {
+            const payload = { result_id: resultId, subtest_id: group.subtest.id, score: res };
+            (portalHash ? savePortalSubtestScore(portalHash, payload) : saveSubtestScore(payload)).catch(() => {});
+          }
+          setDone((d) => ({ ...d, [current]: res }));
+          setPhase('sub-done');
+        } else {
+          // Resume mid-subtest directly — re-showing the intro would imply a
+          // fresh full-duration start, which the restored timer contradicts.
+          setPhase('sub-active');
+        }
       } catch {
         if (!cancelled) setPhase('error');
       }
     })();
     return () => { cancelled = true; };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [assessmentCode, portalHash]);
 
   const sub = code ? { ...SUBS_META[code], ...subtests?.[code]?.subtest } : null;
@@ -93,36 +208,7 @@ export default function TKTest({ resultId, assessmentCode, portalHash, onComplet
   const scoreSub = (subCode) => {
     const meta = subtests[subCode].subtest;
     const items = subtests[subCode].items;
-    let ok = 0;
-    if (subCode === 'GI') {
-      const giKeys = buildGiKeys(items);
-      items.forEach((it, idx) => {
-        if (checkGIAnswer(idx + 1, answers.GI[idx + 1] || '', giKeys)) ok++;
-      });
-    } else {
-      answers[subCode].forEach((ans, idx) => {
-        if (!ans) return;
-        const q = items[idx];
-        if (q && ans === q.content.correct) ok++;
-      });
-    }
-    const pct = rawToPercentile(ok, items.length);
-    const score10 = pctToScore10(pct);
-    const grade = getGrade(pct);
-    const verdict = getVerdict(score10);
-    const res = {
-      ok,
-      items: items.length,
-      pct,
-      score10,
-      g: grade.g,
-      label: grade.l,
-      verdict: verdict.v,
-    };
-    if (subCode === 'GI') {
-      res.iq = getIQ(ok);
-      res.iqCls = getIQClass(res.iq);
-    }
+    const res = computeSubScore(subCode, items, answers[subCode]);
     if (resultId && meta.id) {
       const payload = { result_id: resultId, subtest_id: meta.id, score: res };
       (portalHash ? savePortalSubtestScore(portalHash, payload) : saveSubtestScore(payload)).catch(() => {});
@@ -169,16 +255,7 @@ export default function TKTest({ resultId, assessmentCode, portalHash, onComplet
   const handleNextSub = () => {
     const idx = tkOrder.indexOf(code);
     if (idx === tkOrder.length - 1) {
-      // Composite = weighted average of score10 over all subtests, scaled to /10.
-      const allDone = { ...done };
-      const composite =
-        Math.round(
-          (tkOrder.reduce((s, k) => s + (allDone[k]?.score10 || 0) * Number(subtests[k].subtest.weight), 0) /
-            tkOrder.reduce((s, k) => s + Number(subtests[k].subtest.weight), 0)) *
-            10,
-        ) / 10;
-      const compVerdict = getVerdict(Math.round(composite));
-      onComplete({ sub: allDone, composite, compVerdict: compVerdict.v });
+      onComplete(computeComposite(done, tkOrder, subtests));
       return;
     }
     const next = tkOrder[idx + 1];

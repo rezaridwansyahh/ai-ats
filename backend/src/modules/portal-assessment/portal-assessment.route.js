@@ -30,6 +30,12 @@ router.get(
   portalAssessmentController.getQuestions
 );
 
+router.get(
+  '/:hash/progress',
+  portalAssessmentController.requirePortalAuth.bind(portalAssessmentController),
+  portalAssessmentController.getProgress
+);
+
 router.post(
   '/:hash/answer',
   portalAssessmentController.requirePortalAuth.bind(portalAssessmentController),

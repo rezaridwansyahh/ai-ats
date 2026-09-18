@@ -5,7 +5,8 @@ import { fmtTime, scoreSJT } from '../utils/scoring';
 import { getQuestionsByAssessmentCode } from '@/api/question.api';
 import { saveAnswer } from '@/api/assessment-answer.api';
 import { saveSubtestScore } from '@/api/assessment-score.api';
-import { getPortalQuestions, savePortalAnswer, savePortalSubtestScore } from '@/api/portal-assessment.api';
+import { getPortalQuestions, getPortalProgress, savePortalAnswer, savePortalSubtestScore } from '@/api/portal-assessment.api';
+import { findExistingScore, answersByQuestionId, resumeTimeLeft } from '@/utils/assessment-resume';
 
 const TOTAL_TIME = 30 * 60; // 1800 seconds, single global timer for the whole SJT
 const FLASH_MS = 180;       // visual flash on selected option before auto-advance
@@ -36,20 +37,61 @@ export default function SJTTest({ resultId, assessmentCode, portalHash, onComple
     let cancelled = false;
     (async () => {
       try {
-        const { data } = portalHash ? await getPortalQuestions(portalHash) : await getQuestionsByAssessmentCode(assessmentCode);
+        const [{ data }, progress] = await Promise.all([
+          portalHash ? getPortalQuestions(portalHash) : getQuestionsByAssessmentCode(assessmentCode),
+          portalHash ? getPortalProgress(portalHash).then((r) => r.data) : Promise.resolve({ answers: [], scores: [] }),
+        ]);
         const group = data?.questions?.sjt;
         if (cancelled) return;
         if (!group?.items?.length) throw new Error('No SJT questions found');
         const sorted = [...group.items].sort((a, b) => a.order_index - b.order_index);
         setItems(sorted);
         setSubtestId(group.subtest.id);
-        setAnswers(Array(sorted.length).fill(null));
-        setPhase('active');
+
+        // Resume: if this subtest was already scored (refreshed right after
+        // finishing it), skip straight to the result instead of restarting it.
+        const existingScore = findExistingScore(progress.scores, group.subtest.id);
+        if (existingScore) {
+          onComplete(existingScore);
+          return;
+        }
+
+        const itemIds = sorted.map((it) => it.id);
+        const answerMap = answersByQuestionId(progress.answers, itemIds);
+        const restored = Array(sorted.length).fill(null);
+        answerMap.forEach((row, qId) => {
+          const idx = sorted.findIndex((it) => it.id === qId);
+          if (idx !== -1) restored[idx] = row.answer;
+        });
+        setAnswers(restored);
+
+        if (answerMap.size === 0) {
+          setCurQ(0);
+          setTimeLeft(TOTAL_TIME);
+          setPhase('active');
+          return;
+        }
+
+        const firstUnanswered = restored.findIndex((a) => a == null);
+        const remaining = resumeTimeLeft(progress.answers, itemIds, TOTAL_TIME);
+        setCurQ(firstUnanswered === -1 ? sorted.length - 1 : firstUnanswered);
+        setTimeLeft(remaining);
+        if (remaining <= 0) {
+          const res = scoreSJT(restored, toScoringShape(sorted), COMPS);
+          if (resultId && group.subtest.id) {
+            const payload = { result_id: resultId, subtest_id: group.subtest.id, score: res };
+            (portalHash ? savePortalSubtestScore(portalHash, payload) : saveSubtestScore(payload)).catch(() => {});
+          }
+          onComplete(res);
+        } else {
+          setPhase('active');
+        }
       } catch {
         if (!cancelled) setPhase('error');
       }
     })();
     return () => { cancelled = true; };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [assessmentCode, portalHash]);
 
   // Sticky countdown — auto-submit when timer hits zero.
