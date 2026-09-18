@@ -74,21 +74,28 @@ export default function ScoreDecideTab({ candidate, battery, result, onJumpToTab
   const isDirtyRef = useRef(isDirty);
   isDirtyRef.current = isDirty;
   const pendingRef = useRef(null);
+  const editVersionRef = useRef(0);
 
   const doSave = async () => {
-    if (!liveResult?.id) return { ok: false };
+    if(!liveResult?.id) return { ok: false };
+    const myVersion = ++editVersionRef.current;
     setSaveStatus('saving');
     setSaveError(null);
     try {
       await updateAssessmentReport(liveResult.id, packAssessorState(latestStateRef.current, liveResult.summary));
-      setSaveStatus('saved');
-      setIsDirty(false);
-      return { ok: true };
-    } catch (e) {
+      // Only settle to 'saved'/clean if nothing changed while this request was in flight.
+      if(editVersionRef.current === myVersion) {
+        setSaveStatus('saved');
+        setIsDirty(false);
+      }
+      return { ok: true};
+    } catch (e){
       const msg = e?.response?.data?.message || e?.message || 'Gagal menyimpan anotasi.';
-      setSaveStatus('error');
+      if (editVersionRef.current === myVersion){
+        setSaveStatus('error');
+      }
       setSaveError(msg);
-      throw new Error(msg);
+      throw new Error (msg);
     }
   };
 
@@ -102,7 +109,11 @@ export default function ScoreDecideTab({ candidate, battery, result, onJumpToTab
     if (finalRecRef) {
       finalRecRef.current = {
         get: () => latestStateRef.current.finalRec ?? null,
-        set: (v) => { setState((prev) => ({ ...prev, finalRec: v })); setIsDirty(true); },
+        set: (v) => {
+          setState((prev) => ({ ...prev, finalRec: v }));
+          setIsDirty(true);
+          editVersionRef.current += 1;
+        },
       };
     }
   });
@@ -225,6 +236,7 @@ export default function ScoreDecideTab({ candidate, battery, result, onJumpToTab
   const updateState = (patch) => {
     setState((prev) => ({ ...prev, ...patch }));
     setIsDirty(true);
+    editVersionRef.current += 1;
   };
 
   // Manual flush — cancels the pending debounce and PUTs immediately. Returns a Promise

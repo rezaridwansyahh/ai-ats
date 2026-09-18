@@ -392,27 +392,42 @@ const TINDAK_OPTIONS = [
   { val: 'evaluasi',         label: 'Hold',    icon: Pause,       cls: 'border-amber-400  bg-amber-50  text-amber-700',   activeCls: 'bg-amber-500  text-white border-amber-500'  },
   { val: 'tidak',            label: 'Reject',  icon: ThumbsDown,  cls: 'border-rose-400   bg-rose-50   text-rose-700',    activeCls: 'bg-rose-600   text-white border-rose-600'   },
 ];
-
 function TindakLanjutCard({ finalRec, onPick, onAdvance, advanceStatus, hasStage }) {
+  const locked = !!finalRec;
+  const canUnlock = locked && advanceStatus !== 'done';
+
   return (
     <Card>
       <CardContent className="p-3 space-y-2.5">
-        <p className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
-          Decision
-        </p>
+        <div className="flex items-center justify-between gap-2">
+          <p className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
+            Decision
+          </p>
+          {canUnlock && (
+            <button
+              type="button"
+              onClick={() => onPick(null)}
+              className="text-[10px] font-medium text-muted-foreground hover:text-foreground px-2 py-0.5 rounded-full border border-border hover:border-foreground/30 hover:bg-muted/50 transition-colors"
+            >
+              Ubah keputusan
+            </button>
+          )}
+        </div>
 
         {/* Pick buttons */}
         <div className="space-y-1.5">
           {TINDAK_OPTIONS.map(({ val, label, icon: Icon, cls, activeCls }) => {
-            const active = finalRec === val;
+            const active   = finalRec === val;
+            const disabled = locked && !active;
             return (
               <button
                 key={val}
                 type="button"
-                onClick={() => onPick(val)}
+                onClick={() => !locked && onPick(val)}
+                disabled={disabled}
                 className={`w-full flex items-center gap-2 px-3 py-2 rounded-md text-xs font-semibold border transition-colors ${
                   active ? activeCls : `${cls} hover:opacity-90`
-                }`}
+                } ${disabled ? 'opacity-40 cursor-not-allowed hover:opacity-40' : ''}`}
               >
                 <Icon className="h-3.5 w-3.5 shrink-0" />
                 {label}

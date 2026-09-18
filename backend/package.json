@@ -26,7 +26,7 @@
     "nodemailer": "^9.0.4",
     "openai": "^6.32.0",
     "pdf-parse": "^2.4.5",
-    "pdfmake": "^0.2.10",
+    "pdfmake": "^0.2.23",
     "pg": "^8.18.0",
     "pizzip": "^3.2.0",
     "puppeteer": "^25.7.0",
