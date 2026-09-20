@@ -37,6 +37,14 @@ export const submitPortalAssessment = (hash, { results, summary }) =>
 export const getPortalQuestions = (hash) =>
   portalApi.get(`/portal-assessment/${hash}/questions`);
 
+// JWT-protected — previously saved answers/scores for the current attempt, keyed
+// by question_id/subtest_id respectively. Lets a Test component rehydrate its
+// in-progress state on mount (resume after a refresh) instead of starting over.
+// Returns { result_id, answers: [...], scores: [...] } — empty arrays if no
+// attempt has been started yet.
+export const getPortalProgress = (hash) =>
+  portalApi.get(`/portal-assessment/${hash}/progress`);
+
 // JWT-protected — upsert one answer for the current attempt.
 export const savePortalAnswer = (hash, { result_id, question_id, answer, is_correct, score_earned }) =>
   portalApi.post(`/portal-assessment/${hash}/answer`, { result_id, question_id, answer, is_correct, score_earned });

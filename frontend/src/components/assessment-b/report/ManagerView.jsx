@@ -1,4 +1,5 @@
 import { Button } from '@/components/ui/button';
+import { BarChart3, Brain, Sparkles, Briefcase, Trophy, BookOpen, Check, X, AlertTriangle, Minus } from 'lucide-react';
 import { calc3Pillar, pillarVerdict, deriveOverallVerdict, genManagerSummary, PILLAR_THRESHOLDS } from './report-utils';
 
 const PILL_CLS = {
@@ -7,7 +8,17 @@ const PILL_CLS = {
   fail: 'bg-red-50 text-red-700 border-red-300',
   empty: 'bg-slate-50 text-slate-500 border-slate-200',
 };
-const PILL_LABEL = { pass: '✓ Passed', warn: '⚠ Warn', fail: '✗ Failed', empty: '— Pending' };
+
+const PILL_META = {
+  pass:  { icon: Check,         label: 'Passed'  },
+  warn:  { icon: AlertTriangle, label: 'Warn'    },
+  fail:  { icon: X,             label: 'Failed'  },
+  empty: { icon: Minus,         label: 'Pending' },
+};
+
+function VerdictPill({ verdict, className = ''}) {
+  //BELOM KELAR
+}
 
 export default function ManagerView({ profile, results, finalRec, onSetFinalRec }) {
   const pillar = calc3Pillar(results);
