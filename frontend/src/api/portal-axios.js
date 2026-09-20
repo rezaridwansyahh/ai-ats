@@ -7,8 +7,10 @@ const portalApi = axios.create({
 export const PORTAL_TOKEN_KEY = 'portal_token';
 
 portalApi.interceptors.request.use((config) => {
-  const token = localStorage.getItem(PORTAL_TOKEN_KEY);
-  if (token) config.headers.Authorization = `Bearer ${token}`;
+  if (!config.headers.Authorization) {
+    const token = localStorage.getItem(PORTAL_TOKEN_KEY);
+    if (token) config.headers.Authorization = `Bearer ${token}`;
+  }
   return config;
 });
 

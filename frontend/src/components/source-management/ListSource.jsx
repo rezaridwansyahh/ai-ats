@@ -40,7 +40,7 @@ const POLL_INTERVAL_MS = 4000;
  * POST /seek/candidates/rpa/extract, which the backend already tracks via
  * core_job_sourcing.sync_state (idle/syncing/error) per row.
  */
-export default function ListSourceStep({ selectedAccount }) {
+export default function ListSourceStep({ selectedAccount, selectedSource, onSelectSource }) {
   const [sources, setSources]   = useState([]);
   const [loading, setLoading]   = useState(false);
   const [error, setError]       = useState(null);
@@ -98,7 +98,7 @@ export default function ListSourceStep({ selectedAccount }) {
     setSyncingIds(prev => new Set(prev).add(source.id));
     try {
       await extractSeekCandidates({ account_id: selectedAccount.id, job_sourcing_id: source.id });
-      toast.success(`Re-sync queued for "${source.job_title}"`);
+      toast.success(`${source.last_sync ? 'Re-sync' : 'Sync'} queued for "${source.job_title}"`);
       // Backend marks sync_state='syncing' synchronously before responding — refetch to show it.
       await fetchSources({ silent: true });
     } catch (err) {
@@ -259,7 +259,7 @@ export default function ListSourceStep({ selectedAccount }) {
                     </TableCell>
                     <TableCell className="text-xs font-mono tabular-nums text-muted-foreground">
                       {source.candidate_count
-                        ? `${Math.round(((source.progress ?? 0) / source.candidate_count) * 100)}%`
+                        ? `${Math.min(100, Math.round(((source.progress ?? 0) / source.candidate_count) * 100))}%`
                         : '—'}
                     </TableCell>
                     <TableCell className="text-xs font-mono tabular-nums text-muted-foreground">
@@ -277,7 +277,7 @@ export default function ListSourceStep({ selectedAccount }) {
                           disabled={isSyncing}
                           onClick={() => handleResyncRow(source)}
                         >
-                          {isSyncing ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : 'Re-Sync'}
+                          {isSyncing ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : (source.last_sync ? 'Re-Sync' : 'Sync')}
                         </Button>
                         <Button
                           variant="outline"
@@ -286,6 +286,14 @@ export default function ListSourceStep({ selectedAccount }) {
                           onClick={() => handleLinkRow(source)}
                         >
                           Link
+                        </Button>
+                        <Button
+                          variant={selectedSource?.id === source.id ? 'default' : 'outline'}
+                          size="sm"
+                          className="text-xs h-7 px-2.5"
+                          onClick={() => onSelectSource?.(source)}
+                        >
+                          {selectedSource?.id === source.id ? 'Selected' : 'Select'}
                         </Button>
                       </div>
                     </TableCell>

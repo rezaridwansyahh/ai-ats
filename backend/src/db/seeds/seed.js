@@ -32,6 +32,22 @@ import companyBudgetsData, { createCompanyBudget } from '../data/company_budgets
 import candidateInterviewData from '../data/candidate_interview.js';
 import candidateBgData from '../data/candidate_bg.js';
 import candidateOfferData from '../data/candidate_offer.js';
+import {
+  candidateOnboarding,
+  onboardingChecklistItems,
+  onboardingDayOneSchedule,
+  onboardingMilestones,
+  onboardingProbationCheckins,
+  onboardingWelcomeMessages,
+} from '../data/candidate-onboarding.js';
+import onboardingAssessmentsData from '../data/battery-onboarding.js';
+import onboardingHrisTasksData from '../data/onboarding_hris_task.js';
+import lmsPhasesData from '../data/lms_phases.js';
+import lmsModulesData from '../data/lms_modules.js';
+import { run as seedBatteryAQuestions } from './assessment-questions/01-battery-a.js';
+import { run as seedBatteryBQuestions } from './assessment-questions/02-battery-b.js';
+import { run as seedBatteryCQuestions } from './assessment-questions/03-battery-c.js';
+import { run as seedBatteryDQuestions } from './assessment-questions/04-battery-d.js';
 
 const seed = async () => {
   await getDb().query('BEGIN');
@@ -39,6 +55,15 @@ const seed = async () => {
   try {
     await getDb().query('DELETE FROM company_budgets');
     await getDb().query('DELETE FROM company_usage');
+    await getDb().query('DELETE FROM onboarding_assessment_result');
+    await getDb().query('DELETE FROM onboarding_assessment');
+    await getDb().query('DELETE FROM onboarding_hris_task');
+    await getDb().query('DELETE FROM onboarding_welcome_message');
+    await getDb().query('DELETE FROM onboarding_probation_checkin');
+    await getDb().query('DELETE FROM onboarding_milestone');
+    await getDb().query('DELETE FROM onboarding_day_one_schedule');
+    await getDb().query('DELETE FROM onboarding_checklist_item');
+    await getDb().query('DELETE FROM candidate_onboarding');
     await getDb().query('DELETE FROM candidate_offer');
     await getDb().query('DELETE FROM bg_claim');       
     await getDb().query('DELETE FROM candidate_bg'); 
@@ -49,6 +74,7 @@ const seed = async () => {
     await getDb().query('DELETE FROM core_applicant_assessment');
     await getDb().query('DELETE FROM master_assessment');
     await getDb().query('DELETE FROM master_candidate');
+    await getDb().query('DELETE FROM mapping_applicant_sourcing');
     await getDb().query('DELETE FROM master_applicant');
     await getDb().query('DELETE FROM master_recruiters');
     await getDb().query('DELETE FROM mapping_job_sourcing_job');
@@ -207,9 +233,9 @@ const seed = async () => {
         `INSERT INTO core_job (
            id, company_id, job_title, job_desc, job_location, work_option, work_type,
            pay_type, currency, pay_min, pay_max, pay_display, status,
-           required_skills, preferred_skills, rubric, qualifications
+           required_skills, preferred_skills, rubric, qualifications, assessment_battery
          )
-         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17)`,
+         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18)`,
         [
           job.id, job.company_id ?? null,
           job.job_title, job.job_desc, job.job_location, job.work_option, job.work_type,
@@ -218,6 +244,7 @@ const seed = async () => {
           job.preferred_skills ? JSON.stringify(job.preferred_skills) : null,
           job.rubric ? JSON.stringify(job.rubric) : null,
           job.qualifications ?? null,
+          job.assessment_battery ?? null,
         ]
       );
     }
@@ -281,6 +308,42 @@ const seed = async () => {
       );
     }
 
+    // 17a. assessment_subtest + assessment_question — question banks for
+    //      Batteries A-D, transformed from each battery's frontend data files.
+    await seedBatteryAQuestions();
+    await seedBatteryBQuestions();
+    await seedBatteryCQuestions();
+    await seedBatteryDQuestions();
+    console.log('Seeded assessment question banks for Batteries A-D');
+
+    // 17b. onboarding_assessment — pre-boarding batteries (TKI + Insight)
+    for (const a of onboardingAssessmentsData) {
+      await getDb().query(
+        `INSERT INTO onboarding_assessment (id, assessment_code, name, milestone, duration_minutes, options, is_active)
+         VALUES ($1, $2, $3, $4, $5, $6, $7)`,
+        [a.id, a.assessment_code, a.name, a.milestone, a.duration_minutes, JSON.stringify(a.options || {}), a.is_active]
+      );
+    }
+    
+    // 17c. lms_phase
+    for (const p of lmsPhasesData) {
+      await getDb().query(
+        `INSERT INTO lms_phase (id, company_id, seq, label, day_offset_start, day_offset_end)
+        VALUES ($1, $2, $3, $4, $5, $6)`,
+        [p.id, p.company_id, p.seq, p.label, p.day_offset_start, p.day_offset_end]
+      );
+    }
+    
+    // 17d. lms_module
+    for (const m of lmsModulesData) {
+      await getDb().query(
+        `INSERT INTO lms_module (id, phase_id, title, category, duration_min, sort_order, status, created_by)
+        VALUES ($1, $2, $3, $4, $5, $6, $7, $8)`,
+        [m.id, m.phase_id, m.title, m.category, m.duration_min, m.sort_order, m.status, m.created_by]
+      );
+    }
+
+
     // 18. master_applicant — derive company_id via sourcing → account → company,
     //     falling back to matching the sourcing's job_title to core_job for internal sourcings.
     const accountToCompany = new Map(jobAccounts.map(a => [a.id, a.company_id ?? null]));
@@ -298,15 +361,27 @@ const seed = async () => {
       const company_id = sourcingToCompany.get(a.job_sourcing_id) ?? null;
       await getDb().query(
         `INSERT INTO master_applicant (
-           id, job_sourcing_id, company_id, name, email, last_position, address, education, information, date, attachment
+           id, company_id, name, email, last_position, address, education, information, date, attachment
          )
-         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)`,
+         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)`,
         [
-          a.id, a.job_sourcing_id, company_id, a.name, a.email || null, a.last_position, a.address,
+          a.id, company_id, a.name, a.email || null, a.last_position, a.address,
           a.education, a.information ? JSON.stringify(a.information) : null,
           a.date, a.attachment
         ]
       );
+    }
+
+    // 18b. mapping_applicant_sourcing — links each seed applicant to the
+    //      sourcing it came from (mirrors mapping_job_sourcing_job's seed step).
+    for (const a of applicantsData) {
+      if (a.job_sourcing_id) {
+        await getDb().query(
+          `INSERT INTO mapping_applicant_sourcing (applicant_id, job_sourcing_id)
+           VALUES ($1, $2)`,
+          [a.id, a.job_sourcing_id]
+        );
+      }
     }
 
     // 19. master_candidate — candidates live per job (job_id), may reference an
@@ -335,19 +410,22 @@ const seed = async () => {
       await getDb().query(
         `INSERT INTO candidate_job_score (
            applicant_id, job_id,
-           overall_score, skills_score, experience_score, career_trajectory_score, education_score,
+           overall_score, skills_score, skills_reason, experience_score, experience_reason,
+           education_score, education_reason,
            matched_skills, missing_skills, custom_criteria_results,
-           rubric_snapshot, role_profile, summary, scored_at
+           rubric_snapshot, summary, scored_at
          )
-         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, NOW() - INTERVAL '2 hours')`,
+         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, NOW() - INTERVAL '2 hours')`,
         [
           s.applicant_id, s.job_id,
-          s.overall_score, s.skills_score, s.experience_score, s.career_trajectory_score, s.education_score,
+          s.overall_score, s.skills_score, s.skills_reason,
+          s.experience_score, s.experience_reason,
+          s.education_score, s.education_reason,
           JSON.stringify(s.matched_skills),
           JSON.stringify(s.missing_skills),
           JSON.stringify(s.custom_criteria_results),
           JSON.stringify(s.rubric_snapshot),
-          s.role_profile, s.summary,
+          s.summary,
         ]
       );
     }
@@ -444,7 +522,103 @@ const seed = async () => {
           o.sent_at, o.accepted_at, o.rejected_at, o.expired_at, o.created_by ?? null,
         ]
       );
-    }    
+    }
+
+    // 21e. candidate_onboarding — only candidates who actually accepted an
+    //      offer (see candidate-onboarding.js header comment for which ones).
+    for (const ob of candidateOnboarding) {
+      await getDb().query(
+        `INSERT INTO candidate_onboarding (
+          id, company_id, candidate_id, job_id, offer_id, candidate_name, position_title,
+          start_date, probation_duration_days, probation_end_date, current_stage, onboarding_status,
+          buddy_user_id, buddy_name, manager_user_id, manager_name,
+          preboarding_completed_at, day_one_started_at, probation_started_at, confirmed_at, terminated_at
+        )
+        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21)
+        ON CONFLICT (candidate_id, offer_id) DO NOTHING`,
+        [
+          ob.id, ob.company_id, ob.candidate_id, ob.job_id, ob.offer_id, ob.candidate_name, ob.position_title,
+          ob.start_date, ob.probation_duration_days, ob.probation_end_date, ob.current_stage, ob.onboarding_status,
+          ob.buddy_user_id ?? null, ob.buddy_name ?? null, ob.manager_user_id ?? null, ob.manager_name ?? null,
+          ob.preboarding_completed_at, ob.day_one_started_at, ob.probation_started_at, ob.confirmed_at, ob.terminated_at,
+        ]
+      );
+    }
+
+    // 21f. onboarding_checklist_item
+    for (const item of onboardingChecklistItems) {
+      await getDb().query(
+        `INSERT INTO onboarding_checklist_item (
+          id, onboarding_id, label, category, owner, status, sort_order, completed_at
+        )
+        VALUES ($1, $2, $3, $4, $5, $6, $7, $8)`,
+        [item.id, item.onboarding_id, item.label, item.category, item.owner, item.status, item.sort_order, item.completed_at]
+      );
+    }
+
+    // 21g. onboarding_day_one_schedule
+    for (const s of onboardingDayOneSchedule) {
+      await getDb().query(
+        `INSERT INTO onboarding_day_one_schedule (
+          id, onboarding_id, time, activity, sort_order, completed
+        )
+        VALUES ($1, $2, $3, $4, $5, $6)`,
+        [s.id, s.onboarding_id, s.time, s.activity, s.sort_order, s.completed]
+      );
+    }
+
+    // 21h. onboarding_milestone
+    for (const m of onboardingMilestones) {
+      await getDb().query(
+        `INSERT INTO onboarding_milestone (
+          id, onboarding_id, week_label, week_number, item_label, status, sort_order, completed_at
+        )
+        VALUES ($1, $2, $3, $4, $5, $6, $7, $8)`,
+        [m.id, m.onboarding_id, m.week_label, m.week_number, m.item_label, m.status, m.sort_order, m.completed_at]
+      );
+    }
+
+    // 21i. onboarding_probation_checkin
+    for (const c of onboardingProbationCheckins) {
+      await getDb().query(
+        `INSERT INTO onboarding_probation_checkin (
+          id, onboarding_id, checkin_code, checkin_title, scheduled_date, status, manager_note, completed_at
+        )
+        VALUES ($1, $2, $3, $4, $5, $6, $7, $8)`,
+        [c.id, c.onboarding_id, c.checkin_code, c.checkin_title, c.scheduled_date, c.status, c.manager_note, c.completed_at]
+      );
+    }
+
+    // 21j. onboarding_welcome_message
+    for (const w of onboardingWelcomeMessages) {
+      await getDb().query(
+        `INSERT INTO onboarding_welcome_message (
+          id, onboarding_id, from_user_id, from_name, message_text
+        )
+        VALUES ($1, $2, $3, $4, $5)
+        ON CONFLICT (onboarding_id) DO NOTHING`,
+        [w.id, w.onboarding_id, w.from_user_id, w.from_name, w.message_text]
+      );
+    }
+
+    // 21k. onboarding_hris_task
+    for (const h of onboardingHrisTasksData) {
+      await getDb().query(
+        `INSERT INTO onboarding_hris_task (
+          id, onboarding_id, task_code, task_title, task_description,
+          status, integration_data, error_message, retry_count, executed_at, completed_at
+        )
+        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)`,
+        [
+          h.id, h.onboarding_id, h.task_code, h.task_title, h.task_description,
+          h.status, JSON.stringify(h.integration_data || {}), h.error_message,
+          h.retry_count ?? 0, h.executed_at, h.completed_at,
+        ]
+      );
+    }
+
+
+    console.log(`Seeded ${candidateOnboarding.length} onboarding record(s)`);
 
     // 23. core_applicant_assessment — Insights results (assessment_id = 5). Status = 'completed'
     //     so the rows show up directly in Score & Decide. assessor JSONB pre-populates HR notes.

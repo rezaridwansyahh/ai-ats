@@ -1223,8 +1223,10 @@ function VerdictSection({ bg, setBg, setBanner, setError }) {
   const [mitigation, setMitigation] = useState(bg.verdict_note?.mitigation || '');
   const [saving,     setSaving]     = useState(false);
 
+  const locked = !!bg.verdict; 
+
   const handleSave = async () => {
-    if (!selected) return;
+    if (!selected || locked) return;
     setSaving(true);
     setError(null);
     try {
@@ -1253,7 +1255,7 @@ function VerdictSection({ bg, setBg, setBanner, setError }) {
               : 'border-rose-200 bg-rose-50 text-rose-700'
         }`}>
           <Check className="h-4 w-4 shrink-0" />
-          Current verdict: {bg.verdict.replace(/_/g, ' ')} · change below and re-submit if needed
+          Final verdict: {bg.verdict.replace(/_/g, ' ')} · decision is locked
         </div>
       )}
 
@@ -1268,9 +1270,12 @@ function VerdictSection({ bg, setBg, setBanner, setError }) {
             const isActive = selected === opt.value;
             return (
               <button key={opt.value} type="button"
-                onClick={() => setSelected(isActive ? null : opt.value)}
-                className={`w-full flex items-start gap-3 px-4 py-3 rounded-lg border text-left transition-all cursor-pointer ${
-                  isActive ? opt.activeColor : `${opt.color} hover:brightness-95`
+                disabled={locked}
+                onClick={() => !locked && setSelected(isActive ? null : opt.value)}
+                className={`w-full flex items-start gap-3 px-4 py-3 rounded-lg border text-left transition-all ${
+                  locked ? 'cursor-not-allowed opacity-60' : 'cursor-pointer'
+                } ${
+                  isActive ? opt.activeColor : `${opt.color} ${locked ? '' : 'hover:brightness-95'}`
                 }`}
               >
                 <div className={`h-5 w-5 rounded-full border-2 shrink-0 mt-0.5 flex items-center justify-center ${
@@ -1288,7 +1293,7 @@ function VerdictSection({ bg, setBg, setBanner, setError }) {
         </CardContent>
       </Card>
 
-      {selected === 'pass_with_concerns' && (
+      {selected === 'pass_with_concerns' && !locked && (
         <Card className="border-amber-200 bg-amber-50/30">
           <CardHeader className="pb-2">
             <CardTitle className="text-xs text-amber-800">Concern note — required</CardTitle>
@@ -1319,27 +1324,28 @@ function VerdictSection({ bg, setBg, setBanner, setError }) {
         </Card>
       )}
 
-      {selected === 'fail' && (
+      {selected === 'fail' && !locked && (
         <div className="px-4 py-3 rounded-lg border border-rose-200 bg-rose-50/50 text-[10px] text-rose-700">
           <strong>UU PDP 27/2022 routing.</strong> Failed BG cases are routed to the locked
           🔒 <em>BG concerns</em> Talent Pool segment — data retained 24 months.
         </div>
       )}
 
-      <div className="flex justify-end pt-1 border-t">
-        <Button size="sm" className="text-xs" onClick={handleSave}
-          disabled={
-            saving || !selected ||
-            (selected === 'pass_with_concerns' &&
-              (!gap.trim() || !ctx.trim() || !mitigation.trim()))
-          }
-        >
-          {saving
-            ? <><Loader2 className="h-3.5 w-3.5 mr-1.5 animate-spin" /> Saving…</>
-            : <><Check className="h-3.5 w-3.5 mr-1.5" />
-                {bg.verdict ? 'Update verdict' : 'Commit verdict'}</>}
-        </Button>
-      </div>
+      {!locked && (
+        <div className="flex justify-end pt-1 border-t">
+          <Button size="sm" className="text-xs" onClick={handleSave}
+            disabled={
+              saving || !selected ||
+              (selected === 'pass_with_concerns' &&
+                (!gap.trim() || !ctx.trim() || !mitigation.trim()))
+            }
+          >
+            {saving
+              ? <><Loader2 className="h-3.5 w-3.5 mr-1.5 animate-spin" /> Saving…</>
+              : <><Check className="h-3.5 w-3.5 mr-1.5" /> Commit verdict</>}
+          </Button>
+        </div>
+      )}
 
     </div>
   );

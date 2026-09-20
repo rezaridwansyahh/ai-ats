@@ -1,21 +1,26 @@
 import { useState } from 'react';
-import { Clock, CheckCircle2, ChevronDown, ChevronRight, Loader2 } from 'lucide-react';
+import { Clock, CheckCircle2, HelpCircle, ChevronDown, ChevronRight, Loader2 } from 'lucide-react';
 import { toast } from 'sonner';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { StatCard } from './shared';
 import { getQaResponses } from '@/api/screening.api';
 
-export default function QAStageDashboard({ pendingRows = [], respondedRows = [], onOpen }) {
+export default function QAStageDashboard({ pendingRows = [], respondedRows = [], undecidedRows = [], onOpen }) {
   const total = pendingRows.length + respondedRows.length;
   const responseRate = total > 0 ? Math.round((respondedRows.length / total) * 100) : 0;
 
   return (
     <div className="space-y-4 p-4">
-      <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
         <StatCard label="Sent · awaiting reply" value={pendingRows.length} />
         <StatCard label="Responded" value={respondedRows.length} />
         <StatCard label="Response rate" value={`${responseRate}%`} hint={total === 0 ? 'no Q&A sent yet' : undefined} />
+        <StatCard
+          label="Undecided"
+          value={undecidedRows.length}
+          hint="scored, no decision yet — responded or not"
+        />
       </div>
 
       <Card>
@@ -51,6 +56,34 @@ export default function QAStageDashboard({ pendingRows = [], respondedRows = [],
               >
                 <div className="text-xs font-medium">{r.applicant_name || `#${r.applicant_id}`}</div>
                 <Badge variant="outline" className="text-[10px] border-amber-300 text-amber-700 bg-amber-50">sent</Badge>
+              </div>
+            ))
+          )}
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader className="pb-2">
+          <CardTitle className="text-xs uppercase tracking-wide text-muted-foreground flex items-center gap-1.5">
+            <HelpCircle className="h-3.5 w-3.5 text-slate-500" /> Undecided
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-1">
+          {undecidedRows.length === 0 ? (
+            <p className="py-6 text-center text-xs text-muted-foreground italic">Nothing undecided.</p>
+          ) : (
+            undecidedRows.map((r) => (
+              <div
+                key={r.screening_id ?? r.applicant_id}
+                onClick={() => onOpen(r)}
+                className="flex items-center justify-between p-2.5 rounded-md border cursor-pointer hover:bg-muted/30 transition-colors"
+              >
+                <div className="text-xs font-medium">{r.applicant_name || `#${r.applicant_id}`}</div>
+                {r.qa_status === 'responded' ? (
+                  <Badge variant="outline" className="text-[10px] border-emerald-300 text-emerald-700 bg-emerald-50">responded</Badge>
+                ) : (
+                  <Badge variant="outline" className="text-[10px] border-muted-foreground/30 text-muted-foreground bg-muted/30">no q&amp;a yet</Badge>
+                )}
               </div>
             ))
           )}

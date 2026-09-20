@@ -9,6 +9,9 @@ export const updateJob = (id, data) => api.put(`/job/${id}`, data);
 export const updateJobStatus = (id, status) => api.put(`/job/${id}/status`, { status });
 export const deleteJob = (id) => api.delete(`/job/${id}`);
 
+export const generateJobSkillsAI = (job_desc, qualifications) =>
+  api.post('/job/generate-skills', { job_desc, qualifications });
+
 export const generateJobAI = async (id, file) => {
   const formData = new FormData();
   formData.append('id', JSON.stringify(id));

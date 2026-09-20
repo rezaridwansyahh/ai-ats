@@ -2,7 +2,7 @@ import { useEffect, useCallback, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import {
   Loader2, AlertTriangle, ArrowLeft, MessageSquare, ArrowRight, MapPin, Save, Send, ChevronUp,
-  Briefcase, FileText, Wand2, Workflow, Megaphone, Sparkles, Calendar as CalendarIcon,
+  Briefcase, FileText, Wand2, Workflow, Megaphone, Sparkles, Calendar as CalendarIcon, Download,
 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -14,7 +14,7 @@ import ParseDetails from '@/components/report-candidate/screening/parse-details'
 import MatchDetails from '@/components/report-candidate/screening/match-details';
 import QaDetails from '@/components/report-candidate/screening/qa-details';
 
-import { getProgress } from '@/api/candidate.api';
+import { getProgress, downloadCandidateCv } from '@/api/candidate.api';
 
 export default function ReportCandidateDetailPage() {
   const { candidateId } = useParams();
@@ -29,6 +29,8 @@ export default function ReportCandidateDetailPage() {
   const [activeSubStep, setActiveSubStep] = useState(0);
 
   const [loading, setLoading] = useState(false);
+  const [downloading, setDownloading] = useState(false);
+  const [downloadError, setDownloadError] = useState(null); // null | 'not_found' | 'error'
 
   const fetchCandidate = useCallback(async () => {
     setLoading(true);
@@ -61,6 +63,27 @@ export default function ReportCandidateDetailPage() {
   const handleClickSubStep = (num) => {
     setActiveSubStep(num);
   }
+
+  const handleDownloadCv = async () => {
+    if (!candidate?.applicant_id) return;
+    setDownloading(true);
+    setDownloadError(null);
+    try {
+      const res = await downloadCandidateCv(candidate.applicant_id);
+      const blobUrl = URL.createObjectURL(res.data);
+      const a = document.createElement('a');
+      a.href = blobUrl;
+      a.download = `${candidate?.name ?? 'candidate'}-cv.pdf`;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      URL.revokeObjectURL(blobUrl);
+    } catch (err) {
+      setDownloadError(err.response?.status === 404 ? 'not_found' : 'error');
+    } finally {
+      setDownloading(false);
+    }
+  };
 
   const parsedData = screeningData.parsedDone;
   const scoredData = screeningData.scoredDone;
@@ -119,7 +142,24 @@ export default function ReportCandidateDetailPage() {
           <aside className="hidden lg:block">
             <div className="sticky top-[143px] space-y-3">
               <Card className="py-4 gap-3">
-                
+                <CardContent className="space-y-2">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="w-full text-xs"
+                    disabled={downloading || !candidate?.applicant_id}
+                    onClick={handleDownloadCv}
+                  >
+                    {downloading
+                      ? <><Loader2 className="h-3.5 w-3.5 mr-1.5 animate-spin" /> Downloading…</>
+                      : <><Download className="h-3.5 w-3.5 mr-1.5" /> Download CV</>}
+                  </Button>
+                  {downloadError && (
+                    <p className="text-[11px] text-destructive">
+                      {downloadError === 'not_found' ? 'No CV available for this candidate.' : 'Failed to download CV.'}
+                    </p>
+                  )}
+                </CardContent>
               </Card>
             </div>
           </aside>

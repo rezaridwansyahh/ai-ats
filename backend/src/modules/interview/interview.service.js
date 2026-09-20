@@ -375,26 +375,29 @@ class InterviewService {
       throw { status: 403, message: 'Cross-tenant access denied' };
     }
 
-    // validate scores are 1–7
-    const validCodes = ['HRD-01', 'HRD-02', 'HRD-03', 'HRD-04', 'HRD-05', 'HRD-06'];
-    for (const [code, score] of Object.entries(competency_scores)) {
-      if (!validCodes.includes(code)) {
-        throw { status: 400, message: `Unknown competency code: ${code}` };
-      }
-      const n = Number(score);
-      if (!Number.isFinite(n) || n < 1 || n > 7) {
-        throw { status: 400, message: `Score for ${code} must be between 1 and 7` };
-      }
-    }
-
-    // pull rubric_items so the model can compute weighted_total
     const prep = await interviewModel.getPrepByJob(interview.job_id);
+    
+    // pull rubric_items so the model can compute weighted_total — also used
+    // below to validate incoming codes against THIS job's actual rubric,
+    // since competencies are no longer a fixed global set.
     const rubric_items = (prep?.rubric_items && prep.rubric_items.length > 0)
       ? prep.rubric_items
       : Object.keys(competency_scores).map((code) => ({
-          competency_code: code,
-          weight: 1,
-        }));
+        competency_code: code,
+        weight: 1,
+      }));
+    
+    // validate scores are 1–7, and codes match this job's configured rubric
+    const validCodes = rubric_items.map((item) => item.competency_code);
+    for (const [code, score] of Object.entries(competency_scores)) {
+      if(!validCodes.includes(code)){
+        throw { status: 400, message: `Unknown competency code: ${code}` };
+      }
+      const n = Number(score);
+      if(!Number.isFinite(n) || n < 1 || n > 7){
+        throw { status: 400, message: `Score for ${code} must be between 1 and 7` };
+      }
+    }
 
     const scorecard = await interviewModel.upsertScorecard({
       interview_id,

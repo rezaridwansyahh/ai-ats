@@ -161,6 +161,23 @@ class InterviewPackModel {
   }
 
   /**
+   * Resolve a candidate's CV attachment, scoped to the pack's token — the
+   * join to interview_pack via token means a pack_candidate_id only resolves
+   * if it actually belongs to the pack this token grants access to.
+   */
+  async getCvByToken(token, packCandidateId) {
+    const result = await getDb().query(
+      `SELECT ma.attachment, ma.name
+       FROM interview_pack_candidate ipc
+       JOIN interview_pack ip ON ip.id = ipc.pack_id
+       JOIN master_applicant ma ON ma.id = ipc.applicant_id
+       WHERE ip.token = $1 AND ipc.id = $2`,
+      [token, packCandidateId]
+    );
+    return result.rows[0] || null;
+  }
+
+  /**
    * Get a pack by its unique token (for portal access).
    * Includes full job info + candidates + outcomes.
    */

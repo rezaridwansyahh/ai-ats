@@ -3,6 +3,7 @@ import "./src/config/env.js"; // must be first
 import "./src/bullmq/seek/seek.worker.js";
 import "./src/bullmq/linkedin/linkedin.worker.js";
 import "./src/bullmq/cv/cv.worker.js";
+import "./src/bullmq/match-rescore/match-rescore.worker.js";
 
 import express from "express";
 import cors from 'cors';
@@ -30,6 +31,8 @@ import candidatePipeline from "./src/modules/candidate-pipeline/candidate-pipeli
 import assessment from "./src/modules/assessment/assessment.route.js"
 import participant from "./src/modules/assessment/participant/participant.route.js"
 import question from "./src/modules/assessment/question/question.route.js"
+import assessmentAnswer from "./src/modules/assessment/assessment-answer/assessment-answer.route.js"
+import assessmentScore from "./src/modules/assessment/assessment-score/assessment-score.route.js"
 import session from "./src/modules/assessment/session/session.route.js"
 import assessmentBatteryResult from "./src/modules/assessment/assessment-battery-result/assessment-battery-result.route.js"
 import assessmentAI from "./src/modules/assessment/assessment-ai/assessment-ai.route.js"
@@ -50,6 +53,7 @@ import backgroundCheck from "./src/modules/background-check/background-check.rou
 import portalBg from "./src/modules/portal-bg/portal-bg.route.js"
 import offer from "./src/modules/offer/offer.route.js"
 import onboarding from "./src/modules/onboarding/onboarding.route.js"
+import onboardingLms from "./src/modules/onboarding-lms/onboarding-lms.route.js"
 import portalOffer from "./src/modules/portal-offer/portal-offer.route.js"
 import offerTemplate from "./src/modules/offer-template/offer-template.route.js"
 import interviewPack from "./src/modules/interview-pack/interview-pack.route.js"
@@ -57,6 +61,12 @@ import portalInterview from "./src/modules/portal-interview/portal-interview.rou
 import offerPack from "./src/modules/offer-pack/offer-pack.route.js";
 import portalContract from "./src/modules/portal-contract/portal-contract.route.js";
 import emailTemplate from "./src/modules/email-template/email-template.route.js";
+import portalOnboarding from "./src/modules/portal-onboarding/portal-onboarding.route.js";
+import onboardingAssessmentResult from "./src/modules/onboarding assessment/onboarding-assessment-result.route.js";
+import onboardingQuestion from "./src/modules/onboarding assessment/question/onboarding-question.route.js";
+import chatBotSource from "./src/modules/chat-bot/source/source.route.js";
+import chatBotConversation from "./src/modules/chat-bot/conversation/conversation.route.js";
+import chatBotMessage from "./src/modules/chat-bot/message/message.route.js";
 
 app.use(express.json());
 
@@ -109,6 +119,8 @@ portal.use("/api/setting", setting);
 portal.use("/api/assessment", assessment);
 portal.use("/api/participant", participant);
 portal.use("/api/question", question);
+portal.use("/api/assessment-answer", assessmentAnswer);
+portal.use("/api/assessment-score", assessmentScore);
 portal.use("/api/session", session);
 portal.use("/api/assessment-battery-result", assessmentBatteryResult);
 portal.use("/api/assessment-ai", assessmentAI);
@@ -119,6 +131,7 @@ portal.use("/api/background-check", backgroundCheck);
 portal.use("/api/portal-bg-consent", portalBg);
 portal.use("/api/offer", offer);
 portal.use("/api/onboarding", onboarding);
+portal.use("/api/onboarding-lms", onboardingLms);
 portal.use("/api/portal-offer", portalOffer);
 portal.use("/api/offer-template", offerTemplate);
 portal.use("/api/interview-pack", interviewPack);
@@ -126,6 +139,12 @@ portal.use("/api/portal-interview", portalInterview);
 portal.use("/api/offer-pack", offerPack)
 portal.use("/api/portal-contract", portalContract);
 portal.use("/api/email-template", emailTemplate)
+portal.use("/api/portal-onboarding", portalOnboarding);
+portal.use("/api/onboarding-assessment-result", onboardingAssessmentResult);
+portal.use("/api/onboarding-question", onboardingQuestion);
+portal.use("/api/chat-bot/source", chatBotSource);
+portal.use("/api/chat-bot/conversation", chatBotConversation);
+portal.use("/api/chat-bot/message", chatBotMessage);
 app.use("/portal", portal);
 app.use("/api/auth", auth);
 app.use("/api/cookies", cookies);
@@ -145,6 +164,8 @@ app.use("/api/candidate-pipeline", candidatePipeline);
 app.use("/api/assessment", assessment);
 app.use("/api/participant", participant);
 app.use("/api/question", question);
+app.use("/api/assessment-answer", assessmentAnswer);
+app.use("/api/assessment-score", assessmentScore);
 app.use("/api/session", session);
 app.use("/api/assessment-battery-result", assessmentBatteryResult);
 app.use("/api/assessment-ai", assessmentAI);
@@ -165,6 +186,7 @@ app.use("/api/background-check", backgroundCheck);
 app.use("/api/portal-bg-consent", portalBg);
 app.use("/api/offer", offer);
 app.use("/api/onboarding", onboarding);
+app.use("/api/onboarding-lms", onboardingLms);
 app.use("/api/portal-offer", portalOffer);
 app.use("/api/offer-template", offerTemplate);
 app.use("/api/interview-pack", interviewPack);
@@ -172,7 +194,12 @@ app.use("/api/portal-interview", portalInterview);
 app.use("/api/offer-pack", offerPack);
 app.use("/api/portal-contract", portalContract);
 app.use("/api/email-template", emailTemplate)
-
+app.use("/api/portal-onboarding", portalOnboarding);
+app.use("/api/onboarding-assessment-result", onboardingAssessmentResult);
+app.use("/api/onboarding-question", onboardingQuestion);
+app.use("/api/chat-bot/source", chatBotSource);
+app.use("/api/chat-bot/conversation", chatBotConversation);
+app.use("/api/chat-bot/message", chatBotMessage);
 
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => {

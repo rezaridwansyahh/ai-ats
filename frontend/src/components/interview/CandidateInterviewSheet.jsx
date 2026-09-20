@@ -882,9 +882,6 @@ function ResultTab({ interviewId, prep, setInterview, setError, setBanner, onUpd
               >
                 <div className="flex items-center justify-between gap-2">
                   <div className="flex items-center gap-1.5 flex-wrap min-w-0">
-                    <Badge variant="outline" className="text-[9px] border-blue-200 text-blue-700 font-mono shrink-0">
-                      {item.competency_code}
-                    </Badge>
                     <span className="text-xs font-semibold truncate">{item.competency_name}</span>
                     <span className="text-[9px] font-mono text-muted-foreground">×{item.weight || 1}</span>
                   </div>

@@ -1,5 +1,7 @@
 import interviewPackModel from './interview-pack.model.js';
 import getDb from '../../config/postgres.js';
+import fs from 'fs';
+import path from 'path';
 
 /**
  * Build the competencies array from a rubric object.
@@ -189,6 +191,21 @@ class InterviewPackService {
       throw { status: 410, message: 'This interview pack has already been submitted' };
     }
     return pack;
+  }
+
+  /**
+   * Resolve the CV file path for one candidate, scoped to the pack's token.
+   */
+  async getCvPathByToken(token, packCandidateId) {
+    if (!token) throw { status: 400, message: 'token is required' };
+    const row = await interviewPackModel.getCvByToken(token, packCandidateId);
+    if (!row) throw { status: 404, message: 'Candidate not found in this interview pack' };
+    if (!row.attachment) throw { status: 404, message: 'No CV available for this candidate' };
+
+    const filePath = path.resolve(row.attachment);
+    if (!fs.existsSync(filePath)) throw { status: 404, message: 'CV file not found on server' };
+
+    return { filePath, name: row.name };
   }
 
   /**

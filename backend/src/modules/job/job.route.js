@@ -14,6 +14,7 @@ router.get('/:id/candidates', jobController.getWithCandidates);
 
 router.post('/', jobController.create);
 router.post('/generate', upload.single('file'), jobController.generate);
+router.post('/generate-skills', jobController.generateSkills);
 
 router.put('/:id', jobController.update);
 router.put('/:id/status', jobController.updateStatus);

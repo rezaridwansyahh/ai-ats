@@ -2,12 +2,12 @@ import { useEffect, useState, useRef, useCallback } from 'react';
 import { useParams } from 'react-router-dom';
 import {
   Loader2, AlertTriangle, CheckCircle2, ChevronDown, ChevronUp,
-  Clock, User, Briefcase, Calendar, Send, Lock,
+  Clock, User, Briefcase, Calendar, Send, Lock, Download,
 } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 
-import { getPackByToken, saveOutcome, submitPack } from '@/api/interview-pack.api';
+import { getPackByToken, saveOutcome, submitPack, downloadPackCandidateCv } from '@/api/interview-pack.api';
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
@@ -155,6 +155,23 @@ function SaveIndicator({ savingId, savedId, candidateId }) {
   return null;
 }
 
+function AlertModal({ title, message, onClose }) {
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 px-4">
+      <Card className="w-full max-w-sm">
+        <CardContent className="p-5 space-y-3 text-center">
+          <AlertTriangle className="h-8 w-8 text-amber-500 mx-auto" />
+          <p className="text-sm font-semibold text-foreground">{title}</p>
+          <p className="text-xs text-muted-foreground leading-relaxed">{message}</p>
+          <Button size="sm" onClick={onClose} className="w-full">
+            OK
+          </Button>
+        </CardContent>
+      </Card>
+    </div>
+  );
+}
+
 const QUESTION_NOTE_LIMIT = 500;
 
 function QuestionsPanel({ questions = [], outcome, packCandidateId, onNoteChange, isReadOnly }) {
@@ -237,7 +254,9 @@ export default function InterviewPackPortal() {
   const [confirmSubmit, setConfirmSubmit] = useState(false);
 
   const [savingId, setSavingId] = useState(null);
+  const [downloadingCv, setDownloadingCv] = useState(false);
   const [savedId, setSavedId] = useState(null);
+  const [cvAlert, setCvAlert] = useState(null); 
 
   // Debounce timers per candidate
   const debounceTimers = useRef({});
@@ -421,6 +440,32 @@ export default function InterviewPackPortal() {
 
   const isReadOnly = submitted;
 
+  const handleDownloadCv = async () => {
+    if (!activePcId) return;
+    setDownloadingCv(true);
+    try {
+      const res = await downloadPackCandidateCv(token, activePcId);
+      const blobUrl = URL.createObjectURL(res.data);
+      const a = document.createElement('a');
+      a.href = blobUrl;
+      a.download = `${activeCandidate?.applicant_name ?? 'candidate'}-cv.pdf`;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      URL.revokeObjectURL(blobUrl);
+    } catch (err) {
+      const status = err.response?.status;
+      setCvAlert({
+        title: status === 404 ? 'No CV available' : 'Download failed',
+        message: status === 404
+          ? `${activeCandidate?.applicant_name || 'This candidate'} doesn't have a CV on file.`
+          : 'Something went wrong downloading the CV. Please try again.',
+      });
+    } finally {
+      setDownloadingCv(false);
+    }
+  };
+
   return (
     <div className="min-h-screen bg-background pb-24">
       <div className="max-w-4xl mx-auto px-4 py-6 space-y-4">
@@ -577,7 +622,20 @@ export default function InterviewPackPortal() {
                       <p className="text-xs text-muted-foreground">{activeCandidate.last_position}</p>
                     )}
                   </div>
-                  <SaveIndicator savingId={savingId} savedId={savedId} candidateId={activePcId} />
+                  <div className="flex items-center gap-2">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="text-xs h-7 px-2.5"
+                      disabled={downloadingCv}
+                      onClick={handleDownloadCv}
+                    >
+                      {downloadingCv
+                        ? <><Loader2 className="h-3.5 w-3.5 mr-1.5 animate-spin" /> Downloading…</>
+                        : <><Download className="h-3.5 w-3.5 mr-1.5" /> Download CV</>}
+                    </Button>
+                    <SaveIndicator savingId={savingId} savedId={savedId} candidateId={activePcId} />
+                  </div>
                 </CardContent>
               </Card>
 
@@ -775,6 +833,13 @@ export default function InterviewPackPortal() {
             )}
           </div>
         </div>
+      )}
+      {cvAlert && (
+        <AlertModal
+          title={cvAlert.title}
+          message={cvAlert.message}
+          onClose={() => setCvAlert(null)}
+        />
       )}
     </div>
   );

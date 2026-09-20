@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { Button } from '@/components/ui/button';
-import { X, ChevronDown, ChevronUp, Printer, FileDown } from 'lucide-react';
+import { X, ChevronDown, ChevronUp, Printer, FileDown, Mail, Calendar, BarChart3, Brain, Drama, Briefcase, Trophy, BookOpen, Compass, Settings2, Star } from 'lucide-react';
 import { calc3Pillar, pillarVerdict, deriveOverallVerdict, genManagerSummary, PILLAR_THRESHOLDS } from './report-utils';
 import {
   getVerdict,
@@ -30,6 +30,8 @@ const PILL_LABEL = { pass: '✓ Passed', warn: '⚠ Warn', fail: '✗ Failed', e
 
 const SUB_NAMES = { GI: 'Kemampuan Umum', PV: 'Penalaran Verbal', KN: 'Kemampuan Numerik', PA: 'Penalaran Abstrak', KA: 'Kecepatan & Akurasi' };
 const SUB_WEIGHTS = { GI: '30%', PV: '17.5%', KN: '17.5%', PA: '17.5%', KA: '17.5%' };
+
+const pillarIcons = { cognitive: Brain, personality: Drama, workAttitude: Briefcase, overall: Trophy };
 
 export default function CandidateReportView({ profile, results, onClose }) {
   const [showDetail, setShowDetail] = useState(false);
@@ -91,8 +93,8 @@ export default function CandidateReportView({ profile, results, onClose }) {
             <div className="font-serif text-2xl font-bold text-slate-900">{profile?.name}</div>
             <div className="text-slate-600 mt-0.5">{profile?.position}</div>
             <div className="text-xs text-slate-500 mt-1.5 flex flex-wrap gap-x-3 gap-y-0.5">
-              <span>📧 {profile?.email}</span>
-              <span>📅 {tk?.date || 'Tanggal tidak tersedia'}</span>
+              <span className="inline-flex items-center gap-1"><Mail className="w-3 h-3" /> {profile?.email}</span>
+              <span className="inline-flex items-center gap-1"><Calendar className="w-3 h-3" /> {tk?.date || 'Tanggal tidak tersedia'}</span>
             </div>
           </div>
         </div>
@@ -103,7 +105,7 @@ export default function CandidateReportView({ profile, results, onClose }) {
         {/* 3-Pillar Bar */}
         <div className="bg-white border border-slate-200 rounded-xl p-5">
           <div className="text-[10.5px] font-bold tracking-widest uppercase text-slate-500 mb-3 flex items-center gap-2">
-            📊 Skor 3-Pilar · Format Platform Myralix
+            <BarChart3 className="w-3.5 h-3.5" /> Skor 3-Pilar · Format Platform Myralix
             <div className="flex-1 h-px bg-slate-200" />
           </div>
           <div className="grid grid-cols-2 md:grid-cols-4 border-[1.5px] border-slate-200 rounded-lg overflow-hidden">
@@ -123,7 +125,7 @@ export default function CandidateReportView({ profile, results, onClose }) {
                   .filter(Boolean)
                   .join(' ')}
               >
-                <div className="text-lg mb-1 opacity-80">{p.icon}</div>
+                {(() => { const Icon = pillarIcons[p.key]; return <Icon className="w-5 h-5 mx-auto mb-1 opacity-80" />; })()}
                 <div className="text-[11px] font-semibold uppercase tracking-wider text-slate-500 mb-2">{p.name}</div>
                 <div className={`font-serif font-bold leading-none mb-1 ${p.isOverall ? 'text-3xl text-teal-800' : 'text-2xl'}`}>
                   {p.score ?? '—'}
@@ -148,16 +150,16 @@ export default function CandidateReportView({ profile, results, onClose }) {
         {/* Summary for Candidate */}
         <div className="bg-white border border-slate-200 rounded-xl p-6">
           <h3 className="font-serif text-lg text-teal-800 font-bold flex items-center gap-2 mb-3">
-            <span className="w-1 h-4 bg-teal-600 rounded-sm" /> 📘 Ringkasan Hasil Asesmen
+            <span className="w-1 h-4 bg-teal-600 rounded-sm" /> <BookOpen className="w-4 h-4 inline" /> Ringkasan Hasil Asesmen
           </h3>
 
           {[
-            { icon: '🧠', title: 'Kemampuan Berpikir & Analisis', desc: 'Kapasitas belajar, pemecahan masalah, akurasi', score: pillar.cognitive, verdict: pv.cognitive, passLbl: '✅ Memadai', failLbl: '❌ Belum Memadai' },
-            { icon: '🌟', title: 'Kesesuaian Kepribadian', desc: 'Karakter bawaan kandidat vs tuntutan peran', score: pillar.personality, verdict: pv.personality, passLbl: '✅ Sesuai', failLbl: '❌ Tidak Sesuai' },
-            { icon: '💼', title: 'Kesesuaian Sikap & Gaya Kerja', desc: 'Orientasi kerja, minat, dan preferensi posisi', score: pillar.workAttitude, verdict: pv.workAttitude, passLbl: '✅ Selaras', failLbl: '❌ Tidak Selaras' },
+            { Icon: Brain, title: 'Kemampuan Berpikir & Analisis', desc: 'Kapasitas belajar, pemecahan masalah, akurasi', score: pillar.cognitive, verdict: pv.cognitive, passLbl: 'Memadai', failLbl: 'Belum Memadai' },
+            { Icon: Star, title: 'Kesesuaian Kepribadian', desc: 'Karakter bawaan kandidat vs tuntutan peran', score: pillar.personality, verdict: pv.personality, passLbl: 'Sesuai', failLbl: 'Tidak Sesuai' },
+            { Icon: Briefcase, title: 'Kesesuaian Sikap & Gaya Kerja', desc: 'Orientasi kerja, minat, dan preferensi posisi', score: pillar.workAttitude, verdict: pv.workAttitude, passLbl: 'Selaras', failLbl: 'Tidak Selaras' },
           ].map((row) => (
             <div key={row.title} className="flex items-center gap-3.5 py-3 border-b last:border-b-0 border-slate-100 flex-wrap">
-              <div className="text-xl w-9 text-center opacity-85">{row.icon}</div>
+              <div className="w-9 text-center opacity-85"><row.Icon className="w-5 h-5 mx-auto" /></div>
               <div className="flex-1 min-w-0">
                 <div className="text-sm font-semibold">{row.title}</div>
                 <div className="text-xs text-slate-500 mt-0.5">{row.desc}</div>
@@ -167,7 +169,7 @@ export default function CandidateReportView({ profile, results, onClose }) {
                 <span className="text-xs text-slate-400 font-normal">/100</span>
               </div>
               <div className={`px-3 py-1 rounded-full text-[11px] font-bold border min-w-[110px] text-center ${PILL_CLS[row.verdict]}`}>
-                {row.verdict === 'pass' ? row.passLbl : row.verdict === 'warn' ? '⚠️ Pertimbangkan' : row.verdict === 'fail' ? row.failLbl : '— Pending'}
+                {row.verdict === 'pass' ? row.passLbl : row.verdict === 'warn' ? 'Pertimbangkan' : row.verdict === 'fail' ? row.failLbl : '— Pending'}
               </div>
             </div>
           ))}
@@ -187,7 +189,7 @@ export default function CandidateReportView({ profile, results, onClose }) {
           className="w-full justify-between h-auto py-3 border-2 border-teal-600 hover:bg-teal-50"
         >
           <span className="font-semibold text-teal-900">
-            {showDetail ? '🔼 Sembunyikan Detail Lengkap' : '🔽 Lihat Detail Lengkap Setiap Tes'}
+            {showDetail ? 'Sembunyikan Detail Lengkap' : 'Lihat Detail Lengkap Setiap Tes'}
           </span>
           {showDetail ? <ChevronUp className="w-5 h-5 text-teal-700" /> : <ChevronDown className="w-5 h-5 text-teal-700" />}
         </Button>
@@ -200,7 +202,7 @@ export default function CandidateReportView({ profile, results, onClose }) {
           <section className="bg-white border-2 border-slate-200 rounded-xl p-5">
             <h2 className="font-serif text-lg font-bold text-slate-900 flex items-center gap-2 mb-4">
               <span className="w-1 h-5 bg-teal-600 rounded-sm" />
-              🧠 Tes Kemampuan Kognitif (TK)
+              <Brain className="w-4 h-4" /> Tes Kemampuan Kognitif (TK)
             </h2>
             {tk ? (
               <>
@@ -240,7 +242,7 @@ export default function CandidateReportView({ profile, results, onClose }) {
           <section className="bg-white border-2 border-slate-200 rounded-xl p-5">
             <h2 className="font-serif text-lg font-bold text-slate-900 flex items-center gap-2 mb-4">
               <span className="w-1 h-5 bg-amber-600 rounded-sm" />
-              🌟 Tes Kepribadian (EPPS)
+              <Star className="w-4 h-4" /> Tes Kepribadian (EPPS)
             </h2>
             {epps ? (
               <>
@@ -285,7 +287,7 @@ export default function CandidateReportView({ profile, results, onClose }) {
           <section className="bg-white border-2 border-slate-200 rounded-xl p-5">
             <h2 className="font-serif text-lg font-bold text-slate-900 flex items-center gap-2 mb-4">
               <span className="w-1 h-5 bg-indigo-600 rounded-sm" />
-              🗺️ Tes Minat Kerja (Holland)
+              <Compass className="w-4 h-4" /> Tes Minat Kerja (Holland)
             </h2>
             {hol ? (
               <>
@@ -322,7 +324,7 @@ export default function CandidateReportView({ profile, results, onClose }) {
           <section className="bg-white border-2 border-slate-200 rounded-xl p-5">
             <h2 className="font-serif text-lg font-bold text-slate-900 flex items-center gap-2 mb-4">
               <span className="w-1 h-5 bg-cyan-600 rounded-sm" />
-              ⚙️ Tes Preferensi Kerja (PAPI)
+              <Settings2 className="w-4 h-4" /> Tes Preferensi Kerja (PAPI)
             </h2>
             {papi ? (
               <>

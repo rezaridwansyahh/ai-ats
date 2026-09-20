@@ -56,15 +56,19 @@ export default function AIScreeningPage() {
   // Accordion open state — Parse open by default
   const [activeStage, setActiveStage] = useState('parse');
 
-  // Refresh just the stage tables (after run / advance)
+  // Refresh just the stage tables (after run / advance) — also refetches the
+  // job row so match_rescore_status updates on every poll tick, not just full
+  // page loads.
   const loadStages = useCallback(async () => {
     if (!jobId) return;
-    const [calRes, parseRes, matchRes, qaRes] = await Promise.all([
+    const [jobRes, calRes, parseRes, matchRes, qaRes] = await Promise.all([
+      getJobById(jobId),
       getCalibration(jobId),
       getLaneCandidates(jobId, 'parse'),
       getLaneCandidates(jobId, 'match'),
       getLaneCandidates(jobId, 'qa'),
     ]);
+    setJob(jobRes.data?.job || jobRes.data || null);
     setCohortRows(Array.isArray(calRes.data?.rows)           ? calRes.data.rows           : []);
     setParseRows(Array.isArray(parseRes.data?.candidates)   ? parseRes.data.candidates   : []);
     setMatchRows(Array.isArray(matchRes.data?.candidates)   ? matchRes.data.candidates   : []);
@@ -112,10 +116,19 @@ export default function AIScreeningPage() {
     }
   };
 
-  const total_candidates = parseRows.length + matchRows.length + qaRows.length + cohortRows.length;
-  const parsedDone = matchRows.length + qaRows.length + cohortRows.length;
-  const scoredDone = qaRows.length + cohortRows.length;
-  const qaDone     = cohortRows.length;
+  // cohortRows = "scored + no decision yet" (getCalibrationCohort) — that's
+  // NOT the same thing as "responded to Follow-up Q&A": a candidate can be
+  // scored and undecided without ever having Q&A sent to them at all. Only
+  // count/show the ones whose qa_status is actually 'responded'.
+  const qaRespondedRows = useMemo(
+    () => cohortRows.filter((r) => r.qa_status === 'responded'),
+    [cohortRows]
+  );
+
+  const total_candidates =  cohortRows.length;
+  const parsedDone = matchRows.length + qaRows.length ;
+  const scoredDone = qaRows.length ;
+  const qaDone     = qaRespondedRows.length;
   const pctOf = (n) => (total_candidates > 0 ? Math.round((n / total_candidates) * 100) : 0);
 
   const engineTiles = [
@@ -242,7 +255,7 @@ export default function AIScreeningPage() {
       {activeStage === 'parse' && (
         <ParseStageDashboard
           pendingRows={parseRows}
-          parsedRows={[...matchRows, ...qaRows, ...cohortRows]}
+          parsedRows={[...matchRows, ...qaRows]}
           onOpen={openCandidate}
         />
       )}
@@ -250,8 +263,9 @@ export default function AIScreeningPage() {
       {activeStage === 'match' && (
         <MatchStageDashboard
           jobId={jobId}
+          job={job}
           pendingRows={matchRows}
-          scoredRows={[...qaRows, ...cohortRows]}
+          scoredRows={[...qaRows]}
           onOpen={openCandidate}
           onScored={loadStages}
         />
@@ -260,7 +274,8 @@ export default function AIScreeningPage() {
       {activeStage === 'qa' && (
         <QAStageDashboard
           pendingRows={qaRows}
-          respondedRows={cohortRows}
+          respondedRows={qaRespondedRows}
+          undecidedRows={cohortRows}
           onOpen={openCandidate}
         />
       )}

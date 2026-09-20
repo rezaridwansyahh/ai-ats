@@ -1,4 +1,5 @@
 import screeningService from './screening.service.js';
+import matchRescoreProducer from '../../bullmq/match-rescore/match-rescore.producer.js';
 
 function ctxFromReq(req) {
   return {
@@ -113,10 +114,9 @@ class ScreeningController {
   async scoreAllCandidates(req, res) {
     try {
       const job_id = Number(req.params.job_id);
-      const { rubric, role_profile } = req.body || {};
+      const { rubric } = req.body || {};
       const result = await screeningService.scoreAllCandidates(job_id, {
         rubric,
-        role_profile,
         context: ctxFromReq(req),
       });
       res.status(200).json({ message: 'All candidates scored', ...result });
@@ -132,10 +132,9 @@ class ScreeningController {
   async scoreCandidate(req, res) {
     try {
       const job_id      = Number(req.params.job_id);
-      const { applicant_id, rubric, role_profile } = req.body || {};
+      const { applicant_id, rubric } = req.body || {};
       const result = await screeningService.scoreCandidate(job_id, Number(applicant_id), {
         rubric,
-        role_profile,
         context: ctxFromReq(req),
       });
       res.status(200).json({ message: 'Candidate scored', ...result });
@@ -275,6 +274,33 @@ class ScreeningController {
         context: ctxFromReq(req),
       });
       res.status(200).json({ message: 'Match-bulk complete', ...result });
+    } catch (err) {
+      res.status(err.status || 500).json({ message: err.message });
+    }
+  }
+
+  // POST /screening/job/:job_id/match-bulk/rerun-all — queue a force re-score
+  // of every candidate on the job (not just the ones the browser had loaded).
+  // Returns immediately; core_job.match_rescore_status tracks progress.
+  async rerunAllForJob(req, res) {
+    try {
+      const job_id = Number(req.params.job_id);
+      if (!job_id) throw { status: 400, message: 'job_id is required' };
+      await matchRescoreProducer.rerunAll({ job_id });
+      res.status(202).json({ message: 'Re-scoring queued for all candidates on this job' });
+    } catch (err) {
+      res.status(err.status || 500).json({ message: err.message });
+    }
+  }
+
+  // POST /screening/job/:job_id/match-bulk/score-pending — queue scoring of
+  // just the pending (never-scored) candidates on the job.
+  async scorePendingForJob(req, res) {
+    try {
+      const job_id = Number(req.params.job_id);
+      if (!job_id) throw { status: 400, message: 'job_id is required' };
+      await matchRescoreProducer.scorePending({ job_id });
+      res.status(202).json({ message: 'Scoring queued for pending candidates on this job' });
     } catch (err) {
       res.status(err.status || 500).json({ message: err.message });
     }

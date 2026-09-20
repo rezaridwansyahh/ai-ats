@@ -1,3 +1,4 @@
+import { BarChart3, Brain, Sparkles, Briefcase, Trophy, BookOpen, Check, X, AlertTriangle, Minus } from 'lucide-react';
 import { calc3Pillar, pillarVerdict, deriveOverallVerdict, genManagerSummary, PILLAR_THRESHOLDS } from './report-utils';
 
 const PILL_CLS = {
@@ -6,7 +7,23 @@ const PILL_CLS = {
   fail: 'bg-red-50 text-red-700 border-red-300',
   empty: 'bg-slate-50 text-slate-500 border-slate-200',
 };
-const PILL_LABEL = { pass: '✓ Passed', warn: '⚠ Warn', fail: '✗ Failed', empty: '— Pending' };
+
+const PILL_META = {
+  pass:  { icon: Check,         label: 'Passed'  },
+  warn:  { icon: AlertTriangle, label: 'Warn'    },
+  fail:  { icon: X,             label: 'Failed'  },
+  empty: { icon: Minus,         label: 'Pending' },
+};
+
+function VerdictPill({ verdict, className = '' }) {
+  const meta = PILL_META[verdict] || PILL_META.empty;
+  const Icon = meta.icon;
+  return (
+    <span className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-bold border ${PILL_CLS[verdict] || PILL_CLS.empty} ${className}`}>
+      <Icon className="h-3 w-3" /> {meta.label}
+    </span>
+  );
+}
 
 export default function ManagerView({ profile, results, finalRec, onSetFinalRec }) {
   const pillar = calc3Pillar(results);
@@ -32,38 +49,40 @@ export default function ManagerView({ profile, results, finalRec, onSetFinalRec 
       {/* 3-Pillar Bar */}
       <div className="bg-white border border-slate-200 rounded-xl p-5">
         <div className="text-[10.5px] font-bold tracking-widest uppercase text-slate-500 mb-3 flex items-center gap-2">
-          📊 Skor 3-Pilar · Format Platform Myralix
+          <BarChart3 className="h-3.5 w-3.5 shrink-0" />
+          Skor 3-Pilar · Format Platform Myralix
           <div className="flex-1 h-px bg-slate-200" />
         </div>
         <div className="grid grid-cols-2 md:grid-cols-4 border-[1.5px] border-slate-200 rounded-lg overflow-hidden">
           {[
-            { key: 'cognitive', icon: '🧠', name: 'Cognitive', score: pillar.cognitive, threshold: PILLAR_THRESHOLDS.cognitive, verdict: pv.cognitive },
-            { key: 'personality', icon: '🎭', name: 'Personality', score: pillar.personality, threshold: PILLAR_THRESHOLDS.personality, verdict: pv.personality },
-            { key: 'workAttitude', icon: '💼', name: 'Work Attitude', score: pillar.workAttitude, threshold: PILLAR_THRESHOLDS.workAttitude, verdict: pv.workAttitude },
-            { key: 'overall', icon: '🏆', name: 'Overall', score: pillar.overall, threshold: PILLAR_THRESHOLDS.overall, verdict: pv.overall, isOverall: true },
-          ].map((p, i, arr) => (
-            <div
-              key={p.key}
-              className={[
-                'p-4 text-center border-r border-slate-200 last:border-r-0 bg-white',
-                p.isOverall && 'bg-gradient-to-b from-teal-50 to-white',
-                i < arr.length - 2 && 'border-b md:border-b-0',
-              ]
-                .filter(Boolean)
-                .join(' ')}
-            >
-              <div className="text-lg mb-1 opacity-80">{p.icon}</div>
-              <div className="text-[11px] font-semibold uppercase tracking-wider text-slate-500 mb-2">{p.name}</div>
-              <div className={`font-serif font-bold leading-none mb-1 ${p.isOverall ? 'text-3xl text-teal-800' : 'text-2xl'}`}>
-                {p.score ?? '—'}
-                <span className="text-xs text-slate-400 font-normal ml-0.5">/100</span>
+            { key: 'cognitive', icon: Brain, name: 'Cognitive', score: pillar.cognitive, threshold: PILLAR_THRESHOLDS.cognitive, verdict: pv.cognitive },
+            { key: 'personality', icon: Sparkles, name: 'Personality', score: pillar.personality, threshold: PILLAR_THRESHOLDS.personality, verdict: pv.personality },
+            { key: 'workAttitude', icon: Briefcase, name: 'Work Attitude', score: pillar.workAttitude, threshold: PILLAR_THRESHOLDS.workAttitude, verdict: pv.workAttitude },
+            { key: 'overall', icon: Trophy, name: 'Overall', score: pillar.overall, threshold: PILLAR_THRESHOLDS.overall, verdict: pv.overall, isOverall: true },
+          ].map((p, i, arr) => {
+            const Icon = p.icon;
+            return (
+              <div
+                key={p.key}
+                className={[
+                  'p-4 text-center border-r border-slate-200 last:border-r-0 bg-white',
+                  p.isOverall && 'bg-gradient-to-b from-teal-50 to-white',
+                  i < arr.length - 2 && 'border-b md:border-b-0',
+                ]
+                  .filter(Boolean)
+                  .join(' ')}
+              >
+                <Icon className={`h-5 w-5 mx-auto mb-1 ${p.isOverall ? 'text-teal-700' : 'text-slate-500'}`} />
+                <div className="text-[11px] font-semibold uppercase tracking-wider text-slate-500 mb-2">{p.name}</div>
+                <div className={`font-serif font-bold leading-none mb-1 ${p.isOverall ? 'text-3xl text-teal-800' : 'text-2xl'}`}>
+                  {p.score ?? '—'}
+                  <span className="text-xs text-slate-400 font-normal ml-0.5">/100</span>
+                </div>
+                <VerdictPill verdict={p.verdict} className="mt-1" />
+                <div className="text-[9.5px] text-slate-400 mt-1">Min {p.threshold}</div>
               </div>
-              <div className={`inline-block mt-1 px-2.5 py-0.5 rounded-full text-[11px] font-bold border ${PILL_CLS[p.verdict]}`}>
-                {PILL_LABEL[p.verdict]}
-              </div>
-              <div className="text-[9.5px] text-slate-400 mt-1">Min {p.threshold}</div>
-            </div>
-          ))}
+            );
+          })}
         </div>
       </div>
 
@@ -77,29 +96,39 @@ export default function ManagerView({ profile, results, finalRec, onSetFinalRec 
       {/* Manager Summary */}
       <div className="bg-white border border-slate-200 rounded-xl p-6">
         <h3 className="font-serif text-lg text-teal-800 font-bold flex items-center gap-2 mb-3">
-          <span className="w-1 h-4 bg-teal-600 rounded-sm" /> 📘 Ringkasan untuk Manajer
+          <span className="w-1 h-4 bg-teal-600 rounded-sm" />
+          <BookOpen className="h-4 w-4" />
+          Ringkasan untuk Manajer
         </h3>
 
         {[
-          { icon: '🧠', title: 'Kemampuan Berpikir & Analisis', desc: 'Kapasitas belajar, pemecahan masalah, akurasi', score: pillar.cognitive, verdict: pv.cognitive, passLbl: '✅ Memadai', failLbl: '❌ Belum Memadai' },
-          { icon: '🌟', title: 'Kesesuaian Kepribadian', desc: 'Karakter bawaan kandidat vs tuntutan peran', score: pillar.personality, verdict: pv.personality, passLbl: '✅ Sesuai', failLbl: '❌ Tidak Sesuai' },
-          { icon: '💼', title: 'Kesesuaian Sikap & Gaya Kerja', desc: 'Orientasi kerja, minat, dan preferensi posisi', score: pillar.workAttitude, verdict: pv.workAttitude, passLbl: '✅ Selaras', failLbl: '❌ Tidak Selaras' },
-        ].map((row) => (
-          <div key={row.title} className="flex items-center gap-3.5 py-3 border-b last:border-b-0 border-slate-100 flex-wrap">
-            <div className="text-xl w-9 text-center opacity-85">{row.icon}</div>
-            <div className="flex-1 min-w-0">
-              <div className="text-sm font-semibold">{row.title}</div>
-              <div className="text-xs text-slate-500 mt-0.5">{row.desc}</div>
+          { icon: Brain, title: 'Kemampuan Berpikir & Analisis', desc: 'Kapasitas belajar, pemecahan masalah, akurasi', score: pillar.cognitive, verdict: pv.cognitive, passLbl: 'Memadai', failLbl: 'Belum Memadai' },
+          { icon: Sparkles, title: 'Kesesuaian Kepribadian', desc: 'Karakter bawaan kandidat vs tuntutan peran', score: pillar.personality, verdict: pv.personality, passLbl: 'Sesuai', failLbl: 'Tidak Sesuai' },
+          { icon: Briefcase, title: 'Kesesuaian Sikap & Gaya Kerja', desc: 'Orientasi kerja, minat, dan preferensi posisi', score: pillar.workAttitude, verdict: pv.workAttitude, passLbl: 'Selaras', failLbl: 'Tidak Selaras' },
+        ].map((row) => {
+          const RowIcon = row.icon;
+          return (
+            <div key={row.title} className="flex items-center gap-3.5 py-3 border-b last:border-b-0 border-slate-100 flex-wrap">
+              <div className="w-9 flex items-center justify-center shrink-0">
+                <RowIcon className="h-5 w-5 text-slate-500 opacity-85" />
+              </div>
+              <div className="flex-1 min-w-0">
+                <div className="text-sm font-semibold">{row.title}</div>
+                <div className="text-xs text-slate-500 mt-0.5">{row.desc}</div>
+              </div>
+              <div className="font-serif text-xl font-bold text-teal-800 text-right min-w-[56px]">
+                {row.score ?? '—'}
+                <span className="text-xs text-slate-400 font-normal">/100</span>
+              </div>
+              <span className={`inline-flex items-center justify-center gap-1 px-3 py-1 rounded-full text-[11px] font-bold border min-w-[110px] text-center ${PILL_CLS[row.verdict] || PILL_CLS.empty}`}>
+                {row.verdict === 'pass' && <><Check className="h-3 w-3" /> {row.passLbl}</>}
+                {row.verdict === 'warn' && <><AlertTriangle className="h-3 w-3" /> Pertimbangkan</>}
+                {row.verdict === 'fail' && <><X className="h-3 w-3" /> {row.failLbl}</>}
+                {row.verdict === 'empty' && <><Minus className="h-3 w-3" /> Pending</>}
+              </span>
             </div>
-            <div className="font-serif text-xl font-bold text-teal-800 text-right min-w-[56px]">
-              {row.score ?? '—'}
-              <span className="text-xs text-slate-400 font-normal">/100</span>
-            </div>
-            <div className={`px-3 py-1 rounded-full text-[11px] font-bold border min-w-[110px] text-center ${PILL_CLS[row.verdict]}`}>
-              {row.verdict === 'pass' ? row.passLbl : row.verdict === 'warn' ? '⚠️ Pertimbangkan' : row.verdict === 'fail' ? row.failLbl : '— Pending'}
-            </div>
-          </div>
-        ))}
+          );
+        })}
 
         <div
           className="mt-4 pl-4 pr-4.5 py-3 bg-teal-50 border-l-4 border-teal-600 rounded-r-md text-sm text-slate-600 leading-relaxed"

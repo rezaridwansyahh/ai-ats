@@ -10,7 +10,9 @@ import { STEPS } from '@/components/candidate-detail/steps';
 import { BATTERIES, getInitials } from '@/lib/batteries';
 import { getCandidateById, addCandidateStage } from '@/api/candidate.api';
 import { getSessionsFromCandidate } from '@/api/session.api';
-import { getResultFromCandidate } from '@/api/assessment-battery-result.api';
+import { getResultFromCandidate, downloadReportPdf } from '@/api/assessment-battery-result.api';
+import { getJobById } from '@/api/job.api';
+import { toast } from 'sonner';
 
 export default function CandidateDetailPage() {
   const navigate = useNavigate();
@@ -27,6 +29,7 @@ export default function CandidateDetailPage() {
 
   const [activeKey, setActiveKey]   = useState('setup');
   const [battery, setBattery]       = useState(null);
+  const [jobBattery, setJobBattery] = useState(null); // job's assigned battery (Job Management)
   const [existingSessions, setExistingSessions] = useState([]);
 
   const restoredOnceRef   = useRef(false);
@@ -42,6 +45,7 @@ export default function CandidateDetailPage() {
   const finalRecRef = useRef({ get: () => null, set: () => {} });
   const [sidebarFinalRec, setSidebarFinalRec] = useState(null);
   const [advanceStatus, setAdvanceStatus] = useState('idle'); // idle|loading|done|error
+  const [printing, setPrinting] = useState(false);
 
   /* ── Fetch candidate ─────────────────────────────────────────── */
   useEffect(() => {
@@ -63,6 +67,20 @@ export default function CandidateDetailPage() {
     })();
     return () => { cancelled = true; };
   }, [candidateId]);
+
+  useEffect(() => {
+    if (!jobId) { setJobBattery(null); return undefined; }
+    let cancelled = false;
+    (async () => {
+      try {
+        const res = await getJobById(jobId);
+        if (!cancelled) setJobBattery(res.data?.job?.assessment_battery ?? null);
+      } catch {
+        if (!cancelled) setJobBattery(null);
+      }
+    })();
+    return () => { cancelled = true; };
+  }, [jobId]);
 
   /* ── Restore session state ───────────────────────────────────── */
   useEffect(() => {
@@ -88,6 +106,14 @@ export default function CandidateDetailPage() {
     })();
     return () => { cancelled = true; };
   }, [candidateId, jobId]);
+
+  /* ── Fall back to the job's battery when no session exists yet ── */
+  // Runs after both the session-restore effect (which sets `battery` from an
+  // existing session, if any) and the job fetch above. Only fills `battery`
+  // when nothing has claimed it yet, so it never overrides a real session.
+  useEffect(() => {
+    if (battery == null && jobBattery) setBattery(jobBattery);
+  }, [jobBattery, battery]);
 
   /* ── Fetch latest result ─────────────────────────────────────── */
   useEffect(() => {
@@ -210,6 +236,35 @@ export default function CandidateDetailPage() {
     }
   };
 
+  /* ── Server-generated PDF export (replaces window.print()) ────── */
+  const handlePrintPdf = async () => {
+    if (!latestResult?.id) return;
+    setPrinting(true);
+    try {
+      const res = await downloadReportPdf(latestResult.id);
+      const url = URL.createObjectURL(new Blob([res.data], { type: 'application/pdf' }));
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `assessment-report-${candidateView.name || latestResult.id}.pdf`;
+      a.click();
+      URL.revokeObjectURL(url);
+    } catch (err) {
+      let message = 'Failed to generate PDF';
+      const errBlob = err?.response?.data;
+      if (errBlob instanceof Blob) {
+        try {
+          const parsed = JSON.parse(await errBlob.text());
+          if (parsed?.message) message = parsed.message;
+        } catch { /* keep default message */ }
+      } else if (err?.message) {
+        message = err.message;
+      }
+      toast.error(message);
+    } finally {
+      setPrinting(false);
+    }
+  };
+
   return (
     <>
       {/* ── Sticky Header ─────────────────────────────────────── */}
@@ -217,7 +272,7 @@ export default function CandidateDetailPage() {
         <Button
           variant="ghost"
           size="sm"
-          className="text-xs -ml-2 w-fit"
+          className="text-xs -ml-2 w-fit print:hidden"
           onClick={() => navigate(backPath)}
         >
           <ArrowLeft className="h-3.5 w-3.5 mr-1" /> Back to candidates
@@ -245,17 +300,16 @@ export default function CandidateDetailPage() {
 
       {/* ── Two-column layout ─────────────────────────────────── */}
       <div className="px-6 pb-6 pt-4">
-        <div className="grid grid-cols-1 lg:grid-cols-[minmax(0,1fr)_260px] gap-6">
+        <div className="grid grid-cols-1 lg:grid-cols-[minmax(0,1fr)_260px] gap-6 print:block">
 
           {/* Main content */}
           <div className="min-w-0 space-y-4">
             <div key={activeKey} className="animate-fade-in-up">
               {activeKey === 'setup' && (
                 <SetupTab
-                  selectedBattery={battery}
-                  onSelectBattery={setBattery}
+                  jobId={jobId}
+                  jobBattery={jobBattery}
                   onSendInvitation={handleSendInvitation}
-                  lockedBattery={lockedBattery}
                 />
               )}
               {activeKey === 'take' && (
@@ -287,15 +341,17 @@ export default function CandidateDetailPage() {
             </div>
 
             {/* Step paginator */}
-            <StepPaginator
-              activeKey={activeKey}
-              onSelect={handleNavigate}
-              completed={completed}
-            />
+            <div className="print:hidden">
+              <StepPaginator
+                activeKey={activeKey}
+                onSelect={handleNavigate}
+                completed={completed}
+              />
+            </div>
           </div>
 
           {/* Sticky Sidebar */}
-          <aside>
+          <aside className="print:hidden">
             <div className="sticky top-[184px] space-y-3">
               {activeKey === 'decide' && completed.take && (
                 <TindakLanjutCard
@@ -313,6 +369,8 @@ export default function CandidateDetailPage() {
                 onSelect={handleNavigate}
                 saveStatus={decideSaveStatus}
                 onSaveNow={handleSaveNow}
+                onPrint={handlePrintPdf}
+                printing={printing}
               />
               <AssessmentStepsNav
                 activeKey={activeKey}
@@ -334,27 +392,42 @@ const TINDAK_OPTIONS = [
   { val: 'evaluasi',         label: 'Hold',    icon: Pause,       cls: 'border-amber-400  bg-amber-50  text-amber-700',   activeCls: 'bg-amber-500  text-white border-amber-500'  },
   { val: 'tidak',            label: 'Reject',  icon: ThumbsDown,  cls: 'border-rose-400   bg-rose-50   text-rose-700',    activeCls: 'bg-rose-600   text-white border-rose-600'   },
 ];
-
 function TindakLanjutCard({ finalRec, onPick, onAdvance, advanceStatus, hasStage }) {
+  const locked = !!finalRec;
+  const canUnlock = locked && advanceStatus !== 'done';
+
   return (
     <Card>
       <CardContent className="p-3 space-y-2.5">
-        <p className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
-          Decision
-        </p>
+        <div className="flex items-center justify-between gap-2">
+          <p className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
+            Decision
+          </p>
+          {canUnlock && (
+            <button
+              type="button"
+              onClick={() => onPick(null)}
+              className="text-[10px] font-medium text-muted-foreground hover:text-foreground px-2 py-0.5 rounded-full border border-border hover:border-foreground/30 hover:bg-muted/50 transition-colors"
+            >
+              Ubah keputusan
+            </button>
+          )}
+        </div>
 
         {/* Pick buttons */}
         <div className="space-y-1.5">
           {TINDAK_OPTIONS.map(({ val, label, icon: Icon, cls, activeCls }) => {
-            const active = finalRec === val;
+            const active   = finalRec === val;
+            const disabled = locked && !active;
             return (
               <button
                 key={val}
                 type="button"
-                onClick={() => onPick(val)}
+                onClick={() => !locked && onPick(val)}
+                disabled={disabled}
                 className={`w-full flex items-center gap-2 px-3 py-2 rounded-md text-xs font-semibold border transition-colors ${
                   active ? activeCls : `${cls} hover:opacity-90`
-                }`}
+                } ${disabled ? 'opacity-40 cursor-not-allowed hover:opacity-40' : ''}`}
               >
                 <Icon className="h-3.5 w-3.5 shrink-0" />
                 {label}
@@ -394,7 +467,7 @@ function TindakLanjutCard({ finalRec, onPick, onAdvance, advanceStatus, hasStage
 }
 
 /* ── Sidebar: contextual action card ─────────────────────────────── */
-function AssessmentActionCard({ activeKey, completed, battery, onSelect, saveStatus, onSaveNow }) {
+function AssessmentActionCard({ activeKey, completed, battery, onSelect, saveStatus, onSaveNow, onPrint, printing }) {
   if (activeKey === 'setup') {
     return (
       <Card>
@@ -412,7 +485,7 @@ function AssessmentActionCard({ activeKey, completed, battery, onSelect, saveSta
           </Button>
           {!battery && (
             <p className="text-[10px] text-amber-600 leading-snug">
-              Select a battery above first.
+              No battery assigned to this job yet.
             </p>
           )}
         </CardContent>
@@ -467,9 +540,12 @@ function AssessmentActionCard({ activeKey, completed, battery, onSelect, saveSta
             variant="outline"
             size="sm"
             className="w-full text-xs"
-            onClick={() => window.print()}
+            onClick={onPrint}
+            disabled={printing}
           >
-            <Printer className="h-3.5 w-3.5 mr-1.5" /> Print / Save PDF
+            {printing
+              ? <><Loader2 className="h-3.5 w-3.5 mr-1.5 animate-spin" />Generating…</>
+              : <><Printer className="h-3.5 w-3.5 mr-1.5" /> Print / Save PDF</>}
           </Button>
           {saveStatus === 'saved' && (
             <p className="text-[10px] text-emerald-600 flex items-center gap-1">

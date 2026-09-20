@@ -1,5 +1,15 @@
 -- Drop tables in reverse dependency order (most dependent first)
 -- Onboarding tables (Migration 010)
+DROP TABLE IF EXISTS onboarding_certificate CASCADE;
+DROP TABLE IF EXISTS onboarding_chat_message CASCADE;
+DROP TABLE IF EXISTS onboarding_chat_conversation CASCADE;
+DROP TABLE IF EXISTS onboarding_source CASCADE;
+DROP TABLE IF EXISTS onboarding_assessment_result CASCADE; 
+DROP TABLE IF EXISTS onboarding_assessment CASCADE;
+DROP TABLE IF EXISTS lms_progress CASCADE;
+DROP TABLE IF EXISTS lms_content CASCADE;
+DROP TABLE IF EXISTS lms_module CASCADE;
+DROP TABLE IF EXISTS lms_phase CASCADE;
 DROP TABLE IF EXISTS onboarding_hris_task CASCADE;
 DROP TABLE IF EXISTS onboarding_welcome_message CASCADE;
 DROP TABLE IF EXISTS onboarding_probation_checkin CASCADE;
@@ -25,6 +35,7 @@ DROP TABLE IF EXISTS core_company CASCADE;
 DROP TABLE IF EXISTS company_setting CASCADE;
 DROP TABLE IF EXISTS mapping_applicant_linkedin CASCADE;
 DROP TABLE IF EXISTS mapping_applicant_seek CASCADE;
+DROP TABLE IF EXISTS mapping_applicant_sourcing CASCADE;
 DROP TABLE IF EXISTS mapping_job_sourcing_job CASCADE;
 DROP TABLE IF EXISTS mapping_job_sourcing_linkedin CASCADE;
 DROP TABLE IF EXISTS mapping_job_sourcing_seek CASCADE;
@@ -76,6 +87,10 @@ DROP TABLE IF EXISTS company_email_template CASCADE;
 DROP TABLE IF EXISTS job_automation_settings CASCADE;
 DROP TABLE IF EXISTS candidate_job_score CASCADE;
 DROP TABLE IF EXISTS assessment_sessions CASCADE;
+DROP TABLE IF EXISTS assessment_score CASCADE;
+DROP TABLE IF EXISTS assessment_answer CASCADE;
+DROP TABLE IF EXISTS assessment_question CASCADE;
+DROP TABLE IF EXISTS assessment_subtest CASCADE;
 DROP TABLE IF EXISTS core_applicant_assessment CASCADE;
 DROP TABLE IF EXISTS master_assessment CASCADE;
 DROP TABLE IF EXISTS participants CASCADE; -- For cleanup only
@@ -109,6 +124,8 @@ DROP TYPE IF EXISTS contract_status_type CASCADE;
 DROP TYPE IF EXISTS contract_type_enum CASCADE;
 DROP TYPE IF EXISTS negotiation_initiator_type CASCADE;
 DROP TYPE IF EXISTS document_type_enum CASCADE;
+DROP TYPE IF EXISTS match_rescore_status_type CASCADE;
+DROP TYPE IF EXISTS question_type_enum CASCADE;
 
 -- Create ENUM type
 CREATE TYPE status_type AS ENUM ('Draft', 'Active', 'Running', 'Expired', 'Failed', 'Blocked');
@@ -139,6 +156,7 @@ CREATE TYPE contract_status_type AS ENUM ('draft', 'ready', 'sent', 'signed', 'e
 CREATE TYPE contract_type_enum AS ENUM ('PKWT', 'PKWTT'); -- PKWT = Fixed-term, PKWTT = Permanent
 CREATE TYPE negotiation_initiator_type AS ENUM ('candidate', 'recruiter');
 CREATE TYPE document_type_enum AS ENUM ('offer', 'contract');
+CREATE TYPE match_rescore_status_type AS ENUM ('idle', 'running', 'done', 'failed');
 CREATE EXTENSION IF NOT EXISTS pgcrypto;
 CREATE EXTENSION IF NOT EXISTS pg_trgm;
 
@@ -328,15 +346,25 @@ CREATE TABLE core_job (
   seniority_level VARCHAR(255),
   company_url VARCHAR(255),
   -- Job Details
+  work_type_type TEXT,
   qualifications TEXT,
   required_skills JSONB,
   preferred_skills JSONB,
   benefits JSONB,
   rubric JSONB,
+
+  assessment_battery battery_type NULL,
   -- Status
   status status_type NOT NULL DEFAULT 'Draft',
   sla_start_date DATE NULL DEFAULT NOW(),
   sla_end_date DATE NULL DEFAULT NOW(),
+  -- Async "re-score everyone" job (AI Matching -> Edit Job Details modal)
+  match_rescore_status match_rescore_status_type NOT NULL DEFAULT 'idle',
+  match_rescore_total INTEGER,
+  match_rescore_processed INTEGER,
+  match_rescore_error TEXT,
+  match_rescore_started_at TIMESTAMP,
+  match_rescore_finished_at TIMESTAMP,
 
   created_at TIMESTAMP NOT NULL DEFAULT NOW(),
   updated_at TIMESTAMP NOT NULL DEFAULT NOW()
@@ -469,7 +497,6 @@ CREATE INDEX idx_cv_upload_batch_company ON cv_upload_batch (company_id, created
 
 CREATE TABLE master_applicant (
   id SERIAL PRIMARY KEY,
-  job_sourcing_id INTEGER REFERENCES core_job_sourcing(id) ON DELETE CASCADE,
   upload_batch_id INTEGER REFERENCES cv_upload_batch(id) ON DELETE CASCADE,
   company_id INTEGER REFERENCES core_company(id) ON DELETE CASCADE,
   name VARCHAR(255) NOT NULL,
@@ -480,9 +507,29 @@ CREATE TABLE master_applicant (
   information JSONB,
   date TIMESTAMPTZ,
   attachment VARCHAR(255),
-  UNIQUE (name, job_sourcing_id)
+  -- Outcome of the last resume download attempt (Seek RPA / any source that
+  -- populates `attachment`): 'downloaded' | 'not_available' | 'failed'.
+  -- 'not_available' = source genuinely has no resume to offer (no download
+  -- control at all) — nothing to retry. 'failed' = a resume existed but the
+  -- download errored/timed out — re-sync will retry these instead of
+  -- skipping them like an already-fully-synced candidate. NULL = legacy rows
+  -- from before this column existed, or sources that don't track this.
+  cv_download_status VARCHAR(20)
 );
 CREATE INDEX idx_master_applicant_company ON master_applicant (company_id);
+
+CREATE TABLE mapping_applicant_sourcing (
+  id SERIAL PRIMARY KEY,
+  applicant_id INTEGER NOT NULL REFERENCES master_applicant(id) ON DELETE CASCADE,
+  job_sourcing_id INTEGER NOT NULL REFERENCES core_job_sourcing(id) ON DELETE CASCADE,
+  information JSONB, -- raw scraped screening Q&A for THIS application (per job posting) —
+                      -- distinct from master_applicant.information, which holds the
+                      -- person-level AI-parsed CV facets shared across all their applications
+  created_at TIMESTAMP NOT NULL DEFAULT NOW(),
+  UNIQUE (applicant_id, job_sourcing_id)
+);
+CREATE INDEX idx_mapping_applicant_sourcing_applicant ON mapping_applicant_sourcing (applicant_id);
+CREATE INDEX idx_mapping_applicant_sourcing_sourcing ON mapping_applicant_sourcing (job_sourcing_id);
 
 CREATE TABLE master_candidate (
   id SERIAL PRIMARY KEY,
@@ -583,14 +630,17 @@ CREATE TABLE candidate_job_score (
   job_id                   INTEGER NOT NULL REFERENCES core_job(id) ON DELETE CASCADE,
   overall_score            INTEGER NOT NULL CHECK (overall_score           BETWEEN 0 AND 100),
   skills_score             INTEGER          CHECK (skills_score            BETWEEN 0 AND 100),
+  skills_reason            TEXT,
   experience_score         INTEGER          CHECK (experience_score        BETWEEN 0 AND 100),
-  career_trajectory_score  INTEGER          CHECK (career_trajectory_score BETWEEN 0 AND 100),
+  experience_reason        TEXT,
+  career_trajectory_score  INTEGER          CHECK (career_trajectory_score BETWEEN 0 AND 100), -- unused going forward, kept for historical rows
   education_score          INTEGER          CHECK (education_score         BETWEEN 0 AND 100),
+  education_reason         TEXT,
   matched_skills           JSONB,
   missing_skills           JSONB,
   custom_criteria_results  JSONB,
   rubric_snapshot          JSONB,
-  role_profile             VARCHAR(50),
+  role_profile             VARCHAR(50), -- unused going forward, kept for historical rows
   summary                  TEXT,
   scored_at                TIMESTAMPTZ NOT NULL DEFAULT NOW(),
   UNIQUE (applicant_id, job_id)
@@ -1053,6 +1103,123 @@ CREATE TABLE onboarding_hris_task (
 CREATE INDEX idx_hris_task_onboarding ON onboarding_hris_task(onboarding_id);
 CREATE INDEX idx_hris_task_status ON onboarding_hris_task(status);
 
+CREATE TABLE lms_phase (
+  id SERIAL PRIMARY KEY,
+  company_id INTEGER NOT NULL REFERENCES core_company(id) ON DELETE CASCADE,
+  seq INTEGER NOT NULL,
+  label VARCHAR(100) NOT NULL,           -- e.g. "Pre-boarding", "Weeks 2-4"
+  day_offset_start INTEGER NOT NULL,     -- relative to hire's start_date, e.g. -7
+  day_offset_end INTEGER NOT NULL,       -- e.g. 0
+  created_at TIMESTAMP DEFAULT NOW(),
+  updated_at TIMESTAMP DEFAULT NOW(),
+  CONSTRAINT unique_phase_seq UNIQUE (company_id, seq)
+);
+ 
+ CREATE TABLE lms_module (
+  id SERIAL PRIMARY KEY,
+  phase_id INTEGER NOT NULL REFERENCES lms_phase(id) ON DELETE CASCADE,
+  title VARCHAR(255) NOT NULL,
+  category VARCHAR(50),                  -- Welcome | Tools | People | Compliance | Role | Growth
+  duration_min INTEGER,
+  sort_order INTEGER DEFAULT 0,
+  status VARCHAR(20) NOT NULL DEFAULT 'draft',  -- draft | published -- unpublished modules never reach candidates
+  created_by INTEGER REFERENCES master_users(id) ON DELETE SET NULL,
+  created_at TIMESTAMP DEFAULT NOW(),
+  updated_at TIMESTAMP DEFAULT NOW()
+);
+ 
+CREATE TABLE lms_content (
+  id SERIAL PRIMARY KEY,
+  module_id INTEGER NOT NULL REFERENCES lms_module(id) ON DELETE CASCADE,
+  seq INTEGER NOT NULL DEFAULT 0,
+  content_type VARCHAR(20) NOT NULL,     -- video | quiz | pdf | slides
+  title VARCHAR(255) NOT NULL,
+  payload JSONB NOT NULL DEFAULT '{}'::jsonb,
+  created_at TIMESTAMP DEFAULT NOW(),
+  updated_at TIMESTAMP DEFAULT NOW()
+);
+ 
+CREATE TABLE lms_progress (
+  id SERIAL PRIMARY KEY,
+  candidate_onboarding_id INTEGER NOT NULL REFERENCES candidate_onboarding(id) ON DELETE CASCADE,
+  module_id INTEGER NOT NULL REFERENCES lms_module(id) ON DELETE CASCADE,
+  status VARCHAR(20) NOT NULL DEFAULT 'locked',  -- locked | todo | active | done
+  score INTEGER,                          -- best quiz score, once done
+  started_at TIMESTAMP,
+  completed_at TIMESTAMP,
+  created_at TIMESTAMP DEFAULT NOW(),
+  updated_at TIMESTAMP DEFAULT NOW(),
+  CONSTRAINT unique_hire_module UNIQUE (candidate_onboarding_id, module_id)
+);
+
+CREATE TABLE onboarding_assessment (
+  id SERIAL PRIMARY KEY,
+  assessment_code VARCHAR(50) UNIQUE NOT NULL,   
+  name VARCHAR(255) NOT NULL,
+  milestone VARCHAR(20) NOT NULL,                
+  duration_minutes INT,
+  options JSONB NOT NULL,                       
+  is_active BOOLEAN DEFAULT true,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+CREATE TABLE onboarding_assessment_result (
+  id SERIAL PRIMARY KEY,
+  candidate_onboarding_id INTEGER NOT NULL REFERENCES candidate_onboarding(id) ON DELETE CASCADE,
+  assessment_id INTEGER NOT NULL REFERENCES onboarding_assessment(id),
+  status assessment_status_type NOT NULL DEFAULT 'in_progress',  -- reuse existing enum
+  results JSONB NOT NULL,
+  summary JSONB,
+  started_at TIMESTAMPTZ,
+  completed_at TIMESTAMPTZ,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  UNIQUE (candidate_onboarding_id, assessment_id)
+);
+
+CREATE TABLE onboarding_chat_conversation (
+  id SERIAL PRIMARY KEY,
+  candidate_onboarding_id INTEGER NOT NULL REFERENCES candidate_onboarding(id) ON DELETE CASCADE,
+  company_id INTEGER REFERENCES core_company(id) ON DELETE CASCADE,
+  title VARCHAR(255) DEFAULT 'Onboarding chat',
+  status VARCHAR(20) NOT NULL DEFAULT 'active',  -- active | archived
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+CREATE TABLE onboarding_chat_message (
+  id SERIAL PRIMARY KEY,
+  conversation_id INTEGER NOT NULL REFERENCES onboarding_chat_conversation(id) ON DELETE CASCADE,
+  role VARCHAR(20) NOT NULL CHECK (role IN ('user', 'assistant', 'system')),
+  content TEXT NOT NULL,
+  retrieved_context JSONB, 
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+CREATE TABLE onboarding_source (
+  id SERIAL PRIMARY KEY,
+  company_id INTEGER REFERENCES core_company(id) ON DELETE CASCADE,
+  file VARCHAR(255),               
+  status VARCHAR(20) NOT NULL DEFAULT 'pending',  
+  chunk_count INTEGER DEFAULT 0,
+  weaviate_source_key VARCHAR(255),                
+  error_message TEXT,
+  uploaded_by INTEGER REFERENCES master_users(id) ON DELETE SET NULL,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+CREATE TABLE onboarding_certificate (
+  id SERIAL PRIMARY KEY,
+  onboarding_id INT NOT NULL REFERENCES candidate_onboarding(id),
+  company_id INT NOT NULL,
+  phase_id INT NULL,      
+  title VARCHAR(255) NOT NULL,
+  issued_at TIMESTAMP NOT NULL DEFAULT now(),
+  UNIQUE (onboarding_id, phase_id)
+);
+
 -- =============================================================================
 -- END ONBOARDING MODULE
 -- =============================================================================
@@ -1121,6 +1288,65 @@ CREATE TABLE core_applicant_assessment(
 CREATE INDEX idx_applicant_assessment ON core_applicant_assessment(candidate_id);
 CREATE INDEX idx_assessment_date      ON core_applicant_assessment(assessment_date);
 CREATE INDEX idx_assessment_type      ON core_applicant_assessment(assessment_id);
+
+-- Normalized question bank (replaces hardcoded per-battery JS data files) + candidate
+-- answer/score persistence (previously discarded after scoring — only the final
+-- aggregate landed in core_applicant_assessment.results/summary above).
+CREATE TYPE question_type_enum AS ENUM (
+  'mc', 'input', 'likert', 'forced_choice_pair', 'forced_choice_quad',
+  'scenario_mc', 'yes_no', 'trichotomous_rated'
+);
+
+-- One row per atomic, independently-timed testable unit (e.g. GI and KA are separate
+-- rows even though both are commonly labeled "tk" — group_key carries that label).
+CREATE TABLE assessment_subtest (
+  id SERIAL PRIMARY KEY,
+  assessment_id INT NOT NULL REFERENCES master_assessment(id),
+  subtest_key   VARCHAR(20) NOT NULL,
+  group_key     VARCHAR(20),
+  name          VARCHAR(255) NOT NULL,
+  weight        NUMERIC,
+  time_limit_seconds INT,
+  order_index   INT NOT NULL,
+  created_at    TIMESTAMP NOT NULL DEFAULT NOW(),
+  updated_at    TIMESTAMP NOT NULL DEFAULT NOW(),
+  UNIQUE (assessment_id, subtest_key)
+);
+
+CREATE TABLE assessment_question (
+  id SERIAL PRIMARY KEY,
+  subtest_id    INT NOT NULL REFERENCES assessment_subtest(id),
+  question_type question_type_enum NOT NULL,
+  order_index   INT NOT NULL,
+  content       JSONB NOT NULL,
+  is_active     BOOLEAN NOT NULL DEFAULT true,
+  created_at    TIMESTAMP NOT NULL DEFAULT NOW(),
+  updated_at    TIMESTAMP NOT NULL DEFAULT NOW(),
+  UNIQUE (subtest_id, order_index)
+);
+
+CREATE TABLE assessment_answer (
+  id           SERIAL PRIMARY KEY,
+  result_id    INT NOT NULL REFERENCES core_applicant_assessment(id) ON DELETE CASCADE,
+  question_id  INT NOT NULL REFERENCES assessment_question(id),
+  answer       JSONB NOT NULL,
+  is_correct   BOOLEAN,
+  score_earned NUMERIC,
+  answered_at  TIMESTAMP NOT NULL DEFAULT NOW(),
+  UNIQUE (result_id, question_id)
+);
+
+-- One row per (attempt, subtest) — written once, when the candidate finishes that
+-- subtest, from the same client-side scoring pass that also feeds
+-- core_applicant_assessment.results.by_subtest at final submit.
+CREATE TABLE assessment_score (
+  id          SERIAL PRIMARY KEY,
+  result_id   INT NOT NULL REFERENCES core_applicant_assessment(id) ON DELETE CASCADE,
+  subtest_id  INT NOT NULL REFERENCES assessment_subtest(id),
+  score       JSONB NOT NULL,
+  computed_at TIMESTAMP NOT NULL DEFAULT NOW(),
+  UNIQUE (result_id, subtest_id)
+);
 
 CREATE TABLE assessment_sessions(
   id SERIAL PRIMARY KEY,

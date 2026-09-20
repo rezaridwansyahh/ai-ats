@@ -242,7 +242,8 @@ class OnboardingService {
   async confirmEmployee(onboarding_id, company_id) {
     const updated = await OnboardingModel.updateStageStatus(onboarding_id, company_id, {
       current_stage: 'confirmed',
-      onboarding_status: 'completed'
+      onboarding_status: 'completed',
+      confirmed_at: new Date(),
     });
     return updated;
   }

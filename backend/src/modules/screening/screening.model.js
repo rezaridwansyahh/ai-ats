@@ -6,34 +6,37 @@ class ScreeningModel {
     job_id,
     overall_score,
     skills_score,
+    skills_reason,
     experience_score,
-    career_trajectory_score,
+    experience_reason,
     education_score,
+    education_reason,
     matched_skills,
     missing_skills,
     custom_criteria_results,
     rubric_snapshot,
-    role_profile,
     summary,
   }) {
     const result = await getDb().query(
       `INSERT INTO candidate_job_score (
          applicant_id, job_id,
-         overall_score, skills_score, experience_score, career_trajectory_score, education_score,
+         overall_score, skills_score, skills_reason, experience_score, experience_reason,
+         education_score, education_reason,
          matched_skills, missing_skills, custom_criteria_results,
-         rubric_snapshot, role_profile, summary, scored_at
-       ) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13, NOW())
+         rubric_snapshot, summary, scored_at
+       ) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14, NOW())
        ON CONFLICT (applicant_id, job_id) DO UPDATE SET
          overall_score            = EXCLUDED.overall_score,
          skills_score             = EXCLUDED.skills_score,
+         skills_reason            = EXCLUDED.skills_reason,
          experience_score         = EXCLUDED.experience_score,
-         career_trajectory_score  = EXCLUDED.career_trajectory_score,
+         experience_reason        = EXCLUDED.experience_reason,
          education_score          = EXCLUDED.education_score,
+         education_reason         = EXCLUDED.education_reason,
          matched_skills           = EXCLUDED.matched_skills,
          missing_skills           = EXCLUDED.missing_skills,
          custom_criteria_results  = EXCLUDED.custom_criteria_results,
          rubric_snapshot          = EXCLUDED.rubric_snapshot,
-         role_profile             = EXCLUDED.role_profile,
          summary                  = EXCLUDED.summary,
          scored_at                = NOW()
        RETURNING *`,
@@ -42,14 +45,15 @@ class ScreeningModel {
         job_id,
         overall_score,
         skills_score,
+        skills_reason || null,
         experience_score,
-        career_trajectory_score,
+        experience_reason || null,
         education_score,
+        education_reason || null,
         matched_skills ? JSON.stringify(matched_skills) : null,
         missing_skills ? JSON.stringify(missing_skills) : null,
         custom_criteria_results ? JSON.stringify(custom_criteria_results) : null,
         rubric_snapshot ? JSON.stringify(rubric_snapshot) : null,
-        role_profile || null,
         summary || null,
       ]
     );
@@ -168,14 +172,15 @@ class ScreeningModel {
         s.id                       AS score_id,
         s.overall_score,
         s.skills_score,
+        s.skills_reason,
         s.experience_score,
-        s.career_trajectory_score,
+        s.experience_reason,
         s.education_score,
+        s.education_reason,
         s.matched_skills,
         s.missing_skills,
         s.custom_criteria_results,
         s.rubric_snapshot,
-        s.role_profile,
         s.summary              AS score_summary,
         s.scored_at,
         CASE
@@ -205,7 +210,7 @@ class ScreeningModel {
       `
       SELECT
         cs.id                AS screening_id,
-        cs.candidate_id,
+        mc.id                AS candidate_id,
         cs.company_id,
         cs.decision,
         mc.applicant_id,
@@ -215,21 +220,34 @@ class ScreeningModel {
         s.overall_score,
         s.skills_score,
         s.experience_score,
-        s.career_trajectory_score,
         s.education_score,
         s.matched_skills,
         s.missing_skills,
         s.summary            AS score_summary,
         s.scored_at,
-        s.rubric_snapshot IS DISTINCT FROM cj.rubric AS rubric_is_stale
-      FROM candidate_screening cs
-      JOIN master_candidate mc       ON mc.id = cs.candidate_id
-      JOIN core_job cj                ON cj.id = cs.job_id
-      LEFT JOIN master_applicant a    ON a.id  = mc.applicant_id
+        s.rubric_snapshot IS DISTINCT FROM cj.rubric AS rubric_is_stale,
+        sq.status            AS qa_status,
+        app_qa.information    AS application_qa
+      FROM master_candidate mc
+      JOIN core_job cj                ON cj.id = mc.job_id
       JOIN candidate_job_score s
-        ON s.applicant_id = mc.applicant_id AND s.job_id = cs.job_id
-      WHERE cs.job_id = $1 AND cs.decision IS NULL
-      ORDER BY s.overall_score DESC NULLS LAST, cs.id ASC
+        ON s.applicant_id = mc.applicant_id AND s.job_id = mc.job_id
+      LEFT JOIN master_applicant a    ON a.id  = mc.applicant_id
+      -- candidate_screening is lazily created on first L3 (candidate-detail)
+      -- visit — LEFT JOIN so a scored candidate isn't hidden from the ranking
+      -- just because nobody has opened their profile yet.
+      LEFT JOIN candidate_screening cs ON cs.candidate_id = mc.id
+      LEFT JOIN screening_qa sq ON sq.screening_id = cs.id
+      LEFT JOIN LATERAL (
+        SELECT mas.information
+        FROM mapping_applicant_sourcing mas
+        JOIN mapping_job_sourcing_job mjsj ON mjsj.job_sourcing_id = mas.job_sourcing_id
+        WHERE mas.applicant_id = mc.applicant_id AND mjsj.job_id = mc.job_id
+        ORDER BY mas.created_at DESC
+        LIMIT 1
+      ) app_qa ON true
+      WHERE mc.job_id = $1 AND cs.decision IS NULL
+      ORDER BY s.overall_score DESC NULLS LAST, cs.id ASC NULLS LAST
       `,
       [job_id]
     );
@@ -456,14 +474,21 @@ class ScreeningModel {
         a.information IS NOT NULL AS is_parsed,
         s.id           AS score_id,
         s.overall_score,
+        s.skills_score,
+        s.experience_score,
+        s.education_score,
+        s.matched_skills,
+        s.missing_skills,
         s.scored_at,
         cs.id          AS screening_id,
         cs.decision,
+        sq.status      AS qa_status,
+        app_qa.information AS application_qa,
         CASE
-          WHEN a.information IS NULL    THEN 'parse'
-          WHEN s.id IS NULL             THEN 'match'
-          WHEN sq.status != 'responded' THEN 'qa'
-          ELSE                               'ready'
+          WHEN a.information IS NULL                        THEN 'parse'
+          WHEN s.id IS NULL                                  THEN 'match'
+          WHEN sq.status IS DISTINCT FROM 'responded'        THEN 'qa'
+          ELSE                                                    'ready'
         END AS engine
       FROM master_candidate mc
       LEFT JOIN master_applicant a ON a.id = mc.applicant_id
@@ -473,6 +498,14 @@ class ScreeningModel {
       LEFT JOIN screening_qa sq ON sq.screening_id = cs.id
       LEFT JOIN job_stage js ON js.id = mc.latest_stage
       LEFT JOIN recruitment_stage_category rsc ON rsc.id = js.stage_type_id
+      LEFT JOIN LATERAL (
+        SELECT mas.information
+        FROM mapping_applicant_sourcing mas
+        JOIN mapping_job_sourcing_job mjsj ON mjsj.job_sourcing_id = mas.job_sourcing_id
+        WHERE mas.applicant_id = mc.applicant_id AND mjsj.job_id = mc.job_id
+        ORDER BY mas.created_at DESC
+        LIMIT 1
+      ) app_qa ON true
       WHERE mc.job_id = $1
         AND mc.applicant_id IS NOT NULL
         AND rsc.name = 'Screening & Matching'
@@ -484,13 +517,31 @@ class ScreeningModel {
     return engine ? rows.filter((r) => r.engine === engine) : rows;
   }
 
+  // Every applicant_id on this job (any engine stage) — used by the
+  // match-rescore worker to derive a fresh "everyone" list right before
+  // force-rescoring, immune to staleness vs. whatever the browser had loaded
+  // when the modal was opened.
+  async getApplicantIdsForJob(job_id) {
+    const result = await getDb().query(`
+      SELECT mc.applicant_id
+      FROM master_candidate mc
+      LEFT JOIN job_stage js ON js.id = mc.latest_stage
+      LEFT JOIN recruitment_stage_category rsc ON rsc.id = js.stage_type_id
+      WHERE mc.job_id = $1
+        AND mc.applicant_id IS NOT NULL
+        AND rsc.name = 'Screening & Matching'
+    `, [job_id]);
+    return result.rows.map((r) => r.applicant_id);
+  }
+
   async getResultsByJob(job_id) {
     const result = await getDb().query(
       `SELECT s.id, s.applicant_id, s.job_id,
-              s.overall_score, s.skills_score, s.experience_score,
-              s.career_trajectory_score, s.education_score,
+              s.overall_score, s.skills_score, s.skills_reason,
+              s.experience_score, s.experience_reason,
+              s.education_score, s.education_reason,
               s.matched_skills, s.missing_skills, s.custom_criteria_results,
-              s.rubric_snapshot, s.role_profile, s.summary, s.scored_at,
+              s.rubric_snapshot, s.summary, s.scored_at,
               a.name AS applicant_name
        FROM candidate_job_score s
        LEFT JOIN master_applicant a ON a.id = s.applicant_id
@@ -671,9 +722,11 @@ class ScreeningModel {
         a.information,
         s.overall_score,
         s.skills_score,
+        s.skills_reason,
         s.experience_score,
-        s.career_trajectory_score,
+        s.experience_reason,
         s.education_score,
+        s.education_reason,
         s.matched_skills,
         s.missing_skills,
         s.custom_criteria_results,

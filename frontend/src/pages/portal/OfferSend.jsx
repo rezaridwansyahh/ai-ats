@@ -401,7 +401,7 @@ export default function OfferSendPage() {
                   <p className="text-xs font-semibold">Unggah salinan yang telah ditandatangani</p>
                 </div>
                 <p className="text-[11px] text-muted-foreground leading-relaxed">
-                  Unggah surat penawaran yang sudah Anda tanda tangani (PDF atau DOCX maks. 10MB).
+                  Unggah surat penawaran yang sudah Anda tanda tangani (PDF atau DOCX maks. 100MB).
                 </p>
 
                 {hasUploaded && (

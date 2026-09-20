@@ -1,14 +1,15 @@
 import getDb from "../../config/postgres.js"
 
 class JobModel {
-  async getAll() {
+  async getAll(company_id) {
     const result = await getDb().query(`
       SELECT
         j.*,
         (SELECT COUNT(*)::int FROM master_candidate mc WHERE mc.job_id = j.id) AS candidate_count
       FROM core_job j
+      WHERE j.company_id = $1
       ORDER BY j.created_at DESC
-    `);
+    `, [company_id]);
     return result.rows;
   }
 
@@ -23,15 +24,15 @@ class JobModel {
     return result.rows[0];
   }
 
-  async getByStatus(status) {
+  async getByStatus(status, company_id) {
     const result = await getDb().query(`
       SELECT
         j.*,
         (SELECT COUNT(*)::int FROM master_candidate mc WHERE mc.job_id = j.id) AS candidate_count
       FROM core_job j
-      WHERE j.status = $1
+      WHERE j.status = $1 AND j.company_id = $2
       ORDER BY j.created_at DESC
-    `, [status]);
+    `, [status, company_id]);
     return result.rows;
   }
 
@@ -104,6 +105,50 @@ class JobModel {
     const result = await getDb().query(`
       DELETE FROM core_job WHERE id = $1 RETURNING *
     `, [id]);
+    return result.rows[0];
+  }
+
+  async markMatchRescoreRunning(id, total) {
+    const result = await getDb().query(`
+      UPDATE core_job
+      SET match_rescore_status = 'running',
+          match_rescore_total = $2,
+          match_rescore_processed = 0,
+          match_rescore_error = NULL,
+          match_rescore_started_at = NOW(),
+          match_rescore_finished_at = NULL,
+          updated_at = NOW()
+      WHERE id = $1
+      RETURNING *
+    `, [id, total]);
+    return result.rows[0];
+  }
+
+  async markMatchRescoreDone(id, { processed, total, errorCount }) {
+    const result = await getDb().query(`
+      UPDATE core_job
+      SET match_rescore_status = 'done',
+          match_rescore_processed = $2,
+          match_rescore_total = $3,
+          match_rescore_error = $4,
+          match_rescore_finished_at = NOW(),
+          updated_at = NOW()
+      WHERE id = $1
+      RETURNING *
+    `, [id, processed, total, errorCount > 0 ? `${errorCount} candidate(s) failed to score` : null]);
+    return result.rows[0];
+  }
+
+  async markMatchRescoreFailed(id, message) {
+    const result = await getDb().query(`
+      UPDATE core_job
+      SET match_rescore_status = 'failed',
+          match_rescore_error = $2,
+          match_rescore_finished_at = NOW(),
+          updated_at = NOW()
+      WHERE id = $1
+      RETURNING *
+    `, [id, message || 'Unknown error']);
     return result.rows[0];
   }
 }

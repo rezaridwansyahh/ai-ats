@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { useNavigate, useParams } from 'react-router-dom';
+import { useNavigate, useParams, Link } from 'react-router-dom';
 import {
   ArrowLeft, Loader2, AlertTriangle, Mail, Download,
   Check, GraduationCap, Briefcase, Clock, Send, CalendarDays,
@@ -13,6 +13,7 @@ import {
   getProgress,
   downloadCandidateCv,
   sendCandidateEmail,
+  getCandidateEmailPreview,
 } from '@/api/candidate.api';
 
 function getInitials(name) {
@@ -41,8 +42,9 @@ export default function CandidateProfile() {
   const [downloading, setDownloading]   = useState(false);
   const [downloadError, setDownloadError] = useState(null); // null | 'not_found' | 'error'
 
-  const [emailSubject, setEmailSubject] = useState('');
-  const [emailBody, setEmailBody]       = useState('');
+  const [emailPreview, setEmailPreview] = useState(null); // { subject, body } | null
+  const [emailPreviewError, setEmailPreviewError] = useState(null);
+  const [emailPreviewLoading, setEmailPreviewLoading] = useState(true);
   const [emailStatus, setEmailStatus]   = useState('idle'); // idle | sending | sent | error
 
   /* ── Fetch candidate ── */
@@ -74,8 +76,25 @@ export default function CandidateProfile() {
     }
   };
 
+  /* ── Email preview — reflects the Settings "Stage Advance" template with
+     this candidate's real name/job filled in, not a blank draft ── */
+  const fetchEmailPreview = async () => {
+    setEmailPreviewLoading(true);
+    setEmailPreviewError(null);
+    try {
+      const res = await getCandidateEmailPreview(candidateId);
+      setEmailPreview({ subject: res.data?.subject, body: res.data?.body });
+    } catch (err) {
+      setEmailPreview(null);
+      setEmailPreviewError(err.response?.data?.message || err.message || 'Failed to load email preview');
+    } finally {
+      setEmailPreviewLoading(false);
+    }
+  };
+
   useEffect(() => { fetchCandidate(); }, [candidateId]);
   useEffect(() => { fetchProgress(); }, [candidateId]);
+  useEffect(() => { fetchEmailPreview(); }, [candidateId]);
 
   /* ── CV download ── */
   const handleDownloadCv = async () => {
@@ -101,13 +120,11 @@ export default function CandidateProfile() {
 
   /* ── Email ── */
   const handleSendEmail = async () => {
-    if (!emailSubject.trim() || !emailBody.trim()) return;
+    if (!emailPreview) return;
     setEmailStatus('sending');
     try {
-      await sendCandidateEmail(candidateId, { subject: emailSubject, body: emailBody });
+      await sendCandidateEmail(candidateId);
       setEmailStatus('sent');
-      setEmailSubject('');
-      setEmailBody('');
       setTimeout(() => setEmailStatus('idle'), 2500);
     } catch {
       setEmailStatus('error');
@@ -353,25 +370,39 @@ export default function CandidateProfile() {
                   <p className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
                     Email Candidate
                   </p>
-                  <input
-                    type="text"
-                    placeholder="Subject"
-                    value={emailSubject}
-                    onChange={(e) => setEmailSubject(e.target.value)}
-                    className="w-full px-2.5 py-1.5 border rounded-md text-xs focus:outline-none focus:ring-1 focus:ring-primary"
-                  />
-                  <textarea
-                    placeholder="Message"
-                    value={emailBody}
-                    onChange={(e) => setEmailBody(e.target.value)}
-                    rows={4}
-                    className="w-full px-2.5 py-1.5 border rounded-md text-xs resize-none focus:outline-none focus:ring-1 focus:ring-primary"
-                  />
+
+                  {emailPreviewLoading ? (
+                    <p className="text-xs text-muted-foreground flex items-center gap-1.5">
+                      <Loader2 className="h-3.5 w-3.5 animate-spin" /> Loading preview…
+                    </p>
+                  ) : emailPreviewError ? (
+                    <p className="text-[10px] text-rose-600">{emailPreviewError}</p>
+                  ) : (
+                    <>
+                      <div className="rounded-md border bg-muted/20 overflow-hidden">
+                        <div className="px-2.5 py-1.5 border-b bg-muted/40">
+                          <span className="text-[9px] text-muted-foreground">Subject</span>
+                          <p className="text-xs font-medium truncate">{emailPreview.subject}</p>
+                        </div>
+                        <div className="px-2.5 py-2 text-xs whitespace-pre-wrap max-h-40 overflow-y-auto">
+                          {emailPreview.body}
+                        </div>
+                      </div>
+                      <p className="text-[10px] text-muted-foreground">
+                        This wording comes from the{' '}
+                        <Link to="/settings" state={{ section: 'email-templates' }} className="text-primary hover:underline">
+                          Stage Advance template
+                        </Link>
+                        {' '}in Settings — edit it there to change future emails.
+                      </p>
+                    </>
+                  )}
+
                   <Button
                     size="sm"
                     className="w-full text-xs"
                     onClick={handleSendEmail}
-                    disabled={emailStatus === 'sending' || !emailSubject.trim() || !emailBody.trim()}
+                    disabled={emailStatus === 'sending' || !emailPreview}
                   >
                     {emailStatus === 'sending' ? (
                       <><Loader2 className="h-3.5 w-3.5 mr-1.5 animate-spin" /> Sending…</>

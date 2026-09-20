@@ -266,6 +266,46 @@ class AssessmentBatteryResultService {
     return row ? withResolvedAiStatus(row) : null;
   }
 
+  // Creates (or returns the existing) core_applicant_assessment row BEFORE any
+  // subtest has been answered, so assessment_answer/assessment_score rows have a
+  // real result_id to point at from the very first question — otherwise that row
+  // only exists once submit() runs at the end of the whole battery, and a crash
+  // mid-test would have nothing to recover.
+  async startAttempt({ candidate_id, assessment_id }) {
+    if (!candidate_id) throw { status: 400, message: 'candidate_id is required' };
+    if (!assessment_id || !Number.isInteger(Number(assessment_id))) {
+      throw { status: 400, message: 'integer assessment_id is required' };
+    }
+    const pid = Number(candidate_id);
+    const aid = Number(assessment_id);
+
+    const client = await getDb().connect();
+    try {
+      await client.query('BEGIN');
+      const existing = await AssessmentBatteryResult.getForUpdate(client, pid, aid);
+      if (existing) {
+        await client.query('COMMIT');
+        return existing;
+      }
+      const row = await AssessmentBatteryResult.create(client, {
+        candidate_id: pid,
+        assessment_id: aid,
+        status: 'in_progress',
+        results: { by_subtest: {} },
+        summary: null,
+        started_at: new Date().toISOString(),
+        completed_at: null,
+      });
+      await client.query('COMMIT');
+      return row;
+    } catch (err) {
+      await client.query('ROLLBACK');
+      throw err;
+    } finally {
+      client.release();
+    }
+  }
+
   async submit({ candidate_id, assessment_id, answers, started_at, results: bodyResults, summary: bodySummary }) {
     if (!candidate_id) throw { status: 400, message: 'candidate_id is required' };
     if (!assessment_id || !Number.isInteger(Number(assessment_id))) {

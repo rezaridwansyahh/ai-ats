@@ -2,6 +2,9 @@ import { useState, useEffect } from 'react';
 import { AlertTriangle, CircleDot, Sparkles, Clock } from 'lucide-react';
 import { PageHeader } from '@/components/common';
 
+import { getJobs } from '@/api/job.api';
+import { getWorkboard } from '@/api/offer.api';
+
 
 // ─────────────────────────────────────────────────
 // Dummy data
@@ -44,13 +47,7 @@ const ACTIVITY = [
   { id: 6, label: 'Source ROI report · LinkedIn dropped 4 pts',     timeAgo: 'today',       color: 'bg-blue-500' },
 ];
 
-const BOTTOM_STATS = [
-  { label: 'Active Jobs',    value: '14',  sub: '+2 this week' },
-  { label: 'Candidates',     value: '412', sub: 'in pipeline' },
-  { label: 'TTH (Last 30d)', value: '24d', sub: '−3d vs prev' },
-  { label: 'Offer Accept',   value: '81%', sub: '+4% vs prev' },
-  { label: 'Sources',        value: '5',   sub: 'LI, GH, Pool, Ref, Direct' },
-];
+
 
 const APPROVAL_COLORS = {
   OFFER:  'bg-blue-50 text-blue-700 border-blue-200',
@@ -156,6 +153,10 @@ function QuadrantCard({ icon, iconColor, title, count, subtitle, children }) {
 
 export default function Dashboard() {
   const [user, setUser] = useState(null);
+  const [jobs, setJobs] = useState([]);
+  const [offers, setOffers] = useState([]);
+  const [offerSummary, setOfferSummary] = useState(null);
+  const [statsLoading, setStatsLoading] = useState(true);
 
   useEffect(() => {
     try {
@@ -166,8 +167,58 @@ export default function Dashboard() {
     }
   }, []);
 
+  useEffect(() => {
+    (async () => {
+      try {
+        const [jobsRes, offersRes] = await Promise.all([getJobs(), getWorkboard()]);
+        setJobs(jobsRes.data.jobs || []);
+        setOffers(offersRes.data.offers || []);
+        setOfferSummary(offersRes.data.summary || null);
+      } catch (err) {
+        console.error('Failed to load dashboard stats:', err);
+      } finally {
+        setStatsLoading(false);
+      }
+    })();
+  }, []);
+
+  const activeJobsCount = Array.isArray(jobs)
+    ? jobs.filter((j) => j.status === 'Active').length
+    : 0;
+
+  const totalCandidates = Array.isArray(jobs)
+    ? jobs.reduce((sum, j) => sum + (j.candidate_count || 0), 0)
+    : 0;
+
+  const decidedOffers = offerSummary
+    ? offerSummary.accepted + offerSummary.rejected + offerSummary.signed
+    : 0;
+
+  const acceptedOffers = offerSummary
+    ? offerSummary.accepted + offerSummary.signed
+    : 0;
+
+  const offerAcceptPct = decidedOffers > 0
+    ? Math.round((acceptedOffers / decidedOffers) * 100)
+    : null;
+
+  const BOTTOM_STATS = [
+    { label: 'Active Jobs', value: statsLoading ? '—' : String(activeJobsCount), sub: `${jobs.length} total jobs` },
+    { label: 'Candidates', value: statsLoading ? '—' : String(totalCandidates), sub: 'across active jobs' },
+    { label: 'TTH (Last 30d)', value: '—', sub: 'pending API' },
+    {
+      label: 'Offer Accept',
+      value: statsLoading ? '—' : offerAcceptPct != null ? `${offerAcceptPct}%` : 'N/A',
+      sub: statsLoading ? '' : `${acceptedOffers}/${decidedOffers} decided`,
+    },
+    { label: 'Sources', value: '—', sub: 'pending API' },
+  ];
+
   const greeting    = getGreeting();
   const displayName = getDisplayName(user);
+
+  if (Array.isArray(jobs)) console.log('job statuses:', jobs.map(j => j.status));
+  if (Array.isArray(offers)) console.log('offer statuses:', offers.map(o => o.status));
 
   return (
     /*

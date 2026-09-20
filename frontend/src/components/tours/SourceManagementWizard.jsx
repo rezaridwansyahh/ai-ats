@@ -7,16 +7,16 @@ import { ACTION_GATED_OPTIONS, ACTION_GATED_STYLES } from './tourTheme';
  * SourceManagementWizard
  * -------------------------------------------------------------------------
  * Action-based, like FirstJobWizard/CvUploadWizard — NOT an explainer tour
- * like PipelineTour. Four steps, one per stage of SourceManagementPage's
- * own stepper (Account Select, List Source, Source Setup, List Candidate).
+ * like PipelineTour. Three steps, one per stage of SourceManagementPage's
+ * own stepper (Account Select, List Source, List Candidate).
  *
  * Unlike FirstJobWizard, gating here doesn't check form field validity —
  * it checks `ctx.activeStep`, the SAME state that drives which step
  * component SourceManagementPage actually renders. This matters because
- * each step's target element (account list, source table, threshold card,
- * candidate table) only exists in the DOM once activeStep reaches it —
- * so a step's isDone can only become true after its target has already
- * been reached and shown to the user.
+ * each step's target element (account list, source table, candidate table)
+ * only exists in the DOM once activeStep reaches it — so a step's isDone
+ * can only become true after its target has already been reached and
+ * shown to the user.
  *
  * The last step (List Candidate) is informational only — nothing to
  * actively "do" there — so like CvUploadWizard, it auto-completes and
@@ -46,21 +46,14 @@ const STEPS = [
     {
         target: '[data-tour="source-mgmt-source-table"]',
         title: 'Review your sources',
-        content: 'Every place this job has been posted \u2014 LinkedIn, Seek, internal \u2014 with its sync status. Click "Next: Source Setup" above when you\u2019re ready.',
+        content: 'Every place this job has been posted \u2014 LinkedIn, Seek, internal \u2014 with its sync status. Click "Next: List Candidate" above when you\u2019re ready.',
         placement: 'top',
         isDone: (ctx) => ctx.activeStep > 1,
     },
     {
-        target: '[data-tour="source-mgmt-threshold"]',
-        title: 'Set your screening threshold',
-        content: 'Drag the range to decide which AI screening scores should surface as candidates. Click "Next: List Candidate" when you\u2019re done.',
-        placement: 'top',
-        isDone: (ctx) => ctx.activeStep > 2,
-    },
-    {
         target: '[data-tour="source-mgmt-candidate-table"]',
         title: 'Your sourced candidates',
-        content: 'Everyone who cleared your threshold shows up here, ready to add to this job\u2019s pipeline.',
+        content: 'Everyone sourced from this source shows up here, ready to add to this job\u2019s pipeline.',
         placement: 'top',
         // Informational only — nothing to gate on beyond having arrived here.
         isDone: () => true,

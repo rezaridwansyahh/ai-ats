@@ -1,9 +1,9 @@
-import { Users } from 'lucide-react';
+import { useState } from 'react';
+import { Users, X, Search } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Slider } from '@/components/ui/slider';
 
-const CITY_CHIPS  = ['Jakarta', 'Bandung', 'Surabaya'];
-const SKILL_CHIPS = ['React', 'TypeScript', 'Next.js', 'Node.js', 'Vue', 'JavaScript', 'Tailwind'];
+const CITY_CHIPS = ['Jakarta', 'Bandung', 'Surabaya'];
 
 export default function TalentPoolFilterSidebar({
   totalCount,
@@ -12,9 +12,25 @@ export default function TalentPoolFilterSidebar({
   minScore,
   onMinScoreChange,
   activeLocation,
-  activeSkill,
   onChipClick,
+  skillFilters = new Set(),
+  availableSkills = [],
+  onToggleSkill,
+  onRemoveSkill,
 }) {
+  const [skillSearch, setSkillSearch] = useState('');
+  const [isDropdownOpen, setIsDropdownOpen] = useState(false);
+
+  // Filter out picked skills and sort remaining alphabetically A-Z
+  const unselectedSkills = availableSkills
+    .filter(({ skill }) => !skillFilters.has(skill))
+    .sort((a, b) => a.skill.localeCompare(b.skill, undefined, { sensitivity: 'base' }));
+
+  // Filter skills based on what the user types
+  const filteredSkills = unselectedSkills.filter(({ skill }) =>
+    skill.toLowerCase().includes(skillSearch.toLowerCase())
+  );
+
   return (
     <Card className="lg:sticky lg:top-4">
       <CardContent className="p-4 space-y-5">
@@ -74,21 +90,87 @@ export default function TalentPoolFilterSidebar({
         </div>
 
         <div data-tour="talent-skill-chips">
-          <div className="text-[10px] font-bold uppercase text-muted-foreground mb-2">Skills</div>
-          <div className="flex flex-wrap gap-1.5">
-            {SKILL_CHIPS.map(skill => (
-              <button
-                key={skill}
-                onClick={() => onChipClick('skill_q', skill)}
-                className={`px-2 py-1 rounded-md border text-[11px] transition-colors
-                  ${activeSkill === skill
-                    ? 'bg-primary text-primary-foreground border-primary'
-                    : 'border-border hover:bg-muted/60'}`}
-              >
-                {skill}
-              </button>
-            ))}
+          <div className="flex items-center justify-between mb-2">
+            <div className="text-[10px] font-bold uppercase text-muted-foreground">Skills</div>
+            {skillFilters.size > 0 && (
+              <span className="text-[10px] text-muted-foreground">{skillFilters.size} selected</span>
+            )}
           </div>
+
+          {/* Selected skills — removable pills */}
+          {skillFilters.size > 0 && (
+            <div className="flex flex-wrap gap-1.5 mb-2">
+              {[...skillFilters].map((skill) => (
+                <button
+                  key={skill}
+                  onClick={() => onRemoveSkill(skill)}
+                  className="inline-flex items-center gap-1 px-2 py-1 rounded-md border border-primary bg-primary text-primary-foreground text-[11px]"
+                  title="Remove filter"
+                >
+                  {skill} <X className="h-3 w-3" />
+                </button>
+              ))}
+            </div>
+          )}
+
+          {/* Custom Typeable Search Dropdown */}
+          {unselectedSkills.length > 0 ? (
+            <div className="relative">
+              <div className="relative flex items-center">
+                <Search className="absolute left-2.5 h-3.5 w-3.5 text-muted-foreground pointer-events-none" />
+                <input
+                  type="text"
+                  value={skillSearch}
+                  onChange={(e) => {
+                    setSkillSearch(e.target.value);
+                    setIsDropdownOpen(true);
+                  }}
+                  onFocus={() => setIsDropdownOpen(true)}
+                  placeholder="+ Add skill filter…"
+                  className="w-full h-8 pl-8 pr-3 text-[11px] bg-background border border-input rounded-md focus:outline-none focus:ring-1 focus:ring-ring"
+                />
+              </div>
+
+              {/* Floating results menu */}
+              {isDropdownOpen && (
+                <>
+                  {/* Backdrop to close dropdown when clicking outside */}
+                  <div
+                    className="fixed inset-0 z-10"
+                    onClick={() => setIsDropdownOpen(false)}
+                  />
+
+                  <div className="absolute left-0 right-0 top-full mt-1 z-20 max-h-48 overflow-y-auto rounded-md border border-border bg-popover text-popover-foreground shadow-md py-1">
+                    {filteredSkills.length > 0 ? (
+                      filteredSkills.map(({ skill, count }) => (
+                        <button
+                          key={skill}
+                          type="button"
+                          onClick={() => {
+                            onToggleSkill(skill);
+                            setSkillSearch('');
+                            setIsDropdownOpen(false);
+                          }}
+                          className="w-full text-left px-3 py-1.5 text-xs hover:bg-muted transition-colors flex items-center justify-between"
+                        >
+                          <span>{skill}</span>
+                          <span className="text-[10px] text-muted-foreground">({count})</span>
+                        </button>
+                      ))
+                    ) : (
+                      <div className="px-3 py-2 text-xs text-muted-foreground text-center">
+                        No matching skills
+                      </div>
+                    )}
+                  </div>
+                </>
+              )}
+            </div>
+          ) : (
+            <p className="text-[10px] text-muted-foreground italic">
+              {skillFilters.size > 0 ? 'All available skills selected.' : 'No skill data yet.'}
+            </p>
+          )}
         </div>
 
       </CardContent>

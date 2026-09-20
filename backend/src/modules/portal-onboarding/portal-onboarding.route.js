@@ -1,0 +1,18 @@
+import express from 'express';
+const router = express.Router();
+
+import PortalOnboardingController from './portal-onboarding.controller.js';
+import requireCandidatePortalAuth from '../../shared/middleware/auth-onboarding.middleware.js';
+
+router.post('/login', PortalOnboardingController.login);
+
+router.get('/me', requireCandidatePortalAuth, PortalOnboardingController.getMe);
+router.get('/curriculum', requireCandidatePortalAuth, PortalOnboardingController.getCurriculum);
+router.get('/journey', requireCandidatePortalAuth, PortalOnboardingController.getJourney);
+router.get('/module/:module_id', requireCandidatePortalAuth, PortalOnboardingController.getModuleDetail);
+router.get('/certificates', requireCandidatePortalAuth, PortalOnboardingController.listCertificates);
+router.get('/certificates/:certificate_id', requireCandidatePortalAuth, PortalOnboardingController.getCertificate);
+
+router.patch('/module/:module_id/complete', requireCandidatePortalAuth, PortalOnboardingController.markModuleDone);
+
+export default router;

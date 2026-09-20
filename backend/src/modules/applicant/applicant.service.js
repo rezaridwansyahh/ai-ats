@@ -26,10 +26,16 @@ class ApplicantService {
     return await applicantModel.getByJobSourcingId(job_sourcing_id);
   }
 
+  async getSourcingsByApplicantId(applicant_id) {
+    const applicant = await applicantModel.getById(applicant_id);
+    if (!applicant) throw { status: 404, message: 'Applicant not found' };
+    return await applicantModel.getSourcingsByApplicantId(applicant_id);
+  }
+
   async create(payload) {
-    const { job_sourcing_id, name, last_position, address } = payload;
-    if (!job_sourcing_id || !name || !last_position || !address) {
-      throw { status: 400, message: 'job_sourcing_id, name, last_position, and address are required' };
+    const { name, last_position, address } = payload;
+    if (!name || !last_position || !address) {
+      throw { status: 400, message: 'name, last_position, and address are required' };
     }
     return await applicantModel.create(payload);
   }

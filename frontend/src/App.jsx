@@ -48,12 +48,14 @@ import OfferCandidatePage from "./components/offer-contract/Offer-Candidate";
 import OfferSendPage from "./pages/portal/OfferSend"
 import ContractSendPage from "./pages/portal/ContractSend"
 import OfferApprovalPage from "./pages/portal/OfferApproval"
+import OnboardingContent from "./components/onboarding/Onboarding-content"
 
 //PUNYA BAYU MASIH DUMMY
 import SettingsPage from "./pages/Settings"
 import OnboardingPage from "./pages/Onboarding"
 import OnboardingWorkboard from "./pages/OnboardingWorkboard"
 import ReportsPage from "./pages/Reports"
+import OnboardingLmsPreview from "./pages/OnboardingLmsPreview";
 
 import { EndToEndTourProvider } from '@/components/tours/EndToEndTour';
 import { Toaster } from '@/components/ui/sonner';
@@ -78,6 +80,8 @@ function App() {
         <Route path="/contract/send/:token" element={<ContractSendPage />} />
         <Route path="/offer/approve-view/:token" element={<OfferApprovalPage />} />
         <Route path="/interview/:token" element={<InterviewPackPortal />} />
+        <Route path="/selection/onboarding/curriculum-maker" element={<OnboardingContent />} />
+        <Route path="/selection/onboarding/curriculum" element={<OnboardingLmsPreview />} />
 
         {/* All authenticated routes share DashboardLayout */}
         <Route element={<DashboardLayout />}>

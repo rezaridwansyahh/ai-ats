@@ -15,6 +15,11 @@ import candidatePipelineModel from "../../candidate-pipeline/candidate-pipeline.
 import jobAccountModel from "../../job-account/job-account.model.js"
 import companyService from "../../company/company.service.js"
 import { promoteDownloadedCv } from "../../../shared/utils/cv-storage.js"
+import aiService from "../../../shared/services/ai.service.js"
+import screeningModel from "../../screening/screening.model.js"
+import screeningService from "../../screening/screening.service.js"
+import fs from "fs"
+import path from "path"
 
 import { joinArrayFields } from '../../../shared/utils/format.js';
 
@@ -172,7 +177,10 @@ class LinkedInService {
           name: candidate.name,
           last_position: candidate.last_position,
           address: candidate.address,
-          information: candidate.information ? JSON.stringify(candidate.information) : null,
+          // Raw scraped screening Q&A is application-specific (this job's
+          // custom questions), so it goes on the sourcing mapping — not on
+          // this applicant row, which is shared across all their applications.
+          sourcing_information: candidate.information || null,
           attachment: null,
         });
 
@@ -184,6 +192,17 @@ class LinkedInService {
             if (savedPath) {
               await applicantModel.updateAttachment(applicant.id, savedPath);
               applicant.attachment = savedPath;
+
+              // Guarded separately so a parse failure doesn't abort onSave.
+              try {
+                const buffer = fs.readFileSync(savedPath);
+                const facets = await aiService.extractFacetsFromFile(
+                  buffer, path.basename(savedPath), { company_id, metadata: { applicant_id: applicant.id } }
+                );
+                await screeningModel.setApplicantInformation(applicant.id, facets);
+              } catch (err) {
+                console.error(`Failed to parse CV for applicant ${applicant.id}:`, err.message);
+              }
             }
           } catch (err) {
             console.error(`Failed to promote resume for applicant ${applicant.id}:`, err.message);
@@ -194,7 +213,10 @@ class LinkedInService {
           for (const jobId of linkedJobIds) {
             try {
               const created = await candidatePipelineModel.createFromApplicantIfAbsent(applicant.id, jobId);
-              if (created) promoted++;
+              if (created) {
+                promoted++;
+                await screeningService.autoScoreIfPossible(applicant.id, jobId);
+              }
             } catch (err) {
               console.error(`Auto-promote failed for applicant ${applicant.id} → job ${jobId}:`, err.message);
             }

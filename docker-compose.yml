@@ -10,5 +10,25 @@ services:
     volumes:
       - redis_data:/data
 
+  weaviate:
+    image: semitechnologies/weaviate:1.27.3
+    container_name: ai-ats-weaviate
+    restart: unless-stopped
+    ports:
+      - "8080:8080"
+      - "50051:50051"   # gRPC — required
+    env_file:
+      - backend/.env.dev
+    environment:
+      - QUERY_DEFAULTS_LIMIT=25
+      - AUTHENTICATION_ANONYMOUS_ACCESS_ENABLED=true
+      - PERSISTENCE_DATA_PATH=/var/lib/weaviate
+      - DEFAULT_VECTORIZER_MODULE=text2vec-openai
+      - ENABLE_MODULES=text2vec-openai
+      - CLUSTER_HOSTNAME=node1
+    volumes:
+      - weaviate_data:/var/lib/weaviate
+
 volumes:
   redis_data:
+  weaviate_data:

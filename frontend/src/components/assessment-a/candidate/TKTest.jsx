@@ -1,7 +1,11 @@
 import { useEffect, useRef, useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { SUBS, TK_ORDER, KEYS, GI_QS, KA_QS } from '../data/tk';
+import { getQuestionsByAssessmentCode } from '@/api/question.api';
+import { saveAnswer } from '@/api/assessment-answer.api';
+import { saveSubtestScore } from '@/api/assessment-score.api';
+import { getPortalQuestions, getPortalProgress, savePortalAnswer, savePortalSubtestScore } from '@/api/portal-assessment.api';
+import { findExistingScore, answersByQuestionId, resumeTimeLeft } from '@/utils/assessment-resume';
 import {
   rawToPercentile,
   pctToScore10,
@@ -13,58 +17,201 @@ import {
   checkGIAnswer,
 } from '../utils/scoring';
 
-const QS_MAP = { GI: GI_QS, KA: KA_QS };
+// Presentational-only (icon/color/copy) — not question content or scoring config,
+// so it stays local rather than living in the question bank. Structural data
+// (weight, time_limit_seconds, item count) comes from the API and is merged in.
+const SUBS_META = {
+  GI: {
+    code: 'GI', icon: '🧠', color: '#0A6E5C', bg: '#F0F8F6',
+    function: 'Mengukur kecepatan belajar, kapasitas pemecahan masalah, dan kemampuan berpikir lintas domain — verbal, numerik, logis, dan spasial secara terpadu.',
+    instruction: 'Kerjakan soal beragam (verbal, numerik, logika, spasial) semampu mungkin dalam waktu yang tersedia. Lewati soal sulit dan lanjutkan ke soal berikutnya.',
+  },
+  KA: {
+    code: 'KA', icon: '📋', color: '#DB2777', bg: '#FDF2F8',
+    function: 'Kemampuan memindai dan membandingkan informasi (kode, nama, angka) dengan cepat dan akurat.',
+    instruction: 'Pilih jawaban yang IDENTIK dengan referensi, atau yang BERBEDA dari empat lainnya. Kerjakan secepat dan setepat mungkin.',
+  },
+};
 
-function emptyAnswers() {
-  return {
-    GI: {},
-    KA: Array(40).fill(null),
-  };
+// GI's `content.correct` was seeded verbatim from the old KEYS map — same shape,
+// checkGIAnswer's KEYS-lookup contract still works unmodified against it.
+function buildGiKeys(items) {
+  const keys = {};
+  items.forEach((it, idx) => { keys[idx + 1] = it.content.correct; });
+  return keys;
 }
 
-export default function TKTest({ onComplete, onAbort }) {
-  const [phase, setPhase] = useState('sub-intro'); // sub-intro | sub-active | sub-done
-  const [code, setCode] = useState('GI');
+function emptyAnswers() {
+  return { GI: {}, KA: [] };
+}
+
+// Pure — takes explicit answers instead of reading component state, so the same
+// scoring logic can run both from the normal "Selesai" click (against live state)
+// and, on resume, against answers just rehydrated from the server before that
+// state has even committed (e.g. auto-timeout-on-resume, see the mount effect).
+function computeSubScore(subCode, items, ansForSub) {
+  let ok = 0;
+  if (subCode === 'GI') {
+    const giKeys = buildGiKeys(items);
+    items.forEach((it, idx) => {
+      if (checkGIAnswer(idx + 1, ansForSub[idx + 1] || '', giKeys)) ok++;
+    });
+  } else {
+    ansForSub.forEach((ans, idx) => {
+      if (!ans) return;
+      const q = items[idx];
+      if (q && ans === q.content.correct) ok++;
+    });
+  }
+  const pct = rawToPercentile(ok, items.length);
+  const score10 = pctToScore10(pct);
+  const grade = getGrade(pct);
+  const verdict = getVerdict(score10);
+  const res = { ok, items: items.length, pct, score10, g: grade.g, label: grade.l, verdict: verdict.v };
+  if (subCode === 'GI') {
+    res.iq = getIQ(ok);
+    res.iqCls = getIQClass(res.iq);
+  }
+  return res;
+}
+
+function computeComposite(allDone, tkOrder, subtests) {
+  const composite =
+    Math.round(
+      (tkOrder.reduce((s, k) => s + (allDone[k]?.score10 || 0) * Number(subtests[k].subtest.weight), 0) /
+        tkOrder.reduce((s, k) => s + Number(subtests[k].subtest.weight), 0)) *
+        10,
+    ) / 10;
+  const compVerdict = getVerdict(Math.round(composite));
+  return { sub: allDone, composite, compVerdict: compVerdict.v };
+}
+
+export default function TKTest({ resultId, assessmentCode, portalHash, onComplete, onAbort }) {
+  const [phase, setPhase] = useState('loading'); // loading | error | sub-intro | sub-active | sub-done
+  const [subtests, setSubtests] = useState(null); // { GI: {subtest, items}, KA: {subtest, items} }
+  const [tkOrder, setTkOrder] = useState([]);
+  const [code, setCode] = useState(null);
   const [answers, setAnswers] = useState(emptyAnswers);
   const [curQ, setCurQ] = useState(0);
-  const [timeLeft, setTimeLeft] = useState(SUBS.GI.time);
+  const [timeLeft, setTimeLeft] = useState(0);
   const [done, setDone] = useState({}); // per-subtest result
   const tickRef = useRef(null);
 
-  const sub = SUBS[code];
-  const qs = QS_MAP[code];
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      try {
+        const [{ data }, progress] = await Promise.all([
+          portalHash ? getPortalQuestions(portalHash) : getQuestionsByAssessmentCode(assessmentCode),
+          portalHash ? getPortalProgress(portalHash).then((r) => r.data) : Promise.resolve({ answers: [], scores: [] }),
+        ]);
+        const grouped = data?.questions ?? {};
+        const tkParts = Object.values(grouped)
+          .filter((g) => g.subtest.group_key === 'tk')
+          .sort((a, b) => a.subtest.order_index - b.subtest.order_index);
+        if (cancelled) return;
+        if (tkParts.length === 0) throw new Error('No TK subtests found');
+        const bySubtestKey = {};
+        tkParts.forEach((g) => { bySubtestKey[g.subtest.subtest_key] = g; });
+        const order = tkParts.map((g) => g.subtest.subtest_key);
+        setSubtests(bySubtestKey);
+        setTkOrder(order);
+
+        // Resume: skip any atomic subtest already scored server-side, and — if
+        // the very next one has partial answers saved — rehydrate them instead
+        // of restarting it from question 1.
+        const doneMap = {};
+        order.forEach((k) => {
+          const existing = findExistingScore(progress.scores, bySubtestKey[k].subtest.id);
+          if (existing) doneMap[k] = existing;
+        });
+        setDone(doneMap);
+
+        const current = order.find((k) => !doneMap[k]);
+        if (!current) {
+          // Every atomic subtest already scored (e.g. refreshed right after the
+          // last one finished, before the composite could be computed) — finish
+          // TK outright instead of showing a subtest that no longer exists.
+          onComplete(computeComposite(doneMap, order, bySubtestKey));
+          return;
+        }
+
+        const group = bySubtestKey[current];
+        const itemIds = group.items.map((it) => it.id);
+        const answerMap = answersByQuestionId(progress.answers, itemIds);
+
+        const initAnswers = { GI: {}, KA: Array(bySubtestKey.KA?.items.length ?? 0).fill(null) };
+        let firstUnansweredIdx = 0;
+        if (answerMap.size > 0) {
+          if (current === 'GI') {
+            group.items.forEach((it) => {
+              const saved = answerMap.get(it.id);
+              if (saved) initAnswers.GI[it.order_index] = saved.answer;
+            });
+            firstUnansweredIdx = group.items.findIndex((it) => !answerMap.has(it.id));
+          } else {
+            group.items.forEach((it, idx) => {
+              const saved = answerMap.get(it.id);
+              if (saved) initAnswers[current][idx] = saved.answer;
+            });
+            firstUnansweredIdx = group.items.findIndex((it) => !answerMap.has(it.id));
+          }
+          if (firstUnansweredIdx === -1) firstUnansweredIdx = group.items.length - 1;
+        }
+        setAnswers(initAnswers);
+
+        if (answerMap.size === 0) {
+          // Nothing answered yet in this subtest — normal fresh start.
+          setCode(current);
+          setCurQ(0);
+          setTimeLeft(group.subtest.time_limit_seconds);
+          setPhase('sub-intro');
+          return;
+        }
+
+        const remaining = resumeTimeLeft(progress.answers, itemIds, group.subtest.time_limit_seconds);
+        setCode(current);
+        setCurQ(firstUnansweredIdx);
+        setTimeLeft(remaining);
+        if (remaining <= 0) {
+          // Time was already up while disconnected — score with what was saved
+          // rather than granting a fresh full timer on reconnect.
+          const res = computeSubScore(current, group.items, initAnswers[current]);
+          if (resultId && group.subtest.id) {
+            const payload = { result_id: resultId, subtest_id: group.subtest.id, score: res };
+            (portalHash ? savePortalSubtestScore(portalHash, payload) : saveSubtestScore(payload)).catch(() => {});
+          }
+          setDone((d) => ({ ...d, [current]: res }));
+          setPhase('sub-done');
+        } else {
+          // Resume mid-subtest directly — re-showing the intro would imply a
+          // fresh full-duration start, which the restored timer contradicts.
+          setPhase('sub-active');
+        }
+      } catch {
+        if (!cancelled) setPhase('error');
+      }
+    })();
+    return () => { cancelled = true; };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [assessmentCode, portalHash]);
+
+  const sub = code ? { ...SUBS_META[code], ...subtests?.[code]?.subtest } : null;
+  const qs = code ? subtests?.[code]?.items : null;
+
+  const persistAnswer = (questionId, answer, isCorrect, scoreEarned) => {
+    if (!resultId || !questionId) return;
+    const payload = { result_id: resultId, question_id: questionId, answer, is_correct: isCorrect, score_earned: scoreEarned };
+    (portalHash ? savePortalAnswer(portalHash, payload) : saveAnswer(payload)).catch(() => {});
+  };
 
   const scoreSub = (subCode) => {
-    const meta = SUBS[subCode];
-    let ok = 0;
-    if (subCode === 'GI') {
-      for (const q of GI_QS) {
-        if (checkGIAnswer(q.n, answers.GI[q.n] || '', KEYS)) ok++;
-      }
-    } else {
-      const list = QS_MAP[subCode];
-      answers[subCode].forEach((ans, idx) => {
-        if (!ans) return;
-        const q = list[idx];
-        if (q && ans === q.a) ok++;
-      });
-    }
-    const pct = rawToPercentile(ok, meta.items);
-    const score10 = pctToScore10(pct);
-    const grade = getGrade(pct);
-    const verdict = getVerdict(score10);
-    const res = {
-      ok,
-      items: meta.items,
-      pct,
-      score10,
-      g: grade.g,
-      label: grade.l,
-      verdict: verdict.v,
-    };
-    if (subCode === 'GI') {
-      res.iq = getIQ(ok);
-      res.iqCls = getIQClass(res.iq);
+    const meta = subtests[subCode].subtest;
+    const items = subtests[subCode].items;
+    const res = computeSubScore(subCode, items, answers[subCode]);
+    if (resultId && meta.id) {
+      const payload = { result_id: resultId, subtest_id: meta.id, score: res };
+      (portalHash ? savePortalSubtestScore(portalHash, payload) : saveSubtestScore(payload)).catch(() => {});
     }
     return res;
   };
@@ -87,7 +234,7 @@ export default function TKTest({ onComplete, onAbort }) {
 
   const startSub = () => {
     setCurQ(0);
-    setTimeLeft(SUBS[code].time);
+    setTimeLeft(sub.time_limit_seconds);
     setPhase('sub-active');
   };
 
@@ -97,7 +244,7 @@ export default function TKTest({ onComplete, onAbort }) {
         code === 'GI'
           ? Object.values(answers.GI).filter((v) => v != null && v !== '').length
           : answers[code].filter((a) => a !== null).length;
-      if (!window.confirm(`Selesaikan subtes ${code}?\n\nTerjawab: ${answeredCount}/${sub.items}\nWaktu tersisa: ${fmtTime(timeLeft)}`)) return;
+      if (!window.confirm(`Selesaikan subtes ${code}?\n\nTerjawab: ${answeredCount}/${qs.length}\nWaktu tersisa: ${fmtTime(timeLeft)}`)) return;
     }
     clearInterval(tickRef.current);
     const res = scoreSub(code);
@@ -106,47 +253,55 @@ export default function TKTest({ onComplete, onAbort }) {
   };
 
   const handleNextSub = () => {
-    const idx = TK_ORDER.indexOf(code);
-    if (idx === TK_ORDER.length - 1) {
-      // Composite = weighted average of score10 over all subtests, scaled to /10.
-      const allDone = { ...done };
-      const composite =
-        Math.round(
-          (TK_ORDER.reduce((s, k) => s + (allDone[k]?.score10 || 0) * SUBS[k].weight, 0) /
-            TK_ORDER.reduce((s, k) => s + SUBS[k].weight, 0)) *
-            10,
-        ) / 10;
-      const compVerdict = getVerdict(Math.round(composite));
-      onComplete({ sub: allDone, composite, compVerdict: compVerdict.v });
+    const idx = tkOrder.indexOf(code);
+    if (idx === tkOrder.length - 1) {
+      onComplete(computeComposite(done, tkOrder, subtests));
       return;
     }
-    const next = TK_ORDER[idx + 1];
+    const next = tkOrder[idx + 1];
     setCode(next);
     setCurQ(0);
-    setTimeLeft(SUBS[next].time);
+    setTimeLeft(subtests[next].subtest.time_limit_seconds);
     setPhase('sub-intro');
   };
 
+  if (phase === 'loading') {
+    return (
+      <div className="max-w-[440px] mx-auto px-4 py-20 text-center text-sm text-slate-500">
+        Memuat soal…
+      </div>
+    );
+  }
+
+  if (phase === 'error') {
+    return (
+      <div className="max-w-[440px] mx-auto px-4 py-20 text-center">
+        <p className="text-sm text-rose-600 mb-4">Gagal memuat soal. Silakan coba lagi.</p>
+        <Button variant="outline" onClick={onAbort}>← Kembali</Button>
+      </div>
+    );
+  }
+
   if (phase === 'sub-intro') {
-    const idx = TK_ORDER.indexOf(code);
+    const idx = tkOrder.indexOf(code);
     return (
       <div className="max-w-[640px] mx-auto px-4 py-10">
         <div className="text-center mb-3 text-xs font-bold tracking-wider uppercase text-slate-500">
-          Subtes {idx + 1} dari {TK_ORDER.length}
+          Subtes {idx + 1} dari {tkOrder.length}
         </div>
         <div className="bg-white border border-slate-200 rounded-xl p-7 text-center shadow-lg">
           <div className="text-5xl mb-3">{sub.icon}</div>
           <h2 className="font-serif text-2xl mb-1" style={{ color: sub.color }}>
-            {sub.code} — {sub.nameID}
+            {sub.code} — {sub.name}
           </h2>
           <div className="text-sm text-slate-500 mb-5 leading-relaxed">{sub.function}</div>
           <div className="flex justify-center gap-3 flex-wrap mb-5">
             <div className="px-4 py-2 rounded-lg border border-slate-200 text-center">
-              <div className="font-serif text-xl font-bold">{sub.items}</div>
+              <div className="font-serif text-xl font-bold">{qs.length}</div>
               <div className="text-[10px] text-slate-400">SOAL</div>
             </div>
             <div className="px-4 py-2 rounded-lg border border-slate-200 text-center">
-              <div className="font-serif text-xl font-bold">{sub.time / 60} menit</div>
+              <div className="font-serif text-xl font-bold">{sub.time_limit_seconds / 60} menit</div>
               <div className="text-[10px] text-slate-400">DURASI</div>
             </div>
           </div>
@@ -171,9 +326,10 @@ export default function TKTest({ onComplete, onAbort }) {
   }
 
   if (phase === 'sub-done') {
-    const idx = TK_ORDER.indexOf(code);
-    const isLast = idx === TK_ORDER.length - 1;
-    const nextCode = TK_ORDER[idx + 1];
+    const idx = tkOrder.indexOf(code);
+    const isLast = idx === tkOrder.length - 1;
+    const nextCode = tkOrder[idx + 1];
+    const nextMeta = nextCode ? { ...SUBS_META[nextCode], ...subtests[nextCode].subtest } : null;
     return (
       <div className="max-w-[440px] mx-auto px-4 py-14 text-center">
         <div
@@ -188,12 +344,12 @@ export default function TKTest({ onComplete, onAbort }) {
         <p className="text-sm text-slate-500 leading-relaxed mb-6">
           {isLast ? 'Semua subtes TK selesai!' : 'Lanjutkan ke subtes berikutnya saat Anda siap.'}
         </p>
-        {!isLast && nextCode && (
+        {!isLast && nextMeta && (
           <div
             className="rounded-lg px-4 py-3 mb-4 text-xs"
-            style={{ background: SUBS[nextCode].bg, color: SUBS[nextCode].color, border: `1px solid ${SUBS[nextCode].color}30` }}
+            style={{ background: nextMeta.bg, color: nextMeta.color, border: `1px solid ${nextMeta.color}30` }}
           >
-            Subtes berikutnya — {SUBS[nextCode].nameID} · {SUBS[nextCode].items} soal · {SUBS[nextCode].time / 60} menit
+            Subtes berikutnya — {nextMeta.name} · {subtests[nextCode].items.length} soal · {nextMeta.time_limit_seconds / 60} menit
           </div>
         )}
         <Button onClick={handleNextSub} className="bg-gradient-to-br from-teal-800 to-teal-600 hover:opacity-90 h-11 w-full max-w-[280px]">
@@ -214,15 +370,16 @@ export default function TKTest({ onComplete, onAbort }) {
       answers={answers}
       setAnswers={setAnswers}
       onFinish={() => handleFinishSub(false)}
+      persistAnswer={persistAnswer}
     />
   );
 }
 
-function SubActive({ code, qs, sub, curQ, setCurQ, timeLeft, answers, setAnswers, onFinish }) {
-  const total = sub.items;
+function SubActive({ code, qs, sub, curQ, setCurQ, timeLeft, answers, setAnswers, onFinish, persistAnswer }) {
+  const total = qs.length;
   const pct = Math.round((curQ / total) * 100);
   const lowTime = timeLeft <= 60;
-  const timePct = (timeLeft / sub.time) * 100;
+  const timePct = (timeLeft / sub.time_limit_seconds) * 100;
 
   const getAnswered = () =>
     code === 'GI'
@@ -260,47 +417,52 @@ function SubActive({ code, qs, sub, curQ, setCurQ, timeLeft, answers, setAnswers
 
       <div className="max-w-[900px] mx-auto p-4 pb-20">
         {code === 'GI' ? (
-          <GIQuestion qs={qs} curQ={curQ} setCurQ={setCurQ} answers={answers} setAnswers={setAnswers} onFinish={onFinish} />
+          <GIQuestion qs={qs} curQ={curQ} setCurQ={setCurQ} answers={answers} setAnswers={setAnswers} onFinish={onFinish} persistAnswer={persistAnswer} />
         ) : (
-          <KAQuestion code={code} qs={qs} curQ={curQ} setCurQ={setCurQ} answers={answers} setAnswers={setAnswers} onFinish={onFinish} />
+          <KAQuestion code={code} qs={qs} curQ={curQ} setCurQ={setCurQ} answers={answers} setAnswers={setAnswers} onFinish={onFinish} persistAnswer={persistAnswer} />
         )}
       </div>
     </div>
   );
 }
 
-function GIQuestion({ qs, curQ, setCurQ, answers, setAnswers, onFinish }) {
+function GIQuestion({ qs, curQ, setCurQ, answers, setAnswers, onFinish, persistAnswer }) {
   const q = qs[curQ];
-  const ans = answers.GI[q.n] || '';
+  const n = q.order_index;
+  const c = q.content;
+  const ans = answers.GI[n] || '';
   const isLast = curQ === qs.length - 1;
 
-  const setAns = (v) => setAnswers((p) => ({ ...p, GI: { ...p.GI, [q.n]: v } }));
+  const setAns = (v) => {
+    setAnswers((p) => ({ ...p, GI: { ...p.GI, [n]: v } }));
+    persistAnswer(q.id, v, null, null);
+  };
 
   return (
     <div className="bg-white border border-slate-200 rounded-xl p-5 md:p-6 shadow-sm">
       <div className="inline-flex items-center justify-center w-9 h-9 rounded-full bg-teal-100 text-teal-700 font-serif font-bold text-sm mb-3">
-        {q.n}
+        {n}
       </div>
-      <div className="text-sm leading-relaxed whitespace-pre-wrap text-slate-700 mb-4 select-none">{q.text}</div>
+      <div className="text-sm leading-relaxed whitespace-pre-wrap text-slate-700 mb-4 select-none">{c.text}</div>
 
-      {/* SVG figures are static and ship from a trusted local data file. */}
-      {q.svgHtml && (
-        <div className="mb-4 overflow-x-auto" dangerouslySetInnerHTML={{ __html: q.svgHtml }} />
+      {/* SVG figures are static, sourced from the seeded question bank. */}
+      {c.svg_html && (
+        <div className="mb-4 overflow-x-auto" dangerouslySetInnerHTML={{ __html: c.svg_html }} />
       )}
 
-      {q.type === 'input' ? (
+      {q.question_type === 'input' ? (
         <>
           <Input
             value={ans}
             onChange={(e) => setAns(e.target.value)}
-            placeholder={q.hint || 'Jawaban'}
+            placeholder={c.hint || 'Jawaban'}
             className={`max-w-[300px] ${ans ? 'border-teal-500 bg-teal-50' : ''}`}
           />
-          {q.hint && <div className="text-[11px] text-slate-400 mt-1.5">{q.hint}</div>}
+          {c.hint && <div className="text-[11px] text-slate-400 mt-1.5">{c.hint}</div>}
         </>
       ) : (
         <div className="flex flex-col gap-2">
-          {q.opts.map((opt, i) => {
+          {c.choices.map((opt, i) => {
             const letter = String(i + 1);
             const sel = ans === letter;
             return (
@@ -337,7 +499,7 @@ function GIQuestion({ qs, curQ, setCurQ, answers, setAnswers, onFinish }) {
         onJump={setCurQ}
         answeredAt={(i) => {
           const qq = qs[i];
-          const a = answers.GI[qq.n];
+          const a = answers.GI[qq.order_index];
           return a != null && a !== '';
         }}
       />
@@ -345,26 +507,29 @@ function GIQuestion({ qs, curQ, setCurQ, answers, setAnswers, onFinish }) {
   );
 }
 
-function KAQuestion({ code, qs, curQ, setCurQ, answers, setAnswers, onFinish }) {
+function KAQuestion({ code, qs, curQ, setCurQ, answers, setAnswers, onFinish, persistAnswer }) {
   const q = qs[curQ];
+  const c = q.content;
   const ans = answers[code][curQ];
   const isLast = curQ === qs.length - 1;
-  const setAns = (v) =>
+  const setAns = (v) => {
     setAnswers((p) => {
       const arr = [...p[code]];
       arr[curQ] = v;
       return { ...p, [code]: arr };
     });
+    persistAnswer(q.id, v, v === c.correct, v === c.correct ? 1 : 0);
+  };
 
   return (
     <div className="bg-white border border-slate-200 rounded-xl p-5 md:p-6 shadow-sm">
       <div className="inline-flex items-center justify-center w-9 h-9 rounded-full bg-pink-100 text-pink-700 font-serif font-bold text-sm mb-3">
         {curQ + 1}
       </div>
-      <div className="text-sm leading-relaxed whitespace-pre-wrap text-slate-700 mb-4 font-mono">{q.s}</div>
+      <div className="text-sm leading-relaxed whitespace-pre-wrap text-slate-700 mb-4 font-mono">{c.text}</div>
 
       <div className="flex flex-col gap-2">
-        {Object.entries(q.o).map(([k, txt]) => {
+        {Object.entries(c.choices).map(([k, txt]) => {
           const sel = ans === k;
           return (
             <button

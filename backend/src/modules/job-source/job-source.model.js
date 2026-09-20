@@ -25,13 +25,18 @@ class JobSourceModel {
     const result = await getDb().query(`
       SELECT cjs.*,
       mjss.candidate_count,
-      mjss.progress,
+      COALESCE(mas.synced_count, 0) AS progress,
       COUNT(mjsj.id)::int AS linked_job_count
       FROM core_job_sourcing cjs
       LEFT JOIN mapping_job_sourcing_seek mjss ON mjss.job_sourcing_id = cjs.id
       LEFT JOIN mapping_job_sourcing_job mjsj ON mjsj.job_sourcing_id = cjs.id
+      LEFT JOIN (
+        SELECT job_sourcing_id, COUNT(*)::int AS synced_count
+        FROM mapping_applicant_sourcing
+        GROUP BY job_sourcing_id
+      ) mas ON mas.job_sourcing_id = cjs.id
       WHERE cjs.account_id = $1
-      GROUP BY cjs.id, mjss.candidate_count, mjss.progress
+      GROUP BY cjs.id, mjss.candidate_count, mas.synced_count
       ORDER BY cjs.created_at ASC
     `, [account_id]);
 

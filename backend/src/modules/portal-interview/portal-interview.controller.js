@@ -18,6 +18,21 @@ class PortalInterviewController {
   }
 
   /**
+   * GET /api/portal-interview/:token/candidate/:packCandidateId/cv
+   * Public — no auth required. Token scopes access to only this pack's candidates.
+   */
+  async downloadCv(req, res) {
+    try {
+      const { token, packCandidateId } = req.params;
+      const { filePath } = await InterviewPackService.getCvPathByToken(token, packCandidateId);
+      res.download(filePath);
+    } catch (err) {
+      console.error('PortalInterviewController.downloadCv:', err);
+      res.status(err.status || 500).json({ message: err.message });
+    }
+  }
+
+  /**
    * PUT /api/portal-interview/:token/outcome/:packCandidateId
    * Public — no auth required.
    * Autosave scores/recommendation/strengths/concerns for one candidate.

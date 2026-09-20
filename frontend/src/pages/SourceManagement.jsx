@@ -5,14 +5,12 @@ import { PageHeader } from '@/components/common';
 import { getJobAccountsByUserId } from '@/api/job-accounts.api';
 import AccountSelection from '@/components/source-management/AccountSelection';
 import ListSource from '@/components/source-management/ListSource';
-import SourceSetup from '@/components/source-management/SourceSetup';
 import ListCandidate from '@/components/source-management/ListCandidate';
 import SourceManagementWizard, { useSourceManagementWizard } from '@/components/tours/SourceManagementWizard';
 
 const STEPS = [
   { key: 'selection', label: 'Account Select'},
   { key: 'sourcing',  label: 'List Source'   },
-  { key: 'setting',   label: 'Source Setup'  },
   { key: 'candidate', label: 'List Candidate'},
 ];
 
@@ -21,6 +19,7 @@ export default function SourceManagementPage() {
   const [accounts, setAccounts]     = useState([]);
   const [loading, setLoading]       = useState(true);
   const [selectedAccount, setSelectedAccount] = useState(null);
+  const [selectedSource, setSelectedSource] = useState(null);
 
   const {
     run: wizardRun,
@@ -128,7 +127,7 @@ export default function SourceManagementPage() {
             variant="ghost"
             size="sm"
             className="text-xs"
-            disabled={activeStep === 0 && !selectedAccount}
+            disabled={(activeStep === 0 && !selectedAccount) || (activeStep === 1 && !selectedSource)}
             onClick={handleNext}
           >
             Next: {STEPS[activeStep + 1].label}
@@ -147,13 +146,14 @@ export default function SourceManagementPage() {
         />
       )}
       {activeStep === 1 && (
-        <ListSource selectedAccount={selectedAccount} />
+        <ListSource
+          selectedAccount={selectedAccount}
+          selectedSource={selectedSource}
+          onSelectSource={setSelectedSource}
+        />
       )}
       {activeStep === 2 && (
-        <SourceSetup selectedJob={null} />
-      )}
-      {activeStep === 3 && (
-        <ListCandidate selectedJob={null} />
+        <ListCandidate selectedJob={selectedSource} />
       )}
 
       <SourceManagementWizard

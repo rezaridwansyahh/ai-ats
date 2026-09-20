@@ -1,9 +1,9 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Table, TableBody, TableCell, TableHeader, TableRow } from '@/components/ui/table';
-import { Badge } from "lucide-react";
-import { Slider } from "radix-ui";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import { Badge } from "@/components/ui/badge";
+import { Slider } from "@/components/ui/slider";
 
-import { Briefcase, Wand2, Info, Code2, TrendingUp, GraduationCap, Target } from "lucide-react";
+import { Briefcase, Wand2, Info, Code2, GraduationCap, Target } from "lucide-react";
 
 import { ChartRadarDots } from "./spider-chart";
 import { ScoreItem } from "./score-item";
@@ -38,7 +38,6 @@ export default function MatchDetails({ data }) {
             <div className='w-1/2 space-y-3'>
               <ScoreItem label="Skills" score={data.score_data?.skills_score || 'No Data '} />
               <ScoreItem label="Experience" score={data.score_data?.experience_score || 'No Data '} />
-              <ScoreItem label="Trajectory" score={data.score_data?.career_trajectory_score || 'No Data '} />
               <ScoreItem label="Education" score={data.score_data?.education_score || 'No Data '} />
               
               <div className="pt-2 mt-2 border-t">
@@ -89,32 +88,31 @@ export default function MatchDetails({ data }) {
           </CardTitle>
           {data.score_data?.id && (
             <span className="text-[10px] text-muted-foreground">
-              Scored {fmt(data.score_data?.scored_at)}{data.score_data?.role_profile ? ` · ${data.score_data?.role_profile}` : ''}
+              Scored {fmt(data.score_data?.scored_at)}
             </span>
           )}
         </CardHeader>
         <CardContent className="space-y-4">
           <div className="space-y-4">
-            <div>
-              <div className="text-[11px] font-medium text-muted-foreground uppercase mb-2">Role profile</div>
-              <div className="flex gap-3">
-                {[
-                  { value: 'experienced', label: 'Experienced', desc: 'Years, role progression, prior responsibilities matter.' },
-                  { value: 'fresh_graduate', label: 'Fresh Graduate', desc: 'Lack of senior titles will not penalize. Education weighed higher.' },
-                ].map((opt) => (
-                  <button
-                    key={opt.value}
-                    type="button"
-                    disabled={true}
-                    className={`flex-1 text-left px-4 py-3 rounded-lg border ${
-                      data.score_data?.role_profile === opt.value ? 'border-primary bg-primary/5' : 'border-border bg-muted/30 cursor-not-allowed'
-                    }`}
-                  >
-                    <div className="text-xs font-semibold">{opt.label}</div>
-                    <div className="text-[10px] text-muted-foreground mt-0.5">{opt.desc}</div>
-                  </button>
-                ))}
-              </div>
+            <div className="space-y-2">
+              {data.score_data?.skills_reason && (
+                <div className="text-[11px] px-3 py-2 rounded-md bg-muted/30 border">
+                  <span className="font-semibold uppercase tracking-wide text-muted-foreground text-[10px]">Skills — </span>
+                  <span className="text-muted-foreground italic">{data.score_data.skills_reason}</span>
+                </div>
+              )}
+              {data.score_data?.experience_reason && (
+                <div className="text-[11px] px-3 py-2 rounded-md bg-muted/30 border">
+                  <span className="font-semibold uppercase tracking-wide text-muted-foreground text-[10px]">Experience — </span>
+                  <span className="text-muted-foreground italic">{data.score_data.experience_reason}</span>
+                </div>
+              )}
+              {data.score_data?.education_reason && (
+                <div className="text-[11px] px-3 py-2 rounded-md bg-muted/30 border">
+                  <span className="font-semibold uppercase tracking-wide text-muted-foreground text-[10px]">Education — </span>
+                  <span className="text-muted-foreground italic">{data.score_data.education_reason}</span>
+                </div>
+              )}
             </div>
 
             <div className="pt-3 border-t space-y-2">

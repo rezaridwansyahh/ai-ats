@@ -4,6 +4,9 @@ import JobPost from '../job-post/job-post.model.js'
 import JobAccount from '../job-account/job-account.model.js';
 import User from '../user/user.model.js';
 import Job from '../job/job.model.js';
+import applicantModel from '../applicant/applicant.model.js';
+import candidatePipelineModel from '../candidate-pipeline/candidate-pipeline.model.js';
+import screeningService from '../screening/screening.service.js';
 
 class JobSourceService {
   async getAll() {
@@ -171,7 +174,23 @@ class JobSourceService {
       throw { status: 400, message: 'Sourcing already linked to this job' };
     }
 
-    return await JobSource.addJobMapping(id, job_id, false);
+    const mapping = await JobSource.addJobMapping(id, job_id, false);
+
+    // Backfill: applicants already extracted for this sourcing before the
+    // link existed are never picked up by a re-sync (extract-candidate.rpa.js
+    // skips them via checkExists before onSave — the only place that promotes
+    // to a job's pipeline — ever runs). Promote them into this job now.
+    const applicants = await applicantModel.getByJobSourcingId(id);
+    for (const applicant of applicants) {
+      try {
+        const created = await candidatePipelineModel.createFromApplicantIfAbsent(applicant.id, job_id);
+        if (created) await screeningService.autoScoreIfPossible(applicant.id, job_id);
+      } catch (err) {
+        console.error(`Backfill promote failed for applicant ${applicant.id} → job ${job_id}:`, err.message);
+      }
+    }
+
+    return mapping;
   }
 
   // Removes a manually-added job link. The origin link (the job this

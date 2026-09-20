@@ -3,7 +3,7 @@ import candidatePipelineService from './candidate-pipeline.service.js';
 class CandidatePipelineController {
   async getAll(req, res) {
     try {
-      const pipelines = await candidatePipelineService.getAll();
+      const pipelines = await candidatePipelineService.getAll(req.user?.company_id);
       res.status(200).json({ message: 'List all candidate pipelines', pipelines });
     } catch (err) {
       res.status(err.status || 500).json({ message: err.message });
@@ -22,7 +22,7 @@ class CandidatePipelineController {
   async getSummary(req, res) {
     const query = req.query
     try {
-      const summary = await candidatePipelineService.getSummary(query);
+      const summary = await candidatePipelineService.getSummary(query, req.user?.company_id);
       res.status(200).json({ message: 'Candidate pipeline summary', summary });
     } catch (err) {
       res.status(err.status || 500).json({ message: err.message });
@@ -32,7 +32,7 @@ class CandidatePipelineController {
   async getByJobId(req, res) {
     const query = req.query
     try {
-      const pipelines = await candidatePipelineService.getByJobId(req.params.job_id, query);
+      const pipelines = await candidatePipelineService.getByJobId(req.params.job_id, query, req.user?.company_id);
       res.status(200).json({ message: 'Candidate pipelines for job', pipelines });
     } catch (err) {
       res.status(err.status || 500).json({ message: err.message });
@@ -96,8 +96,17 @@ class CandidatePipelineController {
 
   async email(req, res) {
     try {
-      const result = await candidatePipelineService.email(req.params.id, req.body || {});
-      res.status(200).json({ message: 'Test email sent', ...result });
+      const result = await candidatePipelineService.email(req.params.id);
+      res.status(200).json({ message: 'Email sent', ...result });
+    } catch (err) {
+      res.status(err.status || 500).json({ message: err.message });
+    }
+  }
+
+  async previewEmail(req, res) {
+    try {
+      const result = await candidatePipelineService.previewEmail(req.params.id);
+      res.status(200).json({ message: 'Email preview', ...result });
     } catch (err) {
       res.status(err.status || 500).json({ message: err.message });
     }

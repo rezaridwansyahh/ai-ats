@@ -145,7 +145,7 @@ class Session {
         cj.company_id
       FROM assessment_sessions s
       JOIN master_candidate mc ON mc.id = s.candidate_id
-      JOIN master_applicant ma ON ma.id = mc.applicant_id
+      LEFT JOIN master_applicant ma ON ma.id = mc.applicant_id
       LEFT JOIN core_job cj ON cj.id = s.job_id
       WHERE s.id = $1
     `, [session_id]);

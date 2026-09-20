@@ -4,6 +4,21 @@ import os from 'os';
 
 const delay = (ms) => new Promise(r => setTimeout(r, ms));
 
+// Polls downloadDir until a file not present in filesBefore shows up and is no
+// longer .crdownload (i.e. Chrome finished writing it), instead of a fixed
+// delay that misses slow downloads and silently leaves them un-renamed under
+// their original filename.
+async function waitForNewDownload(downloadDir, filesBefore, timeoutMs = 30000, intervalMs = 500) {
+  const start = Date.now();
+  while (Date.now() - start < timeoutMs) {
+    const filesNow = fs.readdirSync(downloadDir).filter(f => !f.endsWith('.crdownload'));
+    const newFile = filesNow.find(f => !filesBefore.has(f));
+    if (newFile) return newFile;
+    await delay(intervalMs);
+  }
+  return null;
+}
+
 class ExtractCandidateService {
   async navigateToCandidatePage(page, seek_id) {
     console.log('Navigating to candidates for job ID:', seek_id);
@@ -79,15 +94,18 @@ class ExtractCandidateService {
     // Click to open filter for full candidate list
     try {
       await page.waitForSelector('[data-testid="status-folder-buttons"]');
-      const filter = await page.evaluate(() => {
+      const filterOn = await page.evaluate(() => {
         const filterBtn = document.querySelector('input[id="must-have-toggle"]');
-        if (filterBtn) return true;
-        return false;
+        return !!filterBtn && filterBtn.checked;
       });
 
-      if (filter) await page.click('input[id="must-have-toggle"]');
-      await delay(1000);
-      console.log('Filter toggle opened');
+      if (filterOn) {
+        await page.click('input[id="must-have-toggle"]');
+        await delay(1000);
+        console.log('Filter toggle was on, turned off');
+      } else {
+        console.log('Filter toggle already off');
+      }
     } catch (error) {
       console.log('Filter toggle not found or already open');
     }
@@ -164,8 +182,17 @@ class ExtractCandidateService {
               const q = row.querySelector('[data-cy="question"] span')?.innerText.trim();
               const a = row.querySelector('[data-cy="answer-0"] span')?.innerText.trim();
 
+              // Seek shows a Match/No Match icon next to each screening question,
+              // indicating whether the candidate's answer meets the job's stated
+              // requirement for it — identified by the <svg><title> text since the
+              // surrounding CSS classes are auto-generated/unstable.
+              const iconTitle = row.querySelector('svg title')?.textContent?.trim();
+              let meets_requirement = null;
+              if (iconTitle === 'Match Icon') meets_requirement = true;
+              else if (iconTitle === 'No Match Icon') meets_requirement = false;
+
               if (q) {
-                information[q] = a || "";
+                information[q] = { answer: a || "", meets_requirement };
               }
             });
           }
@@ -214,6 +241,19 @@ class ExtractCandidateService {
 
         console.log(`Candidate ID: ${candidateId}`);
 
+        // Email isn't shown on the card, only inside the opened detail drawer —
+        // Seek renders it as an aria-label like `Email someone@example.com`
+        // rather than plain text, so match on the label prefix and strip it off.
+        const email = await page.evaluate(() => {
+          const el = document.querySelector('[aria-label^="Email "]');
+          if (!el) return null;
+          const label = el.getAttribute('aria-label') || '';
+          const value = label.replace(/^Email\s*/i, '').trim();
+          return value || null;
+        });
+
+        console.log(`Email: ${email}`);
+
         if (!candidateId) {
           console.log('No candidate_id found, skipping...');
           await page.evaluate(() => {
@@ -225,6 +265,12 @@ class ExtractCandidateService {
         }
 
         let resumeFileName = null;
+        // 'not_available' = source genuinely has no resume to offer (no
+        // resume tab, or a tab with no download control) — nothing to
+        // retry. 'failed' = a resume existed but the download itself
+        // errored/timed out — a re-sync should retry these instead of
+        // treating them as fully synced.
+        let cvStatus = 'not_available';
 
         // Check if resume tab exists
         const hasResumeTab = await page.$('#tab-select-detail-view_3');
@@ -253,14 +299,19 @@ class ExtractCandidateService {
 
               await page.click('#download-document-viewer');
               console.log(`Downloading: ${fileName}`);
-              await delay(5000);
 
               // Rename the newly downloaded file to our consistent naming convention
-              const filesAfter = fs.readdirSync(downloadDir).filter(f => !f.endsWith('.crdownload'));
-              const newFile = filesAfter.find(f => !filesBefore.has(f));
-              if (newFile && newFile !== fileName) {
-                fs.renameSync(path.join(downloadDir, newFile), path.join(downloadDir, fileName));
-                console.log(`Renamed: ${newFile} → ${fileName}`);
+              const newFile = await waitForNewDownload(downloadDir, filesBefore);
+              if (newFile) {
+                if (newFile !== fileName) {
+                  fs.renameSync(path.join(downloadDir, newFile), path.join(downloadDir, fileName));
+                  console.log(`Renamed: ${newFile} → ${fileName}`);
+                }
+                cvStatus = 'downloaded';
+              } else {
+                console.log(`Download timed out, no file appeared for candidate ${candidateId}`);
+                resumeFileName = null;
+                cvStatus = 'failed';
               }
             } else {
               console.log('No download button found - Resume not available');
@@ -269,6 +320,7 @@ class ExtractCandidateService {
           } catch (error) {
             console.log(`Error downloading resume: ${error.message}`);
             resumeFileName = null;
+            cvStatus = 'failed';
           }
         } else {
           console.log(`No resume tab found for candidate ${candidateId}`);
@@ -282,7 +334,7 @@ class ExtractCandidateService {
 
         await delay(500);
         progress++;
-        const candidate = { ...cardData, candidate_id: candidateId, progress, attachment: resumeFileName };
+        const candidate = { ...cardData, candidate_id: candidateId, progress, attachment: resumeFileName, email, cv_status: cvStatus };
 
         // Save immediately rather than buffering — persists progress as we go
         // instead of holding the whole bucket in memory until it's all done.
@@ -321,6 +373,79 @@ class ExtractCandidateService {
 
     console.log(`\nTotal candidates saved: ${saved}, skipped: ${skipped}`);
     return { saved, skipped, progress };
+  }
+
+  // One-off backfill for candidates synced before email scraping existed.
+  // `targetNames` is a Map<name, applicantId> — mutated in place (entries
+  // removed as they're found) so the caller can stop early / know what's
+  // left over. Unlike extractCandidates, this only opens the modal for
+  // names that are actually in targetNames, and does nothing else (no
+  // resume download, no re-creating/updating any other field).
+  async backfillEmails(page, targetNames, onFound) {
+    await page.waitForSelector('[data-testid="job-application-card"]');
+
+    while (targetNames.size > 0) {
+      await delay(1000);
+      const totalCards = await page.evaluate(() => {
+        return document.querySelectorAll('[data-testid="job-application-card"]').length;
+      });
+
+      for (let i = 0; i < totalCards && targetNames.size > 0; i++) {
+        const cardSelector = `[data-testid="job-application-card-${i}"]`;
+
+        const name = await page.evaluate((selector) => {
+          const card = document.querySelector(selector);
+          if (!card) return null;
+          const spans = Array.from(card.querySelectorAll('span'))
+            .map(s => s.innerText.trim())
+            .filter(t => t.length > 1);
+          return spans[0] || null;
+        }, cardSelector);
+
+        if (!name || !targetNames.has(name)) continue;
+
+        await page.evaluate((selector) => {
+          document.querySelector(selector)?.click();
+        }, cardSelector);
+
+        await page.waitForSelector('[id="details-view-drawer"]', { timeout: 10000 });
+        await delay(1000);
+
+        const email = await page.evaluate(() => {
+          const el = document.querySelector('[aria-label^="Email "]');
+          if (!el) return null;
+          const label = el.getAttribute('aria-label') || '';
+          const value = label.replace(/^Email\s*/i, '').trim();
+          return value || null;
+        });
+
+        await page.evaluate(() => {
+          const btn = document.querySelector('button[aria-label="Tutup halaman"]');
+          if (btn) btn.click();
+        });
+        await delay(500);
+
+        if (email) {
+          await onFound(name, email);
+        } else {
+          console.log(`No email found on Seek for "${name}"`);
+        }
+        targetNames.delete(name);
+      }
+
+      if (targetNames.size === 0) break;
+
+      const nextBtn = await page.$('a[rel="next"][aria-hidden="false"]');
+      if (!nextBtn) break;
+
+      await Promise.all([
+        nextBtn.click(),
+        page.waitForNetworkIdle({ idleTime: 500, timeout: 10000 }).catch(() => {}),
+      ]);
+      await delay(3000);
+      await page.waitForSelector('[data-testid="job-application-card"]');
+      await delay(2000);
+    }
   }
 }
 

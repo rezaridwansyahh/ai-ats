@@ -22,18 +22,28 @@ export const scoreCandidateLegacy = (applicant_id, job_id) =>
 
 // Score ALL candidates in a job using the supplied (or saved) rubric.
 // Equivalent to the old `runMatching`.
-export const scoreAllCandidates = (job_id, { rubric, role_profile } = {}) =>
-  api.post(`/screening/match/${job_id}`, { rubric, role_profile });
+export const scoreAllCandidates = (job_id, { rubric } = {}) =>
+  api.post(`/screening/match/${job_id}`, { rubric });
 
 // Score ONE candidate in a job — saves the rubric so the UI rubric is respected.
 // Use this from the candidate detail page.
-export const scoreCandidate = (job_id, applicant_id, { rubric, role_profile } = {}) =>
-  api.post(`/screening/job/${job_id}/score-candidate`, { applicant_id, rubric, role_profile });
+export const scoreCandidate = (job_id, applicant_id, { rubric } = {}) =>
+  api.post(`/screening/job/${job_id}/score-candidate`, { applicant_id, rubric });
 
 // Score a specific list of candidates using the saved rubric (no rubric in request).
 // Equivalent to the old `matchBulk`. Use this from the workboard bulk-run action.
 export const scoreCandidatesList = (job_id, applicant_ids, { force } = {}) =>
   api.post(`/screening/job/${job_id}/match-bulk`, { applicant_ids, force: !!force });
+
+// Force re-score every candidate on a job (parsed or not, scored or not) through
+// the async match-rescore BullMQ queue. Returns immediately (202); poll
+// job.match_rescore_status for progress instead of awaiting completion here.
+export const rerunAllMatchForJob = (job_id) =>
+  api.post(`/screening/job/${job_id}/match-bulk/rerun-all`);
+
+// Score just the pending candidates on a job, through the same async queue.
+export const scorePendingForJob = (job_id) =>
+  api.post(`/screening/job/${job_id}/match-bulk/score-pending`);
 
 export const scoreBulkForJob = (job_id) =>
   api.post(`/screening/score-bulk/${job_id}`);

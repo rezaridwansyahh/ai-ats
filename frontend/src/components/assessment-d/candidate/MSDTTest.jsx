@@ -1,9 +1,8 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Button } from '@/components/ui/button';
 import {
   STYLES,
   STYLE_ORDER,
-  MSDT_QS,
   TO_STYLES,
   RO_STYLES,
   E_STYLES,
@@ -12,23 +11,91 @@ import {
   E_MAX,
 } from '../data/msdt';
 import { pctToScore10, getVerdict } from '../utils/scoring';
+import { getQuestionsByAssessmentCode } from '@/api/question.api';
+import { saveAnswer } from '@/api/assessment-answer.api';
+import { saveSubtestScore } from '@/api/assessment-score.api';
+import { getPortalQuestions, getPortalProgress, savePortalAnswer, savePortalSubtestScore } from '@/api/portal-assessment.api';
+import { findExistingScore, answersByQuestionId } from '@/utils/assessment-resume';
 
-// MSDT — 64 paired statements (A vs B). Each pick increments raw[item.sa] (if A) or raw[item.sb] (if B).
+// MSDT — 64 paired statements (A vs B). Scores off each question's fetched
+// content.a.scale/content.b.scale (seeded from item.sa/item.sb) — same reasoning
+// as EPPSTest/PAPITest. STYLES/STYLE_ORDER/*_STYLES/*_MAX stay static — family
+// grouping/normalization config, not per-question content.
 // Family-normalized: TO = Σ(raw of TO_STYLES)/TO_MAX × 100, same for RO and E. Dominant = top raw style.
 // effectPct = (TO + RO) / 2. Per Battery D mockup lines 2073-2087.
 
 const COLOR = '#DB2777';
 const BG = '#FDF2F8';
 
-export default function MSDTTest({ onComplete, onAbort }) {
-  const [answers, setAnswers] = useState(Array(MSDT_QS.length).fill(null));
+export default function MSDTTest({ resultId, assessmentCode, portalHash, onComplete, onAbort }) {
+  const [phase, setPhase] = useState('loading');
+  const [items, setItems] = useState(null); // [{id, order_index, content:{a:{text,scale},b:{text,scale}}}]
+  const [subtestId, setSubtestId] = useState(null);
+  const [answers, setAnswers] = useState([]);
   const [curQ, setCurQ] = useState(0);
 
-  const total = MSDT_QS.length;
-  const q = MSDT_QS[curQ];
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      try {
+        const [{ data }, progress] = await Promise.all([
+          portalHash ? getPortalQuestions(portalHash) : getQuestionsByAssessmentCode(assessmentCode),
+          portalHash ? getPortalProgress(portalHash).then((r) => r.data) : Promise.resolve({ answers: [], scores: [] }),
+        ]);
+        const group = data?.questions?.msdt;
+        if (cancelled) return;
+        if (!group?.items?.length) throw new Error('No MSDT questions found');
+        const sorted = [...group.items].sort((a, b) => a.order_index - b.order_index);
+        setItems(sorted);
+        setSubtestId(group.subtest.id);
+
+        const existingScore = findExistingScore(progress.scores, group.subtest.id);
+        if (existingScore) {
+          onComplete(existingScore);
+          return;
+        }
+
+        const answerMap = answersByQuestionId(progress.answers, sorted.map((it) => it.id));
+        const restored = Array(sorted.length).fill(null);
+        sorted.forEach((it, idx) => {
+          const saved = answerMap.get(it.id);
+          if (saved) restored[idx] = saved.answer;
+        });
+        setAnswers(restored);
+        const firstUnanswered = restored.findIndex((a) => a == null);
+        setCurQ(firstUnanswered === -1 ? sorted.length - 1 : firstUnanswered);
+        setPhase('active');
+      } catch {
+        if (!cancelled) setPhase('error');
+      }
+    })();
+    return () => { cancelled = true; };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [assessmentCode, portalHash]);
+
+  if (phase === 'loading') {
+    return <div className="max-w-[440px] mx-auto px-4 py-20 text-center text-sm text-slate-500">Memuat soal…</div>;
+  }
+  if (phase === 'error') {
+    return (
+      <div className="max-w-[440px] mx-auto px-4 py-20 text-center">
+        <p className="text-sm text-rose-600 mb-4">Gagal memuat soal. Silakan coba lagi.</p>
+        <Button variant="outline" onClick={onAbort}>← Kembali</Button>
+      </div>
+    );
+  }
+
+  const total = items.length;
+  const q = items[curQ].content;
   const ans = answers[curQ];
   const pct = Math.round((curQ / total) * 100);
   const isLast = curQ === total - 1;
+
+  const persistAnswer = (v) => {
+    if (!resultId) return;
+    const payload = { result_id: resultId, question_id: items[curQ].id, answer: v, is_correct: null, score_earned: null };
+    (portalHash ? savePortalAnswer(portalHash, payload) : saveAnswer(payload)).catch(() => {});
+  };
 
   const setAns = (v) => {
     setAnswers((p) => {
@@ -36,6 +103,7 @@ export default function MSDTTest({ onComplete, onAbort }) {
       next[curQ] = v;
       return next;
     });
+    persistAnswer(v);
     if (curQ < total - 1) {
       setCurQ(curQ + 1);
     } else {
@@ -47,10 +115,9 @@ export default function MSDTTest({ onComplete, onAbort }) {
     const raw = {};
     STYLE_ORDER.forEach((s) => (raw[s] = 0));
     final.forEach((choice, i) => {
-      const item = MSDT_QS[i];
-      if (!item) return;
-      if (choice === 'A') raw[item.sa]++;
-      else if (choice === 'B') raw[item.sb]++;
+      const c = items[i].content;
+      if (choice === 'A') raw[c.a.scale]++;
+      else if (choice === 'B') raw[c.b.scale]++;
     });
     const sumFamily = (arr) => arr.reduce((s, k) => s + raw[k], 0);
     const TO = Math.min(100, Math.round((sumFamily(TO_STYLES) / TO_MAX) * 100));
@@ -59,7 +126,7 @@ export default function MSDTTest({ onComplete, onAbort }) {
     const dominant = Object.entries(raw).sort((a, b) => b[1] - a[1])[0][0];
     const effectPct = Math.round((TO + RO) / 2);
     const score10 = pctToScore10(effectPct);
-    onComplete({
+    const res = {
       raw,
       TO,
       RO,
@@ -69,7 +136,12 @@ export default function MSDTTest({ onComplete, onAbort }) {
       score10,
       verdict: getVerdict(score10).v,
       styleInfo: STYLES[dominant],
-    });
+    };
+    if (resultId && subtestId) {
+      const payload = { result_id: resultId, subtest_id: subtestId, score: res };
+      (portalHash ? savePortalSubtestScore(portalHash, payload) : saveSubtestScore(payload)).catch(() => {});
+    }
+    onComplete(res);
   };
 
   return (
@@ -103,8 +175,8 @@ export default function MSDTTest({ onComplete, onAbort }) {
 
           <div className="flex flex-col gap-2.5">
             {[
-              { key: 'A', txt: q.a, label: 'A' },
-              { key: 'B', txt: q.b, label: 'B' },
+              { key: 'A', txt: q.a.text, label: 'A' },
+              { key: 'B', txt: q.b.text, label: 'B' },
             ].map(({ key: k, txt, label }) => {
               const sel = ans === k;
               return (

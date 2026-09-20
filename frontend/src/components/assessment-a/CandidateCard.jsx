@@ -2,7 +2,7 @@ import { useEffect, useState, useCallback, useRef } from 'react';
 import { loadCardData, saveCardData, clearCardData, SKEY } from './utils/storage';
 import { fmtDateID } from './utils/scoring';
 import { calc3Pillar } from './report/report-utils';
-import { updatePortalParticipant } from '@/api/portal-assessment.api';
+import { updatePortalParticipant, startPortalAssessment } from '@/api/portal-assessment.api';
 import { submitAssessment } from '@/api/assessment-battery-result.api';
 import Setup from './candidate/Setup';
 import Briefing from './candidate/Briefing';
@@ -57,7 +57,27 @@ export default function CandidateCard({
   const [doneInfo, setDoneInfo] = useState(null); // { num, label, next }
   const [submitStatus, setSubmitStatus] = useState('idle');
   const [submitError, setSubmitError] = useState(null);
+  const [resultId, setResultId] = useState(null);
   const submitOnceRef = useRef(false);
+
+  // Creates (or re-fetches, idempotently) the result row as soon as the candidate
+  // confirms their profile — before any subtest begins — so per-answer/per-subtest
+  // saves have a real result_id from the very first question, not just at final
+  // submit. Portal mode only: standalone mode has no candidate_id to resolve from.
+  useEffect(() => {
+    if (!isPortal || !profile?.confirmed || resultId) return;
+    let cancelled = false;
+    (async () => {
+      try {
+        const { data } = await startPortalAssessment(portalHash);
+        if (!cancelled) setResultId(data?.result?.id ?? null);
+      } catch {
+        // Answer/score persistence is a resilience nicety, not required for the
+        // candidate to complete the test — final submit() still works without it.
+      }
+    })();
+    return () => { cancelled = true; };
+  }, [isPortal, profile?.confirmed, portalHash, resultId]);
 
   useEffect(() => {
     if (profile) saveCardData(profile, results, storageKey);
@@ -221,6 +241,9 @@ export default function CandidateCard({
   if (screen === 'tk') {
     return (
       <TKTest
+        resultId={resultId}
+        assessmentCode="myralix_battery_a"
+        portalHash={isPortal ? portalHash : null}
         onComplete={(res) => handleTestSubmit('tk', res, 'Tes 1 — Kemampuan Kognitif', 'bigfive_intro')}
         onAbort={() => goTo('overview')}
       />
@@ -229,6 +252,9 @@ export default function CandidateCard({
   if (screen === 'bigfive') {
     return (
       <BigFiveTest
+        resultId={resultId}
+        assessmentCode="myralix_battery_a"
+        portalHash={isPortal ? portalHash : null}
         onComplete={(res) => handleTestSubmit('bigfive', res, 'Tes 2 — Kepribadian', 'disc_intro')}
         onAbort={() => goTo('overview')}
       />
@@ -237,6 +263,9 @@ export default function CandidateCard({
   if (screen === 'disc') {
     return (
       <DISCTest
+        resultId={resultId}
+        assessmentCode="myralix_battery_a"
+        portalHash={isPortal ? portalHash : null}
         onComplete={(res) => handleTestSubmit('disc', res, 'Tes 3 — Gaya Kerja', 'holland_intro')}
         onAbort={() => goTo('overview')}
       />
@@ -245,6 +274,9 @@ export default function CandidateCard({
   if (screen === 'holland') {
     return (
       <HollandTest
+        resultId={resultId}
+        assessmentCode="myralix_battery_a"
+        portalHash={isPortal ? portalHash : null}
         onComplete={(res) => handleTestSubmit('holland', res, 'Tes 4 — Minat Kerja', 'complete')}
         onAbort={() => goTo('overview')}
       />

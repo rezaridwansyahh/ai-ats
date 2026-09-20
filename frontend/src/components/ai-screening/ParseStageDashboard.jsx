@@ -1,10 +1,12 @@
-import { useState, useMemo } from 'react';
-import { Search, FileText, CheckCircle2, Clock } from 'lucide-react';
+import { useState, useMemo, useEffect } from 'react';import { Search, FileText, CheckCircle2, Clock } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import { TablePagination } from '@/components/shared/TablePagination';
 import { StatCard } from './shared';
+
+const PAGE_SIZE = 10;
 
 /*
  * Job-level "Resume Parsing" dashboard.
@@ -29,12 +31,25 @@ import { StatCard } from './shared';
  */
 export default function ParseStageDashboard({ pendingRows = [], parsedRows = [], onOpen }) {
   const [search, setSearch] = useState('');
+  const [pendingPage, setPendingPage] = useState(1);
+  const [parsedPage, setParsedPage] = useState(1);
 
   const total = pendingRows.length + parsedRows.length;
 
   const filteredPending = useMemo(() => filterRows(pendingRows, search), [pendingRows, search]);
   const filteredParsed  = useMemo(() => filterRows(parsedRows, search), [parsedRows, search]);
 
+  // Reset to page 1 whenever search narrows/widens teh list
+  useEffect(() => { setPendingPage(1); setParsedPage(1); }, [search]);
+
+  const pendingTotalPages = Math.max(1, Math.ceil(filteredPending.length / PAGE_SIZE));
+  const parsedTotalPages = Math.max(1, Math.ceil(filteredPending.length / PAGE_SIZE));
+  const pendingPageClamped = Math.min(pendingPage, pendingTotalPages);
+  const parsedPageClamped = Math.min(parsedPage, parsedTotalPages);
+
+  const pagedPending = filteredPending.slice((pendingPageClamped - 1) * PAGE_SIZE, pendingPageClamped * PAGE_SIZE);
+  const pagedParsed  = filteredParsed.slice((parsedPageClamped - 1) * PAGE_SIZE, parsedPageClamped * PAGE_SIZE);
+  
   return (
     <div className="space-y-4 p-4">
       {/* Stats row — only real, changeable numbers */}
@@ -61,18 +76,26 @@ export default function ParseStageDashboard({ pendingRows = [], parsedRows = [],
           title="Pending parse"
           listId="pending"
           icon={Clock}
-          rows={filteredPending}
+          rows={pagedPending}
+          totalRows={filteredPending.length}
           onOpen={onOpen}
           emptyText="Nothing waiting on parse."
+          page={pendingPageClamped}
+          totalPages={pendingTotalPages}
+          setPage={setPendingPage}
         />
         <StageList
           title="Parsed ✓"
           listId="parsed"
           icon={CheckCircle2}
-          rows={filteredParsed}
+          rows={pagedParsed}
+          totalRows={filteredParsed.length}
           onOpen={onOpen}
           tone="success"
           emptyText="No candidates parsed yet."
+          page={parsedPageClamped}
+          totalPages={parsedTotalPages}
+          setPage={setParsedPage}
         />
       </div>
 
@@ -94,25 +117,25 @@ function filterRows(rows, search) {
   );
 }
 
-function StageList({ title, listId, icon: Icon, rows, onOpen, tone, emptyText }) {
+function StageList({ title, listId, icon: Icon, rows, totalRows, onOpen, tone, emptyText, page, totalPages, setPage }) {
   return (
     <Card>
       <CardHeader className={`pb-2 ${tone === 'success' ? 'bg-emerald-50/50' : ''}`}>
         <CardTitle className="text-xs flex items-center gap-2">
           <Icon className={`h-3.5 w-3.5 ${tone === 'success' ? 'text-emerald-600' : 'text-muted-foreground'}`} />
           {title}
-          <Badge variant="secondary" className="text-[10px] font-mono">{rows.length}</Badge>
+          <Badge variant="secondary" className="text-[10px] font-mono">{totalRows}</Badge>
         </CardTitle>
       </CardHeader>
       <CardContent className="p-0">
         {rows.length === 0 ? (
           <p className="py-8 text-center text-xs text-muted-foreground italic">{emptyText}</p>
         ) : (
-          <Table className="w-full">
+          <Table className="table-fixed w-full">
             <TableHeader className="bg-muted/30">
               <TableRow>
-                <TableHead className="text-[10px] font-bold uppercase pl-4">Candidate</TableHead>
-                <TableHead className="text-[10px] font-bold uppercase">Last position</TableHead>
+                <TableHead className="w-[45%] text-[10px] font-bold uppercase pl-4">Candidate</TableHead>
+                <TableHead className="w-[55%] text-[10px] font-bold uppercase">Last position</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -127,15 +150,31 @@ function StageList({ title, listId, icon: Icon, rows, onOpen, tone, emptyText })
                     className="cursor-pointer hover:bg-muted/30 transition-colors"
                     onClick={() => onOpen(r)}
                   >
-                    <TableCell className="text-xs pl-4">
-                      <div className="font-medium truncate">{r.applicant_name || `#${r.applicant_id}`}</div>
+                    <TableCell className="text-xs pl-4 overflow-hidden">
+                      <div className="font-medium truncate" title={r.applicant_name || `#${r.applicant_id}`}>
+                        {r.applicant_name || `#${r.applicant_id}`}
+                      </div>
                     </TableCell>
-                    <TableCell className="text-xs text-muted-foreground truncate">{r.last_position || '—'}</TableCell>
+                    <TableCell className="text-xs text-muted-foreground truncate overflow-hidden" title={r.last_position || '—'}>
+                      {r.last_position || '—'}
+                    </TableCell>
                   </TableRow>
                 );
               })}
             </TableBody>
           </Table>
+        )}
+        {totalPages > 1 && (
+          <div className="p-3 border-t">
+            <TablePagination 
+              page={page}
+              totalPages={totalPages}
+              totalItems={totalRows}
+              pageSize={PAGE_SIZE}
+              setPage={setPage}
+              setPageSize={() => {}}
+            />
+          </div>
         )}
       </CardContent>
     </Card>

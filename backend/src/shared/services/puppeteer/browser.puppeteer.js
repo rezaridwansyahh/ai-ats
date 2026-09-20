@@ -18,6 +18,10 @@ class BrowserPuppeteer {
   async init(session, accountId = null) {
     const launchOptions = { headless: true };
 
+    if (process.env.PUPPETEER_EXECUTABLE_PATH) {
+      launchOptions.executablePath = process.env.PUPPETEER_EXECUTABLE_PATH;
+    }
+
     if (accountId) {
       launchOptions.userDataDir = path.join(PROFILES_DIR, `account_${accountId}`);
     }
