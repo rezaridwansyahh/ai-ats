@@ -20,6 +20,8 @@ function VerdictPill({ verdict, className = ''}) {
   //BELOM KELAR
 }
 
+const PILL_LABEL = { pass: '✓ Passed', warn: '⚠ Warn', fail: '✗ Failed', empty: '— Pending' };
+
 export default function ManagerView({ profile, results, finalRec, onSetFinalRec }) {
   const pillar = calc3Pillar(results);
   const verdict = deriveOverallVerdict(results, finalRec);
