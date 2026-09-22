@@ -15,7 +15,15 @@ import { DeleteRecruiterDialog } from '@/components/recruiter/DeleteRecruiterDia
 
 const PAGE_SIZE = 10;
 
-export default function RecruitersPage() {
+/*
+ * Recruiters settings — ported from the standalone RecruitersPage.jsx
+ * (real roster, master_recruiters via recruiter.api.js). That page had no
+ * nav path anywhere in the app — the sidebar's dynamic menu list filters out
+ * the whole "Settings" module, and this menu had no Settings tab either.
+ * Moved here rather than left orphaned, following the same pattern already
+ * used for Team, Roles & Permissions, and Integrations.
+ */
+export default function RecruitersSettings() {
   const canCreate = hasPermission('Settings', 'Recruiters', 'create');
   const canEdit   = hasPermission('Settings', 'Recruiters', 'update');
   const canDelete = hasPermission('Settings', 'Recruiters', 'delete');
@@ -111,12 +119,12 @@ export default function RecruitersPage() {
   };
 
   return (
-    <div className="flex flex-col gap-5 animate-fade-in-up">
+    <div className="flex flex-col gap-5">
 
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-xl font-bold tracking-tight">Recruiters</h1>
+          <h2 className="text-lg font-bold tracking-tight">Recruiters</h2>
           <p className="text-xs text-muted-foreground mt-0.5">
             Manage recruiter accounts and set hiring permissions.
           </p>
@@ -136,7 +144,7 @@ export default function RecruitersPage() {
       </div>
 
       {/* Stat cards */}
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 stagger-children">
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
         <StatCard
           icon={<Users className="h-5 w-5 text-blue-500" />}
           label="Total Recruiters"

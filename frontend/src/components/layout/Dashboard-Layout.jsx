@@ -20,12 +20,7 @@ const BREADCRUMB_MAP = {
   '/selection/background-check': ['Selection', 'Background Check'],
   '/selection/report':           ['Selection', 'Report'],
   '/settings':                   ['Insights', 'Settings'],
-  '/settings/user-management':   ['Settings', 'User Management'],
-  '/settings/role-management':   ['Settings', 'Role Management'],
-  '/settings/integrations':      ['Settings', 'Integrations'],
   '/settings/account':           ['Settings', 'Account'],
-  '/settings/budget':            ['Settings', 'Budget'],
-  '/settings/recruiters':        ['Settings', 'Recruiters'],
   '/report-candidate':           ['Report Candidate']
 } 
 

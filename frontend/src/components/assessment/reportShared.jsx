@@ -1,4 +1,4 @@
-import { X, Sparkles } from 'lucide-react';
+import { X, Sparkles, Check, AlertTriangle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 
@@ -132,13 +132,12 @@ export function NarrativeBlock({ id, label, state, setNarr, onGenerate, generati
 }
 
 // ── Recruiter verdict buttons ──
-
 const RECRUITER_OPTS = [
-  { val: 'sesuai', label: '✅ Sesuai', cls: 'bg-green-50 border-green-500 text-green-700' },
-  { val: 'pertimbangkan', label: '⚠️ Perlu Dipertimbangkan', cls: 'bg-amber-50 border-amber-500 text-amber-700' },
-  { val: 'tidak', label: '❌ Tidak Sesuai', cls: 'bg-red-50 border-red-500 text-red-700' },
+  { val: 'sesuai', label: 'Sesuai', icon: Check, cls: 'bg-green-50 border-green-500 text-green-700' },
+  { val: 'pertimbangkan', label: 'Perlu Dipertimbangkan', icon: AlertTriangle, cls: 'bg-amber-50 border-amber-500 text-amber-700' },
+  { val: 'tidak', label: 'Tidak Sesuai', icon: X, cls: 'bg-red-50 border-red-500 text-red-700' },
 ];
-
+ 
 export function RecruiterRating({ section, current, onSet }) {
   return (
     <div className="bg-slate-50 border border-slate-200 rounded-md px-4 py-3 mt-3">
@@ -146,15 +145,17 @@ export function RecruiterRating({ section, current, onSet }) {
       <div className="flex gap-2 flex-wrap">
         {RECRUITER_OPTS.map((o) => {
           const active = current === o.val;
+          const Icon = o.icon;
           return (
             <button
               key={o.val}
               onClick={() => onSet(section, o.val)}
               className={[
-                'px-3.5 py-1.5 rounded-md text-xs font-bold border-[1.5px] transition',
+                'inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-md text-xs font-bold border-[1.5px] transition',
                 active ? o.cls : 'bg-white border-slate-200 text-slate-600 hover:border-teal-400',
               ].join(' ')}
             >
+              <Icon className="h-3.5 w-3.5" />
               {o.label}
             </button>
           );
@@ -163,3 +164,4 @@ export function RecruiterRating({ section, current, onSet }) {
     </div>
   );
 }
+ 

@@ -3,9 +3,6 @@ import LoginPage from "./pages/Login"
 import RegisterPage from "./pages/Register"
 import DashboardPage from "./pages/Dashboard"
 import DashboardLayout from "./components/layout/Dashboard-Layout"
-import UserManagementPage from "./pages/UserManagement"
-import IntegrationsPage    from "./pages/Integrations"
-import RoleManagementPage from "./pages/RoleManagement"
 import AccountPage from "./pages/Account"
 import JobManagementPage from "./pages/JobManagement"
 import JobEditPage from "./pages/JobEdit"
@@ -13,7 +10,6 @@ import JobDetailPage from "./pages/JobDetail"
 import SourceManagementPage from "./pages/SourceManagement"
 import TalentPoolPage from "./pages/TalentPool"
 import SourceCandidatePage from "./pages/SourceCandidate"
-import RecruitersPage from "./pages/Recruiters"
 import ComingSoonPage from "./pages/ComingSoon"
 import AssessmentAPage from "./pages/AssessmentA"
 import PsychAssesmentPage from "./pages/PsychAssessment"
@@ -37,10 +33,10 @@ import InterviewWorkboard from "./pages/InterviewWorkboard"
 import InterviewJobPage from "./components/interview/Interview-Job"
 import InterviewCandidatePage from "./components/interview/Interview-Candidate"
 import InterviewCalibration from "./pages/InterviewCalibration"
-import BudgetSettingsPage from "./pages/BudgetSettings"
 import BackgroundCheckPage from "./pages/BackgroundCheck"
 import BackgroundCheckCandidatePage from "./components/background-check/BackgroundCheck-Candidate"
 import BackgroundCheckJobPage from "./components/background-check/BackgroundCheck-Job"
+import BackgroundCheckCalibration from "./pages/BackgroundCheckCalibration"
 import BackgroundCheckConsentPage from "./pages/portal/BgConsent"
 import OfferWorkboard from "./pages/OfferWorkboard"
 import OfferJobPage from "./components/offer-contract/Offer-Job";
@@ -120,6 +116,7 @@ function App() {
         <Route path="/selection/background-check" element={<BackgroundCheckPage />} />
         <Route path="/selection/background-check/job/:jobId" element={<BackgroundCheckJobPage />} />
         <Route path="/selection/background-check/candidate/:bgId" element={<BackgroundCheckCandidatePage />} />
+        <Route path="/selection/background-check/calibration/:jobId" element={<BackgroundCheckCalibration />} />
 
         <Route path="/selection/offer-contract" element={<OfferWorkboard />} />
         <Route path="/selection/offer-contract/job/:jobId" element={<OfferJobPage />} />
@@ -133,12 +130,7 @@ function App() {
         <Route path="/asesmen/thomas-kilmann-assessment" element={<ThomasKilmannAssessmentPage />} />
 
         <Route path="/settings" element={<SettingsPage />} />
-        <Route path="/settings/user-management" element={<UserManagementPage />} />
-        <Route path="/settings/role-management" element={<RoleManagementPage />} />
-        <Route path="/settings/integrations" element={<IntegrationsPage />} />
         <Route path="/settings/account" element={<AccountPage />} />
-        <Route path="/settings/budget" element={<BudgetSettingsPage />} />
-        <Route path="/settings/recruiters" element={<RecruitersPage />} />
 
         <Route path="/selection/report" element={<ReportsPage />} />
         <Route path="/report-candidate" element={<ReportCandidatePage />} />

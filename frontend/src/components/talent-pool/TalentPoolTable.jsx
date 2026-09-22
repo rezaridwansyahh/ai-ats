@@ -54,6 +54,7 @@ export default function TalentPoolTable({
   onToggleSelectAllPaged,
   onBulkAddClick,
   onClearSelection,
+  canAdd = true,
 }) {
   const allPagedSelected = rows.length > 0 && rows.every((r) => selectedIds.has(r.id));
   const somePagedSelected = rows.some((r) => selectedIds.has(r.id));
@@ -110,9 +111,11 @@ export default function TalentPoolTable({
               <Button size="sm" variant="ghost" className="text-xs" onClick={onClearSelection}>
                 Clear selection
               </Button>
-              <Button size="sm" className="text-xs" onClick={onBulkAddClick}>
-                <Plus className="h-3 w-3 mr-1" /> Add to Job
-              </Button>
+              {canAdd && (
+                <Button size="sm" className="text-xs" onClick={onBulkAddClick}>
+                  <Plus className="h-3 w-3 mr-1" /> Add to Job
+                </Button>
+              )}
             </div>
           </div>
         )}
@@ -228,14 +231,16 @@ export default function TalentPoolTable({
                     </TableCell>
 
                     <TableCell className="text-right pr-6 py-2">
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        className="text-[11px] h-7 px-2.5"
-                        onClick={() => onAddClick(r)}
-                      >
-                        <Plus className="h-3 w-3 mr-1" /> Add
-                      </Button>
+                      {canAdd && (
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          className="text-[11px] h-7 px-2.5"
+                          onClick={() => onAddClick(r)}
+                        >
+                          <Plus className="h-3 w-3 mr-1" /> Add
+                        </Button>
+                      )}
                     </TableCell>
                   </TableRow>
                 );

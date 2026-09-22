@@ -133,7 +133,7 @@ export default function NotificationsSettings() {
             Applies to your account · each teammate sets their own.
           </p>
         </div>
-        <Button size="sm" onClick={handleSave} disabled={!dirty || saving || loading} className="bg-teal-700 hover:bg-teal-800">
+        <Button size="sm" onClick={handleSave} disabled={!dirty || saving || loading}>
           {saving ? <Loader2 className="h-3.5 w-3.5 mr-1.5 animate-spin" /> : dirty ? <Save className="h-3.5 w-3.5 mr-1.5" /> : <Check className="h-3.5 w-3.5 mr-1.5" />}
           {saving ? 'Saving…' : dirty ? 'Save changes' : 'Saved'}
         </Button>

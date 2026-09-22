@@ -10,6 +10,7 @@ import { createJobAccount, updateJobAccount, getJobAccountsByUserId } from '@/ap
 import { checkConnection, syncSeekJobPosts } from '@/api/job-posting-seek.api';
 
 import { AccountFormDialog } from '@/components/job-account/AccountFormDialog';
+import { hasPermission } from '@/utils/permissions';
 
 import linkedin from '@/assets/logos/linkedin.png';
 import seek from '@/assets/logos/seek.png';
@@ -71,8 +72,19 @@ function syncTone(status) {
  * still a second standalone mockup at pages/Integrations.jsx
  * (/settings/integrations route) that duplicates this same fake concept —
  * not touched here, flagged separately.
+ *
+ * Layout fix: each channel row used to be a single "flex items-center
+ * justify-between flex-wrap" line with shrink-0 on nearly every child
+ * (the w-56 identity block, the connection-info block, the button group).
+ * flex-wrap only lets the *outer* row break, so once the button group
+ * (which had no wrap of its own) needed more width than was left on
+ * narrower viewports, it pushed past the card edge and caused horizontal
+ * overflow. Rows now stack vertically below `lg` and each inner group
+ * wraps/shrinks on its own, so nothing is forced wider than its container.
  */
 export default function IntegrationsSettings() {
+  const canCreate = hasPermission('Settings', 'Integrations', 'create');
+  const canEdit   = hasPermission('Settings', 'Integrations', 'update');
   const [accounts, setAccounts] = useState([]);
   const [loading, setLoading]   = useState(true);
   const [error, setError]       = useState(null);
@@ -110,6 +122,7 @@ export default function IntegrationsSettings() {
   };
 
   const handleCreateOrUpdate = async (payload, accountId) => {
+    if (accountId ? !canEdit : !canCreate) return;
     setSubmitting(true);
     try {
       if (accountId) {
@@ -144,7 +157,7 @@ export default function IntegrationsSettings() {
 
   return (
     <div className="space-y-4">
-      <div className="flex items-center justify-between gap-3">
+      <div className="flex items-center justify-between gap-3 flex-wrap">
         <div>
           <h2 className="text-lg font-bold tracking-tight">Integrations</h2>
           <p className="text-sm text-muted-foreground mt-0.5">
@@ -189,10 +202,10 @@ export default function IntegrationsSettings() {
               return (
                 <div
                   key={channel.id}
-                  className="flex items-center justify-between gap-4 w-full px-4 py-3 border-b last:border-b-0 flex-wrap"
+                  className="flex flex-col gap-3 w-full px-4 py-3 border-b last:border-b-0 lg:flex-row lg:items-center lg:justify-between lg:gap-4"
                 >
-                  <div className="flex items-center gap-8 min-w-0">
-                    <div className="flex items-center gap-3 w-56 shrink-0 min-w-0">
+                  <div className="flex flex-col gap-3 min-w-0 sm:flex-row sm:items-center sm:gap-8">
+                    <div className="flex items-center gap-3 min-w-0 sm:w-56 sm:shrink-0">
                       <div className="h-10 w-10 rounded-lg flex items-center justify-center shrink-0 overflow-hidden bg-muted/40">
                         <img src={LOGOS[channel.id]} alt={channel.name} className="h-full w-full object-contain" />
                       </div>
@@ -209,7 +222,7 @@ export default function IntegrationsSettings() {
                     </div>
                   </div>
 
-                  <div className="flex items-center gap-4 flex-wrap">
+                  <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:gap-4 lg:justify-end">
                     <div className="space-y-1">
                       <div className="flex items-center justify-between gap-3">
                         <span className="text-xs text-muted-foreground">Status</span>
@@ -225,11 +238,11 @@ export default function IntegrationsSettings() {
                       </div>
                     </div>
 
-                    <div className="flex items-center gap-2">
+                    <div className="flex flex-wrap items-center gap-2">
                       <Button
                         size="sm"
                         variant="outline"
-                        disabled={!account || account?.status_connection !== 'Connected' || busy}
+                        disabled={!canEdit || !account || account?.status_connection !== 'Connected' || busy}
                         onClick={() => runAccountAction(account, syncSeekJobPosts, {
                           loading: 'Queuing sync…', success: 'Sync queued', error: 'Failed to queue sync',
                         })}
@@ -239,16 +252,18 @@ export default function IntegrationsSettings() {
                       <Button
                         size="sm"
                         variant="outline"
-                        disabled={!account || account?.status_connection === 'Re-connecting' || busy}
+                        disabled={!canEdit || !account || account?.status_connection === 'Re-connecting' || busy}
                         onClick={() => runAccountAction(account, checkConnection, {
                           loading: 'Checking connection…', success: 'Connection check queued', error: 'Failed to check connection',
                         })}
                       >
                         {busy ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : 'Re-connect'}
                       </Button>
-                      <Button size="sm" onClick={() => openConfigure(channel.id, account)}>
-                        {account ? 'Configure' : 'Connect'}
-                      </Button>
+                      {(account ? canEdit : canCreate) && (
+                        <Button size="sm" onClick={() => openConfigure(channel.id, account)}>
+                          {account ? 'Configure' : 'Connect'}
+                        </Button>
+                      )}
                     </div>
                   </div>
                 </div>
@@ -282,10 +297,10 @@ export default function IntegrationsSettings() {
               return (
                 <div
                   key={channel.id}
-                  className="flex items-center justify-between gap-4 w-full px-4 py-3 border-b last:border-b-0 flex-wrap"
+                  className="flex flex-col gap-3 w-full px-4 py-3 border-b last:border-b-0 lg:flex-row lg:items-center lg:justify-between lg:gap-4"
                 >
-                  <div className="flex items-center gap-8 min-w-0">
-                    <div className="flex items-center gap-3 w-56 shrink-0 min-w-0">
+                  <div className="flex flex-col gap-3 min-w-0 sm:flex-row sm:items-center sm:gap-8">
+                    <div className="flex items-center gap-3 min-w-0 sm:w-56 sm:shrink-0">
                       <div className="h-10 w-10 rounded-lg flex items-center justify-center shrink-0 overflow-hidden bg-muted/40">
                         <img src={LOGOS[channel.id]} alt={channel.name} className="h-full w-full object-contain" />
                       </div>
@@ -305,20 +320,22 @@ export default function IntegrationsSettings() {
                     </div>
                   </div>
 
-                  <div className="flex items-center gap-2">
+                  <div className="flex flex-wrap items-center gap-2 lg:justify-end">
                     <Button
                       size="sm"
                       variant="outline"
-                      disabled={!account}
+                      disabled={!canEdit || !account}
                       onClick={() => toast.promise(new Promise((resolve) => setTimeout(resolve, 3000)), {
                         position: 'top-center', loading: 'Reconnecting…', success: 'Reconnected', error: 'Failed to reconnect',
                       })}
                     >
                       Re-connect
                     </Button>
-                    <Button size="sm" onClick={() => openConfigure(channel.id, account)}>
-                      {account ? 'Configure' : 'Connect'}
-                    </Button>
+                    {(account ? canEdit : canCreate) && (
+                      <Button size="sm" onClick={() => openConfigure(channel.id, account)}>
+                        {account ? 'Configure' : 'Connect'}
+                      </Button>
+                    )}
                   </div>
                 </div>
               );
