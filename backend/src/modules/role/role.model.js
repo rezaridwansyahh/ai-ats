@@ -25,6 +25,7 @@ class RoleModel {
       SELECT 
         r.id,
         r.name,
+        r.is_system,
         mur.role_id
       FROM mapping_users_roles mur
       JOIN master_roles r ON mur.role_id = r.id
