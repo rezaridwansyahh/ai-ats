@@ -10,6 +10,7 @@ import { createJobAccount, updateJobAccount, getJobAccountsByUserId } from '@/ap
 import { checkConnection, syncSeekJobPosts } from '@/api/job-posting-seek.api';
 
 import { AccountFormDialog } from '@/components/job-account/AccountFormDialog';
+import { hasPermission } from '@/utils/permissions';
 
 import linkedin from '@/assets/logos/linkedin.png';
 import seek from '@/assets/logos/seek.png';
@@ -82,6 +83,8 @@ function syncTone(status) {
  * wraps/shrinks on its own, so nothing is forced wider than its container.
  */
 export default function IntegrationsSettings() {
+  const canCreate = hasPermission('Settings', 'Integrations', 'create');
+  const canEdit   = hasPermission('Settings', 'Integrations', 'update');
   const [accounts, setAccounts] = useState([]);
   const [loading, setLoading]   = useState(true);
   const [error, setError]       = useState(null);
@@ -119,6 +122,7 @@ export default function IntegrationsSettings() {
   };
 
   const handleCreateOrUpdate = async (payload, accountId) => {
+    if (accountId ? !canEdit : !canCreate) return;
     setSubmitting(true);
     try {
       if (accountId) {
@@ -238,7 +242,7 @@ export default function IntegrationsSettings() {
                       <Button
                         size="sm"
                         variant="outline"
-                        disabled={!account || account?.status_connection !== 'Connected' || busy}
+                        disabled={!canEdit || !account || account?.status_connection !== 'Connected' || busy}
                         onClick={() => runAccountAction(account, syncSeekJobPosts, {
                           loading: 'Queuing sync…', success: 'Sync queued', error: 'Failed to queue sync',
                         })}
@@ -248,16 +252,18 @@ export default function IntegrationsSettings() {
                       <Button
                         size="sm"
                         variant="outline"
-                        disabled={!account || account?.status_connection === 'Re-connecting' || busy}
+                        disabled={!canEdit || !account || account?.status_connection === 'Re-connecting' || busy}
                         onClick={() => runAccountAction(account, checkConnection, {
                           loading: 'Checking connection…', success: 'Connection check queued', error: 'Failed to check connection',
                         })}
                       >
                         {busy ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : 'Re-connect'}
                       </Button>
-                      <Button size="sm" onClick={() => openConfigure(channel.id, account)}>
-                        {account ? 'Configure' : 'Connect'}
-                      </Button>
+                      {(account ? canEdit : canCreate) && (
+                        <Button size="sm" onClick={() => openConfigure(channel.id, account)}>
+                          {account ? 'Configure' : 'Connect'}
+                        </Button>
+                      )}
                     </div>
                   </div>
                 </div>
@@ -318,16 +324,18 @@ export default function IntegrationsSettings() {
                     <Button
                       size="sm"
                       variant="outline"
-                      disabled={!account}
+                      disabled={!canEdit || !account}
                       onClick={() => toast.promise(new Promise((resolve) => setTimeout(resolve, 3000)), {
                         position: 'top-center', loading: 'Reconnecting…', success: 'Reconnected', error: 'Failed to reconnect',
                       })}
                     >
                       Re-connect
                     </Button>
-                    <Button size="sm" onClick={() => openConfigure(channel.id, account)}>
-                      {account ? 'Configure' : 'Connect'}
-                    </Button>
+                    {(account ? canEdit : canCreate) && (
+                      <Button size="sm" onClick={() => openConfigure(channel.id, account)}>
+                        {account ? 'Configure' : 'Connect'}
+                      </Button>
+                    )}
                   </div>
                 </div>
               );
