@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import {
   Settings2, Users, ShieldCheck, Workflow, Plug, Bell, Globe,
-  ShieldQuestion, FileText, CreditCard, CalendarClock, Mail,
+  ShieldQuestion, FileText, CreditCard, CalendarClock, Mail, Palette,
 } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -20,11 +20,13 @@ import ProbationTemplatesSettings from '../components/settings/ProbationTemplate
 import GeneralSettings from '../components/settings/GeneralSettings';
 import OfferTemplateSettings from '../components/settings/OfferTemplateSettings';
 import EmailTemplateSettings from '../components/settings/EmailTemplateSettings';
+import ThemeSettings from '../components/settings/ThemeSettings';
 
 // ── Static Configuration ──
 
 const SETTINGS_NAV = [
   { id: 'general', label: 'General', icon: Settings2 },
+  { id: 'theme', label: 'Theme', icon: Palette },
   { id: 'team', label: 'Team', icon: Users },
   { id: 'roles', label: 'Roles & Permissions', icon: ShieldCheck },
   { id: 'workflow-templates', label: 'Workflow Templates', icon: Workflow },
@@ -43,6 +45,7 @@ const SETTINGS_NAV = [
 
 const SECTION_COMPONENTS = {
   general: GeneralSettings,
+  theme: ThemeSettings,
   team: TeamSettings,
   roles: RolesPermissionsSettings,
   'workflow-templates': WorkflowTemplatesSettings,
@@ -84,7 +87,7 @@ export default function SettingsPage() {
                 onClick={() => setActiveSection(item.id)}
                 className={`w-full flex items-center justify-between gap-2 rounded-md px-3 py-2 text-sm transition-colors ${
                   isActive
-                    ? 'bg-emerald-50 text-emerald-700 font-medium'
+                    ? 'bg-primary/10 text-primary font-medium'
                     : 'text-muted-foreground hover:bg-muted hover:text-foreground'
                 }`}
               >

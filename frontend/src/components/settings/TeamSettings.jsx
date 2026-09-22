@@ -32,7 +32,7 @@ function getInitials(name) {
 
 function Avatar({ initials }) {
   return (
-    <div className="h-8 w-8 rounded-full bg-emerald-700 text-white text-xs font-semibold flex items-center justify-center flex-shrink-0">
+    <div className="h-8 w-8 rounded-full bg-primary text-primary-foreground text-xs font-semibold flex items-center justify-center flex-shrink-0">
       {initials}
     </div>
   );
@@ -296,7 +296,7 @@ export default function TeamSettings() {
             <CardTitle>Team members</CardTitle>
             <p className="text-xs text-muted-foreground mt-0.5">{totalCount} total</p>
           </div>
-          <Button size="sm" onClick={() => { setFormError(null); setInviteOpen(true); }} className="bg-teal-700 hover:bg-teal-800">
+          <Button size="sm" onClick={() => { setFormError(null); setInviteOpen(true); }}>
             <UserPlus className="h-3.5 w-3.5 mr-1.5" />
             Invite member
           </Button>
