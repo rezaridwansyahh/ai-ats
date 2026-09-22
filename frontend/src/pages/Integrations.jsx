@@ -8,6 +8,7 @@ import { Label }  from '@/components/ui/label';
 import {
   Select, SelectTrigger, SelectValue, SelectContent, SelectItem,
 } from '@/components/ui/select';
+import { hasPermission } from '@/utils/permissions';
 
 const PLATFORMS = [
   { value: 'jobstreet', label: 'JobStreet' },
@@ -21,6 +22,8 @@ const PLACEHOLDER_CONNECTED = [
 ];
 
 export default function Integrations() {
+  const canCreate = hasPermission('Settings', 'Integrations', 'create');
+  const canDelete = hasPermission('Settings', 'Integrations', 'delete');
   const [form, setForm] = useState({ platform: '', username: '', password: '' });
   const [connected, setConnected] = useState(PLACEHOLDER_CONNECTED);
 
@@ -30,6 +33,7 @@ export default function Integrations() {
 
   const handleConnect = (e) => {
     e.preventDefault();
+    if (!canCreate) return;
     const platform = PLATFORMS.find((p) => p.value === form.platform);
     setConnected((prev) => [
       ...prev,
@@ -39,6 +43,7 @@ export default function Integrations() {
   };
 
   const handleDisconnect = (id) => {
+    if (!canDelete) return;
     setConnected((prev) => prev.filter((c) => c.id !== id));
   };
 
@@ -103,7 +108,7 @@ export default function Integrations() {
             <Button
               type="submit"
               className="w-full"
-              disabled={!form.platform || !form.username || !form.password}
+              disabled={!form.platform || !form.username || !form.password || !canCreate}
             >
               Connect
             </Button>
@@ -131,13 +136,15 @@ export default function Integrations() {
                       </p>
                     </div>
                   </div>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => handleDisconnect(account.id)}
-                  >
-                    Disconnect
-                  </Button>
+                  {canDelete && (
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => handleDisconnect(account.id)}
+                    >
+                      Disconnect
+                    </Button>
+                  )}
                 </div>
               ))}
             </CardContent>

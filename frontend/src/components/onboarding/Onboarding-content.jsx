@@ -10,6 +10,7 @@ import {
   getContent, createContent, uploadContent, updateContent, downloadContentFile,
 } from '@/api/onboarding-lms.api';
 import { PageHeader } from '@/components/common';
+import { hasPermission } from '@/utils/permissions';
 
 const CONTENT_TYPES = ['video', 'pdf', 'slides'];
 const TYPE_ICON = { video: Video, pdf: FileText, slides: Presentation, text: MessageSquare };
@@ -53,6 +54,8 @@ function Field({ label, children }) {
 const inputClass = "w-full px-3 py-2 border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary";
 
 export default function OnboardingContent() {
+  const canCreate = hasPermission('Offer & Onboard', 'Onboarding', 'create');
+  const canEdit   = hasPermission('Offer & Onboard', 'Onboarding', 'update');
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [phases, setPhases] = useState([]);
@@ -122,6 +125,7 @@ export default function OnboardingContent() {
 
   const handleCreatePhase = async (e) => {
     e.preventDefault();
+    if (!canCreate) { setError('You do not have permission to create phases.'); return; }
     const duration = Number(phaseForm.duration_days);
     if (!duration || duration < 1) {
       setError('Duration must be at least 1 day');
@@ -181,6 +185,7 @@ export default function OnboardingContent() {
 
   const handleCreateModule = async (e, phase_id) => {
     e.preventDefault();
+    if (!canCreate) { setError('You do not have permission to create modules.'); return; }
     setSaving(true);
     try {
       const existing = modulesByPhase[phase_id] || [];
@@ -199,6 +204,7 @@ export default function OnboardingContent() {
   };
 
   const moveModule = async (phase_id, index, direction) => {
+    if (!canEdit) { setError('You do not have permission to reorder modules.'); return; }
     const modules = modulesByPhase[phase_id] || [];
     const target = index + direction;
     if (target < 0 || target >= modules.length) return;
@@ -216,6 +222,7 @@ export default function OnboardingContent() {
   };
 
   const togglePublish = async (module, phase_id) => {
+    if (!canEdit) { setError('You do not have permission to publish modules.'); return; }
     try {
       await updateModule(module.id, { status: module.status === 'published' ? 'draft' : 'published' });
       await refreshModules(phase_id);
@@ -228,6 +235,7 @@ export default function OnboardingContent() {
 
   const handleCreateContent = async (e, module_id) => {
     e.preventDefault();
+    if (!canCreate) { setError('You do not have permission to add content.'); return; }
     setSaving(true);
     try {
       const existing = contentByModule[module_id] || [];
@@ -259,6 +267,7 @@ export default function OnboardingContent() {
   };
 
   const moveContent = async (module_id, index, direction) => {
+    if (!canEdit) { setError('You do not have permission to reorder content.'); return; }
     const items = contentByModule[module_id] || [];
     const target = index + direction;
     if (target < 0 || target >= items.length) return;
@@ -310,12 +319,14 @@ export default function OnboardingContent() {
           highlight="Curriculum"
           subtitle="Build the phases, modules, and content new hires move through."
         />
-        <button
-          onClick={() => setModal({ type: 'phase' })}
-          className="inline-flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium bg-primary text-primary-foreground hover:opacity-90"
-        >
-          <Plus className="w-4 h-4" /> Add phase
-        </button>
+        {canCreate && (
+          <button
+            onClick={() => setModal({ type: 'phase' })}
+            className="inline-flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium bg-primary text-primary-foreground hover:opacity-90"
+          >
+            <Plus className="w-4 h-4" /> Add phase
+          </button>
+        )}
       </div>
 
       {error && (
@@ -394,15 +405,19 @@ export default function OnboardingContent() {
                                   <span className={`text-xs px-2 py-1 rounded font-medium ${m.status === 'published' ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-700'}`}>
                                     {m.status}
                                   </span>
-                                  <button onClick={() => togglePublish(m, phase.id)} className="text-xs text-primary hover:underline flex items-center gap-1">
-                                    {m.status === 'published' ? <><EyeOff className="w-3 h-3" /> Unpublish</> : <><Eye className="w-3 h-3" /> Publish</>}
-                                  </button>
-                                  <button disabled={moduleIndex === 0} onClick={() => moveModule(phase.id, moduleIndex, -1)} className="p-1 rounded hover:bg-muted disabled:opacity-30" title="Move up">
-                                    <ChevronUp className="w-3.5 h-3.5" />
-                                  </button>
-                                  <button disabled={moduleIndex === modules.length - 1} onClick={() => moveModule(phase.id, moduleIndex, 1)} className="p-1 rounded hover:bg-muted disabled:opacity-30" title="Move down">
-                                    <ChevronDown className="w-3.5 h-3.5" />
-                                  </button>
+                                  {canEdit && (
+                                    <>
+                                      <button onClick={() => togglePublish(m, phase.id)} className="text-xs text-primary hover:underline flex items-center gap-1">
+                                        {m.status === 'published' ? <><EyeOff className="w-3 h-3" /> Unpublish</> : <><Eye className="w-3 h-3" /> Publish</>}
+                                      </button>
+                                      <button disabled={moduleIndex === 0} onClick={() => moveModule(phase.id, moduleIndex, -1)} className="p-1 rounded hover:bg-muted disabled:opacity-30" title="Move up">
+                                        <ChevronUp className="w-3.5 h-3.5" />
+                                      </button>
+                                      <button disabled={moduleIndex === modules.length - 1} onClick={() => moveModule(phase.id, moduleIndex, 1)} className="p-1 rounded hover:bg-muted disabled:opacity-30" title="Move down">
+                                        <ChevronDown className="w-3.5 h-3.5" />
+                                      </button>
+                                    </>
+                                  )}
                                 </div>
                               </div>
 
@@ -438,26 +453,30 @@ export default function OnboardingContent() {
                                                 <ExternalLink className="w-3 h-3" /> Open link
                                               </a>
                                             )}
-                                            <div className="flex items-center gap-1 shrink-0">
-                                              <button disabled={itemIndex === 0} onClick={() => moveContent(m.id, itemIndex, -1)} className="p-1 rounded hover:bg-muted disabled:opacity-30" title="Move up">
-                                                <ChevronUp className="w-3.5 h-3.5" />
-                                              </button>
-                                              <button disabled={itemIndex === items.length - 1} onClick={() => moveContent(m.id, itemIndex, 1)} className="p-1 rounded hover:bg-muted disabled:opacity-30" title="Move down">
-                                                <ChevronDown className="w-3.5 h-3.5" />
-                                              </button>
-                                            </div>
+                                            {canEdit && (
+                                              <div className="flex items-center gap-1 shrink-0">
+                                                <button disabled={itemIndex === 0} onClick={() => moveContent(m.id, itemIndex, -1)} className="p-1 rounded hover:bg-muted disabled:opacity-30" title="Move up">
+                                                  <ChevronUp className="w-3.5 h-3.5" />
+                                                </button>
+                                                <button disabled={itemIndex === items.length - 1} onClick={() => moveContent(m.id, itemIndex, 1)} className="p-1 rounded hover:bg-muted disabled:opacity-30" title="Move down">
+                                                  <ChevronDown className="w-3.5 h-3.5" />
+                                                </button>
+                                              </div>
+                                            )}
                                           </div>
                                         );
                                       })}
                                     </div>
                                   )}
 
-                                  <button
-                                    onClick={() => setModal({ type: 'content', moduleId: m.id })}
-                                    className="inline-flex items-center gap-2 text-sm text-primary hover:underline"
-                                  >
-                                    <Plus className="w-4 h-4" /> Add content
-                                  </button>
+                                  {canCreate && (
+                                    <button
+                                      onClick={() => setModal({ type: 'content', moduleId: m.id })}
+                                      className="inline-flex items-center gap-2 text-sm text-primary hover:underline"
+                                    >
+                                      <Plus className="w-4 h-4" /> Add content
+                                    </button>
+                                  )}
                                 </div>
                               )}
                             </div>
@@ -466,12 +485,14 @@ export default function OnboardingContent() {
                       </div>
                     )}
 
-                    <button
-                      onClick={() => setModal({ type: 'module', phaseId: phase.id })}
-                      className="inline-flex items-center gap-2 text-sm text-primary hover:underline"
-                    >
-                      <Plus className="w-4 h-4" /> Add module
-                    </button>
+                    {canCreate && (
+                      <button
+                        onClick={() => setModal({ type: 'module', phaseId: phase.id })}
+                        className="inline-flex items-center gap-2 text-sm text-primary hover:underline"
+                      >
+                        <Plus className="w-4 h-4" /> Add module
+                      </button>
+                    )}
                   </div>
                 )}
               </div>

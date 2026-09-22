@@ -18,6 +18,7 @@ import {
 } from '@/components/ui/table';
 
 import { getJobById } from '@/api/job.api';
+import { hasPermission } from '@/utils/permissions';
 import {
   getInterviewsByJob,
   getPrep,
@@ -89,6 +90,8 @@ function formatTimeSince(date) {
 
 export default function InterviewJobPage() {
   const navigate        = useNavigate();
+  const canEdit   = hasPermission('Selection', 'Interview', 'update');
+  const canCreate = hasPermission('Selection', 'Interview', 'create');
   const { jobId: jobIdParam } = useParams();
   const jobId = jobIdParam ? Number(jobIdParam) : null;
 
@@ -243,6 +246,7 @@ export default function InterviewJobPage() {
           hasSubmittedScorecards={interviews.some((i) => i.status === 'done')}
           hasActivePacks={hasActivePacks}
           rubricReady={rubricReady}
+          canEdit={canEdit}
         />
       )}
       {activeSection === 'rubric' && (
@@ -253,6 +257,7 @@ export default function InterviewJobPage() {
           setBanner={setBanner}
           setError={setError}
           hasSubmittedScorecards={interviews.some((i) => i.status === 'done')}
+          canEdit={canEdit}
         />
       )}
       {activeSection === 'link' && (
@@ -261,6 +266,7 @@ export default function InterviewJobPage() {
           waitingCandidates={waitingCandidates}
           setBanner={setBanner}
           setError={setError}
+          canCreate={canCreate}
         />
       )}
     </div>
@@ -325,7 +331,7 @@ function CandidatesSection({ interviews, navigate }) {
   );
 }
 
-function QuestionsSection({ jobId, job, prep, setPrep, setBanner, setError, hasSubmittedScorecards, hasActivePacks }) {
+function QuestionsSection({ jobId, job, prep, setPrep, setBanner, setError, hasSubmittedScorecards, hasActivePacks, canEdit }) {
   const [numQuestions, setNumQuestions] = useState('8');
   const [language, setLanguage]         = useState('id');
   const [generating, setGenerating]     = useState(false);
@@ -340,10 +346,14 @@ function QuestionsSection({ jobId, job, prep, setPrep, setBanner, setError, hasS
     setQuestions(Array.isArray(prep?.questions) ? prep.questions : []);
   }, [prep]);
 
-  const isLocked = hasSubmittedScorecards || hasActivePacks;
+  const isLocked = hasSubmittedScorecards || hasActivePacks || !canEdit;
 
   const handleGenerate = async () => {
     if (generating) return;
+    if (!canEdit) {
+      setError('You do not have permission to edit interview questions.');
+      return;
+    }
     if (hasSubmittedScorecards) {
       setError('Scorecards have been submitted — questions cannot be changed to preserve scoring integrity.');
       return;
@@ -418,13 +428,19 @@ function QuestionsSection({ jobId, job, prep, setPrep, setBanner, setError, hasS
           </CardTitle>
         </CardHeader>
         <CardContent className="space-y-4">
-          {hasSubmittedScorecards && (
+          {!canEdit && (
+            <div className="flex items-center gap-2 px-3 py-2 rounded-lg border border-red-200 bg-red-50 text-xs text-red-700">
+              <Lock className="h-3.5 w-3.5 shrink-0" />
+              You do not have permission to edit interview questions.
+            </div>
+          )}
+          {canEdit && hasSubmittedScorecards && (
             <div className="flex items-center gap-2 px-3 py-2 rounded-lg border border-red-200 bg-red-50 text-xs text-red-700">
               <Lock className="h-3.5 w-3.5 shrink-0" />
               Scorecards have been submitted — questions are permanently locked to preserve scoring integrity.
             </div>
           )}
-          {!hasSubmittedScorecards && hasActivePacks && (
+          {canEdit && !hasSubmittedScorecards && hasActivePacks && (
             <div className="flex items-center gap-2 px-3 py-2 rounded-lg border border-amber-200 bg-amber-50 text-xs text-amber-700">
               <Lock className="h-3.5 w-3.5 shrink-0" />
               An interview pack has already been generated for this job — questions are locked so candidates stay in sync.
@@ -618,7 +634,7 @@ function QuestionsSection({ jobId, job, prep, setPrep, setBanner, setError, hasS
   );
 }
 
-function RubricSection({ jobId, prep, setPrep, setBanner, setError, hasSubmittedScorecards }) {
+function RubricSection({ jobId, prep, setPrep, setBanner, setError, hasSubmittedScorecards, canEdit }) {
   const [items, setItems]         = useState(DEFAULT_RUBRIC_ITEMS);
   const [saving, setSaving]       = useState(false);
   const [generating, setGenerating] = useState(false);
@@ -627,7 +643,7 @@ function RubricSection({ jobId, prep, setPrep, setBanner, setError, hasSubmitted
   const [autoSaving, setAutoSaving] = useState(false);
   const isInitialLoad = useRef(true);
 
-  const isLocked = hasSubmittedScorecards;
+  const isLocked = hasSubmittedScorecards || !canEdit;
 
   // Reset initial load flag when prep syncs
   useEffect(() => {
@@ -727,7 +743,13 @@ function RubricSection({ jobId, prep, setPrep, setBanner, setError, hasSubmitted
 
   return (
     <div className="space-y-4">
-      {hasSubmittedScorecards && (
+      {!canEdit && (
+        <div className="flex items-center gap-3 px-4 py-3 rounded-lg border border-red-200 bg-red-50 text-xs text-red-700">
+          <Lock className="h-3.5 w-3.5 shrink-0" />
+          You do not have permission to edit the interview rubric.
+        </div>
+      )}
+      {canEdit && hasSubmittedScorecards && (
         <div className="flex items-center gap-3 px-4 py-3 rounded-lg border border-red-200 bg-red-50 text-xs text-red-700">
           <Lock className="h-3.5 w-3.5 shrink-0" />
           Scorecards have been submitted — rubric cannot be changed to preserve scoring integrity.
@@ -870,7 +892,7 @@ function RubricSection({ jobId, prep, setPrep, setBanner, setError, hasSubmitted
 
 // ── Link Section ──────────────────────────────────────────────────────────────
 
-function LinkSection({ jobId, waitingCandidates = [], setBanner, setError }) {
+function LinkSection({ jobId, waitingCandidates = [], setBanner, setError, canCreate }) {
   const [packs, setPacks]             = useState([]);
   const [loadingPacks, setLoadingPacks] = useState(true);
   const [showForm, setShowForm]       = useState(false);
@@ -905,7 +927,7 @@ function LinkSection({ jobId, waitingCandidates = [], setBanner, setError }) {
   }
 
   async function handleGenerate() {
-    if (!interviewerName.trim() || selectedIds.size === 0) return;
+    if (!canCreate || !interviewerName.trim() || selectedIds.size === 0) return;
     setGenerating(true);
     setError(null);
     try {
@@ -949,7 +971,7 @@ function LinkSection({ jobId, waitingCandidates = [], setBanner, setError }) {
             Generate secure links for interviewers. Each link covers a selected set of candidates.
           </p>
         </div>
-        {!showForm && (
+        {!showForm && canCreate && (
           <Button size="sm" onClick={() => setShowForm(true)} disabled={waitingCandidates.length === 0}>
             <Plus className="h-3.5 w-3.5 mr-1.5" /> Create Pack Link
           </Button>
