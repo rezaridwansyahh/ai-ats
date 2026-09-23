@@ -3,8 +3,10 @@ const router = express.Router();
 
 import roleController from './role.controller.js';
 import authToken from '../../shared/middleware/auth.middleware.js';
+import roleSuperAdmin from '../../shared/middleware/role-superadmin.middleware.js';
 
-router.use(authToken); 
+router.use(authToken);
+router.use(roleSuperAdmin);
 
 router.get('/', roleController.getAll);
 router.get('/permission/:permission_id', roleController.getByPermissionId);

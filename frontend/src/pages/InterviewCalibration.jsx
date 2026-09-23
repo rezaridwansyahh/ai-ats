@@ -17,6 +17,7 @@ import {
 } from '@/components/ui/dialog';
 
 import { getCalibration, batchDecide } from '@/api/interview.api';
+import { hasPermission } from '@/utils/permissions';
 
 const RECOMMENDATION_OPTIONS = [
   { value: 'strong_hire',    label: 'Strong Hire',    icon: ThumbsUp,   color: 'border-emerald-400 text-emerald-700 bg-emerald-50'  },
@@ -40,6 +41,7 @@ function scoreBg(score) {
 }
 
 export default function InterviewCalibration() {
+  const canDecide = hasPermission('Selection', 'Interview', 'update');
   const navigate = useNavigate();
   const { jobId } = useParams();
 
@@ -101,6 +103,10 @@ export default function InterviewCalibration() {
   };
 
   const handleSubmit = async () => {
+    if (!canDecide) {
+      setError('You do not have permission to record interview decisions.');
+      return;
+    }
     const decisionsArray = Object.entries(decisions)
       .filter(([_, dec]) => dec.verdict) // only submit if verdict is set
       .map(([interview_id, dec]) => ({
@@ -233,17 +239,18 @@ export default function InterviewCalibration() {
         <CardContent className="p-4 flex items-center justify-between gap-3">
           <p className="text-xs text-muted-foreground">Quick Actions</p>
           <div className="flex items-center gap-2">
-            <Button size="sm" variant="outline" onClick={handleSelectAllAdvance} className="h-7 text-xs">
+            <Button size="sm" variant="outline" onClick={handleSelectAllAdvance} className="h-7 text-xs" disabled={!canDecide}>
               <Check className="h-3.5 w-3.5 mr-1" /> Select All with Score ≥ 5
             </Button>
-            <Button size="sm" variant="ghost" onClick={handleClearAll} className="h-7 text-xs text-rose-600 hover:text-rose-700">
+            <Button size="sm" variant="ghost" onClick={handleClearAll} className="h-7 text-xs text-rose-600 hover:text-rose-700" disabled={!canDecide}>
               <X className="h-3.5 w-3.5 mr-1" /> Clear All
             </Button>
             <Button
               size="sm"
               onClick={() => setShowConfirm(true)}
-              disabled={Object.keys(decisions).filter((k) => decisions[k].verdict).length === 0 || saving}
+              disabled={!canDecide || Object.keys(decisions).filter((k) => decisions[k].verdict).length === 0 || saving}
               className="h-7 text-xs"
+              title={canDecide ? undefined : 'You do not have permission to record interview decisions.'}
             >
               {saving ? <Loader2 className="h-3.5 w-3.5 animate-spin mr-1" /> : <Users className="h-3.5 w-3.5 mr-1" />}
               Submit {Object.keys(decisions).filter((k) => decisions[k].verdict).length} Decision(s)
@@ -329,6 +336,7 @@ export default function InterviewCalibration() {
                           <Select
                             value={currentDecision.verdict || ''}
                             onValueChange={(v) => handleVerdictChange(c.interview_id, v)}
+                            disabled={!canDecide}
                           >
                             <SelectTrigger className="h-7 text-[10px]">
                               <SelectValue placeholder="Select..." />
@@ -364,6 +372,7 @@ export default function InterviewCalibration() {
                             onChange={(e) => handleNoteChange(c.interview_id, e.target.value)}
                             placeholder="Note (optional)..."
                             className="text-[10px] min-h-[50px] resize-none"
+                            disabled={!canDecide}
                           />
                         ) : null}
                       </td>

@@ -39,6 +39,7 @@ import { FIXED_KEYS, FIXED_META, DEFAULT_RUBRIC, totalWeight, scoreRecommendatio
 import PipelineTour, { usePipelineTour } from '@/components/tours/PipelineTour';
 import { AI_SCREENING_CANDIDATE_STEPS } from '@/components/tours/tourSteps';
 import { getEmailTemplates } from '@/api/email-template.api';
+import { hasPermission } from '@/utils/permissions';
 
 /* ─── Engine config (mirrors the spec) ─── */
 const ENGINES = [
@@ -396,8 +397,11 @@ export default function AIScreeningCandidatePage() {
   const initials = (candidate_name || '?').split(/\s+/).map((s) => s[0]).join('').slice(0, 2).toUpperCase();
   const scored = engine === 'done';
   
-  const decisionLocked = qa.status !== 'responded';
-  const decisionLockReason = !scored
+  const canDecide = hasPermission('Selection', 'AI Screening', 'update');
+  const decisionLocked = !canDecide || qa.status !== 'responded';
+  const decisionLockReason = !canDecide
+    ? 'You do not have permission to record a screening decision.'
+    : !scored
     ? 'Score this candidate first — use "Score This Candidate" in the Match step.'
     : qa.status === 'sent'
       ? 'Waiting for the candidate\'s Q&A response.'
@@ -469,12 +473,13 @@ export default function AIScreeningCandidatePage() {
                 />
               )}
               {activeEngine === 'summary' && (
-                <SummaryPanel 
+                <SummaryPanel
                   data={data}
                   qaCtl={qa}
                   decision={decision}
                   existingReason={existingReason}
                   onPick={setDecisionDraft}
+                  canDecide={canDecide}
                 />
               )}
             </div>
@@ -1596,7 +1601,7 @@ function QAPanel({ qaCtl, jobTitle, scored }) {
 }
 
 /* ─────────── Summary panel (step 4 — review + decide) ─────────── */
-function SummaryPanel({ data, qaCtl, decision, existingReason, onPick }) {
+function SummaryPanel({ data, qaCtl, decision, existingReason, onPick, canDecide }) {
   const {
     overall_score, skills_score, experience_score, education_score,
     matched_skills, missing_skills, score_summary
@@ -1681,7 +1686,11 @@ function SummaryPanel({ data, qaCtl, decision, existingReason, onPick }) {
         {/* Decision shortcut */}
         <div className="space-y-2 border-t pt-4">
           <div className="text-[11px] font-medium text-muted-foreground uppercase">Decision</div>
-          {isFinal ? (
+          {!canDecide ? (
+            <p className="text-xs text-muted-foreground italic">
+              You do not have permission to record a screening decision.
+            </p>
+          ) : isFinal ? (
             <p className="text-xs text-muted-foreground italic">
               This candidate has a final decision (<span className="font-semibold not-italic">{decision}</span>) and cannot be changed here.
             </p>

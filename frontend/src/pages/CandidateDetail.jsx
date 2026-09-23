@@ -13,8 +13,10 @@ import { getSessionsFromCandidate } from '@/api/session.api';
 import { getResultFromCandidate, downloadReportPdf } from '@/api/assessment-battery-result.api';
 import { getJobById } from '@/api/job.api';
 import { toast } from 'sonner';
+import { hasPermission } from '@/utils/permissions';
 
 export default function CandidateDetailPage() {
+  const canEdit = hasPermission('Selection', 'Psych Assessment', 'update');
   const navigate = useNavigate();
   const location = useLocation();
   const { jobId, participantId: candidateIdParam } = useParams();
@@ -196,12 +198,13 @@ export default function CandidateDetailPage() {
 
   /* ── finalRec: sidebar pick + save + optional advance ── */
   const handleFinalRec = (val) => {
+    if (!canEdit) return;
     setSidebarFinalRec(val);
     finalRecRef.current.set?.(val);   // propagates into ScoreDecideTab → debounced save
   };
 
   const handleAdvance = async () => {
-    if (!latestStage) return;
+    if (!latestStage || !canEdit) return;
     setAdvanceStatus('loading');
     try {
       // Save any pending annotations first so the backend state is consistent.
@@ -360,6 +363,7 @@ export default function CandidateDetailPage() {
                   onAdvance={handleAdvance}
                   advanceStatus={advanceStatus}
                   hasStage={!!latestStage}
+                  canEdit={canEdit}
                 />
               )}
               <AssessmentActionCard
@@ -438,7 +442,7 @@ function TindakLanjutCard({ finalRec, onPick, onAdvance, advanceStatus, hasStage
         </div>
 
         {/* Advance stage button — only enabled when direkomendasikan */}
-        {finalRec === 'direkomendasikan' && (
+        {finalRec === 'direkomendasikan' && canEdit && (
           <Button
             size="sm"
             className="w-full text-xs"

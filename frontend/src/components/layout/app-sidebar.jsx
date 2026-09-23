@@ -74,12 +74,12 @@ const routeMap = {
   'Dashboard':          '/dashboard',
   'Candidate Pipeline': '/candidate-pipeline',
   'Report Candidate':  '/report-candidate',
-  'User Management':   '/settings/user-management',
-  'Role Management':   '/settings/role-management',
-  'Recruiters':        '/settings/recruiters',
+  'User Management':   '/settings',
+  'Role Management':   '/settings',
+  'Recruiters':        '/settings',
   'Account':           '/settings/account',
-  'Budget':            '/settings/budget',
-  'Integrations':      '/settings/integrations',
+  'Budget':            '/settings',
+  'Integrations':      '/settings',
   'Job Management':    '/sourcing/job-management',
   'Source Management': '/sourcing/source-management',
   'Talent Pool':       '/sourcing/talent-pool',
@@ -148,6 +148,16 @@ const SECTION_ORDER = ['Sourcing', 'Selection', 'Offer & Onboard', 'Insights', '
 
 // Fallback nav shown before permissions have loaded from localStorage.
 const STATIC_NAV = [];
+
+// Menus that route into a shared page (Settings) with a tab pre-selected via
+// router state, since tabs there aren't reflected in the URL.
+const ROUTE_STATE = {
+  'Integrations':    { section: 'integrations' },
+  'User Management': { section: 'team' },
+  'Role Management': { section: 'roles' },
+  'Recruiters':       { section: 'recruiters' },
+  'Budget':           { section: 'billing' },
+};
 
 const useSidebarStructure = (permissions) => {
   return useMemo(() => {
@@ -408,7 +418,8 @@ export function AppSidebar() {
   const handleNavigate = useCallback((menuName) => {
     if (SOON_ITEMS.has(menuName) || !menuName) return;
     const route = routeMap[menuName] ?? `/${menuName.toLowerCase().replace(/\s+/g, '-')}`;
-    navigate(route);
+    const state = ROUTE_STATE[menuName];
+    navigate(route, state ? { state } : undefined);
   }, [navigate]);
 
   const handleLogout = () => {

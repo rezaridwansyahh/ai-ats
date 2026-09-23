@@ -38,6 +38,7 @@ import {
 } from '@/api/offer-pack.api';
 import { getOfferTemplate } from '@/api/offer-template.api';
 import { getEmailTemplates } from '@/api/email-template.api';
+import { hasPermission } from '@/utils/permissions';
 
 const SUBSTAGES = [
   { key: 'intake',   number: 1, label: 'Intake',   sub: 'slip gaji'                 },
@@ -203,7 +204,7 @@ const DEFAULT_ROWS = [
   { label: 'Lain-lain', amount: '' },
 ];
 
-function IntakeSection({ offer, offerId, setOffer, setBanner, setError, onAdvance }) {
+function IntakeSection({ offer, offerId, setOffer, setBanner, setError, onAdvance, canEdit }) {
   const initialSlipGaji = offer.metadata?.intake?.slip_gaji || { status: 'not_recorded' };
 
   const [slipGaji, setSlipGaji] = useState(initialSlipGaji);
@@ -233,6 +234,7 @@ function IntakeSection({ offer, offerId, setOffer, setBanner, setError, onAdvanc
   const cancelEdit = () => setEditing(false);
 
   const handleSave = async () => {
+    if (!canEdit) { setError('You do not have permission to edit this offer.'); return; }
     const cleaned = lineItems
       .filter((row) => row.label.trim() && row.amount !== '')
       .map((row) => ({ label: row.label.trim(), amount: Number(row.amount) }));
@@ -263,6 +265,7 @@ function IntakeSection({ offer, offerId, setOffer, setBanner, setError, onAdvanc
   };
 
   const handleSkip = async () => {
+    if (!canEdit) { setError('You do not have permission to edit this offer.'); return; }
     setSaving(true);
     setError(null);
     try {
@@ -282,6 +285,7 @@ function IntakeSection({ offer, offerId, setOffer, setBanner, setError, onAdvanc
   };
 
   const handleReview = async () => {
+    if (!canEdit) { setError('You do not have permission to edit this offer.'); return; }
     setSaving(true);
     setError(null);
     try {
@@ -541,7 +545,7 @@ function MoneyRow({ row, onLabelChange, onAmountChange, onRemove, disabled, labe
   );
 }
 
-function BuildSection({ offer, setOffer, setBanner, setError, onAdvance }) {
+function BuildSection({ offer, setOffer, setBanner, setError, onAdvance, canEdit }) {
   const [baseSalary, setBaseSalary] = useState(offer.base_salary || '');
   const [allowances, setAllowances] = useState(
     Object.keys(offer.allowances || {}).length > 0
@@ -555,7 +559,7 @@ function BuildSection({ offer, setOffer, setBanner, setError, onAdvance }) {
   );
   const [saving, setSaving] = useState(false);
 
-  const isEditable = offer.offer_status === 'draft';
+  const isEditable = offer.offer_status === 'draft' && canEdit;
 
   const addAllowance = () => setAllowances((prev) => [...prev, { label: '', amount: '' }]);
   const removeAllowance = (i) => setAllowances((prev) => prev.filter((_, idx) => idx !== i));
@@ -571,6 +575,10 @@ function BuildSection({ offer, setOffer, setBanner, setError, onAdvance }) {
   const bonusesTotal = bonuses.reduce((sum, r) => sum + (Number(r.amount) || 0), 0);
 
   const handleSave = async () => {
+    if (!isEditable) {
+      setError('You do not have permission to edit this offer.');
+      return;
+    }
     if (!baseSalary || Number(baseSalary) <= 0) {
       setError('Base salary is required');
       return;
@@ -612,7 +620,7 @@ function BuildSection({ offer, setOffer, setBanner, setError, onAdvance }) {
 
   return (
     <div className="space-y-4">
-      <TemplateFieldsPart offer={offer} setBanner={setBanner} setError={setError} />
+      <TemplateFieldsPart offer={offer} setBanner={setBanner} setError={setError} canEdit={canEdit} />
 
       <Card>
         <CardHeader className="pb-3">
@@ -787,13 +795,14 @@ function DecisionHistoryList({ history }) {
   );
 }
 
-function ApprovalViewLinkPart({ offerId, viewLink, setApproval, setBanner, setError }) {
+function ApprovalViewLinkPart({ offerId, viewLink, setApproval, setBanner, setError, canEdit }) {
   const [generating, setGenerating] = useState(false);
   const [copied, setCopied] = useState(false);
 
   const portalUrl = viewLink?.portal_link ? `${window.location.origin}${viewLink.portal_link}` : null;
 
   const handleGenerate = async () => {
+    if (!canEdit) { setError('You do not have permission to generate approval links.'); return; }
     setGenerating(true);
     setError(null);
     try {
@@ -848,22 +857,24 @@ function ApprovalViewLinkPart({ offerId, viewLink, setApproval, setBanner, setEr
               {copied ? <><Check className="h-3 w-3 mr-1" /> Copied</> : <><Copy className="h-3 w-3 mr-1" /> Copy</>}
             </Button>
           </div>
-          <Button size="sm" variant="ghost" className="text-xs h-7" onClick={handleGenerate} disabled={generating}>
-            {generating ? <Loader2 className="h-3.5 w-3.5 mr-1.5 animate-spin" /> : <RefreshCw className="h-3.5 w-3.5 mr-1.5" />}
-            Regenerate
-          </Button>
+          {canEdit && (
+            <Button size="sm" variant="ghost" className="text-xs h-7" onClick={handleGenerate} disabled={generating}>
+              {generating ? <Loader2 className="h-3.5 w-3.5 mr-1.5 animate-spin" /> : <RefreshCw className="h-3.5 w-3.5 mr-1.5" />}
+              Regenerate
+            </Button>
+          )}
         </div>
-      ) : (
+      ) : canEdit ? (
         <Button size="sm" className="text-xs h-8" onClick={handleGenerate} disabled={generating}>
           {generating ? <Loader2 className="h-3.5 w-3.5 mr-1.5 animate-spin" /> : <Link2 className="h-3.5 w-3.5 mr-1.5" />}
           Generate view link
         </Button>
-      )}
+      ) : null}
     </div>
   );
 }
 
-function ApproveSection({ offer, offerId, approval, setApproval, setBanner, setError, onAdvance }) {
+function ApproveSection({ offer, offerId, approval, setApproval, setBanner, setError, onAdvance, canEdit }) {
   const [deciding, setDeciding] = useState(null); // 'approved' | 'amend' | 'rejected' | null
   const [amendNote, setAmendNote] = useState('');
   const [showAmendForm, setShowAmendForm] = useState(false);
@@ -910,7 +921,7 @@ function ApproveSection({ offer, offerId, approval, setApproval, setBanner, setE
     submitDecision('amend', amendNote.trim());
   };
 
-  const canDecide = hasCompensation && isDraft;
+  const canDecide = hasCompensation && isDraft && canEdit;
 
   return (
     <div className="space-y-4">
@@ -960,6 +971,7 @@ function ApproveSection({ offer, offerId, approval, setApproval, setBanner, setE
           <ApprovalViewLinkPart
             offerId={offerId} viewLink={viewLink}
             setApproval={setApproval} setBanner={setBanner} setError={setError}
+            canEdit={canEdit}
           />
 
           {canDecide && !showAmendForm && !showRejectConfirm && (
@@ -1166,7 +1178,7 @@ function TemplateGateCard({ template, loading }) {
   );
 }
 
-function TemplateFieldsPart({ offer, setBanner, setError }) {
+function TemplateFieldsPart({ offer, setBanner, setError, canEdit }) {
   const [template, setTemplate] = useState(null);
   const [fields, setFields] = useState([]);
   const [values, setValues] = useState({});
@@ -1195,6 +1207,7 @@ function TemplateFieldsPart({ offer, setBanner, setError }) {
   const updateValue = (key, value) => setValues((prev) => ({ ...prev, [key]: value }));
 
   const handleSave = async () => {
+    if (!canEdit) { setError('You do not have permission to edit this offer.'); return; }
     setSaving(true);
     setError(null);
     try {
@@ -1248,12 +1261,15 @@ function TemplateFieldsPart({ offer, setBanner, setError }) {
                   className="text-xs h-8"
                   value={values[field] || ''}
                   onChange={(e) => updateValue(field, e.target.value)}
+                  disabled={!canEdit}
                 />
               </div>
             ))}
-            <Button size="sm" className="text-xs" onClick={handleSave} disabled={saving}>
-              {saving ? <><Loader2 className="h-3.5 w-3.5 mr-1.5 animate-spin" /> Saving…</> : <><Check className="h-3.5 w-3.5 mr-1.5" /> Save fields</>}
-            </Button>
+            {canEdit && (
+              <Button size="sm" className="text-xs" onClick={handleSave} disabled={saving}>
+                {saving ? <><Loader2 className="h-3.5 w-3.5 mr-1.5 animate-spin" /> Saving…</> : <><Check className="h-3.5 w-3.5 mr-1.5" /> Save fields</>}
+              </Button>
+            )}
           </CardContent>
         </Card>
       )}
@@ -1261,7 +1277,7 @@ function TemplateFieldsPart({ offer, setBanner, setError }) {
   );
 }
 
-function OfferLetterSummaryPart({ offer, setOffer, setBanner, setError }) {
+function OfferLetterSummaryPart({ offer, setOffer, setBanner, setError, canEdit }) {
   const [html, setHtml] = useState(null);
   const [loading, setLoading] = useState(true);
   const [generating, setGenerating] = useState(false);
@@ -1293,6 +1309,7 @@ function OfferLetterSummaryPart({ offer, setOffer, setBanner, setError }) {
   }, [editing]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const handleGenerate = async () => {
+    if (!canEdit) { setError('You do not have permission to edit this offer.'); return; }
     setGenerating(true);
     setError(null);
     try {
@@ -1342,6 +1359,7 @@ function OfferLetterSummaryPart({ offer, setOffer, setBanner, setError }) {
   const startEdit = () => setEditing(true);
 
   const handleSaveEdit = async () => {
+    if (!canEdit) { setError('You do not have permission to edit this offer.'); return; }
     const currentHtml = editableRef.current?.innerHTML || '';
     setSaving(true);
     setError(null);
@@ -1378,15 +1396,17 @@ function OfferLetterSummaryPart({ offer, setOffer, setBanner, setError }) {
               {editing ? 'Editing preview text — the download stays as the original merge' : hasContent ? 'Preview of the merged document' : 'Not generated yet'}
             </p>
           </div>
-          {hasContent && !editing && (
+          {hasContent && !editing && canEdit && (
             <Button size="sm" variant="outline" className="text-xs h-7" onClick={startEdit}>
               <Pencil className="h-3 w-3 mr-1.5" /> Edit
             </Button>
           )}
-          <Button size="sm" variant="outline" className="text-xs h-7" onClick={handleGenerate} disabled={generating || editing}>
-            {generating ? <Loader2 className="h-3.5 w-3.5 mr-1.5 animate-spin" /> : <RefreshCw className="h-3.5 w-3.5 mr-1.5" />}
-            {hasContent ? 'Re-generate' : 'Generate'}
-          </Button>
+          {canEdit && (
+            <Button size="sm" variant="outline" className="text-xs h-7" onClick={handleGenerate} disabled={generating || editing}>
+              {generating ? <Loader2 className="h-3.5 w-3.5 mr-1.5 animate-spin" /> : <RefreshCw className="h-3.5 w-3.5 mr-1.5" />}
+              {hasContent ? 'Re-generate' : 'Generate'}
+            </Button>
+          )}
         </div>
       </CardHeader>
       <CardContent className="space-y-3">
@@ -1434,7 +1454,7 @@ function OfferLetterSummaryPart({ offer, setOffer, setBanner, setError }) {
   );
 }
 
-function ReviewSection({ offer, offerId, approval, setApproval, setOffer, setBanner, setError, onAdvance }) {
+function ReviewSection({ offer, offerId, approval, setApproval, setOffer, setBanner, setError, onAdvance, canEdit }) {
   return (
     <div className="space-y-5">
 
@@ -1449,7 +1469,7 @@ function ReviewSection({ offer, offerId, approval, setApproval, setOffer, setBan
         <p className="text-[10px] font-bold tracking-widest uppercase text-muted-foreground mb-2">
           B. Offer letter
         </p>
-        <OfferLetterSummaryPart offer={offer} setOffer={setOffer} setBanner={setBanner} setError={setError} />
+        <OfferLetterSummaryPart offer={offer} setOffer={setOffer} setBanner={setBanner} setError={setError} canEdit={canEdit} />
       </div>
 
       <div>
@@ -1458,7 +1478,7 @@ function ReviewSection({ offer, offerId, approval, setApproval, setOffer, setBan
         </p>
         <ApproveSection
           offer={offer} offerId={offerId} approval={approval} setApproval={setApproval}
-          setBanner={setBanner} setError={setError} onAdvance={onAdvance}
+          setBanner={setBanner} setError={setError} onAdvance={onAdvance} canEdit={canEdit}
         />
       </div>
 
@@ -1475,7 +1495,7 @@ function ReviewSection({ offer, offerId, approval, setApproval, setOffer, setBan
   );
 }
 
-function OfferDocumentUploadPart({ offer, offerId, document, setDocument, setBanner, setError }) {
+function OfferDocumentUploadPart({ offer, offerId, document, setDocument, setBanner, setError, canCreate }) {
   const [uploading, setUploading] = useState(false);
   const fileInputRef = useRef(null);
 
@@ -1483,6 +1503,7 @@ function OfferDocumentUploadPart({ offer, offerId, document, setDocument, setBan
     const file = e.target.files?.[0];
     e.target.value = ''; // allow re-selecting the same file
     if (!file) return;
+    if (!canCreate) { setError('You do not have permission to upload documents.'); return; }
 
     setUploading(true);
     setError(null);
@@ -1538,15 +1559,17 @@ function OfferDocumentUploadPart({ offer, offerId, document, setDocument, setBan
           className="hidden"
           onChange={handleFileSelect}
         />
-        <Button
-          size="sm" variant="outline" className="text-xs"
-          onClick={() => fileInputRef.current?.click()}
-          disabled={uploading}
-        >
-          {uploading
-            ? <><Loader2 className="h-3.5 w-3.5 mr-1.5 animate-spin" /> Uploading…</>
-            : <><Upload className="h-3.5 w-3.5 mr-1.5" /> {document ? 'Replace file' : 'Upload file'}</>}
-        </Button>
+        {canCreate && (
+          <Button
+            size="sm" variant="outline" className="text-xs"
+            onClick={() => fileInputRef.current?.click()}
+            disabled={uploading}
+          >
+            {uploading
+              ? <><Loader2 className="h-3.5 w-3.5 mr-1.5 animate-spin" /> Uploading…</>
+              : <><Upload className="h-3.5 w-3.5 mr-1.5" /> {document ? 'Replace file' : 'Upload file'}</>}
+          </Button>
+        )}
       </CardContent>
     </Card>
   );
@@ -1598,19 +1621,23 @@ function PortalLinkRow({ url, expiresAt, sentAt, onRegenerate, onRevoke, generat
         <Button size="sm" variant="outline" className="h-7 text-xs shrink-0" onClick={handleCopy}>
           {copied ? <><Check className="h-3 w-3 mr-1" /> Copied</> : <><Copy className="h-3 w-3 mr-1" /> Copy</>}
         </Button>
-        <Button
-          size="sm" variant="outline" className="h-7 text-xs shrink-0"
-          onClick={onRegenerate} disabled={generating} title="Regenerate link"
-        >
-          <RefreshCw className="h-3 w-3" />
-        </Button>
-        <Button
-          size="sm" variant="outline"
-          className="h-7 text-xs shrink-0 text-rose-600 hover:text-rose-700 hover:bg-rose-50 border-rose-200"
-          onClick={onRevoke}
-        >
-          <Ban className="h-3 w-3 mr-1" /> Revoke
-        </Button>
+        {onRegenerate && (
+          <Button
+            size="sm" variant="outline" className="h-7 text-xs shrink-0"
+            onClick={onRegenerate} disabled={generating} title="Regenerate link"
+          >
+            <RefreshCw className="h-3 w-3" />
+          </Button>
+        )}
+        {onRevoke && (
+          <Button
+            size="sm" variant="outline"
+            className="h-7 text-xs shrink-0 text-rose-600 hover:text-rose-700 hover:bg-rose-50 border-rose-200"
+            onClick={onRevoke}
+          >
+            <Ban className="h-3 w-3 mr-1" /> Revoke
+          </Button>
+        )}
       </div>
       <p className="text-[10px] text-muted-foreground">sent {fmtDate(sentAt)}</p>
     </div>
@@ -1665,7 +1692,7 @@ function CandidateSignedFilePart({ offer, isSubmitted, submittedAt }) {
   );
 }
 
-function SendSection({ offer, approval, setOffer, setBanner, setError, onAdvance }) {
+function SendSection({ offer, approval, setOffer, setBanner, setError, onAdvance, canCreate, canEdit }) {
   const [history, setHistory] = useState([]);
   const [loadingHistory, setLoadingHistory] = useState(true);
   const [sending, setSending] = useState(false);
@@ -1721,6 +1748,7 @@ function SendSection({ offer, approval, setOffer, setBanner, setError, onAdvance
   const expiryDaysLeft = isActive ? daysUntil(latestSend.token_expires_at) : null;
 
   const openSendModal = async () => {
+    if (!canEdit) { setError('You do not have permission to send this offer.'); return; }
     try {
       const { data } = await getOfferSendPreview(offer.id);
       setEmailModal({ open: true, subject: data.subject, body: data.body });
@@ -1730,11 +1758,11 @@ function SendSection({ offer, approval, setOffer, setBanner, setError, onAdvance
   };
 
   const handleConfirmSend = async () => {
-    if (sending) return;
+    if (sending || !canEdit) return;
     setSending(true);
     setError(null);
     try {
-      await sendOffer(offer.id); 
+      await sendOffer(offer.id);
       setOffer((prev) => ({ ...prev, offer_status: prev.offer_status === 'draft' ? 'sent' : prev.offer_status }));
       setEmailModal({ open: false, subject: '', body: '' });
       await loadHistory();
@@ -1747,6 +1775,7 @@ function SendSection({ offer, approval, setOffer, setBanner, setError, onAdvance
   };
 
   const handleRevoke = async () => {
+    if (!canEdit) { setError('You do not have permission to revoke this offer.'); return; }
     setRevoking(true);
     setError(null);
     try {
@@ -1763,6 +1792,7 @@ function SendSection({ offer, approval, setOffer, setBanner, setError, onAdvance
   };
 
   const handleRespond = async () => {
+    if (!canEdit) { setError('You do not have permission to respond on this offer.'); return; }
     if (!responseMsg.trim()) {
       setError('Enter a response message');
       return;
@@ -1794,6 +1824,7 @@ function SendSection({ offer, approval, setOffer, setBanner, setError, onAdvance
         setDocument={setDocument}
         setBanner={setBanner}
         setError={setError}
+        canCreate={canCreate}
       />
 
       {/* Offer letter · portal link */}
@@ -1860,11 +1891,11 @@ function SendSection({ offer, approval, setOffer, setBanner, setError, onAdvance
               url={portalUrl}
               expiresAt={latestSend.token_expires_at}
               sentAt={latestSend.sent_at}
-              onRegenerate={openSendModal}
-              onRevoke={() => { setShowRevoke(true); setRevokeReason(''); }}
+              onRegenerate={canEdit ? openSendModal : undefined}
+              onRevoke={canEdit ? () => { setShowRevoke(true); setRevokeReason(''); } : undefined}
               generating={sending}
             />
-          ) : hasDocument ? (
+          ) : hasDocument && canEdit ? (
             <GenerateLinkRow
               onGenerate={openSendModal}
               generating={sending}
@@ -1928,32 +1959,38 @@ function SendSection({ offer, approval, setOffer, setBanner, setError, onAdvance
               ))}
             </div>
 
-            <div className="space-y-2 pt-2 border-t">
-              <div className="flex gap-2">
-                {['accept', 'counter', 'decline'].map((t) => (
-                  <button
-                    key={t}
-                    type="button"
-                    onClick={() => setResponseType(t)}
-                    className={`px-2.5 py-1 rounded-full border text-[10px] font-semibold capitalize ${
-                      responseType === t ? 'bg-primary text-primary-foreground border-primary' : 'border-border text-muted-foreground'
-                    }`}
-                  >
-                    {t}
-                  </button>
-                ))}
+            {canEdit ? (
+              <div className="space-y-2 pt-2 border-t">
+                <div className="flex gap-2">
+                  {['accept', 'counter', 'decline'].map((t) => (
+                    <button
+                      key={t}
+                      type="button"
+                      onClick={() => setResponseType(t)}
+                      className={`px-2.5 py-1 rounded-full border text-[10px] font-semibold capitalize ${
+                        responseType === t ? 'bg-primary text-primary-foreground border-primary' : 'border-border text-muted-foreground'
+                      }`}
+                    >
+                      {t}
+                    </button>
+                  ))}
+                </div>
+                <Textarea
+                  placeholder="Response message"
+                  rows={2}
+                  className="text-xs"
+                  value={responseMsg}
+                  onChange={(e) => setResponseMsg(e.target.value)}
+                />
+                <Button size="sm" className="text-xs" onClick={handleRespond} disabled={responding}>
+                  {responding ? <><Loader2 className="h-3.5 w-3.5 mr-1.5 animate-spin" /> Sending…</> : 'Send response'}
+                </Button>
               </div>
-              <Textarea
-                placeholder="Response message"
-                rows={2}
-                className="text-xs"
-                value={responseMsg}
-                onChange={(e) => setResponseMsg(e.target.value)}
-              />
-              <Button size="sm" className="text-xs" onClick={handleRespond} disabled={responding}>
-                {responding ? <><Loader2 className="h-3.5 w-3.5 mr-1.5 animate-spin" /> Sending…</> : 'Send response'}
-              </Button>
-            </div>
+            ) : (
+              <p className="text-[10px] text-muted-foreground italic pt-2 border-t">
+                You do not have permission to respond to this negotiation.
+              </p>
+            )}
           </CardContent>
         </Card>
       )}
@@ -2136,7 +2173,7 @@ function SendSection({ offer, approval, setOffer, setBanner, setError, onAdvance
   );
 }
 
-function ContractDocumentUploadPart({ offerId, document, setDocument, setBanner, setError }) {
+function ContractDocumentUploadPart({ offerId, document, setDocument, setBanner, setError, canCreate }) {
   const [uploading, setUploading] = useState(false);
   const fileInputRef = useRef(null);
 
@@ -2144,6 +2181,7 @@ function ContractDocumentUploadPart({ offerId, document, setDocument, setBanner,
     const file = e.target.files?.[0];
     e.target.value = ''; // allow re-selecting the same file
     if (!file) return;
+    if (!canCreate) { setError('You do not have permission to upload documents.'); return; }
 
     setUploading(true);
     setError(null);
@@ -2199,15 +2237,17 @@ function ContractDocumentUploadPart({ offerId, document, setDocument, setBanner,
           className="hidden"
           onChange={handleFileSelect}
         />
-        <Button
-          size="sm" variant="outline" className="text-xs"
-          onClick={() => fileInputRef.current?.click()}
-          disabled={uploading}
-        >
-          {uploading
-            ? <><Loader2 className="h-3.5 w-3.5 mr-1.5 animate-spin" /> Uploading…</>
-            : <><Upload className="h-3.5 w-3.5 mr-1.5" /> {document ? 'Replace file' : 'Upload file'}</>}
-        </Button>
+        {canCreate && (
+          <Button
+            size="sm" variant="outline" className="text-xs"
+            onClick={() => fileInputRef.current?.click()}
+            disabled={uploading}
+          >
+            {uploading
+              ? <><Loader2 className="h-3.5 w-3.5 mr-1.5 animate-spin" /> Uploading…</>
+              : <><Upload className="h-3.5 w-3.5 mr-1.5" /> {document ? 'Replace file' : 'Upload file'}</>}
+          </Button>
+        )}
       </CardContent>
     </Card>
   );
@@ -2261,7 +2301,7 @@ function ContractSignedFilePart({ offer, isSubmitted, submittedAt }) {
   );
 }
 
-function ExecutedContractPart({ offer, setBanner, setError }) {
+function ExecutedContractPart({ offer, setBanner, setError, canCreate }) {
   const [document, setDocument] = useState(null);
   const [loading, setLoading] = useState(true);
   const [uploading, setUploading] = useState(false);
@@ -2287,6 +2327,7 @@ function ExecutedContractPart({ offer, setBanner, setError }) {
     const file = e.target.files?.[0];
     e.target.value = '';
     if (!file) return;
+    if (!canCreate) { setError('You do not have permission to upload documents.'); return; }
 
     setUploading(true);
     setError(null);
@@ -2354,10 +2395,12 @@ function ExecutedContractPart({ offer, setBanner, setError }) {
                 {downloading ? <Loader2 className="h-3.5 w-3.5 mr-1.5 animate-spin" /> : <Download className="h-3.5 w-3.5 mr-1.5" />}
                 Download
               </Button>
-              <Button size="sm" variant="outline" className="text-xs" onClick={() => fileInputRef.current?.click()} disabled={uploading}>
-                {uploading ? <Loader2 className="h-3.5 w-3.5 mr-1.5 animate-spin" /> : <Upload className="h-3.5 w-3.5 mr-1.5" />}
-                Replace
-              </Button>
+              {canCreate && (
+                <Button size="sm" variant="outline" className="text-xs" onClick={() => fileInputRef.current?.click()} disabled={uploading}>
+                  {uploading ? <Loader2 className="h-3.5 w-3.5 mr-1.5 animate-spin" /> : <Upload className="h-3.5 w-3.5 mr-1.5" />}
+                  Replace
+                </Button>
+              )}
             </div>
           </div>
         ) : (
@@ -2365,17 +2408,21 @@ function ExecutedContractPart({ offer, setBanner, setError }) {
             <div className="flex items-center gap-2 px-3 py-2 rounded-lg border border-dashed text-xs text-muted-foreground">
               Nothing saved yet.
             </div>
-            <Input
-              placeholder="Note (optional) — e.g. wet-signed copy scanned 20 Aug"
-              className="text-xs h-8"
-              value={notes}
-              onChange={(e) => setNotes(e.target.value)}
-            />
-            <Button size="sm" variant="outline" className="text-xs" onClick={() => fileInputRef.current?.click()} disabled={uploading}>
-              {uploading
-                ? <><Loader2 className="h-3.5 w-3.5 mr-1.5 animate-spin" /> Uploading…</>
-                : <><Upload className="h-3.5 w-3.5 mr-1.5" /> Upload executed contract</>}
-            </Button>
+            {canCreate && (
+              <>
+                <Input
+                  placeholder="Note (optional) — e.g. wet-signed copy scanned 20 Aug"
+                  className="text-xs h-8"
+                  value={notes}
+                  onChange={(e) => setNotes(e.target.value)}
+                />
+                <Button size="sm" variant="outline" className="text-xs" onClick={() => fileInputRef.current?.click()} disabled={uploading}>
+                  {uploading
+                    ? <><Loader2 className="h-3.5 w-3.5 mr-1.5 animate-spin" /> Uploading…</>
+                    : <><Upload className="h-3.5 w-3.5 mr-1.5" /> Upload executed contract</>}
+                </Button>
+              </>
+            )}
           </>
         )}
         <input
@@ -2390,7 +2437,7 @@ function ExecutedContractPart({ offer, setBanner, setError }) {
   );
 }
 
-function ContractSection({ offer, setOffer, setBanner, setError }) {
+function ContractSection({ offer, setOffer, setBanner, setError, canCreate, canEdit }) {
   const [history, setHistory] = useState([]);
   const [loadingHistory, setLoadingHistory] = useState(true);
   const [sending, setSending] = useState(false);
@@ -2450,6 +2497,7 @@ function ContractSection({ offer, setOffer, setBanner, setError }) {
   }
 
   const openSendModal = async () => {
+    if (!canEdit) { setError('You do not have permission to send this contract.'); return; }
     try {
       const { data } = await getContractSendPreview(offer.id);
       setEmailModal({ open: true, subject: data.subject, body: data.body });
@@ -2459,7 +2507,7 @@ function ContractSection({ offer, setOffer, setBanner, setError }) {
   };
 
   const handleConfirmSend = async () => {
-    if (sending) return;
+    if (sending || !canEdit) return;
     setSending(true);
     setError(null);
     try {
@@ -2476,6 +2524,7 @@ function ContractSection({ offer, setOffer, setBanner, setError }) {
   };
 
   const handleRevoke = async () => {
+    if (!canEdit) { setError('You do not have permission to revoke this contract.'); return; }
     setRevoking(true);
     setError(null);
     try {
@@ -2500,6 +2549,7 @@ function ContractSection({ offer, setOffer, setBanner, setError }) {
         setDocument={setDocument}
         setBanner={setBanner}
         setError={setError}
+        canCreate={canCreate}
       />
 
       {/* Contract letter · portal link */}
@@ -2560,11 +2610,11 @@ function ContractSection({ offer, setOffer, setBanner, setError }) {
               url={portalUrl}
               expiresAt={latestSend.token_expires_at}
               sentAt={latestSend.sent_at}
-              onRegenerate={openSendModal}
-              onRevoke={() => { setShowRevoke(true); setRevokeReason(''); }}
+              onRegenerate={canEdit ? openSendModal : undefined}
+              onRevoke={canEdit ? () => { setShowRevoke(true); setRevokeReason(''); } : undefined}
               generating={sending}
             />
-          ) : hasDocument ? (
+          ) : hasDocument && canEdit ? (
             <GenerateLinkRow
               onGenerate={openSendModal}
               generating={sending}
@@ -2706,7 +2756,7 @@ function ContractSection({ offer, setOffer, setBanner, setError }) {
         </CardContent>
       </Card>
 
-      <ExecutedContractPart offer={offer} setBanner={setBanner} setError={setError} />
+      <ExecutedContractPart offer={offer} setBanner={setBanner} setError={setError} canCreate={canCreate} />
 
       {/* Email to Candidate modal — same pattern as Send */}
       <Dialog open={emailModal.open} onOpenChange={(open) => !open && !sending && setEmailModal((m) => ({ ...m, open: false }))}>
@@ -2771,6 +2821,8 @@ function ContractSection({ offer, setOffer, setBanner, setError }) {
 
 export default function OfferCandidatePage() {
   const navigate           = useNavigate();
+  const canCreate = hasPermission('Offer & Onboard', 'Offer & Contract', 'create');
+  const canEdit   = hasPermission('Offer & Onboard', 'Offer & Contract', 'update');
   const { offerId: param } = useParams();
   const offerId            = param ? Number(param) : null;
 
@@ -2884,22 +2936,23 @@ export default function OfferCandidatePage() {
         <div className="grid grid-cols-1 lg:grid-cols-[minmax(0,1fr)_220px] gap-6">
           <div className="min-w-0">
             {activeSection === 'intake' && (
-              <IntakeSection offer={offer} offerId={offer.id} setOffer={setOffer} setBanner={setBanner} setError={setError} onAdvance={setActiveSection} />
+              <IntakeSection offer={offer} offerId={offer.id} setOffer={setOffer} setBanner={setBanner} setError={setError} onAdvance={setActiveSection} canEdit={canEdit} />
             )}
             {activeSection === 'build' && (
-              <BuildSection offer={offer} setOffer={setOffer} setBanner={setBanner} setError={setError} onAdvance={setActiveSection} />
+              <BuildSection offer={offer} setOffer={setOffer} setBanner={setBanner} setError={setError} onAdvance={setActiveSection} canEdit={canEdit} />
             )}
             {activeSection === 'review' && (
               <ReviewSection
                 offer={offer} offerId={offer.id} approval={approval} setApproval={setApproval}
                 setOffer={setOffer} setBanner={setBanner} setError={setError} onAdvance={setActiveSection}
+                canEdit={canEdit}
               />
             )}
             {activeSection === 'send' && (
-              <SendSection offer={offer} approval={approval} setOffer={setOffer} setBanner={setBanner} setError={setError} onAdvance={setActiveSection} />
+              <SendSection offer={offer} approval={approval} setOffer={setOffer} setBanner={setBanner} setError={setError} onAdvance={setActiveSection} canCreate={canCreate} canEdit={canEdit} />
             )}
             {activeSection === 'contract' && (
-              <ContractSection offer={offer} setOffer={setOffer} setBanner={setBanner} setError={setError} />
+              <ContractSection offer={offer} setOffer={setOffer} setBanner={setBanner} setError={setError} canCreate={canCreate} canEdit={canEdit} />
             )}
           </div>
           <aside>

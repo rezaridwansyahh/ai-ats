@@ -65,7 +65,7 @@ export function LoginCard() {
       localStorage.setItem('permissions', JSON.stringify(res.permissions ?? []))
       localStorage.setItem('userData', JSON.stringify(res ?? null))
 
-      navigate("/dashboard");
+      navigate(res.isSuperAdmin ? '/admin/dashboard' : '/dashboard');
     } catch (err) {
       setError(
         err.response?.data?.message

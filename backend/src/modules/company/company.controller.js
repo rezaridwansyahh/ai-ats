@@ -12,7 +12,7 @@ class CompanyController {
 
   async getById(req, res) {
     try {
-      const company = await companyService.getById(Number(req.params.id));
+      const company = await companyService.getById(Number(req.params.id), req.user);
       res.status(200).json({ message: 'Company details', company });
     } catch (err) {
       res.status(err.status || 500).json({ message: err.message });

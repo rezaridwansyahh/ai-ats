@@ -155,7 +155,7 @@ export default function WorkflowTemplatesSettings() {
             Pre-configured stage sequences recruiters pick from in Step 2 (Stages) of the Job Wizard.
           </p>
         </div>
-        <Button size="sm" onClick={() => setNewTemplateOpen(true)} className="bg-teal-700 hover:bg-teal-800">
+        <Button size="sm" onClick={() => setNewTemplateOpen(true)}>
           <Plus className="h-3.5 w-3.5 mr-1.5" />
           New template
         </Button>

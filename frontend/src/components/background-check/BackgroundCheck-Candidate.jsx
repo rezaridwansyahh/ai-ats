@@ -25,6 +25,7 @@ import {
   getConsent, generateConsentLink, revokeConsent,
   getLanes, createLanes, updateTracker,
 } from '@/api/background-check.api';
+import { hasPermission } from '@/utils/permissions';
 
 const VALID_LANES = ['identity', 'edu', 'emp', 'cert', 'crim', 'cred', 'salary'];
 
@@ -246,19 +247,23 @@ function PortalLinkRow({ url, expiresAt, sentAt, onRegenerate, onRevoke, generat
         <Button size="sm" variant="outline" className="h-7 text-xs shrink-0" onClick={handleCopy}>
           {copied ? <><Check className="h-3 w-3 mr-1" /> Copied</> : <><Copy className="h-3 w-3 mr-1" /> Copy</>}
         </Button>
-        <Button
-          size="sm" variant="outline" className="h-7 text-xs shrink-0"
-          onClick={onRegenerate} disabled={generating} title="Regenerate link"
-        >
-          <RefreshCw className="h-3 w-3" />
-        </Button>
-        <Button
-          size="sm" variant="outline"
-          className="h-7 text-xs shrink-0 text-rose-600 hover:text-rose-700 hover:bg-rose-50 border-rose-200"
-          onClick={onRevoke}
-        >
-          <Ban className="h-3 w-3 mr-1" /> Revoke
-        </Button>
+        {onRegenerate && (
+          <Button
+            size="sm" variant="outline" className="h-7 text-xs shrink-0"
+            onClick={onRegenerate} disabled={generating} title="Regenerate link"
+          >
+            <RefreshCw className="h-3 w-3" />
+          </Button>
+        )}
+        {onRevoke && (
+          <Button
+            size="sm" variant="outline"
+            className="h-7 text-xs shrink-0 text-rose-600 hover:text-rose-700 hover:bg-rose-50 border-rose-200"
+            onClick={onRevoke}
+          >
+            <Ban className="h-3 w-3 mr-1" /> Revoke
+          </Button>
+        )}
       </div>
       <p className="text-[10px] text-muted-foreground">
         sent {fmtDate(sentAt)}
@@ -267,7 +272,7 @@ function PortalLinkRow({ url, expiresAt, sentAt, onRegenerate, onRevoke, generat
   );
 }
 
-function ClaimsSection({ bg, claims, setClaims, setBanner, setError, onAdvance }) {
+function ClaimsSection({ bg, claims, setClaims, setBanner, setError, onAdvance, canCreate, canEdit, canDelete }) {
   const [extracting,  setExtracting]  = useState(false);
   const [confirming,  setConfirming]  = useState(false);
   const [showAddForm, setShowAddForm] = useState(false);
@@ -285,6 +290,7 @@ function ClaimsSection({ bg, claims, setClaims, setBanner, setError, onAdvance }
   const laneTypes     = [...new Set(claims.filter((c) => c.selected).map((c) => c.lane_type))];
 
   const handleExtract = async () => {
+    if (!canCreate) { setError('You do not have permission to extract claims.'); return; }
     setExtracting(true);
     setError(null);
     try {
@@ -303,6 +309,7 @@ function ClaimsSection({ bg, claims, setClaims, setBanner, setError, onAdvance }
   };
 
   const handleToggle = async (claim) => {
+    if (!canEdit) { setError('You do not have permission to modify claims.'); return; }
     try {
       const res = await toggleClaim(claim.id, !claim.selected);
       setClaims((prev) => prev.map((c) => c.id === claim.id ? res.data.claim : c));
@@ -312,7 +319,7 @@ function ClaimsSection({ bg, claims, setClaims, setBanner, setError, onAdvance }
   };
 
   const handleAdd = async () => {
-    if (!addText.trim() || !addLane) return;
+    if (!addText.trim() || !addLane || !canCreate) return;
     try {
       const res = await addClaim(bg.bg_id, {
         claim_text:   addText.trim(),
@@ -336,7 +343,7 @@ function ClaimsSection({ bg, claims, setClaims, setBanner, setError, onAdvance }
   };
 
   const handleUpdate = async (claim_id) => {
-    if (!editText.trim() || !editLane) return;
+    if (!editText.trim() || !editLane || !canEdit) return;
     try {
       const res = await updateClaim(claim_id, {
         claim_text:   editText.trim(),
@@ -352,6 +359,7 @@ function ClaimsSection({ bg, claims, setClaims, setBanner, setError, onAdvance }
   };
 
   const handleDelete = async (claim_id) => {
+    if (!canDelete) { setError('You do not have permission to delete claims.'); return; }
     try {
       await deleteClaim(claim_id);
       setClaims((prev) => prev.filter((c) => c.id !== claim_id));
@@ -362,6 +370,7 @@ function ClaimsSection({ bg, claims, setClaims, setBanner, setError, onAdvance }
   };
 
   const handleConfirm = async () => {
+    if (!canEdit) { setError('You do not have permission to confirm claims.'); return; }
     setConfirming(true);
     setError(null);
     try {
@@ -398,21 +407,23 @@ function ClaimsSection({ bg, claims, setClaims, setBanner, setError, onAdvance }
         </CardContent></Card>
       </div>
 
-      <div className="flex items-center gap-2 flex-wrap">
-        <Button size="sm" variant="outline" className="text-xs"
-          onClick={handleExtract} disabled={extracting}>
-          {extracting
-            ? <><Loader2 className="h-3.5 w-3.5 mr-1.5 animate-spin" /> Extracting…</>
-            : <><Wand2 className="h-3.5 w-3.5 mr-1.5" />{claims.length ? 'Re-extract from CV' : 'Extract from CV'}</>}
-        </Button>
-        <Button size="sm" variant="outline" className="text-xs"
-          onClick={() => setShowAddForm((v) => !v)}>
-          <Plus className="h-3.5 w-3.5 mr-1.5" /> Add manually
-        </Button>
-        <p className="text-[10px] text-muted-foreground ml-auto">~Rp 6 / extract</p>
-      </div>
+      {canCreate && (
+        <div className="flex items-center gap-2 flex-wrap">
+          <Button size="sm" variant="outline" className="text-xs"
+            onClick={handleExtract} disabled={extracting}>
+            {extracting
+              ? <><Loader2 className="h-3.5 w-3.5 mr-1.5 animate-spin" /> Extracting…</>
+              : <><Wand2 className="h-3.5 w-3.5 mr-1.5" />{claims.length ? 'Re-extract from CV' : 'Extract from CV'}</>}
+          </Button>
+          <Button size="sm" variant="outline" className="text-xs"
+            onClick={() => setShowAddForm((v) => !v)}>
+            <Plus className="h-3.5 w-3.5 mr-1.5" /> Add manually
+          </Button>
+          <p className="text-[10px] text-muted-foreground ml-auto">~Rp 6 / extract</p>
+        </div>
+      )}
 
-      {showAddForm && (
+      {showAddForm && canCreate && (
         <Card className="border-primary/30 bg-primary/5">
           <CardContent className="p-4 space-y-3">
             <p className="text-xs font-semibold">Add claim manually</p>
@@ -466,7 +477,7 @@ function ClaimsSection({ bg, claims, setClaims, setBanner, setError, onAdvance }
               {claims.map((claim) => (
                 <div key={claim.id}
                   className={`px-4 py-3 transition-colors ${!claim.selected ? 'opacity-50' : ''}`}>
-                  {editingId === claim.id ? (
+                  {editingId === claim.id && canEdit ? (
                     <div className="space-y-2">
                       <Input value={editText} onChange={(e) => setEditText(e.target.value)}
                         className="text-xs h-8" placeholder="Claim text" autoFocus />
@@ -500,6 +511,7 @@ function ClaimsSection({ bg, claims, setClaims, setBanner, setError, onAdvance }
                     <div className="flex items-start gap-3">
                       <input type="checkbox" checked={claim.selected}
                         onChange={() => handleToggle(claim)}
+                        disabled={!canEdit}
                         className="mt-1 shrink-0 cursor-pointer" />
                       <div className="flex-1 min-w-0">
                         <div className="flex items-center gap-2 flex-wrap">
@@ -517,10 +529,12 @@ function ClaimsSection({ bg, claims, setClaims, setBanner, setError, onAdvance }
                           </p>
                         )}
                       </div>
-                      <button type="button" onClick={() => openEdit(claim)}
-                        className="shrink-0 text-muted-foreground hover:text-foreground transition-colors">
-                        <Pencil className="h-3.5 w-3.5" />
-                      </button>
+                      {canEdit && (
+                        <button type="button" onClick={() => openEdit(claim)}
+                          className="shrink-0 text-muted-foreground hover:text-foreground transition-colors">
+                          <Pencil className="h-3.5 w-3.5" />
+                        </button>
+                      )}
                     </div>
                   )}
                 </div>
@@ -536,10 +550,12 @@ function ClaimsSection({ bg, claims, setClaims, setBanner, setError, onAdvance }
                 <> · {laneTypes.length} lane{laneTypes.length === 1 ? '' : 's'}: {laneTypes.join(' · ')}</>
               )}
             </p>
-            <Button size="sm" variant="outline" className="text-xs h-7"
-              onClick={handleExtract} disabled={extracting}>
-              <RotateCw className="h-3 w-3 mr-1" /> Re-extract
-            </Button>
+            {canCreate && (
+              <Button size="sm" variant="outline" className="text-xs h-7"
+                onClick={handleExtract} disabled={extracting}>
+                <RotateCw className="h-3 w-3 mr-1" /> Re-extract
+              </Button>
+            )}
           </div>
         )}
       </Card>
@@ -551,7 +567,7 @@ function ClaimsSection({ bg, claims, setClaims, setBanner, setError, onAdvance }
             : 'Already advanced — edit claims above then save'}
         </p>
         <Button size="sm" className="text-xs"
-          onClick={handleConfirm} disabled={confirming || selectedCount === 0}>
+          onClick={handleConfirm} disabled={confirming || selectedCount === 0 || !canEdit}>
           {confirming
             ? <><Loader2 className="h-3.5 w-3.5 mr-1.5 animate-spin" /> Saving…</>
             : <><Check className="h-3.5 w-3.5 mr-1.5" />
@@ -563,7 +579,7 @@ function ClaimsSection({ bg, claims, setClaims, setBanner, setError, onAdvance }
   );
 }
 
-function ConsentSection({ bg, setBg, claims, setBanner, setError, onAdvance }) {
+function ConsentSection({ bg, setBg, claims, setBanner, setError, onAdvance, canCreate, canEdit }) {
   const [consent,      setConsent]      = useState(null);
   const [loading,      setLoading]      = useState(true);
   const [generating,   setGenerating]   = useState(false);
@@ -585,6 +601,7 @@ function ConsentSection({ bg, setBg, claims, setBanner, setError, onAdvance }) {
   useEffect(() => { loadConsent(); }, [loadConsent]);
 
   const handleGenerate = async () => {
+    if (!canCreate) { setError('You do not have permission to generate consent links.'); return; }
     setGenerating(true);
     setError(null);
     try {
@@ -599,6 +616,7 @@ function ConsentSection({ bg, setBg, claims, setBanner, setError, onAdvance }) {
   };
 
   const handleRevoke = async () => {
+    if (!canEdit) { setError('You do not have permission to revoke consent.'); return; }
     if (consent?.status === 'signed') {
       setError('Consent has been signed and cannot be revoked.');
       setShowRevoke(false);
@@ -620,6 +638,7 @@ function ConsentSection({ bg, setBg, claims, setBanner, setError, onAdvance }) {
   };
 
   const handleAdvanceToTracker = async () => {
+    if (!canEdit) { setError('You do not have permission to advance this stage.'); return; }
     if (bg.status === 'claims') {
       setError('Complete Claims stage and confirm selection before advancing to Tracker.');
       return;
@@ -709,20 +728,24 @@ function ConsentSection({ bg, setBg, claims, setBanner, setError, onAdvance }) {
               url={consent.portal_url}
               expiresAt={consent.token_expires_at}
               sentAt={consent.sent_at}
-              onRegenerate={handleGenerate}
-              onRevoke={() => { setShowRevoke(true); setRevokeReason(''); }}
+              onRegenerate={canCreate ? handleGenerate : undefined}
+              onRevoke={canEdit ? () => { setShowRevoke(true); setRevokeReason(''); } : undefined}
               generating={generating}
             />
-          ) : (
+          ) : canCreate ? (
             /* Draft or revoked — show generate button */
             <GenerateLinkRow
               onGenerate={handleGenerate}
               generating={generating}
               label={isRevoked ? 'Regenerate link' : 'Generate link'}
             />
+          ) : (
+            <p className="text-xs text-muted-foreground italic px-3 py-2">
+              You do not have permission to generate consent links.
+            </p>
           )}
 
-          {showRevoke && !isSigned && (
+          {showRevoke && !isSigned && canEdit && (
             <div className="space-y-2 p-3 rounded-lg border border-rose-200 bg-rose-50/30">
               <p className="text-[10px] font-semibold text-rose-700 uppercase tracking-wide">
                 Revoke consent
@@ -851,7 +874,7 @@ function ConsentSection({ bg, setBg, claims, setBanner, setError, onAdvance }) {
         <Button
           size="sm" className="text-xs"
           onClick={handleAdvanceToTracker}
-          disabled={advancing || bg.status === 'claims'}
+          disabled={advancing || bg.status === 'claims' || !canEdit}
         >
           {advancing
             ? <><Loader2 className="h-3.5 w-3.5 mr-1.5 animate-spin" /> Advancing…</>
@@ -863,7 +886,7 @@ function ConsentSection({ bg, setBg, claims, setBanner, setError, onAdvance }) {
   );
 }
 
-function TrackerSection({ bg, setBg, setBanner, setError, onAdvance }) {
+function TrackerSection({ bg, setBg, setBanner, setError, onAdvance, canCreate, canEdit }) {
   const [lanes,      setLanes]      = useState([]);
   const [loading,    setLoading]    = useState(true);
   const [spawning,   setSpawning]   = useState(false);
@@ -889,6 +912,7 @@ function TrackerSection({ bg, setBg, setBanner, setError, onAdvance }) {
   useEffect(() => { loadLanes(); }, [loadLanes]);
 
   const handleSpawn = async () => {
+    if (!canCreate) { setError('You do not have permission to create verification lanes.'); return; }
     setSpawning(true);
     setError(null);
     try {
@@ -910,6 +934,7 @@ function TrackerSection({ bg, setBg, setBanner, setError, onAdvance }) {
   };
 
   const handleSaveLane = async (lane_id) => {
+    if (!canEdit) { setError('You do not have permission to update verification lanes.'); return; }
     setSaving(true);
     setError(null);
     try {
@@ -925,6 +950,7 @@ function TrackerSection({ bg, setBg, setBanner, setError, onAdvance }) {
   };
 
   const handleAdvanceToVerdict = async () => {
+    if (!canEdit) { setError('You do not have permission to advance this stage.'); return; }
     if (bg.status === 'claims' || bg.status === 'consent') {
       setError(
         bg.status === 'claims'
@@ -1005,13 +1031,15 @@ function TrackerSection({ bg, setBg, setBanner, setError, onAdvance }) {
                 {counts.pass}/{lanes.length} pass · {counts.stalled} stalled · {counts.in_progress} in progress
               </p>
             </div>
-            <Button size="sm" variant="outline" className="text-xs shrink-0"
-              onClick={handleSpawn} disabled={spawning}>
-              {spawning
-                ? <><Loader2 className="h-3.5 w-3.5 animate-spin mr-1.5" /> Creating…</>
-                : <><GitBranch className="h-3.5 w-3.5 mr-1.5" />
-                    {lanes.length ? 'Re-sync lanes' : 'Create lanes'}</>}
-            </Button>
+            {canCreate && (
+              <Button size="sm" variant="outline" className="text-xs shrink-0"
+                onClick={handleSpawn} disabled={spawning}>
+                {spawning
+                  ? <><Loader2 className="h-3.5 w-3.5 animate-spin mr-1.5" /> Creating…</>
+                  : <><GitBranch className="h-3.5 w-3.5 mr-1.5" />
+                      {lanes.length ? 'Re-sync lanes' : 'Create lanes'}</>}
+              </Button>
+            )}
           </div>
         </CardHeader>
       </Card>
@@ -1173,10 +1201,12 @@ function TrackerSection({ bg, setBg, setBanner, setError, onAdvance }) {
                                   Resolved {fmtDate(lane.resolved_at)}
                                 </p>
                               )}
-                              <Button size="sm" variant="outline" className="text-xs h-7"
-                                onClick={(e) => { e.stopPropagation(); openEdit(lane); }}>
-                                <Pencil className="h-3 w-3 mr-1" /> Edit lane
-                              </Button>
+                              {canEdit && (
+                                <Button size="sm" variant="outline" className="text-xs h-7"
+                                  onClick={(e) => { e.stopPropagation(); openEdit(lane); }}>
+                                  <Pencil className="h-3 w-3 mr-1" /> Edit lane
+                                </Button>
+                              )}
                             </div>
                           )}
                         </div>
@@ -1204,7 +1234,7 @@ function TrackerSection({ bg, setBg, setBanner, setError, onAdvance }) {
         <Button
           size="sm" className="text-xs"
           onClick={handleAdvanceToVerdict}
-          disabled={advancing || isBlocked}
+          disabled={advancing || isBlocked || !canEdit}
         >
           {advancing
             ? <><Loader2 className="h-3.5 w-3.5 mr-1.5 animate-spin" /> Advancing…</>
@@ -1216,17 +1246,18 @@ function TrackerSection({ bg, setBg, setBanner, setError, onAdvance }) {
   );
 }
 
-function VerdictSection({ bg, setBg, setBanner, setError }) {
+function VerdictSection({ bg, setBg, setBanner, setError, canEdit }) {
   const [selected,   setSelected]   = useState(bg.verdict || null);
   const [gap,        setGap]        = useState(bg.verdict_note?.gap        || '');
   const [ctx,        setCtx]        = useState(bg.verdict_note?.context    || '');
   const [mitigation, setMitigation] = useState(bg.verdict_note?.mitigation || '');
   const [saving,     setSaving]     = useState(false);
 
-  const locked = !!bg.verdict; 
+  const locked = !!bg.verdict || !canEdit;
 
   const handleSave = async () => {
     if (!selected || locked) return;
+    if (!canEdit) { setError('You do not have permission to record a verdict.'); return; }
     setSaving(true);
     setError(null);
     try {
@@ -1353,6 +1384,9 @@ function VerdictSection({ bg, setBg, setBanner, setError }) {
 
 export default function BgCheckCandidatePage() {
   const navigate        = useNavigate();
+  const canCreate = hasPermission('Selection', 'Background Check', 'create');
+  const canEdit   = hasPermission('Selection', 'Background Check', 'update');
+  const canDelete = hasPermission('Selection', 'Background Check', 'delete');
   const { bgId: param } = useParams();
   const bgId            = param ? Number(param) : null;
 
@@ -1483,24 +1517,28 @@ export default function BgCheckCandidatePage() {
               <ClaimsSection
                 bg={bg} claims={claims} setClaims={setClaims}
                 setBanner={setBanner} setError={setError} onAdvance={handleAdvance}
+                canCreate={canCreate} canEdit={canEdit} canDelete={canDelete}
               />
             )}
             {activeSection === 'consent' && (
               <ConsentSection
                 bg={bg} setBg={setBg} claims={claims}
                 setBanner={setBanner} setError={setError} onAdvance={handleAdvance}
+                canCreate={canCreate} canEdit={canEdit}
               />
             )}
             {activeSection === 'tracker' && (
               <TrackerSection
                 bg={bg} setBg={setBg}
                 setBanner={setBanner} setError={setError} onAdvance={handleAdvance}
+                canCreate={canCreate} canEdit={canEdit}
               />
             )}
             {activeSection === 'verdict' && (
               <VerdictSection
                 bg={bg} setBg={setBg}
                 setBanner={setBanner} setError={setError}
+                canEdit={canEdit}
               />
             )}
           </div>
