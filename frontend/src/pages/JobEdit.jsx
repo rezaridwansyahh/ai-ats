@@ -29,6 +29,8 @@ import { isValid } from 'date-fns';
 import FirstJobWizard, { useFirstJobWizard, FirstJobWizardPrompt } from '@/components/tours/FirstJobWizard';
 import { BATTERIES } from '@/lib/batteries';
 
+import { hasPermission } from '@/utils/permissions';
+
 const WORK_OPTIONS = ['On-site', 'Hybrid', 'Remote'];
 const WORK_TYPES = ['Full-time', 'Part-time', 'Contract', 'Casual'];
 const PAY_TYPES = ['Hourly', 'Monthly', 'Annually'];
@@ -96,9 +98,13 @@ function fieldsDiffer(a, b) {
 }
 
 export default function JobEditPage() {
+  const canCreate = hasPermission('Sourcing', 'Job Management', 'create');
+  const canUpdate = hasPermission('Sourcing', 'Job Management', 'create');
   const navigate = useNavigate();
   const { id: idParam } = useParams();
   const creating = !idParam; // /new vs /:id/edit
+  // No CUD permission at all for this mode → whole page is read-only.
+  const canEditNow = creating ? canCreate : canUpdate;
 
   const [job, setJob] = useState(null);                   // server state
   const [form, setForm] = useState(null);                 // editable form
@@ -189,17 +195,17 @@ export default function JobEditPage() {
   // a submitted assessment) or leave the job pointing at an instrument some
   // candidates were never evaluated on.
   const isLocked = useCallback((field) => {
-    if (!job || job.status === 'Draft') return false;
+    if(!canEditNow) return true;
+    if(!job || job.status == 'Draft') return false;
     const LOCKED_ON_ACTIVE = new Set([
-      'job_title', 'company', 'pay_min', 'pay_max', 'pay_type', 'currency',
-      'assessment_battery',
-    ]);
-    return LOCKED_ON_ACTIVE.has(field);
-  }, [job]);
+      'job_title', 'company', 'pay_min', 'pay_max', 'pay_type', 'currency', 'assessment_battery'
+    ])
+  })
 
   // --- Auto-save handler (called via setField) ---
   const doSave = useCallback(async () => {
     if (!form) return;
+    if (!canEditNow) return; //blocked by permission - never autosave
     if (savingRef.current) { pendingRef.current = true; return; }
     savingRef.current = true;
     setSaving(true);
@@ -350,8 +356,9 @@ export default function JobEditPage() {
   }, [form]);
 
   const handlePublish = async () => {
+    if (!canEditNow) return;
     if (!job?.id) {
-      setValidationErrors(['Save the draft first by filling Basics.']);
+      setValidationErrors(['Save the draft by filling Basics.']);
       return;
     }
    if (missingRequired.length > 0 || invalidUrlFields.length > 0 || !hasStages) {
@@ -501,6 +508,7 @@ export default function JobEditPage() {
               <JDSection
                 form={form}
                 setField={setField}
+                isLocked={isLocked}
                 missingRequired={missingRequired}
                 showValidation={validationErrors.length > 0}
                 onGenerateAI={handleGenerateAI}
@@ -660,8 +668,8 @@ export default function JobEditPage() {
                     size="sm"
                     className="text-xs"
                     onClick={handlePublish}
-                    disabled={publishing || !job?.id}
-                    title={!job?.id ? 'Fill Basics to start (auto-creates draft)' : ''}
+                    disabled={publishing || !job?.id || !canEditNow}
+                    title={!canEditNow ? 'You do not have permission to publish this job.' : !job?.id ? 'Fill Basics to start (auto-creates draft)' : ''}
                   >
                     {publishing ? <Loader2 className="h-3.5 w-3.5 mr-1.5 animate-spin" /> : <Send className="h-3.5 w-3.5 mr-1.5" />}
                     Publish job
@@ -883,6 +891,7 @@ function BasicsSection({ form, setField, isLocked, missingRequired, invalidUrlFi
               type="url"
               value={form.company_url || ''}
               onChange={(e) => setField('company_url', e.target.value)}
+              disabled={isLocked('company_url')}
               placeholder="https://your-company.com"
               className="text-sm"
             />
@@ -895,19 +904,20 @@ function BasicsSection({ form, setField, isLocked, missingRequired, invalidUrlFi
             <Input
               value={form.job_location || ''}
               onChange={(e) => setField('job_location', e.target.value)}
+              disabled={isLocked('job_location')}
               placeholder="e.g. Jakarta, Indonesia"
               className="text-sm"
             />
           </Field>
           <div className="grid grid-cols-3 gap-2">
             <Field label="Work option" required missing={isMissing('work_option')}>
-              <SelectBox value={form.work_option || ''} onChange={(v) => setField('work_option', v)} options={WORK_OPTIONS} />
+              <SelectBox value={form.work_option || ''} onChange={(v) => setField('work_option', v)} options={WORK_OPTIONS} disabled={isLocked('work_option')} />
             </Field>
             <Field label="Work type" required missing={isMissing('work_type')}>
-              <SelectBox value={form.work_type || ''} onChange={(v) => setField('work_type', v)} options={WORK_TYPES} />
+              <SelectBox value={form.work_type || ''} onChange={(v) => setField('work_type', v)} options={WORK_TYPES} disabled={isLocked('work_type')} />
             </Field>
             <Field label="Seniority" required missing={isMissing('seniority_level')}>
-              <SelectBox value={form.seniority_level || ''} onChange={(v) => setField('seniority_level', v)} options={SENIORITY_LEVELS} />
+              <SelectBox value={form.seniority_level || ''} onChange={(v) => setField('seniority_level', v)} options={SENIORITY_LEVELS} disabled={isLocked('seniority_level')} />
             </Field>
           </div>
         </div>
@@ -945,7 +955,7 @@ function BasicsSection({ form, setField, isLocked, missingRequired, invalidUrlFi
                 />
               </Field>
               <Field label="Show salary?" required missing={isMissing('pay_display')}>
-                <SelectBox value={form.pay_display || ''} onChange={(v) => setField('pay_display', v)} options={PAY_DISPLAY_OPTIONS} />
+                <SelectBox value={form.pay_display || ''} onChange={(v) => setField('pay_display', v)} options={PAY_DISPLAY_OPTIONS} disabled={isLocked('pay_display')} />
               </Field>
             </div>
 
@@ -987,11 +997,13 @@ function BasicsSection({ form, setField, isLocked, missingRequired, invalidUrlFi
             </div>
 
             <Popover>
-            <PopoverTrigger asChild>
+            <PopoverTrigger asChild disabled={isLocked('sla_start_date')}>
               <div
                 role="button"
-                tabIndex={0}
-                className="grid grid-cols-2 rounded-md border border-input bg-background cursor-pointer hover:bg-muted/30 transition-colors focus:outline-none focus:ring-1 focus:ring-ring"
+                tabIndex={isLocked('sla_start_date') ? -1 : 0}
+                className={`grid grid-cols-2 rounded-md border border-input bg-background transition-colors focus:outline-none focus:ring-1 focus:ring-ring ${
+                  isLocked('sla_start_date') ? 'opacity-50 cursor-not-allowed pointer-events-none' : 'cursor-pointer hover:bg-muted/30'
+                }`}
               >
                 <div className="flex flex-col gap-1 p-3 border-r">
                   <span className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wide">Start date</span>
@@ -1040,7 +1052,7 @@ function BasicsSection({ form, setField, isLocked, missingRequired, invalidUrlFi
 
 /* ───── Job description section ───── */
 function JDSection({
-  form, setField, missingRequired, showValidation,
+  form, setField, isLocked, missingRequired, showValidation,
   onGenerateAI, generating, generateError, canGenerate,
   onGenerateSkillsAI, generatingSkills, generateSkillsError, canGenerateSkills,
   step = 1, totalSteps = 5, onStepChange,
@@ -1083,8 +1095,8 @@ function JDSection({
               variant="outline"
               className="text-xs"
               onClick={onGenerateAI}
-              disabled={!canGenerate || generating}
-              title={!canGenerate ? 'Save the draft first by filling the job title in Basics.' : ''}
+              disabled={!canGenerate || generating || isLocked('job_desc')}
+              title={isLocked('job_desc') ? 'You do not have permission to edit this job.' : !canGenerate ? 'Save the draft first by filling the job title in Basics.' : ''}
             >
               {generating ? (
                 <><Loader2 className="h-3.5 w-3.5 mr-1.5 animate-spin" /> Generating…</>
@@ -1114,6 +1126,7 @@ function JDSection({
           <Textarea
             value={form.job_desc || ''}
             onChange={(e) => setField('job_desc', e.target.value)}
+            disabled={isLocked('job_desc')}
             placeholder="2–3 sentence overview of the role."
             rows={8}
             className="text-sm"
@@ -1124,6 +1137,7 @@ function JDSection({
           <Textarea
             value={form.qualifications || ''}
             onChange={(e) => setField('qualifications', e.target.value)}
+            disabled={isLocked('qualifications')}
             placeholder="Bullet points — what they'll do and what they need."
             rows={12}
             className="text-sm"
@@ -1137,8 +1151,8 @@ function JDSection({
             variant="outline"
             className="text-xs"
             onClick={onGenerateSkillsAI}
-            disabled={!canGenerateSkills || generatingSkills}
-            title={!canGenerateSkills ? 'Fill in the description or qualifications first.' : ''}
+            disabled={!canGenerateSkills || generatingSkills || isLocked('required_skills')}
+            title={isLocked('required_skills') ? 'You do not have permission to edit this job.' : !canGenerateSkills ? 'Fill in the description or qualifications first.' : ''}
           >
             {generatingSkills ? (
               <><Loader2 className="h-3.5 w-3.5 mr-1.5 animate-spin" /> Generating…</>

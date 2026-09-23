@@ -45,8 +45,13 @@ export function RecruiterFormDialog({ open, onOpenChange, recruiter, onSubmit, l
       setError('Name is required');
       return;
     }
-    if (!form.email.trim()) {
+    
+    if(!form.email.trim()){
       setError('Email is required');
+      return;
+    }
+    if(!/^[^\s@]+@[^\s@]+$/.test(form.email.trim())) {
+      setError('Enter a valid email address (must contain @)');
       return;
     }
 

@@ -62,15 +62,20 @@ export function RoleFormDialog({
     });
   };
 
-  const toggleMenu = (permissions) => {
-    const ids = permissions.map(p => p.id);
-    const allChecked = ids.every(id => selected.has(id));
-    setSelected(prev => {
-      const next = new Set(prev);
-      if (allChecked) ids.forEach(id => next.delete(id));
-      else            ids.forEach(id => next.add(id));
-      return next;
-    });
+  // const toggleMenu = (permissions) => {
+  //   const ids = permissions.map(p => p.id);
+  //   const allChecked = ids.every(id => selected.has(id));
+  //   setSelected(prev => {
+  //     const next = new Set(prev);
+  //     if (allChecked) ids.forEach(id => next.delete(id));
+  //     else            ids.forEach(id => next.add(id));
+  //     return next;
+  //   });
+  // };
+  const toggleMenuRead = (permissions) => {
+    const readPerm = permissions.find(p => p.functionality === 'read');
+    if(!readPerm) return;
+    togglePermission(readPerm.id);
   };
 
   const handleSubmit = async (e) => {
@@ -177,14 +182,17 @@ export function RoleFormDialog({
                       {mod.name}
                     </div>
                     {mod.menus.map(menu => {
-                      const allChecked = menu.permissions.every(p => selected.has(p.id));
+                      const readPerm = menu.permissions.find(p => p.functionality === 'read');
+                      const readChecked = readPerm ? selected.has(readPerm.id) : false;
                       return (
                         <div key={menu.id} className="px-4 py-2 flex items-center gap-3 hover:bg-muted/20">
                           <input
                             type="checkbox"
+                            title="Toggle Read access for this menu"
                             className="h-4 w-4 rounded border-input accent-primary cursor-pointer"
-                            checked={allChecked}
-                            onChange={() => toggleMenu(menu.permissions)}
+                            checked={readChecked}
+                            onChange={() => toggleMenuRead(menu.permissions)}
+                            disabled={!readPerm}
                           />
                           <span className="text-sm w-40 shrink-0">{menu.name}</span>
                           <div className="flex flex-wrap gap-2">
