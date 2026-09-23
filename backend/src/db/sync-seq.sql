@@ -28,3 +28,4 @@ SELECT setval('candidate_job_score_id_seq',       COALESCE((SELECT MAX(id) FROM 
 SELECT setval('core_applicant_assessment_id_seq', COALESCE((SELECT MAX(id) FROM core_applicant_assessment), 1));
 SELECT setval('candidate_offer_id_seq',           COALESCE((SELECT MAX(id) FROM candidate_offer), 1));
 SELECT setval('onboarding_assessment_id_seq',     (SELECT MAX(id) FROM onboarding_assessment));
+SELECT setval('master_template_stage_id_seq',      COALESCE((SELECT MAX(id) FROM master_template_stage), 1));

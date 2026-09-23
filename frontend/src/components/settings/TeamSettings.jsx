@@ -46,17 +46,21 @@ function InviteMemberDialog({ open, onOpenChange, roles, onInvite, submitting, e
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [roleId, setRoleId]     = useState('');
+  const [touched, setTouched]   = useState(false);
 
   useEffect(() => {
     if (open) {
       setEmail(''); setUsername(''); setPassword('');
       setRoleId(roles[0] ? String(roles[0].id) : '');
+      setTouched(false);
     }
   }, [open, roles]);
 
-  const canSubmit = email.trim() && username.trim() && password.trim() && roleId;
+  const isEmailValid = /^[^\s@]+@[^\s@]+$/.test(email.trim());
+  const canSubmit = isEmailValid && username.trim() && password.trim() && roleId;
 
   const handleSubmit = () => {
+    setTouched(true);
     if (!canSubmit) return;
     onInvite({
       email: email.trim(),
@@ -85,8 +89,13 @@ function InviteMemberDialog({ open, onOpenChange, roles, onInvite, submitting, e
               value={email}
               onChange={(e) => setEmail(e.target.value)}
               placeholder="name@company.co.id"
-              className="w-full h-9 rounded-md border px-3 text-sm focus:outline-none focus:ring-1 focus:ring-ring"
+              className={`w-full h-9 rounded-md border px-3 text-sm focus:outline-none focus:ring-1 focus:ring-ring ${
+                touched && !isEmailValid ? 'border-red-300' : ''
+              }`}
             />
+            {touched && !isEmailValid && (
+              <p className="text-xs text-red-600">Enter a valid email address (must contain @)</p>
+            )}
           </div>
           <div className="space-y-1.5">
             <label className="text-xs font-medium text-muted-foreground">Username</label>
