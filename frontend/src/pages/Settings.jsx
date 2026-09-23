@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { useLocation } from 'react-router-dom';
 import {
   Settings2, Users, ShieldCheck, Workflow, Plug, Bell, Globe,
-  ShieldQuestion, FileText, CreditCard, CalendarClock, Mail, Palette,
+  ShieldQuestion, FileText, CreditCard, CalendarClock, Mail, Palette,UserRound, 
 } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
