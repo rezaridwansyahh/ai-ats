@@ -1,24 +1,8 @@
 import { useEffect, useState } from 'react';
 import { useTheme } from 'next-themes';
-import { Sun, Moon, Monitor, Check } from 'lucide-react';
+import { Sun, Moon, Monitor, Check, Loader2 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-
-/*
- * Theme (appearance) settings.
- *
- * Light/Dark/System is delegated to `next-themes` (wired up via
- * <ThemeProvider attribute="class"> in main.jsx) instead of hand-rolled
- * localStorage + matchMedia logic — it owns the `dark` class on <html>,
- * syncs with the OS, and persists the choice, so there's only one thing
- * ever touching that class.
- *
- * Accent color is a separate, simpler concern: it just sets
- * `data-accent="..."` on <html>. theme-override.css reads that attribute
- * to swap --primary, --ring, --chart-1, --sidebar-primary, etc. Anything
- * using the `primary` token (bg-primary / text-primary / border-primary,
- * or the shared .hover-glow / .card-accent / .tab-active classes) follows
- * it automatically — no per-component wiring needed for those.
- */
+import { getSetting, saveSetting } from '@/api/setting.api';
 
 const THEME_OPTIONS = [
   { id: 'light', label: 'Light', icon: Sun, description: 'Bright background, dark text.' },
@@ -33,6 +17,8 @@ const ACCENT_OPTIONS = [
   { id: 'pink', label: 'Pink', swatch: '#BE185D' },
 ];
 
+const DEFAULT_ACCENT = 'green';
+
 function applyAccent(accent) {
   document.documentElement.setAttribute('data-accent', accent);
 }
@@ -40,22 +26,59 @@ function applyAccent(accent) {
 export default function ThemeSettings() {
   const { theme, setTheme } = useTheme();
 
-  const [accent, setAccent] = useState(() => {
-    try {
-      return localStorage.getItem('accent') || 'green';
-    } catch {
-      return 'green';
-    }
-  });
+  const [accent, setAccentState] = useState(DEFAULT_ACCENT);
+  const [remoteSetting, setRemoteSetting] = useState({});
+  const [loading, setLoading] = useState(true);
+  const [savingAccent, setSavingAccent] = useState(null); // accent id currently being saved, or null
 
   useEffect(() => {
-    applyAccent(accent);
-    try {
-      localStorage.setItem('accent', accent);
-    } catch {
-      // ignore write failures (e.g. private browsing)
+    let cancelled = false;
+
+    async function load() {
+      try {
+        const res = await getSetting('theme');
+        if (cancelled) return;
+        const value = res?.data?.data || {};
+        const loadedAccent = ACCENT_OPTIONS.some((o) => o.id === value.accent)
+          ? value.accent
+          : DEFAULT_ACCENT;
+        setRemoteSetting(value);
+        setAccentState(loadedAccent);
+        applyAccent(loadedAccent);
+      } catch (err) {
+        console.error('Failed to load theme setting:', err);
+        if (!cancelled) applyAccent(DEFAULT_ACCENT);
+      } finally {
+        if (!cancelled) setLoading(false);
+      }
     }
-  }, [accent]);
+
+    load();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  async function handleAccentChange(nextAccent) {
+    if (nextAccent === accent || savingAccent) return;
+
+    const previousAccent = accent;
+    setAccentState(nextAccent);
+    applyAccent(nextAccent);
+    setSavingAccent(nextAccent);
+
+    try {
+      const merged = { ...remoteSetting, accent: nextAccent };
+      const res = await saveSetting('theme', merged);
+      setRemoteSetting(res?.data?.data || merged);
+    } catch (err) {
+      console.error('Failed to save accent color:', err);
+      setAccentState(previousAccent);
+      applyAccent(previousAccent);
+    } finally {
+      setSavingAccent(null);
+    }
+  }
 
   return (
     <div className="space-y-4">
@@ -107,34 +130,47 @@ export default function ThemeSettings() {
         <CardHeader className="border-b !pb-3 pt-3">
           <CardTitle className="text-sm">Accent color</CardTitle>
           <p className="text-sm text-muted-foreground font-normal">
-            Sets the brand color used across navigation, buttons, and highlights.
+            Sets the brand color used across navigation, buttons, and highlights for everyone in your company.
           </p>
         </CardHeader>
         <CardContent className="py-4">
-          <div className="flex flex-wrap items-center gap-3">
-            {ACCENT_OPTIONS.map((option) => {
-              const isActive = accent === option.id;
-              return (
-                <button
-                  key={option.id}
-                  type="button"
-                  onClick={() => setAccent(option.id)}
-                  title={option.label}
-                  className={`flex items-center gap-2 rounded-full border pl-1.5 pr-3 py-1.5 text-sm transition-colors ${
-                    isActive ? 'border-foreground/30 bg-muted' : 'border-border hover:bg-muted'
-                  }`}
-                >
-                  <span
-                    className="flex h-6 w-6 items-center justify-center rounded-full"
-                    style={{ backgroundColor: option.swatch }}
+          {loading ? (
+            <div className="flex items-center gap-2 text-sm text-muted-foreground">
+              <Loader2 className="h-4 w-4 animate-spin" />
+              Loading...
+            </div>
+          ) : (
+            <div className="flex flex-wrap items-center gap-3">
+              {ACCENT_OPTIONS.map((option) => {
+                const isActive = accent === option.id;
+                const isSaving = savingAccent === option.id;
+                return (
+                  <button
+                    key={option.id}
+                    type="button"
+                    onClick={() => handleAccentChange(option.id)}
+                    title={option.label}
+                    disabled={!!savingAccent}
+                    className={`flex items-center gap-2 rounded-full border pl-1.5 pr-3 py-1.5 text-sm transition-colors disabled:opacity-60 ${
+                      isActive ? 'border-foreground/30 bg-muted' : 'border-border hover:bg-muted'
+                    }`}
                   >
-                    {isActive && <Check className="h-3.5 w-3.5 text-white" />}
-                  </span>
-                  {option.label}
-                </button>
-              );
-            })}
-          </div>
+                    <span
+                      className="flex h-6 w-6 items-center justify-center rounded-full"
+                      style={{ backgroundColor: option.swatch }}
+                    >
+                      {isSaving ? (
+                        <Loader2 className="h-3.5 w-3.5 text-white animate-spin" />
+                      ) : (
+                        isActive && <Check className="h-3.5 w-3.5 text-white" />
+                      )}
+                    </span>
+                    {option.label}
+                  </button>
+                );
+              })}
+            </div>
+          )}
         </CardContent>
       </Card>
     </div>
