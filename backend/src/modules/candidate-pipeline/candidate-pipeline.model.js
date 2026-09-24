@@ -271,33 +271,25 @@ static async getNotificationContext(candidate_id) {
   }
 
   static async getListStages(candidate_id) {
-    const result = await getDb().query(`
-      WITH candidate_job AS (
-        SELECT job_id FROM master_candidate WHERE id = $1
-      )
-      SELECT 
-        js.id,
-        js.name,
-        js.stage_order,
-        CASE 
-          WHEN js.master_id IS NOT NULL THEN 'From Template'
-          ELSE 'Custom'
-        END as stage_type,
-        js.master_id,
-        js.job_id
-      FROM job_stage js
-      WHERE 
-        -- Use the job_id from the candidate
-        js.job_id = (SELECT job_id FROM candidate_job)
-        OR js.master_id IN (
-          SELECT cjt.template_stage_id
-          FROM core_job_template cjt
-          WHERE cjt.job_id = (SELECT job_id FROM candidate_job)
-        )
-      ORDER BY js.stage_order ASC
-    `, [candidate_id]);
-    return result.rows;
-  }
+      const result = await getDb().query(`
+        SELECT 
+          js.id,
+          js.name,
+          js.stage_order,
+          CASE 
+            WHEN js.master_id IS NOT NULL THEN 'From Template'
+            ELSE 'Custom'
+          END as stage_type,
+          js.master_id,
+          js.job_id
+        FROM master_candidate c
+        LEFT JOIN core_job_template cjt ON cjt.job_id = c.job_id
+        JOIN job_stage js ON (js.job_id = c.job_id OR js.master_id = cjt.template_stage_id)
+        WHERE c.id = $1
+        ORDER BY js.stage_order ASC
+      `, [candidate_id]);
+      return result.rows;
+    }
 
   static async getCurrentStages(candidate_id) {
     const result = await getDb().query(`
