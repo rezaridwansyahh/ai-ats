@@ -59,6 +59,9 @@ import MedicalAssessmentPage from "./pages/MedicalAssessment"
 import InterviewPacksPage from "./pages/InterviewPacksPage"
 import InterviewPackPortal from "./pages/portal/InterviewPackPortal"
 
+import AdminDashboardLayout from "./components/layout/Admin-Dashboard-Layout"
+import AdminDashboard from "./pages/AdminDashboard" 
+
 function App() {
   return (
     <>
@@ -81,36 +84,36 @@ function App() {
 
         {/* All authenticated routes share DashboardLayout */}
         <Route element={<DashboardLayout />}>
-          <Route path="/dashboard" element={<DashboardPage />} />
-          <Route path="/candidate-pipeline" element={<CandidatePipelinePage />} />
-          <Route path="/candidate-pipeline/:id" element={<CandidatePipelineDetailPage />} />
-          <Route path="/candidate-detail/:id" element={<CandidateProfile />} />
+        <Route path="/dashboard" element={<DashboardPage />} />
+        <Route path="/candidate-pipeline" element={<CandidatePipelinePage />} />
+        <Route path="/candidate-pipeline/:id" element={<CandidatePipelineDetailPage />} />
+        <Route path="/candidate-detail/:id" element={<CandidateProfile />} />
 
-          <Route path="/sourcing/job-management" element={<JobManagementPage />} />
-          <Route path="/sourcing/job-management/new" element={<JobEditPage />} />
-          <Route path="/sourcing/job-management/:id/edit" element={<JobEditPage />} />
-          <Route path="/sourcing/job-management/:id" element={<JobDetailPage />} />
-          <Route path="/sourcing/source-management" element={<SourceManagementPage />} />
-          <Route path="/sourcing/talent-pool" element={<TalentPoolPage />} />
-          <Route path="/sourcing/source-candidate" element={<SourceCandidatePage />} />
+        <Route path="/sourcing/job-management" element={<JobManagementPage />} />
+        <Route path="/sourcing/job-management/new" element={<JobEditPage />} />
+        <Route path="/sourcing/job-management/:id/edit" element={<JobEditPage />} />
+        <Route path="/sourcing/job-management/:id" element={<JobDetailPage />} />
+        <Route path="/sourcing/source-management" element={<SourceManagementPage />} />
+        <Route path="/sourcing/talent-pool" element={<TalentPoolPage />} />
+        <Route path="/sourcing/source-candidate" element={<SourceCandidatePage />} />
 
-          {/* Backward-compat: old `AI Matching` menu name still navigates here */}
-          <Route path="/selection/ai-matching" element={<Navigate to="/selection/ai-screening" replace />} />
-          <Route path="/ai-matching" element={<Navigate to="/selection/ai-screening" replace />} />
+        {/* Backward-compat: old `AI Matching` menu name still navigates here */}
+        <Route path="/selection/ai-matching" element={<Navigate to="/selection/ai-screening" replace />} />
+        <Route path="/ai-matching" element={<Navigate to="/selection/ai-screening" replace />} />
 
-          <Route path="/selection/ai-screening" element={<AIScreeningWorkboard />} />
-          <Route path="/selection/ai-screening/job/:jobId" element={<AIScreeningPage />} />
-          <Route path="/selection/ai-screening/candidate/:candidateId" element={<AIScreeningCandidatePage />} />
+        <Route path="/selection/ai-screening" element={<AIScreeningWorkboard />} />
+        <Route path="/selection/ai-screening/job/:jobId" element={<AIScreeningPage />} />
+        <Route path="/selection/ai-screening/candidate/:candidateId" element={<AIScreeningCandidatePage />} />
 
-          <Route path="/selection/psych-assessment" element={<PsychAssesmentPage />} />
-          <Route path="/selection/psych-assessment/:jobId/:participantId" element={<CandidateDetailPage />} />
-          <Route path="/selection/medical-assessment" element={<MedicalAssessmentPage />} />
+        <Route path="/selection/psych-assessment" element={<PsychAssesmentPage />} />
+        <Route path="/selection/psych-assessment/:jobId/:participantId" element={<CandidateDetailPage />} />
+        <Route path="/selection/medical-assessment" element={<MedicalAssessmentPage />} />
 
-          <Route path="/selection/interview" element={<InterviewWorkboard />} />
-          <Route path="/selection/interview/job/:jobId" element={<InterviewJobPage/>} />
-          <Route path="/selection/interview/candidate/:candidateId" element={<InterviewCandidatePage />} />
-          <Route path="/selection/interview/calibration/:jobId" element={<InterviewCalibration />} />
-          <Route path="/selection/interview-pack" element={<InterviewPacksPage />} />
+        <Route path="/selection/interview" element={<InterviewWorkboard />} />
+        <Route path="/selection/interview/job/:jobId" element={<InterviewJobPage/>} />
+        <Route path="/selection/interview/candidate/:candidateId" element={<InterviewCandidatePage />} />
+        <Route path="/selection/interview/calibration/:jobId" element={<InterviewCalibration />} />
+        <Route path="/selection/interview-pack" element={<InterviewPacksPage />} />
 
         
         <Route path="/selection/background-check" element={<BackgroundCheckPage />} />
@@ -143,7 +146,14 @@ function App() {
         {/* Catch-all: any unregistered path shows Coming Soon */}
         <Route path="*" element={<ComingSoonPage />} />
         </Route>
+        {/* Superadmin routes — separate layout, no PipelineBar */}
+        <Route element={<AdminDashboardLayout />}>
+          <Route path="/portal/admin/dashboard" element={<AdminDashboard />} />
+          <Route path="/portal/admin/companies" element={<ComingSoonPage />} />
+          <Route path="/portal/admin/roles" element={<ComingSoonPage />} />
+        </Route>
       </Routes>
+
       </EndToEndTourProvider>
       <Toaster />
     </>
