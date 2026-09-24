@@ -154,9 +154,11 @@ class CandidatePipelineService {
 
     const listStages = await CandidatePipeline.getListStages(candidate_id);
     const currentStagesIndex = listStages.findIndex(s => s.id === job_stage_id);
-    const nextStageId = listStages[currentStagesIndex + 1]?.id
-      ? listStages[currentStagesIndex + 1].id
-      : listStages[currentStagesIndex].id;
+    if (currentStagesIndex === -1) {
+      throw { status: 409, message: 'Candidate\'s current stage is not part of this job\'s stage list — cannot determine next stage' };
+    }
+    const isLastStage = currentStagesIndex === listStages.length - 1;
+    const nextStageId = isLastStage ? listStages[currentStagesIndex].id : listStages[currentStagesIndex + 1].id;
 
     const result = await CandidatePipeline.addStage(candidate_id, nextStageId, decision);
 

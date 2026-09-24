@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate, useParams, useLocation } from 'react-router-dom';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle,} from '@/components/ui/dialog';
 import { ArrowLeft, ArrowRight, Check, Loader2, Printer, Save, FileText, Wand2, ClipboardCheck, ThumbsUp, Pause, ThumbsDown } from 'lucide-react';
 import SetupTab from '@/components/candidate-detail/SetupTab';
 import TakeTab from '@/components/candidate-detail/TakeTab';
@@ -110,9 +111,6 @@ export default function CandidateDetailPage() {
   }, [candidateId, jobId]);
 
   /* ── Fall back to the job's battery when no session exists yet ── */
-  // Runs after both the session-restore effect (which sets `battery` from an
-  // existing session, if any) and the job fetch above. Only fills `battery`
-  // when nothing has claimed it yet, so it never overrides a real session.
   useEffect(() => {
     if (battery == null && jobBattery) setBattery(jobBattery);
   }, [jobBattery, battery]);
@@ -196,7 +194,6 @@ export default function CandidateDetailPage() {
   const handleRevoke = (sessionId) =>
     setExistingSessions((prev) => prev.filter((s) => s.id !== sessionId));
 
-  /* ── finalRec: sidebar pick + save + optional advance ── */
   const handleFinalRec = (val) => {
     if (!canEdit) return;
     setSidebarFinalRec(val);
@@ -212,8 +209,9 @@ export default function CandidateDetailPage() {
       await addCandidateStage(candidateId, latestStage, 'advance');
       setAdvanceStatus('done');
       setTimeout(() => setAdvanceStatus('idle'), 3000);
-    } catch {
+    } catch (err) {
       setAdvanceStatus('error');
+      toast.error(err.response?.data?.message || 'Failed to advance stage');
     }
   };
 
@@ -396,77 +394,117 @@ const TINDAK_OPTIONS = [
   { val: 'evaluasi',         label: 'Hold',    icon: Pause,       cls: 'border-amber-400  bg-amber-50  text-amber-700',   activeCls: 'bg-amber-500  text-white border-amber-500'  },
   { val: 'tidak',            label: 'Reject',  icon: ThumbsDown,  cls: 'border-rose-400   bg-rose-50   text-rose-700',    activeCls: 'bg-rose-600   text-white border-rose-600'   },
 ];
-function TindakLanjutCard({ finalRec, onPick, onAdvance, advanceStatus, hasStage }) {
-  const locked = !!finalRec;
-  const canUnlock = locked && advanceStatus !== 'done';
+
+const FINAL_DECISIONS = ['direkomendasikan', 'tidak'];
+
+const TINDAK_CONFIRM_COPY = {
+  direkomendasikan: 'This will mark the candidate as advancing and unlocks the "Advance Stage" action. This is final and cannot be changed afterward.',
+  evaluasi:         'This puts the candidate on hold. You can still move them to Advance or Reject later.',
+  tidak:            'This will mark the candidate as rejected. This is final and cannot be changed afterward.',
+};
+
+function TindakLanjutCard({ finalRec, onPick, onAdvance, advanceStatus, hasStage, canEdit }) {
+  const locked = FINAL_DECISIONS.includes(finalRec); // Hold does NOT lock
+  const [pendingVal, setPendingVal] = useState(null);
+  const pendingOption = TINDAK_OPTIONS.find((o) => o.val === pendingVal);
+
+  const requestPick = (val) => {
+    if (locked || !canEdit) return;
+    if (val === finalRec) return; // already this state, nothing to confirm
+    setPendingVal(val);
+  };
+
+  const confirmPick = () => {
+    if (pendingVal) onPick(pendingVal);
+    setPendingVal(null);
+  };
 
   return (
-    <Card>
-      <CardContent className="p-3 space-y-2.5">
-        <div className="flex items-center justify-between gap-2">
+    <>
+      <Card>
+        <CardContent className="p-3 space-y-2.5">
           <p className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
             Decision
           </p>
-          {canUnlock && (
-            <button
-              type="button"
-              onClick={() => onPick(null)}
-              className="text-[10px] font-medium text-muted-foreground hover:text-foreground px-2 py-0.5 rounded-full border border-border hover:border-foreground/30 hover:bg-muted/50 transition-colors"
-            >
-              Ubah keputusan
-            </button>
+
+          <div className="space-y-1.5">
+            {TINDAK_OPTIONS.map(({ val, label, icon: Icon, cls, activeCls }) => {
+              const active   = finalRec === val;
+              const disabled = !canEdit || (locked && !active);
+              return (
+                <button
+                  key={val}
+                  type="button"
+                  onClick={() => requestPick(val)}
+                  disabled={disabled}
+                  className={`w-full flex items-center gap-2 px-3 py-2 rounded-md text-xs font-semibold border transition-colors ${
+                    active ? activeCls : `${cls} hover:opacity-90`
+                  } ${disabled && !active ? 'opacity-40 cursor-not-allowed hover:opacity-40' : ''} ${disabled && active ? 'cursor-default' : ''}`}
+                >
+                  <Icon className="h-3.5 w-3.5 shrink-0" />
+                  {label}
+                  {active && <Check className="h-3 w-3 ml-auto" />}
+                </button>
+              );
+            })}
+          </div>
+
+          {finalRec === 'evaluasi' && (
+            <p className="text-[10px] text-muted-foreground leading-snug">
+              On hold — you can still Advance or Reject.
+            </p>
           )}
-        </div>
+          {locked && (
+            <p className="text-[10px] text-muted-foreground leading-snug">
+              Decision recorded and locked.
+            </p>
+          )}
 
-        {/* Pick buttons */}
-        <div className="space-y-1.5">
-          {TINDAK_OPTIONS.map(({ val, label, icon: Icon, cls, activeCls }) => {
-            const active   = finalRec === val;
-            const disabled = locked && !active;
-            return (
-              <button
-                key={val}
-                type="button"
-                onClick={() => !locked && onPick(val)}
-                disabled={disabled}
-                className={`w-full flex items-center gap-2 px-3 py-2 rounded-md text-xs font-semibold border transition-colors ${
-                  active ? activeCls : `${cls} hover:opacity-90`
-                } ${disabled ? 'opacity-40 cursor-not-allowed hover:opacity-40' : ''}`}
-              >
-                <Icon className="h-3.5 w-3.5 shrink-0" />
-                {label}
-                {active && <Check className="h-3 w-3 ml-auto" />}
-              </button>
-            );
-          })}
-        </div>
+          {finalRec === 'direkomendasikan' && canEdit && (
+            <Button
+              size="sm"
+              className="w-full text-xs"
+              onClick={onAdvance}
+              disabled={!hasStage || advanceStatus === 'loading' || advanceStatus === 'done'}
+            >
+              {advanceStatus === 'loading' ? (
+                <><Loader2 className="h-3.5 w-3.5 mr-1.5 animate-spin" /> Advancing…</>
+              ) : advanceStatus === 'done' ? (
+                <><Check className="h-3.5 w-3.5 mr-1.5" /> Stage Advanced</>
+              ) : (
+                <>Advance Stage <ArrowRight className="h-3.5 w-3.5 ml-1.5" /></>
+              )}
+            </Button>
+          )}
 
-        {/* Advance stage button — only enabled when direkomendasikan */}
-        {finalRec === 'direkomendasikan' && canEdit && (
-          <Button
-            size="sm"
-            className="w-full text-xs"
-            onClick={onAdvance}
-            disabled={!hasStage || advanceStatus === 'loading' || advanceStatus === 'done'}
-          >
-            {advanceStatus === 'loading' ? (
-              <><Loader2 className="h-3.5 w-3.5 mr-1.5 animate-spin" /> Advancing…</>
-            ) : advanceStatus === 'done' ? (
-              <><Check className="h-3.5 w-3.5 mr-1.5" /> Stage Advanced</>
-            ) : (
-              <>Advance Stage <ArrowRight className="h-3.5 w-3.5 ml-1.5" /></>
-            )}
-          </Button>
-        )}
+          {advanceStatus === 'error' && (
+            <p className="text-[10px] text-rose-600 leading-snug">Failed to advance — try again.</p>
+          )}
+          {!hasStage && finalRec === 'direkomendasikan' && (
+            <p className="text-[10px] text-amber-600 leading-snug">No pipeline stage configured for this candidate.</p>
+          )}
+        </CardContent>
+      </Card>
 
-        {advanceStatus === 'error' && (
-          <p className="text-[10px] text-rose-600 leading-snug">Failed to advance — try again.</p>
-        )}
-        {!hasStage && finalRec === 'direkomendasikan' && (
-          <p className="text-[10px] text-amber-600 leading-snug">No pipeline stage configured for this candidate.</p>
-        )}
-      </CardContent>
-    </Card>
+      <Dialog open={!!pendingVal} onOpenChange={(open) => !open && setPendingVal(null)}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Confirm: {pendingOption?.label}?</DialogTitle>
+            <DialogDescription>
+              {pendingVal ? TINDAK_CONFIRM_COPY[pendingVal] : ''}
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setPendingVal(null)}>
+              Cancel
+            </Button>
+            <Button onClick={confirmPick}>
+              Confirm {pendingOption?.label}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+    </>
   );
 }
 
@@ -573,8 +611,6 @@ function AssessmentActionCard({ activeKey, completed, battery, onSelect, saveSta
 const STEP_ICONS = { setup: FileText, take: Wand2, decide: ClipboardCheck };
 
 function AssessmentStepsNav({ activeKey, onSelect, completed }) {
-  const activeIdx = STEPS.findIndex((s) => s.key === activeKey);
-
   const canGo = (targetIdx) => {
     const targetKey = STEPS[targetIdx]?.key;
     if (targetKey === 'decide') return !!completed.take;
