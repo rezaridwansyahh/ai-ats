@@ -45,6 +45,7 @@ export default function JobCreation({
   loading,
   onDeleteJob,
   onSelectJob,
+  canDelete = true,
 }) {
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
@@ -280,16 +281,18 @@ export default function JobCreation({
                             >
                               Open <ChevronRight className="h-3 w-3 ml-1" />
                             </Button>
-                            <Button
-                              disabled={job.status === 'Active'}
-                              variant="ghost"
-                              size="icon"
-                              className="h-7 w-7 rounded-lg text-red-500 hover:text-red-600"
-                              onClick={e => handleDeleteClick(e, job)}
-                              title="Delete"
-                            >
-                              <Trash2 className="h-3.5 w-3.5" />
-                            </Button>
+                            {canDelete && (
+                              <Button
+                                disabled={job.status === 'Active'}
+                                variant="ghost"
+                                size="icon"
+                                className="h-7 w-7 rounded-lg text-red-500 hover:text-red-600"
+                                onClick={e => handleDeleteClick(e, job)}
+                                title="Delete"
+                              >
+                                <Trash2 className="h-3.5 w-3.5" />
+                              </Button>
+                            )}
                           </div>
                         </TableCell>
                       </TableRow>

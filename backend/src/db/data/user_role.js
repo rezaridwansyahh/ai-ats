@@ -11,4 +11,6 @@ export default [
 
   // Intern
   { id: 5, user_id: 5, role_id: 4 }, // User 5 -> Intern
+
+  { id: 6, user_id: 6, role_id: 5 },
 ];

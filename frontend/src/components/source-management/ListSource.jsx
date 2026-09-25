@@ -16,6 +16,7 @@ import { JOB_STATUS_VARIANT } from '@/constants/job-status';
 import { getByAccountId } from '@/api/job-sourcing.api';
 import { extractSeekCandidates } from '@/api/job-posting-seek.api';
 import { toast } from 'sonner';
+import { hasPermission } from '@/utils/permissions';
 
 const STATUS_OPTIONS = ['Draft', 'Active', 'Running', 'Expired', 'Failed'];
 const SYNC_VARIANT = { idle: 'muted', syncing: 'warning', error: 'danger' };
@@ -41,6 +42,8 @@ const POLL_INTERVAL_MS = 4000;
  * core_job_sourcing.sync_state (idle/syncing/error) per row.
  */
 export default function ListSourceStep({ selectedAccount, selectedSource, onSelectSource }) {
+  const canSync = hasPermission('Sourcing', 'Source Management', 'create');
+  const canLink = hasPermission('Sourcing', 'Source Management', 'update');
   const [sources, setSources]   = useState([]);
   const [loading, setLoading]   = useState(false);
   const [error, setError]       = useState(null);
@@ -270,23 +273,27 @@ export default function ListSourceStep({ selectedAccount, selectedSource, onSele
                     </TableCell>
                     <TableCell className="text-right pr-1">
                       <div className="inline-flex items-center gap-1.5">
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          className="text-xs h-7 px-2.5"
-                          disabled={isSyncing}
-                          onClick={() => handleResyncRow(source)}
-                        >
-                          {isSyncing ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : (source.last_sync ? 'Re-Sync' : 'Sync')}
-                        </Button>
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          className="text-xs h-7 px-2.5"
-                          onClick={() => handleLinkRow(source)}
-                        >
-                          Link
-                        </Button>
+                        {canSync && (
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            className="text-xs h-7 px-2.5"
+                            disabled={isSyncing}
+                            onClick={() => handleResyncRow(source)}
+                          >
+                            {isSyncing ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : (source.last_sync ? 'Re-Sync' : 'Sync')}
+                          </Button>
+                        )}
+                        {canLink && (
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            className="text-xs h-7 px-2.5"
+                            onClick={() => handleLinkRow(source)}
+                          >
+                            Link
+                          </Button>
+                        )}
                         <Button
                           variant={selectedSource?.id === source.id ? 'default' : 'outline'}
                           size="sm"

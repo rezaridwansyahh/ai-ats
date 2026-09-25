@@ -20,9 +20,12 @@ import { extractLinkedinApplicants } from '@/api/linkedin.api';
 import { getCandidatesByJobId } from '@/api/candidate.api';
 import { formatSalaryBand, formatSinceDate} from '@/lib/job-display';
 
+import { hasPermission } from '@/utils/permissions';
+
 import { StatusBadge } from '@/components/common';
 
 export default function JobDetailPage() {
+  const canEdit = hasPermission('Sourcing', 'Job Management', 'update');
   const navigate = useNavigate();
   const { id } = useParams();
   const [job, setJob] = useState(null);
@@ -191,14 +194,16 @@ export default function JobDetailPage() {
           <Button variant="ghost" size="sm" className="text-xs" onClick={() => navigate('/sourcing/job-management')}>
             <ArrowLeft className="h-3.5 w-3.5 mr-1" /> Back to Jobs
           </Button>
-          <Button
-            size="sm"
-            variant="outline"
-            className="text-xs"
-            onClick={() => navigate(`/sourcing/job-management/${id}/edit`)}
-          >
-            <Pencil className="h-3.5 w-3.5 mr-1.5" /> Edit
-          </Button>
+          {canEdit && (
+            <Button
+              size="sm"
+              variant="outline"
+              className="text-xs"
+              onClick={() => navigate(`/sourcing/job-management/${id}/edit`)}
+            >
+              <Pencil className="h-3.5 w-3.5 mr-1.5" /> Edit
+            </Button>
+          )}
         </div>
 
         {/* Title + meta */}

@@ -8,6 +8,7 @@ import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from '@/components/ui/select';
 import { getJobAccountsByUserId } from '@/api/job-accounts.api';
+import { hasPermission } from '@/utils/permissions';
 
 const INITIAL_FORM = {
   account_id:    '',
@@ -22,6 +23,7 @@ const INITIAL_FORM = {
 };
 
 export default function SearchForm({ onSearchStart, loading, error }) {
+  const canSearch = hasPermission('Sourcing', 'Search & Outreach', 'create');
   const [form, setForm]                 = useState(INITIAL_FORM);
   const [accounts, setAccounts]         = useState([]);
   const [loadingAccounts, setLoadingAccounts] = useState(true);
@@ -231,7 +233,8 @@ export default function SearchForm({ onSearchStart, loading, error }) {
               type="submit"
               size="sm"
               className="text-xs"
-              disabled={loading || accountSelectorDisabled}
+              disabled={loading || accountSelectorDisabled || !canSearch}
+              title={canSearch ? undefined : 'You do not have permission to start a new search.'}
             >
               {loading ? (
                 <>

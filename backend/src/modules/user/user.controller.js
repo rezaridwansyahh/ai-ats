@@ -39,8 +39,8 @@ class UserController {
 
   async create(req, res) {
     try {
-      const { email, password, username, role_ids, company_id } = req.body;
-      const user = await userService.create(email, password, username, role_ids, company_id);
+      const { email, password, username, role_ids } = req.body;
+      const user = await userService.create(email, password, username, role_ids, req.user?.company_id);
       res.status(201).json({ message: "User created successfully", user });
     } catch (err) {
       res.status(err.status || 500).json({ message: err.message });
@@ -49,7 +49,8 @@ class UserController {
 
   async update(req, res) {
     try {
-      const user = await userService.update(req.params.id, req.body);
+      const { company_id, ...safeFields } = req.body; 
+      const user = await userService.update(req.params.id, safeFields);
       res.status(200).json({ message: 'User updated successfully', user });
     } catch (err) {
       res.status(err.status || 500).json({ message: err.message });

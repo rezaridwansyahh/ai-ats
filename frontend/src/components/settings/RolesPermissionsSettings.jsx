@@ -127,7 +127,7 @@ export default function RolesPermissionsSettings() {
             Refresh
           </Button>
           {canCreate && (
-            <Button size="sm" onClick={openCreate} className="bg-teal-700 hover:bg-teal-800">
+            <Button size="sm" onClick={openCreate}>
               <Plus className="h-3.5 w-3.5" />
               Add role
             </Button>

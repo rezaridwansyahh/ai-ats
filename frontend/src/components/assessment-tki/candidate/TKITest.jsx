@@ -91,7 +91,7 @@ export default function TKITest({ onComplete, onAbort }) {
           <Button variant="outline" size="sm" onClick={prev} disabled={cur === 0}>← Kembali</Button>
           <span className="flex-1 text-center text-[11px] text-slate-400">{cur + 1} / {TOTAL_Q}</span>
           {isLast ? (
-            <Button size="sm" onClick={finish} className="bg-teal-700 hover:bg-teal-800">Lihat Hasil ✓</Button>
+            <Button size="sm" onClick={finish}>Lihat Hasil ✓</Button>
           ) : (
             <Button size="sm" onClick={next} disabled={ans === null} className="bg-teal-700 hover:bg-teal-800 disabled:opacity-40">
               Selanjutnya →

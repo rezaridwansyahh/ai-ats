@@ -229,7 +229,8 @@ CREATE INDEX idx_company_budgets_month_year ON company_budgets (month_year DESC)
 CREATE TABLE master_roles (
   id SERIAL PRIMARY KEY,
   name VARCHAR(100) NOT NULL,
-  additional JSONB
+  additional JSONB,
+  is_system BOOLEAN NOT NULL DEFAULT false
 );
 
 CREATE TABLE mapping_users_roles (

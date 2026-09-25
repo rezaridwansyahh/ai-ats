@@ -39,6 +39,7 @@ import { FIXED_KEYS, FIXED_META, DEFAULT_RUBRIC, totalWeight, scoreRecommendatio
 import PipelineTour, { usePipelineTour } from '@/components/tours/PipelineTour';
 import { AI_SCREENING_CANDIDATE_STEPS } from '@/components/tours/tourSteps';
 import { getEmailTemplates } from '@/api/email-template.api';
+import { hasPermission } from '@/utils/permissions';
 
 /* ─── Engine config (mirrors the spec) ─── */
 const ENGINES = [
@@ -125,8 +126,8 @@ function useMatch(data, onScored) {
   const setCustomWeight = (idx, weight) =>
     setRubric((rb) => ({ ...rb, custom_criteria: (rb.custom_criteria || []).map((c, i) => (i === idx ? { ...c, weight } : c)) }));
 
-  const handleRun = async () => {
-    if (!job_id || !applicant_id || !totalIs100 || running) return;
+  const handleRun = async (canEdit) => {
+    if (!canEdit || !job_id || !applicant_id || !totalIs100 || running) return;
     setRunning(true);
     setRunError(null);
     try {
@@ -224,8 +225,8 @@ function useQa(screeningId, scored, enabled) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [latched]);
 
-  const handleGenerate = async () => {
-    if (!scored || generating) return;
+  const handleGenerate = async (canEdit) => {
+    if (!canEdit || !scored || generating) return;
 
     // ‘responded’ is permanently locked — candidate’s answers must not be destroyed.
     if (status === 'responded') return;
@@ -395,9 +396,13 @@ export default function AIScreeningCandidatePage() {
 
   const initials = (candidate_name || '?').split(/\s+/).map((s) => s[0]).join('').slice(0, 2).toUpperCase();
   const scored = engine === 'done';
-  
-  const decisionLocked = qa.status !== 'responded';
-  const decisionLockReason = !scored
+
+  const canEdit = hasPermission('Selection', 'AI Screening', 'update');
+  const canDecide = canEdit;
+  const decisionLocked = !canDecide || qa.status !== 'responded';
+  const decisionLockReason = !canDecide
+    ? 'You do not have permission to record a screening decision.'
+    : !scored
     ? 'Score this candidate first — use "Score This Candidate" in the Match step.'
     : qa.status === 'sent'
       ? 'Waiting for the candidate\'s Q&A response.'
@@ -466,15 +471,17 @@ export default function AIScreeningCandidatePage() {
                   qaCtl={qa}
                   jobTitle={job_title}
                   scored={scored}
+                  canEdit={canEdit}
                 />
               )}
               {activeEngine === 'summary' && (
-                <SummaryPanel 
+                <SummaryPanel
                   data={data}
                   qaCtl={qa}
                   decision={decision}
                   existingReason={existingReason}
                   onPick={setDecisionDraft}
+                  canDecide={canDecide}
                 />
               )}
             </div>
@@ -497,6 +504,7 @@ export default function AIScreeningCandidatePage() {
                   onStep={goToStep}
                   candidateName={candidate_name}
                   jobTitle={job_title}
+                  canEdit={canEdit}
                 />
               </div>
               <div data-tour="candidate-decision">
@@ -587,7 +595,7 @@ export default function AIScreeningCandidatePage() {
               size="sm"
               className="text-xs"
               onClick={qa.handleConfirmSend}
-              disabled={qa.sending || !qa.emailModal.subject.trim()}
+              disabled={ !canEdit || qa.sending || !qa.emailModal.subject.trim()}
             >
               {qa.sending
                 ? <><Loader2 className="h-3.5 w-3.5 mr-1.5 animate-spin" />Sending…</>
@@ -602,7 +610,7 @@ export default function AIScreeningCandidatePage() {
 }
 
 /* ─────────── Sidebar: contextual primary action ─────────── */
-function SidebarAction({ activeEngine, match, qa, scored, overall_score, onStep, candidateName, jobTitle }) {
+function SidebarAction({ activeEngine, match, qa, scored, overall_score, onStep, candidateName, jobTitle, canEdit }) {
   if (activeEngine === 'match') {
     return (
       <Card className="animate-scale-in">
@@ -631,7 +639,7 @@ function SidebarAction({ activeEngine, match, qa, scored, overall_score, onStep,
               Continue to Q&A <ArrowRight className="h-3.5 w-3.5 ml-1.5" />
             </Button>
           ) : (
-            <Button className="w-full text-xs" onClick={match.handleRun} disabled={!match.totalIs100 || match.running}>
+            <Button className="w-full text-xs" onClick={() => match.handleRun(canEdit)} disabled={!canEdit || !match.totalIs100 || match.running}>
               {match.running ? <Loader2 className="h-3.5 w-3.5 mr-1.5 animate-spin" /> : <Wand2 className="h-3.5 w-3.5 mr-1.5" />}
               Score This Candidate
             </Button>
@@ -639,7 +647,7 @@ function SidebarAction({ activeEngine, match, qa, scored, overall_score, onStep,
 
           {/* Re-run as secondary when already scored */}
           {scored && (
-            <Button variant="outline" size="sm" className="w-full text-xs" onClick={match.handleRun} disabled={!match.totalIs100 || match.running}>
+            <Button variant="outline" size="sm" className="w-full text-xs" onClick={() => match.handleRun(canEdit)} disabled={!canEdit || !match.totalIs100 || match.running}>
               {match.running ? <Loader2 className="h-3.5 w-3.5 mr-1.5 animate-spin" /> : <RefreshCw className="h-3.5 w-3.5 mr-1.5" />}
               Re-score This Candidate
             </Button>
@@ -709,7 +717,7 @@ function SidebarAction({ activeEngine, match, qa, scored, overall_score, onStep,
             <Button
               className="w-full text-xs"
               onClick={() => qa.handleSend(candidateName, jobTitle)}
-              disabled={qa.sending || qa.questions.length === 0}
+              disabled={!canEdit || qa.sending || qa.questions.length === 0}
             >
               <Mail className="h-3.5 w-3.5 mr-1.5" />
               Send to Candidate
@@ -1286,7 +1294,7 @@ function ScoreTile({ label, score, bold }) {
 }
 
 /* ─────────── QA panel (follow-up Q&A) ─────────── */
-function QAPanel({ qaCtl, jobTitle, scored }) {
+function QAPanel({ qaCtl, jobTitle, scored, canEdit }) {
   const {
     tab, setTab, qa: qaRow, status, meta, loading, error,
     focusArea, setFocusArea, numQuestions, setNumQuestions, language, setLanguage,
@@ -1298,7 +1306,7 @@ function QAPanel({ qaCtl, jobTitle, scored }) {
   const [editingIdx, setEditingIdx] = useState(null);
 
   const onGenerate = async () => {
-    await handleGenerate();
+    await handleGenerate(canEdit);
     setEditingIdx(null);
   };
 
@@ -1463,11 +1471,11 @@ function QAPanel({ qaCtl, jobTitle, scored }) {
                 </div>
                 {status !== 'responded' && (
                 <div className="flex gap-2">
-                  <Button size="sm" variant="outline" className="text-xs" onClick={onGenerate} disabled={generating}>
+                  <Button size="sm" variant="outline" className="text-xs" onClick={onGenerate} disabled={!canEdit || generating}>
                     {generating ? <Loader2 className="h-3 w-3 mr-1 animate-spin" /> : <RefreshCw className="h-3 w-3 mr-1" />}
                     {questions.length ? 'Regenerate' : 'Generate'}
                   </Button>
-                  <Button size="sm" variant="outline" className="text-xs" onClick={onAddQuestion} disabled={generating}>
+                  <Button size="sm" variant="outline" className="text-xs" onClick={onAddQuestion} disabled={!canEdit || generating}>
                     <Plus className="h-3 w-3 mr-1" /> Add custom
                   </Button>
                 </div>
@@ -1596,7 +1604,7 @@ function QAPanel({ qaCtl, jobTitle, scored }) {
 }
 
 /* ─────────── Summary panel (step 4 — review + decide) ─────────── */
-function SummaryPanel({ data, qaCtl, decision, existingReason, onPick }) {
+function SummaryPanel({ data, qaCtl, decision, existingReason, onPick, canDecide }) {
   const {
     overall_score, skills_score, experience_score, education_score,
     matched_skills, missing_skills, score_summary
@@ -1681,7 +1689,11 @@ function SummaryPanel({ data, qaCtl, decision, existingReason, onPick }) {
         {/* Decision shortcut */}
         <div className="space-y-2 border-t pt-4">
           <div className="text-[11px] font-medium text-muted-foreground uppercase">Decision</div>
-          {isFinal ? (
+          {!canDecide ? (
+            <p className="text-xs text-muted-foreground italic">
+              You do not have permission to record a screening decision.
+            </p>
+          ) : isFinal ? (
             <p className="text-xs text-muted-foreground italic">
               This candidate has a final decision (<span className="font-semibold not-italic">{decision}</span>) and cannot be changed here.
             </p>

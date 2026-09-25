@@ -5,13 +5,12 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/com
 import { toast } from 'sonner'
 import { Badge }    from '@/components/ui/badge';
 
-import { createJobAccount, updateJobAccount, deleteJobAccount, getJobAccountsByUserId } from '@/api/job-accounts.api';
+import { createJobAccount, updateJobAccount, getJobAccountsByUserId } from '@/api/job-accounts.api';
 import { checkConnection, syncSeekJobPosts } from '@/api/job-posting-seek.api';
 
 import { hasPermission } from '@/utils/permissions';
 
-import { AccountFormDialog }   from '@/components/job-account/AccountFormDialog';
-import { DeleteAccountDialog } from '@/components/job-account/DeleteAccountDialog';
+import { AccountFormDialog } from '@/components/job-account/AccountFormDialog';
 
 import linkedin from '@/assets/logos/linkedin.png';
 import seek from '@/assets/logos/seek.png';
@@ -35,6 +34,8 @@ const PRIVATE_CHANNELS = [
 ];
 
 export default function AccountPage() {
+  const canCreate = hasPermission('Settings', 'Account', 'create');
+  const canEdit   = hasPermission('Settings', 'Account', 'update');
   // ── Data ──
   const [accounts, setAccounts] = useState([]);
   const [loading,  setLoading]  = useState(true);
@@ -76,6 +77,7 @@ export default function AccountPage() {
 
   // ── CRUD handlers ──
   const handleCreateOrUpdate = async (payload, accountId) => {
+    if (accountId ? !canEdit : !canCreate) return;
     setSubmitting(true);
     try {
       if (accountId) {
@@ -189,15 +191,17 @@ export default function AccountPage() {
                     </div>
                   </div>
 
-                  <Button disabled={!account || account?.status_connection !== 'Connected'} onClick={() => toast.promise(syncSeekJobPosts(account.id), { position: "top-center", loading: 'Connection Queued', success: 'Queued Created', error: 'Queued Error' })}>
+                  <Button disabled={!canEdit || !account || account?.status_connection !== 'Connected'} onClick={() => toast.promise(syncSeekJobPosts(account.id), { position: "top-center", loading: 'Connection Queued', success: 'Queued Created', error: 'Queued Error' })}>
                     Sync
                   </Button>
-                  <Button disabled={!account || account?.status_connection === 'Re-connecting'} onClick={() => toast.promise(checkConnection(account.id), { position: "top-center", loading: 'Connection Queued', success: 'Queued Created', error: 'Queued Error' })}>
+                  <Button disabled={!canEdit || !account || account?.status_connection === 'Re-connecting'} onClick={() => toast.promise(checkConnection(account.id), { position: "top-center", loading: 'Connection Queued', success: 'Queued Created', error: 'Queued Error' })}>
                     Re-connect
                   </Button>
-                  <Button onClick={() => openConfigure(channels.id, account)}>
-                    Configure
-                  </Button>
+                  {(account ? canEdit : canCreate) && (
+                    <Button onClick={() => openConfigure(channels.id, account)}>
+                      Configure
+                    </Button>
+                  )}
                 </div>
               </div>
             )
@@ -249,12 +253,14 @@ export default function AccountPage() {
                 </div>
 
                 <div className="flex gap-5">
-                  <Button disabled={!account} onClick={() => toast.promise(new Promise(resolve => setTimeout(resolve, 3000)))}>
+                  <Button disabled={!canEdit || !account} onClick={() => toast.promise(new Promise(resolve => setTimeout(resolve, 3000)))}>
                     Re-connect
                   </Button>
-                  <Button onClick={() => openConfigure(channels.id, account)}>
-                    Configure
-                  </Button>
+                  {(account ? canEdit : canCreate) && (
+                    <Button onClick={() => openConfigure(channels.id, account)}>
+                      Configure
+                    </Button>
+                  )}
                 </div>
               </div>
             )

@@ -22,6 +22,8 @@ class AuthService {
 
     if (!role || role.length === 0) throw { status: 401, message: 'Unauthorize! No role assigned' };
 
+    const isSuperAdmin = role.some(r => r.is_system === true);
+
     const roleIds = role.map(r => r.id);
     const {permissions} = await PermissionModel.checkPermissionsRoleId(roleIds);
 
@@ -30,7 +32,8 @@ class AuthService {
       user_id: user.id,
       email: user.email,
       company_id: user.company_id ?? null,
-      role
+      role,
+      isSuperAdmin
     };
 
     const token = jwt.sign(payload, process.env.JWT_SECRET, {
@@ -49,7 +52,8 @@ class AuthService {
         company_id: user.company_id ?? null
       },
       role,
-      permissions
+      permissions,
+      isSuperAdmin
     };
   }
 

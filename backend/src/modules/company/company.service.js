@@ -5,9 +5,14 @@ class CompanyService {
     return await CompanyModel.getAll();
   }
 
-  async getById(id) {
+  async getById(id, requester) {
     const company = await CompanyModel.getById(id);
     if (!company) throw { status: 404, message: 'Company not found' };
+
+    if (!requester?.isSuperAdmin && company.id !== requester?.company_id) {
+      throw { status: 403, message: 'Not authorized to view this company' };
+    }
+
     return company;
   }
 

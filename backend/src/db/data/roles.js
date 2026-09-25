@@ -27,5 +27,11 @@ export default [
       certificate: "UAA-XXXXXX"
     },
     company_id: 1
+  },
+  {
+    id: 5,
+    name: "Super Admin",
+    additional: {},
+    is_system: true
   }
 ];

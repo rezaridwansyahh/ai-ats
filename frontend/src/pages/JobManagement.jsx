@@ -5,6 +5,7 @@ import { getJobs, deleteJob } from '@/api/job.api';
 import JobCreation from '@/components/job-management/JobCreation';
 import { PageHeader } from '@/components/common';
 import { Button } from '@/components/ui/button';
+import { hasPermission } from '@/utils/permissions';
 
 import PipelineTour, { usePipelineTour } from '@/components/tours/PipelineTour';
 import { JOB_MANAGEMENT_LIST_STEPS } from '@/components/tours/tourSteps';
@@ -12,6 +13,8 @@ import { useEndToEndTour } from '@/components/tours/EndToEndTour';
 
 export default function JobManagementPage() {
   const navigate = useNavigate();
+  const canCreate = hasPermission('Sourcing', 'Job Management', 'create');
+  const canDelete = hasPermission('Sourcing', 'Job Management', 'delete');
   const [jobs, setJobs] = useState([]);
   const [loading, setLoading] = useState(true);
 
@@ -79,9 +82,11 @@ export default function JobManagementPage() {
           <Button variant="outline" size="sm" className="rounded-lg" onClick={handleExport}>
             <Download className="h-4 w-4 mr-1.5" /> Export
           </Button>
-          <Button data-tour="job-mgmt-create-btn" size="sm" className="rounded-lg" onClick={handleNewJob}>
-            <Plus className="h-4 w-4 mr-1.5" /> Create new job
-          </Button>
+          {canCreate && (
+            <Button data-tour="job-mgmt-create-btn" size="sm" className="rounded-lg" onClick={handleNewJob}>
+              <Plus className="h-4 w-4 mr-1.5" /> Create new job
+            </Button>
+          )}
         </PageHeader>
 
         <div data-tour="job-mgmt-stats" className="grid grid-cols-2 md:grid-cols-4 gap-3">
@@ -96,6 +101,7 @@ export default function JobManagementPage() {
           loading={loading}
           onDeleteJob={handleDeleteJob}
           onSelectJob={handleSelectJob}
+          canDelete={canDelete}
         />
       </div>
 

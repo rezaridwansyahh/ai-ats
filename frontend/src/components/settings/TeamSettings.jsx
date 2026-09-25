@@ -7,6 +7,7 @@ import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter,
 } from '@/components/ui/dialog';
 import { getUsers, createUser, updateUser, deleteUser, getMasterRoles } from '@/api/users.api';
+import { hasPermission } from '@/utils/permissions';
 
 /*
  * Team settings — real roster, backed by master_users / master_roles /
@@ -32,7 +33,7 @@ function getInitials(name) {
 
 function Avatar({ initials }) {
   return (
-    <div className="h-8 w-8 rounded-full bg-emerald-700 text-white text-xs font-semibold flex items-center justify-center flex-shrink-0">
+    <div className="h-8 w-8 rounded-full bg-primary text-primary-foreground text-xs font-semibold flex items-center justify-center flex-shrink-0">
       {initials}
     </div>
   );
@@ -45,17 +46,21 @@ function InviteMemberDialog({ open, onOpenChange, roles, onInvite, submitting, e
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [roleId, setRoleId]     = useState('');
+  const [touched, setTouched]   = useState(false);
 
   useEffect(() => {
     if (open) {
       setEmail(''); setUsername(''); setPassword('');
       setRoleId(roles[0] ? String(roles[0].id) : '');
+      setTouched(false);
     }
   }, [open, roles]);
 
-  const canSubmit = email.trim() && username.trim() && password.trim() && roleId;
+  const isEmailValid = /^[^\s@]+@[^\s@]+$/.test(email.trim());
+  const canSubmit = isEmailValid && username.trim() && password.trim() && roleId;
 
   const handleSubmit = () => {
+    setTouched(true);
     if (!canSubmit) return;
     onInvite({
       email: email.trim(),
@@ -84,8 +89,13 @@ function InviteMemberDialog({ open, onOpenChange, roles, onInvite, submitting, e
               value={email}
               onChange={(e) => setEmail(e.target.value)}
               placeholder="name@company.co.id"
-              className="w-full h-9 rounded-md border px-3 text-sm focus:outline-none focus:ring-1 focus:ring-ring"
+              className={`w-full h-9 rounded-md border px-3 text-sm focus:outline-none focus:ring-1 focus:ring-ring ${
+                touched && !isEmailValid ? 'border-red-300' : ''
+              }`}
             />
+            {touched && !isEmailValid && (
+              <p className="text-xs text-red-600">Enter a valid email address (must contain @)</p>
+            )}
           </div>
           <div className="space-y-1.5">
             <label className="text-xs font-medium text-muted-foreground">Username</label>
@@ -134,7 +144,7 @@ function InviteMemberDialog({ open, onOpenChange, roles, onInvite, submitting, e
 
 // ── Manage member dialog ──
 
-function ManageMemberDialog({ member, roles, open, onOpenChange, onUpdateRole, onRemove, submitting }) {
+function ManageMemberDialog({ member, roles, open, onOpenChange, onUpdateRole, onRemove, submitting, canEdit, canDelete }) {
   const [roleId, setRoleId] = useState('');
 
   useEffect(() => {
@@ -158,6 +168,7 @@ function ManageMemberDialog({ member, roles, open, onOpenChange, onUpdateRole, o
             <select
               value={roleId}
               onChange={(e) => setRoleId(e.target.value)}
+              disabled={!canEdit}
               className="w-full h-9 rounded-md border px-3 text-sm bg-background focus:outline-none focus:ring-1 focus:ring-ring"
             >
               {roles.map((r) => (
@@ -168,21 +179,25 @@ function ManageMemberDialog({ member, roles, open, onOpenChange, onUpdateRole, o
           <p className="text-xs text-muted-foreground">Email: {member.email}</p>
         </div>
         <DialogFooter className="sm:justify-between">
-          <Button
-            variant="ghost"
-            className="text-red-600 hover:text-red-700 hover:bg-red-50"
-            disabled={submitting}
-            onClick={() => onRemove(member.id)}
-          >
-            Remove from workspace
-          </Button>
-          <Button
-            disabled={submitting || !roleId}
-            onClick={() => onUpdateRole(member.id, Number(roleId))}
-          >
-            {submitting ? <Loader2 className="h-3.5 w-3.5 mr-1.5 animate-spin" /> : null}
-            Save
-          </Button>
+          {canDelete && (
+            <Button
+              variant="ghost"
+              className="text-red-600 hover:text-red-700 hover:bg-red-50"
+              disabled={submitting}
+              onClick={() => onRemove(member.id)}
+            >
+              Remove from workspace
+            </Button>
+          )}
+          {canEdit && (
+            <Button
+              disabled={submitting || !roleId}
+              onClick={() => onUpdateRole(member.id, Number(roleId))}
+            >
+              {submitting ? <Loader2 className="h-3.5 w-3.5 mr-1.5 animate-spin" /> : null}
+              Save
+            </Button>
+          )}
         </DialogFooter>
       </DialogContent>
     </Dialog>
@@ -192,6 +207,9 @@ function ManageMemberDialog({ member, roles, open, onOpenChange, onUpdateRole, o
 // ── Main Team section ──
 
 export default function TeamSettings() {
+  const canCreate = hasPermission('Settings', 'User Management', 'create');
+  const canEdit   = hasPermission('Settings', 'User Management', 'update');
+  const canDelete = hasPermission('Settings', 'User Management', 'delete');
   const [users, setUsers]     = useState([]);
   const [roles, setRoles]     = useState([]);
   const [loading, setLoading] = useState(true);
@@ -233,6 +251,7 @@ export default function TeamSettings() {
   const totalCount = members.length;
 
   const handleInvite = async (payload) => {
+    if (!canCreate) { setFormError('You do not have permission to invite members.'); return; }
     setSubmitting(true);
     setFormError(null);
     try {
@@ -247,6 +266,7 @@ export default function TeamSettings() {
   };
 
   const handleUpdateRole = async (userId, roleId) => {
+    if (!canEdit) { setError('You do not have permission to update members.'); return; }
     setSubmitting(true);
     try {
       await updateUser(userId, { role_ids: [roleId] });
@@ -260,6 +280,7 @@ export default function TeamSettings() {
   };
 
   const handleRemove = async (userId) => {
+    if (!canDelete) { setError('You do not have permission to remove members.'); return; }
     setSubmitting(true);
     try {
       await deleteUser(userId);
@@ -296,7 +317,7 @@ export default function TeamSettings() {
             <CardTitle>Team members</CardTitle>
             <p className="text-xs text-muted-foreground mt-0.5">{totalCount} total</p>
           </div>
-          <Button size="sm" onClick={() => { setFormError(null); setInviteOpen(true); }} className="bg-teal-700 hover:bg-teal-800">
+          <Button size="sm" onClick={() => { setFormError(null); setInviteOpen(true); }}>
             <UserPlus className="h-3.5 w-3.5 mr-1.5" />
             Invite member
           </Button>
@@ -328,14 +349,16 @@ export default function TeamSettings() {
                     {m.roleName}
                   </Badge>
                 </div>
-                <Button
-                  variant="link"
-                  size="sm"
-                  className="h-auto p-0 justify-self-end text-sm"
-                  onClick={() => setManageMember(m)}
-                >
-                  Manage
-                </Button>
+                {(canEdit || canDelete) && (
+                  <Button
+                    variant="link"
+                    size="sm"
+                    className="h-auto p-0 justify-self-end text-sm"
+                    onClick={() => setManageMember(m)}
+                  >
+                    Manage
+                  </Button>
+                )}
               </div>
             ))
           )}
@@ -358,6 +381,8 @@ export default function TeamSettings() {
         onUpdateRole={handleUpdateRole}
         onRemove={handleRemove}
         submitting={submitting}
+        canEdit={canEdit}
+        canDelete={canDelete}
       />
     </div>
   );

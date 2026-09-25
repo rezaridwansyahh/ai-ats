@@ -9,6 +9,7 @@ import TalentPoolTable from "@/components/talent-pool/TalentPoolTable";
 import CvUploadCard from "@/components/talent-pool/CvUploadCard";
 import { getAllByCompanyWithScore } from "@/api/applicant.api";
 import { PageHeader } from "@/components/common";
+import { hasPermission } from "@/utils/permissions";
 
 import PipelineTour, { usePipelineTour} from "@/components/tours/PipelineTour";
 import { TALENT_POOL_STEPS } from "@/components/tours/tourSteps";
@@ -22,6 +23,7 @@ const EMPTY_FILTERS = {
 };
 
 export default function TalentPoolPage(){
+  const canCreate = hasPermission('Sourcing', 'Talent Pool', 'create');
   const [allApplicants, setAllApplicants] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -315,17 +317,18 @@ export default function TalentPoolPage(){
           onToggleSelectAllPaged={toggleSelectAllPaged}
           onBulkAddClick={handleBulkAddClick}
           onClearSelection={clearSelection}
+          canAdd={canCreate}
         />
       </div>
- 
+
       <AddToJobDialog
         open={dialogOpen}
         onOpenChange={setDialogOpen}
         applicants={selectedApplicants}
         onSuccess={handleDialogSuccess}
       />
- 
-      <CvUploadCard />
+
+      {canCreate && <CvUploadCard />}
  
       <PipelineTour
         steps={TALENT_POOL_STEPS}

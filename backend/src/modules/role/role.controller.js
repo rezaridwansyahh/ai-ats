@@ -3,7 +3,7 @@ import roleService from './role.service.js';
 class RoleController {
 	async getAll(req, res) {
 		try {
-			const roles = await roleService.getAll();
+			const roles = await roleService.getAll(req.user.isSuperAdmin);
 			res.status(200).json({ message: "List all Roles", roles });
 		} catch (err) {
 			res.status(err.status || 500).json({ message: err.message });
@@ -49,7 +49,7 @@ class RoleController {
 
 	async setPermissions(req, res) {
 		try {
-			await roleService.setPermissions(req.params.id, req.body.permission_ids);
+			await roleService.setPermissions(req.params.id, req.body.permission_ids, req.user.isSuperAdmin);
 			res.status(200).json({ message: 'Role permissions updated' });
 		} catch (err) {
 			res.status(err.status || 500).json({ message: err.message });
@@ -63,7 +63,7 @@ class RoleController {
 			if (name) fields.name = name;
 			if (additional) fields.additional = additional;
 
-			const updatedRole = await roleService.update(req.params.id, fields);
+			const updatedRole = await roleService.update(req.params.id, fields, req.user.isSuperAdmin);
 			res.status(200).json({ message: 'Role updated', updatedRole });
 		} catch (err) {
 			res.status(err.status || 500).json({ message: err.message });
@@ -72,7 +72,7 @@ class RoleController {
 
 	async delete(req, res) {
 		try {
-			const role = await roleService.delete(req.params.id);
+			const role = await roleService.delete(req.params.id, req.user.isSuperAdmin);
 			res.status(200).json({ message: 'Role deleted', role });
 		} catch (err) {
 			res.status(err.status || 500).json({ message: err.message });

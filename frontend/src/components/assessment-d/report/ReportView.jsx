@@ -164,7 +164,7 @@ export default function ReportView({ profile, results, state, updateState, saveN
                 <div className="text-[9px] font-bold tracking-wider opacity-70 mt-0.5" style={{ color: tkVd.br }}>/10</div>
               </div>
               <div className="text-xs font-bold mt-2" style={{ color: tkVd.br }}>
-                {tkVd.emoji} {tkVd.short}
+                {tkVd.short}
               </div>
               <div className="text-[10px] opacity-65 mt-0.5">Komposit TK</div>
             </div>
@@ -173,7 +173,7 @@ export default function ReportView({ profile, results, state, updateState, saveN
       </div>
 
       <div className="bg-amber-50 border border-amber-200 rounded-lg px-4 py-2.5 text-xs text-amber-900 leading-relaxed mb-4">
-        <strong className="inline-flex items-center gap-1"><AlertTriangle className="w-3.5 h-3.5" /> Catatan:</strong><strong>⚠️ Catatan:</strong>Laporan ini merupakan alat bantu profesional. Interpretasi akhir tetap memerlukan penilaian
+        <strong className="inline-flex items-center gap-1"><AlertTriangle className="w-3.5 h-3.5" /> Catatan:</strong>Laporan ini merupakan alat bantu profesional. Interpretasi akhir tetap memerlukan penilaian
         psikolog atau rekruter berpengalaman. Narasi pada laporan ini dapat diedit langsung — semua perubahan tersimpan otomatis di
         browser ini. Dokumen bersifat <strong>rahasia</strong> dan hanya untuk keperluan seleksi internal.
       </div>
@@ -564,7 +564,7 @@ function ChipScore({ label, value, sub, verdict, badge }) {
       {sub && <div className="text-[10.5px] mt-1 opacity-75">{sub}</div>}
       {verdict && (
         <div className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold mt-1.5" style={{ background: verdict.color + '20' }}>
-          {verdict.emoji} {verdict.short}
+           {verdict.short}
         </div>
       )}
     </div>

@@ -213,3 +213,167 @@
   --glass-bg:     rgba(30, 41, 59, 0.85);
   --glass-border: rgba(255, 255, 255, 0.07);
 }
+
+
+/*
+  Accent color system
+*/
+
+html[data-accent="blue"] {
+  --primary: #1D4ED8;
+  --primary-foreground: #FFFFFF;
+  --ring: #1D4ED8;
+  --sidebar-primary: #1D4ED8;
+  --sidebar-primary-foreground: #FFFFFF;
+  --sidebar-accent: rgba(29, 78, 216, 0.09);
+  --sidebar-accent-foreground: #1D4ED8;
+  --accent: rgba(29, 78, 216, 0.06);
+  --accent-foreground: #1D4ED8;
+  --chart-1: #1D4ED8;
+  --primary-light: #3B82F6;
+  --primary-bg: rgba(29, 78, 216, 0.06);
+  --primary-bg-strong: rgba(29, 78, 216, 0.12);
+  --shadow-primary-sm: 0 2px 8px  rgba(29, 78, 216, 0.16);
+  --shadow-primary-md: 0 4px 16px rgba(29, 78, 216, 0.20);
+  --shadow-primary-lg: 0 8px 32px rgba(29, 78, 216, 0.24);
+  --gradient-primary:        linear-gradient(135deg, #1D4ED8 0%, #3B82F6 100%);
+  --gradient-primary-soft:   linear-gradient(135deg, rgba(29,78,216,0.12) 0%, rgba(59,130,246,0.08) 100%);
+  --gradient-sidebar-header: linear-gradient(160deg, #1D4ED8 0%, #2563EB 100%);
+}
+ 
+html.dark[data-accent="blue"] {
+  --primary: #3B82F6;
+  --primary-foreground: #0B1220;
+  --ring: #3B82F6;
+  --sidebar-primary: #3B82F6;
+  --sidebar-primary-foreground: #0B1220;
+  --sidebar-accent: rgba(59, 130, 246, 0.12);
+  --sidebar-accent-foreground: #93C5FD;
+  --accent: rgba(59, 130, 246, 0.12);
+  --accent-foreground: #93C5FD;
+  --chart-1: #3B82F6;
+  --primary-light: #60A5FA;
+  --primary-bg: rgba(59, 130, 246, 0.12);
+  --primary-bg-strong: rgba(59, 130, 246, 0.2);
+  --shadow-primary-sm: 0 2px 8px  rgba(59, 130, 246, 0.18);
+  --shadow-primary-md: 0 4px 16px rgba(59, 130, 246, 0.22);
+  --shadow-primary-lg: 0 8px 32px rgba(59, 130, 246, 0.28);
+  --gradient-primary:        linear-gradient(135deg, #3B82F6 0%, #60A5FA 100%);
+  --gradient-primary-soft:   linear-gradient(135deg, rgba(59,130,246,0.18) 0%, rgba(96,165,250,0.1) 100%);
+  --gradient-sidebar-header: linear-gradient(160deg, #1E3A8A 0%, #1D4ED8 100%);
+}
+ 
+html[data-accent="amber"] {
+  --primary: #B45309;
+  --primary-foreground: #FFFFFF;
+  --ring: #B45309;
+  --sidebar-primary: #B45309;
+  --sidebar-primary-foreground: #FFFFFF;
+  --sidebar-accent: rgba(180, 83, 9, 0.09);
+  --sidebar-accent-foreground: #B45309;
+  --accent: rgba(180, 83, 9, 0.06);
+  --accent-foreground: #B45309;
+  --chart-1: #B45309;
+  --primary-light: #F59E0B;
+  --primary-bg: rgba(180, 83, 9, 0.06);
+  --primary-bg-strong: rgba(180, 83, 9, 0.12);
+  --shadow-primary-sm: 0 2px 8px  rgba(180, 83, 9, 0.16);
+  --shadow-primary-md: 0 4px 16px rgba(180, 83, 9, 0.20);
+  --shadow-primary-lg: 0 8px 32px rgba(180, 83, 9, 0.24);
+  --gradient-primary:        linear-gradient(135deg, #B45309 0%, #F59E0B 100%);
+  --gradient-primary-soft:   linear-gradient(135deg, rgba(180,83,9,0.12) 0%, rgba(245,158,11,0.08) 100%);
+  --gradient-sidebar-header: linear-gradient(160deg, #B45309 0%, #D97706 100%);
+}
+ 
+html.dark[data-accent="amber"] {
+  --primary: #F59E0B;
+  --primary-foreground: #1F1300;
+  --ring: #F59E0B;
+  --sidebar-primary: #F59E0B;
+  --sidebar-primary-foreground: #1F1300;
+  --sidebar-accent: rgba(245, 158, 11, 0.12);
+  --sidebar-accent-foreground: #FCD34D;
+  --accent: rgba(245, 158, 11, 0.12);
+  --accent-foreground: #FCD34D;
+  --chart-1: #F59E0B;
+  --primary-light: #FBBF24;
+  --primary-bg: rgba(245, 158, 11, 0.12);
+  --primary-bg-strong: rgba(245, 158, 11, 0.2);
+  --shadow-primary-sm: 0 2px 8px  rgba(245, 158, 11, 0.18);
+  --shadow-primary-md: 0 4px 16px rgba(245, 158, 11, 0.22);
+  --shadow-primary-lg: 0 8px 32px rgba(245, 158, 11, 0.28);
+  --gradient-primary:        linear-gradient(135deg, #F59E0B 0%, #FBBF24 100%);
+  --gradient-primary-soft:   linear-gradient(135deg, rgba(245,158,11,0.18) 0%, rgba(251,191,36,0.1) 100%);
+  --gradient-sidebar-header: linear-gradient(160deg, #92400E 0%, #B45309 100%);
+}
+ 
+html[data-accent="pink"] {
+  --primary: #BE185D;
+  --primary-foreground: #FFFFFF;
+  --ring: #BE185D;
+  --sidebar-primary: #BE185D;
+  --sidebar-primary-foreground: #FFFFFF;
+  --sidebar-accent: rgba(190, 24, 93, 0.09);
+  --sidebar-accent-foreground: #BE185D;
+  --accent: rgba(190, 24, 93, 0.06);
+  --accent-foreground: #BE185D;
+  --chart-1: #BE185D;
+  --primary-light: #EC4899;
+  --primary-bg: rgba(190, 24, 93, 0.06);
+  --primary-bg-strong: rgba(190, 24, 93, 0.12);
+  --shadow-primary-sm: 0 2px 8px  rgba(190, 24, 93, 0.16);
+  --shadow-primary-md: 0 4px 16px rgba(190, 24, 93, 0.20);
+  --shadow-primary-lg: 0 8px 32px rgba(190, 24, 93, 0.24);
+  --gradient-primary:        linear-gradient(135deg, #BE185D 0%, #EC4899 100%);
+  --gradient-primary-soft:   linear-gradient(135deg, rgba(190,24,93,0.12) 0%, rgba(236,72,153,0.08) 100%);
+  --gradient-sidebar-header: linear-gradient(160deg, #BE185D 0%, #DB2777 100%);
+}
+ 
+html.dark[data-accent="pink"] {
+  --primary: #EC4899;
+  --primary-foreground: #2B0A1B;
+  --ring: #EC4899;
+  --sidebar-primary: #EC4899;
+  --sidebar-primary-foreground: #2B0A1B;
+  --sidebar-accent: rgba(236, 72, 153, 0.12);
+  --sidebar-accent-foreground: #F9A8D4;
+  --accent: rgba(236, 72, 153, 0.12);
+  --accent-foreground: #F9A8D4;
+  --chart-1: #EC4899;
+  --primary-light: #F472B6;
+  --primary-bg: rgba(236, 72, 153, 0.12);
+  --primary-bg-strong: rgba(236, 72, 153, 0.2);
+  --shadow-primary-sm: 0 2px 8px  rgba(236, 72, 153, 0.18);
+  --shadow-primary-md: 0 4px 16px rgba(236, 72, 153, 0.22);
+  --shadow-primary-lg: 0 8px 32px rgba(236, 72, 153, 0.28);
+  --gradient-primary:        linear-gradient(135deg, #EC4899 0%, #F472B6 100%);
+  --gradient-primary-soft:   linear-gradient(135deg, rgba(236,72,153,0.18) 0%, rgba(244,114,182,0.1) 100%);
+  --gradient-sidebar-header: linear-gradient(160deg, #9D174D 0%, #BE185D 100%);
+}
+ 
+/* ── Re-declare the utilities in index.css that hardcode the green
+   hex instead of reading a variable. Loaded after index.css, so
+   these win and now follow whichever accent is active. ── */
+.hover-glow:hover {
+  box-shadow: 0 4px 24px color-mix(in srgb, var(--primary) 15%, transparent);
+}
+ 
+.card-accent::before,
+.page-header::after,
+.tab-active::after {
+  background: linear-gradient(90deg, var(--primary), var(--primary-light));
+}
+ 
+*:focus-visible {
+  outline: 2px solid var(--primary);
+}
+ 
+[data-slot="input"]:focus-visible {
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--primary) 10%, transparent);
+}
+ 
+@keyframes glow-pulse {
+  0%, 100% { box-shadow: 0 0 0 0 color-mix(in srgb, var(--primary) 0%, transparent); }
+  50%      { box-shadow: 0 0 16px 4px color-mix(in srgb, var(--primary) 18%, transparent); }
+}
+ 
