@@ -28,7 +28,7 @@ const STEPS = [
   {
     target: '[data-wizard="cv-dropzone"]',
     title: 'Add a CV to the talent pool',
-    content: 'Click here (or drag a file in) to select a PDF or ZIP of resumes to upload.',
+    content: 'Click here (or drag files in) to select up to 15 PDFs, or one ZIP, of resumes to upload.',
     placement: 'bottom',
     isDone: (ctx) => !!ctx.file,
   },

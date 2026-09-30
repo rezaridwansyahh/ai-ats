@@ -37,6 +37,13 @@ const STATUS_CONFIG = {
   },
 };
 
+const MAX_FILES = 15;
+const MAX_SIZE = 100 * 1024 * 1024; // 100MB per file
+const BATCH_CONCURRENCY = 3; // parallel AI-extraction calls in flight at once
+
+const isZipFile = (f) => f.name.toLowerCase().endsWith('.zip');
+const isPdfFile = (f) => f.name.toLowerCase().endsWith('.pdf');
+
 const formatDate = (d) => {
   if (!d) return '—';
   const date = new Date(d);
@@ -45,9 +52,15 @@ const formatDate = (d) => {
 };
 
 export default function CvUploadCard() {
-  const [file, setFile]           = useState(null);
+  // Pending selection, not yet submitted. A single ZIP or 1-15 PDFs.
+  const [files, setFiles]         = useState([]);
   const [uploading, setUploading] = useState(false);
   const [fileError, setFileError] = useState(null);
+
+  // Per-file live status while a multi-PDF batch is in flight — one row
+  // per file, shown in place of the dropzone so long batches (each file is
+  // its own AI-extraction call) don't look like a frozen button.
+  const [batchProgress, setBatchProgress] = useState([]);
 
   // DB-backed history
   const [history, setHistory]         = useState([]);
@@ -80,66 +93,145 @@ export default function CvUploadCard() {
   useEffect(() => { fetchHistory(); }, [fetchHistory]);
 
   // ── File validation ───────────────────────────────────────────────────────
-  const handleFileSelect = (selectedFile) => {
-    if (!selectedFile) return;
-    const name = selectedFile.name.toLowerCase();
-    if (!name.endsWith('.pdf') && !name.endsWith('.zip')) {
+  // A selection is either exactly one ZIP (bulk, processed in the
+  // background) or 1-15 PDFs (each parsed individually). Mixing the two, or
+  // any other extension, is rejected with a specific message.
+  const handleFilesSelect = (selectedFiles) => {
+    const list = Array.from(selectedFiles || []);
+    if (list.length === 0) return;
+
+    const zips = list.filter(isZipFile);
+    const pdfs = list.filter(isPdfFile);
+    const other = list.length - zips.length - pdfs.length;
+
+    if (other > 0) {
       setFileError('Only PDF or ZIP files are supported.');
       return;
     }
-    if (selectedFile.size > 100 * 1024 * 1024) {
-      setFileError('File size exceeds 100MB limit.');
+    if (zips.length > 0 && (zips.length > 1 || pdfs.length > 0)) {
+      setFileError('A ZIP must be uploaded on its own, not alongside other files.');
       return;
     }
-    setFile(selectedFile);
+
+    const batch = zips.length === 1 ? zips : pdfs;
+
+    if (batch.length > MAX_FILES) {
+      setFileError(`You can upload up to ${MAX_FILES} PDF files at once (selected ${batch.length}).`);
+      return;
+    }
+    const oversized = batch.filter((f) => f.size > MAX_SIZE);
+    if (oversized.length > 0) {
+      setFileError(
+        oversized.length === 1
+          ? `"${oversized[0].name}" exceeds the 100MB limit.`
+          : `${oversized.length} files exceed the 100MB limit.`
+      );
+      return;
+    }
+
+    setFiles(batch);
     setFileError(null);
   };
 
   const handleDrop = (e) => {
     e.preventDefault();
-    handleFileSelect(e.dataTransfer?.files?.[0]);
+    handleFilesSelect(e.dataTransfer?.files);
   };
 
-  const handleRemoveFile = (e) => {
+  const handleRemoveFile = (e, index) => {
     e.stopPropagation();
-    setFile(null);
+    setFiles((prev) => prev.filter((_, i) => i !== index));
+    setFileError(null);
+    if (fileInputRef.current) fileInputRef.current.value = '';
+  };
+
+  const handleClearFiles = (e) => {
+    e.stopPropagation();
+    setFiles([]);
     setFileError(null);
     if (fileInputRef.current) fileInputRef.current.value = '';
   };
 
   // ── Submit ────────────────────────────────────────────────────────────────
+  const uploadOne = async (file) => {
+    const formData = new FormData();
+    formData.append('file', file);
+    return uploadCv(formData);
+  };
+
   const handleSubmit = async () => {
-    if (!file || uploading) return;
+    if (files.length === 0 || uploading) return;
 
     setUploading(true);
-    const capturedFile = file;
-    setFile(null);
+    const capturedFiles = files;
+    setFiles([]);
     setFileError(null);
     if (fileInputRef.current) fileInputRef.current.value = '';
 
-    try {
-      const formData = new FormData();
-      formData.append('file', capturedFile);
-      const { data } = await uploadCv(formData);
-
-      // Refresh history from DB (will include the new row with Done status)
-      await fetchHistory();
-
-      setSuccessData({
-        name:          data.applicant?.name || null,
-        last_position: data.applicant?.last_position || null,
-        isZip:         capturedFile.name.toLowerCase().endsWith('.zip'),
-        filename:      capturedFile.name,
-      });
-      setModalOpen(true);
-    } catch (err) {
-      const msg = err.response?.data?.message || err.message || 'Upload failed.';
-      setFileError(msg);
-      // Still refresh history — the batch row was created with Failed status
-      await fetchHistory();
-    } finally {
-      setUploading(false);
+    // Single file (PDF or ZIP) — unchanged one-request flow, with the
+    // existing per-candidate / queued-for-processing success message.
+    if (capturedFiles.length === 1) {
+      const single = capturedFiles[0];
+      try {
+        const { data } = await uploadOne(single);
+        await fetchHistory();
+        setSuccessData({
+          name:          data.applicant?.name || null,
+          last_position: data.applicant?.last_position || null,
+          isZip:         isZipFile(single),
+          filename:      single.name,
+        });
+        setModalOpen(true);
+      } catch (err) {
+        const msg = err.response?.data?.message || err.message || 'Upload failed.';
+        setFileError(msg);
+        await fetchHistory();
+      } finally {
+        setUploading(false);
+      }
+      return;
     }
+
+    // Batch of 2-15 PDFs — upload with limited concurrency, tracking each
+    // file's status live, then show a single summary once all settle.
+    setBatchProgress(capturedFiles.map((f) => ({ name: f.name, status: 'pending' })));
+
+    const results = new Array(capturedFiles.length);
+    let nextIndex = 0;
+
+    const worker = async () => {
+      while (nextIndex < capturedFiles.length) {
+        const i = nextIndex++;
+        const file = capturedFiles[i];
+        setBatchProgress((prev) => prev.map((p, idx) => (idx === i ? { ...p, status: 'uploading' } : p)));
+        try {
+          const { data } = await uploadOne(file);
+          results[i] = { ok: true, name: data.applicant?.name || file.name };
+          setBatchProgress((prev) => prev.map((p, idx) => (idx === i ? { ...p, status: 'done' } : p)));
+        } catch (err) {
+          const msg = err.response?.data?.message || err.message || 'Upload failed.';
+          results[i] = { ok: false, name: file.name, error: msg };
+          setBatchProgress((prev) => prev.map((p, idx) => (idx === i ? { ...p, status: 'failed', error: msg } : p)));
+        }
+      }
+    };
+
+    await Promise.all(
+      Array.from({ length: Math.min(BATCH_CONCURRENCY, capturedFiles.length) }, worker)
+    );
+
+    await fetchHistory();
+
+    const failed = results.filter((r) => !r.ok);
+    setSuccessData({
+      isBatch: true,
+      total: capturedFiles.length,
+      succeededCount: capturedFiles.length - failed.length,
+      failed,
+    });
+    setModalOpen(true);
+    setUploading(false);
+    setBatchProgress([]);
   };
 
   // ── Modal actions ─────────────────────────────────────────────────────────
@@ -159,12 +251,32 @@ export default function CvUploadCard() {
               <div className="h-12 w-12 rounded-full bg-emerald-50 flex items-center justify-center">
                 <CheckCircle className="h-6 w-6 text-emerald-500" />
               </div>
-              <DialogTitle className="text-center text-base">Upload Successful!</DialogTitle>
+              <DialogTitle className="text-center text-base">
+                {successData?.isBatch ? 'Batch Upload Complete' : 'Upload Successful!'}
+              </DialogTitle>
             </div>
           </DialogHeader>
 
           <div className="text-center space-y-1 pb-2">
-            {successData?.isZip ? (
+            {successData?.isBatch ? (
+              <>
+                <p className="text-sm text-muted-foreground">
+                  <span className="font-semibold text-foreground">
+                    {successData.succeededCount} of {successData.total}
+                  </span>
+                  {' '}CVs added to the talent pool.
+                </p>
+                {successData.failed.length > 0 && (
+                  <div className="mt-2 max-h-28 overflow-y-auto text-left rounded-md border border-red-100 bg-red-50 p-2">
+                    {successData.failed.map((f, i) => (
+                      <p key={i} className="text-[11px] text-red-500 truncate" title={f.error}>
+                        {f.name} — {f.error}
+                      </p>
+                    ))}
+                  </div>
+                )}
+              </>
+            ) : successData?.isZip ? (
               <p className="text-sm text-muted-foreground">
                 <span className="font-semibold text-foreground">{successData?.filename}</span>
                 {' '}has been queued for processing.
@@ -202,7 +314,7 @@ export default function CvUploadCard() {
                 Upload CV to Talent Pool
               </CardTitle>
               <p className="text-[11px] text-muted-foreground mt-1">
-                PDF — AI extracts candidate info instantly.&nbsp;&nbsp;ZIP — bulk CVs processed in background.
+                PDF — AI extracts candidate info instantly, up to {MAX_FILES} at once.&nbsp;&nbsp;ZIP — bulk CVs processed in background.
               </p>
             </div>
             <Button variant="ghost" size="sm" className="text-xs shrink-0" onClick={restartWizard}>
@@ -221,7 +333,7 @@ export default function CvUploadCard() {
                 className={`
                   relative flex flex-col items-center justify-center border-2 border-dashed
                   rounded-lg p-6 cursor-pointer transition-colors min-h-[150px]
-                  ${file
+                  ${files.length > 0
                     ? 'border-primary/50 bg-primary/5'
                     : 'border-border bg-muted/30 hover:border-primary/40'}
                   ${uploading ? 'pointer-events-none opacity-60' : ''}
@@ -230,19 +342,60 @@ export default function CvUploadCard() {
                 onDragOver={(e) => e.preventDefault()}
                 onDrop={handleDrop}
               >
-                {file ? (
+                {uploading && batchProgress.length > 0 ? (
+                  <div className="w-full max-h-[130px] overflow-y-auto flex flex-col gap-1 px-1">
+                    {batchProgress.map((p, i) => (
+                      <div key={i} className="flex items-center gap-1.5 text-[11px]">
+                        {p.status === 'done' && <CheckCircle className="h-3 w-3 text-emerald-500 shrink-0" />}
+                        {p.status === 'failed' && <AlertCircle className="h-3 w-3 text-red-500 shrink-0" />}
+                        {(p.status === 'pending' || p.status === 'uploading') && (
+                          <Loader2 className={`h-3 w-3 shrink-0 text-muted-foreground ${p.status === 'uploading' ? 'animate-spin' : ''}`} />
+                        )}
+                        <span className="truncate" title={p.name}>{p.name}</span>
+                      </div>
+                    ))}
+                  </div>
+                ) : files.length === 1 ? (
                   <>
                     <FileText className="h-6 w-6 text-primary mb-2 shrink-0" />
                     <p className="text-xs font-semibold text-center text-primary break-all px-4">
-                      {file.name}
+                      {files[0].name}
                     </p>
                     <p className="text-[10px] text-muted-foreground mt-1">
-                      {(file.size / 1024 / 1024).toFixed(2)} MB
+                      {(files[0].size / 1024 / 1024).toFixed(2)} MB
                     </p>
                     <button
                       type="button"
-                      onClick={handleRemoveFile}
+                      onClick={(e) => handleRemoveFile(e, 0)}
                       className="absolute top-2 right-2 text-muted-foreground hover:text-foreground transition-colors"
+                    >
+                      <X className="h-3.5 w-3.5" />
+                    </button>
+                  </>
+                ) : files.length > 1 ? (
+                  <>
+                    <p className="text-[11px] font-semibold text-primary mb-1.5">
+                      {files.length} PDF files selected
+                    </p>
+                    <div className="w-full max-h-[90px] overflow-y-auto flex flex-col gap-0.5 px-1">
+                      {files.map((f, i) => (
+                        <div key={i} className="flex items-center justify-between gap-1 text-[10px] text-muted-foreground">
+                          <span className="truncate" title={f.name}>{f.name}</span>
+                          <button
+                            type="button"
+                            onClick={(e) => handleRemoveFile(e, i)}
+                            className="shrink-0 hover:text-foreground transition-colors"
+                          >
+                            <X className="h-3 w-3" />
+                          </button>
+                        </div>
+                      ))}
+                    </div>
+                    <button
+                      type="button"
+                      onClick={handleClearFiles}
+                      className="absolute top-2 right-2 text-muted-foreground hover:text-foreground transition-colors"
+                      title="Clear all"
                     >
                       <X className="h-3.5 w-3.5" />
                     </button>
@@ -251,10 +404,10 @@ export default function CvUploadCard() {
                   <>
                     <Upload className="h-5 w-5 mb-2 text-muted-foreground" />
                     <p className="text-xs font-semibold text-center">
-                      Drag file here or click to browse
+                      Drag files here or click to browse
                     </p>
                     <p className="text-[10px] text-muted-foreground mt-1 text-center">
-                      PDF or ZIP — max 100MB
+                      Up to {MAX_FILES} PDFs, or one ZIP — max 100MB each
                     </p>
                   </>
                 )}
@@ -263,8 +416,9 @@ export default function CvUploadCard() {
                   ref={fileInputRef}
                   type="file"
                   accept=".pdf,.zip"
+                  multiple
                   className="hidden"
-                  onChange={(e) => handleFileSelect(e.target.files?.[0])}
+                  onChange={(e) => handleFilesSelect(e.target.files)}
                 />
               </div>
 
@@ -279,7 +433,7 @@ export default function CvUploadCard() {
                 data-wizard="cv-upload-btn"
                 size="sm"
                 className="text-xs w-fit"
-                disabled={!file || uploading}
+                disabled={files.length === 0 || uploading}
                 onClick={handleSubmit}
               >
                 {uploading ? (
@@ -290,7 +444,7 @@ export default function CvUploadCard() {
                 ) : (
                   <>
                     <Upload className="h-3.5 w-3.5 mr-1.5" />
-                    Upload &amp; Parse CV
+                    {files.length > 1 ? `Upload & Parse ${files.length} CVs` : 'Upload & Parse CV'}
                   </>
                 )}
               </Button>
@@ -395,7 +549,7 @@ export default function CvUploadCard() {
       </Card>
 
       <CvUploadWizard
-        file={file}
+        file={files.length > 0 ? files : null}
         successData={successData}
         historyVisible={!!successData && !modalOpen}
         run={wizardRun && !modalOpen}
