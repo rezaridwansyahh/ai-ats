@@ -4,21 +4,15 @@
 //   Staff   (3) — read / create
 //   Intern  (4) — read only
 //
-// permissions.js generates ids as: (module_menu_id - 1) * 4 + offset
-//   offset 1 = read, 2 = create, 3 = update, 4 = delete
-const MENU_COUNT = 27;
-const FUNC_OFFSET = { read: 1, create: 2, update: 3, delete: 4 };
+// Derived from permissions.js's actual generated rows (not a contiguous
+// module_menu id range), so removing/adding a menu never requires renumbering.
+import permissions from './permissions.js';
 
 let nextId = 1;
-function rolePerms(role_id, allowed) {
-  const out = [];
-  for (let mm = 1; mm <= MENU_COUNT; mm++) {
-    for (const fn of allowed) {
-      const permission_id = (mm - 1) * 4 + FUNC_OFFSET[fn];
-      out.push({ id: nextId++, role_id, permission_id });
-    }
-  }
-  return out;
+function rolePerms(role_id, allowedFuncs) {
+  return permissions
+    .filter((p) => allowedFuncs.includes(p.functionality))
+    .map((p) => ({ id: nextId++, role_id, permission_id: p.id }));
 }
 
 export default [
