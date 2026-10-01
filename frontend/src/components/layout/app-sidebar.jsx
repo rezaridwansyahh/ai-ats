@@ -17,6 +17,7 @@ import {
   FileText, Search, Stethoscope, FileSignature, UserCheck,
   BarChart3, Brain, ShieldCheck, Megaphone, Users, Bell,
   ChevronDown, Sparkles, Mail, GitBranch, Activity, Workflow,
+  BookOpen,
 } from 'lucide-react';
 import { hasPermission } from '@/utils/permissions';
 import { getCompanyById } from '@/api/company.api';
@@ -587,6 +588,12 @@ export function AppSidebar() {
           icon={BarChart3}
           active={location.pathname.startsWith('/selection/report')}
           onClick={() => navigate('/selection/report')}
+        />
+        <FlatNavItem
+          label="User Guide"
+          icon={BookOpen}
+          active={location.pathname.startsWith('/user-guide')}
+          onClick={() => navigate('/user-guide')}
         />
         <FlatNavItem
           label="Settings"

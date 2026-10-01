@@ -48,6 +48,7 @@ import OnboardingContent from "./components/onboarding/Onboarding-content"
 
 //PUNYA BAYU MASIH DUMMY
 import SettingsPage from "./pages/Settings"
+import UserGuidePage from "./pages/UserGuide"
 import OnboardingPage from "./pages/Onboarding"
 import OnboardingWorkboard from "./pages/OnboardingWorkboard"
 import ReportsPage from "./pages/Reports"
@@ -134,6 +135,7 @@ function App() {
 
         <Route path="/settings" element={<SettingsPage />} />
         <Route path="/settings/account" element={<AccountPage />} />
+        <Route path="/user-guide" element={<UserGuidePage />} />
 
         <Route path="/selection/report" element={<ReportsPage />} />
         <Route path="/report-candidate" element={<ReportCandidatePage />} />
