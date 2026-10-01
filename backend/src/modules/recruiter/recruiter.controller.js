@@ -3,7 +3,7 @@ import recruiterService from './recruiter.service.js';
 class RecruiterController {
   async getAll(req, res) {
     try {
-      const recruiters = await recruiterService.getAll();
+      const recruiters = await recruiterService.getAll(req.user?.company_id);
       res.status(200).json({ message: "List all Recruiters", recruiters });
     } catch (err) {
       res.status(err.status || 500).json({ message: err.message });
@@ -21,7 +21,7 @@ class RecruiterController {
 
   async create(req, res) {
     try {
-      const recruiter = await recruiterService.create(req.body);
+      const recruiter = await recruiterService.create(req.body, req.user?.company_id);
       res.status(201).json({ message: "Recruiter created successfully", recruiter });
     } catch (err) {
       res.status(err.status || 500).json({ message: err.message });

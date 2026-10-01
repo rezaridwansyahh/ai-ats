@@ -19,30 +19,111 @@ class ApplicantModel {
     return result.rows;
   }
 
-  async getAllByCompanyWithScore(company_id) {
-    const result = await getDb().query(`
-    SELECT
-        ma.*,
-        (
-            SELECT overall_score
-            FROM candidate_job_score cjs2
-            WHERE cjs2.applicant_id = ma.id
-            ORDER BY cjs2.scored_at DESC  -- or updated_at, or whichever date column
-            LIMIT 1
-        ) AS latest_score,
-        cjs.platform AS source_platform,
-        cjs.job_title AS source_job_title,
-        CASE
-            WHEN cjs.platform IN ('seek', 'linkedin') THEN 'external_platform'
-            ELSE NULL
-        END AS source_type
-    FROM master_applicant ma
-    LEFT JOIN mapping_applicant_sourcing mas ON mas.applicant_id = ma.id
-    LEFT JOIN core_job_sourcing cjs ON cjs.id = mas.job_sourcing_id
-    WHERE ma.company_id = $1
-    ORDER BY latest_score DESC NULLS LAST;  -- Sort by the latest score
-  `, [company_id]);
+  // Paginated + filtered Talent Pool list. Replaces the old "fetch every
+  // applicant the company has ever had, filter/sort/paginate in the browser"
+  // approach — that doesn't scale past a few hundred rows, and every row ran
+  // its own correlated score subquery regardless of whether it was even shown.
+  //
+  // mapping_applicant_sourcing is NOT unique on applicant_id alone (an
+  // applicant can have multiple sourcing rows), so the sourcing join is a
+  // LATERAL picking the most recent one — a plain LEFT JOIN would silently
+  // duplicate that applicant's row and corrupt both the page contents and
+  // the COUNT(*) OVER() total.
+  async getPaginatedByCompany(company_id, {
+    position_q, education_q, location_q, min_score, skills, page = 1, pageSize = 10,
+  } = {}) {
+    const limit      = Math.min(Math.max(Number(pageSize) || 10, 1), 100);
+    const pageNumber = Math.max(Number(page) || 1, 1);
+    const offset     = (pageNumber - 1) * limit;
 
+    const posParam    = position_q  ? `%${position_q}%`  : null;
+    const eduParam     = education_q ? `%${education_q}%` : null;
+    const locParam     = location_q  ? `%${location_q}%`  : null;
+    const scoreParam   = min_score && min_score > 0 ? min_score : null;
+    const skillsParam  = Array.isArray(skills) && skills.length > 0
+      ? skills.map((s) => String(s).toLowerCase())
+      : null;
+
+    const result = await getDb().query(`
+      WITH filtered AS (
+        SELECT
+          ma.*,
+          latest.overall_score AS latest_score,
+          src.platform AS source_platform,
+          src.job_title AS source_job_title,
+          CASE WHEN src.platform IN ('seek', 'linkedin') THEN 'external_platform' ELSE NULL END AS source_type
+        FROM master_applicant ma
+        LEFT JOIN LATERAL (
+          SELECT cjs.platform, cjs.job_title
+          FROM mapping_applicant_sourcing mas
+          JOIN core_job_sourcing cjs ON cjs.id = mas.job_sourcing_id
+          WHERE mas.applicant_id = ma.id
+          ORDER BY mas.created_at DESC
+          LIMIT 1
+        ) src ON true
+        LEFT JOIN LATERAL (
+          SELECT overall_score
+          FROM candidate_job_score s2
+          WHERE s2.applicant_id = ma.id
+          ORDER BY s2.scored_at DESC
+          LIMIT 1
+        ) latest ON true
+        WHERE ma.company_id = $1
+          AND ($2::text IS NULL OR ma.last_position ILIKE $2
+               OR (ma.information->'job_position'->>'current') ILIKE $2
+               OR (ma.information->'job_position'->>'category') ILIKE $2)
+          AND ($3::text IS NULL OR ma.education ILIKE $3 OR EXISTS (
+                SELECT 1 FROM jsonb_array_elements(COALESCE(ma.information->'education', '[]'::jsonb)) edu
+                WHERE (edu->>'school') ILIKE $3 OR (edu->>'degree') ILIKE $3
+              ))
+          AND ($4::text IS NULL OR ma.address ILIKE $4)
+          AND ($5::int IS NULL OR COALESCE(latest.overall_score, 0) >= $5)
+          AND ($6::text[] IS NULL OR (
+                SELECT array_agg(lower(s)) FROM jsonb_array_elements_text(COALESCE(ma.information->'skills', '[]'::jsonb)) s
+              ) @> $6::text[])
+      )
+      SELECT *, COUNT(*) OVER()::int AS total_count
+      FROM filtered
+      ORDER BY date DESC NULLS LAST
+      LIMIT $7 OFFSET $8
+    `, [company_id, posParam, eduParam, locParam, scoreParam, skillsParam, limit, offset]);
+
+    const total = result.rows[0]?.total_count ?? 0;
+    const applicants = result.rows.map(({ total_count, ...rest }) => rest);
+    return { applicants, total };
+  }
+
+  // Unfiltered, company-wide aggregates for the stat tiles — deliberately
+  // separate from the paginated list above so paging/filtering the table
+  // doesn't make these numbers jump around.
+  async getStatsByCompany(company_id) {
+    const result = await getDb().query(`
+      SELECT
+        COUNT(*)::int AS total,
+        COUNT(*) FILTER (WHERE date >= NOW() - INTERVAL '7 days')::int AS new_this_week,
+        COUNT(DISTINCT information->'job_position'->>'category')::int AS position_categories,
+        AVG(
+          CASE WHEN COALESCE(information->'experience'->>'years_total', information->>'years_experience') ~ '^[0-9]+(\\.[0-9]+)?$'
+               THEN COALESCE(information->'experience'->>'years_total', information->>'years_experience')::numeric
+               ELSE NULL END
+        ) AS avg_experience
+      FROM master_applicant
+      WHERE company_id = $1
+    `, [company_id]);
+    return result.rows[0];
+  }
+
+  // Distinct skills + candidate counts across the whole pool, for the filter
+  // sidebar's skill picker. Case preserved as stored (not lower-cased) to
+  // match the exact tags recruiters typed/extracted, same as before.
+  async getSkillsByCompany(company_id) {
+    const result = await getDb().query(`
+      SELECT skill, COUNT(*)::int AS count
+      FROM master_applicant ma, jsonb_array_elements_text(COALESCE(ma.information->'skills', '[]'::jsonb)) skill
+      WHERE ma.company_id = $1
+      GROUP BY skill
+      ORDER BY count DESC
+    `, [company_id]);
     return result.rows;
   }
 

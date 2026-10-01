@@ -1,8 +1,8 @@
 import Recruiter from './recruiter.model.js';
 
 class RecruiterService {
-  async getAll() {
-    return await Recruiter.getAll();
+  async getAll(company_id) {
+    return await Recruiter.getAllByCompanyId(company_id);
   }
 
   async getById(id) {
@@ -11,7 +11,7 @@ class RecruiterService {
     return recruiter;
   }
 
-  async create({ name, email, jobs_assigned, status }) {
+  async create({ name, email, jobs_assigned, status }, company_id) {
     if (!name || !email) {
       throw { status: 400, message: 'Name and email are required' };
     }
@@ -19,7 +19,8 @@ class RecruiterService {
       name,
       email,
       jobs_assigned || 0,
-      status || 'Active'
+      status || 'Active',
+      company_id
     );
   }
 

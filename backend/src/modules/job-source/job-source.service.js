@@ -9,8 +9,8 @@ import candidatePipelineModel from '../candidate-pipeline/candidate-pipeline.mod
 import screeningService from '../screening/screening.service.js';
 
 class JobSourceService {
-  async getAll() {
-    return await JobSource.getAll();
+  async getAll(company_id) {
+    return await JobSource.getAllByCompanyId(company_id);
   }
 
   async getById(id) {

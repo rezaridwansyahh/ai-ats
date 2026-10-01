@@ -14,6 +14,8 @@ router.get('/:id/sourcings', applicantController.getSourcingsByApplicantId);
 router.get('/:id/score-history', applicantController.getScoreHistoryByApplicantId);
 router.get('/company/:company_id', applicantController.getAllByCompanyId);
 router.get('/score/company/:company_id', applicantController.getAllByCompanyWithScore)
+router.get('/stats/company/:company_id', applicantController.getStatsByCompany)
+router.get('/skills/company/:company_id', applicantController.getSkillsByCompany)
 
 
 router.delete('/:id', applicantController.delete);

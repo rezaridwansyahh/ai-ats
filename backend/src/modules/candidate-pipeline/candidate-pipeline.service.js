@@ -25,11 +25,19 @@ class CandidatePipelineService {
   }
 
   async getByJobId(job_id, query, company_id) {
-    const { category } = query
+    const { category, search, stage_id, min_exp, max_exp, sort, page, pageSize } = query
     if (!job_id) throw { status: 400, message: 'job_id is required' };
 
-    if(category) return await CandidatePipeline.getByJobIdCategory(job_id, category, company_id);
-    return await CandidatePipeline.getByJobId(job_id, company_id);
+    if (category) {
+      const pipelines = await CandidatePipeline.getByJobIdCategory(job_id, category, company_id);
+      return { pipelines, total: pipelines.length };
+    }
+    return await CandidatePipeline.getByJobId(job_id, company_id, { search, stage_id, min_exp, max_exp, sort, page, pageSize });
+  }
+
+  async getJobPipelineCounts(job_id, company_id) {
+    if (!job_id) throw { status: 400, message: 'job_id is required' };
+    return await CandidatePipeline.getJobPipelineCounts(job_id, company_id);
   }
 
   async getByApplicantId(applicant_id) {

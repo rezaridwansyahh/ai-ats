@@ -36,7 +36,8 @@ export const getCandidatePipelineSummary = (category = null) => {
   return api.get(url);
 }
 
-// Report page: candidates attached to a job.
+// Report page / JobDetail: candidates attached to a job. No page/pageSize ->
+// every matching candidate comes back (the backend only paginates when asked).
 export const getCandidatesByJobId = (job_id, category = null) => {
   let url = `/candidate-pipeline/job/${job_id}`;
 
@@ -44,6 +45,16 @@ export const getCandidatesByJobId = (job_id, category = null) => {
 
   return api.get(url);
 }
+
+// Candidate Pipeline detail page: paginated + filtered candidate list for one
+// job's board.
+export const getPaginatedCandidatesByJobId = (job_id, params = {}) =>
+  api.get(`/candidate-pipeline/job/${job_id}`, { params });
+
+// Header summary (total in pipeline + total hired) for one job — independent
+// of whatever filter/page the table above is currently showing.
+export const getJobPipelineCounts = (job_id) =>
+  api.get(`/candidate-pipeline/job/${job_id}/counts`);
 
 // Detail page: single candidate by master_candidate.id.
 export const getCandidateById = (id) =>

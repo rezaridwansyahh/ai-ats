@@ -11,8 +11,16 @@ class ApplicantService {
     return await applicantModel.getAllByCompanyId(company_id);
   }
 
-  async getAllByCompanyWithScore(company_id) {
-    return await applicantModel.getAllByCompanyWithScore(company_id);
+  async getPaginatedByCompany(company_id, filters) {
+    return await applicantModel.getPaginatedByCompany(company_id, filters);
+  }
+
+  async getStatsByCompany(company_id) {
+    return await applicantModel.getStatsByCompany(company_id);
+  }
+
+  async getSkillsByCompany(company_id) {
+    return await applicantModel.getSkillsByCompany(company_id);
   }
 
   async getById(id) {

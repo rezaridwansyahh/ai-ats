@@ -1,4 +1,4 @@
-import { useState, useMemo, useEffect } from "react";
+import { useState, useMemo, useEffect, useCallback } from "react";
 import { Sparkles, HelpCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
@@ -8,7 +8,7 @@ import TalentPoolStats from "@/components/talent-pool/TalentPoolStats";
 import TalentPoolFilterSidebar from "@/components/talent-pool/TalentPoolFilterSidebar";
 import TalentPoolTable from "@/components/talent-pool/TalentPoolTable";
 import CvUploadCard from "@/components/talent-pool/CvUploadCard";
-import { getAllByCompanyWithScore } from "@/api/applicant.api";
+import { getAllByCompanyWithScore, getApplicantStats, getApplicantSkills } from "@/api/applicant.api";
 import { PageHeader } from "@/components/common";
 import { hasPermission } from "@/utils/permissions";
 
@@ -23,11 +23,22 @@ const EMPTY_FILTERS = {
   location_q:'',
 };
 
+const EMPTY_STATS = { total: 0, newThisWeek: 0, positionCategories: 0, avgExperience: '-' };
+
 export default function TalentPoolPage(){
   const canCreate = hasPermission('Sourcing', 'Talent Pool', 'create');
-  const [allApplicants, setAllApplicants] = useState([]);
+
+  // Current page's rows + total match count — both come straight from the
+  // server now. Filtering/sorting/pagination all happen in SQL, not here.
+  const [rows, setRows] = useState([]);
+  const [total, setTotal] = useState(0);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+
+  // Stats + available skills are whole-pool aggregates, unaffected by the
+  // current filter/page — fetched once, not re-fetched on every search.
+  const [stats, setStats] = useState(EMPTY_STATS);
+  const [availableSkills, setAvailableSkills] = useState([]);
 
   const [filterDraft, setFilterDraft] = useState(EMPTY_FILTERS);
   const [activeFilters, setActiveFilters] = useState(EMPTY_FILTERS);
@@ -40,83 +51,80 @@ export default function TalentPoolPage(){
 
   const [dialogOpen, setDialogOpen] = useState(false);
   const [selectedApplicants, setSelectedApplicants] = useState([]);
-  const [selectedIds, setSelectedIds] = useState(new Set());
+  // id -> full row object. A Map (not just a Set of ids) because selection
+  // can span multiple pages — once a page is left, its rows are gone from
+  // `rows`, so the full object has to be captured at select-time instead of
+  // looked up again later.
+  const [selectedMap, setSelectedMap] = useState(() => new Map());
+  const selectedIds = useMemo(() => new Set(selectedMap.keys()), [selectedMap]);
 
   const [historyOpen, setHistoryOpen] = useState(false);
   const [historyApplicant, setHistoryApplicant] = useState(null);
 
   const { run, setRun, markSeen, restart } = usePipelineTour('talent-pool');
-  
-  // One full fetch - include latest score per applicant
-  const loadApplicants = async () => {
+
+  const companyId = useMemo(() => {
+    try { return JSON.parse(localStorage.getItem('user'))?.company_id; } catch { return null; }
+  }, []);
+
+  const loadApplicants = useCallback(async () => {
+    if (!companyId) return;
     setLoading(true);
     setError(null);
-    try{
-      const storage = JSON.parse(localStorage.getItem('user'));
-      const {data} = await getAllByCompanyWithScore(storage.company_id);
-      setAllApplicants(data.applicants || []);
+    try {
+      const { data } = await getAllByCompanyWithScore(companyId, {
+        page,
+        pageSize: PAGE_SIZE,
+        position_q: activeFilters.position_q || undefined,
+        education_q: activeFilters.education_q || undefined,
+        location_q: activeFilters.location_q || undefined,
+        min_score: minScore > 0 ? minScore : undefined,
+        skills: skillFilters.size > 0 ? [...skillFilters].join(',') : undefined,
+      });
+      setRows(data.applicants || []);
+      setTotal(data.total || 0);
     } catch (err) {
       setError(err.response?.data?.message || err.message || 'Failed to load applicants');
-      setAllApplicants([]);
+      setRows([]);
+      setTotal(0);
     } finally {
       setLoading(false);
-    } 
-  };
+    }
+  }, [companyId, page, activeFilters, minScore, skillFilters]);
 
-  useEffect(() => { loadApplicants(); }, []);
+  useEffect(() => { loadApplicants(); }, [loadApplicants]);
+
+  const loadStatsAndSkills = useCallback(async () => {
+    if (!companyId) return;
+    try {
+      const [statsRes, skillsRes] = await Promise.all([
+        getApplicantStats(companyId),
+        getApplicantSkills(companyId),
+      ]);
+      const s = statsRes.data?.stats || {};
+      setStats({
+        total: s.total ?? 0,
+        newThisWeek: s.new_this_week ?? 0,
+        positionCategories: s.position_categories ?? 0,
+        avgExperience: s.avg_experience != null ? `${Number(s.avg_experience).toFixed(1)} yrs` : '-',
+      });
+      setAvailableSkills(
+        (skillsRes.data?.skills || []).map((row) => ({ skill: row.skill, count: row.count }))
+      );
+    } catch {
+      // Stat tiles/skill picker are a nicety, not required for the table to work.
+    }
+  }, [companyId]);
+
+  useEffect(() => { loadStatsAndSkills(); }, [loadStatsAndSkills]);
 
   const hasActiveFilters = useMemo(
     () => Object.values(activeFilters).some((v) => v.trim().length > 0) || minScore > 0 || skillFilters.size > 0,
     [activeFilters, minScore, skillFilters]
   );
 
-  // Client side filtering
-  const filteredRows = useMemo(() => {
-    const posQ = activeFilters.position_q.trim().toLowerCase();
-    const eduQ = activeFilters.education_q.trim().toLowerCase();
-    const locQ = activeFilters.location_q.trim().toLowerCase();
-
-    return allApplicants.filter((a) => {
-      const info = a.information || {};
-
-      if(posQ) {
-        const hay = `${a.last_position || ''} ${info.job_position?.current || ''} ${info.job_position?.category || ''}`.toLowerCase();
-        if (!hay.includes(posQ)) return false;
-      }
-
-      if (skillFilters.size > 0) {
-        const skills = (Array.isArray(info.skills) ? info.skills : []).map((s) => (s || '').toLowerCase());
-        const hasAllSelected = [...skillFilters].every((sel) => skills.includes(sel.toLowerCase()));
-        if (!hasAllSelected) return false;
-      }
-
-      if(eduQ){
-        const eduArr = Array.isArray(info.education) ? info.education : [];
-        const hay = `${a.education || ''} ${eduArr.map((e) => `${e.school || ''} ${e.degree || ''}`).join(' ')}`.toLowerCase();
-        if (!hay.includes(eduQ)) return false;
-      }
-
-      if(locQ){
-        if(!(a.address || '').toLowerCase().includes(locQ)) return false;
-      }
-
-      if(minScore > 0){
-        if((a.latest_score ?? 0) < minScore) return false;
-      }
-
-      return true;
-    }).sort((a, b) => {
-      // Newest applicants first
-      const dateA = a.date ? new Date(a.date).getTime() : 0;
-      const dateB = b.date ? new Date(b.date).getTime() : 0;
-      return dateB - dateA;
-    });
-  }, [allApplicants, activeFilters, minScore, skillFilters]);
-
-  const total = filteredRows.length;
   const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE));
   const pageClamped = Math.min(page, totalPages);
-  const pagedRows = filteredRows.slice((pageClamped - 1) * PAGE_SIZE, pageClamped * PAGE_SIZE);
 
   const paginationPages = useMemo(() => {
     const pages = [];
@@ -129,41 +137,6 @@ export default function TalentPoolPage(){
     if (totalPages > 1) pages.push(totalPages);
     return pages;
   }, [pageClamped, totalPages]);
-
-  // ── Stats — derived from the same full fetch, no separate call needed ──
-  const stats = useMemo(() => {
-    const totalApplicants = allApplicants.length;
-    const weekAgo = Date.now() - 7 * 24 * 60 * 60 * 1000;
-    const newThisWeek = allApplicants.filter(a => a.date && new Date(a.date).getTime() >= weekAgo).length;
-    const positionCategories = new Set (
-      allApplicants.map(a => a.information?.job_position?.category).filter(Boolean)
-    ).size;
-    const avgExperience = (() => {
-      const years = allApplicants
-        .map(a => a.information?.experience?.years_total ?? a.information?.years_experience)
-        .filter(v => typeof v === 'number');
-      if (years.length === 0) return '-';
-      return `${(years.reduce((s, y) => s + y, 0) / years.length).toFixed(1)} yrs`;
-    }) ();
-    return { total: totalApplicants, newThisWeek, positionCategories, avgExperience };
-  }, [allApplicants]);
-
-  // All distinct skills across the whole pool, with candidate counts —
-  // powers the "+ Add skill filter" dropdown so options always reflect
-  // real data instead of a hardcoded list.
-  const availableSkills = useMemo(() => {
-    const counts = {};
-    for (const a of allApplicants) {
-      const skills = Array.isArray(a.information?.skills) ? a.information.skills : [];
-      for (const s of skills) {
-        if (!s) continue;
-        counts[s] = (counts[s] || 0) + 1;
-      }
-    }
-    return Object.entries(counts)
-      .sort((a, b) => b[1] - a[1])
-      .map(([skill, count]) => ({ skill, count }));
-  }, [allApplicants]);
 
   // Handlers passed down to children
   const setDraftField = (key) => (e) =>
@@ -226,40 +199,38 @@ export default function TalentPoolPage(){
     setDialogOpen(true);
   };
 
-// BULK SELECT HANDLERS
-  const toggleSelectOne = (id) => {
-    setSelectedIds((prev) => {
-      const next = new Set(prev);
-      if (next.has(id)) next.delete(id); else next.add(id);
+  // BULK SELECT HANDLERS — store the full row (not just the id) since the
+  // page it came from won't still be loaded once the user moves on.
+  const toggleSelectOne = (row) => {
+    setSelectedMap((prev) => {
+      const next = new Map(prev);
+      if (next.has(row.id)) next.delete(row.id); else next.set(row.id, row);
       return next;
     });
   };
 
   const toggleSelectAllPaged = () => {
-    setSelectedIds((prev) => {
-      const next = new Set(prev);
-      const allSelected = pagedRows.length > 0 && pagedRows.every((r) => next.has(r.id));
+    setSelectedMap((prev) => {
+      const next = new Map(prev);
+      const allSelected = rows.length > 0 && rows.every((r) => next.has(r.id));
       if (allSelected) {
-        pagedRows.forEach((r) => next.delete(r.id));
+        rows.forEach((r) => next.delete(r.id));
       } else {
-        pagedRows.forEach((r) => next.add(r.id));
+        rows.forEach((r) => next.set(r.id, r));
       }
       return next;
     });
   };
-  const clearSelection = () => setSelectedIds(new Set());
+  const clearSelection = () => setSelectedMap(new Map());
 
-  // Opens the dialog with every selected applicant's full data — looked up
-  // from allApplicants (not just the current page) since selection can span
-  // multiple pages.
   const handleBulkAddClick = () => {
-    const chosen = allApplicants.filter((a) => selectedIds.has(a.id));
-    setSelectedApplicants(chosen);
+    setSelectedApplicants([...selectedMap.values()]);
     setDialogOpen(true);
   };
 
   const handleDialogSuccess = () => {
     loadApplicants();
+    loadStatsAndSkills();
     clearSelection();
   };
 
@@ -270,7 +241,7 @@ export default function TalentPoolPage(){
 
    return (
     <div className="space-y-5 p-6">
- 
+
       <div data-tour="talent-pool-header" className="flex items-start justify-between gap-4">
         <PageHeader
           title="Talent"
@@ -286,9 +257,9 @@ export default function TalentPoolPage(){
           </Button>
         </div>
       </div>
- 
+
       <TalentPoolStats stats={stats} loading={loading} />
- 
+
       <div className="grid grid-cols-1 lg:grid-cols-[220px_minmax(0,1fr)] gap-5 items-start">
         <TalentPoolFilterSidebar
           totalCount={stats.total}
@@ -303,9 +274,9 @@ export default function TalentPoolPage(){
           onToggleSkill={handleToggleSkillFilter}
           onRemoveSkill={handleRemoveSkillFilter}
         />
- 
+
         <TalentPoolTable
-          rows={pagedRows}
+          rows={rows}
           total={total}
           loading={loading}
           error={error}
@@ -345,7 +316,7 @@ export default function TalentPoolPage(){
       />
 
       {canCreate && <CvUploadCard />}
- 
+
       <PipelineTour
         steps={TALENT_POOL_STEPS}
         tourKey="talent-pool"

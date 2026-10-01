@@ -37,8 +37,44 @@ class ApplicantController {
 
       if(user.company_id !== companyId) return res.status(403).json({ message: "Forbidden" });
 
-      const applicants = await applicantService.getAllByCompanyWithScore(companyId);
-      res.status(200).json({ message: `List all applicants with score of Company Id : ${companyId}`, applicants });
+      const { position_q, education_q, location_q, min_score, skills, page, pageSize } = req.query;
+      const { applicants, total } = await applicantService.getPaginatedByCompany(companyId, {
+        position_q, education_q, location_q,
+        min_score: min_score !== undefined ? Number(min_score) : undefined,
+        skills: typeof skills === 'string' && skills.length > 0 ? skills.split(',') : undefined,
+        page, pageSize,
+      });
+      res.status(200).json({ message: `List all applicants with score of Company Id : ${companyId}`, applicants, total });
+    } catch(err) {
+      res.status(err.status || 500).json({ message: err.message });
+    }
+  }
+
+  async getStatsByCompany(req, res) {
+    const userData = req.user;
+    const companyId = Number(req.params.company_id);
+
+    try {
+      const user = await userService.getById(userData.user_id);
+      if(user.company_id !== companyId) return res.status(403).json({ message: "Forbidden" });
+
+      const stats = await applicantService.getStatsByCompany(companyId);
+      res.status(200).json({ message: `Applicant stats for Company Id : ${companyId}`, stats });
+    } catch(err) {
+      res.status(err.status || 500).json({ message: err.message });
+    }
+  }
+
+  async getSkillsByCompany(req, res) {
+    const userData = req.user;
+    const companyId = Number(req.params.company_id);
+
+    try {
+      const user = await userService.getById(userData.user_id);
+      if(user.company_id !== companyId) return res.status(403).json({ message: "Forbidden" });
+
+      const skills = await applicantService.getSkillsByCompany(companyId);
+      res.status(200).json({ message: `Applicant skills for Company Id : ${companyId}`, skills });
     } catch(err) {
       res.status(err.status || 500).json({ message: err.message });
     }

@@ -3,7 +3,7 @@ import jobSourceService from './job-source.service.js';
 class JobSourceController {
   async getAll(req, res) {
     try {
-      const postings = await jobSourceService.getAll();
+      const postings = await jobSourceService.getAll(req.user?.company_id);
       res.status(200).json({ message: 'List all Job Postings', postings });
     } catch (err) {
       res.status(err.status || 500).json({ message: err.message });

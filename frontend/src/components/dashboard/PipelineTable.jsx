@@ -1,5 +1,6 @@
-import { useEffect, useMemo, useState } from 'react';
-import { Search, MessageCircle, AlertTriangle, ArrowUp, ArrowDown, ArrowUpDown } from 'lucide-react';
+import { useMemo } from 'react';
+import { Search, MessageCircle, AlertTriangle, ArrowUp, ArrowDown, ArrowUpDown, Loader2 } from 'lucide-react';
+import { EXPERIENCE_BUCKETS, ROWS_PER_PAGE } from './pipelineTableConstants';
 
 /* ─────────────────────────────────────────
    STAGE DEFINITIONS (fallback — mirrors KanbanBoard)
@@ -15,20 +16,10 @@ const DEFAULT_STAGES = [
   { id: 'hired',     label: 'Hired',     color: 'bg-green-500' },
 ];
 
-// Experience buckets — exp values come through as strings like "5y" or "—",
-// so filtering is done against a parsed numeric year count, bucketed into
-// ranges rather than an exact match.
-const EXPERIENCE_BUCKETS = [
-  { id: '0-2',  label: '0–2 years',   min: 0,  max: 2 },
-  { id: '3-5',  label: '3–5 years',   min: 3,  max: 5 },
-  { id: '6-10', label: '6–10 years',  min: 6,  max: 10 },
-  { id: '10+',  label: '10+ years',   min: 11, max: Infinity },
-];
-
-const ROWS_PER_PAGE = 15;
-
 /* ─────────────────────────────────────────
-   Flatten input into row objects.
+   Flatten input into row objects for display. Pure shape-mapping only —
+   filtering/sorting/pagination all happen server-side now, so `candidates`
+   here is already exactly the page that should render.
    Supports the same two input shapes KanbanBoard does:
    - flat `candidates[]` (from real API data via CandidatePipelineDetailPage)
    - nested `job.cities[].columns` (dummy/demo shape)
@@ -89,14 +80,6 @@ function buildRows({ candidates, job, stages }) {
   return rows;
 }
 
-// Pulls the leading number out of an exp string ("5y" -> 5, "—" -> null).
-function parseExpYears(exp) {
-  if (typeof exp !== 'string') return null;
-  const match = exp.match(/\d+(\.\d+)?/);
-  if (!match) return null;
-  return parseFloat(match[0]);
-}
-
 function StagePill({ label, color }) {
   return (
     <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-muted text-xs font-semibold text-foreground whitespace-nowrap">
@@ -127,21 +110,28 @@ function SkillsCell({ tags }) {
 }
 
 /* ─────────────────────────────────────────
-   MAIN EXPORT — same props shape as KanbanBoard, plus onSummaryChange
+   MAIN EXPORT — controlled component. All filter/sort/page state, and the
+   fetch it drives, lives in the parent (CandidatePipelineDetail.jsx) now.
    ───────────────────────────────────────── */
 export default function PipelineTable({
   job,
   stages,
   candidates,
+  total,
+  loading,
+  hasActiveFilters,
+  search,
+  onSearchChange,
+  stageFilter,
+  onStageFilterChange,
+  expFilter,
+  onExpFilterChange,
+  sortDir,
+  onSortToggle,
+  page,
+  onPageChange,
   onSelectCandidate,
-  onSummaryChange,
 }) {
-  const [search, setSearch] = useState('');
-  const [stageFilter, setStageFilter] = useState('all');
-  const [expFilter, setExpFilter] = useState('all');
-  const [page, setPage] = useState(1);
-  const [sortDir, setSortDir] = useState(null); // null | 'desc' | 'asc'
-
   const resolvedStages = (stages?.length > 0)
     ? stages.map((s) => ({ id: s.id, label: s.name ?? s.label, color: s.color ?? 'bg-slate-400' }))
     : DEFAULT_STAGES;
@@ -151,55 +141,8 @@ export default function PipelineTable({
     [candidates, job, resolvedStages]
   );
 
-  const totalHired = useMemo(
-    () => rows.filter((r) => String(r.stageLabel ?? '').toLowerCase() === 'hired').length,
-    [rows]
-  );
-
-  // Report summary up to the parent page so it can render one page-level
-  // header instead of duplicating this info inside the table itself.
-  useEffect(() => {
-    onSummaryChange?.({ totalInPipeline: rows.length, totalHired });
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [rows.length, totalHired]);
-
-  const filteredRows = useMemo(() => {
-    const q = search.trim().toLowerCase();
-    return rows.filter((r) => {
-      const matchesSearch = !q ||
-        r.name?.toLowerCase().includes(q)
-      const matchesStage = stageFilter === 'all' || String(r.stageId) === String(stageFilter);
-
-      let matchesExp = true;
-      if (expFilter !== 'all') {
-        const bucket = EXPERIENCE_BUCKETS.find((b) => b.id === expFilter);
-        const years = parseExpYears(r.exp);
-        matchesExp = bucket && years != null && years >= bucket.min && years <= bucket.max;
-      }
-
-      return matchesSearch && matchesStage && matchesExp;
-    });
-  }, [rows, search, stageFilter, expFilter]);
-
-  const sortedRows = useMemo(() => {
-    if(!sortDir) return filteredRows;
-    const withYears = filteredRows.map((r) => ({ ...r, _years: parseExpYears(r.exp) }));
-    withYears.sort((a, b) => {
-      // Rows with no parsable experience always sink to the bottom, regardless of direction
-      if (a._years == null && b._years == null) return 0;
-      if (a._years == null) return 1;
-      if (b._years == null) return -1;
-      return sortDir === 'desc' ? b._years - a._years : a._years - b._years;
-    });
-    return withYears;
-  }, [filteredRows, sortDir]);
-
-  const totalPages = Math.max(1, Math.ceil(sortedRows.length / ROWS_PER_PAGE));
+  const totalPages = Math.max(1, Math.ceil(total / ROWS_PER_PAGE));
   const currentPage = Math.min(page, totalPages);
-  const pagedRows = sortedRows.slice(
-    (currentPage - 1) * ROWS_PER_PAGE,
-    currentPage * ROWS_PER_PAGE
-  );
 
   return (
     <div className="space-y-3">
@@ -213,14 +156,14 @@ export default function PipelineTable({
             type="text"
             placeholder="Search by name..."
             value={search}
-            onChange={(e) => { setSearch(e.target.value); setPage(1); }}
+            onChange={(e) => onSearchChange(e.target.value)}
             className="w-full pl-9 pr-3 py-2 border rounded-lg text-sm focus:outline-none focus:ring-1 focus:ring-primary"
           />
         </div>
         <select
           data-tour="stage-filter"
           value={stageFilter}
-          onChange={(e) => { setStageFilter(e.target.value); setPage(1); }}
+          onChange={(e) => onStageFilterChange(e.target.value)}
           className="px-3 py-2 border rounded-lg text-sm focus:outline-none focus:ring-1 focus:ring-primary"
         >
           <option value="all">All stages</option>
@@ -231,7 +174,7 @@ export default function PipelineTable({
         <select
           data-tour="exp-filter"
           value={expFilter}
-          onChange={(e) => { setExpFilter(e.target.value); setPage(1); }}
+          onChange={(e) => onExpFilterChange(e.target.value)}
           className="px-3 py-2 border rounded-lg text-sm focus:outline-none focus:ring-1 focus:ring-primary"
         >
           <option value="all">All experience</option>
@@ -243,10 +186,14 @@ export default function PipelineTable({
 
       {/* Table */}
       <div className="rounded-xl border border-border/60 bg-card overflow-hidden">
-        {filteredRows.length === 0 ? (
+        {loading ? (
+          <div className="py-12 text-center">
+            <Loader2 className="h-5 w-5 animate-spin text-muted-foreground mx-auto" />
+          </div>
+        ) : rows.length === 0 ? (
           <div className="py-12 text-center">
             <p className="text-sm text-muted-foreground">
-              {rows.length === 0 ? 'No candidates in the pipeline yet.' : 'No candidates match your search.'}
+              {hasActiveFilters ? 'No candidates match your search.' : 'No candidates in the pipeline yet.'}
             </p>
           </div>
         ) : (
@@ -260,10 +207,7 @@ export default function PipelineTable({
                     <button
                       data-tour="sort-experience"
                       type="button"
-                      onClick={() => {
-                        setSortDir((d) => (d === null ? 'desc' : d === 'desc' ? 'asc' : null));
-                        setPage(1);
-                      }}
+                      onClick={() => onSortToggle(sortDir === null ? 'desc' : sortDir === 'desc' ? 'asc' : null)}
                       className="flex items-center gap-1 hover:text-foreground transition-colors"
                     >
                       Experience
@@ -277,7 +221,7 @@ export default function PipelineTable({
                 </tr>
               </thead>
               <tbody>
-                {pagedRows.map((r) => (
+                {rows.map((r) => (
                   <tr
                     key={r.id}
                     className="border-b last:border-b-0 hover:bg-muted/30 cursor-pointer"
@@ -321,13 +265,13 @@ export default function PipelineTable({
             <div className="flex items-center justify-between gap-2 px-4 py-3.5 border-t">
               <span className="text-xs text-muted-foreground">
                 {(currentPage - 1) * ROWS_PER_PAGE + 1}–
-                {Math.min(currentPage * ROWS_PER_PAGE, filteredRows.length)} of {filteredRows.length}
+                {Math.min(currentPage * ROWS_PER_PAGE, total)} of {total}
               </span>
               <div className="flex items-center gap-1.5">
                 <button
                   type="button"
                   disabled={currentPage <= 1}
-                  onClick={() => setPage((p) => p - 1)}
+                  onClick={() => onPageChange(currentPage - 1)}
                   className="h-8 px-3 text-xs border rounded-md text-muted-foreground hover:bg-muted/50 disabled:opacity-40 disabled:cursor-not-allowed"
                 >
                   Previous
@@ -338,7 +282,7 @@ export default function PipelineTable({
                 <button
                   type="button"
                   disabled={currentPage >= totalPages}
-                  onClick={() => setPage((p) => p + 1)}
+                  onClick={() => onPageChange(currentPage + 1)}
                   className="h-8 px-3 text-xs border rounded-md text-muted-foreground hover:bg-muted/50 disabled:opacity-40 disabled:cursor-not-allowed"
                 >
                   Next

@@ -32,8 +32,17 @@ class CandidatePipelineController {
   async getByJobId(req, res) {
     const query = req.query
     try {
-      const pipelines = await candidatePipelineService.getByJobId(req.params.job_id, query, req.user?.company_id);
-      res.status(200).json({ message: 'Candidate pipelines for job', pipelines });
+      const { pipelines, total } = await candidatePipelineService.getByJobId(req.params.job_id, query, req.user?.company_id);
+      res.status(200).json({ message: 'Candidate pipelines for job', pipelines, total });
+    } catch (err) {
+      res.status(err.status || 500).json({ message: err.message });
+    }
+  }
+
+  async getJobPipelineCounts(req, res) {
+    try {
+      const counts = await candidatePipelineService.getJobPipelineCounts(req.params.job_id, req.user?.company_id);
+      res.status(200).json({ message: 'Candidate pipeline counts for job', counts });
     } catch (err) {
       res.status(err.status || 500).json({ message: err.message });
     }

@@ -164,7 +164,7 @@ export default function TalentPoolTable({
                     <TableCell className="pl-4 pr-0 py-2">
                       <Checkbox
                         checked={isSelected}
-                        onCheckedChange={() => onToggleSelectOne(r.id)}
+                        onCheckedChange={() => onToggleSelectOne(r)}
                         aria-label={`Select ${r.name}`}
                         className="border-2 border-slate-400 data-[state=checked]:border-primary data-[state=checked]:bg-primary"
                       />

@@ -1,12 +1,19 @@
 import getDb from "../../config/postgres.js"
 
 class JobSourceModel {
-  async getAll() {
+  // Company is reachable two ways: external-platform rows (Seek/LinkedIn/etc.)
+  // carry account_id -> master_job_account.company_id; 'internal' rows have no
+  // account at all and resolve it via job_post_id -> job_post.job_id -> core_job.
+  async getAllByCompanyId(company_id) {
     const result = await getDb().query(`
-      SELECT *
-      FROM core_job_sourcing
-      ORDER BY id ASC
-    `);
+      SELECT cjs.*
+      FROM core_job_sourcing cjs
+      LEFT JOIN master_job_account mja ON mja.id = cjs.account_id
+      LEFT JOIN job_post jp ON jp.id = cjs.job_post_id
+      LEFT JOIN core_job cj ON cj.id = jp.job_id
+      WHERE COALESCE(mja.company_id, cj.company_id) = $1
+      ORDER BY cjs.id ASC
+    `, [company_id]);
 
     return result.rows;
   }

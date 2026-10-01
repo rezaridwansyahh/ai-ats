@@ -1,12 +1,13 @@
 import getDb from "../../config/postgres.js"
 
 class RecruiterModel {
-  async getAll() {
+  async getAllByCompanyId(company_id) {
     const result = await getDb().query(`
       SELECT *
       FROM master_recruiters
+      WHERE company_id = $1
       ORDER BY id ASC
-    `);
+    `, [company_id]);
     return result.rows;
   }
 
@@ -19,12 +20,12 @@ class RecruiterModel {
     return result.rows[0];
   }
 
-  async create(name, email, jobs_assigned, status) {
+  async create(name, email, jobs_assigned, status, company_id) {
     const result = await getDb().query(`
-      INSERT INTO master_recruiters (name, email, jobs_assigned, status)
-      VALUES ($1, $2, $3, $4)
+      INSERT INTO master_recruiters (name, email, jobs_assigned, status, company_id)
+      VALUES ($1, $2, $3, $4, $5)
       RETURNING *
-    `, [name, email, jobs_assigned, status]);
+    `, [name, email, jobs_assigned, status, company_id ?? null]);
     return result.rows[0];
   }
 

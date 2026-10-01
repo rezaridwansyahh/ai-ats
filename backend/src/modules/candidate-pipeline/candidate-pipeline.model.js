@@ -114,13 +114,69 @@ class CandidatePipeline {
     return result.rows;
   }
 
-  static async getByJobId(job_id, company_id) {
+  // Paginated + filtered candidate list for one job's pipeline board —
+  // replaces fetching every candidate the job has ever had and filtering/
+  // sorting/paging them in the browser. exp_years is parsed once in the
+  // `filtered` CTE so the min/max filter and the optional experience sort
+  // both reuse it instead of re-parsing the JSONB text per predicate.
+  // Pagination is opt-in: JobDetail.jsx and PsychAssessment.jsx call this
+  // with no page/pageSize at all and still expect every candidate back, so
+  // omitting both keeps a NULL limit (Postgres treats LIMIT NULL as
+  // unbounded) rather than silently truncating their results to a page.
+  static async getByJobId(job_id, company_id, {
+    search, stage_id, min_exp, max_exp, sort, page, pageSize,
+  } = {}) {
+    const limit  = pageSize !== undefined ? Math.min(Math.max(Number(pageSize) || 15, 1), 100) : null;
+    const offset = (page !== undefined && limit != null) ? (Math.max(Number(page) || 1, 1) - 1) * limit : 0;
+
+    const searchParam  = search ? `%${search}%` : null;
+    const stageParam   = stage_id !== undefined && stage_id !== null && stage_id !== '' ? Number(stage_id) : null;
+    const minExpParam  = min_exp !== undefined && min_exp !== null && min_exp !== '' ? Number(min_exp) : null;
+    const maxExpParam  = max_exp !== undefined && max_exp !== null && max_exp !== '' ? Number(max_exp) : null;
+    const sortParam    = sort === 'exp_asc' || sort === 'exp_desc' ? sort : null;
+
     const result = await getDb().query(`
-      ${CANDIDATE_PIPELINE_SELECT}
+      WITH base AS (
+        ${CANDIDATE_PIPELINE_SELECT}
+        WHERE c.job_id = $1 AND cj.company_id = $2
+      ),
+      filtered AS (
+        SELECT *,
+          NULLIF(regexp_replace(COALESCE(information->'experience'->>'years_total', ''), '[^0-9.]', '', 'g'), '')::numeric AS exp_years
+        FROM base
+        WHERE ($3::text IS NULL OR candidate_name ILIKE $3)
+          AND ($4::int IS NULL OR latest_stage = $4)
+      )
+      SELECT *, COUNT(*) OVER()::int AS total_count
+      FROM filtered
+      WHERE ($5::numeric IS NULL OR COALESCE(exp_years, -1) >= $5)
+        AND ($6::numeric IS NULL OR COALESCE(exp_years, 999999) <= $6)
+      ORDER BY
+        CASE WHEN $7 = 'exp_asc'  THEN exp_years END ASC NULLS LAST,
+        CASE WHEN $7 = 'exp_desc' THEN exp_years END DESC NULLS LAST,
+        created_at DESC
+      LIMIT $8 OFFSET $9
+    `, [job_id, company_id, searchParam, stageParam, minExpParam, maxExpParam, sortParam, limit, offset]);
+
+    const total = result.rows[0]?.total_count ?? 0;
+    const pipelines = result.rows.map(({ total_count, exp_years, ...rest }) => rest);
+    return { pipelines, total };
+  }
+
+  // Header summary (total in pipeline + total hired) for one job — kept
+  // separate from the paginated/filtered list above so narrowing the table
+  // doesn't make these counts move.
+  static async getJobPipelineCounts(job_id, company_id) {
+    const result = await getDb().query(`
+      SELECT
+        COUNT(*)::int AS total,
+        COUNT(*) FILTER (WHERE js.name ILIKE 'hired')::int AS total_hired
+      FROM master_candidate c
+      JOIN core_job cj ON cj.id = c.job_id
+      LEFT JOIN job_stage js ON js.id = c.latest_stage
       WHERE c.job_id = $1 AND cj.company_id = $2
-      ORDER BY c.created_at DESC
     `, [job_id, company_id]);
-    return result.rows;
+    return result.rows[0];
   }
 
   static async getByJobIdCategory(job_id, category, company_id) {

@@ -5,11 +5,12 @@ import { Button } from '@/components/ui/button';
 
 import { getJobById } from '@/api/job.api';
 import { getJobPipeline } from '@/api/pipeline.api';
-import { getCandidatesByJobId } from '@/api/candidate.api';
+import { getPaginatedCandidatesByJobId, getJobPipelineCounts } from '@/api/candidate.api';
 import { useDynamicBreadcrumb } from '@/components/layout/breadcrumb-context';
 import { StatusBadge } from '@/components/common';
 
 import PipelineTable from '@/components/dashboard/PipelineTable';
+import { EXPERIENCE_BUCKETS, ROWS_PER_PAGE } from '@/components/dashboard/pipelineTableConstants';
 
 import PipelineTour, { usePipelineTour } from '@/components/tours/PipelineTour';
 import { PIPELINE_DETAIL_STEPS } from '@/components/tours/tourSteps';
@@ -22,7 +23,18 @@ export default function CandidatePipelineDetailPage() {
   const [jobLoading, setJobLoading] = useState(true);
   const [stages, setStages]         = useState([]);
   const [candidates, setCandidates] = useState([]);
+  const [total, setTotal]           = useState(0);
+  const [candidatesLoading, setCandidatesLoading] = useState(true);
   const [summary, setSummary]       = useState({ totalInPipeline: 0, totalHired: 0 });
+
+  // Table filter/sort/page state — lives here now since it drives the
+  // server-side fetch below instead of filtering an already-loaded list.
+  const [search, setSearch]           = useState('');
+  const [debouncedSearch, setDebouncedSearch] = useState('');
+  const [stageFilter, setStageFilter] = useState('all');
+  const [expFilter, setExpFilter]     = useState('all');
+  const [sortDir, setSortDir]         = useState(null);
+  const [page, setPage]               = useState(1);
 
   const { run, setRun, markSeen, restart } = usePipelineTour('pipeline-detail');
 
@@ -60,37 +72,79 @@ export default function CandidatePipelineDetailPage() {
     return () => { cancelled = true; };
   }, [id]);
 
-  // ── Load candidates ──
-
+  // ── Header summary (total in pipeline / total hired) — independent of
+  //    whatever filter/page the table below is showing.
   useEffect(() => {
     let cancelled = false;
     (async () => {
       try {
-        const res = await getCandidatesByJobId(id);
-        const list = Array.isArray(res.data?.pipelines) ? res.data.pipelines : [];
-
-        const mapped = list.map((c) => ({
-          id: c.id,
-          applicant_id: c.id,
-          name: c.candidate_name,
-          role: c.information?.job_position?.current ?? c.last_position,
-          experience: c.information?.experience?.years_total
-            ? `${c.information.experience.years_total}y`
-            : '—',
-          skills: c.information?.skills ?? [],
-          stage_id: c.latest_stage,
-          // give all candidates the same "city" so they group into one section
-          city_id: job?.job_title ?? 'all',
-          city_name: job?.job_title ?? 'Candidates',
-        }));
-
-        if (!cancelled) setCandidates(mapped);
+        const res = await getJobPipelineCounts(id);
+        if (!cancelled) {
+          setSummary({
+            totalInPipeline: res.data?.counts?.total ?? 0,
+            totalHired: res.data?.counts?.total_hired ?? 0,
+          });
+        }
       } catch {
-        if (!cancelled) setCandidates([]);
+        // header summary is a nicety, not required for the table to work
       }
     })();
     return () => { cancelled = true; };
-  }, [id, job]);
+  }, [id]);
+
+  // Debounce the live search box before it drives a fetch — this input has
+  // no submit button, so without this every keystroke would hit the server.
+  useEffect(() => {
+    const t = setTimeout(() => setDebouncedSearch(search), 350);
+    return () => clearTimeout(t);
+  }, [search]);
+
+  // Any filter change resets back to page 1.
+  useEffect(() => { setPage(1); }, [debouncedSearch, stageFilter, expFilter, sortDir]);
+
+  // ── Load candidates (paginated + filtered) ──
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      setCandidatesLoading(true);
+      try {
+        const bucket = EXPERIENCE_BUCKETS.find((b) => b.id === expFilter);
+        const res = await getPaginatedCandidatesByJobId(id, {
+          search: debouncedSearch || undefined,
+          stage_id: stageFilter !== 'all' ? stageFilter : undefined,
+          min_exp: bucket ? bucket.min : undefined,
+          max_exp: bucket && bucket.max !== Infinity ? bucket.max : undefined,
+          sort: sortDir === 'desc' ? 'exp_desc' : sortDir === 'asc' ? 'exp_asc' : undefined,
+          page,
+          pageSize: ROWS_PER_PAGE,
+        });
+        if (!cancelled) {
+          const list = Array.isArray(res.data?.pipelines) ? res.data.pipelines : [];
+          const mapped = list.map((c) => ({
+            id: c.id,
+            applicant_id: c.id,
+            name: c.candidate_name,
+            role: c.information?.job_position?.current ?? c.last_position,
+            experience: c.information?.experience?.years_total
+              ? `${c.information.experience.years_total}y`
+              : '—',
+            skills: c.information?.skills ?? [],
+            stage_id: c.latest_stage,
+            // give all candidates the same "city" so they group into one section
+            city_id: job?.job_title ?? 'all',
+            city_name: job?.job_title ?? 'Candidates',
+          }));
+          setCandidates(mapped);
+          setTotal(res.data?.total || 0);
+        }
+      } catch {
+        if (!cancelled) { setCandidates([]); setTotal(0); }
+      } finally {
+        if (!cancelled) setCandidatesLoading(false);
+      }
+    })();
+    return () => { cancelled = true; };
+  }, [id, job, debouncedSearch, stageFilter, expFilter, sortDir, page]);
 
   useDynamicBreadcrumb(job?.job_title);
 
@@ -103,6 +157,8 @@ export default function CandidatePipelineDetailPage() {
     days_open: job.days_open ?? null,
     cities:    [],
   } : null;
+
+  const hasActiveFilters = Boolean(search.trim()) || stageFilter !== 'all' || expFilter !== 'all';
 
   const handleSelectCandidate = (candidate) => {
     navigate(`/candidate-detail/${candidate.id}`);
@@ -179,8 +235,20 @@ export default function CandidatePipelineDetailPage() {
           job={kanbanJob}
           stages={stages}
           candidates={candidates}
+          total={total}
+          loading={candidatesLoading}
+          hasActiveFilters={hasActiveFilters}
+          search={search}
+          onSearchChange={setSearch}
+          stageFilter={stageFilter}
+          onStageFilterChange={setStageFilter}
+          expFilter={expFilter}
+          onExpFilterChange={setExpFilter}
+          sortDir={sortDir}
+          onSortToggle={setSortDir}
+          page={page}
+          onPageChange={setPage}
           onSelectCandidate={handleSelectCandidate}
-          onSummaryChange={setSummary}
         />
       </div>
 
