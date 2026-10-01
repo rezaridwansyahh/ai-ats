@@ -8,6 +8,7 @@ import checkPermission from '../../shared/middleware/role.middleware.js';
 router.use(authToken);
 
 router.get('/role/all', userController.getMasterRoles);
+router.patch('/me/password', userController.changePassword);
 router.get('/', userController.getAllWithRoles);
 router.get('/:id', userController.getByIdWithRoles);
 

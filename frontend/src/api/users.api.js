@@ -6,3 +6,4 @@ export const createUser  = (data)     => api.post('/user', data);
 export const updateUser  = (id, data) => api.put(`/user/${id}`, data);
 export const deleteUser  = (id)       => api.delete(`/user/${id}`);
 export const getMasterRoles = ()      => api.get('/user/role/all');
+export const changeMyPassword = (data) => api.patch('/user/me/password', data);

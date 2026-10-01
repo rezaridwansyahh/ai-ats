@@ -1,4 +1,4 @@
-import { Briefcase, GraduationCap, MapPin, Plus, Search, AlertTriangle } from 'lucide-react';
+import { Briefcase, GraduationCap, MapPin, Plus, Search, AlertTriangle, Eye } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -7,13 +7,6 @@ import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from '@/components/ui/table';
 import FacetInput from './FacetInput';
-
-function scoreBg(score) {
-  if (score == null) return 'bg-gray-100 text-gray-500 border-gray-200';
-  if (score >= 80) return 'bg-emerald-100 text-emerald-700 border-emerald-200';
-  if (score >= 60) return 'bg-amber-100 text-amber-700 border-amber-200';
-  return 'bg-rose-100 text-rose-700 border-rose-200';
-}
 
 function formatDate(d) {
   if (!d) return '—';
@@ -55,6 +48,7 @@ export default function TalentPoolTable({
   onBulkAddClick,
   onClearSelection,
   canAdd = true,
+  onViewClick,
 }) {
   const allPagedSelected = rows.length > 0 && rows.every((r) => selectedIds.has(r.id));
   const somePagedSelected = rows.some((r) => selectedIds.has(r.id));
@@ -139,21 +133,20 @@ export default function TalentPoolTable({
                 <TableHead className="w-[17%] text-[10px] font-bold uppercase">Skills</TableHead>
                 <TableHead className="w-[13%] text-[10px] font-bold uppercase">Location</TableHead>
                 <TableHead className="w-[13%] text-[10px] font-bold uppercase">Source</TableHead>
-                <TableHead className="w-[7%] text-[10px] font-bold uppercase text-center">Score</TableHead>
                 <TableHead className="w-[10%] text-[10px] font-bold uppercase">Applied</TableHead>
-                <TableHead data-tour="talent-action-header" className="w-[11%] text-[10px] font-bold uppercase text-right pr-4">Action</TableHead>
+                <TableHead data-tour="talent-action-header" className="w-[18%] text-[10px] font-bold uppercase text-right pr-4">Action</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {loading ? (
                 <TableRow>
-                  <TableCell colSpan={9} className="text-center py-10 text-xs text-muted-foreground">
+                  <TableCell colSpan={8} className="text-center py-10 text-xs text-muted-foreground">
                     Loading applicants...
                   </TableCell>
                 </TableRow>
               ) : rows.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={9} className="text-center py-10 text-xs text-muted-foreground">
+                  <TableCell colSpan={8} className="text-center py-10 text-xs text-muted-foreground">
                     {hasActiveFilters ? 'No applicants match your filters.' : 'No applicants found.'}
                   </TableCell>
                 </TableRow>
@@ -220,27 +213,31 @@ export default function TalentPoolTable({
                       )}
                     </TableCell>
 
-                    <TableCell className="text-center py-2">
-                      <Badge className={`text-[10px] font-mono font-semibold ${scoreBg(r.latest_score)}`}>
-                        {r.latest_score ?? '—'}
-                      </Badge>
-                    </TableCell>
-
                     <TableCell className="text-xs text-muted-foreground py-2 pr-4">
                       {formatDate(r.date)}
                     </TableCell>
 
                     <TableCell className="text-right pr-6 py-2">
-                      {canAdd && (
+                      <div className="flex justify-end gap-1.5">
                         <Button
                           size="sm"
                           variant="outline"
                           className="text-[11px] h-7 px-2.5"
-                          onClick={() => onAddClick(r)}
+                          onClick={() => onViewClick(r)}
                         >
-                          <Plus className="h-3 w-3 mr-1" /> Add
+                          <Eye className="h-3 w-3 mr-1" /> View
                         </Button>
-                      )}
+                        {canAdd && (
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            className="text-[11px] h-7 px-2.5"
+                            onClick={() => onAddClick(r)}
+                          >
+                            <Plus className="h-3 w-3 mr-1" /> Add
+                          </Button>
+                        )}
+                      </div>
                     </TableCell>
                   </TableRow>
                 );

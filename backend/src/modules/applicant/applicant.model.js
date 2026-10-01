@@ -54,6 +54,29 @@ class ApplicantModel {
     return result.rows[0];
   }
 
+  // Every position this applicant has been scored against, newest first —
+  // backs the Talent Pool table's "View" modal (history of applications + score).
+  async getScoreHistoryByApplicantId(applicant_id) {
+    const result = await getDb().query(`
+      SELECT
+        cjs.job_id,
+        cj.job_title,
+        cj.status AS job_status,
+        cjs.overall_score,
+        cjs.skills_score,
+        cjs.experience_score,
+        cjs.education_score,
+        cjs.summary,
+        cjs.scored_at
+      FROM candidate_job_score cjs
+      JOIN core_job cj ON cj.id = cjs.job_id
+      WHERE cjs.applicant_id = $1
+      ORDER BY cjs.scored_at DESC
+    `, [applicant_id]);
+
+    return result.rows;
+  }
+
   async getByEmail(email) {
     const result = await getDb().query(`
       SELECT * FROM master_applicant

@@ -1,6 +1,6 @@
 import { useState } from "react"
 import { useNavigate } from "react-router-dom"
-import { registerUser } from "@/services/auth"
+import { registerUser, loginUser } from "@/services/auth"
 
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -10,6 +10,7 @@ export function RegisterCard() {
   const [username, setUsername] = useState("")
   const [email, setEmail] = useState("")
   const [password, setPassword] = useState("")
+  const [companyName, setCompanyName] = useState("")
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState("")
 
@@ -21,13 +22,23 @@ export function RegisterCard() {
     setLoading(true)
 
     try {
-      const res = await registerUser({
+      await registerUser({
         username,
         email,
-        password
+        password,
+        company_name: companyName
       });
 
-      localStorage.setItem('token', res.data.token);
+      // Registering only creates the account + company; it doesn't return a
+      // full session (role, permissions). Log in right after with the same
+      // credentials to get those, exactly like a normal login would.
+      const res = await loginUser({ email, password });
+      localStorage.setItem('token', res.token)
+      localStorage.setItem('user', JSON.stringify(res.user ?? null))
+      localStorage.setItem('role', JSON.stringify(res.role ?? []))
+      localStorage.setItem('permissions', JSON.stringify(res.permissions ?? []))
+      localStorage.setItem('userData', JSON.stringify(res ?? null))
+
       navigate("/dashboard");
     } catch (err) {
       setError(err.response?.data?.message || "Registration failed")
@@ -63,6 +74,19 @@ export function RegisterCard() {
             placeholder="John Smith"
             value={username}
             onChange={(e) => setUsername(e.target.value)}
+            required
+            className="h-10"
+          />
+        </div>
+
+        <div className="space-y-1.5">
+          <Label htmlFor="companyName" className="text-xs font-semibold text-foreground/80">Company name</Label>
+          <Input
+            id="companyName"
+            type="text"
+            placeholder="Acme Inc."
+            value={companyName}
+            onChange={(e) => setCompanyName(e.target.value)}
             required
             className="h-10"
           />

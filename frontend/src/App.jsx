@@ -4,6 +4,7 @@ import RegisterPage from "./pages/Register"
 import DashboardPage from "./pages/Dashboard"
 import DashboardLayout from "./components/layout/Dashboard-Layout"
 import AccountPage from "./pages/Account"
+import ProfilePage from "./pages/Profile"
 import JobManagementPage from "./pages/JobManagement"
 import JobEditPage from "./pages/JobEdit"
 import JobDetailPage from "./pages/JobDetail"
@@ -121,6 +122,7 @@ function App() {
 
         <Route path="/settings" element={<SettingsPage />} />
         <Route path="/settings/account" element={<AccountPage />} />
+        <Route path="/profile" element={<ProfilePage />} />
 
         <Route path="/selection/report" element={<ReportsPage />} />
         <Route path="/report-candidate" element={<ReportCandidatePage />} />
