@@ -4,6 +4,7 @@ import RegisterPage from "./pages/Register"
 import DashboardPage from "./pages/Dashboard"
 import DashboardLayout from "./components/layout/Dashboard-Layout"
 import AccountPage from "./pages/Account"
+import ProfilePage from "./pages/Profile"
 import JobManagementPage from "./pages/JobManagement"
 import JobEditPage from "./pages/JobEdit"
 import JobDetailPage from "./pages/JobDetail"
@@ -11,7 +12,6 @@ import SourceManagementPage from "./pages/SourceManagement"
 import TalentPoolPage from "./pages/TalentPool"
 import SourceCandidatePage from "./pages/SourceCandidate"
 import ComingSoonPage from "./pages/ComingSoon"
-import AssessmentAPage from "./pages/AssessmentA"
 import PsychAssesmentPage from "./pages/PsychAssessment"
 import ReportCandidatePage from "./pages/ReportCandidate"
 import ReportCandidateDetailPage from "./pages/ReportCandidateDetail"
@@ -21,14 +21,9 @@ import QAFollowUpPage from "./pages/portal/QAFollowUp"
 import AIScreeningPage from "./pages/AIScreening"
 import AIScreeningWorkboard from "./pages/AIScreeningWorkboard"
 import AIScreeningCandidatePage from "./pages/AIScreeningCandidate"
-import AssessmentBPage from "./pages/AssessmentB"
 import CandidatePipelinePage from "./pages/CandidatePipeline"
 import CandidatePipelineDetailPage from "./pages/CandidatePipelineDetail"
 import CandidateProfile from "./pages/CandidateProfile"
-import AssessmentCPage from "./pages/AssessmentC"
-import AssessmentDPage from "./pages/AssessmentD"
-import InsightsDiscoveryAssessmentPage from "./pages/InsightsDiscoveryAssessment"
-import ThomasKilmannAssessmentPage from "./pages/ThomasKilmannAssessment"
 import InterviewWorkboard from "./pages/InterviewWorkboard"
 import InterviewJobPage from "./components/interview/Interview-Job"
 import InterviewCandidatePage from "./components/interview/Interview-Candidate"
@@ -126,16 +121,10 @@ function App() {
         <Route path="/selection/offer-contract/job/:jobId" element={<OfferJobPage />} />
         <Route path="/selection/offer-contract/candidate/:offerId" element={<OfferCandidatePage />} />
 
-        <Route path="/asesmen/assessment-a" element={<AssessmentAPage />} />
-        <Route path="/asesmen/assessment-b" element={<AssessmentBPage />} />
-        <Route path="/asesmen/assessment-c" element={<AssessmentCPage />} />
-        <Route path="/asesmen/assessment-d" element={<AssessmentDPage />} />
-        <Route path="/asesmen/insights-discovery-assessment" element={<InsightsDiscoveryAssessmentPage />} />
-        <Route path="/asesmen/thomas-kilmann-assessment" element={<ThomasKilmannAssessmentPage />} />
-
         <Route path="/settings" element={<SettingsPage />} />
         <Route path="/settings/account" element={<AccountPage />} />
         <Route path="/user-guide" element={<UserGuidePage />} />
+        <Route path="/profile" element={<ProfilePage />} />
 
         <Route path="/selection/report" element={<ReportsPage />} />
         <Route path="/report-candidate" element={<ReportCandidatePage />} />

@@ -90,12 +90,6 @@ const routeMap = {
   'AI Matching':       '/selection/ai-screening',
   'Psych Assessment':  '/selection/psych-assessment',
   'Medical Assessment':  '/selection/medical-assessment',
-  'Assessment A':      '/asesmen/assessment-a',
-  'Assessment B':      '/asesmen/assessment-b',
-  'Assessment C':      '/asesmen/assessment-c',
-  'Assessment D':      '/asesmen/assessment-d',
-  'Insights Discovery Assessment': '/asesmen/insights-discovery-assessment',
-  'Thomas Kilmann Assessment':     '/asesmen/thomas-kilmann-assessment',
   'Interview': '/selection/interview',
   'Background Check': '/selection/background-check',
   'Offer & Contract': '/selection/offer-contract',
@@ -117,12 +111,6 @@ const SECTION_LABEL_MAP = {
 // Menu names that should never be shown in the sidebar, even if the user
 // has permission for them.
 const HIDDEN_ITEMS = new Set([
-  'Assessment A',
-  'Assessment B',
-  'Assessment C',
-  'Assessment D',
-  'Insights Discovery Assessment',
-  'Thomas Kilmann Assessment',
   'Report',
 ]);
 

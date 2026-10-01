@@ -1,6 +1,6 @@
 export default [
   { id: 1,  module_id: 1, menu_id: 1  }, // Dashboard
-  { id: 2,  module_id: 2, menu_id: 2  }, // Candidate Pipeline
+  { id: 2,  module_id: 1, menu_id: 2  }, // Candidate Pipeline
   { id: 3,  module_id: 1, menu_id: 3  }, // Report Candidate
 
   // Sourcing (module 2)
@@ -9,14 +9,7 @@ export default [
   { id: 6,  module_id: 2, menu_id: 6  }, // Talent Pool
   { id: 7,  module_id: 2, menu_id: 7  }, // Search & Outreach
 
-  // Selection (module 4) — includes the SOON assessment placeholders,
-  // moved here from the old "Asesmen" module
-  { id: 8,  module_id: 4, menu_id: 8  }, // Assessment A (SOON)
-  { id: 9,  module_id: 4, menu_id: 9  }, // Assessment B (SOON)
-  { id: 10, module_id: 4, menu_id: 10 }, // Assessment C (SOON)
-  { id: 11, module_id: 4, menu_id: 11 }, // Assessment D (SOON)
-  { id: 12, module_id: 4, menu_id: 12 }, // Insights Discovery Assessment (SOON)
-  { id: 13, module_id: 4, menu_id: 13 }, // Thomas Kilmann Assessment (SOON)
+  // Selection (module 4)
   { id: 14, module_id: 4, menu_id: 14 }, // AI Screening
   { id: 15, module_id: 4, menu_id: 19 }, // Report
   { id: 16, module_id: 4, menu_id: 15 }, // Interview

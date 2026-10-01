@@ -66,6 +66,19 @@ class UserController {
     }
   }
 
+  async changePassword(req, res) {
+    try {
+      const { current_password, new_password } = req.body;
+      // Scoped to the caller's own id from the JWT, never a client-supplied
+      // id — the generic PUT /:id below has no such check, so this must not
+      // reuse it for a "change my own password" flow.
+      const result = await userService.changePassword(req.user.user_id, current_password, new_password);
+      res.status(200).json(result);
+    } catch (err) {
+      res.status(err.status || 500).json({ message: err.message });
+    }
+  }
+
   async getMasterRoles(req, res) {
     try {
       const roles = await userService.getMasterRoles();

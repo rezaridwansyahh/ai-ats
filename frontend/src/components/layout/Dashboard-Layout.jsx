@@ -21,6 +21,7 @@ const BREADCRUMB_MAP = {
   '/selection/report':           ['Selection', 'Report'],
   '/settings':                   ['Insights', 'Settings'],
   '/settings/account':           ['Settings', 'Account'],
+  '/profile':                    ['Workspace', 'Profile'],
   '/report-candidate':           ['Report Candidate']
 } 
 

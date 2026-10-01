@@ -44,6 +44,26 @@ class UserService {
     return { ...newUser, roles };
   }
 
+  async changePassword(user_id, currentPassword, newPassword) {
+    if (!currentPassword || !newPassword) {
+      throw { status: 400, message: 'Current and new password are required' };
+    }
+    if (newPassword.length < 6) {
+      throw { status: 400, message: 'New password must be at least 6 characters' };
+    }
+
+    const user = await User.getById(user_id);
+    if (!user) throw { status: 404, message: 'User not found' };
+
+    const isMatch = await bcrypt.compare(currentPassword, user.password);
+    if (!isMatch) throw { status: 401, message: 'Current password is incorrect' };
+
+    const hashed = await bcrypt.hash(newPassword, 12);
+    await User.update(user_id, { password: hashed });
+
+    return { message: 'Password updated successfully' };
+  }
+
   async update(id, { email, password, username, role_ids, company_id }) {
     const user = await User.getById(id);
     if (!user) throw { status: 404, message: 'User not found' };

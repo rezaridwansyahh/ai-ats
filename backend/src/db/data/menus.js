@@ -13,12 +13,6 @@ export default [
   { id: 5,  name: 'Source Management' },
   { id: 6,  name: 'Talent Pool' },
   { id: 7,  name: 'Search & Outreach' },
-  { id: 8,  name: 'Assessment A' },
-  { id: 9,  name: 'Assessment B' },
-  { id: 10, name: 'Assessment C' },
-  { id: 11, name: 'Assessment D' },
-  { id: 12, name: 'Insights Discovery Assessment' },
-  { id: 13, name: 'Thomas Kilmann Assessment' },
 
   // Selection module
   { id: 14, name: 'AI Screening' },

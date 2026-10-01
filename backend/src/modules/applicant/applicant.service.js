@@ -32,6 +32,12 @@ class ApplicantService {
     return await applicantModel.getSourcingsByApplicantId(applicant_id);
   }
 
+  async getScoreHistoryByApplicantId(applicant_id) {
+    const applicant = await applicantModel.getById(applicant_id);
+    if (!applicant) throw { status: 404, message: 'Applicant not found' };
+    return await applicantModel.getScoreHistoryByApplicantId(applicant_id);
+  }
+
   async create(payload) {
     const { name, last_position, address } = payload;
     if (!name || !last_position || !address) {

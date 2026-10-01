@@ -5,6 +5,7 @@ import UserModel from '../user/user.model.js';
 import RoleModel from '../role/role.model.js';
 import logger from '../../shared/utils/logger.js';
 import PermissionModel from '../permission/permission.model.js';
+import CompanyService from '../company/company.service.js';
 
 class AuthService {
   async login(email, password) {
@@ -57,25 +58,46 @@ class AuthService {
     };
   }
 
-  async register(email, password, username, company_id = null) {
-    if (!email || !password ) throw { status: 400, message: 'Email and Password are required' };
+  // Public self-registration always creates a brand-new company (workspace)
+  // with this user as its first member, made Admin so they can invite
+  // teammates afterward. Joining an existing company happens via that
+  // Admin's own invite flow (Settings > Team), never through this endpoint.
+  async register(email, password, username, company_name) {
+    if (!email || !password) throw { status: 400, message: 'Email and Password are required' };
+
+    const trimmedCompanyName = (company_name || '').trim();
+    if (!trimmedCompanyName) throw { status: 400, message: 'Company name is required' };
 
     const existingUser = await UserModel.getByEmail(email);
     if (existingUser) throw { status: 400, message: 'Email already exist' };
 
+    let company;
+    try {
+      company = await CompanyService.create({ name: trimmedCompanyName });
+    } catch (err) {
+      if (err.code === '23505') throw { status: 400, message: 'A company with that name already exists' };
+      throw err;
+    }
+
     const hashedPassword = await bcrypt.hash(password, 12);
+    const newUser = await UserModel.create(email, hashedPassword, username, company.id);
 
-    const newUser = await UserModel.create(email, hashedPassword, username, company_id);
+    const roles = await RoleModel.getAllMasterRoles();
+    const adminRole = roles.find((r) => r.name === 'Admin');
+    if (!adminRole) throw { status: 500, message: 'Admin role not found — check role seed data' };
+    await RoleModel.replaceUserRoles(newUser.id, [adminRole.id]);
 
-    logger.info(`User registered: ${email}`);
+    logger.info(`User registered: ${email}, new company "${company.name}" (id ${company.id})`);
 
     return {
       message: 'User registered successfully',
       user: {
         id: newUser.id,
         email: newUser.email,
-        company_id: newUser.company_id ?? null
-      }
+        username: newUser.username,
+        company_id: company.id
+      },
+      company
     };
   }
 }

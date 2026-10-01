@@ -3,6 +3,7 @@ import { Sparkles, HelpCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
 import AddToJobDialog from "@/components/talent-pool/AddToJobDialog";
+import ApplicantHistoryModal from "@/components/talent-pool/ApplicantHistoryModal";
 import TalentPoolStats from "@/components/talent-pool/TalentPoolStats";
 import TalentPoolFilterSidebar from "@/components/talent-pool/TalentPoolFilterSidebar";
 import TalentPoolTable from "@/components/talent-pool/TalentPoolTable";
@@ -40,6 +41,9 @@ export default function TalentPoolPage(){
   const [dialogOpen, setDialogOpen] = useState(false);
   const [selectedApplicants, setSelectedApplicants] = useState([]);
   const [selectedIds, setSelectedIds] = useState(new Set());
+
+  const [historyOpen, setHistoryOpen] = useState(false);
+  const [historyApplicant, setHistoryApplicant] = useState(null);
 
   const { run, setRun, markSeen, restart } = usePipelineTour('talent-pool');
   
@@ -259,6 +263,11 @@ export default function TalentPoolPage(){
     clearSelection();
   };
 
+  const handleViewClick = (row) => {
+    setHistoryApplicant(row);
+    setHistoryOpen(true);
+  };
+
    return (
     <div className="space-y-5 p-6">
  
@@ -307,6 +316,7 @@ export default function TalentPoolPage(){
           onEducationDraftChange={setDraftField('education_q')}
           onSearchSubmit={handleSearchSubmit}
           onAddClick={handleAddClick}
+          onViewClick={handleViewClick}
           page={pageClamped}
           pageSize={PAGE_SIZE}
           totalPages={totalPages}
@@ -326,6 +336,12 @@ export default function TalentPoolPage(){
         onOpenChange={setDialogOpen}
         applicants={selectedApplicants}
         onSuccess={handleDialogSuccess}
+      />
+
+      <ApplicantHistoryModal
+        open={historyOpen}
+        onOpenChange={setHistoryOpen}
+        applicant={historyApplicant}
       />
 
       {canCreate && <CvUploadCard />}

@@ -6,3 +6,4 @@ export const getAllByCompanyWithScore = (company_id) => api.get(`/applicant/scor
 
 //Baru punya BAYU
 export const getByJobSourcingId = (job_sourcing_id) => api.get(`/applicant/job-sourcing/${job_sourcing_id}`);
+export const getScoreHistory = (applicant_id) => api.get(`/applicant/${applicant_id}/score-history`);
