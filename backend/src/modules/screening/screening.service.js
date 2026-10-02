@@ -1,5 +1,6 @@
 import screeningModel from './screening.model.js';
 import jobModel from '../job/job.model.js';
+import getDb from '../../config/postgres.js';
 import CandidatePipelineService from '../candidate-pipeline/candidate-pipeline.service.js';
 import automationModel from '../automation-setting/automation.model.js';
 import aiService from '../../shared/services/ai.service.js';
@@ -353,6 +354,14 @@ class ScreeningService {
   }
 
   // L4 Calibration — bulk advance selected screenings to Interview.
+  // Drives each row through the SAME CandidatePipelineService.addStage() path
+  // as the single-candidate decision flow (setDecision() below) — that's what
+  // actually moves master_candidate.latest_stage forward and (via its
+  // category-based side effects) creates the candidate_interview row. The
+  // previous version of this method only wrote candidate_screening.decision
+  // and inserted candidate_interview directly, so the candidate's pipeline
+  // stage itself never advanced — "Advance" reported success but nothing
+  // visibly moved on the board.
   async advanceBulk(job_id, { screening_ids, decision_reason, decided_by, company_id = null }) {
     if (!job_id) throw { status: 400, message: 'job_id is required' };
     if (!Array.isArray(screening_ids) || screening_ids.length === 0) {
@@ -363,12 +372,43 @@ class ScreeningService {
     if (company_id && job.company_id && job.company_id !== company_id) {
       throw { status: 403, message: 'Cross-tenant access denied' };
     }
-    return await screeningModel.bulkAdvanceToInterview({
-      screening_ids,
-      decision_reason,
-      decided_by,
-      company_id,
-    });
+
+    const advanced = [];
+    const skipped = [];
+    const errors = [];
+    const interview_ids = [];
+
+    for (const screening_id of screening_ids) {
+      try {
+        const existing = await screeningModel.getScreeningById(screening_id);
+        if (!existing) { errors.push({ screening_id, message: 'not found' }); continue; }
+        if (company_id && existing.company_id && existing.company_id !== company_id) {
+          errors.push({ screening_id, message: 'cross-tenant denied' });
+          continue;
+        }
+        if (existing.decision) {
+          skipped.push({ screening_id, reason: `already ${existing.decision}` });
+          continue;
+        }
+
+        await CandidatePipelineService.addStage(existing.candidate_id, existing.latest_stage, 'advance');
+        await screeningModel.setScreeningDecision({
+          screening_id, decision: 'advance', decision_reason, decided_by,
+        });
+
+        const interviewRow = await getDb().query(
+          `SELECT id FROM candidate_interview WHERE candidate_id = $1 AND job_id = $2`,
+          [existing.candidate_id, existing.job_id]
+        );
+        if (interviewRow.rows[0]) interview_ids.push(interviewRow.rows[0].id);
+
+        advanced.push(screening_id);
+      } catch (err) {
+        errors.push({ screening_id, message: err.message || String(err) });
+      }
+    }
+
+    return { advanced, skipped, errors, interview_ids };
   }
 
   // L3/L4 — recruiter decision (advance / hold / reject).

@@ -48,25 +48,41 @@ export default function PipelineStageDashboard({ rows = [], onAdvance, advancing
     return next;
   });
 
-  // ✅ Real action — real success toast
+  // Reflects whatever onAdvance actually reports — not a guaranteed success.
+  // A row can come back "skipped" (already decided) or "errored" (e.g. its
+  // current stage isn't in this job's stage list), in which case it was
+  // never moved, so the toast must say so rather than claim it advanced.
+  const toastAdvanceResult = (result) => {
+    const { advanced = [], skipped = [], errors = [] } = result || {};
+    if (advanced.length > 0 && errors.length === 0 && skipped.length === 0) {
+      toast.success('Candidates advanced', {
+        description: `${advanced.length} candidate${advanced.length === 1 ? '' : 's'} moved to Interview.`,
+      });
+    } else if (advanced.length > 0) {
+      toast.warning('Some candidates advanced', {
+        description: `${advanced.length} moved to Interview · ${skipped.length} skipped · ${errors.length} errors.`,
+      });
+    } else {
+      toast.error('Nothing advanced', {
+        description: skipped.length > 0
+          ? `${skipped.length} candidate(s) already had a decision — nothing moved.`
+          : (errors[0]?.message || 'Could not advance the selected candidates.'),
+      });
+    }
+  };
+
   const handleAdvanceClick = async () => {
     if (selected.size === 0 || !onAdvance) return;
-    const count = selected.size;
-    await onAdvance([...selected], reason || undefined);
+    const result = await onAdvance([...selected], reason || undefined);
     setSelected(new Set());
     setReason('');
-    toast.success('Candidates advanced', {
-      description: `${count} candidate${count === 1 ? '' : 's'} moved to Interview.`,
-    });
+    toastAdvanceResult(result);
   };
 
   const handleAdvanceColumn = async () => {
     if (!onAdvance || buckets.advance.length === 0) return;
-    const count = buckets.advance.length;
-    await onAdvance(buckets.advance.map((r) => r.screening_id), reason || undefined);
-    toast.success('Candidates advanced', {
-      description: `${count} candidate(s) moved to Interview.`,
-    });
+    const result = await onAdvance(buckets.advance.map((r) => r.screening_id), reason || undefined);
+    toastAdvanceResult(result);
   };
 
   // 🚧 TODO(backend): no endpoint exists yet — toast is honest about that.

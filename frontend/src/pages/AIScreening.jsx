@@ -296,8 +296,10 @@ export default function AIScreeningPage() {
                 text: `${advanced.length} advanced · ${skipped.length} skipped · ${errors.length} errors · ${interview_ids.length} interview rows created`,
               });
               await loadStages();
+              return { advanced, skipped, errors, interview_ids };
             } catch (err) {
               setError(err.response?.data?.message || err.message || 'Advance-bulk failed');
+              return { advanced: [], skipped: [], errors: [{ message: 'request failed' }], interview_ids: [] };
             } finally {
               setAdvancing(false);
             }
