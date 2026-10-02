@@ -9,6 +9,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { Slider } from '@/components/ui/slider';
 import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from '@/components/ui/table';
@@ -38,6 +39,13 @@ export default function JobDetailPage() {
   const [candidatesLoading, setCandidatesLoading] = useState(true);
   const [candidateSearch, setCandidateSearch] = useState('');
   const [debouncedCandidateSearch, setDebouncedCandidateSearch] = useState('');
+  const [durationFilter, setDurationFilter] = useState('');
+  const [debouncedDurationFilter, setDebouncedDurationFilter] = useState('');
+  const [minScore, setMinScore] = useState(0);
+  const [minSalaryInput, setMinSalaryInput] = useState('');
+  const [maxSalaryInput, setMaxSalaryInput] = useState('');
+  const [debouncedMinSalary, setDebouncedMinSalary] = useState('');
+  const [debouncedMaxSalary, setDebouncedMaxSalary] = useState('');
   const [candidatePage, setCandidatePage] = useState(1);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -64,6 +72,10 @@ export default function JobDetailPage() {
     try {
       const res = await getPaginatedCandidatesByJobId(id, {
         search: debouncedCandidateSearch || undefined,
+        duration_q: debouncedDurationFilter || undefined,
+        min_score: minScore > 0 ? minScore : undefined,
+        min_salary: debouncedMinSalary !== '' ? debouncedMinSalary : undefined,
+        max_salary: debouncedMaxSalary !== '' ? debouncedMaxSalary : undefined,
         page: candidatePage,
         pageSize: CANDIDATES_PAGE_SIZE,
       });
@@ -75,7 +87,7 @@ export default function JobDetailPage() {
     } finally {
       setCandidatesLoading(false);
     }
-  }, [id, debouncedCandidateSearch, candidatePage]);
+  }, [id, debouncedCandidateSearch, debouncedDurationFilter, minScore, debouncedMinSalary, debouncedMaxSalary, candidatePage]);
 
   // Job details + posting channels — one-time load, its own loading state.
   // Candidates load separately (below) so searching/paging them doesn't
@@ -106,6 +118,21 @@ export default function JobDetailPage() {
     const t = setTimeout(() => setDebouncedCandidateSearch(candidateSearch), 350);
     return () => clearTimeout(t);
   }, [candidateSearch]);
+
+  useEffect(() => {
+    const t = setTimeout(() => setDebouncedDurationFilter(durationFilter), 350);
+    return () => clearTimeout(t);
+  }, [durationFilter]);
+
+  useEffect(() => {
+    const t = setTimeout(() => setDebouncedMinSalary(minSalaryInput), 350);
+    return () => clearTimeout(t);
+  }, [minSalaryInput]);
+
+  useEffect(() => {
+    const t = setTimeout(() => setDebouncedMaxSalary(maxSalaryInput), 350);
+    return () => clearTimeout(t);
+  }, [maxSalaryInput]);
 
   // Re-sync re-pulls applicants for each posted platform of this job (1 per platform).
   // Seek is QUEUED — the backend marks the channel sync_state='syncing' and a worker
@@ -162,7 +189,9 @@ export default function JobDetailPage() {
     }
   }, [anySyncing, channels, fetchChannels, fetchJob, fetchCandidates]);
 
-  useEffect(() => { setCandidatePage(1); }, [debouncedCandidateSearch]);
+  useEffect(() => {
+    setCandidatePage(1);
+  }, [debouncedCandidateSearch, debouncedDurationFilter, minScore, debouncedMinSalary, debouncedMaxSalary]);
 
   // TEMP preview: dummy channels so the Posting card renders before real sync data
   // exists. Flip to false (or delete this block) once postings flow from sync.
@@ -177,7 +206,10 @@ export default function JobDetailPage() {
 
   // Search/pagination now happen server-side (see fetchCandidates) — `candidates`
   // is already exactly the page that should render.
-  const hasActiveCandidateSearch = Boolean(debouncedCandidateSearch.trim());
+  const hasActiveCandidateSearch = Boolean(
+    debouncedCandidateSearch.trim() || debouncedDurationFilter.trim()
+    || minScore > 0 || debouncedMinSalary !== '' || debouncedMaxSalary !== ''
+  );
   const candidateTotalPages = Math.max(1, Math.ceil(candidateTotal / CANDIDATES_PAGE_SIZE));
 
   if (loading) {
@@ -308,18 +340,85 @@ export default function JobDetailPage() {
             {/* Candidates — searchable, paginated table (counts/funnel live in Candidate Pipeline) */}
             <Card className="py-4 gap-3">
               <CardHeader>
-                <CardTitle className="text-sm flex items-center justify-between gap-3 flex-wrap">
-                  <span className="flex items-center gap-2">
-                    <Users className="h-4 w-4 text-primary" /> Candidates
-                    <span className="text-[10px] font-normal text-muted-foreground">{candidateTotal}</span>
-                  </span>
-                  <Input
-                    placeholder="Search candidates..."
-                    value={candidateSearch}
-                    onChange={(e) => setCandidateSearch(e.target.value)}
-                    className="max-w-[220px] h-8 text-xs font-normal"
-                  />
+                <CardTitle className="text-sm flex items-center gap-2">
+                  <Users className="h-4 w-4 text-primary" /> Candidates
+                  <span className="text-[10px] font-normal text-muted-foreground">{candidateTotal}</span>
                 </CardTitle>
+
+                <div className="flex flex-wrap items-end gap-4 pt-1">
+                  <div className="w-[160px]">
+                    <div className="text-[10px] font-semibold uppercase text-muted-foreground mb-1">Name</div>
+                    <Input
+                      placeholder="Search candidates..."
+                      value={candidateSearch}
+                      onChange={(e) => setCandidateSearch(e.target.value)}
+                      className="h-8 text-xs font-normal"
+                    />
+                  </div>
+
+                  <div className="w-[160px]">
+                    <div className="text-[10px] font-semibold uppercase text-muted-foreground mb-1">Duration</div>
+                    <Input
+                      placeholder="e.g. 2 tahun"
+                      value={durationFilter}
+                      onChange={(e) => setDurationFilter(e.target.value)}
+                      className="h-8 text-xs font-normal"
+                    />
+                  </div>
+
+                  <div className="w-[160px]">
+                    <div className="flex items-center justify-between mb-1.5">
+                      <div className="text-[10px] font-semibold uppercase text-muted-foreground">Min Score</div>
+                      <span className="text-[11px] font-semibold text-primary">{minScore || '0+'}</span>
+                    </div>
+                    <Slider
+                      value={[minScore]}
+                      onValueChange={(v) => setMinScore(v[0])}
+                      min={0}
+                      max={100}
+                      step={5}
+                      className="h-8 flex items-center"
+                    />
+                  </div>
+
+                  <div className="w-[130px]">
+                    <div className="text-[10px] font-semibold uppercase text-muted-foreground mb-1">Min Salary (IDR)</div>
+                    <Input
+                      type="number"
+                      placeholder="0"
+                      value={minSalaryInput}
+                      onChange={(e) => setMinSalaryInput(e.target.value)}
+                      className="h-8 text-xs font-normal"
+                    />
+                  </div>
+                  <div className="w-[130px]">
+                    <div className="text-[10px] font-semibold uppercase text-muted-foreground mb-1">Max Salary (IDR)</div>
+                    <Input
+                      type="number"
+                      placeholder="No limit"
+                      value={maxSalaryInput}
+                      onChange={(e) => setMaxSalaryInput(e.target.value)}
+                      className="h-8 text-xs font-normal"
+                    />
+                  </div>
+
+                  {hasActiveCandidateSearch && (
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="h-8 text-[11px] text-muted-foreground"
+                      onClick={() => {
+                        setCandidateSearch('');
+                        setDurationFilter('');
+                        setMinScore(0);
+                        setMinSalaryInput('');
+                        setMaxSalaryInput('');
+                      }}
+                    >
+                      Clear filters
+                    </Button>
+                  )}
+                </div>
               </CardHeader>
               <CardContent className="p-0">
                 {candidatesLoading ? (
