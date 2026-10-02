@@ -17,12 +17,14 @@ import { getJobById } from '@/api/job.api';
 import { getByJobId as getJobChannels } from '@/api/job-sourcing.api';
 import { extractSeekCandidates } from '@/api/job-posting-seek.api';
 import { extractLinkedinApplicants } from '@/api/linkedin.api';
-import { getCandidatesByJobId } from '@/api/candidate.api';
+import { getPaginatedCandidatesByJobId } from '@/api/candidate.api';
 import { formatSalaryBand, formatSinceDate} from '@/lib/job-display';
 
 import { hasPermission } from '@/utils/permissions';
 
 import { StatusBadge } from '@/components/common';
+
+const CANDIDATES_PAGE_SIZE = 6;
 
 export default function JobDetailPage() {
   const canEdit = hasPermission('Sourcing', 'Job Management', 'update');
@@ -30,14 +32,15 @@ export default function JobDetailPage() {
   const { id } = useParams();
   const [job, setJob] = useState(null);
   const [channels, setChannels] = useState([]);   // core_job_sourcing rows for this job
-  const [candidates, setCandidates] = useState([]); // master_candidate rows for this job
+  const [candidates, setCandidates] = useState([]); // current page of master_candidate rows for this job
+  const [candidateTotal, setCandidateTotal] = useState(0);
+  const [candidatesLoading, setCandidatesLoading] = useState(true);
   const [candidateSearch, setCandidateSearch] = useState('');
+  const [debouncedCandidateSearch, setDebouncedCandidateSearch] = useState('');
   const [candidatePage, setCandidatePage] = useState(1);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [syncing, setSyncing] = useState(false);
-  
-  const CANDIDATES_PAGE_SIZE = 6;
 
   const fetchJob = useCallback(async () => {
     const res = await getJobById(id);
@@ -54,14 +57,26 @@ export default function JobDetailPage() {
   }, [id]);
 
   const fetchCandidates = useCallback(async () => {
+    setCandidatesLoading(true);
     try {
-      const res = await getCandidatesByJobId(id);
+      const res = await getPaginatedCandidatesByJobId(id, {
+        search: debouncedCandidateSearch || undefined,
+        page: candidatePage,
+        pageSize: CANDIDATES_PAGE_SIZE,
+      });
       setCandidates(Array.isArray(res.data?.pipelines) ? res.data.pipelines : []);
+      setCandidateTotal(res.data?.total || 0);
     } catch {
       setCandidates([]);
+      setCandidateTotal(0);
+    } finally {
+      setCandidatesLoading(false);
     }
-  }, [id]);
+  }, [id, debouncedCandidateSearch, candidatePage]);
 
+  // Job details + posting channels — one-time load, its own loading state.
+  // Candidates load separately (below) so searching/paging them doesn't
+  // blank out the rest of the page.
   useEffect(() => {
     let cancelled = false;
     (async () => {
@@ -69,7 +84,7 @@ export default function JobDetailPage() {
       setError(null);
       try {
         await fetchJob();
-        if (!cancelled) await Promise.all([fetchChannels(), fetchCandidates()]);
+        if (!cancelled) await fetchChannels();
       } catch (err) {
         if (!cancelled) setError(err.response?.data?.message || err.message || 'Failed to load job');
       } finally {
@@ -77,7 +92,17 @@ export default function JobDetailPage() {
       }
     })();
     return () => { cancelled = true; };
-  }, [fetchJob, fetchChannels, fetchCandidates]);
+  }, [fetchJob, fetchChannels]);
+
+  // Candidates: (re)fetches whenever the search term or page changes.
+  useEffect(() => { fetchCandidates(); }, [fetchCandidates]);
+
+  // Debounce the live search box before it drives a fetch — this input has
+  // no submit button, so without this every keystroke would hit the server.
+  useEffect(() => {
+    const t = setTimeout(() => setDebouncedCandidateSearch(candidateSearch), 350);
+    return () => clearTimeout(t);
+  }, [candidateSearch]);
 
   // Re-sync re-pulls applicants for each posted platform of this job (1 per platform).
   // Seek is QUEUED — the backend marks the channel sync_state='syncing' and a worker
@@ -134,7 +159,7 @@ export default function JobDetailPage() {
     }
   }, [anySyncing, channels, fetchChannels, fetchJob, fetchCandidates]);
 
-  useEffect(() => { setCandidatePage(1); }, [candidateSearch]);
+  useEffect(() => { setCandidatePage(1); }, [debouncedCandidateSearch]);
 
   // TEMP preview: dummy channels so the Posting card renders before real sync data
   // exists. Flip to false (or delete this block) once postings flow from sync.
@@ -147,20 +172,10 @@ export default function JobDetailPage() {
   const displayChannels = channels.length ? channels : dummyChannels;
   const isPosted = displayChannels.length > 0;
 
-  // Candidate table: filter (name/position) → paginate.
-  const filteredCandidates = (() => {
-    const q = candidateSearch.trim().toLowerCase();
-    if (!q) return candidates;
-    return candidates.filter((c) =>
-      c.candidate_name?.toLowerCase().includes(q) ||
-      (c.information?.job_position?.current || c.last_position)?.toLowerCase().includes(q)
-    );
-  })();
-  const candidateTotalPages = Math.max(1, Math.ceil(filteredCandidates.length / CANDIDATES_PAGE_SIZE));
-  const pagedCandidates = filteredCandidates.slice(
-    (candidatePage - 1) * CANDIDATES_PAGE_SIZE,
-    candidatePage * CANDIDATES_PAGE_SIZE
-  );
+  // Search/pagination now happen server-side (see fetchCandidates) — `candidates`
+  // is already exactly the page that should render.
+  const hasActiveCandidateSearch = Boolean(debouncedCandidateSearch.trim());
+  const candidateTotalPages = Math.max(1, Math.ceil(candidateTotal / CANDIDATES_PAGE_SIZE));
 
   if (loading) {
     return (
@@ -288,7 +303,7 @@ export default function JobDetailPage() {
                 <CardTitle className="text-sm flex items-center justify-between gap-3 flex-wrap">
                   <span className="flex items-center gap-2">
                     <Users className="h-4 w-4 text-primary" /> Candidates
-                    <span className="text-[10px] font-normal text-muted-foreground">{candidates.length}</span>
+                    <span className="text-[10px] font-normal text-muted-foreground">{candidateTotal}</span>
                   </span>
                   <Input
                     placeholder="Search candidates..."
@@ -299,13 +314,13 @@ export default function JobDetailPage() {
                 </CardTitle>
               </CardHeader>
               <CardContent className="p-0">
-                {candidates.length === 0 ? (
+                {candidatesLoading ? (
+                  <div className="py-8 flex items-center justify-center">
+                    <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
+                  </div>
+                ) : candidates.length === 0 ? (
                   <p className="py-8 text-xs text-muted-foreground text-center italic">
-                    No candidates yet.
-                  </p>
-                ) : filteredCandidates.length === 0 ? (
-                  <p className="py-8 text-xs text-muted-foreground text-center italic">
-                    No candidates match your search.
+                    {hasActiveCandidateSearch ? 'No candidates match your search.' : 'No candidates yet.'}
                   </p>
                 ) : (
                   <>
@@ -320,7 +335,7 @@ export default function JobDetailPage() {
                         </TableRow>
                       </TableHeader>
                       <TableBody>
-                        {pagedCandidates.map((c) => {
+                        {candidates.map((c) => {
                           const jobPosition = c.information?.job_position || {};
                           return (
                             <TableRow key={c.id} className="hover:bg-muted/30">
@@ -351,7 +366,7 @@ export default function JobDetailPage() {
                     <div className="flex items-center justify-between gap-2 px-6 py-3 border-t">
                       <span className="text-[10px] text-muted-foreground">
                         {(candidatePage - 1) * CANDIDATES_PAGE_SIZE + 1}–
-                        {Math.min(candidatePage * CANDIDATES_PAGE_SIZE, filteredCandidates.length)} of {filteredCandidates.length}
+                        {Math.min(candidatePage * CANDIDATES_PAGE_SIZE, candidateTotal)} of {candidateTotal}
                       </span>
                       <div className="flex items-center gap-1">
                         <Button variant="outline" size="sm" className="h-7 text-xs" disabled={candidatePage <= 1} onClick={() => setCandidatePage((p) => p - 1)}>
