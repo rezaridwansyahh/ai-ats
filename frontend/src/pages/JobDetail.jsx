@@ -153,7 +153,7 @@ export default function JobDetailPage() {
     if (!q) return candidates;
     return candidates.filter((c) =>
       c.candidate_name?.toLowerCase().includes(q) ||
-      c.last_position?.toLowerCase().includes(q)
+      (c.information?.job_position?.current || c.last_position)?.toLowerCase().includes(q)
     );
   })();
   const candidateTotalPages = Math.max(1, Math.ceil(filteredCandidates.length / CANDIDATES_PAGE_SIZE));
@@ -323,8 +323,8 @@ export default function JobDetailPage() {
                             <TableCell className="text-xs font-medium pl-6 truncate" title={c.candidate_name}>
                               {c.candidate_name}
                             </TableCell>
-                            <TableCell className="text-xs text-muted-foreground truncate" title={c.last_position || ''}>
-                              {c.last_position || '—'}
+                            <TableCell className="text-xs text-muted-foreground truncate" title={c.information?.job_position?.current || c.last_position || ''}>
+                              {c.information?.job_position?.current || c.last_position || '—'}
                             </TableCell>
                             <TableCell>
                               <Badge variant="outline" className="text-[10px]">
