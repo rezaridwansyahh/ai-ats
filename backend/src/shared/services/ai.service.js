@@ -290,6 +290,62 @@ ${trimmed}
     return facets;
   }
 
+  // Lightweight re-structure of an EXISTING last_position string into
+  // { current, category, duration, location } — backs the one-off backfill
+  // script for applicants parsed before job_position carried duration/location.
+  // Does NOT re-read the original CV, so it can only recover what's already
+  // encoded in the raw text; a field comes back empty if it genuinely isn't there.
+  async restructureJobPosition(lastPositionText, context = {}) {
+    if (!lastPositionText || typeof lastPositionText !== 'string' || !lastPositionText.trim()) {
+      return { current: '', category: '', duration: '', location: '' };
+    }
+
+    await companyUsageService.checkBudgetOrThrow(context.company_id);
+
+    const prompt = `You are given a single, possibly messy or concatenated line of text describing someone's job position — extracted from a CV or a scraped profile. Split it into separate structured fields. Return STRICT JSON only (no prose, no markdown):
+
+{
+  "current": "job title only, cleaned up",
+  "category": "coarse role category: Frontend, Backend, Full Stack, Data, Product Design, Mobile, DevOps, Product Management, QA, Recruiting, or Other",
+  "duration": "how long in this position, e.g. '1 yr 9 mos' — empty string if not present in the text",
+  "location": "city/region of this position — empty string if not present in the text"
+}
+
+Raw text: "${lastPositionText.trim().slice(0, 500)}"
+
+Rules:
+- Do not invent information that isn't in the raw text — if duration or location aren't present, return empty strings for them.
+- If the raw text is already just a clean job title with nothing else, "current" should be that title and duration/location should be empty strings.
+- No commentary outside the JSON.`;
+
+    const response = await openai.chat.completions.create({
+      model: SCORING_MODEL,
+      messages: [{ role: 'user', content: prompt }],
+      response_format: { type: 'json_object' },
+      temperature: 0.2,
+    });
+
+    await this._logUsage({
+      context,
+      model: SCORING_MODEL,
+      operation: 'restructure_job_position',
+      usage: response.usage,
+      request_id: response.id,
+      metadata: context.metadata || null,
+    });
+
+    const raw = response.choices[0]?.message?.content || '{}';
+    let parsed;
+    try { parsed = JSON.parse(raw); } catch { throw new Error('restructureJobPosition: model returned non-JSON'); }
+
+    return {
+      current:  typeof parsed.current  === 'string' ? parsed.current.trim()  : '',
+      category: typeof parsed.category === 'string' ? parsed.category.trim() : '',
+      duration: typeof parsed.duration === 'string' ? parsed.duration.trim() : '',
+      location: typeof parsed.location === 'string' ? parsed.location.trim() : '',
+    };
+  }
+
   // Same as extractFacets but accepts a raw file buffer — uploads to OpenAI for OCR
   // so pdf-parse is not needed. Accepts any PDF/DOCX/TXT buffer.
   async extractFacetsFromFile(fileBuffer, filename, context = {}) {
