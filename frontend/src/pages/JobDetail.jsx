@@ -2,7 +2,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import {
   Loader2, AlertTriangle, ArrowLeft, Pencil, MapPin, Building2,
-  Briefcase, FileText, Workflow, Megaphone, RefreshCw, CheckCircle2, Users, ChevronUp,
+  Briefcase, FileText, Workflow, Megaphone, RefreshCw, CheckCircle2, Users, ChevronUp, Eye,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -23,6 +23,7 @@ import { formatSalaryBand, formatSinceDate} from '@/lib/job-display';
 import { hasPermission } from '@/utils/permissions';
 
 import { StatusBadge } from '@/components/common';
+import CandidateDetailModal from '@/components/job-management/CandidateDetailModal';
 
 const CANDIDATES_PAGE_SIZE = 6;
 
@@ -41,6 +42,8 @@ export default function JobDetailPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [syncing, setSyncing] = useState(false);
+  const [viewCandidate, setViewCandidate] = useState(null);
+  const [viewModalOpen, setViewModalOpen] = useState(false);
 
   const fetchJob = useCallback(async () => {
     const res = await getJobById(id);
@@ -196,6 +199,11 @@ export default function JobDetailPage() {
     );
   }
 
+  const handleViewCandidate = (candidate) => {
+    setViewCandidate(candidate);
+    setViewModalOpen(true);
+  };
+
   const required  = Array.isArray(job.required_skills)  ? job.required_skills  : [];
   const preferred = Array.isArray(job.preferred_skills) ? job.preferred_skills : [];
 
@@ -327,11 +335,12 @@ export default function JobDetailPage() {
                     <Table className="table-fixed w-full">
                       <TableHeader className="bg-muted/40">
                         <TableRow>
-                          <TableHead className="text-[10px] font-bold uppercase pl-6 w-[26%]">Candidate</TableHead>
-                          <TableHead className="text-[10px] font-bold uppercase w-[22%]">Position</TableHead>
-                          <TableHead className="text-[10px] font-bold uppercase w-[14%]">Duration</TableHead>
-                          <TableHead className="text-[10px] font-bold uppercase w-[18%]">Location</TableHead>
-                          <TableHead className="text-[10px] font-bold uppercase w-[20%]">Stage</TableHead>
+                          <TableHead className="text-[10px] font-bold uppercase pl-6 w-[22%]">Candidate</TableHead>
+                          <TableHead className="text-[10px] font-bold uppercase w-[19%]">Position</TableHead>
+                          <TableHead className="text-[10px] font-bold uppercase w-[12%]">Duration</TableHead>
+                          <TableHead className="text-[10px] font-bold uppercase w-[15%]">Location</TableHead>
+                          <TableHead className="text-[10px] font-bold uppercase w-[16%]">Stage</TableHead>
+                          <TableHead className="text-[10px] font-bold uppercase w-[16%] pr-6 text-right">View</TableHead>
                         </TableRow>
                       </TableHeader>
                       <TableBody>
@@ -355,6 +364,16 @@ export default function JobDetailPage() {
                                 <Badge variant="outline" className="text-[10px]">
                                   {c.latest_stage_name || 'Not started'}
                                 </Badge>
+                              </TableCell>
+                              <TableCell className="pr-6 text-right">
+                                <Button
+                                  variant="outline"
+                                  size="sm"
+                                  className="h-7 text-[11px] gap-1"
+                                  onClick={() => handleViewCandidate(c)}
+                                >
+                                  <Eye className="h-3 w-3" /> View
+                                </Button>
                               </TableCell>
                             </TableRow>
                           );
@@ -502,6 +521,13 @@ export default function JobDetailPage() {
           </aside>
         </div>
       </div>
+
+      <CandidateDetailModal
+        open={viewModalOpen}
+        onOpenChange={setViewModalOpen}
+        candidate={viewCandidate}
+        jobId={id}
+      />
     </>
   );
 }
