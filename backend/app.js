@@ -37,7 +37,6 @@ import session from "./src/modules/assessment/session/session.route.js"
 import assessmentBatteryResult from "./src/modules/assessment/assessment-battery-result/assessment-battery-result.route.js"
 import assessmentAI from "./src/modules/assessment/assessment-ai/assessment-ai.route.js"
 import sourcing from "./src/modules/sourcing/sourcing.route.js"
-import recruiter from "./src/modules/recruiter/recruiter.route.js"
 import pipeline from "./src/modules/pipeline/pipeline.route.js"
 import stageCategory from "./src/modules/stage-category/stage-category.route.js"
 import templateStage from "./src/modules/template-stage/template-stage.route.js"
@@ -107,7 +106,6 @@ portal.use("/api/job", job);
 portal.use("/api/applicant", applicant);
 portal.use("/api/candidate-pipeline", candidatePipeline);
 portal.use("/api/sourcing", sourcing);
-portal.use("/api/recruiter", recruiter);
 portal.use("/api/pipeline", pipeline);
 portal.use("/api/stage-category", stageCategory);
 portal.use("/api/template-stage", templateStage);
@@ -170,7 +168,6 @@ app.use("/api/session", session);
 app.use("/api/assessment-battery-result", assessmentBatteryResult);
 app.use("/api/assessment-ai", assessmentAI);
 app.use("/api/sourcing", sourcing);
-app.use("/api/recruiter", recruiter);
 app.use("/api/pipeline", pipeline);
 app.use("/api/stage-category", stageCategory);
 app.use("/api/template-stage", templateStage);

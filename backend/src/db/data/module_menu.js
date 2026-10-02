@@ -22,7 +22,6 @@ export default [
   { id: 18, module_id: 5, menu_id: 23 }, // Role Management
   { id: 19, module_id: 5, menu_id: 24 }, // Integrations
   { id: 20, module_id: 5, menu_id: 25 }, // Account
-  { id: 21, module_id: 5, menu_id: 26 }, // Recruiters
   { id: 22, module_id: 5, menu_id: 27 }, // Budget (Task 6.12b)
 
   // Offer & Onboard (module 6)

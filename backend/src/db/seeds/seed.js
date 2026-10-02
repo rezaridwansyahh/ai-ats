@@ -18,7 +18,6 @@ import skillAliasesData from '../data/skill_aliases.js';
 import companiesData from '../data/companies.js';
 import assessmentsData from '../data/assessments.js';
 import jobTemplatesData from '../data/job_templates.js';
-import recruitersData from '../data/recruiters.js';
 import { applicantScores, candidateScreenings } from '../data/applicant_scores.js';
 import {
   insightsResults,
@@ -76,7 +75,6 @@ const seed = async () => {
     await getDb().query('DELETE FROM master_candidate');
     await getDb().query('DELETE FROM mapping_applicant_sourcing');
     await getDb().query('DELETE FROM master_applicant');
-    await getDb().query('DELETE FROM master_recruiters');
     await getDb().query('DELETE FROM mapping_job_sourcing_job');
     await getDb().query('DELETE FROM core_job_sourcing');
     await getDb().query('DELETE FROM job_post');
@@ -215,15 +213,6 @@ const seed = async () => {
         `INSERT INTO master_job_account (id, portal_name, email, password, user_id, company_id, status_connection, status_sync)
          VALUES ($1, $2, $3, $4, $5, $6, $7, $8)`,
         [acc.id, acc.portal_name, acc.email, acc.password, acc.user_id, acc.company_id ?? null, acc.status_connection, acc.status_sync]
-      );
-    }
-
-    // 13. master_recruiters (per-tenant rosters)
-    for (const r of recruitersData) {
-      await getDb().query(
-        `INSERT INTO master_recruiters (id, company_id, name, email, jobs_assigned, status)
-         VALUES ($1, $2, $3, $4, $5, $6)`,
-        [r.id, r.company_id ?? null, r.name, r.email, r.jobs_assigned ?? 0, r.status ?? 'Active']
       );
     }
 

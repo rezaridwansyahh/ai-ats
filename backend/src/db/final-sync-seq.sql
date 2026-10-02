@@ -17,7 +17,6 @@ SELECT setval('global_permissions_id_seq',        COALESCE((SELECT MAX(id) FROM 
 SELECT setval('mapping_roles_permissions_id_seq', COALESCE((SELECT MAX(id) FROM mapping_roles_permissions), 1));
 SELECT setval('mapping_users_roles_id_seq',       COALESCE((SELECT MAX(id) FROM mapping_users_roles), 1));
 SELECT setval('master_job_account_id_seq',        COALESCE((SELECT MAX(id) FROM master_job_account), 1));
-SELECT setval('master_recruiters_id_seq',         COALESCE((SELECT MAX(id) FROM master_recruiters), 1));
 SELECT setval('core_job_id_seq',                  COALESCE((SELECT MAX(id) FROM core_job), 1));
 SELECT setval('core_job_template_id_seq',         COALESCE((SELECT MAX(id) FROM core_job_template), 1));
 SELECT setval('job_stage_id_seq',                 COALESCE((SELECT MAX(id) FROM job_stage), 1));

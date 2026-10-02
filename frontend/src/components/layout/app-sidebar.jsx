@@ -50,7 +50,6 @@ const iconMap = {
   'Reports':            BarChart3,
   'User Management':    Users,
   'Role Management':    ShieldCheck,
-  'Recruiters':         Users,
   'Account':            Settings,
   'Integrations':       Package,
   'Settings':            Settings,
@@ -77,7 +76,6 @@ const routeMap = {
   'Report Candidate':  '/report-candidate',
   'User Management':   '/settings',
   'Role Management':   '/settings',
-  'Recruiters':        '/settings',
   'Account':           '/settings/account',
   'Budget':            '/settings',
   'Integrations':      '/settings',
@@ -144,7 +142,6 @@ const ROUTE_STATE = {
   'Integrations':    { section: 'integrations' },
   'User Management': { section: 'team' },
   'Role Management': { section: 'roles' },
-  'Recruiters':       { section: 'recruiters' },
   'Budget':           { section: 'billing' },
 };
 

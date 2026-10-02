@@ -73,7 +73,6 @@ DROP TABLE IF EXISTS offer_contract CASCADE;
 DROP TABLE IF EXISTS offer_compensation CASCADE;
 DROP TABLE IF EXISTS candidate_offer CASCADE;
 
-DROP TABLE IF EXISTS master_recruiters CASCADE;
 DROP TABLE IF EXISTS core_job_pipeline_stages CASCADE;
 DROP TABLE IF EXISTS core_job_pipeline CASCADE;
 DROP TABLE IF EXISTS candidate_stages CASCADE;
@@ -96,7 +95,6 @@ DROP TABLE IF EXISTS master_assessment CASCADE;
 DROP TABLE IF EXISTS participants CASCADE; -- For cleanup only
 
 -- Drop enums after all tables are gone
-DROP TYPE IF EXISTS recruiter_status_type CASCADE;
 DROP TYPE IF EXISTS status_type CASCADE;
 DROP TYPE IF EXISTS work_option_type CASCADE;
 DROP TYPE IF EXISTS work_type_type CASCADE;
@@ -136,7 +134,6 @@ CREATE TYPE currency_type AS ENUM ('AUD', 'HKD', 'IDR', 'MYR', 'NZD', 'PHP', 'SG
 CREATE TYPE pay_display_type AS ENUM ('Show', 'Hide');
 CREATE TYPE platform_type AS ENUM ('linkedin', 'seek', 'glints', 'instagram', 'facebook', 'whatsapp', 'internal');
 CREATE TYPE candidate_status_type AS ENUM ('Kotak masuk', 'Prescreen', 'Terpilih', 'Wawancara', 'Penawaran', 'Menerima Tawaran', 'Tidak cocok');
-CREATE TYPE recruiter_status_type AS ENUM ('Active', 'Onboarding');
 CREATE TYPE booking_status_type AS ENUM ('pending', 'approved', 'rejected');
 CREATE TYPE session_slot_type   AS ENUM ('10-12', '1-3', '4-6');
 CREATE TYPE status_connection_type AS ENUM ('Connected', 'Not Connected', 'Error');
@@ -598,17 +595,6 @@ CREATE TABLE master_sourcing_recruite (
   date_created TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
-CREATE TABLE master_recruiters (
-  id SERIAL PRIMARY KEY,
-  company_id INTEGER REFERENCES core_company(id) ON DELETE CASCADE,
-  name VARCHAR(100) NOT NULL,
-  email VARCHAR(100) NOT NULL,
-  jobs_assigned INTEGER NOT NULL DEFAULT 0,
-  status recruiter_status_type NOT NULL DEFAULT 'Active',
-  created_at TIMESTAMP NOT NULL DEFAULT NOW(),
-  updated_at TIMESTAMP NOT NULL DEFAULT NOW()
-);
-CREATE INDEX idx_master_recruiters_company ON master_recruiters (company_id);
 
 CREATE TABLE job_automation_settings (
   id SERIAL PRIMARY KEY,

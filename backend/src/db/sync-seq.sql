@@ -13,7 +13,6 @@ SELECT setval('global_permissions_id_seq',        (SELECT MAX(id) FROM global_pe
 SELECT setval('mapping_roles_permissions_id_seq', (SELECT MAX(id) FROM mapping_roles_permissions));
 SELECT setval('mapping_users_roles_id_seq',       (SELECT MAX(id) FROM mapping_users_roles));
 SELECT setval('master_job_account_id_seq',        (SELECT MAX(id) FROM master_job_account));
-SELECT setval('master_recruiters_id_seq',         COALESCE((SELECT MAX(id) FROM master_recruiters), 1));
 SELECT setval('core_job_id_seq',                  (SELECT MAX(id) FROM core_job));
 SELECT setval('core_job_template_id_seq',         COALESCE((SELECT MAX(id) FROM core_job_template), 1));
 SELECT setval('job_stage_id_seq',                 COALESCE((SELECT MAX(id) FROM job_stage), 1));

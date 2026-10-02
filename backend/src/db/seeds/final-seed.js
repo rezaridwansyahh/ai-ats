@@ -41,7 +41,6 @@ const finalSeed = async () => {
     await getDb().query('DELETE FROM master_assessment');
     await getDb().query('DELETE FROM master_candidate');
     await getDb().query('DELETE FROM master_applicant');
-    await getDb().query('DELETE FROM master_recruiters');
     await getDb().query('DELETE FROM core_job_sourcing');
     await getDb().query('DELETE FROM assessment_sessions');
     await getDb().query('DELETE FROM core_job_template');

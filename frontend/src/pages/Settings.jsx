@@ -3,7 +3,7 @@ import { useLocation } from 'react-router-dom';
 import {
   Settings2, Users, ShieldCheck, Workflow, Plug, Bell, Globe,
   ShieldQuestion, FileText, CreditCard, CalendarClock, Mail, Palette,
-  UserRound, Lock,
+  Lock,
 } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -14,7 +14,6 @@ import TeamSettings from '../components/settings/TeamSettings';
 import RolesPermissionsSettings from '../components/settings/RolesPermissionsSettings';
 import WorkflowTemplatesSettings from '../components/settings/WorkflowTemplatesSettings';
 import IntegrationsSettings from '../components/settings/IntegrationsSettings';
-import RecruitersSettings from '../components/settings/RecruitersSettings';
 import NotificationsSettings from '../components/settings/NotificationsSettings';
 import CandidatePortalSettings from '../components/settings/CandidatePortalSettings';
 import ComplianceSettings from '../components/settings/ComplianceSettings';
@@ -33,7 +32,6 @@ const SETTINGS_NAV = [
   { id: 'theme', label: 'Theme', icon: Palette },
   { id: 'team', label: 'Team', icon: Users },
   { id: 'roles', label: 'Roles & Permissions', icon: ShieldCheck },
-  { id: 'recruiters', label: 'Recruiters', icon: UserRound },
   { id: 'workflow-templates', label: 'Workflow Templates', icon: Workflow },
   { id: 'integrations', label: 'Integrations', icon: Plug },
   { id: 'notifications', label: 'Notifications', icon: Bell },
@@ -57,7 +55,6 @@ const TAB_PERMISSION = {
   roles:        { module: 'Settings', menu: 'Role Management' },
   integrations: { module: 'Settings', menu: 'Integrations' },
   team:         { module: 'Settings', menu: 'User Management' },
-  recruiters:   { module: 'Settings', menu: 'Recruiters' },
 };
 
 function canAccessTab(id) {
@@ -72,7 +69,6 @@ const SECTION_COMPONENTS = {
   theme: ThemeSettings,
   team: TeamSettings,
   roles: RolesPermissionsSettings,
-  recruiters: RecruitersSettings,
   'workflow-templates': WorkflowTemplatesSettings,
   integrations: IntegrationsSettings,
   notifications: NotificationsSettings,

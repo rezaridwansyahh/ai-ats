@@ -31,6 +31,5 @@ export default [
   { id: 23, name: 'Role Management' },
   { id: 24, name: 'Integrations' },
   { id: 25, name: 'Account' },
-  { id: 26, name: 'Recruiters' },
   { id: 27, name: 'Budget' }, // AI Budget Settings (Task 6.12b)
 ];
