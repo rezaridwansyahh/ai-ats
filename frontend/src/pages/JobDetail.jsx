@@ -309,30 +309,41 @@ export default function JobDetailPage() {
                   </p>
                 ) : (
                   <>
-                    <Table>
+                    <Table className="table-fixed w-full">
                       <TableHeader className="bg-muted/40">
                         <TableRow>
-                          <TableHead className="text-[10px] font-bold uppercase pl-6">Candidate</TableHead>
-                          <TableHead className="text-[10px] font-bold uppercase w-[180px]">Position</TableHead>
-                          <TableHead className="text-[10px] font-bold uppercase w-[170px]">Stage</TableHead>
+                          <TableHead className="text-[10px] font-bold uppercase pl-6 w-[26%]">Candidate</TableHead>
+                          <TableHead className="text-[10px] font-bold uppercase w-[22%]">Position</TableHead>
+                          <TableHead className="text-[10px] font-bold uppercase w-[14%]">Duration</TableHead>
+                          <TableHead className="text-[10px] font-bold uppercase w-[18%]">Location</TableHead>
+                          <TableHead className="text-[10px] font-bold uppercase w-[20%]">Stage</TableHead>
                         </TableRow>
                       </TableHeader>
                       <TableBody>
-                        {pagedCandidates.map((c) => (
-                          <TableRow key={c.id} className="hover:bg-muted/30">
-                            <TableCell className="text-xs font-medium pl-6 truncate" title={c.candidate_name}>
-                              {c.candidate_name}
-                            </TableCell>
-                            <TableCell className="text-xs text-muted-foreground truncate" title={c.information?.job_position?.current || c.last_position || ''}>
-                              {c.information?.job_position?.current || c.last_position || '—'}
-                            </TableCell>
-                            <TableCell>
-                              <Badge variant="outline" className="text-[10px]">
-                                {c.latest_stage_name || 'Not started'}
-                              </Badge>
-                            </TableCell>
-                          </TableRow>
-                        ))}
+                        {pagedCandidates.map((c) => {
+                          const jobPosition = c.information?.job_position || {};
+                          return (
+                            <TableRow key={c.id} className="hover:bg-muted/30">
+                              <TableCell className="text-xs font-medium pl-6 truncate" title={c.candidate_name}>
+                                {c.candidate_name}
+                              </TableCell>
+                              <TableCell className="text-xs text-muted-foreground truncate" title={jobPosition.current || c.last_position || ''}>
+                                {jobPosition.current || c.last_position || '—'}
+                              </TableCell>
+                              <TableCell className="text-xs text-muted-foreground truncate" title={jobPosition.duration || ''}>
+                                {jobPosition.duration || '—'}
+                              </TableCell>
+                              <TableCell className="text-xs text-muted-foreground truncate" title={jobPosition.location || ''}>
+                                {jobPosition.location || '—'}
+                              </TableCell>
+                              <TableCell className="truncate">
+                                <Badge variant="outline" className="text-[10px]">
+                                  {c.latest_stage_name || 'Not started'}
+                                </Badge>
+                              </TableCell>
+                            </TableRow>
+                          );
+                        })}
                       </TableBody>
                     </Table>
 
