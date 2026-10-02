@@ -345,8 +345,8 @@ export default function JobDetailPage() {
                   <span className="text-[10px] font-normal text-muted-foreground">{candidateTotal}</span>
                 </CardTitle>
 
-                <div className="flex flex-wrap items-end gap-4 pt-1">
-                  <div className="w-[160px]">
+                <div className="flex flex-wrap items-end gap-3 pt-1">
+                  <div className="w-[130px]">
                     <div className="text-[10px] font-semibold uppercase text-muted-foreground mb-1">Name</div>
                     <Input
                       placeholder="Search candidates..."
@@ -356,7 +356,7 @@ export default function JobDetailPage() {
                     />
                   </div>
 
-                  <div className="w-[160px]">
+                  <div className="w-[120px]">
                     <div className="text-[10px] font-semibold uppercase text-muted-foreground mb-1">Duration</div>
                     <Input
                       placeholder="e.g. 2 tahun"
@@ -366,7 +366,7 @@ export default function JobDetailPage() {
                     />
                   </div>
 
-                  <div className="w-[160px]">
+                  <div className="w-[130px]">
                     <div className="flex items-center justify-between mb-1.5">
                       <div className="text-[10px] font-semibold uppercase text-muted-foreground">Min Score</div>
                       <span className="text-[11px] font-semibold text-primary">{minScore || '0+'}</span>
@@ -381,8 +381,8 @@ export default function JobDetailPage() {
                     />
                   </div>
 
-                  <div className="w-[130px]">
-                    <div className="text-[10px] font-semibold uppercase text-muted-foreground mb-1">Min Salary (IDR)</div>
+                  <div className="w-[110px]">
+                    <div className="text-[10px] font-semibold uppercase text-muted-foreground mb-1">Min Salary</div>
                     <Input
                       type="number"
                       placeholder="0"
@@ -391,8 +391,8 @@ export default function JobDetailPage() {
                       className="h-8 text-xs font-normal"
                     />
                   </div>
-                  <div className="w-[130px]">
-                    <div className="text-[10px] font-semibold uppercase text-muted-foreground mb-1">Max Salary (IDR)</div>
+                  <div className="w-[110px]">
+                    <div className="text-[10px] font-semibold uppercase text-muted-foreground mb-1">Max Salary</div>
                     <Input
                       type="number"
                       placeholder="No limit"
