@@ -199,9 +199,9 @@ class ScreeningController {
   async advanceBulk(req, res) {
     try {
       const job_id = Number(req.params.job_id);
-      const { screening_ids, decision_reason } = req.body || {};
+      const { candidate_ids, decision_reason } = req.body || {};
       const result = await screeningService.advanceBulk(job_id, {
-        screening_ids,
+        candidate_ids,
         decision_reason,
         decided_by: req.user?.user_id || null,
         company_id: req.user?.company_id || null,

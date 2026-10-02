@@ -93,8 +93,8 @@ export const setScreeningDecision = (screening_id, { decision, decision_reason }
 export const getCalibration = (job_id) =>
   api.get(`/screening/job/${job_id}/calibration`);
 
-export const advanceBulk = (job_id, screening_ids, { decision_reason } = {}) =>
-  api.post(`/screening/job/${job_id}/advance-bulk`, { screening_ids, decision_reason });
+export const advanceBulk = (job_id, candidate_ids, { decision_reason } = {}) =>
+  api.post(`/screening/job/${job_id}/advance-bulk`, { candidate_ids, decision_reason });
 
 // Follow-up Q&A (L3 candidate detail)
 export const getQa = (screening_id) =>

@@ -40,8 +40,14 @@ export default function PipelineStageDashboard({ rows = [], onAdvance, advancing
     return b;
   }, [rows]);
 
-  const allSelected = rows.length > 0 && rows.every((r) => selected.has(r.screening_id));
-  const toggleAll = () => setSelected(allSelected ? new Set() : new Set(rows.map((r) => r.screening_id)));
+  // Keyed by candidate_id, not screening_id — a candidate_screening row is
+  // only lazily created the first time their L3 profile is opened, so a
+  // never-opened candidate's screening_id is legitimately null. Keying by
+  // screening_id meant every never-opened candidate shared that same null
+  // key, so selecting one silently selected all of them. candidate_id is
+  // always present and unique per row.
+  const allSelected = rows.length > 0 && rows.every((r) => selected.has(r.candidate_id));
+  const toggleAll = () => setSelected(allSelected ? new Set() : new Set(rows.map((r) => r.candidate_id)));
   const toggle = (id) => setSelected((cur) => {
     const next = new Set(cur);
     next.has(id) ? next.delete(id) : next.add(id);
@@ -81,7 +87,7 @@ export default function PipelineStageDashboard({ rows = [], onAdvance, advancing
 
   const handleAdvanceColumn = async () => {
     if (!onAdvance || buckets.advance.length === 0) return;
-    const result = await onAdvance(buckets.advance.map((r) => r.screening_id), reason || undefined);
+    const result = await onAdvance(buckets.advance.map((r) => r.candidate_id), reason || undefined);
     toastAdvanceResult(result);
   };
 
@@ -162,11 +168,11 @@ export default function PipelineStageDashboard({ rows = [], onAdvance, advancing
                 <TableBody>
                   {rows.map((r) => {
                     const rec = scoreRecommendation(r.overall_score);
-                    const isSel = selected.has(r.screening_id);
+                    const isSel = selected.has(r.candidate_id);
                     return (
-                      <TableRow key={r.screening_id} className={isSel ? 'bg-primary/5' : ''}>
+                      <TableRow key={r.candidate_id} className={isSel ? 'bg-primary/5' : ''}>
                         <TableCell className="pl-4">
-                          <Checkbox checked={isSel} onCheckedChange={() => toggle(r.screening_id)} />
+                          <Checkbox checked={isSel} onCheckedChange={() => toggle(r.candidate_id)} />
                         </TableCell>
                         <TableCell className="text-xs">{r.applicant_name || `#${r.applicant_id}`}</TableCell>
                         <TableCell className="text-center">
@@ -230,7 +236,7 @@ function PipelineColumn({ title, tone, rows, actionLabel, actionDisabled, action
           <p className="text-[11px] text-muted-foreground italic py-2">None</p>
         ) : (
           rows.slice(0, 5).map((r) => (
-            <div key={r.screening_id} className="text-xs bg-background rounded-md border px-2 py-1.5 truncate">
+            <div key={r.candidate_id} className="text-xs bg-background rounded-md border px-2 py-1.5 truncate">
               {r.applicant_name || `#${r.applicant_id}`}
             </div>
           ))

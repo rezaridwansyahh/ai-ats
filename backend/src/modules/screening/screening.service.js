@@ -353,7 +353,7 @@ class ScreeningService {
     return await screeningModel.getCalibrationCohort(job_id);
   }
 
-  // L4 Calibration — bulk advance selected screenings to Interview.
+  // L4 Calibration — bulk advance selected candidates to Interview.
   // Drives each row through the SAME CandidatePipelineService.addStage() path
   // as the single-candidate decision flow (setDecision() below) — that's what
   // actually moves master_candidate.latest_stage forward and (via its
@@ -362,10 +362,19 @@ class ScreeningService {
   // and inserted candidate_interview directly, so the candidate's pipeline
   // stage itself never advanced — "Advance" reported success but nothing
   // visibly moved on the board.
-  async advanceBulk(job_id, { screening_ids, decision_reason, decided_by, company_id = null }) {
+  //
+  // Keyed by candidate_id, not screening_id: candidate_screening rows are
+  // lazily created on first L3 (candidate-detail) visit, so a scored
+  // candidate who was never individually opened has no screening row yet —
+  // getCalibrationCohort() legitimately returns screening_id: null for them.
+  // The Ready-to-Advance table used to select/key rows by screening_id, so
+  // every never-opened candidate shared the same `null` key — checking one
+  // checked all of them at once. candidate_id is always present and unique,
+  // so we accept candidate_ids here and lazily ensure the screening row.
+  async advanceBulk(job_id, { candidate_ids, decision_reason, decided_by, company_id = null }) {
     if (!job_id) throw { status: 400, message: 'job_id is required' };
-    if (!Array.isArray(screening_ids) || screening_ids.length === 0) {
-      throw { status: 400, message: 'screening_ids must be a non-empty array' };
+    if (!Array.isArray(candidate_ids) || candidate_ids.length === 0) {
+      throw { status: 400, message: 'candidate_ids must be a non-empty array' };
     }
     const job = await jobModel.getById(job_id);
     if (!job) throw { status: 404, message: 'Job not found' };
@@ -378,16 +387,17 @@ class ScreeningService {
     const errors = [];
     const interview_ids = [];
 
-    for (const screening_id of screening_ids) {
+    for (const candidate_id of candidate_ids) {
       try {
+        const screening_id = await screeningModel.ensureScreeningForCandidate(candidate_id);
         const existing = await screeningModel.getScreeningById(screening_id);
-        if (!existing) { errors.push({ screening_id, message: 'not found' }); continue; }
+        if (!existing) { errors.push({ candidate_id, message: 'not found' }); continue; }
         if (company_id && existing.company_id && existing.company_id !== company_id) {
-          errors.push({ screening_id, message: 'cross-tenant denied' });
+          errors.push({ candidate_id, message: 'cross-tenant denied' });
           continue;
         }
         if (existing.decision) {
-          skipped.push({ screening_id, reason: `already ${existing.decision}` });
+          skipped.push({ candidate_id, reason: `already ${existing.decision}` });
           continue;
         }
 
@@ -402,9 +412,9 @@ class ScreeningService {
         );
         if (interviewRow.rows[0]) interview_ids.push(interviewRow.rows[0].id);
 
-        advanced.push(screening_id);
+        advanced.push(candidate_id);
       } catch (err) {
-        errors.push({ screening_id, message: err.message || String(err) });
+        errors.push({ candidate_id, message: err.message || String(err) });
       }
     }
 
