@@ -200,7 +200,7 @@ ${(qualifications || '').slice(0, 4000)}
     const prompt = `You are a CV parser. Extract structured facets from the CV text below and return STRICT JSON matching this schema (no prose, no markdown):
 
 {
-  "job_position": { "current": string, "category": string },
+  "job_position": { "current": string, "category": string, "duration": string, "location": string },
   "skills": string[],
   "education": [
     { "school": string, "degree": string, "year": number|null, "tier": "top"|"mid"|"other", "description": string }
@@ -213,6 +213,8 @@ ${(qualifications || '').slice(0, 4000)}
 
 Rules:
 - "category" is a coarse role category like "Frontend", "Backend", "Full Stack", "Data", "Product Design", "Mobile", "DevOps", "Product Management", "QA", "Recruiting".
+- "duration" is how long the candidate has held/held their current or most recent position (e.g. "1 yr 9 mos"). Empty string if not stated.
+- "location" is the city/region of that current or most recent position (e.g. "Sleman, DI Yogyakarta"). Empty string if not stated.
 - "tier" classifies the school: top (globally renowned, e.g. Harvard, MIT, Stanford, NUS), mid (well-known regional/national universities), other.
 - "years_total" is approximate total years of professional experience.
 - Skills should be concise tags (e.g. "React", "PostgreSQL"), not sentences.
@@ -255,6 +257,8 @@ ${trimmed}
       job_position: {
         current: typeof parsed.job_position?.current === 'string' ? parsed.job_position.current : '',
         category: typeof parsed.job_position?.category === 'string' ? parsed.job_position.category : '',
+        duration: typeof parsed.job_position?.duration === 'string' ? parsed.job_position.duration : '',
+        location: typeof parsed.job_position?.location === 'string' ? parsed.job_position.location : '',
       },
       skills,
       education: Array.isArray(parsed.education)
@@ -298,7 +302,7 @@ ${trimmed}
     const prompt = `You are a CV parser. Use OCR to read the entire document including sidebars and columns. Extract structured facets and return STRICT JSON only (no prose, no markdown):
 
 {
-  "job_position": { "current": string, "category": string },
+  "job_position": { "current": string, "category": string, "duration": string, "location": string },
   "skills": string[],
   "education": [
     { "school": string, "degree": string, "year": number|null, "tier": "top"|"mid"|"other", "description": string }
@@ -311,6 +315,8 @@ ${trimmed}
 
 Rules:
 - "category": coarse role — "Frontend", "Backend", "Full Stack", "Data", "Product Design", "Mobile", "DevOps", "Product Management", "QA", "Recruiting".
+- "duration": how long the candidate has held/held their current or most recent position (e.g. "1 yr 9 mos"). Empty string if not stated.
+- "location": city/region of that current or most recent position (e.g. "Sleman, DI Yogyakarta"). Empty string if not stated.
 - "tier": top (globally renowned e.g. Harvard, MIT, NUS), mid (well-known regional/national), other.
 - Skills: concise tags (e.g. "React", "PostgreSQL"), not sentences.
 - Each position's "description": 1-2 sentence summary of actual responsibilities/achievements in that role, pulled from the CV's bullet points under it. Empty string if the CV gives no detail beyond the title.
@@ -368,6 +374,8 @@ Rules:
       job_position: {
         current:  typeof parsed.job_position?.current  === 'string' ? parsed.job_position.current  : '',
         category: typeof parsed.job_position?.category === 'string' ? parsed.job_position.category : '',
+        duration: typeof parsed.job_position?.duration === 'string' ? parsed.job_position.duration : '',
+        location: typeof parsed.job_position?.location === 'string' ? parsed.job_position.location : '',
       },
       skills,
       education: Array.isArray(parsed.education)
@@ -889,7 +897,7 @@ Return STRICT JSON:
   "address": "city or region (e.g. 'Jakarta, Indonesia'). Use 'Not specified' if not found.",
   "education_summary": "highest degree + school as one concise string (e.g. 'S1 Computer Science, Universitas Indonesia'). Empty string if not found.",
   "facets": {
-    "job_position": { "current": "string", "category": "string" },
+    "job_position": { "current": "string", "category": "string", "duration": "string", "location": "string" },
     "skills": ["string"],
     "education": [{ "school": "string", "degree": "string", "year": null, "tier": "top|mid|other", "description": "string" }],
     "experience": {
@@ -901,6 +909,8 @@ Return STRICT JSON:
 
 Rules:
 - "category": coarse role — "Frontend", "Backend", "Full Stack", "Data", "Product Design", "Mobile", "DevOps", "Product Management", "QA", or "Recruiting".
+- "duration": how long the candidate has held/held their current or most recent position (e.g. "1 yr 9 mos"). Empty string if not stated.
+- "location": city/region of that current or most recent position (e.g. "Sleman, DI Yogyakarta"). Empty string if not stated.
 - "tier": top (globally renowned e.g. Harvard, MIT, NUS), mid (well-known regional/national), other.
 - Skills: concise tags only (e.g. "React", "PostgreSQL"), not full sentences.
 - Each position's "description": 1-2 sentence summary of actual responsibilities/achievements in that role, pulled from the CV's bullet points under it. Empty string if the CV gives no detail beyond the title.
@@ -968,6 +978,8 @@ Rules:
         job_position: {
           current:  typeof rawFacets.job_position?.current === 'string'  ? rawFacets.job_position.current  : '',
           category: typeof rawFacets.job_position?.category === 'string' ? rawFacets.job_position.category : '',
+          duration: typeof rawFacets.job_position?.duration === 'string' ? rawFacets.job_position.duration : '',
+          location: typeof rawFacets.job_position?.location === 'string' ? rawFacets.job_position.location : '',
         },
         skills,
         education: Array.isArray(rawFacets.education)
