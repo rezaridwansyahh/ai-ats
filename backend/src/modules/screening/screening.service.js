@@ -458,6 +458,12 @@ class ScreeningService {
     return await screeningModel.getCandidatesByJobAndEngine(job_id, engine || null);
   }
 
+  // Summary-tile counts only — see getEngineCounts() model comment.
+  async getEngineCounts(job_id) {
+    if (!job_id) throw { status: 400, message: 'job_id is required' };
+    return await screeningModel.getEngineCounts(job_id);
+  }
+
   // Parse a list of applicants (one extractFacets call each). Used by L1 multi-select.
   async parseBulk(applicant_ids, context = {}) {
     if (!Array.isArray(applicant_ids) || applicant_ids.length === 0) {

@@ -76,6 +76,12 @@ export const getWorkboard = () =>
 export const getLaneCandidates = (job_id, engine) =>
   api.get(`/screening/job/${job_id}/lane`, { params: engine ? { engine } : {} });
 
+// Lightweight counts for the summary tiles — fetched eagerly regardless of
+// which stage tab is open. The full per-lane candidate rows (getLaneCandidates
+// above, getCalibration below) are fetched lazily, only once their tab is opened.
+export const getEngineCounts = (job_id) =>
+  api.get(`/screening/job/${job_id}/engine-counts`);
+
 export const parseBulk = (applicant_ids) =>
   api.post('/screening/parse-bulk', { applicant_ids });
 

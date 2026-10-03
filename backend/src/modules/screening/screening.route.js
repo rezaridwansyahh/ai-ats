@@ -25,6 +25,7 @@ router.get('/match/:job_id/results',               screeningController.getMatchi
 // L1 Workboard + bulk lane actions (Phase 2)
 router.get('/workboard',                           screeningController.getWorkboard);
 router.get('/job/:job_id/lane',                    screeningController.getLaneCandidates);
+router.get('/job/:job_id/engine-counts',           screeningController.getEngineCounts);
 router.post('/parse-bulk',                         screeningController.parseBulk);
 router.post('/job/:job_id/match-bulk',             screeningController.scoreCandidatesList);  // score specific list
 router.post('/job/:job_id/match-bulk/rerun-all',   screeningController.rerunAllForJob);         // force re-score EVERY candidate (queued)

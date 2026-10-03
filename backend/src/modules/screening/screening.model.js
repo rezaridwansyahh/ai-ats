@@ -446,7 +446,102 @@ class ScreeningModel {
       [job_id]
     );
     const rows = result.rows;
-    return engine ? rows.filter((r) => r.engine === engine) : rows;
+    if (!engine) return rows; // back-compat flat list — see AIScreeningWorkboard's cross-job usage
+
+    // Each stage tab's dashboard needs more than just "its own" bucket to
+    // show both what's pending AND what it already produced (that output
+    // naturally lives in the NEXT bucket) — e.g. Match wants to show
+    // already-scored candidates (the 'qa' bucket) alongside its own pending
+    // queue. Rather than make the frontend fire a second request for that
+    // adjacent bucket (as it used to), shape it into this same single
+    // response so one tab visit is still exactly one HTTP call.
+    const byEngine = (key) => rows.filter((r) => r.engine === key);
+    if (engine === 'parse') {
+      return { pending: byEngine('parse') };
+    }
+    if (engine === 'match') {
+      return { pending: byEngine('match'), scored: byEngine('qa') };
+    }
+    if (engine === 'qa') {
+      // "responded" candidates have moved into the 'ready' bucket by
+      // definition (qa_status === 'responded' is exactly what promotes them
+      // out of 'qa') — excluding already-decided ones so this matches
+      // getCalibrationCohort's "awaiting decision" semantics.
+      return { pending: byEngine('qa'), responded: byEngine('ready').filter((r) => !r.decision) };
+    }
+    // No 'ready' case here deliberately: this CASE expression's 'ready'
+    // bucket requires qa_status = 'responded', which wrongly excludes a
+    // scored, undecided candidate who was simply never sent Q&A at all (Q&A
+    // is optional, not a prerequisite to advance). getCalibrationCohort
+    // has the correct, broader "scored + no decision yet" definition —
+    // callers needing the Ready tab's cohort must use that, not this.
+    return byEngine(engine);
+  }
+
+  // Lightweight counts-only version of the parse/match/qa/ready split above,
+  // for the AI Screening page's summary tiles. Those tiles need to render
+  // immediately regardless of which stage tab the recruiter has open, so
+  // this is always fetched eagerly — while the full per-candidate rows for
+  // each lane (getCandidatesByJobAndEngine) and the ready cohort
+  // (getCalibrationCohort) are now fetched lazily, only when that tab is
+  // actually opened. No joined candidate fields are selected here — just
+  // COUNT(*) — so this stays cheap even as the other two grow large enough
+  // to need their own pagination.
+  async getEngineCounts(job_id) {
+    const db = getDb();
+    const laneResult = await db.query(
+      `
+      SELECT
+        CASE
+          WHEN a.information IS NULL                        THEN 'parse'
+          WHEN s.id IS NULL                                  THEN 'match'
+          WHEN sq.status IS DISTINCT FROM 'responded'        THEN 'qa'
+          ELSE                                                    'ready'
+        END AS engine,
+        COUNT(*)::int AS count
+      FROM master_candidate mc
+      LEFT JOIN master_applicant a ON a.id = mc.applicant_id
+      LEFT JOIN candidate_job_score s
+        ON s.applicant_id = mc.applicant_id AND s.job_id = mc.job_id
+      LEFT JOIN candidate_screening cs ON cs.candidate_id = mc.id
+      LEFT JOIN screening_qa sq ON sq.screening_id = cs.id
+      LEFT JOIN job_stage js ON js.id = mc.latest_stage
+      LEFT JOIN recruitment_stage_category rsc ON rsc.id = js.stage_type_id
+      WHERE mc.job_id = $1
+        AND mc.applicant_id IS NOT NULL
+        AND rsc.name = 'Screening & Matching'
+      GROUP BY engine
+      `,
+      [job_id]
+    );
+
+    // "ready" here mirrors getCalibrationCohort's stricter definition (scored,
+    // no decision yet) — NOT the laneResult 'ready' bucket above, which
+    // doesn't filter out already-decided candidates (held/rejected candidates
+    // keep their stage category, so they'd still count there otherwise).
+    const cohortResult = await db.query(
+      `
+      SELECT
+        COUNT(*)::int AS ready_count,
+        COUNT(*) FILTER (WHERE sq.status = 'responded')::int AS qa_responded_count
+      FROM master_candidate mc
+      JOIN candidate_job_score s
+        ON s.applicant_id = mc.applicant_id AND s.job_id = mc.job_id
+      LEFT JOIN candidate_screening cs ON cs.candidate_id = mc.id
+      LEFT JOIN screening_qa sq ON sq.screening_id = cs.id
+      WHERE mc.job_id = $1 AND cs.decision IS NULL
+      `,
+      [job_id]
+    );
+
+    const byEngine = Object.fromEntries(laneResult.rows.map((r) => [r.engine, r.count]));
+    return {
+      parse: byEngine.parse || 0,
+      match: byEngine.match || 0,
+      qa: byEngine.qa || 0,
+      ready: cohortResult.rows[0]?.ready_count || 0,
+      qa_responded: cohortResult.rows[0]?.qa_responded_count || 0,
+    };
   }
 
   // Every applicant_id on this job (any engine stage) — used by the

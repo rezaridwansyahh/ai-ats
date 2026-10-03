@@ -1,4 +1,5 @@
-import { useState, useMemo, useEffect } from 'react';import { Search, FileText, CheckCircle2, Clock } from 'lucide-react';
+import { useState, useMemo, useEffect } from 'react';
+import { Search, Clock } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
@@ -24,38 +25,37 @@ const PAGE_SIZE = 10;
  * profile page (ParsePanel in AIScreeningCandidatePage.jsx) — that flow
  * is real and unaffected by this cleanup.
  *
- * Data contract (unchanged):
+ * Data contract:
  * pendingRows — rows still needing parse (AIScreeningPage's `parseRows`)
- * parsedRows  — rows already parsed (AIScreeningPage's `matchRows + qaRows + cohortRows`)
+ * parsedCount — count of already-parsed candidates (match+qa buckets) — a
+ *   count, not rows: showing the actual list would need fetching those two
+ *   other lanes just for this reference figure, which is exactly the extra
+ *   round trip this tab is meant to avoid. The count comes from the
+ *   eagerly-fetched summary counts instead.
  * onOpen(row) — navigate to candidate detail
  */
-export default function ParseStageDashboard({ pendingRows = [], parsedRows = [], onOpen }) {
+export default function ParseStageDashboard({ pendingRows = [], parsedCount = 0, onOpen }) {
   const [search, setSearch] = useState('');
   const [pendingPage, setPendingPage] = useState(1);
-  const [parsedPage, setParsedPage] = useState(1);
 
-  const total = pendingRows.length + parsedRows.length;
+  const total = pendingRows.length + parsedCount;
 
   const filteredPending = useMemo(() => filterRows(pendingRows, search), [pendingRows, search]);
-  const filteredParsed  = useMemo(() => filterRows(parsedRows, search), [parsedRows, search]);
 
   // Reset to page 1 whenever search narrows/widens teh list
-  useEffect(() => { setPendingPage(1); setParsedPage(1); }, [search]);
+  useEffect(() => { setPendingPage(1); }, [search]);
 
   const pendingTotalPages = Math.max(1, Math.ceil(filteredPending.length / PAGE_SIZE));
-  const parsedTotalPages = Math.max(1, Math.ceil(filteredPending.length / PAGE_SIZE));
   const pendingPageClamped = Math.min(pendingPage, pendingTotalPages);
-  const parsedPageClamped = Math.min(parsedPage, parsedTotalPages);
 
   const pagedPending = filteredPending.slice((pendingPageClamped - 1) * PAGE_SIZE, pendingPageClamped * PAGE_SIZE);
-  const pagedParsed  = filteredParsed.slice((parsedPageClamped - 1) * PAGE_SIZE, parsedPageClamped * PAGE_SIZE);
-  
+
   return (
     <div className="space-y-4 p-4">
       {/* Stats row — only real, changeable numbers */}
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
         <StatCard label="Total candidates" value={total} />
-        <StatCard label="Parsed" value={parsedRows.length} tone={parsedRows.length > 0 ? 'default' : 'muted'} />
+        <StatCard label="Parsed" value={parsedCount} tone={parsedCount > 0 ? 'default' : 'muted'} />
         <StatCard label="Pending" value={pendingRows.length} tone={pendingRows.length > 0 ? 'default' : 'muted'} />
       </div>
 
@@ -63,41 +63,25 @@ export default function ParseStageDashboard({ pendingRows = [], parsedRows = [],
       <div className="relative max-w-sm">
         <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
         <Input
-          placeholder="Search name or last position…"
+          placeholder="Search pending by name or last position…"
           className="pl-8 h-8 text-xs"
           value={search}
           onChange={(e) => setSearch(e.target.value)}
         />
       </div>
 
-      {/* Two-column pending / parsed */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-        <StageList
-          title="Pending parse"
-          listId="pending"
-          icon={Clock}
-          rows={pagedPending}
-          totalRows={filteredPending.length}
-          onOpen={onOpen}
-          emptyText="Nothing waiting on parse."
-          page={pendingPageClamped}
-          totalPages={pendingTotalPages}
-          setPage={setPendingPage}
-        />
-        <StageList
-          title="Parsed ✓"
-          listId="parsed"
-          icon={CheckCircle2}
-          rows={pagedParsed}
-          totalRows={filteredParsed.length}
-          onOpen={onOpen}
-          tone="success"
-          emptyText="No candidates parsed yet."
-          page={parsedPageClamped}
-          totalPages={parsedTotalPages}
-          setPage={setParsedPage}
-        />
-      </div>
+      <StageList
+        title="Pending parse"
+        listId="pending"
+        icon={Clock}
+        rows={pagedPending}
+        totalRows={filteredPending.length}
+        onOpen={onOpen}
+        emptyText="Nothing waiting on parse."
+        page={pendingPageClamped}
+        totalPages={pendingTotalPages}
+        setPage={setPendingPage}
+      />
 
       {/* Pointer to the real, working per-candidate parse flow */}
       <p className="text-[11px] text-muted-foreground text-center italic">

@@ -254,6 +254,16 @@ class ScreeningController {
     }
   }
 
+  async getEngineCounts(req, res) {
+    try {
+      const job_id = Number(req.params.job_id);
+      const counts = await screeningService.getEngineCounts(job_id);
+      res.status(200).json({ message: 'Engine counts', counts });
+    } catch (err) {
+      res.status(err.status || 500).json({ message: err.message });
+    }
+  }
+
   async parseBulk(req, res) {
     try {
       const { applicant_ids } = req.body || {};
