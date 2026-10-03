@@ -19,6 +19,8 @@ import MatchStageDashboard from '@/components/ai-screening/MatchStageDashboard';
 import QAStageDashboard from '@/components/ai-screening/QAStageDashboard';
 import PipelineStageDashboard from '@/components/ai-screening/PipelineStageDashboard';
 
+const READY_PAGE_SIZE = 10;
+
 function statusTone(status) {
   switch ((status || '').toLowerCase()) {
     case 'active':
@@ -64,6 +66,18 @@ export default function AIScreeningPage() {
   const [loadedLanes, setLoadedLanes] = useState(() => new Set());
   const [laneLoading, setLaneLoading] = useState(false);
 
+  // Ready tab's own server-side search/bucket-filter/pagination state —
+  // lives here (not in PipelineStageDashboard) since fetching is owned by
+  // this page, same pattern as every other filtered/paginated table this
+  // session (JobDetail, CandidatePipelineDetail, TalentPool).
+  const [readySearch, setReadySearch] = useState('');
+  const [debouncedReadySearch, setDebouncedReadySearch] = useState('');
+  const [readyBucket, setReadyBucket] = useState('');
+  const [readyMinScore, setReadyMinScore] = useState(0);
+  const [readyPage, setReadyPage] = useState(1);
+  const [readyTotal, setReadyTotal] = useState(0);
+  const [readyBucketCounts, setReadyBucketCounts] = useState({ advance: 0, awaiting: 0, archive: 0 });
+
   const [advancing, setAdvancing] = useState(false);
 
   // Accordion open state — Parse open by default
@@ -71,8 +85,16 @@ export default function AIScreeningPage() {
 
   const fetchLane = useCallback(async (lane) => {
     if (lane === 'ready') {
-      const res = await getCalibration(jobId);
+      const res = await getCalibration(jobId, {
+        search: debouncedReadySearch || undefined,
+        bucket: readyBucket || undefined,
+        min_score: readyMinScore > 0 ? readyMinScore : undefined,
+        page: readyPage,
+        pageSize: READY_PAGE_SIZE,
+      });
       setCohortRows(Array.isArray(res.data?.rows) ? res.data.rows : []);
+      setReadyTotal(res.data?.total || 0);
+      setReadyBucketCounts(res.data?.bucket_counts || { advance: 0, awaiting: 0, archive: 0 });
       return;
     }
     const res = await getLaneCandidates(jobId, lane);
@@ -86,7 +108,7 @@ export default function AIScreeningPage() {
       setQaRows(Array.isArray(data.pending) ? data.pending : []);
       setQaRespondedRows(Array.isArray(data.responded) ? data.responded : []);
     }
-  }, [jobId]);
+  }, [jobId, debouncedReadySearch, readyBucket, readyMinScore, readyPage]);
 
   // Fetches a stage tab's own lane if it isn't already cached — exactly one
   // call. `force` bypasses the cache (used after an action changes the data).
@@ -150,6 +172,26 @@ export default function AIScreeningPage() {
     ensureStageLoaded(activeStage);
     // eslint-disable-next-line react-hooks/exhaustive-deps -- only react to the tab actually changing
   }, [activeStage]);
+
+  // Debounce the Ready tab's search box before it drives a fetch.
+  useEffect(() => {
+    const t = setTimeout(() => setDebouncedReadySearch(readySearch), 350);
+    return () => clearTimeout(t);
+  }, [readySearch]);
+
+  // Any filter change restarts pagination at page 1.
+  useEffect(() => { setReadyPage(1); }, [debouncedReadySearch, readyBucket, readyMinScore]);
+
+  // Re-fetch the ready lane when its own filters/page change, but only
+  // while that tab is actually open — otherwise this would fire a request
+  // for a tab the recruiter isn't even looking at.
+  const readyFiltersMountRef = useRef(false);
+  useEffect(() => {
+    if (!readyFiltersMountRef.current) { readyFiltersMountRef.current = true; return; }
+    if (!jobId || activeStage !== 'ready') return;
+    ensureStageLoaded('ready', { force: true });
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- only react to the ready-tab filters themselves changing
+  }, [debouncedReadySearch, readyBucket, readyMinScore, readyPage]);
 
   // Lazy-create screening row if missing, then open candidate detail
   const openCandidate = async (row) => {
@@ -329,7 +371,19 @@ export default function AIScreeningPage() {
 
           {activeStage === 'ready' && (
             <PipelineStageDashboard
+              jobId={jobId}
               rows={cohortRows}
+              total={readyTotal}
+              page={readyPage}
+              pageSize={READY_PAGE_SIZE}
+              onPageChange={setReadyPage}
+              search={readySearch}
+              onSearchChange={setReadySearch}
+              bucket={readyBucket}
+              onBucketChange={setReadyBucket}
+              bucketCounts={readyBucketCounts}
+              minScore={readyMinScore}
+              onMinScoreChange={setReadyMinScore}
               advancing={advancing}
               onAdvance={async (ids, reasonText) => {
                 setAdvancing(true);
@@ -342,6 +396,7 @@ export default function AIScreeningPage() {
                     ok: errors.length === 0,
                     text: `${advanced.length} advanced · ${skipped.length} skipped · ${errors.length} errors · ${interview_ids.length} interview rows created`,
                   });
+                  setReadyPage(1);
                   await refreshAfterAction();
                   return { advanced, skipped, errors, interview_ids };
                 } catch (err) {

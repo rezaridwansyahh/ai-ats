@@ -182,14 +182,16 @@ class ScreeningController {
     }
   }
 
-  // L4 — calibration cohort
+  // L4 — calibration cohort (paginated + filterable)
   async getCalibration(req, res) {
     try {
       const job_id = Number(req.params.job_id);
-      const rows = await screeningService.getCalibration(job_id, {
-        company_id: req.user?.company_id || null,
-      });
-      res.status(200).json({ message: 'Calibration cohort', rows });
+      const { rows, total, bucket_counts } = await screeningService.getCalibration(
+        job_id,
+        { company_id: req.user?.company_id || null },
+        req.query
+      );
+      res.status(200).json({ message: 'Calibration cohort', rows, total, bucket_counts });
     } catch (err) {
       res.status(err.status || 500).json({ message: err.message });
     }

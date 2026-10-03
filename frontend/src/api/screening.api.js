@@ -95,9 +95,9 @@ export const getScreeningByCandidate = (candidate_id) =>
 export const setScreeningDecision = (screening_id, { decision, decision_reason }) =>
   api.patch(`/screening/screening/${screening_id}/decision`, { decision, decision_reason });
 
-// L4 Calibration (Phase 4)
-export const getCalibration = (job_id) =>
-  api.get(`/screening/job/${job_id}/calibration`);
+// L4 Calibration (Phase 4) — params: { search, bucket, page, pageSize }
+export const getCalibration = (job_id, params = {}) =>
+  api.get(`/screening/job/${job_id}/calibration`, { params });
 
 export const advanceBulk = (job_id, candidate_ids, { decision_reason } = {}) =>
   api.post(`/screening/job/${job_id}/advance-bulk`, { candidate_ids, decision_reason });

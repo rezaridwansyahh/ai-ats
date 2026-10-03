@@ -205,53 +205,118 @@ class ScreeningModel {
   // Calibration cohort for one job: candidates that have a score AND no
   // decision yet (i.e. ready to be advanced/rejected/held in a batch).
   // Sorted by overall_score DESC so the recruiter sees the best first.
-  async getCalibrationCohort(job_id) {
-    const result = await getDb().query(
-      `
-      SELECT
-        cs.id                AS screening_id,
-        mc.id                AS candidate_id,
-        cs.company_id,
-        cs.decision,
-        mc.applicant_id,
-        a.name               AS applicant_name,
-        a.last_position,
-        a.address,
-        s.overall_score,
-        s.skills_score,
-        s.experience_score,
-        s.education_score,
-        s.matched_skills,
-        s.missing_skills,
-        s.summary            AS score_summary,
-        s.scored_at,
-        s.rubric_snapshot IS DISTINCT FROM cj.rubric AS rubric_is_stale,
-        sq.status            AS qa_status,
-        app_qa.information    AS application_qa
-      FROM master_candidate mc
-      JOIN core_job cj                ON cj.id = mc.job_id
-      JOIN candidate_job_score s
-        ON s.applicant_id = mc.applicant_id AND s.job_id = mc.job_id
-      LEFT JOIN master_applicant a    ON a.id  = mc.applicant_id
-      -- candidate_screening is lazily created on first L3 (candidate-detail)
-      -- visit — LEFT JOIN so a scored candidate isn't hidden from the ranking
-      -- just because nobody has opened their profile yet.
-      LEFT JOIN candidate_screening cs ON cs.candidate_id = mc.id
-      LEFT JOIN screening_qa sq ON sq.screening_id = cs.id
-      LEFT JOIN LATERAL (
-        SELECT mas.information
-        FROM mapping_applicant_sourcing mas
-        JOIN mapping_job_sourcing_job mjsj ON mjsj.job_sourcing_id = mas.job_sourcing_id
-        WHERE mas.applicant_id = mc.applicant_id AND mjsj.job_id = mc.job_id
-        ORDER BY mas.created_at DESC
-        LIMIT 1
-      ) app_qa ON true
-      WHERE mc.job_id = $1 AND cs.decision IS NULL
-      ORDER BY s.overall_score DESC NULLS LAST, cs.id ASC NULLS LAST
-      `,
-      [job_id]
-    );
-    return result.rows;
+  // Server-side paginated + filterable (search by name, bucket = the same
+  // advance/awaiting/archive recommendation buckets the UI already used to
+  // show as separate stat cards/columns — now a filter instead). Also
+  // returns bucket_counts (computed over the FULL cohort, not just this
+  // page) so the filter pills can show a count without a separate call.
+  async getCalibrationCohort(job_id, { search, bucket, min_score, page, pageSize } = {}) {
+    const limit  = pageSize !== undefined ? Math.min(Math.max(Number(pageSize) || 10, 1), 100) : null;
+    const offset = (page !== undefined && limit != null) ? (Math.max(Number(page) || 1, 1) - 1) * limit : 0;
+    const searchParam = search ? `%${search}%` : null;
+    const bucketParam = ['advance', 'awaiting', 'archive'].includes(bucket) ? bucket : null;
+    const minScoreParam = min_score !== undefined && min_score !== null && min_score !== '' ? Number(min_score) : null;
+
+    const BASE_CTE = `
+      WITH base AS (
+        SELECT
+          cs.id                AS screening_id,
+          mc.id                AS candidate_id,
+          cs.company_id,
+          cs.decision,
+          mc.applicant_id,
+          a.name               AS applicant_name,
+          a.last_position,
+          a.address,
+          mc.information,
+          s.overall_score,
+          s.skills_score,
+          s.experience_score,
+          s.education_score,
+          s.matched_skills,
+          s.missing_skills,
+          s.summary            AS score_summary,
+          s.scored_at,
+          s.rubric_snapshot IS DISTINCT FROM cj.rubric AS rubric_is_stale,
+          sq.status            AS qa_status,
+          app_qa.information    AS application_qa,
+          -- Mirrors frontend shared.js's scoreRecommendation() bucket
+          -- boundaries exactly (80+ / 60-79 / below 60).
+          CASE
+            WHEN s.overall_score >= 80 THEN 'advance'
+            WHEN s.overall_score >= 60 THEN 'awaiting'
+            ELSE 'archive'
+          END AS bucket
+        FROM master_candidate mc
+        JOIN core_job cj                ON cj.id = mc.job_id
+        JOIN candidate_job_score s
+          ON s.applicant_id = mc.applicant_id AND s.job_id = mc.job_id
+        LEFT JOIN master_applicant a    ON a.id  = mc.applicant_id
+        -- candidate_screening is lazily created on first L3 (candidate-detail)
+        -- visit — LEFT JOIN so a scored candidate isn't hidden from the ranking
+        -- just because nobody has opened their profile yet.
+        LEFT JOIN candidate_screening cs ON cs.candidate_id = mc.id
+        LEFT JOIN screening_qa sq ON sq.screening_id = cs.id
+        LEFT JOIN LATERAL (
+          SELECT mas.information
+          FROM mapping_applicant_sourcing mas
+          JOIN mapping_job_sourcing_job mjsj ON mjsj.job_sourcing_id = mas.job_sourcing_id
+          WHERE mas.applicant_id = mc.applicant_id AND mjsj.job_id = mc.job_id
+          ORDER BY mas.created_at DESC
+          LIMIT 1
+        ) app_qa ON true
+        WHERE mc.job_id = $1 AND cs.decision IS NULL
+      ),
+      searched AS (
+        SELECT * FROM base
+        WHERE ($2::text IS NULL OR applicant_name ILIKE $2)
+          AND ($3::int IS NULL OR COALESCE(overall_score, -1) >= $3)
+      )
+    `;
+
+    // Run as two independent queries rather than attaching aggregates to the
+    // paginated rows — if the current bucket/search combination matches zero
+    // rows, there'd be no row left to carry the bucket_counts on, and the
+    // pills would wrongly show every count as 0 instead of their real values.
+    // BASE_CTE only ever references $1-$3 (job_id/search/min_score), shared
+    // by both queries below — bucket/limit/offset are appended starting at
+    // $4 in the rows query only, so the counts query never needs to pass
+    // unused placeholder params (which errors with "could not determine
+    // data type of parameter" since nothing in that query text would give
+    // them a type to infer).
+    const [rowsResult, countsResult] = await Promise.all([
+      getDb().query(
+        `
+        ${BASE_CTE}
+        SELECT *, COUNT(*) OVER()::int AS total_count
+        FROM searched
+        WHERE ($4::text IS NULL OR bucket = $4)
+        ORDER BY overall_score DESC NULLS LAST, screening_id ASC NULLS LAST
+        LIMIT $5 OFFSET $6
+        `,
+        [job_id, searchParam, minScoreParam, bucketParam, limit, offset]
+      ),
+      getDb().query(
+        `
+        ${BASE_CTE}
+        SELECT
+          COUNT(*) FILTER (WHERE bucket = 'advance')::int  AS advance_count,
+          COUNT(*) FILTER (WHERE bucket = 'awaiting')::int AS awaiting_count,
+          COUNT(*) FILTER (WHERE bucket = 'archive')::int  AS archive_count
+        FROM searched
+        `,
+        [job_id, searchParam, minScoreParam]
+      ),
+    ]);
+
+    const total = rowsResult.rows[0]?.total_count ?? 0;
+    const rows = rowsResult.rows.map(({ total_count, ...rest }) => rest);
+    const bucket_counts = {
+      advance: countsResult.rows[0]?.advance_count ?? 0,
+      awaiting: countsResult.rows[0]?.awaiting_count ?? 0,
+      archive: countsResult.rows[0]?.archive_count ?? 0,
+    };
+    return { rows, total, bucket_counts };
   }
 
 

@@ -343,14 +343,15 @@ class ScreeningService {
   }
 
   // L4 Calibration — ready cohort for one job (scored, no decision yet).
-  async getCalibration(job_id, { company_id = null } = {}) {
+  async getCalibration(job_id, { company_id = null } = {}, query = {}) {
     if (!job_id) throw { status: 400, message: 'job_id is required' };
     const job = await jobModel.getById(job_id);
     if (!job) throw { status: 404, message: 'Job not found' };
     if (company_id && job.company_id && job.company_id !== company_id) {
       throw { status: 403, message: 'Cross-tenant access denied' };
     }
-    return await screeningModel.getCalibrationCohort(job_id);
+    const { search, bucket, min_score, page, pageSize } = query;
+    return await screeningModel.getCalibrationCohort(job_id, { search, bucket, min_score, page, pageSize });
   }
 
   // L4 Calibration — bulk advance selected candidates to Interview.

@@ -1,13 +1,15 @@
-import { useMemo, useState } from 'react';
-import { ArrowRight, Loader2 } from 'lucide-react';
+import { useState } from 'react';
+import { ArrowRight, Eye, Loader2, Search, X } from 'lucide-react';
 import { toast } from 'sonner';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
+import { Slider } from '@/components/ui/slider';
 import { Textarea } from '@/components/ui/textarea';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { StatCard, scoreRecommendation } from './shared';
+import { scoreRecommendation } from './shared';
+import CandidateDetailModal from '@/components/job-management/CandidateDetailModal';
 
 function scoreBg(score) {
   if (score == null) return 'bg-gray-100 text-gray-500 border-gray-200';
@@ -16,29 +18,71 @@ function scoreBg(score) {
   return 'bg-rose-100 text-rose-700 border-rose-200';
 }
 
+const BUCKET_PILLS = [
+  { key: '', label: 'All' },
+  { key: 'advance', label: 'Advance' },
+  { key: 'awaiting', label: 'Borderline' },
+  { key: 'archive', label: 'Reject' },
+];
+
 /*
- * Job-level "Screening Pipeline" dashboard — mirrors the Screening Pipeline
- * mockup's three-column decision view + full table.
+ * Job-level "Screening Pipeline" dashboard — the server-side paginated,
+ * filterable "Full screening decisions" table. Filter sidebar layout
+ * mirrors MatchStageDashboard's "Filters" card (left sidebar Card, same
+ * header/Clear-button/component styling) — unlike Match's client-side
+ * filtering over an already-fully-fetched array, every filter here is a
+ * real query param, since this tab is server-side paginated.
  *
  * Data contract:
- *   rows — candidates with a score but no final decision yet (AIScreeningPage's `cohortRows`)
- *   onAdvance(ids, reason) — ✅ WIRED: same advanceBulk() flow as AIScreeningPage
+ *   jobId — passed through to CandidateDetailModal (needs it for the match-score fetch)
+ *   rows — the CURRENT PAGE of candidates (server-paginated+filtered)
+ *   total, page, pageSize, onPageChange — pagination
+ *   search, onSearchChange — name search (debounced upstream)
+ *   bucket, onBucketChange — '' | 'advance' | 'awaiting' | 'archive'
+ *   bucketCounts — { advance, awaiting, archive } counts for the pills,
+ *     computed over the search+minScore filters (not bucket), so they stay
+ *     accurate regardless of which pill is currently selected
+ *   minScore, onMinScoreChange — 0-100 floor on overall_score
+ *   onAdvance(ids, reason) — same advanceBulk() flow as AIScreeningPage
  *   advancing — bool, loading state for the advance button
  *
- * 🚧 TODO(backend): "Archive to Talent Pool" and "Send Reminders" are UI-only —
- * no archive/talent-pool endpoint and no reminder endpoint exist today.
- * setScreeningDecision only supports advance/hold/reject. Toasts below are
- * intentionally honest that nothing happened on click, rather than faking success.
+ * 🚧 TODO(backend): no reminder/archive-to-talent-pool endpoints exist —
+ * those actions were part of the old three-column layout and haven't been
+ * rebuilt elsewhere; only the real, wired advance action remains here.
  */
-export default function PipelineStageDashboard({ rows = [], onAdvance, advancing = false }) {
+export default function PipelineStageDashboard({
+  jobId,
+  rows = [], total = 0, page = 1, pageSize = 10, onPageChange,
+  search = '', onSearchChange,
+  bucket = '', onBucketChange,
+  bucketCounts = { advance: 0, awaiting: 0, archive: 0 },
+  minScore = 0, onMinScoreChange,
+  advancing = false, onAdvance,
+}) {
   const [selected, setSelected] = useState(new Set());
   const [reason, setReason] = useState('');
+  const [viewCandidate, setViewCandidate] = useState(null);
+  const [viewModalOpen, setViewModalOpen] = useState(false);
 
-  const buckets = useMemo(() => {
-    const b = { advance: [], awaiting: [], archive: [] };
-    for (const r of rows) b[scoreRecommendation(r.overall_score).bucket].push(r);
-    return b;
-  }, [rows]);
+  const totalPages = Math.max(1, Math.ceil(total / pageSize));
+  const isFiltered = Boolean(search || bucket || minScore > 0);
+
+  const resetFilters = () => {
+    onSearchChange?.('');
+    onBucketChange?.('');
+    onMinScoreChange?.(0);
+  };
+
+  const handleView = (r) => {
+    setViewCandidate({
+      id: r.candidate_id,
+      applicant_id: r.applicant_id,
+      candidate_name: r.applicant_name,
+      last_position: r.last_position,
+      information: r.information,
+    });
+    setViewModalOpen(true);
+  };
 
   // Keyed by candidate_id, not screening_id — a candidate_screening row is
   // only lazily created the first time their L3 profile is opened, so a
@@ -47,7 +91,13 @@ export default function PipelineStageDashboard({ rows = [], onAdvance, advancing
   // key, so selecting one silently selected all of them. candidate_id is
   // always present and unique per row.
   const allSelected = rows.length > 0 && rows.every((r) => selected.has(r.candidate_id));
-  const toggleAll = () => setSelected(allSelected ? new Set() : new Set(rows.map((r) => r.candidate_id)));
+  // Adds/removes just THIS PAGE's rows — selections on other pages persist,
+  // same as Talent Pool's bulk-select across pagination.
+  const toggleAll = () => setSelected((cur) => {
+    const next = new Set(cur);
+    rows.forEach((r) => (allSelected ? next.delete(r.candidate_id) : next.add(r.candidate_id)));
+    return next;
+  });
   const toggle = (id) => setSelected((cur) => {
     const next = new Set(cur);
     next.has(id) ? next.delete(id) : next.add(id);
@@ -85,72 +135,80 @@ export default function PipelineStageDashboard({ rows = [], onAdvance, advancing
     toastAdvanceResult(result);
   };
 
-  const handleAdvanceColumn = async () => {
-    if (!onAdvance || buckets.advance.length === 0) return;
-    const result = await onAdvance(buckets.advance.map((r) => r.candidate_id), reason || undefined);
-    toastAdvanceResult(result);
-  };
-
-  // 🚧 TODO(backend): no endpoint exists yet — toast is honest about that.
-  const handleSendReminders = () => {
-    toast.error('Not wired yet', {
-      description: '🚧 Reminder sending has no backend endpoint yet — nothing was sent.',
-    });
-  };
-
-  const handleArchiveAll = () => {
-    toast.error('Not wired yet', {
-      description: '🚧 Archive-to-talent-pool has no backend endpoint yet — nothing was archived.',
-    });
-  };
-
   return (
-    <div className="space-y-4 p-4">
-      <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
-        <StatCard label="Recommended advance" value={buckets.advance.length} />
-        <StatCard label="Borderline / awaiting" value={buckets.awaiting.length} />
-        <StatCard label="Recommended reject" value={buckets.archive.length} tone="danger" />
-      </div>
-
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
-        <PipelineColumn
-          title="Advance to interview"
-          tone="emerald"
-          rows={buckets.advance}
-          actionLabel={advancing ? 'Advancing…' : `Advance all (${buckets.advance.length})`}
-          actionDisabled={buckets.advance.length === 0 || advancing}
-          onAction={handleAdvanceColumn}
-        />
-        <PipelineColumn
-          title="Awaiting / borderline"
-          tone="amber"
-          rows={buckets.awaiting}
-          actionLabel="Send reminders"
-          actionDisabled={buckets.awaiting.length === 0}
-          onAction={handleSendReminders}
-          actionHint="🚧 needs a reminder endpoint"
-        />
-        <PipelineColumn
-          title="Archive to talent pool"
-          tone="blue"
-          rows={buckets.archive}
-          actionLabel="Archive all"
-          actionDisabled={buckets.archive.length === 0}
-          onAction={handleArchiveAll}
-          actionHint="🚧 needs an archive endpoint"
-        />
-      </div>
-
+    <div className="grid grid-cols-1 lg:grid-cols-4 gap-3 items-start p-4">
+      {/* Left Sidebar Filters — mirrors MatchStageDashboard's Filters card */}
       <Card>
-        <CardHeader className="pb-2">
-          <CardTitle className="text-xs uppercase tracking-wide text-muted-foreground">
-            Full screening decisions — {rows.length} candidates
-          </CardTitle>
-        </CardHeader>
+        <CardContent className="p-3 space-y-4">
+          <div className="flex items-center justify-between">
+            <span className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wide">Filters</span>
+            {isFiltered && (
+              <Button variant="ghost" size="sm" className="h-6 text-[10px] gap-1 px-1.5" onClick={resetFilters}>
+                <X className="h-3 w-3" /> Clear
+              </Button>
+            )}
+          </div>
+
+          {/* Keyword Search */}
+          <div className="space-y-1.5">
+            <span className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wide">Keyword</span>
+            <div className="relative">
+              <Search className="absolute left-2 top-1/2 -translate-y-1/2 h-3 w-3 text-muted-foreground" />
+              <input
+                type="text"
+                placeholder="Candidate name…"
+                value={search}
+                onChange={(e) => onSearchChange?.(e.target.value)}
+                className="h-7 w-full rounded-md border border-input bg-transparent pl-7 pr-2 text-[11px] outline-none focus-visible:ring-1 focus-visible:ring-ring"
+              />
+            </div>
+          </div>
+
+          {/* Recommendation bucket pills */}
+          <div className="pt-2 border-t space-y-1.5">
+            <span className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wide">Recommendation</span>
+            <div className="flex flex-wrap gap-1.5">
+              {BUCKET_PILLS.map((p) => {
+                const count = p.key ? bucketCounts[p.key] ?? 0 : undefined;
+                const isActive = bucket === p.key;
+                return (
+                  <button
+                    key={p.key || 'all'}
+                    type="button"
+                    onClick={() => onBucketChange?.(p.key)}
+                    className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-medium border transition-colors ${
+                      isActive
+                        ? 'bg-primary text-primary-foreground border-primary'
+                        : 'bg-muted text-muted-foreground border-transparent hover:brightness-95'
+                    }`}
+                  >
+                    {p.label}
+                    {count !== undefined && <span className="font-mono">({count})</span>}
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+
+          {/* Min Fit Slider */}
+          <div className="pt-2 border-t space-y-1.5">
+            <div className="flex items-center justify-between">
+              <span className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wide">Min. Fit</span>
+              <span className="text-[11px] font-mono text-muted-foreground">{minScore}+</span>
+            </div>
+            <Slider value={[minScore]} min={0} max={100} step={5} onValueChange={([v]) => onMinScoreChange?.(v)} />
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Main table */}
+      <Card className="lg:col-span-3">
         <CardContent className="p-0">
           {rows.length === 0 ? (
             <p className="py-8 text-center text-xs text-muted-foreground italic">
-              No candidates ready yet. Score candidates in the Match step first.
+              {isFiltered
+                ? 'No candidates match your filters.'
+                : 'No candidates ready yet. Score candidates in the Match step first.'}
             </p>
           ) : (
             <>
@@ -163,6 +221,7 @@ export default function PipelineStageDashboard({ rows = [], onAdvance, advancing
                     <TableHead className="text-[10px] font-bold uppercase">Candidate</TableHead>
                     <TableHead className="text-[10px] font-bold uppercase text-center">Score</TableHead>
                     <TableHead className="text-[10px] font-bold uppercase">Recommendation</TableHead>
+                    <TableHead className="text-[10px] font-bold uppercase text-right pr-4">View</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -179,11 +238,31 @@ export default function PipelineStageDashboard({ rows = [], onAdvance, advancing
                           <Badge className={`text-xs font-mono font-bold ${scoreBg(r.overall_score)}`}>{r.overall_score ?? '—'}</Badge>
                         </TableCell>
                         <TableCell><Badge variant="outline" className={`text-[10px] ${rec.tone}`}>{rec.label}</Badge></TableCell>
+                        <TableCell className="text-right pr-4">
+                          <Button variant="outline" size="sm" className="h-7 text-[11px] gap-1" onClick={() => handleView(r)}>
+                            <Eye className="h-3 w-3" /> View
+                          </Button>
+                        </TableCell>
                       </TableRow>
                     );
                   })}
                 </TableBody>
               </Table>
+
+              <div className="flex items-center justify-between gap-3 flex-wrap px-4 py-3 border-t">
+                <span className="text-[10px] text-muted-foreground">
+                  {(page - 1) * pageSize + 1}–{Math.min(page * pageSize, total)} of {total}
+                </span>
+                <div className="flex items-center gap-1">
+                  <Button variant="outline" size="sm" className="h-7 text-xs" disabled={page <= 1} onClick={() => onPageChange?.(page - 1)}>
+                    Previous
+                  </Button>
+                  <span className="text-[11px] text-muted-foreground px-1">{page} / {totalPages}</span>
+                  <Button variant="outline" size="sm" className="h-7 text-xs" disabled={page >= totalPages} onClick={() => onPageChange?.(page + 1)}>
+                    Next
+                  </Button>
+                </div>
+              </div>
 
               <div className="border-t p-3 space-y-2">
                 <div className="flex items-center justify-between gap-3 flex-wrap">
@@ -207,46 +286,13 @@ export default function PipelineStageDashboard({ rows = [], onAdvance, advancing
           )}
         </CardContent>
       </Card>
+
+      <CandidateDetailModal
+        open={viewModalOpen}
+        onOpenChange={setViewModalOpen}
+        candidate={viewCandidate}
+        jobId={jobId}
+      />
     </div>
-  );
-}
-
-function PipelineColumn({ title, tone, rows, actionLabel, actionDisabled, actionHint, onAction }) {
-  const toneCls = {
-    emerald: 'border-emerald-200 bg-emerald-50/40',
-    amber: 'border-amber-200 bg-amber-50/40',
-    blue: 'border-blue-200 bg-blue-50/40',
-  }[tone];
-  const btnTone = {
-    emerald: 'bg-emerald-600 hover:bg-emerald-700',
-    amber: '',
-    blue: '',
-  }[tone];
-
-  return (
-    <Card className={toneCls}>
-      <CardHeader className="pb-2">
-        <CardTitle className="text-xs flex items-center justify-between">
-          {title}
-          <Badge variant="secondary" className="text-[10px] font-mono">{rows.length}</Badge>
-        </CardTitle>
-      </CardHeader>
-      <CardContent className="space-y-1.5">
-        {rows.length === 0 ? (
-          <p className="text-[11px] text-muted-foreground italic py-2">None</p>
-        ) : (
-          rows.slice(0, 5).map((r) => (
-            <div key={r.candidate_id} className="text-xs bg-background rounded-md border px-2 py-1.5 truncate">
-              {r.applicant_name || `#${r.applicant_id}`}
-            </div>
-          ))
-        )}
-        {rows.length > 5 && <p className="text-[10px] text-muted-foreground">+{rows.length - 5} more</p>}
-        <Button size="sm" className={`w-full text-xs mt-2 ${btnTone}`} disabled={actionDisabled} onClick={onAction} title={actionHint}>
-          {actionLabel}
-        </Button>
-        {actionHint && <p className="text-[9px] text-muted-foreground italic text-center">{actionHint}</p>}
-      </CardContent>
-    </Card>
   );
 }
