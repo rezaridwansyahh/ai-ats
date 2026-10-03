@@ -28,6 +28,12 @@ import CandidateDetailModal from '@/components/job-management/CandidateDetailMod
 
 const CANDIDATES_PAGE_SIZE = 6;
 
+function scoreTone(score) {
+  if (score >= 80) return 'bg-emerald-50 text-emerald-700 border-emerald-200';
+  if (score >= 60) return 'bg-amber-50 text-amber-700 border-amber-200';
+  return 'bg-rose-50 text-rose-700 border-rose-200';
+}
+
 export default function JobDetailPage() {
   const canEdit = hasPermission('Sourcing', 'Job Management', 'update');
   const navigate = useNavigate();
@@ -434,12 +440,13 @@ export default function JobDetailPage() {
                     <Table className="table-fixed w-full">
                       <TableHeader className="bg-muted/40">
                         <TableRow>
-                          <TableHead className="text-[10px] font-bold uppercase pl-6 w-[22%]">Candidate</TableHead>
-                          <TableHead className="text-[10px] font-bold uppercase w-[19%]">Position</TableHead>
-                          <TableHead className="text-[10px] font-bold uppercase w-[12%]">Duration</TableHead>
-                          <TableHead className="text-[10px] font-bold uppercase w-[15%]">Location</TableHead>
-                          <TableHead className="text-[10px] font-bold uppercase w-[16%]">Stage</TableHead>
-                          <TableHead className="text-[10px] font-bold uppercase w-[16%] pr-6 text-right">View</TableHead>
+                          <TableHead className="text-[10px] font-bold uppercase pl-6 w-[20%]">Candidate</TableHead>
+                          <TableHead className="text-[10px] font-bold uppercase w-[16%]">Position</TableHead>
+                          <TableHead className="text-[10px] font-bold uppercase w-[10%]">Duration</TableHead>
+                          <TableHead className="text-[10px] font-bold uppercase w-[12%]">Location</TableHead>
+                          <TableHead className="text-[10px] font-bold uppercase w-[13%]">Stage</TableHead>
+                          <TableHead className="text-[10px] font-bold uppercase w-[11%] text-center">Score</TableHead>
+                          <TableHead className="text-[10px] font-bold uppercase w-[18%] pr-6 text-right">View</TableHead>
                         </TableRow>
                       </TableHeader>
                       <TableBody>
@@ -463,6 +470,17 @@ export default function JobDetailPage() {
                                 <Badge variant="outline" className="text-[10px]">
                                   {c.latest_stage_name || 'Not started'}
                                 </Badge>
+                              </TableCell>
+                              <TableCell className="text-center">
+                                {!c.information || Object.keys(c.information).length < 1 ? (
+                                  <Badge variant="outline" className="text-[9px] text-muted-foreground">No CV</Badge>
+                                ) : c.match_score == null ? (
+                                  <Badge variant="outline" className="text-[9px] text-muted-foreground">No Info</Badge>
+                                ) : (
+                                  <Badge className={`text-[10px] font-mono font-bold ${scoreTone(c.match_score)}`}>
+                                    {c.match_score}
+                                  </Badge>
+                                )}
                               </TableCell>
                               <TableCell className="pr-6 text-right">
                                 <Button
