@@ -1,6 +1,10 @@
+import { useState } from 'react';
 import { Card, CardContent } from '@/components/ui/card';
-import { Loader2 } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { FileText, Loader2 } from 'lucide-react';
+import { toast } from 'sonner';
 import { pickCodec, renderReportView } from './report-view-picker';
+import { downloadQaPdf } from '@/api/assessment-battery-result.api';
 
 // No-op — this view never writes back. Passed in place of ScoreDecideTab's
 // real updateState/saveNow so the exact same ReportView components render,
@@ -18,6 +22,36 @@ const noop = () => {};
  * candidate, not to viewing their result from a profile page.
  */
 export default function AssessmentReportReadOnly({ loading, candidate, battery, result }) {
+  const [downloadingQa, setDownloadingQa] = useState(false);
+
+  const handleDownloadQaPdf = async () => {
+    if (!result?.id) return;
+    setDownloadingQa(true);
+    try {
+      const res = await downloadQaPdf(result.id);
+      const url = URL.createObjectURL(new Blob([res.data], { type: 'application/pdf' }));
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `assessment-qa-${candidate?.candidate_name || result.id}.pdf`;
+      a.click();
+      URL.revokeObjectURL(url);
+    } catch (err) {
+      let message = 'Failed to generate Q&A PDF';
+      const errBlob = err?.response?.data;
+      if (errBlob instanceof Blob) {
+        try {
+          const parsed = JSON.parse(await errBlob.text());
+          if (parsed?.message) message = parsed.message;
+        } catch { /* keep default message */ }
+      } else if (err?.message) {
+        message = err.message;
+      }
+      toast.error(message);
+    } finally {
+      setDownloadingQa(false);
+    }
+  };
+
   if (loading) {
     return (
       <Card>
@@ -57,11 +91,28 @@ export default function AssessmentReportReadOnly({ loading, candidate, battery, 
     date:       result.assessment_date ?? null,
   };
 
-  return renderReportView(battery, {
-    profile,
-    results: result.results.by_subtest,
-    state,
-    updateState: noop,
-    saveNow: noop,
-  });
+  return (
+    <div className="space-y-3">
+      <div className="flex justify-end">
+        <Button
+          variant="outline"
+          size="sm"
+          className="text-xs"
+          onClick={handleDownloadQaPdf}
+          disabled={downloadingQa}
+        >
+          {downloadingQa
+            ? <><Loader2 className="h-3.5 w-3.5 mr-1.5 animate-spin" /> Generating…</>
+            : <><FileText className="h-3.5 w-3.5 mr-1.5" /> Download Q&A PDF</>}
+        </Button>
+      </div>
+      {renderReportView(battery, {
+        profile,
+        results: result.results.by_subtest,
+        state,
+        updateState: noop,
+        saveNow: noop,
+      })}
+    </div>
+  );
 }

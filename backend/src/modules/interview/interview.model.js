@@ -1009,6 +1009,11 @@ class InterviewModel {
        JOIN job_stage js ON js.id = mc.latest_stage
        JOIN recruitment_stage_category rsc ON rsc.id = js.stage_type_id
        LEFT JOIN candidate_interview ci ON ci.candidate_id = mc.id AND ci.job_id = mc.job_id
+       -- Both LATERALs below are scoped to ci.current_round_id — without it,
+       -- a candidate who was already packed/scored in a PAST round (before
+       -- "Interview Again" reset them to a new round) would still show that
+       -- old round's pack_id/scored state here, permanently blocking them
+       -- from ever being added to a new pack for their current round.
        LEFT JOIN LATERAL (
          SELECT ip.id, ip.token
          FROM interview_pack_candidate ipc
@@ -1016,6 +1021,7 @@ class InterviewModel {
          WHERE ipc.applicant_id = mc.applicant_id
            AND ip.job_id = mc.job_id
            AND ip.status = 'open'
+           AND ipc.round_id = ci.current_round_id
          LIMIT 1
        ) open_pack ON true
        LEFT JOIN LATERAL (
@@ -1025,6 +1031,7 @@ class InterviewModel {
          JOIN interview_pack_outcome ipo ON ipo.pack_candidate_id = ipc.id
          WHERE ipc.applicant_id = mc.applicant_id
            AND ip.job_id = mc.job_id
+           AND ipc.round_id = ci.current_round_id
          LIMIT 1
        ) scored_pack ON true
        WHERE mc.job_id = $1 AND rsc.name = 'Interview'
