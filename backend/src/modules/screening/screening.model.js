@@ -528,11 +528,22 @@ class ScreeningModel {
       return { pending: byEngine('match'), scored: byEngine('qa') };
     }
     if (engine === 'qa') {
+      // The 'qa' bucket groups together every scored-but-not-responded
+      // candidate — qa_status NULL (never sent), 'draft', 'sent', AND
+      // 'expired' all land here, since the CASE above only distinguishes
+      // "responded" from "everything else". "Sent · awaiting reply" means
+      // qa_status === 'sent' specifically — without this filter it silently
+      // counted every scored candidate as "awaiting reply" even when Q&A
+      // was never sent to them at all (sq.status NULL).
+      //
       // "responded" candidates have moved into the 'ready' bucket by
       // definition (qa_status === 'responded' is exactly what promotes them
       // out of 'qa') — excluding already-decided ones so this matches
       // getCalibrationCohort's "awaiting decision" semantics.
-      return { pending: byEngine('qa'), responded: byEngine('ready').filter((r) => !r.decision) };
+      return {
+        pending: byEngine('qa').filter((r) => r.qa_status === 'sent'),
+        responded: byEngine('ready').filter((r) => !r.decision),
+      };
     }
     // No 'ready' case here deliberately: this CASE expression's 'ready'
     // bucket requires qa_status = 'responded', which wrongly excludes a
@@ -563,7 +574,15 @@ class ScreeningModel {
           WHEN sq.status IS DISTINCT FROM 'responded'        THEN 'qa'
           ELSE                                                    'ready'
         END AS engine,
-        COUNT(*)::int AS count
+        COUNT(*)::int AS count,
+        -- Within the 'qa' bucket, sq.status is NULL/'draft'/'sent'/'expired'
+        -- all lumped together (anything not 'responded') — but the QA tile's
+        -- "in progress" figure means "actually sent, awaiting reply"
+        -- specifically. A candidate who was never sent Q&A at all (status
+        -- IS NULL — true for every candidate until Follow-up Q&A is used)
+        -- isn't "in progress"; counting them here was inflating this to the
+        -- full qa-bucket size regardless of whether anything was ever sent.
+        COUNT(*) FILTER (WHERE sq.status = 'sent')::int AS sent_count
       FROM master_candidate mc
       LEFT JOIN master_applicant a ON a.id = mc.applicant_id
       LEFT JOIN candidate_job_score s
@@ -600,10 +619,17 @@ class ScreeningModel {
     );
 
     const byEngine = Object.fromEntries(laneResult.rows.map((r) => [r.engine, r.count]));
+    const qaRow = laneResult.rows.find((r) => r.engine === 'qa');
     return {
       parse: byEngine.parse || 0,
       match: byEngine.match || 0,
       qa: byEngine.qa || 0,
+      // "Actually sent, awaiting reply" — a strict subset of the 'qa' bucket
+      // above. Use this (not `qa`) for any "in progress" / "awaiting reply"
+      // display; `qa` itself still includes never-sent candidates, which is
+      // correct for its OTHER use as "already scored" in the Parse/Match
+      // tiles' footers, just wrong for a Q&A-specific count.
+      qa_sent: qaRow?.sent_count || 0,
       ready: cohortResult.rows[0]?.ready_count || 0,
       qa_responded: cohortResult.rows[0]?.qa_responded_count || 0,
     };

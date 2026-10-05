@@ -50,7 +50,7 @@ export default function AIScreeningPage() {
   // Summary-tile counts — fetched eagerly, independent of which tab is open
   // (see getEngineCounts' comment on the backend for why this is split out
   // from the full per-lane rows below).
-  const [counts, setCounts] = useState({ parse: 0, match: 0, qa: 0, ready: 0, qa_responded: 0 });
+  const [counts, setCounts] = useState({ parse: 0, match: 0, qa: 0, qa_sent: 0, ready: 0, qa_responded: 0 });
 
   // Full per-lane candidate rows — fetched lazily, exactly one API call per
   // stage tab. A tab's own lane endpoint already returns whatever adjacent-
@@ -227,7 +227,7 @@ export default function AIScreeningPage() {
     {
       key: 'qa', num: 3, label: 'Follow-up Q&A', icon: MessageSquare,
       done: qaDone, word: 'responded', pct: pctOf(qaDone),
-      footer: `${qaDone} responded · ${counts.qa ?? 0} in progress`,
+      footer: `${qaDone} responded · ${counts.qa_sent ?? 0} in progress`,
     },
     {
       key: 'ready', num: 4, label: 'Ready to Advance', icon: Check,
