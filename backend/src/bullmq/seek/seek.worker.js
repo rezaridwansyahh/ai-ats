@@ -10,18 +10,13 @@ const scrapingWorker = new Worker(
   async (job) => {
     console.log(`[Worker] Processing ${job.name} - Job ID: ${job.id}`);
 
-    try {
-      const handler = handlers[job.name];
+    const handler = handlers[job.name];
 
-      if(!handler) {
-        throw new UnrecoverableError('handler undefined');
-      }
-
-      await handler(job.data);
-    } catch(err) {
-      if (err instanceof UnrecoverableError) throw err;
-      throw new UnrecoverableError(err.message || String(err));
+    if(!handler) {
+      throw new UnrecoverableError('handler undefined');
     }
+
+    await handler(job.data);
   },
   {
     connection: redisConfig.connection,

@@ -43,7 +43,7 @@ class ExtractJobPostService {
   async redirectJobsPage(page, type) {
     console.log('Navigating to jobs page');
 
-    await page.goto(`https://id.employer.seek.com/id/jobs?type=${type}`, { waitUntil: 'networkidle0' });
+    await page.goto(`https://id.employer.seek.com/id/jobs?type=${type}`, { waitUntil: 'networkidle2', timeout: 60000 });
   }
 
   /**
