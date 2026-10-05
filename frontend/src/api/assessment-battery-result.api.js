@@ -32,3 +32,8 @@ export const deleteAssessmentResult = (id) => api.delete(`/assessment-battery-re
 // Server-generated (pdfmake) PDF export of the report — replaces window.print().
 export const downloadReportPdf = (id) =>
   api.get(`/assessment-battery-result/${id}/pdf`, { responseType: 'blob' });
+
+// Per-question transcript (question text + the candidate's answer) — distinct
+// from downloadReportPdf above, which is the scored/narrative report.
+export const downloadQaPdf = (id) =>
+  api.get(`/assessment-battery-result/${id}/qa-pdf`, { responseType: 'blob' });

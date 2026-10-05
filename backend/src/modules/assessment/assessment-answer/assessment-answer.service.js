@@ -12,6 +12,11 @@ class AssessmentAnswerService {
     if (!result_id) throw { status: 400, message: 'result_id is required' };
     return await AssessmentAnswer.getByResultId(result_id);
   }
+
+  async getByResultIdWithQuestions(result_id) {
+    if (!result_id) throw { status: 400, message: 'result_id is required' };
+    return await AssessmentAnswer.getByResultIdWithQuestions(result_id);
+  }
 }
 
 export default new AssessmentAnswerService();

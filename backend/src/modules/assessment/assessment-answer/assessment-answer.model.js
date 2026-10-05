@@ -18,6 +18,32 @@ class AssessmentAnswer {
     `, [result_id]);
     return result.rows;
   }
+
+  // For the Q&A PDF export — each answer joined with its question's text/type
+  // and subtest name, ordered for a natural read-through (subtest, then
+  // question order within it).
+  static async getByResultIdWithQuestions(result_id) {
+    const result = await getDb().query(`
+      SELECT
+        aa.question_id,
+        aa.answer,
+        aa.is_correct,
+        aa.score_earned,
+        aa.answered_at,
+        aq.question_type,
+        aq.order_index  AS question_order,
+        aq.content      AS question_content,
+        ast.id          AS subtest_id,
+        ast.name        AS subtest_name,
+        ast.order_index AS subtest_order
+      FROM assessment_answer aa
+      JOIN assessment_question aq ON aq.id = aa.question_id
+      JOIN assessment_subtest ast ON ast.id = aq.subtest_id
+      WHERE aa.result_id = $1
+      ORDER BY ast.order_index ASC, aq.order_index ASC
+    `, [result_id]);
+    return result.rows;
+  }
 }
 
 export default AssessmentAnswer;

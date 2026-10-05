@@ -15,6 +15,8 @@ import {
   sendCandidateEmail,
   getCandidateEmailPreview,
 } from '@/api/candidate.api';
+import { getJobById } from '@/api/job.api';
+import { getResultFromCandidate } from '@/api/assessment-battery-result.api';
 
 // Same clickable stepper + Screening & Matching detail panels used by
 // Report Candidate — both pages hydrate from the exact same getProgress()
@@ -24,6 +26,10 @@ import ScreeningMain from '@/components/report-candidate/screening/screening-mai
 import ParseDetails from '@/components/report-candidate/screening/parse-details';
 import MatchDetails from '@/components/report-candidate/screening/match-details';
 import QaDetails from '@/components/report-candidate/screening/qa-details';
+
+// Assessment stage detail — same report (scores/charts/narratives) the
+// Psych Assessment page shows, read-only (see component for why).
+import AssessmentReportReadOnly from '@/components/candidate-detail/AssessmentReportReadOnly';
 
 function getInitials(name) {
   if (typeof name !== 'string' || !name.trim()) return '?';
@@ -52,6 +58,13 @@ export default function CandidateProfile() {
   // the candidate's actual current stage once progress/candidate load.
   const [activeStep, setActiveStep]       = useState(0);
   const [activeSubStep, setActiveSubStep] = useState(0);
+
+  // Assessment stage detail — lazy: only fetched once the recruiter actually
+  // clicks into that stage, not on every profile load.
+  const [assessmentBattery, setAssessmentBattery] = useState(null);
+  const [assessmentResult, setAssessmentResult]   = useState(null);
+  const [assessmentLoading, setAssessmentLoading] = useState(false);
+  const [assessmentLoaded, setAssessmentLoaded]   = useState(false);
 
   const [downloading, setDownloading]   = useState(false);
   const [downloadError, setDownloadError] = useState(null); // null | 'not_found' | 'error'
@@ -106,9 +119,44 @@ export default function CandidateProfile() {
     }
   };
 
+  /* ── Assessment stage detail — fetched once, lazily, the first time the
+     recruiter actually clicks into that stage (not on every profile load) ── */
+  // -1 + 1 = 0 when there's no Assessment stage on this job — never equals a
+  // real (1-indexed) activeStep, so the fetch effect below just never fires.
+  const assessmentStepNumber = progress.findIndex((s) => s.category === 'Assessment') + 1;
+
+  const fetchAssessmentDetail = async () => {
+    if (assessmentLoaded || !candidate?.job_id) return;
+    setAssessmentLoading(true);
+    try {
+      const jobRes = await getJobById(candidate.job_id);
+      const battery = jobRes.data?.job?.assessment_battery ?? null;
+      setAssessmentBattery(battery);
+      if (battery) {
+        const resultRes = await getResultFromCandidate({ candidate_id: candidateId, battery });
+        setAssessmentResult(resultRes.data?.result ?? null);
+      } else {
+        setAssessmentResult(null);
+      }
+    } catch {
+      setAssessmentBattery(null);
+      setAssessmentResult(null);
+    } finally {
+      setAssessmentLoading(false);
+      setAssessmentLoaded(true);
+    }
+  };
+
   useEffect(() => { fetchCandidate(); }, [candidateId]);
   useEffect(() => { fetchProgress(); }, [candidateId]);
   useEffect(() => { fetchEmailPreview(); }, [candidateId]);
+
+  useEffect(() => {
+    if (activeStep > 0 && activeStep === assessmentStepNumber && !assessmentLoaded && candidate?.job_id) {
+      fetchAssessmentDetail();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- only react to the stage actually becoming active
+  }, [activeStep, assessmentStepNumber, candidate?.job_id, assessmentLoaded]);
 
   /* ── CV download ── */
   const handleDownloadCv = async () => {
@@ -319,6 +367,15 @@ export default function CandidateProfile() {
                 {activeSubStep === 2 && <MatchDetails data={screeningData.scoredDone} />}
                 {activeSubStep === 3 && <QaDetails data={screeningData.qaDone} />}
               </>
+            )}
+
+            {activeStep === assessmentStepNumber && assessmentStepNumber > 0 && (
+              <AssessmentReportReadOnly
+                loading={assessmentLoading}
+                candidate={candidate}
+                battery={assessmentBattery}
+                result={assessmentResult}
+              />
             )}
 
           </div>
