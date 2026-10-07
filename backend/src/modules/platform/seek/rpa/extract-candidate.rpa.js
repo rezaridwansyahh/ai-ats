@@ -20,14 +20,29 @@ async function waitForNewDownload(downloadDir, filesBefore, timeoutMs = 30000, i
 }
 
 class ExtractCandidateService {
-  async navigateToCandidatePage(page, seek_id) {
+  // resumeCandidateId, if given, deep-links to that specific candidate via
+  // Seek's own `selected=` param — Seek resolves which page that candidate is
+  // currently on itself (confirmed live: asking for an arbitrary `p=` gets
+  // overridden back to the candidate's real page), so this is resilient to
+  // the candidate list having shifted (new applicants, status changes) since
+  // the cursor was last saved. We just close the drawer it opens afterward.
+  async navigateToCandidatePage(page, seek_id, resumeCandidateId = null) {
     console.log('Navigating to candidates for job ID:', seek_id);
 
-    await page.goto(`https://id.employer.seek.com/id/candidates/?jobid=${seek_id}`, {
-      waitUntil: 'networkidle0',
-    });
+    const url = resumeCandidateId
+      ? `https://id.employer.seek.com/id/candidates/?jobid=${seek_id}&selected=${resumeCandidateId}&tab=profile`
+      : `https://id.employer.seek.com/id/candidates/?jobid=${seek_id}`;
+
+    await page.goto(url, { waitUntil: 'networkidle0' });
 
     console.log('Candidate page loaded');
+
+    if (resumeCandidateId) {
+      await page.evaluate(() => {
+        const btn = document.querySelector('button[aria-label="Tutup halaman"]');
+        if (btn) btn.click();
+      });
+    }
   }
 
   async navigateToCandidateDetail(page, candidateType) {

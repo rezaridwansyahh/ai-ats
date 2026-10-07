@@ -131,9 +131,16 @@ class SeekService {
       }
     }
 
+    // Resume cursor from a previous failed attempt, if any — lets this run
+    // skip buckets already fully processed and jump straight to the last
+    // saved candidate's current page instead of restarting from bucket 1.
+    const cursor = await jobSourceModel.getById(job_sourcing_id);
+    const resumeBucket = cursor?.current_bucket || null;
+    const resumeCandidateId = cursor?.last_seek_candidate_id || null;
+
     try {
       await loginRpa.authenticatedPage(page, account_id);
-      await extractCandidateRpa.navigateToCandidatePage(page, jobPostSeek.seek_id);
+      await extractCandidateRpa.navigateToCandidatePage(page, jobPostSeek.seek_id, resumeCandidateId);
 
       const buckets = await extractCandidateRpa.extractCandidateType(page, jobPostSeek.seek_id);
       const seekRecord = await jobPostSeekModel.getBySeekId(jobPostSeek.seek_id);
@@ -141,7 +148,15 @@ class SeekService {
 
       const results = [];
 
-      for (const bucket of buckets) {
+      // Buckets before the one we stopped on are already fully done — skip
+      // them entirely rather than re-walking (and re-dedup-checking) every
+      // page of an already-finished bucket. Falls back to processing every
+      // bucket if the stored bucket name no longer matches one returned now.
+      const startIndex = resumeBucket
+        ? Math.max(buckets.findIndex((b) => b.name === resumeBucket), 0)
+        : 0;
+
+      for (const bucket of buckets.slice(startIndex)) {
         if (bucket.count === 0) {
           results.push({ bucket: bucket.name, saved: 0, skipped: 0, promoted: 0 });
           continue;
@@ -250,6 +265,18 @@ class SeekService {
                 console.error(`Auto-promote failed for applicant ${applicant.id} → job ${jobId}:`, err.message);
               }
             }
+          }
+
+          // Record resume cursor after every successful save — not just on
+          // final failure — so whatever's been saved so far is never lost if
+          // the process is killed outright (not just a caught exception).
+          try {
+            await jobSourceModel.updateSyncCursor(job_sourcing_id, {
+              current_bucket: bucket.name,
+              last_seek_candidate_id: candidate.candidate_id,
+            });
+          } catch (err) {
+            console.error(`Failed to update sync cursor for job_sourcing_id=${job_sourcing_id}:`, err.message);
           }
         };
 

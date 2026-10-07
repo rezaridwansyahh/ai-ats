@@ -214,7 +214,8 @@ class JobSourceModel {
   async markSynced(id) {
     const result = await getDb().query(`
       UPDATE core_job_sourcing
-      SET sync_state = 'idle', last_sync = NOW(), updated_at = NOW()
+      SET sync_state = 'idle', last_sync = NOW(), updated_at = NOW(),
+          current_bucket = NULL, last_seek_candidate_id = NULL
       WHERE id = $1
       RETURNING *
     `, [id]);
@@ -228,6 +229,18 @@ class JobSourceModel {
       WHERE id = $1
       RETURNING *
     `, [id]);
+    return result.rows[0];
+  }
+
+  // Persists how far seek-extract-candidate got, so a retry after a mid-scrape
+  // failure can resume instead of restarting the whole multi-bucket scrape.
+  async updateSyncCursor(id, { current_bucket, last_seek_candidate_id }) {
+    const result = await getDb().query(`
+      UPDATE core_job_sourcing
+      SET current_bucket = $1, last_seek_candidate_id = $2, updated_at = NOW()
+      WHERE id = $3
+      RETURNING *
+    `, [current_bucket, last_seek_candidate_id, id]);
     return result.rows[0];
   }
 

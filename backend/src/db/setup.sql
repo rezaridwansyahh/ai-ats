@@ -416,6 +416,8 @@ CREATE TABLE core_job_sourcing (
   last_sync TIMESTAMP,
   sync_state sync_state_type NOT NULL DEFAULT 'idle',  -- live applicant-sync state for this channel
   sync_started_at TIMESTAMP,
+  current_bucket VARCHAR(100),          -- resume cursor: bucket in progress when sync last stopped
+  last_seek_candidate_id VARCHAR(100),  -- resume cursor: last candidate successfully saved
   created_at TIMESTAMP NOT NULL DEFAULT NOW(),
   updated_at TIMESTAMP NOT NULL DEFAULT NOW(),
   additional JSONB,
