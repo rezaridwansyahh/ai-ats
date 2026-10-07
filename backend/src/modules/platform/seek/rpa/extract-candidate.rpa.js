@@ -33,7 +33,7 @@ class ExtractCandidateService {
       ? `https://id.employer.seek.com/id/candidates/?jobid=${seek_id}&selected=${resumeCandidateId}&tab=profile`
       : `https://id.employer.seek.com/id/candidates/?jobid=${seek_id}`;
 
-    await page.goto(url, { waitUntil: 'networkidle0' });
+    await page.goto(url, { waitUntil: 'networkidle2', timeout: 60000 });
 
     console.log('Candidate page loaded');
 
