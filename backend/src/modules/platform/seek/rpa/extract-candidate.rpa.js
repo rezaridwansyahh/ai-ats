@@ -43,6 +43,11 @@ class ExtractCandidateService {
         if (btn) btn.click();
       });
     }
+
+    // networkidle2 (needed so a lingering background connection doesn't blow
+    // the nav timeout) can resolve before the bucket tabs have actually
+    // rendered — wait for them directly instead of trusting goto's timing.
+    await page.waitForSelector('[data-testid="desktop-buckets"]', { timeout: 15000 }).catch(() => {});
   }
 
   async navigateToCandidateDetail(page, candidateType) {
