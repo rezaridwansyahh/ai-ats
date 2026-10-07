@@ -38,10 +38,24 @@ class ExtractCandidateService {
     console.log('Candidate page loaded');
 
     if (resumeCandidateId) {
-      await page.evaluate(() => {
-        const btn = document.querySelector('button[aria-label="Tutup halaman"]');
-        if (btn) btn.click();
-      });
+      // The drawer opens asynchronously after the base page renders — wait
+      // for it to actually exist before trying to close it, otherwise this
+      // click can fire on nothing and leave the drawer open underneath the
+      // bucket-extraction step that runs right after this returns.
+      const drawerOpened = await page
+        .waitForSelector('[id="details-view-drawer"]', { timeout: 10000 })
+        .then(() => true)
+        .catch(() => false);
+
+      if (drawerOpened) {
+        await page.evaluate(() => {
+          const btn = document.querySelector('button[aria-label="Tutup halaman"]');
+          if (btn) btn.click();
+        });
+        await page.waitForSelector('[id="details-view-drawer"]', { hidden: true, timeout: 10000 }).catch(() => {});
+      } else {
+        console.log('Resume: drawer never appeared for selected candidate — continuing anyway');
+      }
     }
 
     // networkidle2 (needed so a lingering background connection doesn't blow
