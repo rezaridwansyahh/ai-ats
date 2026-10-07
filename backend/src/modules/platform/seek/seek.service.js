@@ -137,6 +137,7 @@ class SeekService {
     const cursor = await jobSourceModel.getById(job_sourcing_id);
     const resumeBucket = cursor?.current_bucket || null;
     const resumeCandidateId = cursor?.last_seek_candidate_id || null;
+    console.log(`[extractCandidates] job_sourcing_id=${job_sourcing_id} resumeBucket=${resumeBucket} resumeCandidateId=${resumeCandidateId}`);
 
     try {
       await loginRpa.authenticatedPage(page, account_id);

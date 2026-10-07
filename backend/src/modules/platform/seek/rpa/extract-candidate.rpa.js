@@ -27,11 +27,11 @@ class ExtractCandidateService {
   // the candidate list having shifted (new applicants, status changes) since
   // the cursor was last saved. We just close the drawer it opens afterward.
   async navigateToCandidatePage(page, seek_id, resumeCandidateId = null) {
-    console.log('Navigating to candidates for job ID:', seek_id);
-
     const url = resumeCandidateId
       ? `https://id.employer.seek.com/id/candidates/?jobid=${seek_id}&selected=${resumeCandidateId}&tab=profile`
       : `https://id.employer.seek.com/id/candidates/?jobid=${seek_id}`;
+
+    console.log('Navigating to candidates:', url);
 
     await page.goto(url, { waitUntil: 'networkidle2', timeout: 60000 });
 
