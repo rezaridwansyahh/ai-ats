@@ -157,13 +157,22 @@ class SeekService {
         ? Math.max(buckets.findIndex((b) => b.name === resumeBucket), 0)
         : 0;
 
-      for (const bucket of buckets.slice(startIndex)) {
+      for (const [i, bucket] of buckets.slice(startIndex).entries()) {
         if (bucket.count === 0) {
           results.push({ bucket: bucket.name, saved: 0, skipped: 0, promoted: 0 });
           continue;
         }
 
-        await extractCandidateRpa.navigateToCandidateDetail(page, bucket.name);
+        // The very first bucket of a resumed run is already showing the
+        // right page — navigateToCandidatePage's `selected=` deep link
+        // resolved both bucket and page for us. Clicking the bucket tab
+        // again here would reset pagination back to page 1, throwing away
+        // the whole point of the resume. Every other bucket genuinely
+        // hasn't been opened yet this run, so it still needs the click.
+        const alreadyPositioned = i === 0 && !!resumeCandidateId;
+        if (!alreadyPositioned) {
+          await extractCandidateRpa.navigateToCandidateDetail(page, bucket.name);
+        }
 
         let promoted = 0;
 

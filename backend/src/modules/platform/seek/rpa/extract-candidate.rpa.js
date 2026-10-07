@@ -149,7 +149,14 @@ class ExtractCandidateService {
         return document.querySelectorAll('[data-testid="job-application-card"]').length;
       });
 
-      console.log(`\nFound ${totalCards} candidate cards on this page`);
+      // Diagnostic: proves whether a "next page" click actually advanced
+      // anything, or whether we're re-reading the same page's stale DOM —
+      // the page count/skip logs alone can't tell those two apart.
+      const firstCardName = await page.evaluate(() => {
+        const card = document.querySelector('[data-testid="job-application-card-0"]');
+        return card?.querySelector('span')?.innerText?.trim() || null;
+      });
+      console.log(`\nFound ${totalCards} candidate cards on this page — url=${page.url()} firstCard="${firstCardName}"`);
 
       for (let i = 0; i < totalCards; i++) {
         const cardSelector = `[data-testid="job-application-card-${i}"]`;
