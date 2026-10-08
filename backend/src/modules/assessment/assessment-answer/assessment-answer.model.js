@@ -19,6 +19,18 @@ class AssessmentAnswer {
     return result.rows;
   }
 
+  // order_index -> answer, scoped to one subtest — the exact shape the
+  // server-side scoring registry needs (answersByOrderIndex).
+  static async getByResultIdAndSubtestId(result_id, subtest_id) {
+    const result = await getDb().query(`
+      SELECT aq.order_index, aa.answer
+      FROM assessment_answer aa
+      JOIN assessment_question aq ON aq.id = aa.question_id
+      WHERE aa.result_id = $1 AND aq.subtest_id = $2
+    `, [result_id, subtest_id]);
+    return result.rows;
+  }
+
   // For the Q&A PDF export — each answer joined with its question's text/type
   // and subtest name, ordered for a natural read-through (subtest, then
   // question order within it).
