@@ -18,13 +18,13 @@ class SeekLoginService {
   }
 
   async checkRedirectDashboard(page) {
-    await page.goto('https://id.employer.seek.com/id/dashboard', { waitUntil: 'networkidle0' });
+    await page.goto('https://id.employer.seek.com/id/dashboard', { waitUntil: 'networkidle2', timeout: 60000 });
 
     return page.url() === 'https://id.employer.seek.com/id/dashboard';
   }
 
   async redirectLoginSeek(page) {
-    await page.goto('https://id.employer.seek.com/id/', { waitUntil: 'networkidle0' });
+    await page.goto('https://id.employer.seek.com/id/', { waitUntil: 'networkidle2', timeout: 60000 });
   }
 
   async checkLogin(page) {
