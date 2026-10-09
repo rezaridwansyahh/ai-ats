@@ -33,6 +33,8 @@ export default function CandidateDetailPage() {
   const [activeKey, setActiveKey]   = useState('setup');
   const [battery, setBattery]       = useState(null);
   const [jobBattery, setJobBattery] = useState(null); // job's assigned battery (Job Management)
+  const [jobTitle, setJobTitle]     = useState(null); // the job this candidate applied to — shown in the report instead of their resume's last position
+  const [jobDetail, setJobDetail]   = useState(null); // { job_location, work_type, work_option } — fills the report's info-grid slots that used to show personal candidate data
   const [existingSessions, setExistingSessions] = useState([]);
 
   const restoredOnceRef   = useRef(false);
@@ -73,14 +75,23 @@ export default function CandidateDetailPage() {
   }, [candidateId]);
 
   useEffect(() => {
-    if (!jobId) { setJobBattery(null); return undefined; }
+    if (!jobId) { setJobBattery(null); setJobTitle(null); setJobDetail(null); return undefined; }
     let cancelled = false;
     (async () => {
       try {
         const res = await getJobById(jobId);
-        if (!cancelled) setJobBattery(res.data?.job?.assessment_battery ?? null);
+        const job = res.data?.job;
+        if (!cancelled) {
+          setJobBattery(job?.assessment_battery ?? null);
+          setJobTitle(job?.job_title ?? null);
+          setJobDetail(job ? {
+            job_location: job.job_location ?? null,
+            work_type: job.work_type ?? null,
+            work_option: job.work_option ?? null,
+          } : null);
+        }
       } catch {
-        if (!cancelled) setJobBattery(null);
+        if (!cancelled) { setJobBattery(null); setJobTitle(null); setJobDetail(null); }
       }
     })();
     return () => { cancelled = true; };
@@ -361,6 +372,8 @@ export default function CandidateDetailPage() {
                 <ScoreDecideTab
                   key={latestResult?.id ?? `no-result-${battery ?? 'none'}`}
                   candidate={candidateView}
+                  jobTitle={jobTitle}
+                  jobDetail={jobDetail}
                   battery={battery}
                   result={latestResult}
                   onJumpToTab={setActiveKey}
