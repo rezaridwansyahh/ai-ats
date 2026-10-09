@@ -115,14 +115,26 @@ async function run() {
         clientBySubtest: current?.results?.by_subtest,
       });
       if (authoritative) {
+        // Merge, never replace wholesale: authoritative.by_subtest only
+        // contains a group (e.g. "tk") if EVERY one of its subtests could be
+        // recomputed (needs a real assessment_score row for each). A result
+        // that's missing one subtest's data (e.g. never attempted) produces
+        // an authoritative output with that whole group silently absent —
+        // spreading current.results.by_subtest FIRST means we only ever
+        // correct/add what we can actually recompute, and never erase an
+        // existing entry just because this pass couldn't rebuild it. (A
+        // prior version of this script did `by_subtest: authoritative.by_subtest`
+        // directly, which wiped out real cached data for exactly this reason —
+        // see the incident where a candidate's PA/KA scores were lost.)
+        const mergedBySubtest = { ...current.results?.by_subtest, ...authoritative.by_subtest };
         await AssessmentBatteryResult.update(getDb(), row.id, {
           status: current.status,
-          results: { ...current.results, by_subtest: authoritative.by_subtest },
+          results: { ...current.results, by_subtest: mergedBySubtest },
           summary: { ...current.summary, ...authoritative.summaryOverrides },
           started_at: current.started_at,
           completed_at: current.completed_at,
         });
-        console.log('  -> results/summary recomputed and saved');
+        console.log('  -> results/summary recomputed and saved (merged, not replaced)');
       }
     }
     console.log();
