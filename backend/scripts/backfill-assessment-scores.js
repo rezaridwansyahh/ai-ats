@@ -98,18 +98,22 @@ async function run() {
 
   for (const row of targetRows) {
     const diffs = await recomputeSubtestScores(row.id, row.assessment_id);
-    if (diffs.length === 0) continue;
 
-    anyDiff = true;
-    console.log(`result_id=${row.id} (assessment_id=${row.assessment_id}, status=${row.status}):`);
-    diffs.forEach((d) => {
-      console.log(`  ${d.subtest_key}: ${JSON.stringify(d.old)}`);
-      console.log(`    -> ${JSON.stringify(d.new)}`);
-    });
-
+    // Composite rebuild is a SEPARATE concern from per-subtest score diffs —
+    // a sibling subtest's assessment_score row can change (e.g. inserted
+    // manually during a recovery) without THIS subtest's own score having any
+    // diff, yet the composite still needs rebuilding to pick it up. A
+    // previous version of this script gated this behind `diffs.length === 0
+    // ? continue`, which skipped the composite rebuild whenever every
+    // individual subtest already matched — exactly the case right after
+    // manually restoring a missing subtest's score, so the fix silently
+    // never took effect.
+    let authoritative = null;
+    let current = null;
+    let mergedBySubtest = null;
     if (APPLY && row.status === 'completed') {
-      const current = await AssessmentBatteryResult.getById(row.id);
-      const authoritative = await composeAuthoritativeResults({
+      current = await AssessmentBatteryResult.getById(row.id);
+      authoritative = await composeAuthoritativeResults({
         assessment_id: row.assessment_id,
         result_id: row.id,
         clientBySubtest: current?.results?.by_subtest,
@@ -126,16 +130,31 @@ async function run() {
         // prior version of this script did `by_subtest: authoritative.by_subtest`
         // directly, which wiped out real cached data for exactly this reason —
         // see the incident where a candidate's PA/KA scores were lost.)
-        const mergedBySubtest = { ...current.results?.by_subtest, ...authoritative.by_subtest };
-        await AssessmentBatteryResult.update(getDb(), row.id, {
-          status: current.status,
-          results: { ...current.results, by_subtest: mergedBySubtest },
-          summary: { ...current.summary, ...authoritative.summaryOverrides },
-          started_at: current.started_at,
-          completed_at: current.completed_at,
-        });
-        console.log('  -> results/summary recomputed and saved (merged, not replaced)');
+        mergedBySubtest = { ...current.results?.by_subtest, ...authoritative.by_subtest };
       }
+    }
+
+    const compositeChanged = mergedBySubtest
+      && canonicalJSON(mergedBySubtest) !== canonicalJSON(current.results?.by_subtest);
+
+    if (diffs.length === 0 && !compositeChanged) continue;
+
+    anyDiff = true;
+    console.log(`result_id=${row.id} (assessment_id=${row.assessment_id}, status=${row.status}):`);
+    diffs.forEach((d) => {
+      console.log(`  ${d.subtest_key}: ${JSON.stringify(d.old)}`);
+      console.log(`    -> ${JSON.stringify(d.new)}`);
+    });
+
+    if (compositeChanged) {
+      await AssessmentBatteryResult.update(getDb(), row.id, {
+        status: current.status,
+        results: { ...current.results, by_subtest: mergedBySubtest },
+        summary: { ...current.summary, ...authoritative.summaryOverrides },
+        started_at: current.started_at,
+        completed_at: current.completed_at,
+      });
+      console.log('  -> results/summary recomputed and saved (merged, not replaced)');
     }
     console.log();
   }
