@@ -856,7 +856,6 @@ function buildPrompt(battery, bundle, profile, { citationReminder = false } = {}
 
   const profileBits = [];
   if (profile?.position)   profileBits.push(`Posisi yang dilamar: ${profile.position}`);
-  if (profile?.department) profileBits.push(`Departemen: ${profile.department}`);
   if (profile?.education)  profileBits.push(`Pendidikan: ${profile.education}`);
   const profileLine = profileBits.length ? profileBits.join('. ') + '.' : 'Konteks peran tidak disebutkan.';
 
@@ -1042,10 +1041,16 @@ export async function generateBatteryReport(battery, resultId, { context } = {})
     return null;
   }
 
+  // `row.participant_position`/`row.participant_department`/`row.participant_education`
+  // were never actually selected by RESULT_SELECT (that alias only exists in the
+  // separate portal-assessment query), so this was always reading undefined — the
+  // prompt's role context silently fell back to "Konteks peran tidak disebutkan"
+  // every time. `position` now uses the real job applied to (not the candidate's
+  // resume last_position); `department` is dropped entirely (no such field on
+  // core_job); `education` is fixed to the column RESULT_SELECT actually provides.
   const profile = {
-    position:   row.participant_position   || null,
-    department: row.participant_department || null,
-    education:  row.participant_education  || null,
+    position:  row.job_title || null,
+    education: row.candidate_education || null,
   };
 
   const bundle = extractEvidence(battery, row);

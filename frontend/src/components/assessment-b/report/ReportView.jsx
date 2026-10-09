@@ -475,7 +475,7 @@ export default function ReportView({ profile, results, state, updateState, saveN
                   value={state['edit_' + id] || ''}
                   onChange={(e) => setNarr(id, e.target.value)}
                   placeholder="Tuliskan interpretasi di sini, atau klik Generate Sintesis AI di atas..."
-                  className="min-h-[90px] bg-gradient-to-br from-emerald-50/50 to-teal-50/30 border-teal-200 focus-visible:ring-teal-500"
+                  className="min-h-[180px] bg-gradient-to-br from-emerald-50/50 to-teal-50/30 border-teal-200 focus-visible:ring-teal-500"
                 />
               </div>
             ))}
@@ -485,7 +485,7 @@ export default function ReportView({ profile, results, state, updateState, saveN
               value={state.notes_final || ''}
               onChange={(e) => setNotes('final', e.target.value)}
               placeholder="Tuliskan kesimpulan akhir, catatan pengembangan, saran onboarding..."
-              className="min-h-[100px]"
+              className="min-h-[200px]"
             />
           </SectionCard>
         </div>

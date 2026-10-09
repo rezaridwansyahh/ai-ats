@@ -630,7 +630,7 @@ function NarrativeBlock({ id, state, setNarr, onGenerate, generating, onCancel }
         value={value}
         onChange={(e) => setNarr(id, e.target.value)}
         placeholder="Tulis interpretasi psikologis untuk bagian ini…"
-        className="min-h-[90px] text-[13px] leading-relaxed bg-gradient-to-br from-teal-50/40 to-emerald-50/30 border-teal-200 focus:border-teal-500"
+        className="min-h-[180px] text-[13px] leading-relaxed bg-gradient-to-br from-teal-50/40 to-emerald-50/30 border-teal-200 focus:border-teal-500"
       />
     </div>
   );
@@ -670,7 +670,7 @@ function NotesBlock({ id, state, setNotes, placeholder }) {
         value={value}
         onChange={(e) => setNotes(id, e.target.value)}
         placeholder={placeholder}
-        className="min-h-[60px] text-[12.5px] bg-[#FAFAFA] border-slate-200"
+        className="min-h-[200px] text-[12.5px] bg-[#FAFAFA] border-slate-200"
       />
     </div>
   );
