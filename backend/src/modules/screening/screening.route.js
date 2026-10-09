@@ -26,6 +26,7 @@ router.get('/match/:job_id/results',               screeningController.getMatchi
 router.get('/workboard',                           screeningController.getWorkboard);
 router.get('/job/:job_id/lane',                    screeningController.getLaneCandidates);
 router.get('/job/:job_id/engine-counts',           screeningController.getEngineCounts);
+router.patch('/score/:score_id/viewed',            screeningController.markScoreViewed);
 router.post('/parse-bulk',                         screeningController.parseBulk);
 router.post('/job/:job_id/match-bulk',             screeningController.scoreCandidatesList);  // score specific list
 router.post('/job/:job_id/match-bulk/rerun-all',   screeningController.rerunAllForJob);         // force re-score EVERY candidate (queued)

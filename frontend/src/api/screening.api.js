@@ -76,6 +76,11 @@ export const getWorkboard = () =>
 export const getLaneCandidates = (job_id, engine) =>
   api.get(`/screening/job/${job_id}/lane`, { params: engine ? { engine } : {} });
 
+// Match tab — flips a score row's preview to "viewed" the first time a
+// recruiter opens it (idempotent on the backend, safe to call repeatedly).
+export const markCandidateViewed = (score_id) =>
+  api.patch(`/screening/score/${score_id}/viewed`);
+
 // Lightweight counts for the summary tiles — fetched eagerly regardless of
 // which stage tab is open. The full per-lane candidate rows (getLaneCandidates
 // above, getCalibration below) are fetched lazily, only once their tab is opened.

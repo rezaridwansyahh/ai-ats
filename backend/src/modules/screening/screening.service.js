@@ -443,6 +443,14 @@ class ScreeningService {
     return {updateStage, updateDecision}
   }
 
+  // Match tab — mark a score row's preview as opened.
+  async markScoreViewed(score_id) {
+    if (!score_id) throw { status: 400, message: 'score_id is required' };
+    const updated = await screeningModel.markScoreViewed(score_id);
+    if (!updated) throw { status: 404, message: 'Score not found' };
+    return updated;
+  }
+
   // L1 Workboard — cross-position triage for the caller's company.
   async getWorkboard(company_id) {
     if (!company_id) throw { status: 400, message: 'company_id is required' };

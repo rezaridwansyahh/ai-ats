@@ -632,6 +632,7 @@ CREATE TABLE candidate_job_score (
   role_profile             VARCHAR(50), -- unused going forward, kept for historical rows
   summary                  TEXT,
   scored_at                TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  is_viewed                BOOLEAN NOT NULL DEFAULT false, -- recruiter opened the Match-tab preview modal for this score
   UNIQUE (applicant_id, job_id)
 );
 

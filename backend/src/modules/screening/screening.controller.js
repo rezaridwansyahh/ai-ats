@@ -232,6 +232,16 @@ class ScreeningController {
     }
   }
 
+  async markScoreViewed(req, res) {
+    try {
+      const score_id = Number(req.params.score_id);
+      const result = await screeningService.markScoreViewed(score_id);
+      res.status(200).json({ message: 'Score marked viewed', score: result });
+    } catch (err) {
+      res.status(err.status || 500).json({ message: err.message });
+    }
+  }
+
   async getWorkboard(req, res) {
     try {
       const company_id = req.user?.company_id;

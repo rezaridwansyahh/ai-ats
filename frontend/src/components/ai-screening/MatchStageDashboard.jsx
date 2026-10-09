@@ -16,7 +16,7 @@ import { TablePagination } from '@/components/shared/TablePagination';
 import { Slider } from '@/components/ui/slider';
 import { StatCard } from './shared';
 import {
-  generateQa, sendQa, rerunAllMatchForJob, scorePendingForJob,
+  generateQa, sendQa, rerunAllMatchForJob, scorePendingForJob, markCandidateViewed,
 } from '@/api/screening.api';
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter,
@@ -62,6 +62,11 @@ export default function MatchStageDashboard({ jobId, job, pendingRows = [], scor
   const [sortDir, setSortDir] = useState('desc');
   const [running, setRunning] = useState(false);
   const [previewRow, setPreviewRow] = useState(null);
+  // Optimistic local overlay for "viewed" — the server-persisted r.is_viewed
+  // only reflects what was true as of the last fetch, so a card just opened
+  // this session needs this to flip its outline immediately without waiting
+  // on a refetch of the whole lane.
+  const [viewedIds, setViewedIds] = useState(() => new Set());
   const [selectedIds, setSelectedIds] = useState(() => new Set());
   const [advancing, setAdvancing] = useState(false);
   const [page, setPage] = useState(1);
@@ -227,6 +232,22 @@ export default function MatchStageDashboard({ jobId, job, pendingRows = [], scor
       if (next.has(id)) next.delete(id); else next.add(id);
       return next;
     });
+  };
+
+  const handleView = (r) => {
+    setPreviewRow(r);
+    if (r.score_id && !r.is_viewed && !viewedIds.has(r.score_id)) {
+      setViewedIds((prev) => new Set(prev).add(r.score_id));
+      markCandidateViewed(r.score_id).catch(() => {
+        // Non-critical — worst case the outline reverts on next refetch and
+        // the recruiter just sees it as unviewed again.
+        setViewedIds((prev) => {
+          const next = new Set(prev);
+          next.delete(r.score_id);
+          return next;
+        });
+      });
+    }
   };
 
   const handleAdvanceToQa = async () => {
@@ -580,8 +601,9 @@ export default function MatchStageDashboard({ jobId, job, pendingRows = [], scor
                       key={rowId(r)}
                       row={r}
                       selected={selectedIds.has(rowId(r))}
+                      isUnviewed={!r.is_viewed && !viewedIds.has(r.score_id)}
                       onToggleSelect={() => toggleSelectRow(r)}
-                      onView={() => setPreviewRow(r)}
+                      onView={() => handleView(r)}
                       onContinue={() => onOpen(r)}
                     />
                   ))}
@@ -655,14 +677,18 @@ export default function MatchStageDashboard({ jobId, job, pendingRows = [], scor
   );
 }
 
-function CandidateCard({ row: r, selected, onToggleSelect, onView, onContinue }) {
-  console.log("Candidate row data:", r);
+function CandidateCard({ row: r, selected, isUnviewed, onToggleSelect, onView, onContinue }) {
   const matched = Array.isArray(r.matched_skills) ? r.matched_skills : [];
   const missing = Array.isArray(r.missing_skills) ? r.missing_skills : [];
   const appliedAt = fmtDate(r.applied_at);
+  const cardClassName = selected
+    ? 'border-primary/40 bg-primary/5'
+    : isUnviewed
+    ? 'border-[var(--saffron)] bg-[var(--saffron)]/5'
+    : '';
 
   return (
-    <Card className={selected ? 'border-primary/40 bg-primary/5' : ''}>
+    <Card className={cardClassName}>
       <CardContent className="p-3 space-y-2.5">
         <div className="flex items-start justify-between gap-3 flex-wrap">
           <div className="flex items-start gap-2.5 min-w-0">

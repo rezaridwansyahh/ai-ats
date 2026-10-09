@@ -477,6 +477,7 @@ class ScreeningModel {
         s.matched_skills,
         s.missing_skills,
         s.scored_at,
+        s.is_viewed,
         cs.id          AS screening_id,
         cs.decision,
         sq.status      AS qa_status,
@@ -983,6 +984,16 @@ class ScreeningModel {
       [company_id]
     );
     return result.rows;
+  }
+
+  // Match tab: flips a score row to "viewed" the first time a recruiter
+  // opens its preview modal — idempotent, never unsets once true.
+  async markScoreViewed(score_id) {
+    const result = await getDb().query(
+      `UPDATE candidate_job_score SET is_viewed = true WHERE id = $1 RETURNING *`,
+      [score_id]
+    );
+    return result.rows[0];
   }
 }
 
