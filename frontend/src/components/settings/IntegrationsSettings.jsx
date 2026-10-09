@@ -8,6 +8,7 @@ import { Badge }    from '@/components/ui/badge';
 
 import { createJobAccount, updateJobAccount, getJobAccountsByUserId } from '@/api/job-accounts.api';
 import { checkConnection, syncSeekJobPosts } from '@/api/job-posting-seek.api';
+import { formatSinceDate } from '@/lib/job-display';
 
 import { AccountFormDialog } from '@/components/job-account/AccountFormDialog';
 import { hasPermission } from '@/utils/permissions';
@@ -204,21 +205,21 @@ export default function IntegrationsSettings() {
                   key={channel.id}
                   className="flex flex-col gap-3 w-full px-4 py-3 border-b last:border-b-0 lg:flex-row lg:items-center lg:justify-between lg:gap-4"
                 >
-                  <div className="flex flex-col gap-3 min-w-0 sm:flex-row sm:items-center sm:gap-8">
-                    <div className="flex items-center gap-3 min-w-0 sm:w-56 sm:shrink-0">
+                  <div className="flex flex-col gap-3 min-w-0 sm:flex-row sm:flex-wrap sm:items-center sm:gap-8">
+                    <div className="flex items-center gap-3 min-w-0 sm:w-44 sm:shrink-0">
                       <div className="h-10 w-10 rounded-lg flex items-center justify-center shrink-0 overflow-hidden bg-muted/40">
                         <img src={LOGOS[channel.id]} alt={channel.name} className="h-full w-full object-contain" />
                       </div>
                       <div className="min-w-0">
                         <span className="text-sm font-semibold">{channel.name}</span>
-                        <div className="text-xs text-muted-foreground truncate" title={account?.email || ''}>
+                        <div className="text-[11px] text-muted-foreground truncate" title={account?.email || ''}>
                           Account: {account?.email || '—'}
                         </div>
                       </div>
                     </div>
                     <div className="text-xs text-muted-foreground space-y-0.5 shrink-0">
-                      <div>Last connection: {account?.last_connect || '—'}</div>
-                      <div>Last sync: {account?.last_sync || '—'}</div>
+                      <div>Last connection: {account?.last_connect ? formatSinceDate(account.last_connect) : '—'}</div>
+                      <div>Last sync: {account?.last_sync ? formatSinceDate(account.last_sync) : '—'}</div>
                     </div>
                   </div>
 
@@ -299,7 +300,7 @@ export default function IntegrationsSettings() {
                   key={channel.id}
                   className="flex flex-col gap-3 w-full px-4 py-3 border-b last:border-b-0 lg:flex-row lg:items-center lg:justify-between lg:gap-4"
                 >
-                  <div className="flex flex-col gap-3 min-w-0 sm:flex-row sm:items-center sm:gap-8">
+                  <div className="flex flex-col gap-3 min-w-0 sm:flex-row sm:flex-wrap sm:items-center sm:gap-8">
                     <div className="flex items-center gap-3 min-w-0 sm:w-56 sm:shrink-0">
                       <div className="h-10 w-10 rounded-lg flex items-center justify-center shrink-0 overflow-hidden bg-muted/40">
                         <img src={LOGOS[channel.id]} alt={channel.name} className="h-full w-full object-contain" />
@@ -316,7 +317,7 @@ export default function IntegrationsSettings() {
                       </div>
                     </div>
                     <div className="text-xs text-muted-foreground shrink-0">
-                      Last connection: {account?.last_connect || '—'}
+                      Last connection: {account?.last_connect ? formatSinceDate(account.last_connect) : '—'}
                     </div>
                   </div>
 
