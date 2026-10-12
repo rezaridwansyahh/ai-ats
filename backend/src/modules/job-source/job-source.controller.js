@@ -120,10 +120,14 @@ class JobSourceController {
   }
 
   // Manually link a sourcing (channel/posting) to a job (many-to-many).
+  // is_origin defaults false (the normal manual-link case); the "create new
+  // job from this sourcing" flow passes true, since that job IS the one this
+  // sourcing is ultimately for — same semantics as the auto-seeded origin
+  // mapping when a sourcing is created the other way around (from a job_post_id).
   async linkToJob(req, res) {
     try {
-      const { job_id } = req.body;
-      const mapping = await jobSourceService.linkToJob(req.params.id, job_id);
+      const { job_id, is_origin } = req.body;
+      const mapping = await jobSourceService.linkToJob(req.params.id, job_id, !!is_origin);
       res.status(200).json({ message: 'Job Posting linked to job', mapping });
     } catch (err) {
       res.status(err.status || 500).json({ message: err.message });

@@ -267,7 +267,13 @@ export default function TKTest({ resultId, assessmentCode, portalHash, onComplet
     setPhase('sub-active');
   };
 
-  const handleFinishSub = (auto = false) => {
+  // Declared as a function statement (not `const =>`) — it's hoisted in full,
+  // so the ref-sync effect above can read it safely even on the very first
+  // ('loading'-phase) render, which returns before reaching this point in a
+  // `const` version and left the ref pointed at a TDZ binding (crashed every
+  // candidate's first subtest with "can't access lexical declaration before
+  // initialization").
+  function handleFinishSub(auto = false) {
     if (!auto) {
       const answeredCount =
         code === 'GI'
@@ -279,7 +285,7 @@ export default function TKTest({ resultId, assessmentCode, portalHash, onComplet
     const res = scoreSub(code);
     setDone((d) => ({ ...d, [code]: res }));
     setPhase('sub-done');
-  };
+  }
 
   const handleNextSub = () => {
     const idx = tkOrder.indexOf(code);

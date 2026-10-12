@@ -160,7 +160,7 @@ class JobSourceService {
   // sourcing can be linked to any number of jobs (many-to-many) — this is
   // separate from job_post_id, which just records which job_post (if any)
   // this sourcing was originally published from.
-  async linkToJob(id, job_id) {
+  async linkToJob(id, job_id, is_origin = false) {
     if (!job_id) throw { status: 400, message: 'job_id is required' };
 
     const posting = await JobSource.getById(id);
@@ -174,7 +174,7 @@ class JobSourceService {
       throw { status: 400, message: 'Sourcing already linked to this job' };
     }
 
-    const mapping = await JobSource.addJobMapping(id, job_id, false);
+    const mapping = await JobSource.addJobMapping(id, job_id, is_origin);
 
     // Backfill: applicants already extracted for this sourcing before the
     // link existed are never picked up by a re-sync (extract-candidate.rpa.js
