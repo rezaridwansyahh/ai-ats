@@ -157,11 +157,16 @@ export { TAG_TO_NARR_ID };
 
 // ── Prompt builders ──
 
+// `profile.position` is the candidate's own resume/last_position — same stale-
+// context bug fixed in battery-pregen.service.js. `job_title` (the job actually
+// applied to) takes priority; position is a last-resort fallback only for the
+// rare case a candidate isn't linked to any job at all.
 function profileLine(profile = {}) {
   const bits = [];
-  if (profile.position)   bits.push(`Posisi yang dilamar: ${profile.position}`);
-  if (profile.department) bits.push(`Departemen: ${profile.department}`);
-  if (profile.education)  bits.push(`Pendidikan: ${profile.education}`);
+  const role = profile.job_title || profile.position;
+  if (role)                bits.push(`Posisi yang dilamar: ${role}`);
+  if (profile.department)  bits.push(`Departemen: ${profile.department}`);
+  if (profile.education)   bits.push(`Pendidikan: ${profile.education}`);
   return bits.length ? bits.join('. ') + '.' : 'Konteks peran tidak disebutkan.';
 }
 
@@ -225,7 +230,7 @@ function buildSectionPrompt(battery, section, scores, profile) {
   p += `## Aturan output\n`;
   p += `- Tulis SATU paragraf utuh, 120–180 kata, Bahasa Indonesia baku.\n`;
   p += `- JANGAN gunakan markdown, heading, bullet, atau penomoran.\n`;
-  p += `- Buka dengan kesimpulan umum (level/profil dominan), lalu detail tinggi-rendah yang relevan, tutup dengan implikasi praktis bagi peran "${profile.position || 'kandidat'}".\n`;
+  p += `- Buka dengan kesimpulan umum (level/profil dominan), lalu detail tinggi-rendah yang relevan, tutup dengan implikasi praktis bagi peran "${profile.job_title || profile.position || 'kandidat'}".\n`;
   p += `- Tidak perlu menyebut nama instrumen lagi (sudah konteks).\n`;
   p += `- Tidak perlu disclaimer atau pengantar.`;
 
@@ -259,7 +264,7 @@ function buildSynthesisPrompt(battery, allScores, sectionInterpretations, profil
   p += `- STRENGTH: 3 kekuatan paling menonjol, dengan bukti skor singkat.\n`;
   if (!isD) {
     p += `- DEV: 2-3 area pengembangan atau risiko yang perlu diwaspadai rekruter.\n`;
-    p += `- FIT: kesesuaian dengan peran "${profile.position || 'yang dilamar'}", sebut "Sangat Sesuai/Cukup Sesuai/Kurang Sesuai" beserta alasan singkat.\n`;
+    p += `- FIT: kesesuaian dengan peran "${profile.job_title || profile.position || 'yang dilamar'}", sebut "Sangat Sesuai/Cukup Sesuai/Kurang Sesuai" beserta alasan singkat.\n`;
   }
   p += `Mulai langsung dengan tag pertama. JANGAN tulis apa pun sebelum [${tags[0]}] atau setelah [/${tags[tags.length - 1]}].`;
 
@@ -308,7 +313,7 @@ class AssessmentAIService {
       operation: `assessment_interp_${battery}_${section}`,
       usage,
       request_id,
-      metadata: { battery, section, position: profile?.position || null },
+      metadata: { battery, section, position: profile?.job_title || profile?.position || null },
     });
   }
 
@@ -339,7 +344,7 @@ class AssessmentAIService {
       operation: `assessment_synthesis_${battery}`,
       usage,
       request_id,
-      metadata: { battery, position: profile?.position || null },
+      metadata: { battery, position: profile?.job_title || profile?.position || null },
     });
   }
 }

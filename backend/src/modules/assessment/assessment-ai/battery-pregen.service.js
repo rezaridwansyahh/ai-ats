@@ -1053,9 +1053,6 @@ export async function generateBatteryReport(battery, resultId, { context } = {})
     education: row.candidate_education || null,
   };
 
-  // TEMP DEBUG — remove after diagnosing the stale-position issue.
-  logger.info(`${tag}: DEBUG id=${resultId} candidate_id=${row.candidate_id} row.job_title=${JSON.stringify(row.job_title)} profile=${JSON.stringify(profile)}`);
-
   const bundle = extractEvidence(battery, row);
   if (!bundle?.evidence_points?.length) {
     logger.warn(`${tag}: empty evidence_points for id=${resultId}`);
