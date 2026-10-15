@@ -349,9 +349,9 @@ export default function ReportView({ profile, results, state, updateState, saveN
               <div className="py-4 text-center text-slate-400">Data Big Five tidak tersedia</div>
             )}
 
-            <NarrativeBlock id="narr-tk" label={NARR_LABELS['narr-tk']} state={state} setNarr={setNarr}
-              onGenerate={onGenerateSection('narr-tk')}
-              generating={ai.isGenerating('narr-tk')}
+            <NarrativeBlock id="narr-bigfive" label={NARR_LABELS['narr-bigfive']} state={state} setNarr={setNarr}
+              onGenerate={onGenerateSection('narr-bigfive')}
+              generating={ai.isGenerating('narr-bigfive')}
               onCancel={ai.cancel} />
             <RecruiterRating section="bigfive" current={state.rcr_bigfive} onSet={setRcr} />
           </SectionCard>
@@ -392,9 +392,9 @@ export default function ReportView({ profile, results, state, updateState, saveN
               <div className="py-4 text-center text-slate-400">Data DISC tidak tersedia</div>
             )}
 
-           <NarrativeBlock id="narr-tk" label={NARR_LABELS['narr-tk']} state={state} setNarr={setNarr}
-            onGenerate={onGenerateSection('narr-tk')}
-            generating={ai.isGenerating('narr-tk')}
+           <NarrativeBlock id="narr-disc" label={NARR_LABELS['narr-disc']} state={state} setNarr={setNarr}
+            onGenerate={onGenerateSection('narr-disc')}
+            generating={ai.isGenerating('narr-disc')}
             onCancel={ai.cancel} />
             <RecruiterRating section="disc" current={state.rcr_disc} onSet={setRcr} />
           </SectionCard>
@@ -453,9 +453,9 @@ export default function ReportView({ profile, results, state, updateState, saveN
               <div className="py-4 text-center text-slate-400">Data Holland tidak tersedia</div>
             )}
 
-            <NarrativeBlock id="narr-tk" label={NARR_LABELS['narr-tk']} state={state} setNarr={setNarr}
-              onGenerate={onGenerateSection('narr-tk')}
-              generating={ai.isGenerating('narr-tk')}
+            <NarrativeBlock id="narr-holland" label={NARR_LABELS['narr-holland']} state={state} setNarr={setNarr}
+              onGenerate={onGenerateSection('narr-holland')}
+              generating={ai.isGenerating('narr-holland')}
               onCancel={ai.cancel} />
           </SectionCard>
 
