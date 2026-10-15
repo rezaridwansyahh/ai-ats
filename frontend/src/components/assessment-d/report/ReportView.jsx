@@ -8,6 +8,7 @@ import {
   getGrade,
   s10ToLabel,
   getIQClass,
+  getIQVerdict,
   fmtDateID,
   lvlSJT,
 } from '../utils/scoring';
@@ -254,7 +255,7 @@ export default function ReportView({ profile, results, state, updateState, saveN
                           </tr>
                         );
                       }
-                      const vd = getVerdict(s.score10);
+                      const vd = c === 'GI' && s.iq ? getIQVerdict(s.iq) : getVerdict(s.score10);
                       const gr = getGrade(s.pct || s.score10 * 10);
                       return (
                         <tr key={c} className="border-b border-slate-100">

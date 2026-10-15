@@ -13,7 +13,6 @@ import {
   rangeColor,
   rangeBg,
   getPapiRange,
-  getIQClass,
   fmtDateID,
 } from '../utils/scoring';
 import { SCALE_ORDER, SCALES } from '../data/epps';
@@ -212,7 +211,6 @@ export default function CandidateReportView({ profile, results, onClose }) {
                     <div className="font-serif text-4xl font-bold text-teal-900">{tkComp?.toFixed(1) ?? '—'}</div>
                     <div className="text-sm text-slate-600 mb-1">
                       <span className={`font-bold ${levelColor(tkVd)}`}>{tkVd || '—'}</span>
-                      {tkComp && <span className="ml-2 text-slate-400">IQ: {getIQClass(Math.round(tkComp))}</span>}
                     </div>
                   </div>
                 </div>
@@ -227,6 +225,9 @@ export default function CandidateReportView({ profile, results, onClose }) {
                         <div className="text-[10px] font-bold uppercase text-slate-500 mb-1.5">{name}</div>
                         <div className="font-serif text-2xl font-bold text-slate-900 mb-1">{score?.toFixed(0) ?? '—'}</div>
                         <div className={`text-xs font-bold ${levelColor(grade)}`}>{grade || '—'}</div>
+                        {sub === 'GI' && val?.iq && (
+                          <div className="text-[9px] text-slate-500 mt-1">IQ ≈ {val.iq}</div>
+                        )}
                         <div className="text-[9px] text-slate-400 mt-1">Bobot {SUB_WEIGHTS[sub]}</div>
                       </div>
                     );

@@ -54,6 +54,19 @@ export function getVerdict(s) {
   return { v: 'fail', label: 'TIDAK LOLOS', short: 'Tidak Lolos', emoji: '❌', color: '#991B1B', bg: '#FFF1F2', br: '#DC2626' };
 }
 
+// GI's pass/warn/fail is keyed off the IQ classification band, not the
+// percentile score10 used by every other TK subtest. Per client spec:
+// LOLOS if "Di Atas Rata-rata" (110+) or higher; PERTIMBANGKAN if "Rata-rata"
+// or "Di Bawah Rata-rata" (80-109); TIDAK LOLOS below that (<80). Reuses
+// getVerdict()'s exact pass/warn/fail shape (colors/labels) by feeding it a
+// representative score10 for each tier, so GI's badge stays visually
+// identical to every other subtest's LOLOS/PERTIMBANGKAN/TIDAK LOLOS.
+export function getIQVerdict(iq) {
+  if (iq >= 110) return getVerdict(7);
+  if (iq >= 80) return getVerdict(5);
+  return getVerdict(0);
+}
+
 export function getGrade(pct) {
   if (pct >= 90) return { g: 'A', l: 'Sangat Tinggi', c: '#059669', bg: '#ECFDF5' };
   if (pct >= 75) return { g: 'B', l: 'Tinggi', c: '#0369A1', bg: '#EFF6FF' };

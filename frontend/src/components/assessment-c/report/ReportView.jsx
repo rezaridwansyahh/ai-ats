@@ -15,6 +15,7 @@ import {
   rangeBg,
   getPapiRange,
   getIQClass,
+  getIQVerdict,
   fmtDateID,
 } from '../utils/scoring';
 import { SCALE_ORDER, SCALES } from '../data/epps';
@@ -185,8 +186,8 @@ export default function ReportView({ profile, results, state, updateState, saveN
           <ChipScore
             label="GI — Kemampuan Umum"
             value={tk.sub.GI.score10}
-            sub={`IQ ≈ ${tk.sub.GI.iq || '—'} · ${tk.sub.GI.iqCls?.l || getIQClass(tk.sub.GI.iq || 90).l}`}
-            verdict={getVerdict(tk.sub.GI.score10)}
+            sub={`IQ ≈ ${tk.sub.GI.iq || '—'}`}
+            verdict={getIQVerdict(tk.sub.GI.iq || 90)}
             badge={getGrade(tk.sub.GI.pct || 50).g}
           />
         ) : (
@@ -248,7 +249,7 @@ export default function ReportView({ profile, results, state, updateState, saveN
                           </tr>
                         );
                       }
-                      const vd = getVerdict(s.score10);
+                      const vd = c === 'GI' && s.iq ? getIQVerdict(s.iq) : getVerdict(s.score10);
                       const gr = getGrade(s.pct || s.score10 * 10);
                       return (
                         <tr key={c} className="border-b border-slate-100">

@@ -13,6 +13,7 @@ import {
   getGrade,
   getIQ,
   getIQClass,
+  getIQVerdict,
   fmtTime,
   checkGIAnswer,
 } from '../utils/scoring';
@@ -71,6 +72,7 @@ function computeSubScore(subCode, items, ansForSub) {
   if (subCode === 'GI') {
     res.iq = getIQ(ok);
     res.iqCls = getIQClass(res.iq);
+    res.verdict = getIQVerdict(res.iq).v; // IQ classification replaces the percentile verdict for GI
   }
   return res;
 }
