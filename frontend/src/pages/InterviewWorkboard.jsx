@@ -82,16 +82,6 @@ export default function InterviewWorkboard() {
 
   useEffect(() => { loadWorkboard(); }, []);
 
-  // Compute sub-stage counts from interview data
-  const subStageCounts = useMemo(() => {
-    const c = { schedule: 0, result: 0, decide: 0 };
-    for (const i of interviews) {
-      const ss = i.sub_stage || toSubStage(i.status);
-      if (c[ss] != null) c[ss]++;
-    }
-    return c;
-  }, [interviews]);
-
   // Compute total candidates per job_id for PositionsRail
   const candidateCountsByJob = useMemo(() => {
     const map = {};
@@ -117,6 +107,17 @@ export default function InterviewWorkboard() {
     if (activeJob === '') return interviews;
     return interviews.filter((i) => i.job_id === activeJob.job_id);
   }, [interviews, activeJob]);
+
+  // Sub-stage counts derived from the position-scoped list so the chips
+  // reflect whichever job is selected, not every job at once.
+  const subStageCounts = useMemo(() => {
+    const c = { schedule: 0, result: 0, decide: 0 };
+    for (const i of displayInterviews) {
+      const ss = i.sub_stage || toSubStage(i.status);
+      if (c[ss] != null) c[ss]++;
+    }
+    return c;
+  }, [displayInterviews]);
 
   const filtered = useMemo(() => {
     let list = displayInterviews;
