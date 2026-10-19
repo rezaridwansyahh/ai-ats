@@ -263,6 +263,13 @@ class ExtractCandidateService {
         if (checkExists && cardData.name && await checkExists(cardData.name)) {
           console.log(`Already synced, skipping: ${cardData.name}`);
           skipped++;
+          // Counts toward progress same as a newly-saved candidate — progress
+          // tracks "how far through the listing we've walked" against Seek's
+          // own candidate_count, not "how many we've inserted." Without this,
+          // a full re-walk that skips many already-known candidates could
+          // plateau progress below candidate_count forever, even though every
+          // real candidate has already been accounted for.
+          progress++;
           continue;
         }
 

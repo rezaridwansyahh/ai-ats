@@ -100,14 +100,33 @@ class SeekService {
       await browserPuppeteer.close();
     }
   }
-  async extractCandidates(account_id, job_sourcing_id, page = null, progress = 0) {
+  async extractCandidates(account_id, job_sourcing_id, page = null, progress = null) {
+    const jobPostSeek = await jobPostSeekModel.getDetailsByJobSourcingId(job_sourcing_id);
+    const cursor = await jobSourceModel.getById(job_sourcing_id);
+
+    // Expired listings can never gain new applicants — once progress has
+    // caught up to Seek's own reported candidate_count, every candidate that
+    // will ever exist for this listing has already been extracted. Skip
+    // before even opening a browser/logging in, since that's the real cost
+    // here, not the DB check.
+    if (cursor?.status === 'Expired' && jobPostSeek?.candidate_count != null) {
+      const alreadyDone = (jobPostSeek.progress || 0) >= jobPostSeek.candidate_count;
+      if (alreadyDone) {
+        console.log(`[extractCandidates] job_sourcing_id=${job_sourcing_id} already 100% extracted (${jobPostSeek.progress}/${jobPostSeek.candidate_count}) — skipping`);
+        return { buckets: [], results: [], linkedJobIds: [], skipped: true };
+      }
+    }
+
+    // Resume the durable count instead of always restarting at 0 — each run
+    // is a separate process invocation (queued job), so the in-memory
+    // counter from a previous run is long gone; this is its only record.
+    if (progress == null) progress = jobPostSeek?.progress || 0;
+
     const ownPage = !page;
 
     if(!page) {
       page = await cookieService.includeCookiesIfExist(account_id);
     }
-
-    const jobPostSeek = await jobPostSeekModel.getDetailsByJobSourcingId(job_sourcing_id);
 
     // Jobs this sourcing is linked to (origin + manually-mapped). Each synced
     // applicant is auto-promoted to a candidate for every linked job.
@@ -134,7 +153,7 @@ class SeekService {
     // Resume cursor from a previous failed attempt, if any — lets this run
     // skip buckets already fully processed and jump straight to the last
     // saved candidate's current page instead of restarting from bucket 1.
-    const cursor = await jobSourceModel.getById(job_sourcing_id);
+    // (cursor itself was already fetched above, for the Expired skip check.)
     const resumeBucket = cursor?.current_bucket || null;
     const resumeCandidateId = cursor?.last_seek_candidate_id || null;
     console.log(`[extractCandidates] job_sourcing_id=${job_sourcing_id} resumeBucket=${resumeBucket} resumeCandidateId=${resumeCandidateId}`);
@@ -288,6 +307,17 @@ class SeekService {
           } catch (err) {
             console.error(`Failed to update sync cursor for job_sourcing_id=${job_sourcing_id}:`, err.message);
           }
+
+          // Durable progress count — the only way a *later*, separate run
+          // (a fresh queued job, not a continuation of this process) knows
+          // how far a previous attempt actually got. Without this, an
+          // Expired listing's "already 100% extracted" check has nothing to
+          // compare against candidate_count.
+          try {
+            await jobPostSeekModel.update(job_sourcing_id, { progress: candidate.progress });
+          } catch (err) {
+            console.error(`Failed to update progress for job_sourcing_id=${job_sourcing_id}:`, err.message);
+          }
         };
 
         const { saved, skipped, progress: updatedProgress } = await extractCandidateRpa.extractCandidates(
@@ -297,6 +327,15 @@ class SeekService {
         progress = updatedProgress;
 
         results.push({ bucket: bucket.name, saved, skipped, promoted });
+      }
+
+      // Safety-net write — a bucket consisting entirely of already-synced
+      // (skipped) candidates never calls onSave, so progress could advance
+      // in-memory across a whole bucket without ever being persisted.
+      try {
+        await jobPostSeekModel.update(job_sourcing_id, { progress });
+      } catch (err) {
+        console.error(`Failed to persist final progress for job_sourcing_id=${job_sourcing_id}:`, err.message);
       }
 
       return { buckets, results, linkedJobIds };

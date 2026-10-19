@@ -1,9 +1,10 @@
 import { useState, useEffect } from 'react';
-import { AlertTriangle, CircleDot, Sparkles, Clock } from 'lucide-react';
+import { AlertTriangle, CircleDot, Sparkles, Clock, Loader2 } from 'lucide-react';
 import { PageHeader } from '@/components/common';
 
 import { getJobs } from '@/api/job.api';
 import { getWorkboard } from '@/api/offer.api';
+import { getSyncingSourcings } from '@/api/job-sourcing.api';
 
 
 // ─────────────────────────────────────────────────
@@ -75,6 +76,17 @@ function getDisplayName(user) {
       : user.email?.split('@')[0] ?? 'there');
 }
 
+function formatDuration(startedAt) {
+  if (!startedAt) return '—';
+  const ms = Date.now() - new Date(startedAt).getTime();
+  if (ms < 0) return '—';
+  const mins = Math.floor(ms / 60000);
+  if (mins < 1) return '<1m';
+  if (mins < 60) return `${mins}m`;
+  const hrs = Math.floor(mins / 60);
+  return `${hrs}h ${mins % 60}m`;
+}
+
 // ─────────────────────────────────────────────────
 // Ticker
 // ─────────────────────────────────────────────────
@@ -113,6 +125,67 @@ function WhatsNewTicker() {
           </div>
         </div>
       </div>
+    </div>
+  );
+}
+
+// ─────────────────────────────────────────────────
+// Currently Syncing — live worker activity table
+// ─────────────────────────────────────────────────
+
+function SyncingTable({ rows, loading }) {
+  return (
+    <div className="flex-shrink-0 rounded-xl border border-border bg-card">
+      <div className="flex items-center gap-2 px-4 py-2.5 border-b border-border">
+        {loading ? (
+          <Loader2 className="h-3.5 w-3.5 text-primary animate-spin" />
+        ) : (
+          <span className={`h-2 w-2 rounded-full ${rows.length ? 'bg-emerald-500 animate-pulse' : 'bg-muted-foreground/30'}`} />
+        )}
+        <span className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground">
+          Currently Syncing
+        </span>
+        <span className="text-[11px] font-bold text-foreground">{rows.length}</span>
+      </div>
+
+      {rows.length === 0 ? (
+        <div className="px-4 py-3 text-[11px] text-muted-foreground">
+          {loading ? 'Loading…' : 'Nothing is syncing right now.'}
+        </div>
+      ) : (
+        <div className="max-h-[168px] overflow-y-auto divide-y divide-border">
+          {rows.map((row) => {
+            const pct = row.candidate_count
+              ? Math.min(100, Math.round(((row.progress || 0) / row.candidate_count) * 100))
+              : null;
+            return (
+              <div key={row.id} className="flex items-center gap-3 px-4 py-2.5">
+                <div className="min-w-0 flex-1">
+                  <p className="text-xs font-semibold truncate">{row.job_title}</p>
+                  <p className="text-[11px] text-muted-foreground capitalize">{row.platform} · {row.status}</p>
+                </div>
+                <div className="w-32 flex-shrink-0">
+                  {pct != null ? (
+                    <>
+                      <div className="bg-muted rounded-full h-1.5 overflow-hidden">
+                        <div className="h-1.5 rounded-full bg-primary transition-all" style={{ width: `${pct}%` }} />
+                      </div>
+                      <p className="text-[10px] text-muted-foreground mt-0.5 text-right">
+                        {row.progress ?? 0}/{row.candidate_count} · {pct}%
+                      </p>
+                    </>
+                  ) : (
+                    <p className="text-[11px] text-muted-foreground text-right">—</p>
+                  )}
+                </div>
+                <span className="text-[11px] text-muted-foreground flex-shrink-0 w-12 text-right">
+                  {formatDuration(row.sync_started_at)}
+                </span>
+              </div>
+            );
+          })}
+        </div>
+      )}
     </div>
   );
 }
@@ -157,6 +230,8 @@ export default function Dashboard() {
   const [offers, setOffers] = useState([]);
   const [offerSummary, setOfferSummary] = useState(null);
   const [statsLoading, setStatsLoading] = useState(true);
+  const [syncing, setSyncing] = useState([]);
+  const [syncingLoading, setSyncingLoading] = useState(true);
 
   useEffect(() => {
     try {
@@ -180,6 +255,25 @@ export default function Dashboard() {
         setStatsLoading(false);
       }
     })();
+  }, []);
+
+  // Live worker activity — polled rather than fetched once, since this
+  // reflects whatever the RPA worker is doing right now.
+  useEffect(() => {
+    let cancelled = false;
+    const fetchSyncing = async () => {
+      try {
+        const res = await getSyncingSourcings();
+        if (!cancelled) setSyncing(res.data.syncing || []);
+      } catch (err) {
+        console.error('Failed to load syncing job sources:', err);
+      } finally {
+        if (!cancelled) setSyncingLoading(false);
+      }
+    };
+    fetchSyncing();
+    const interval = setInterval(fetchSyncing, 5000);
+    return () => { cancelled = true; clearInterval(interval); };
   }, []);
 
   const activeJobsCount = Array.isArray(jobs)
@@ -239,6 +333,9 @@ export default function Dashboard() {
 
       {/* ── Ticker — fixed height ── */}
       <WhatsNewTicker />
+
+      {/* ── Currently Syncing — fixed height, live-polled ── */}
+      <SyncingTable rows={syncing} loading={syncingLoading} />
 
       {/* ── Four quadrants — grow to fill remaining space ── */}
       <div className="flex-1 grid grid-cols-2 gap-4 min-h-0">

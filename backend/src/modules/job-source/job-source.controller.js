@@ -10,6 +10,15 @@ class JobSourceController {
     }
   }
 
+  async getSyncing(req, res) {
+    try {
+      const syncing = await jobSourceService.getSyncing(req.user?.company_id);
+      res.status(200).json({ message: 'Currently syncing job postings', syncing });
+    } catch (err) {
+      res.status(err.status || 500).json({ message: err.message });
+    }
+  }
+
   async getById(req, res) {
     const { id } = req.params
     try {

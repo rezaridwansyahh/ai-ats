@@ -232,6 +232,27 @@ class JobSourceModel {
     return result.rows[0];
   }
 
+  // Dashboard "currently syncing" list — reuses sync_state the same way the
+  // Sync button already does (markSyncing is called the moment a job is
+  // enqueued, so this reflects queued-or-running, not strictly "actively
+  // scraping right now this instant"). progress/candidate_count come from
+  // mapping_job_sourcing_seek — null for non-Seek platforms.
+  async getSyncing(company_id) {
+    const result = await getDb().query(`
+      SELECT cjs.id, cjs.job_title, cjs.platform, cjs.status, cjs.sync_started_at,
+             mjss.progress, mjss.candidate_count
+      FROM core_job_sourcing cjs
+      LEFT JOIN master_job_account mja ON mja.id = cjs.account_id
+      LEFT JOIN job_post jp ON jp.id = cjs.job_post_id
+      LEFT JOIN core_job cj ON cj.id = jp.job_id
+      LEFT JOIN mapping_job_sourcing_seek mjss ON mjss.job_sourcing_id = cjs.id
+      WHERE cjs.sync_state = 'syncing'
+        AND COALESCE(mja.company_id, cj.company_id) = $1
+      ORDER BY cjs.sync_started_at ASC NULLS LAST
+    `, [company_id]);
+    return result.rows;
+  }
+
   // Persists how far seek-extract-candidate got, so a retry after a mid-scrape
   // failure can resume instead of restarting the whole multi-bucket scrape.
   async updateSyncCursor(id, { current_bucket, last_seek_candidate_id }) {

@@ -13,6 +13,10 @@ class JobSourceService {
     return await JobSource.getAllByCompanyId(company_id);
   }
 
+  async getSyncing(company_id) {
+    return await JobSource.getSyncing(company_id);
+  }
+
   async getById(id) {
     const posting = await JobSource.getById(id);
     if (!posting) throw { status: 404, message: 'Job Posting not found' };
