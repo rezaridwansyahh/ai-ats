@@ -4,7 +4,6 @@ import jobPostRpa from "./rpa/job-post.rpa.js"
 import extractCandidateRpa from "./rpa/extract-candidate.rpa.js"
 import jobSourceModel from "../../job-source/job-source.model.js"
 import jobPostSeekModel from "./job-post-seek.model.js"
-import browserPuppeteer from "../../../shared/services/puppeteer/browser.puppeteer.js"
 import extractJobPostRpa from "../seek/rpa/extract-job-post.rpa.js"
 import applicantModel from "../../applicant/applicant.model.js"
 import jobAccountModel from "../../job-account/job-account.model.js"
@@ -19,7 +18,8 @@ import path from "path"
 
 class SeekService {
   async jobPost(account_id, service, dataForm) {
-    const page = await cookieService.includeCookiesIfExist(account_id, service) // still hardcoded from req body (user_id, service);
+    const browserPuppeteer = await cookieService.includeCookiesIfExist(account_id, service) // still hardcoded from req body (user_id, service);
+    const page = browserPuppeteer.getPage();
     const account = await this.getAccountAndDecrypt(account_id);
 
     try {
@@ -42,7 +42,8 @@ class SeekService {
       pay_max: dataForm.pay_max,
       pay_display: dataForm.pay_display,
     });
-    const page = await cookieService.includeCookiesIfExist(account_id); // still hardcoded from req body (user_id, service);
+    const browserPuppeteer = await cookieService.includeCookiesIfExist(account_id); // still hardcoded from req body (user_id, service);
+    const page = browserPuppeteer.getPage();
 
     try {
       await loginRpa.authenticatedPage(page, account_id);
@@ -60,7 +61,8 @@ class SeekService {
   }
 
   async deleteJobPostDraft(job_sourcing_id, account_id) {
-    const page = await cookieService.includeCookiesIfExist(account_id); // still hardcoded from req body (user_id, service);
+    const browserPuppeteer = await cookieService.includeCookiesIfExist(account_id); // still hardcoded from req body (user_id, service);
+    const page = browserPuppeteer.getPage();
     const jobPostSeek = await jobPostSeekModel.getDetailsByJobSourcingId(job_sourcing_id);
 
     try {
@@ -78,7 +80,8 @@ class SeekService {
   }
 
   async updateJobPostDraft(job_sourcing_id, account_id, dataForm) {
-    const page = await cookieService.includeCookiesIfExist(account_id); // still hardcoded from req body (user_id, service);
+    const browserPuppeteer = await cookieService.includeCookiesIfExist(account_id); // still hardcoded from req body (user_id, service);
+    const page = browserPuppeteer.getPage();
     const jobPostSeek = await jobPostSeekModel.getDetailsByJobSourcingId(job_sourcing_id);
     const account = await this.getAccountAndDecrypt(account_id);
 
@@ -100,7 +103,11 @@ class SeekService {
       await browserPuppeteer.close();
     }
   }
-  async extractCandidates(account_id, job_sourcing_id, page = null, progress = null) {
+  // `browserInstance`, when passed, is a BrowserPuppeteer instance whose
+  // lifecycle belongs to the caller (e.g. syncAll sharing one session across
+  // every sourcing for an account) — this method only closes it if it opened
+  // it itself (ownBrowser), never a shared one it was just lent.
+  async extractCandidates(account_id, job_sourcing_id, browserInstance = null, progress = null) {
     const jobPostSeek = await jobPostSeekModel.getDetailsByJobSourcingId(job_sourcing_id);
     const cursor = await jobSourceModel.getById(job_sourcing_id);
 
@@ -122,11 +129,12 @@ class SeekService {
     // counter from a previous run is long gone; this is its only record.
     if (progress == null) progress = jobPostSeek?.progress || 0;
 
-    const ownPage = !page;
+    const ownBrowser = !browserInstance;
 
-    if(!page) {
-      page = await cookieService.includeCookiesIfExist(account_id);
+    if (!browserInstance) {
+      browserInstance = await cookieService.includeCookiesIfExist(account_id);
     }
+    const page = browserInstance.getPage();
 
     // Jobs this sourcing is linked to (origin + manually-mapped). Each synced
     // applicant is auto-promoted to a candidate for every linked job.
@@ -342,7 +350,7 @@ class SeekService {
     } catch (err) {
       throw err;
     } finally {
-      if(ownPage) await browserPuppeteer.close();
+      if (ownBrowser) await browserInstance.close();
     }
   }
 
@@ -432,13 +440,14 @@ class SeekService {
       && existing.candidate_count === basicData.candidate_count;
   }
 
-  async syncJobPostAll(account_id, page = null) {
+  async syncJobPostAll(account_id, browserInstance = null) {
     const types = ['open', 'expired']; // Seek has no real "draft" listing under this page/type flow
-    const ownPage = !page;
+    const ownBrowser = !browserInstance;
 
-    if(!page) {
-      page = await cookieService.includeCookiesIfExist(account_id);
+    if (!browserInstance) {
+      browserInstance = await cookieService.includeCookiesIfExist(account_id);
     }
+    const page = browserInstance.getPage();
 
     try {
       await loginRpa.authenticatedPage(page, account_id);
@@ -458,21 +467,21 @@ class SeekService {
       await jobAccountModel.updateSync(account_id, 'Error');
       throw err;
     } finally {
-      if(ownPage) await browserPuppeteer.close();
+      if (ownBrowser) await browserInstance.close();
     }
   }
 
   async syncAll(account_id) {
-    const page = await cookieService.includeCookiesIfExist(account_id); // still hardcoded from req body (user_id, service);
+    const browserInstance = await cookieService.includeCookiesIfExist(account_id); // still hardcoded from req body (user_id, service);
 
     try {
-      await this.syncJobPostAll(account_id, page);
+      await this.syncJobPostAll(account_id, browserInstance);
       const sourcings = await jobSourceModel.getByAccountId(account_id);
 
       const results = [];
 
       for(const sourcing of sourcings) {
-        const candidates = await this.extractCandidates(account_id, sourcing.id, page);
+        const candidates = await this.extractCandidates(account_id, sourcing.id, browserInstance);
 
         results.push(candidates);
       }
@@ -481,12 +490,13 @@ class SeekService {
     } catch(err) {
       throw err;
     } finally {
-      await browserPuppeteer.close();
+      await browserInstance.close();
     }
   }
 
   async checkConnection(account_id) {
-    const page = await cookieService.includeCookiesIfExist(account_id);
+    const browserPuppeteer = await cookieService.includeCookiesIfExist(account_id);
+    const page = browserPuppeteer.getPage();
 
     try {
       const check = await loginRpa.authenticatedPage(page, account_id);

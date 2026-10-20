@@ -1,5 +1,4 @@
 import SeekJobMapper from '../../../../shared/utils/data-mapper-seek.js';
-import browserPuppeteer from '../../../../shared/services/puppeteer/browser.puppeteer.js';
 
 const delay = (ms) => new Promise(r => setTimeout(r, ms));
 
@@ -68,7 +67,10 @@ class ExtractJobPostService {
    */
   async extractJobPost(page, { onRow, shouldSkipDetail } = {}) {
     console.log('Starting Extract Job Post');
-    const browser = browserPuppeteer.getBrowser();
+    // Puppeteer pages already know their own parent browser — no need to go
+    // through a shared wrapper instance (which no longer exists as a
+    // process-wide singleton now that each job gets its own).
+    const browser = page.browser();
 
     const counts = { scraped: 0, skipped: 0, failed: 0 };
     let hasNext = true;

@@ -58,6 +58,26 @@ class SeekLoginService {
     await page.waitForNavigation({ waitUntil: 'networkidle0' });
   }
 
+  // Returns a reason string if the login attempt clearly failed in a way a
+  // retry can't fix, or null if it looks like it succeeded (navigated away
+  // from the login form).
+  async detectLoginFailure(page) {
+    const captcha = await page.$('iframe[src*="recaptcha"], iframe[title*="captcha" i], [class*="captcha" i]');
+    if (captcha) {
+      return 'CAPTCHA detected';
+    }
+
+    // Seek re-renders the same form with an inline error instead of
+    // navigating away when credentials are rejected — still seeing the
+    // password field after submitting means the login was rejected.
+    const stillOnLoginForm = await page.$('#password');
+    if (stillOnLoginForm) {
+      return 'Invalid credentials';
+    }
+
+    return null;
+  }
+
   async fillLogin(page, email, password) {
     const loginBtn = await this.checkLogin(page);
 
@@ -67,6 +87,13 @@ class SeekLoginService {
 
     await this.fillEmail(page, email);
     await this.fillPassword(page, password);
+
+    const failureReason = await this.detectLoginFailure(page);
+    if (failureReason) {
+      const err = new Error(`Seek login failed: ${failureReason}`);
+      err.unrecoverable = true;
+      throw err;
+    }
   }
 
   async authenticatedPage(page, account_id) {

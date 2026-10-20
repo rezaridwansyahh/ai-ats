@@ -67,8 +67,8 @@ class SeekController {
       // Mark the channel "syncing" up front so the UI reflects it immediately,
       // then enqueue — the worker pulls applicants and flips it back to idle/error.
       await jobSourceModel.markSyncing(job_sourcing_id);
-      const job = await seekProducer.extractSeekCandidate(account_id, job_sourcing_id);
-      return res.status(202).json({ message: "queued", job_id: job.id, job_sourcing_id });
+      const { job, alreadyQueued } = await seekProducer.extractSeekCandidate(account_id, job_sourcing_id, 'manual');
+      return res.status(202).json({ message: alreadyQueued ? "already queued" : "queued", job_id: job.id, job_sourcing_id });
     } catch (err) {
       try { await jobSourceModel.markSyncError(job_sourcing_id); } catch { /* no-op */ }
       return res.status(err.status || 500).json({

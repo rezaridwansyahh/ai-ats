@@ -4,6 +4,9 @@ import "./src/bullmq/seek/seek.worker.js";
 import "./src/bullmq/linkedin/linkedin.worker.js";
 import "./src/bullmq/cv/cv.worker.js";
 import "./src/bullmq/match-rescore/match-rescore.worker.js";
+import { registerSeekSchedulers } from "./src/bullmq/seek/seek.scheduler.js";
+
+registerSeekSchedulers().catch((err) => console.error('Failed to register Seek schedulers:', err));
 
 import express from "express";
 import cors from 'cors';

@@ -276,6 +276,34 @@ class JobSourceModel {
     return result.rows[0];
   }
 
+  // Scheduler eligibility (Seek). An Expired sourcing that's already
+  // extracted every candidate that will ever exist for it (progress >=
+  // candidate_count) is permanently done — no point re-scraping it forever.
+  // Active sourcings are always eligible since candidate_count can keep
+  // growing. sync_state='error' is excluded so a dead/broken login doesn't
+  // get swept every cycle forever — a manual Sync click bypasses this query
+  // entirely, so a human can still retry an errored sourcing any time.
+  // linkedOnly restricts to sourcings linked to at least one job (used by
+  // the day sweep, which only runs high-priority/linked sourcings).
+  async getSeekSchedulerEligible({ linkedOnly = false } = {}) {
+    const result = await getDb().query(`
+      SELECT cjs.id, cjs.account_id
+      FROM core_job_sourcing cjs
+      LEFT JOIN mapping_job_sourcing_seek mjss ON mjss.job_sourcing_id = cjs.id
+      WHERE cjs.platform = 'seek'
+        AND cjs.sync_state != 'error'
+        AND (
+          cjs.status = 'Active'
+          OR (cjs.status = 'Expired' AND (mjss.progress IS NULL OR mjss.progress < mjss.candidate_count))
+        )
+        ${linkedOnly ? `AND EXISTS (
+          SELECT 1 FROM mapping_job_sourcing_job mjsj
+          WHERE mjsj.job_sourcing_id = cjs.id
+        )` : ''}
+    `);
+    return result.rows;
+  }
+
   async delete(id) {
     const result = await getDb().query(`
       DELETE FROM core_job_sourcing
