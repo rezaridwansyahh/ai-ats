@@ -12,6 +12,17 @@ class OfferController {
     }
   }
 
+  async getPendingApprovals(req, res) {
+    try {
+      const { company_id } = req.user;
+      const approvals = await OfferService.getPendingApprovals(company_id);
+      res.json({ approvals });
+    } catch (error) {
+      console.error('Error in getPendingApprovals:', error);
+      res.status(error.status || 500).json({ message: error.message });
+    }
+  }
+
   async getOffersByJob(req, res) {
     try {
       const { job_id } = req.params;

@@ -97,6 +97,46 @@ class CandidatePipeline {
     return result.rows;
   }
 
+  // Active jobs that have gone `days` or more with zero candidates —
+  // backs the dashboard's "At-Risk" widget.
+  static async getNoApplicants(company_id, days = 5) {
+    const result = await getDb().query(`
+      SELECT j.id AS job_id, j.job_title, j.created_at
+      FROM core_job j
+      LEFT JOIN master_candidate c ON c.job_id = j.id
+      WHERE j.company_id = $1
+        AND j.status = 'Active'
+        AND j.created_at <= NOW() - ($2 || ' days')::interval
+      GROUP BY j.id, j.job_title, j.created_at
+      HAVING COUNT(c.id) = 0
+      ORDER BY j.created_at ASC
+    `, [company_id, days]);
+    return result.rows;
+  }
+
+  // Average days from application to the "Hired" stage, over candidates
+  // hired in the last `days` — backs the dashboard's TTH stat.
+  static async getTimeToHire(company_id, days = 30) {
+    const result = await getDb().query(`
+      SELECT
+        AVG(EXTRACT(EPOCH FROM (s.created_at - mc.date)) / 86400.0) AS avg_days,
+        COUNT(*)::int AS hired_count
+      FROM candidate_stages s
+      JOIN job_stage js ON js.id = s.job_stage_id
+      JOIN master_candidate mc ON mc.id = s.candidate_id
+      JOIN core_job cj ON cj.id = mc.job_id
+      WHERE js.name ILIKE 'hired'
+        AND cj.company_id = $1
+        AND s.created_at >= NOW() - ($2 || ' days')::interval
+        AND mc.date IS NOT NULL
+    `, [company_id, days]);
+    const row = result.rows[0];
+    return {
+      avg_days: row?.avg_days != null ? Number(row.avg_days) : null,
+      hired_count: row?.hired_count ?? 0,
+    };
+  }
+
   static async getSummaryFiltered(category, company_id) {
     const result = await getDb().query(`
       SELECT j.id AS job_id,

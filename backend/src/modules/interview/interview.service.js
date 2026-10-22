@@ -21,6 +21,11 @@ class InterviewService {
     return await interviewModel.getWorkboardData(company_id);
   }
 
+  async getScorecardsOwed(company_id) {
+    if (!company_id) throw { status: 400, message: 'company_id is required' };
+    return await interviewModel.getScorecardsOwed(company_id);
+  }
+
   async getInterview(interview_id, { company_id = null } = {}) {
     if (!interview_id) throw { status: 400, message: 'interview_id is required' };
     const row = await interviewModel.getById(interview_id);

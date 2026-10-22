@@ -1,60 +1,15 @@
 import { useState, useEffect } from 'react';
-import { AlertTriangle, CircleDot, Sparkles, Clock, Loader2 } from 'lucide-react';
+import { AlertTriangle, CircleDot, Clock, Loader2 } from 'lucide-react';
 import { PageHeader } from '@/components/common';
 
 import { getJobs } from '@/api/job.api';
-import { getWorkboard } from '@/api/offer.api';
-import { getSyncingSourcings } from '@/api/job-sourcing.api';
-
-
-// ─────────────────────────────────────────────────
-// Dummy data
-// ─────────────────────────────────────────────────
-
-const WHATS_NEW = [
-  { count: 6,  label: 'New candidate applications',     color: 'text-teal-400' },
-  { count: 3,  label: 'Scorecards landed in your inbox', color: 'text-teal-400' },
-  { count: 2,  label: 'BG Check verdicts (1 flagged)',  color: 'text-orange-400' },
-  { count: 1,  label: 'Offer signed by Citra Lestari',  color: 'text-emerald-400' },
-  { count: 4,  label: 'Pool re-consents expired',       color: 'text-amber-400' },
-];
-
-const AT_RISK = [
-  { id: 1, name: 'Andi Wijaya · Sales MT Bandung', reason: 'BG Check flagged · awaiting review',  timeAgo: '2h',    urgency: 'red' },
-  { id: 2, name: 'JOB-2148 cohort · Surabaya',     reason: '6/8 hired · 12d to deadline',         timeAgo: 'today', urgency: 'amber' },
-  { id: 3, name: 'Maya Sari · AI Specialist',       reason: 'No interviewer feedback in 3d',       timeAgo: '3d',    urgency: 'amber' },
-  { id: 4, name: 'JOB-2156 · Content Writer',       reason: 'No applicants in 5d',                 timeAgo: '5d',    urgency: 'red' },
-];
-
-const APPROVALS = [
-  { id: 1, type: 'OFFER',  title: 'Bagas Pratama · Sr. Backend Engineer L5', desc: 'Offer letter awaiting your sign-off · 22M IDR · ¥2.5M sign-on', timeLeft: '4h left',    urgent: false },
-  { id: 2, type: 'REQ',    title: 'New requisition · Data Analyst',           desc: 'Submitted by Maria Tan · BD Jakarta · 1 headcount',             timeLeft: '1d left',    urgent: false },
-  { id: 3, type: 'LEVEL',  title: 'Level change · L3 → L4 · Citra Lestari',  desc: 'Promotion offer requires VP approval',                          timeLeft: '2d left',    urgent: false },
-  { id: 4, type: 'BUDGET', title: 'Off-band salary · 18M (band 14–16M)',      desc: 'Andi Wijaya · Sales Exec MT',                                   timeLeft: 'overdue 1d', urgent: true  },
-];
-
-const SCORECARDS = [
-  { id: 1, name: 'Rina Putri · Sales MT — Surabaya', detail: 'Interviewed 2 days ago · Loop 1 of 2', urgency: 'OVERDUE',   urgencyColor: 'text-red-500' },
-  { id: 2, name: 'Bagas Pratama · Backend Engineer',  detail: 'Interviewed yesterday · Loop 2 of 2',  urgency: 'TODAY',     urgencyColor: 'text-amber-500' },
-  { id: 3, name: 'Maya Sari · AI Specialist',         detail: 'Interviewed 4h ago · Loop 1 of 3',     urgency: 'THIS WEEK', urgencyColor: 'text-blue-500' },
-];
-
-const ACTIVITY = [
-  { id: 1, label: 'Bagas Pratama · BG Check cleared · Lane A',     timeAgo: '12 min ago',  color: 'bg-emerald-500' },
-  { id: 2, label: 'Sales MT cohort · 4/10 hired · Surabaya 2/3',   timeAgo: '34 min ago',  color: 'bg-blue-500' },
-  { id: 3, label: 'Andi Wijaya · BG Check Lane B flagged',          timeAgo: '1 hour ago',  color: 'bg-red-500' },
-  { id: 4, label: 'Citra Lestari · Offer counter-signed',           timeAgo: '2 hours ago', color: 'bg-emerald-500' },
-  { id: 5, label: 'JOB-2156 · 0 applicants in 5d (Content Writer)', timeAgo: 'today',       color: 'bg-amber-500' },
-  { id: 6, label: 'Source ROI report · LinkedIn dropped 4 pts',     timeAgo: 'today',       color: 'bg-blue-500' },
-];
-
-
+import { getWorkboard, getPendingApprovals } from '@/api/offer.api';
+import { getSyncingSourcings, getSources } from '@/api/job-sourcing.api';
+import { getNoApplicants, getTimeToHire } from '@/api/candidate.api';
+import { getScorecardsOwed } from '@/api/interview.api';
 
 const APPROVAL_COLORS = {
-  OFFER:  'bg-blue-50 text-blue-700 border-blue-200',
-  REQ:    'bg-purple-50 text-purple-700 border-purple-200',
-  LEVEL:  'bg-amber-50 text-amber-700 border-amber-200',
-  BUDGET: 'bg-red-50 text-red-700 border-red-200',
+  OFFER: 'bg-blue-50 text-blue-700 border-blue-200',
 };
 
 // ─────────────────────────────────────────────────
@@ -87,46 +42,28 @@ function formatDuration(startedAt) {
   return `${hrs}h ${mins % 60}m`;
 }
 
-// ─────────────────────────────────────────────────
-// Ticker
-// ─────────────────────────────────────────────────
+function daysSince(dateStr) {
+  if (!dateStr) return null;
+  const ms = Date.now() - new Date(dateStr).getTime();
+  return Math.max(0, Math.floor(ms / 86400000));
+}
 
-function WhatsNewTicker() {
-  return (
-    <div className="rounded-xl overflow-hidden bg-[#1a1a1a] flex-shrink-0">
-      <style>{`
-        @keyframes ticker-slide {
-          0%   { transform: translateX(0); }
-          100% { transform: translateX(-50%); }
-        }
-        .ticker-track {
-          display: flex;
-          width: max-content;
-          animation: ticker-slide 28s linear infinite;
-        }
-        .ticker-track:hover { animation-play-state: paused; }
-      `}</style>
-      <div className="flex items-stretch h-[52px]">
-        <div className="flex-shrink-0 flex flex-col justify-center px-5 border-r border-white/10 min-w-[148px]">
-          <p className="text-[9px] font-bold uppercase tracking-widest text-amber-400">What's New Since</p>
-          <p className="text-[12px] font-medium text-white/60 mt-0.5">Yesterday at 17:42</p>
-        </div>
-        <div className="flex-1 overflow-hidden relative">
-          <div className="absolute right-0 top-0 bottom-0 w-16 z-10 pointer-events-none"
-               style={{ background: 'linear-gradient(to right, transparent, #1a1a1a)' }} />
-          <div className="ticker-track h-full items-center">
-            {[...WHATS_NEW, ...WHATS_NEW].map((item, i) => (
-              <div key={i} className="flex items-center gap-2.5 flex-shrink-0 px-6 border-r border-white/10 h-full whitespace-nowrap cursor-pointer hover:bg-white/5 transition-colors">
-                <span className={`text-lg font-bold leading-none ${item.color}`}>{item.count}</span>
-                <span className="text-[12px] text-white/70">{item.label}</span>
-                <span className="text-white/25 text-sm ml-1">→</span>
-              </div>
-            ))}
-          </div>
-        </div>
-      </div>
-    </div>
-  );
+// Scorecard nudge fires after 24h (per the subtitle under the widget below):
+// <24h since interview = still within grace (THIS WEEK), 24-48h = due TODAY,
+// 48h+ = OVERDUE.
+function scorecardUrgency(scheduledAt) {
+  if (!scheduledAt) return { label: 'THIS WEEK', color: 'text-blue-500' };
+  const hours = (Date.now() - new Date(scheduledAt).getTime()) / 3600000;
+  if (hours >= 48) return { label: 'OVERDUE', color: 'text-red-500' };
+  if (hours >= 24) return { label: 'TODAY', color: 'text-amber-500' };
+  return { label: 'THIS WEEK', color: 'text-blue-500' };
+}
+
+// First step not yet approved — the one actually blocking progress.
+function activeApprovalStep(approval) {
+  const steps = approval?.steps || [];
+  const index = steps.findIndex((s) => s.status !== 'approved');
+  return { step: index >= 0 ? steps[index] : null, index, total: steps.length };
 }
 
 // ─────────────────────────────────────────────────
@@ -227,11 +164,18 @@ function QuadrantCard({ icon, iconColor, title, count, subtitle, children }) {
 export default function Dashboard() {
   const [user, setUser] = useState(null);
   const [jobs, setJobs] = useState([]);
-  const [offers, setOffers] = useState([]);
   const [offerSummary, setOfferSummary] = useState(null);
   const [statsLoading, setStatsLoading] = useState(true);
   const [syncing, setSyncing] = useState([]);
   const [syncingLoading, setSyncingLoading] = useState(true);
+
+  const [noApplicants, setNoApplicants] = useState([]);
+  const [pendingApprovals, setPendingApprovals] = useState([]);
+  const [scorecardsOwed, setScorecardsOwed] = useState([]);
+  const [quadrantsLoading, setQuadrantsLoading] = useState(true);
+
+  const [tth, setTth] = useState(null);
+  const [sources, setSources] = useState([]);
 
   useEffect(() => {
     try {
@@ -245,14 +189,34 @@ export default function Dashboard() {
   useEffect(() => {
     (async () => {
       try {
-        const [jobsRes, offersRes] = await Promise.all([getJobs(), getWorkboard()]);
+        const [jobsRes, offersRes, tthRes, sourcesRes] = await Promise.all([
+          getJobs(), getWorkboard(), getTimeToHire(30), getSources(),
+        ]);
         setJobs(jobsRes.data.jobs || []);
-        setOffers(offersRes.data.offers || []);
         setOfferSummary(offersRes.data.summary || null);
+        setTth(tthRes.data.tth || null);
+        setSources(sourcesRes.data.postings || []);
       } catch (err) {
         console.error('Failed to load dashboard stats:', err);
       } finally {
         setStatsLoading(false);
+      }
+    })();
+  }, []);
+
+  useEffect(() => {
+    (async () => {
+      try {
+        const [noAppRes, approvalsRes, scorecardsRes] = await Promise.all([
+          getNoApplicants(5), getPendingApprovals(), getScorecardsOwed(),
+        ]);
+        setNoApplicants(noAppRes.data.jobs || []);
+        setPendingApprovals(approvalsRes.data.approvals || []);
+        setScorecardsOwed(scorecardsRes.data.scorecards || []);
+      } catch (err) {
+        console.error('Failed to load dashboard quadrants:', err);
+      } finally {
+        setQuadrantsLoading(false);
       }
     })();
   }, []);
@@ -296,23 +260,38 @@ export default function Dashboard() {
     ? Math.round((acceptedOffers / decidedOffers) * 100)
     : null;
 
+  // Top platform by sourcing count, e.g. "Seek leads · 7".
+  const platformCounts = sources.reduce((acc, s) => {
+    if (s.platform) acc[s.platform] = (acc[s.platform] || 0) + 1;
+    return acc;
+  }, {});
+  const distinctPlatforms = Object.keys(platformCounts);
+  const topPlatform = distinctPlatforms.sort((a, b) => platformCounts[b] - platformCounts[a])[0];
+
   const BOTTOM_STATS = [
     { label: 'Active Jobs', value: statsLoading ? '—' : String(activeJobsCount), sub: `${jobs.length} total jobs` },
     { label: 'Candidates', value: statsLoading ? '—' : String(totalCandidates), sub: 'across active jobs' },
-    { label: 'TTH (Last 30d)', value: '—', sub: 'pending API' },
+    {
+      label: 'TTH (Last 30d)',
+      value: statsLoading ? '—' : tth?.avg_days != null ? `${Math.round(tth.avg_days)}d` : 'N/A',
+      sub: statsLoading ? '' : `${tth?.hired_count ?? 0} hired`,
+    },
     {
       label: 'Offer Accept',
       value: statsLoading ? '—' : offerAcceptPct != null ? `${offerAcceptPct}%` : 'N/A',
       sub: statsLoading ? '' : `${acceptedOffers}/${decidedOffers} decided`,
     },
-    { label: 'Sources', value: '—', sub: 'pending API' },
+    {
+      label: 'Sources',
+      value: statsLoading ? '—' : String(distinctPlatforms.length),
+      sub: statsLoading ? '' : topPlatform ? `${topPlatform} leads · ${platformCounts[topPlatform]}` : 'none active',
+    },
   ];
+
+  const attentionCount = noApplicants.length + pendingApprovals.length + scorecardsOwed.length;
 
   const greeting    = getGreeting();
   const displayName = getDisplayName(user);
-
-  if (Array.isArray(jobs)) console.log('job statuses:', jobs.map(j => j.status));
-  if (Array.isArray(offers)) console.log('offer statuses:', offers.map(o => o.status));
 
   return (
     /*
@@ -327,105 +306,107 @@ export default function Dashboard() {
         <PageHeader
           title={`${greeting},`}
           highlight={`${displayName}.`}
-          subtitle="You have 13 items needing attention across 3 cities · 2 are past SLA."
+          subtitle={
+            quadrantsLoading
+              ? 'Loading what needs your attention…'
+              : `You have ${attentionCount} item${attentionCount === 1 ? '' : 's'} needing attention.`
+          }
         />
       </div>
-
-      {/* ── Ticker — fixed height ── */}
-      <WhatsNewTicker />
 
       {/* ── Currently Syncing — fixed height, live-polled ── */}
       <SyncingTable rows={syncing} loading={syncingLoading} />
 
-      {/* ── Four quadrants — grow to fill remaining space ── */}
-      <div className="flex-1 grid grid-cols-2 gap-4 min-h-0">
-        {/* Top-left: At-Risk */}
+      {/* ── Three quadrants — grow to fill remaining space ── */}
+      <div className="flex-1 grid grid-cols-1 lg:grid-cols-3 gap-4 min-h-0">
+        {/* At-Risk: active jobs with no applicants yet */}
         <QuadrantCard
           icon={<AlertTriangle className="h-3.5 w-3.5" />}
           iconColor="text-amber-500"
           title="At-Risk Requisitions"
-          count={AT_RISK.length}
-          subtitle="Things that need a recruiter decision today."
+          count={noApplicants.length}
+          subtitle="Active jobs with no applicants in 5+ days."
         >
-          {AT_RISK.map(item => (
-            <div key={item.id} className="flex items-center justify-between px-4 py-3 hover:bg-muted/30 transition-colors cursor-pointer">
+          {quadrantsLoading ? (
+            <div className="px-4 py-3 text-[11px] text-muted-foreground">Loading…</div>
+          ) : noApplicants.length === 0 ? (
+            <div className="px-4 py-3 text-[11px] text-muted-foreground">Nothing at risk right now.</div>
+          ) : noApplicants.map(item => (
+            <div key={item.job_id} className="flex items-center justify-between px-4 py-3 hover:bg-muted/30 transition-colors">
               <div className="flex items-start gap-3 min-w-0">
-                <span className={`mt-1.5 h-2 w-2 rounded-full flex-shrink-0 ${item.urgency === 'red' ? 'bg-red-500' : 'bg-amber-400'}`} />
+                <span className="mt-1.5 h-2 w-2 rounded-full flex-shrink-0 bg-red-500" />
                 <div className="min-w-0">
-                  <p className="text-xs font-semibold truncate">{item.name}</p>
-                  <p className="text-[11px] text-muted-foreground">{item.reason}</p>
+                  <p className="text-xs font-semibold truncate">{item.job_title}</p>
+                  <p className="text-[11px] text-muted-foreground">No applicants yet</p>
                 </div>
               </div>
-              <span className="text-[11px] text-muted-foreground flex-shrink-0 ml-3">{item.timeAgo}</span>
+              <span className="text-[11px] text-muted-foreground flex-shrink-0 ml-3">{daysSince(item.created_at)}d</span>
             </div>
           ))}
         </QuadrantCard>
 
-        {/* Top-right: Approvals */}
+        {/* Offer approvals in progress */}
         <QuadrantCard
           icon={<CircleDot className="h-3.5 w-3.5" />}
           iconColor="text-blue-500"
-          title="Approvals Waiting on You"
-          count={APPROVALS.length}
-          subtitle="Offers, reqs, level changes, off-band salary — review in Manager Inbox."
+          title="Offer Approvals Pending"
+          count={pendingApprovals.length}
+          subtitle="Offers with an approval chain in progress."
         >
-          {APPROVALS.map(item => (
-            <div key={item.id} className="flex items-start justify-between px-4 py-3 hover:bg-muted/30 transition-colors cursor-pointer gap-3">
-              <div className="flex items-start gap-3 min-w-0 flex-1">
-                <span className={`text-[9px] font-bold px-1.5 py-0.5 rounded border flex-shrink-0 mt-0.5 ${APPROVAL_COLORS[item.type]}`}>
-                  {item.type}
-                </span>
-                <div className="min-w-0">
-                  <p className="text-xs font-semibold">{item.title}</p>
-                  <p className="text-[11px] text-muted-foreground">{item.desc}</p>
+          {quadrantsLoading ? (
+            <div className="px-4 py-3 text-[11px] text-muted-foreground">Loading…</div>
+          ) : pendingApprovals.length === 0 ? (
+            <div className="px-4 py-3 text-[11px] text-muted-foreground">No approvals pending.</div>
+          ) : pendingApprovals.map(item => {
+            const { step, index, total } = activeApprovalStep(item.approval);
+            return (
+              <div key={item.id} className="flex items-start justify-between px-4 py-3 hover:bg-muted/30 transition-colors gap-3">
+                <div className="flex items-start gap-3 min-w-0 flex-1">
+                  <span className={`text-[9px] font-bold px-1.5 py-0.5 rounded border flex-shrink-0 mt-0.5 ${APPROVAL_COLORS.OFFER}`}>
+                    OFFER
+                  </span>
+                  <div className="min-w-0">
+                    <p className="text-xs font-semibold truncate">{item.candidate_name} · {item.job_title}</p>
+                    <p className="text-[11px] text-muted-foreground">
+                      {step ? `Awaiting ${step.role} (${step.name})` : 'Awaiting approval'}
+                    </p>
+                  </div>
                 </div>
+                <span className="text-[11px] font-semibold flex-shrink-0 text-muted-foreground">
+                  Step {index + 1}/{total}
+                </span>
               </div>
-              <span className={`text-[11px] font-semibold flex-shrink-0 ${item.urgent ? 'text-red-500' : 'text-muted-foreground'}`}>
-                {item.timeLeft}
-              </span>
-            </div>
-          ))}
+            );
+          })}
         </QuadrantCard>
 
-        {/* Bottom-left: Scorecards */}
+        {/* Interviews that happened but have no scorecard recorded yet */}
         <QuadrantCard
           icon={<Clock className="h-3.5 w-3.5" />}
           iconColor="text-primary"
           title="Scorecards Owed"
-          count={SCORECARDS.length}
-          subtitle="Auto-nudge fires after 24h. Open Manager Inbox to fill rubric."
+          count={scorecardsOwed.length}
+          subtitle="Auto-nudge fires after 24h."
         >
-          {SCORECARDS.map(item => (
-            <div key={item.id} className="flex items-center justify-between px-4 py-3 hover:bg-muted/30 transition-colors cursor-pointer gap-3">
-              <div className="flex items-start gap-3 min-w-0 flex-1">
-                <div className="h-4 w-4 rounded-full border-2 border-muted-foreground/30 flex-shrink-0 mt-0.5" />
-                <div className="min-w-0">
-                  <p className="text-xs font-semibold">{item.name}</p>
-                  <p className="text-[11px] text-muted-foreground">{item.detail}</p>
+          {quadrantsLoading ? (
+            <div className="px-4 py-3 text-[11px] text-muted-foreground">Loading…</div>
+          ) : scorecardsOwed.length === 0 ? (
+            <div className="px-4 py-3 text-[11px] text-muted-foreground">Nothing owed right now.</div>
+          ) : scorecardsOwed.map(item => {
+            const urgency = scorecardUrgency(item.scheduled_at);
+            return (
+              <div key={item.interview_id} className="flex items-center justify-between px-4 py-3 hover:bg-muted/30 transition-colors gap-3">
+                <div className="flex items-start gap-3 min-w-0 flex-1">
+                  <div className="h-4 w-4 rounded-full border-2 border-muted-foreground/30 flex-shrink-0 mt-0.5" />
+                  <div className="min-w-0">
+                    <p className="text-xs font-semibold truncate">{item.candidate_name}</p>
+                    <p className="text-[11px] text-muted-foreground">{item.job_title}</p>
+                  </div>
                 </div>
+                <span className={`text-[10px] font-bold flex-shrink-0 ${urgency.color}`}>{urgency.label}</span>
               </div>
-              <span className={`text-[10px] font-bold flex-shrink-0 ${item.urgencyColor}`}>{item.urgency}</span>
-            </div>
-          ))}
-        </QuadrantCard>
-
-        {/* Bottom-right: Activity Feed */}
-        <QuadrantCard
-          icon={<Sparkles className="h-3.5 w-3.5" />}
-          iconColor="text-primary"
-          title="Activity Feed"
-          count={ACTIVITY.length}
-          subtitle="Pipeline events from the last 24h. Filter via top bar."
-        >
-          {ACTIVITY.map(item => (
-            <div key={item.id} className="flex items-center justify-between px-4 py-3 hover:bg-muted/30 transition-colors gap-3">
-              <div className="flex items-center gap-3 min-w-0 flex-1">
-                <span className={`h-2 w-2 rounded-full flex-shrink-0 ${item.color}`} />
-                <p className="text-xs truncate">{item.label}</p>
-              </div>
-              <span className="text-[11px] text-muted-foreground flex-shrink-0">{item.timeAgo}</span>
-            </div>
-          ))}
+            );
+          })}
         </QuadrantCard>
       </div>
 

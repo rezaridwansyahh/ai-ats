@@ -19,6 +19,17 @@ class InterviewController {
     }
   }
 
+  async getScorecardsOwed(req, res) {
+    try {
+      const company_id = req.user?.company_id;
+      if (!company_id) return res.status(400).json({ message: 'No company_id on token' });
+      const scorecards = await interviewService.getScorecardsOwed(company_id);
+      res.status(200).json({ message: 'Scorecards owed fetched', scorecards });
+    } catch (err) {
+      res.status(err.status || 500).json({ message: err.message });
+    }
+  }
+
   async getInterview(req, res) {
     try {
       const interview_id = Number(req.params.interview_id);

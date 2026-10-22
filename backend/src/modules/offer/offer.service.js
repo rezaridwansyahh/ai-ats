@@ -51,6 +51,10 @@ class OfferService {
     };
   }
 
+  async getPendingApprovals(company_id) {
+    return await OfferModel.getPendingApprovals(company_id);
+  }
+
   // L2 Position - get offers for specific job
   async getOffersByJob(job_id, company_id) {
     const offers = await OfferModel.getOffersByJob(job_id, company_id);

@@ -1,6 +1,7 @@
 import api from './axios.js';
 
 export const getWorkboard = () => api.get('/interview/workboard');
+export const getScorecardsOwed = () => api.get('/interview/scorecards-owed');
 export const getInterviewsByJob = (job_id) => api.get(`/interview/job/${job_id}`);
 
 export const getInterview = (interview_id) => api.get(`/interview/${interview_id}`);

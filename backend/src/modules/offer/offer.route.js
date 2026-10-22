@@ -16,6 +16,14 @@ router.get(
   OfferController.getWorkboard
 );
 
+// Dashboard widget - offers with an approval chain in progress
+router.get(
+  '/pending-approvals',
+  authToken,
+  checkPermission('Offer & Onboard', 'Offer & Contract', 'read'),
+  OfferController.getPendingApprovals
+);
+
 // L2 Position - get offers for specific job
 router.get(
   '/job/:job_id',

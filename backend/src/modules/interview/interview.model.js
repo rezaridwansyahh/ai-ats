@@ -264,6 +264,27 @@ class InterviewModel {
     return result.rows[0] || null;
   }
 
+  // Interviews that happened (status='result') but have no scorecard
+  // recorded yet — backs the dashboard's "Scorecards Owed" widget.
+  // Urgency bucketing (OVERDUE/TODAY/THIS WEEK) is computed client-side
+  // from scheduled_at, same as the rest of the dashboard's time math.
+  async getScorecardsOwed(company_id) {
+    const result = await getDb().query(
+      `SELECT
+         ci.id         AS interview_id,
+         ci.scheduled_at,
+         mc.name       AS candidate_name,
+         cj.job_title
+       FROM candidate_interview ci
+       JOIN master_candidate mc ON mc.id = ci.candidate_id
+       JOIN core_job cj ON cj.id = ci.job_id
+       WHERE ci.status = 'result' AND cj.company_id = $1
+       ORDER BY ci.scheduled_at ASC NULLS LAST`,
+      [company_id]
+    );
+    return result.rows;
+  }
+
   async getWorkboardData(company_id) {
     const db = getDb();
 

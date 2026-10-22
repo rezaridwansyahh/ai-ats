@@ -24,6 +24,14 @@ class CandidatePipelineService {
     return await CandidatePipeline.getSummary(company_id);
   }
 
+  async getNoApplicants(company_id, days) {
+    return await CandidatePipeline.getNoApplicants(company_id, days);
+  }
+
+  async getTimeToHire(company_id, days) {
+    return await CandidatePipeline.getTimeToHire(company_id, days);
+  }
+
   async getByJobId(job_id, query, company_id) {
     const {
       category, search, stage_id, min_exp, max_exp, sort, page, pageSize,
