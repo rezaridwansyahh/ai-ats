@@ -163,6 +163,25 @@ function dataTable(headers, rows, widths) {
   };
 }
 
+// Per-subtest narrative text can come from two places: the auto-generated
+// `ai_section_narratives` column (background "regenerate full report" flow),
+// or `summary.assessor.narratives` (interactive per-section edits/generation
+// in the workboard, which never touches `ai_section_narratives` — see
+// assessment-battery-result.model.js:updateReport). The workboard itself
+// already prefers the assessor's value over the AI one when both exist
+// (assessor-state.js:unpackAssessorState) — mirror that precedence here so
+// the PDF shows whatever the workboard actually displays, not just whichever
+// of the two columns happens to be populated.
+function resolveNarratives(result) {
+  const merged = { ...(result.ai_section_narratives || {}) };
+  const assessorNarratives = result.summary?.assessor?.narratives || {};
+  for (const key of Object.keys(assessorNarratives)) {
+    const value = assessorNarratives[key];
+    if (value != null && value !== '') merged[key] = value;
+  }
+  return merged;
+}
+
 function narrativeParagraph(text) {
   return { text: text?.trim() || 'Interpretasi AI belum tersedia untuk bagian ini.', style: text?.trim() ? 'body' : 'bodyMuted', margin: [0, 2, 0, 14] };
 }
@@ -394,7 +413,7 @@ export async function buildAssessmentReportPdf(result) {
   const battery = BATTERY_BY_ASSESSMENT_ID[result.assessment_id] || '—';
   const finalRec = result.summary?.assessor?.finalRec;
   const by_subtest = result.results?.by_subtest || {};
-  const narr = result.ai_section_narratives || {};
+  const narr = resolveNarratives(result);
   const sections = BATTERY_SECTIONS[battery] || [];
 
   const detailContent = sections.flatMap(({ builder }) => builder(by_subtest, narr));
