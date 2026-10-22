@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { useLocation } from 'react-router-dom';
 import {
-  Settings2, Users, ShieldCheck, Workflow, Plug, Bell, Globe,
+  Settings2, Users, ShieldCheck, Workflow, Plug,
   ShieldQuestion, FileText, CreditCard, CalendarClock, Mail, Palette,
   Lock,
 } from 'lucide-react';
@@ -14,8 +14,6 @@ import TeamSettings from '../components/settings/TeamSettings';
 import RolesPermissionsSettings from '../components/settings/RolesPermissionsSettings';
 import WorkflowTemplatesSettings from '../components/settings/WorkflowTemplatesSettings';
 import IntegrationsSettings from '../components/settings/IntegrationsSettings';
-import NotificationsSettings from '../components/settings/NotificationsSettings';
-import CandidatePortalSettings from '../components/settings/CandidatePortalSettings';
 import ComplianceSettings from '../components/settings/ComplianceSettings';
 import AuditExportSettings from '../components/settings/AuditExportSettings';
 import BillingPlanSettings from '../components/settings/BillingPlanSettings';
@@ -34,8 +32,6 @@ const SETTINGS_NAV = [
   { id: 'roles', label: 'Roles & Permissions', icon: ShieldCheck },
   { id: 'workflow-templates', label: 'Workflow Templates', icon: Workflow },
   { id: 'integrations', label: 'Integrations', icon: Plug },
-  { id: 'notifications', label: 'Notifications', icon: Bell },
-  { id: 'candidate-portal', label: 'Candidate Portal', icon: Globe },
   { id: 'offer-template', label: 'Offer Letter Template', icon: FileText },
   { id: 'email-templates', label: 'Email Templates', icon: Mail },
   { id: 'compliance', label: 'Compliance', icon: ShieldQuestion, badge: 'OK' },
@@ -71,8 +67,6 @@ const SECTION_COMPONENTS = {
   roles: RolesPermissionsSettings,
   'workflow-templates': WorkflowTemplatesSettings,
   integrations: IntegrationsSettings,
-  notifications: NotificationsSettings,
-  'candidate-portal': CandidatePortalSettings,
   'offer-template': OfferTemplateSettings,
   'email-templates': EmailTemplateSettings,
   compliance: ComplianceSettings,
