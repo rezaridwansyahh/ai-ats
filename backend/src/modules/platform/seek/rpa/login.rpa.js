@@ -94,7 +94,17 @@ class SeekLoginService {
     await page.type('#password', password, {delay: 100});
     await page.keyboard.press("Enter");
 
-    await page.waitForNavigation({ waitUntil: 'networkidle0' });
+    try {
+      // networkidle2 (<=2 concurrent connections), not networkidle0 (zero) —
+      // matches every other navigation wait in this file. networkidle0
+      // never resolves if the page has any background polling/analytics/
+      // telemetry running after load, which is common on modern SPAs and
+      // would time out even on an otherwise-successful login.
+      await page.waitForNavigation({ waitUntil: 'networkidle2' });
+    } catch (err) {
+      await this.captureDebugContext(page, 'fillPassword-postsubmit');
+      throw err;
+    }
   }
 
   // Some accounts land on an account-picker page after password submit
@@ -114,10 +124,15 @@ class SeekLoginService {
       throw new Error('Account selection page shown but no selectable account link found');
     }
 
-    await Promise.all([
-      link.click(),
-      page.waitForNavigation({ waitUntil: 'networkidle0' }),
-    ]);
+    try {
+      await Promise.all([
+        link.click(),
+        page.waitForNavigation({ waitUntil: 'networkidle2' }),
+      ]);
+    } catch (err) {
+      await this.captureDebugContext(page, 'handleAccountSelection');
+      throw err;
+    }
   }
 
   // Returns a reason string if the login attempt clearly failed in a way a
@@ -141,15 +156,31 @@ class SeekLoginService {
   }
 
   async fillLogin(page, email, password) {
-    const loginBtn = await this.checkLogin(page);
-
-    if (loginBtn) {
-      await this.clickLoginButton(page, loginBtn);
-    }
-
-    await this.fillEmail(page, email);
-    await this.fillPassword(page, password);
+    // A partially-valid re-injected cookie can be enough for Seek to
+    // recognize the session and redirect straight to account selection,
+    // skipping the email/password form entirely — seen live via the
+    // fillEmail debug screenshot (url was already /account/select before
+    // any credentials were typed). Check for it before assuming we need to
+    // fill credentials at all.
     await this.handleAccountSelection(page);
+
+    // checkLogin catches the pre-login landing page (oauth link, email field
+    // not rendered yet); #emailAddress catches landing directly on the form.
+    // Checking only #emailAddress here would miss the first case entirely.
+    const loginBtn = await this.checkLogin(page);
+    const needsCredentials = !!loginBtn || !!(await page.$('#emailAddress'));
+
+    if (needsCredentials) {
+      if (loginBtn) {
+        await this.clickLoginButton(page, loginBtn);
+      }
+
+      await this.fillEmail(page, email);
+      await this.fillPassword(page, password);
+      // Account selection can also appear AFTER submitting credentials, for
+      // accounts that don't hit the cookie-skip path above.
+      await this.handleAccountSelection(page);
+    }
 
     const failureReason = await this.detectLoginFailure(page);
     if (failureReason) {
