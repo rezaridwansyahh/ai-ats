@@ -1635,8 +1635,14 @@ function ResultSection({ interview, prep, interviewId }) {
         </div>
       )}
 
-      {/* Competency scores — read-only */}
-      {rubricItems.length > 0 && (
+      {/* Competency scores — read-only. HRD rubric_items use competency_code
+          keys, which only matches outcome.scores for 'direct' (in-app
+          Evaluate) outcomes — a 'pack' (portal link) outcome's scores are
+          keyed by its own free-text criteria instead, so every row would
+          falsely show "not scored" even though weighted_total above is
+          correct. The pack path's own per-question breakdown is already
+          shown separately below (Interview Questions & Answers). */}
+      {outcome.source === 'direct' && rubricItems.length > 0 && (
         <Card>
           <CardHeader className="pb-3">
             <CardTitle className="text-sm">Competency Scores</CardTitle>

@@ -71,23 +71,6 @@ const seekNightScanHandler = async () => {
   }
 }
 
-// Day sweep (5AM-9PM, hourly): linked sourcings only — keeps high-priority
-// candidates fresh during business hours without touching anything the
-// worker's day/night gate would defer anyway.
-const seekDayScanHandler = async () => {
-  const rows = await jobSourceModel.getSeekSchedulerEligible({ linkedOnly: true });
-  console.log(`[Scheduler] Day scan: ${rows.length} eligible linked sourcing(s)`);
-
-  for (const row of rows) {
-    try {
-      await jobSourceModel.markSyncing(row.id);
-      await seekProducer.extractSeekCandidate(row.account_id, row.id, 'scheduler');
-    } catch (err) {
-      console.error(`[Scheduler] Day scan failed to enqueue sourcing ${row.id}:`, err.message);
-    }
-  }
-}
-
 const handlers = {
   'seek-create-job-post': createJobPostHandler,
   'seek-create-job-post-draft': createJobPostDraftHandler,
@@ -97,7 +80,6 @@ const handlers = {
   'seek-check-connection': checkConnectionSeekHandler,
   'seek-sync-all': syncAllSeekHandler,
   'seek-night-scan': seekNightScanHandler,
-  'seek-day-scan': seekDayScanHandler
 };
 
 export default handlers;
