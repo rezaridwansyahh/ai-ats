@@ -74,6 +74,11 @@ class ExtractJobPostService {
 
     const counts = { scraped: 0, skipped: 0, failed: 0 };
     let hasNext = true;
+    // Guards against a "next page" click that doesn't actually navigate
+    // anywhere (stale/misbehaving pagination selector) — without this, a
+    // click that silently no-ops leaves `hasNext` true forever and the loop
+    // re-scrapes the exact same page indefinitely.
+    let lastPageFirstSeekId = null;
 
     const report = async (data) => {
       counts.scraped++;
@@ -101,6 +106,18 @@ class ExtractJobPostService {
       await delay(1000);
 
       const rows = await page.$$('table tbody tr');
+
+      const firstRowSeekId = rows.length > 0 ? await rows[0].evaluate((row) => {
+        const match = row.getAttribute('data-testid')?.match(/\d+/);
+        return match ? Number(match[0]) : null;
+      }) : null;
+
+      if (firstRowSeekId !== null && firstRowSeekId === lastPageFirstSeekId) {
+        console.log(`[extractJobPost] Pagination didn't advance — still seeing seek_id=${firstRowSeekId} as the first row after clicking next. Stopping instead of looping forever.`);
+        return counts;
+      }
+      lastPageFirstSeekId = firstRowSeekId;
+
       console.log('Start page');
       for (let i = 0; i < rows.length; i++) {
         // Every row is independently guarded — one row's unexpected
@@ -304,6 +321,8 @@ class ExtractJobPostService {
       }
       const nextBtn = await page.$('a[rel="next"][aria-hidden="false"]');
       hasNext = false;
+
+      console.log(nextBtn ? '[extractJobPost] next page button detected' : '[extractJobPost] no next page button — this is the last page');
 
       if(nextBtn) {
         await Promise.all([
