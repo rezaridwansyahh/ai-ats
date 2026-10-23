@@ -58,6 +58,29 @@ class SeekLoginService {
     await page.waitForNavigation({ waitUntil: 'networkidle0' });
   }
 
+  // Some accounts land on an account-picker page after password submit
+  // instead of going straight to the dashboard (seen at
+  // id.employer.seek.com/account/select?returnUrl=...) — each selectable
+  // account is an <a id="{accountId}-selectable-link">. Always picks the
+  // first one. No-ops if this page isn't the one we're on.
+  async handleAccountSelection(page) {
+    if (!page.url().startsWith('https://id.employer.seek.com/account/select')) {
+      return;
+    }
+
+    console.log('Account selection page detected');
+
+    const link = await page.$('a[id$="-selectable-link"]');
+    if (!link) {
+      throw new Error('Account selection page shown but no selectable account link found');
+    }
+
+    await Promise.all([
+      link.click(),
+      page.waitForNavigation({ waitUntil: 'networkidle0' }),
+    ]);
+  }
+
   // Returns a reason string if the login attempt clearly failed in a way a
   // retry can't fix, or null if it looks like it succeeded (navigated away
   // from the login form).
@@ -87,6 +110,7 @@ class SeekLoginService {
 
     await this.fillEmail(page, email);
     await this.fillPassword(page, password);
+    await this.handleAccountSelection(page);
 
     const failureReason = await this.detectLoginFailure(page);
     if (failureReason) {
