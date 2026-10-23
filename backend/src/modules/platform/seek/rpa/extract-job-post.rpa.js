@@ -114,7 +114,7 @@ class ExtractJobPostService {
           // malformed/unexpected row (ad banner, skeleton, layout variant)
           // returns seek_id: null instead of throwing.
           const basicData = await row.evaluate((row) => {
-            const empty = { seek_id: null, job_title: null, candidate_count: null, location: null, created_by: null };
+            const empty = { seek_id: null, job_title: null, candidate_count: null, location: null, created_by: null, blocked: false };
 
             // get seek_id
             const href = row.getAttribute('data-testid');
@@ -147,12 +147,20 @@ class ExtractJobPostService {
             const digitsOnly = countString?.replace(/\D/g, '');
             const candidate_count = digitsOnly ? Number(digitsOnly) : null;
 
+            // Seek shows a "Diblokir" (Blocked) status badge on the job title
+            // cell when a listing's been blocked for review — matched on the
+            // title attribute, not the surrounding CSS classes (those are
+            // atomic-CSS-generated hashes that can change on any Seek
+            // frontend rebuild, e.g. `_9dd8r0`, `_1byve3w59` — not stable).
+            const blocked = !!divDividedArr[0].querySelector('[title="Diblokir"]');
+
             return {
               seek_id: seek_id,
               job_title: job_title,
               candidate_count: candidate_count,
               location: locations,
-              created_by: created_by
+              created_by: created_by,
+              blocked: blocked,
             };
           });
 
