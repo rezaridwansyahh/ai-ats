@@ -8,6 +8,26 @@ import { fileURLToPath } from "url"
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const DEBUG_DIR = path.resolve(__dirname, '../../../../../debug-screenshots');
 
+const delay = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
+
+// page.$() needs a live JS execution context — if a navigation is still
+// settling when it runs (common right after a redirect chain like login ->
+// account-select -> dashboard), Puppeteer throws "Execution context was
+// destroyed" instead of just returning null. That's a timing race, not a
+// real failure, so retry once after a brief pause instead of failing the
+// whole login attempt over it.
+async function safeQuery(page, selector) {
+  try {
+    return await page.$(selector);
+  } catch (err) {
+    if (!err.message.includes('Execution context was destroyed')) {
+      throw err;
+    }
+    await delay(500);
+    return await page.$(selector);
+  }
+}
+
 class SeekLoginService {
   // Saves a screenshot + logs the current URL whenever a login step times
   // out — a bare "selector not found" error otherwise gives zero context on
@@ -49,7 +69,7 @@ class SeekLoginService {
   }
 
   async checkLogin(page) {
-    const loginBtn = await page.$('a[href="/id/oauth/login/"]');
+    const loginBtn = await safeQuery(page, 'a[href="/id/oauth/login/"]');
 
     if(loginBtn) {
       return loginBtn
@@ -119,7 +139,7 @@ class SeekLoginService {
 
     console.log('Account selection page detected');
 
-    const link = await page.$('a[id$="-selectable-link"]');
+    const link = await safeQuery(page, 'a[id$="-selectable-link"]');
     if (!link) {
       throw new Error('Account selection page shown but no selectable account link found');
     }
@@ -139,7 +159,7 @@ class SeekLoginService {
   // retry can't fix, or null if it looks like it succeeded (navigated away
   // from the login form).
   async detectLoginFailure(page) {
-    const captcha = await page.$('iframe[src*="recaptcha"], iframe[title*="captcha" i], [class*="captcha" i]');
+    const captcha = await safeQuery(page, 'iframe[src*="recaptcha"], iframe[title*="captcha" i], [class*="captcha" i]');
     if (captcha) {
       return 'CAPTCHA detected';
     }
@@ -147,7 +167,7 @@ class SeekLoginService {
     // Seek re-renders the same form with an inline error instead of
     // navigating away when credentials are rejected — still seeing the
     // password field after submitting means the login was rejected.
-    const stillOnLoginForm = await page.$('#password');
+    const stillOnLoginForm = await safeQuery(page, '#password');
     if (stillOnLoginForm) {
       return 'Invalid credentials';
     }
@@ -168,7 +188,7 @@ class SeekLoginService {
     // not rendered yet); #emailAddress catches landing directly on the form.
     // Checking only #emailAddress here would miss the first case entirely.
     const loginBtn = await this.checkLogin(page);
-    const needsCredentials = !!loginBtn || !!(await page.$('#emailAddress'));
+    const needsCredentials = !!loginBtn || !!(await safeQuery(page, '#emailAddress'));
 
     if (needsCredentials) {
       if (loginBtn) {
