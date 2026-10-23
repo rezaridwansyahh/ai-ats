@@ -39,10 +39,28 @@ class ExtractJobPostService {
     }
   }
 
-  async redirectJobsPage(page, type) {
-    console.log('Navigating to jobs page');
+  async redirectJobsPage(page, type, pageNum = 1) {
+    console.log(`Navigating to jobs page (page=${pageNum}, type=${type})`);
 
-    await page.goto(`https://id.employer.seek.com/id/jobs?type=${type}`, { waitUntil: 'networkidle2', timeout: 60000 });
+    await page.goto(`https://id.employer.seek.com/id/jobs?page=${pageNum}&type=${type}`, { waitUntil: 'networkidle2', timeout: 60000 });
+  }
+
+  // Reads the "70 iklan lowongan kerja" style header and returns the leading
+  // number — used to compute total pages up front instead of clicking
+  // "next" and hoping it actually navigated (that selector turned out to be
+  // unreliable). Indonesian locale uses "." as a thousands separator (same
+  // issue as candidate_count below), so only the leading digit/dot run is
+  // taken and dots are stripped, rather than stripping all non-digits from
+  // the whole string (which could accidentally pull in unrelated numbers
+  // elsewhere in the text).
+  async getTotalCount(page) {
+    const text = await page.$eval('h2[data-testid="totalCount"]', (el) => el.textContent).catch(() => null);
+    if (!text) return null;
+
+    const match = text.trim().match(/^[\d.]+/);
+    if (!match) return null;
+
+    return Number(match[0].replace(/\./g, ''));
   }
 
   /**
@@ -65,7 +83,7 @@ class ExtractJobPostService {
    * so there's no reason to hold every row's data in memory for the
    * entire run just to throw it away at the end.
    */
-  async extractJobPost(page, { onRow, shouldSkipDetail } = {}) {
+  async extractJobPost(page, type, { onRow, shouldSkipDetail } = {}) {
     console.log('Starting Extract Job Post');
     // Puppeteer pages already know their own parent browser — no need to go
     // through a shared wrapper instance (which no longer exists as a
@@ -73,12 +91,7 @@ class ExtractJobPostService {
     const browser = page.browser();
 
     const counts = { scraped: 0, skipped: 0, failed: 0 };
-    let hasNext = true;
-    // Guards against a "next page" click that doesn't actually navigate
-    // anywhere (stale/misbehaving pagination selector) — without this, a
-    // click that silently no-ops leaves `hasNext` true forever and the loop
-    // re-scrapes the exact same page indefinitely.
-    let lastPageFirstSeekId = null;
+    const PAGE_SIZE = 20; // fixed — Seek's listing has no page-size control/filter
 
     const report = async (data) => {
       counts.scraped++;
@@ -94,10 +107,26 @@ class ExtractJobPostService {
       }
     };
 
-    while(hasNext) {
+    // Page 1 load (via redirectJobsPage, called by syncAll before this)
+    // already has the total-count header available — read it once up front
+    // instead of clicking "next" and discovering the end by trial and
+    // error, which turned out to be unreliable (a disabled/inert "next"
+    // control was still matching our selector and silently no-opping).
+    const totalCount = await this.getTotalCount(page);
+    const totalPages = totalCount != null ? Math.ceil(totalCount / PAGE_SIZE) : 1;
+    console.log(`[extractJobPost] type=${type}: totalCount=${totalCount ?? 'unknown'}, totalPages=${totalPages}`);
+
+    for (let pageNum = 1; pageNum <= totalPages; pageNum++) {
+      if (pageNum > 1) {
+        await this.redirectJobsPage(page, type, pageNum);
+      }
+
       const table = await this.waitForOptionalTable(page);
 
-      if(!table) return counts;
+      if(!table) {
+        console.log(`[extractJobPost] page=${pageNum}: no table found — stopping`);
+        break;
+      }
 
       await page.waitForFunction(() => {
         const firstCell = document.querySelector('table tbody tr td');
@@ -107,18 +136,7 @@ class ExtractJobPostService {
 
       const rows = await page.$$('table tbody tr');
 
-      const firstRowSeekId = rows.length > 0 ? await rows[0].evaluate((row) => {
-        const match = row.getAttribute('data-testid')?.match(/\d+/);
-        return match ? Number(match[0]) : null;
-      }) : null;
-
-      if (firstRowSeekId !== null && firstRowSeekId === lastPageFirstSeekId) {
-        console.log(`[extractJobPost] Pagination didn't advance — still seeing seek_id=${firstRowSeekId} as the first row after clicking next. Stopping instead of looping forever.`);
-        return counts;
-      }
-      lastPageFirstSeekId = firstRowSeekId;
-
-      console.log('Start page');
+      console.log(`Start page ${pageNum}/${totalPages}`);
       for (let i = 0; i < rows.length; i++) {
         // Every row is independently guarded — one row's unexpected
         // failure (timeout, navigation error, unforeseen selector issue)
@@ -319,21 +337,6 @@ class ExtractJobPostService {
           continue;
         }
       }
-      const nextBtn = await page.$('a[rel="next"][aria-hidden="false"]');
-      hasNext = false;
-
-      console.log(nextBtn ? '[extractJobPost] next page button detected' : '[extractJobPost] no next page button — this is the last page');
-
-      if(nextBtn) {
-        await Promise.all([
-          nextBtn.click(),
-          page.waitForNetworkIdle({ idleTime: 500, timeout: 10000 }).catch(() => {}),
-        ]);
-
-        hasNext = true;
-      }
-
-      if (!hasNext) console.log("No more pages.");
     }
 
     return counts;
@@ -349,9 +352,11 @@ class ExtractJobPostService {
    * Returns the same { scraped, skipped, failed } counts as extractJobPost.
    */
   async syncAll(page, type, { onRow, shouldSkipDetail } = {}) {
-    await this.redirectJobsPage(page, type);
+    // Page 1 load — extractJobPost reads the total-count header off this
+    // page before looping, and navigates to page 2+ itself from there.
+    await this.redirectJobsPage(page, type, 1);
 
-    const counts = await this.extractJobPost(page, {
+    const counts = await this.extractJobPost(page, type, {
       shouldSkipDetail: shouldSkipDetail
         ? (basicData) => shouldSkipDetail(basicData, type)
         : undefined,
