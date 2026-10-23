@@ -107,14 +107,10 @@ class ExtractJobPostService {
       }
     };
 
-    // Page 1 load (via redirectJobsPage, called by syncAll before this)
-    // already has the total-count header available — read it once up front
-    // instead of clicking "next" and discovering the end by trial and
-    // error, which turned out to be unreliable (a disabled/inert "next"
-    // control was still matching our selector and silently no-opping).
-    const totalCount = await this.getTotalCount(page);
-    const totalPages = totalCount != null ? Math.ceil(totalCount / PAGE_SIZE) : 1;
-    console.log(`[extractJobPost] type=${type}: totalCount=${totalCount ?? 'unknown'}, totalPages=${totalPages}`);
+    // totalPages isn't known yet — it's only read once page 1's content has
+    // actually rendered (see below). Loop bound starts unbounded and gets
+    // fixed in on the first iteration once we know the real count.
+    let totalPages = 1;
 
     for (let pageNum = 1; pageNum <= totalPages; pageNum++) {
       if (pageNum > 1) {
@@ -133,6 +129,17 @@ class ExtractJobPostService {
         return firstCell && firstCell.textContent.trim() !== '' && !firstCell.textContent.includes('_');
       });
       await delay(1000);
+
+      if (pageNum === 1) {
+        // Read only now that the page's dynamic content has actually
+        // rendered — reading this immediately after navigation (before the
+        // table/content wait above) raced a slower-to-resolve query (seen
+        // live: consistently missing for type=expired, consistently present
+        // for type=open — a deterministic timing gap, not flakiness).
+        const totalCount = await this.getTotalCount(page);
+        totalPages = totalCount != null ? Math.ceil(totalCount / PAGE_SIZE) : 1;
+        console.log(`[extractJobPost] type=${type}: totalCount=${totalCount ?? 'unknown'}, totalPages=${totalPages}`);
+      }
 
       const rows = await page.$$('table tbody tr');
 
