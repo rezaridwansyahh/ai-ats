@@ -15,7 +15,21 @@ const lockKey = (accountId) => `account-lock:${accountId}`;
 // Returns true if acquired, false if another job already holds this
 // account's lock.
 export async function acquireAccountLock(accountId, jobId) {
-  const result = await redis.set(lockKey(accountId), jobId, 'NX', 'EX', LOCK_TTL_SECONDS);
+  const key = lockKey(accountId);
+
+  // A job's own retry reuses the same job.id (deterministic jobIds like
+  // seek-sync-job-post-${account_id}) — if a previous attempt crashed
+  // before releasing, the lock is still sitting there holding THIS job's
+  // own id. Without this check, SET...NX would block the retry on its own
+  // abandoned lock until the 600s TTL happens to expire, repeating that
+  // wait on every subsequent retry in between. Reclaim it instead.
+  const current = await redis.get(key);
+  if (current === jobId) {
+    await redis.expire(key, LOCK_TTL_SECONDS);
+    return true;
+  }
+
+  const result = await redis.set(key, jobId, 'NX', 'EX', LOCK_TTL_SECONDS);
   return result === 'OK';
 }
 

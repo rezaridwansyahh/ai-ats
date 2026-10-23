@@ -1,8 +1,29 @@
 import jobAccountModel from "../../../job-account/job-account.model.js"
 import cookieService from "../../../cookie/cookie.service.js";
 import { decrypt } from "../../../../shared/utils/encrypt.js"
+import fs from "fs"
+import path from "path"
+import { fileURLToPath } from "url"
+
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
+const DEBUG_DIR = path.resolve(__dirname, '../../../../../debug-screenshots');
 
 class SeekLoginService {
+  // Saves a screenshot + logs the current URL whenever a login step times
+  // out — a bare "selector not found" error otherwise gives zero context on
+  // what page was actually loaded (blank page? bot-check? rate-limited?).
+  // Never throws itself — a failure here shouldn't mask the real error.
+  async captureDebugContext(page, label) {
+    try {
+      fs.mkdirSync(DEBUG_DIR, { recursive: true });
+      const filename = `${label}-${Date.now()}.png`;
+      const filepath = path.join(DEBUG_DIR, filename);
+      await page.screenshot({ path: filepath });
+      console.error(`[login.rpa] ${label} failed — url=${page.url()} screenshot=${filepath}`);
+    } catch (captureErr) {
+      console.error(`[login.rpa] ${label} failed — and screenshot capture also failed:`, captureErr.message);
+    }
+  }
   async getAccountAndDecrypt(account_id) {
     const account = await jobAccountModel.getById(account_id);
     
@@ -37,13 +58,26 @@ class SeekLoginService {
 
   async clickLoginButton(page, loginBtn) {
     console.log('Click Login Button');
-    await loginBtn.click();
+    // Clicking triggers an OAuth redirect to the actual email-entry page.
+    // Without waiting for that navigation here, fillEmail starts polling for
+    // #emailAddress immediately and can race the redirect — Promise.all
+    // (not click-then-wait sequentially) avoids missing the navigation event
+    // if it starts before the wait call is even registered.
+    await Promise.all([
+      loginBtn.click(),
+      page.waitForNavigation({ waitUntil: 'networkidle2' }),
+    ]);
   }
 
   async fillEmail(page, email) {
     console.log('Enter email');
 
-    await page.waitForSelector('#emailAddress');
+    try {
+      await page.waitForSelector('#emailAddress');
+    } catch (err) {
+      await this.captureDebugContext(page, 'fillEmail');
+      throw err;
+    }
     await page.type('#emailAddress', email, {delay: 100});
     await page.keyboard.press("Enter");
   }
@@ -51,7 +85,12 @@ class SeekLoginService {
   async fillPassword(page, password) {
     console.log('Enter password');
 
-    await page.waitForSelector('#password');
+    try {
+      await page.waitForSelector('#password');
+    } catch (err) {
+      await this.captureDebugContext(page, 'fillPassword');
+      throw err;
+    }
     await page.type('#password', password, {delay: 100});
     await page.keyboard.press("Enter");
 
