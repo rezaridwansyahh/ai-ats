@@ -175,7 +175,7 @@ class ExtractJobPostService {
           const dotBtn = await this.waitForDotBtn(page, row);
 
           if (!dotBtn) {
-            console.log("no btn");
+            console.log(`[extractJobPost] seek_id=${basicData.seek_id}: dot-btn not found — saving basic data only`);
             await report(basicData);
             continue;
           }
@@ -185,6 +185,7 @@ class ExtractJobPostService {
           const dropdown = await this.waitForDropdown(page);
 
           if (!dropdown) {
+            console.log(`[extractJobPost] seek_id=${basicData.seek_id}: dropdown never opened after dot-btn click — saving basic data only`);
             await report(basicData);
             continue;
           }
@@ -213,6 +214,7 @@ class ExtractJobPostService {
           const freshRow = freshRows[i];  // FIX: different variable name
 
           if (!freshRow) {
+            console.log(`[extractJobPost] seek_id=${basicData.seek_id}: row disappeared after re-query (pagination/DOM shift?) — saving job_desc only`);
             await report({ ...basicData, job_desc: contentDesc });
             continue;
           }
@@ -221,6 +223,7 @@ class ExtractJobPostService {
           const dotBtnAgain = await this.waitForDotBtn(page, freshRow);  // FIX: use freshRow
 
           if (!dotBtnAgain) {
+            console.log(`[extractJobPost] seek_id=${basicData.seek_id}: dot-btn not found on re-query — saving job_desc only`);
             await report({ ...basicData, job_desc: contentDesc });
             continue;
           }
@@ -230,6 +233,7 @@ class ExtractJobPostService {
           const dropdown2 = await this.waitForDropdown(page);
 
           if (!dropdown2) {  // FIX: null check was missing
+            console.log(`[extractJobPost] seek_id=${basicData.seek_id}: dropdown never reopened on re-query — saving job_desc only`);
             await report({ ...basicData, job_desc: contentDesc });
             continue;
           }
@@ -242,6 +246,7 @@ class ExtractJobPostService {
           });
 
           if (!detailBtnClicked) {
+            console.log(`[extractJobPost] seek_id=${basicData.seek_id}: detail menu item not found — saving job_desc only`);
             await report({ ...basicData, job_desc: contentDesc });
             continue;
           }
