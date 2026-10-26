@@ -6,34 +6,48 @@ import {
 import { Button } from '@/components/ui/button';
 import { Input }  from '@/components/ui/input';
 import { Label }  from '@/components/ui/label';
+import {
+  Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
+} from '@/components/ui/select';
 
-export function AccountFormDialog({ open, onOpenChange, account, user, platform, onSubmit, loading }) {
+// `platform` is `{ id, name }` when pre-bound (editing an existing account,
+// or creating from a specific row's "Connect" button) — null when opened
+// from a generic "Add Account" action, in which case `platforms` (the full
+// selectable list) must be provided and the user picks one here instead.
+export function AccountFormDialog({ open, onOpenChange, account, user, platform, platforms, onSubmit, loading }) {
   const isEdit = !!account;
 
   const [email, setEmail]       = useState('');
   const [password, setPassword] = useState('');
+  const [pickedPlatformId, setPickedPlatformId] = useState('');
   const [error, setError]       = useState('');
 
   useEffect(() => {
     if (open) {
       setEmail(account?.email || '');
       setPassword('');
+      setPickedPlatformId('');
       setError('');
     }
   }, [open, account]);
+
+  // The platform this dialog is actually operating on right now — either
+  // pre-bound by the caller, or whatever the user just picked below.
+  const effectivePlatform = platform || platforms?.find((p) => p.id === pickedPlatformId) || null;
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     setError('');
 
+    if (!isEdit && !effectivePlatform) { setError('Choose a platform'); return; }
     if (!email.trim()) { setError('Email is required'); return; }
     if (!isEdit && !password.trim()) { setError('Password is required'); return; }
 
     const payload = { email: email.trim() };
     if (password.trim()) payload.password = password.trim();
 
-    if (!isEdit && platform) {
-      payload.portal_name = platform;
+    if (!isEdit) {
+      payload.portal_name = effectivePlatform.id;
       payload.user_id = user?.id;
     }
 
@@ -45,7 +59,11 @@ export function AccountFormDialog({ open, onOpenChange, account, user, platform,
     }
   };
 
-  const title = isEdit ? `Update ${platform?.name || ''} Account` : `Connect ${platform?.name || ''} Account`;
+  const title = isEdit
+    ? `Update ${effectivePlatform?.name || ''} Account`
+    : effectivePlatform
+      ? `Connect ${effectivePlatform.name} Account`
+      : 'Add Account';
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -55,11 +73,27 @@ export function AccountFormDialog({ open, onOpenChange, account, user, platform,
           <DialogDescription>
             {isEdit
               ? 'Update the credentials for this account.'
-              : `Enter your ${platform?.name || ''} credentials to connect.`}
+              : effectivePlatform
+                ? `Enter your ${effectivePlatform.name} credentials to connect.`
+                : 'Pick a platform, then enter the credentials to connect.'}
           </DialogDescription>
         </DialogHeader>
 
         <form onSubmit={handleSubmit} className="space-y-4">
+          {!isEdit && !platform && (
+            <div className="flex flex-col gap-2">
+              <Label htmlFor="acc-platform">Platform <span className="text-destructive">*</span></Label>
+              <Select value={pickedPlatformId} onValueChange={setPickedPlatformId}>
+                <SelectTrigger id="acc-platform" className="w-full"><SelectValue placeholder="Select a platform" /></SelectTrigger>
+                <SelectContent>
+                  {platforms?.map((p) => (
+                    <SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          )}
+
           <div className="flex flex-col gap-2">
             <Label htmlFor="acc-email">Email <span className="text-destructive">*</span></Label>
             <Input

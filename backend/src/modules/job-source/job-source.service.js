@@ -94,7 +94,7 @@ class JobSourceService {
     return { user, postings };
   }
 
-  async submitSeek(user_id, service, dataForm) {
+  async submitSeek(user_id, service, dataForm, account_id) {
     if (!user_id || !service || !dataForm) {
       throw { status: 400, message: 'user_id, service, and dataForm are required' };
     }
@@ -112,8 +112,17 @@ class JobSourceService {
     const user = await User.getById(user_id);
     if (!user) throw { status: 404, message: 'User not found' };
 
-    const account = await JobAccount.getByUserIdAndPortal(user_id, 'seek');
-    if (!account) throw { status: 404, message: 'No seek account found for this user' };
+    // account_id is now required and explicit — a user can have more than
+    // one Seek account, so "the seek account for this user" is no longer a
+    // well-defined lookup. getById + ownership/platform check instead of
+    // getByUserIdAndPortal, which would just pick an arbitrary one.
+    if (!account_id) {
+      throw { status: 400, message: 'account_id is required' };
+    }
+    const account = await JobAccount.getById(account_id);
+    if (!account || account.user_id !== user_id || account.portal_name !== 'seek') {
+      throw { status: 404, message: 'No matching seek account found for this user' };
+    }
     if (!account.is_active) throw { status: 403, message: 'Seek account is inactive' };
 
     const newPosting = await JobSource.create(

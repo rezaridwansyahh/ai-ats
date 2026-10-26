@@ -280,9 +280,7 @@ CREATE TABLE master_job_account (
   last_connect TIMESTAMP,
   last_sync TIMESTAMP,
   created_at TIMESTAMP NOT NULL DEFAULT NOW(),
-  updated_at TIMESTAMP NOT NULL DEFAULT NOW(),
-
-  UNIQUE(user_id, portal_name)
+  updated_at TIMESTAMP NOT NULL DEFAULT NOW()
 );
 CREATE INDEX idx_master_job_account_company ON master_job_account (company_id);
 

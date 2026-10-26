@@ -94,8 +94,8 @@ class JobSourceController {
 
   async submitSeek(req, res) {
     try {
-      const { user_id, service, dataForm } = req.body;
-      const result = await jobSourceService.submitSeek(user_id, service, dataForm);
+      const { user_id, service, dataForm, account_id } = req.body;
+      const result = await jobSourceService.submitSeek(user_id, service, dataForm, account_id);
       res.status(201).json({ message: 'Seek Job Posting submitted', ...result });
     } catch (err) {
       res.status(err.status || 500).json({ message: err.message });

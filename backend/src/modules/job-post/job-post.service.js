@@ -69,6 +69,9 @@ class JobPostService {
     return jobPost;
   }
 
+  // `platforms` is now an array of { platform, account_id } — a user can
+  // have more than one account per platform, so "the account for this
+  // platform" is no longer well-defined; the caller must say which one.
   async publish({ job_id, type, user_id, platforms = [] }) {
     if (!job_id || !type) {
       throw { status: 400, message: 'job_id and type are required' };
@@ -92,16 +95,19 @@ class JobPostService {
       throw { status: 400, message: 'At least one platform is required for Publish type' };
     }
 
-    const unknown = platforms.filter(p => !SUPPORTED_PLATFORMS.includes(p));
+    const unknown = platforms.filter(p => !SUPPORTED_PLATFORMS.includes(p.platform));
     if (unknown.length > 0) {
-      throw { status: 400, message: `Unsupported platforms: ${unknown.join(', ')}. Supported: ${SUPPORTED_PLATFORMS.join(', ')}` };
+      throw { status: 400, message: `Unsupported platforms: ${unknown.map(p => p.platform).join(', ')}. Supported: ${SUPPORTED_PLATFORMS.join(', ')}` };
     }
 
     const accounts = {};
-    for (const platform of platforms) {
-      const account = await JobAccount.getByUserIdAndPortal(user_id, platform);
-      if (!account) {
-        throw { status: 400, message: `No ${platform} account connected for this user` };
+    for (const { platform, account_id } of platforms) {
+      if (!account_id) {
+        throw { status: 400, message: `account_id is required for platform ${platform}` };
+      }
+      const account = await JobAccount.getById(account_id);
+      if (!account || account.user_id !== user_id || account.portal_name !== platform) {
+        throw { status: 400, message: `No matching ${platform} account found for this user` };
       }
       accounts[platform] = account;
     }
@@ -121,7 +127,7 @@ class JobPostService {
 
     const jobPosts = [];
     const queued = [];
-    for (const platform of platforms) {
+    for (const { platform } of platforms) {
       const account = accounts[platform];
       const jobPost = await JobPost.create(job_id, 'Publish', platform);
       jobPosts.push(jobPost);

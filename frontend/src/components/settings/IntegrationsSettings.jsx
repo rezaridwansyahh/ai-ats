@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
-import { RefreshCw, AlertTriangle, Loader2 } from 'lucide-react';
+import { RefreshCw, AlertTriangle, Loader2, Plus } from 'lucide-react';
 import { Button }   from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -33,6 +33,9 @@ const PRIVATE_CHANNELS = [
   { id: 'facebook', name: 'Facebook' },
   { id: 'whatsapp', name: 'WhatsApp' },
 ];
+
+const ALL_CHANNELS = [...PUBLIC_CHANNELS, ...PRIVATE_CHANNELS];
+const channelFor = (portalName) => ALL_CHANNELS.find((c) => c.id === portalName) || { id: portalName, name: portalName };
 
 // Shared badge tones — warm-cream tokens (bg-muted/text-muted-foreground/
 // border-border), not the hardcoded slate/gray classes the ported version had.
@@ -82,6 +85,15 @@ function syncTone(status) {
  * narrower viewports, it pushed past the card edge and caused horizontal
  * overflow. Rows now stack vertically below `lg` and each inner group
  * wraps/shrinks on its own, so nothing is forced wider than its container.
+ *
+ * Multi-account-per-platform: a user can now have more than one account on
+ * the same platform (e.g. two Seek accounts), so rows are driven by the
+ * actual connected `accounts` list (one row per account), not by mapping
+ * over a fixed per-platform channel list and collapsing to a single match.
+ * A platform with zero accounts shows nothing here — connecting one now
+ * only happens via the single generic "Add Account" button below, which
+ * lets the user pick any platform rather than each row owning its own
+ * "Connect" action.
  */
 export default function IntegrationsSettings() {
   const canCreate = hasPermission('Settings', 'Integrations', 'create');
@@ -116,9 +128,15 @@ export default function IntegrationsSettings() {
   const [submitting, setSubmitting]             = useState(false);
   const [busyAccountId, setBusyAccountId]       = useState(null);
 
-  const openConfigure = (platform, account) => {
-    setSelectedAccount(account || null);
-    setSelectedPlatform(platform);
+  const openEdit = (account) => {
+    setSelectedAccount(account);
+    setSelectedPlatform(channelFor(account.portal_name));
+    setFormOpen(true);
+  };
+
+  const openAddAccount = () => {
+    setSelectedAccount(null);
+    setSelectedPlatform(null); // no platform pre-bound — the dialog shows a picker
     setFormOpen(true);
   };
 
@@ -156,6 +174,9 @@ export default function IntegrationsSettings() {
     );
   }
 
+  const publicAccounts  = accounts.filter((acc) => PUBLIC_CHANNELS.some((c) => c.id === acc.portal_name));
+  const privateAccounts = accounts.filter((acc) => PRIVATE_CHANNELS.some((c) => c.id === acc.portal_name));
+
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between gap-3 flex-wrap">
@@ -165,10 +186,18 @@ export default function IntegrationsSettings() {
             Job portal credentials used to publish jobs and sync applications.
           </p>
         </div>
-        <Button variant="outline" size="sm" onClick={fetchAccounts} disabled={loading}>
-          <RefreshCw className={`h-3.5 w-3.5 ${loading ? 'animate-spin' : ''}`} />
-          Refresh
-        </Button>
+        <div className="flex items-center gap-2">
+          <Button variant="outline" size="sm" onClick={fetchAccounts} disabled={loading}>
+            <RefreshCw className={`h-3.5 w-3.5 ${loading ? 'animate-spin' : ''}`} />
+            Refresh
+          </Button>
+          {canCreate && (
+            <Button size="sm" onClick={openAddAccount}>
+              <Plus className="h-3.5 w-3.5" />
+              Add Account
+            </Button>
+          )}
+        </div>
       </div>
 
       {error && (
@@ -191,18 +220,22 @@ export default function IntegrationsSettings() {
         <CardContent className="px-0 py-0">
           {loading ? (
             <div className="p-4 space-y-3">
-              {Array.from({ length: PUBLIC_CHANNELS.length }).map((_, i) => (
+              {Array.from({ length: 2 }).map((_, i) => (
                 <Skeleton key={i} className="h-14 w-full" />
               ))}
             </div>
+          ) : publicAccounts.length === 0 ? (
+            <div className="px-4 py-6 text-sm text-muted-foreground text-center">
+              No public channel accounts connected yet.
+            </div>
           ) : (
-            PUBLIC_CHANNELS.map((channel) => {
-              const account = accounts.find((acc) => acc.portal_name === channel.id);
-              const busy = busyAccountId === account?.id;
+            publicAccounts.map((account) => {
+              const channel = channelFor(account.portal_name);
+              const busy = busyAccountId === account.id;
 
               return (
                 <div
-                  key={channel.id}
+                  key={account.id}
                   className="flex flex-col gap-3 w-full px-4 py-3 border-b last:border-b-0 lg:flex-row lg:items-center lg:justify-between lg:gap-4"
                 >
                   <div className="flex flex-col gap-3 min-w-0 sm:flex-row sm:flex-wrap sm:items-center sm:gap-8">
@@ -212,14 +245,14 @@ export default function IntegrationsSettings() {
                       </div>
                       <div className="min-w-0">
                         <span className="text-sm font-semibold">{channel.name}</span>
-                        <div className="text-[11px] text-muted-foreground truncate" title={account?.email || ''}>
-                          Account: {account?.email || '—'}
+                        <div className="text-[11px] text-muted-foreground truncate" title={account.email || ''}>
+                          Account: {account.email || '—'}
                         </div>
                       </div>
                     </div>
                     <div className="text-xs text-muted-foreground space-y-0.5 shrink-0">
-                      <div>Last connection: {account?.last_connect ? formatSinceDate(account.last_connect) : '—'}</div>
-                      <div>Last sync: {account?.last_sync ? formatSinceDate(account.last_sync) : '—'}</div>
+                      <div>Last connection: {account.last_connect ? formatSinceDate(account.last_connect) : '—'}</div>
+                      <div>Last sync: {account.last_sync ? formatSinceDate(account.last_sync) : '—'}</div>
                     </div>
                   </div>
 
@@ -227,14 +260,14 @@ export default function IntegrationsSettings() {
                     <div className="space-y-1">
                       <div className="flex items-center justify-between gap-3">
                         <span className="text-xs text-muted-foreground">Status</span>
-                        <StatusBadge tone={connectionTone(account?.status_connection)}>
-                          {account?.status_connection === 'Re-connecting' ? 'Re-connecting…' : (account?.status_connection || 'Not connected')}
+                        <StatusBadge tone={connectionTone(account.status_connection)}>
+                          {account.status_connection === 'Re-connecting' ? 'Re-connecting…' : (account.status_connection || 'Not connected')}
                         </StatusBadge>
                       </div>
                       <div className="flex items-center justify-between gap-3">
                         <span className="text-xs text-muted-foreground">Sync</span>
-                        <StatusBadge tone={syncTone(account?.status_sync)}>
-                          {account?.status_sync === 'Sync' ? 'Synced' : account?.status_sync === 'Re-sync' ? 'Re-syncing…' : (account?.status_sync || 'Not synced')}
+                        <StatusBadge tone={syncTone(account.status_sync)}>
+                          {account.status_sync === 'Sync' ? 'Synced' : account.status_sync === 'Re-sync' ? 'Re-syncing…' : (account.status_sync || 'Not synced')}
                         </StatusBadge>
                       </div>
                     </div>
@@ -243,7 +276,7 @@ export default function IntegrationsSettings() {
                       <Button
                         size="sm"
                         variant="outline"
-                        disabled={!canEdit || !account || account?.status_connection !== 'Connected' || busy}
+                        disabled={!canEdit || account.status_connection !== 'Connected' || busy}
                         onClick={() => runAccountAction(account, syncSeekJobPosts, {
                           loading: 'Queuing sync…', success: 'Sync queued', error: 'Failed to queue sync',
                         })}
@@ -253,16 +286,16 @@ export default function IntegrationsSettings() {
                       <Button
                         size="sm"
                         variant="outline"
-                        disabled={!canEdit || !account || account?.status_connection === 'Re-connecting' || busy}
+                        disabled={!canEdit || account.status_connection === 'Re-connecting' || busy}
                         onClick={() => runAccountAction(account, checkConnection, {
                           loading: 'Checking connection…', success: 'Connection check queued', error: 'Failed to check connection',
                         })}
                       >
                         {busy ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : 'Re-connect'}
                       </Button>
-                      {(account ? canEdit : canCreate) && (
-                        <Button size="sm" onClick={() => openConfigure(channel.id, account)}>
-                          {account ? 'Configure' : 'Connect'}
+                      {canEdit && (
+                        <Button size="sm" onClick={() => openEdit(account)}>
+                          Configure
                         </Button>
                       )}
                     </div>
@@ -287,17 +320,21 @@ export default function IntegrationsSettings() {
         <CardContent className="px-0 py-0">
           {loading ? (
             <div className="p-4 space-y-3">
-              {Array.from({ length: PRIVATE_CHANNELS.length }).map((_, i) => (
+              {Array.from({ length: 2 }).map((_, i) => (
                 <Skeleton key={i} className="h-14 w-full" />
               ))}
             </div>
+          ) : privateAccounts.length === 0 ? (
+            <div className="px-4 py-6 text-sm text-muted-foreground text-center">
+              No private channel accounts connected yet.
+            </div>
           ) : (
-            PRIVATE_CHANNELS.map((channel) => {
-              const account = accounts.find((acc) => acc.portal_name === channel.id);
+            privateAccounts.map((account) => {
+              const channel = channelFor(account.portal_name);
 
               return (
                 <div
-                  key={channel.id}
+                  key={account.id}
                   className="flex flex-col gap-3 w-full px-4 py-3 border-b last:border-b-0 lg:flex-row lg:items-center lg:justify-between lg:gap-4"
                 >
                   <div className="flex flex-col gap-3 min-w-0 sm:flex-row sm:flex-wrap sm:items-center sm:gap-8">
@@ -307,17 +344,16 @@ export default function IntegrationsSettings() {
                       </div>
                       <div className="min-w-0">
                         <span className="text-sm font-semibold truncate block">{channel.name}</span>
+                        <div className="text-[11px] text-muted-foreground truncate" title={account.email || ''}>
+                          Account: {account.email || '—'}
+                        </div>
                         <div>
-                          {account ? (
-                            <StatusBadge tone="positive">{account.condition || 'Connected'}</StatusBadge>
-                          ) : (
-                            <StatusBadge tone="negative">Not connected</StatusBadge>
-                          )}
+                          <StatusBadge tone="positive">{account.condition || 'Connected'}</StatusBadge>
                         </div>
                       </div>
                     </div>
                     <div className="text-xs text-muted-foreground shrink-0">
-                      Last connection: {account?.last_connect ? formatSinceDate(account.last_connect) : '—'}
+                      Last connection: {account.last_connect ? formatSinceDate(account.last_connect) : '—'}
                     </div>
                   </div>
 
@@ -325,16 +361,16 @@ export default function IntegrationsSettings() {
                     <Button
                       size="sm"
                       variant="outline"
-                      disabled={!canEdit || !account}
+                      disabled={!canEdit}
                       onClick={() => toast.promise(new Promise((resolve) => setTimeout(resolve, 3000)), {
                         position: 'top-center', loading: 'Reconnecting…', success: 'Reconnected', error: 'Failed to reconnect',
                       })}
                     >
                       Re-connect
                     </Button>
-                    {(account ? canEdit : canCreate) && (
-                      <Button size="sm" onClick={() => openConfigure(channel.id, account)}>
-                        {account ? 'Configure' : 'Connect'}
+                    {canEdit && (
+                      <Button size="sm" onClick={() => openEdit(account)}>
+                        Configure
                       </Button>
                     )}
                   </div>
@@ -351,6 +387,7 @@ export default function IntegrationsSettings() {
         account={selectedAccount}
         user={user}
         platform={selectedPlatform}
+        platforms={ALL_CHANNELS}
         onSubmit={handleCreateOrUpdate}
         loading={submitting}
       />
