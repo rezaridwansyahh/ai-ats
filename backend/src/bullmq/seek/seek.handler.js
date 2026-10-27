@@ -22,13 +22,16 @@ const deleteJobPostDraftHandler = async (data) => {
 }
 
 const extractCandidateHandler = async (data, job) => {
-  // priority <= 2 means linked (see the priority table in seek.producer.js) —
-  // linked sourcings always run; unlinked ones are deferred to the
-  // 9PM-5AM night window so business hours are reserved for high-priority
-  // work. Picked up again by the next night sweep if skipped here.
-  const linked = (job?.opts?.priority ?? 1) <= 2;
+  // Only priority 4 (unlinked + scheduler — see the priority table in
+  // seek.producer.js) gets deferred to the 9PM-5AM night window. A manual
+  // click always runs immediately regardless of linked status (priority
+  // 1 or 3) — the night-window restriction is specifically about keeping
+  // *automated* low-priority sweeps out of business hours, not about
+  // second-guessing something a human just explicitly asked for. Picked up
+  // again by the next night sweep if skipped here.
+  const isAutomatedUnlinked = job?.opts?.priority === 4;
 
-  if (!linked && !isNightWindow()) {
+  if (isAutomatedUnlinked && !isNightWindow()) {
     console.log(`[Worker] Skipping unlinked job_sourcing ${data.job_sourcing_id} — outside night window`);
     return;
   }
