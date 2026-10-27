@@ -139,8 +139,16 @@ class SeekLoginService {
 
     console.log('Account selection page detected');
 
-    const link = await safeQuery(page, 'a[id$="-selectable-link"]');
+    // A one-shot page.$() right after the URL matches races the page's own
+    // render — same class of timing issue already found elsewhere in this
+    // file (networkidle0 too strict, execution-context-destroyed on
+    // chained redirects). Give it a real window to actually render instead
+    // of concluding "no link" from a single snapshot.
+    const link = await page
+      .waitForSelector('a[id$="-selectable-link"]', { timeout: 5000 })
+      .catch(() => null);
     if (!link) {
+      await this.captureDebugContext(page, 'handleAccountSelection-noLink');
       throw new Error('Account selection page shown but no selectable account link found');
     }
 
