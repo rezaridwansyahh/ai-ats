@@ -136,8 +136,11 @@ class SeekService {
     }
     const page = browserInstance.getPage();
 
-    // Jobs this sourcing is linked to (origin + manually-mapped). Each synced
-    // applicant is auto-promoted to a candidate for every linked job.
+    // Jobs this sourcing is linked to (origin + manually-mapped), as of the
+    // start of this run — only used for the summary returned below, NOT for
+    // the actual per-candidate auto-promotion (that re-fetches fresh inside
+    // onSave, since a link can be added while this run is already in
+    // progress — see the comment there for why a stale snapshot is wrong).
     const linkedJobIds = await jobSourceModel.getLinkedJobIds(job_sourcing_id);
 
     // Resolve the owning company from the job account so synced applicants are
@@ -290,8 +293,18 @@ class SeekService {
           // Auto-promote to candidate for every job this sourcing is linked to.
           // Dup-safe (ON CONFLICT DO NOTHING) and individually guarded so one
           // failure never aborts the batch.
+          //
+          // Fetched fresh per candidate, not reusing the function-level
+          // `linkedJobIds` snapshotted once at the top of extractCandidates —
+          // a link added mid-sync (via job-source.service.js:linkToJob,
+          // while this run is already in progress) would otherwise never
+          // promote candidates saved *after* the link but still using the
+          // stale pre-link snapshot. linkToJob's own backfill only catches
+          // applicants already in the DB at the moment of linking; anything
+          // this run saves afterward falls through unless re-checked here.
           if (applicant?.id) {
-            for (const jobId of linkedJobIds) {
+            const currentLinkedJobIds = await jobSourceModel.getLinkedJobIds(job_sourcing_id);
+            for (const jobId of currentLinkedJobIds) {
               try {
                 const created = await candidatePipelineModel.createFromApplicantIfAbsent(applicant.id, jobId);
                 if (created) {
