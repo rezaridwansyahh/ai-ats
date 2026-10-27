@@ -1,12 +1,7 @@
 import jobAccountModel from "../../../job-account/job-account.model.js"
 import cookieService from "../../../cookie/cookie.service.js";
 import { decrypt } from "../../../../shared/utils/encrypt.js"
-import fs from "fs"
-import path from "path"
-import { fileURLToPath } from "url"
-
-const __dirname = path.dirname(fileURLToPath(import.meta.url));
-const DEBUG_DIR = path.resolve(__dirname, '../../../../../debug-screenshots');
+import { captureDebugContext } from "../../../../shared/utils/rpa-debug.js"
 
 const delay = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 
@@ -29,21 +24,6 @@ async function safeQuery(page, selector) {
 }
 
 class SeekLoginService {
-  // Saves a screenshot + logs the current URL whenever a login step times
-  // out — a bare "selector not found" error otherwise gives zero context on
-  // what page was actually loaded (blank page? bot-check? rate-limited?).
-  // Never throws itself — a failure here shouldn't mask the real error.
-  async captureDebugContext(page, label) {
-    try {
-      fs.mkdirSync(DEBUG_DIR, { recursive: true });
-      const filename = `${label}-${Date.now()}.png`;
-      const filepath = path.join(DEBUG_DIR, filename);
-      await page.screenshot({ path: filepath });
-      console.error(`[login.rpa] ${label} failed — url=${page.url()} screenshot=${filepath}`);
-    } catch (captureErr) {
-      console.error(`[login.rpa] ${label} failed — and screenshot capture also failed:`, captureErr.message);
-    }
-  }
   async getAccountAndDecrypt(account_id) {
     const account = await jobAccountModel.getById(account_id);
     
@@ -95,7 +75,7 @@ class SeekLoginService {
     try {
       await page.waitForSelector('#emailAddress');
     } catch (err) {
-      await this.captureDebugContext(page, 'fillEmail');
+      await captureDebugContext(page, 'fillEmail');
       throw err;
     }
     await page.type('#emailAddress', email, {delay: 100});
@@ -108,7 +88,7 @@ class SeekLoginService {
     try {
       await page.waitForSelector('#password');
     } catch (err) {
-      await this.captureDebugContext(page, 'fillPassword');
+      await captureDebugContext(page, 'fillPassword');
       throw err;
     }
     await page.type('#password', password, {delay: 100});
@@ -122,7 +102,7 @@ class SeekLoginService {
       // would time out even on an otherwise-successful login.
       await page.waitForNavigation({ waitUntil: 'networkidle2' });
     } catch (err) {
-      await this.captureDebugContext(page, 'fillPassword-postsubmit');
+      await captureDebugContext(page, 'fillPassword-postsubmit');
       throw err;
     }
   }
@@ -148,7 +128,7 @@ class SeekLoginService {
       .waitForSelector('a[id$="-selectable-link"]', { timeout: 5000 })
       .catch(() => null);
     if (!link) {
-      await this.captureDebugContext(page, 'handleAccountSelection-noLink');
+      await captureDebugContext(page, 'handleAccountSelection-noLink');
       throw new Error('Account selection page shown but no selectable account link found');
     }
 
@@ -158,7 +138,7 @@ class SeekLoginService {
         page.waitForNavigation({ waitUntil: 'networkidle2' }),
       ]);
     } catch (err) {
-      await this.captureDebugContext(page, 'handleAccountSelection');
+      await captureDebugContext(page, 'handleAccountSelection');
       throw err;
     }
   }

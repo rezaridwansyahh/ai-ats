@@ -1,4 +1,5 @@
 import SeekJobMapper from '../../../../shared/utils/data-mapper-seek.js';
+import { captureDebugContext } from '../../../../shared/utils/rpa-debug.js';
 
 const delay = (ms) => new Promise(r => setTimeout(r, ms));
 
@@ -6,7 +7,7 @@ class ExtractJobPostService {
   async waitForOptionalTable(page) {
     try {
       const table = await page.waitForSelector('table tbody tr td', {
-        timeout: 3000 // wait max 3 seconds
+        timeout: 10000 // wait max 10 seconds 
       });
 
       return table; // table exists
@@ -121,6 +122,7 @@ class ExtractJobPostService {
 
       if(!table) {
         console.log(`[extractJobPost] page=${pageNum}: no table found — stopping`);
+        await captureDebugContext(page, `extractJobPost-noTable-page${pageNum}`);
         break;
       }
 
