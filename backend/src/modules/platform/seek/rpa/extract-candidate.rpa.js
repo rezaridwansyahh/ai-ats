@@ -314,6 +314,16 @@ class ExtractCandidateService {
         // Email isn't shown on the card, only inside the opened detail drawer —
         // Seek renders it as an aria-label like `Email someone@example.com`
         // rather than plain text, so match on the label prefix and strip it off.
+        //
+        // `[aria-label^="Email "]` is not unique to the real email field —
+        // confirmed live it also matches an unrelated UI badge (logged value
+        // was literally "(1)", a notification-style count, not an address).
+        // That's dangerous, not just wrong: applicantModel.create() does a
+        // GLOBAL getByEmail() lookup, so a non-null garbage value causes
+        // every candidate sharing it to collapse into (overwrite) the same
+        // master_applicant row instead of each getting their own. Validate
+        // it actually looks like an email before trusting it — anything else
+        // is treated as "no email found", same as the field being absent.
         const email = await page.evaluate(() => {
           const el = document.querySelector('[aria-label^="Email "]');
           if (!el) return null;
@@ -321,8 +331,9 @@ class ExtractCandidateService {
           const value = label.replace(/^Email\s*/i, '').trim();
           return value || null;
         });
+        const validEmail = email && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email) ? email : null;
 
-        console.log(`Email: ${email}`);
+        console.log(`Email: ${validEmail ?? `(discarded invalid value: "${email}")`}`);
 
         if (!candidateId) {
           console.log('No candidate_id found, skipping...');
@@ -404,7 +415,7 @@ class ExtractCandidateService {
 
         await delay(500);
         progress++;
-        const candidate = { ...cardData, candidate_id: candidateId, progress, attachment: resumeFileName, email, cv_status: cvStatus };
+        const candidate = { ...cardData, candidate_id: candidateId, progress, attachment: resumeFileName, email: validEmail, cv_status: cvStatus };
 
         // Save immediately rather than buffering — persists progress as we go
         // instead of holding the whole bucket in memory until it's all done.

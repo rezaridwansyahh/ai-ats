@@ -158,13 +158,19 @@ class ApplicantModel {
     return result.rows;
   }
 
-  async getByEmail(email) {
+  // Scoped by company_id — this is what create()'s email-match dedup uses to
+  // decide "same person, update in place" vs "new applicant, insert". Without
+  // the company scope, a bad/garbage email value shared across companies
+  // (e.g. a scraper selector bug capturing a UI badge instead of a real
+  // address) could merge one company's candidate into a different company's
+  // applicant row. Only caller is create(), below.
+  async getByEmail(email, company_id = null) {
     const result = await getDb().query(`
       SELECT * FROM master_applicant
-      WHERE email = $1
+      WHERE email = $1 AND ($2::integer IS NULL OR company_id = $2)
       ORDER BY id ASC
       LIMIT 1
-    `, [email]);
+    `, [email, company_id]);
     return result.rows[0];
   }
 
@@ -247,7 +253,7 @@ class ApplicantModel {
     const infoJson = information ? JSON.stringify(information) : null;
 
     let applicant;
-    const existing = email ? await this.getByEmail(email) : null;
+    const existing = email ? await this.getByEmail(email, company_id || null) : null;
 
     if (existing) {
       const result = await getDb().query(`
