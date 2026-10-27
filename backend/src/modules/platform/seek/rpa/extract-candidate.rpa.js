@@ -146,6 +146,11 @@ class ExtractCandidateService {
 
     let saved = 0;
     let skipped = 0;
+    // Guards against a "next page" click that doesn't actually navigate
+    // anywhere (same unreliable a[rel="next"] pattern already found stuck
+    // in extract-job-post.rpa.js) — without this, a click that silently
+    // no-ops leaves this `while (true)` re-scraping the same page forever.
+    let lastFirstCardName = null;
 
     // Download to a temp staging dir — at this point the applicant doesn't have
     // a master_applicant row yet (that only exists after seek.service.js calls
@@ -171,6 +176,12 @@ class ExtractCandidateService {
         return card?.querySelector('span')?.innerText?.trim() || null;
       });
       console.log(`\nFound ${totalCards} candidate cards on this page — url=${page.url()} firstCard="${firstCardName}"`);
+
+      if (firstCardName !== null && firstCardName === lastFirstCardName) {
+        console.log(`[extractCandidates] Pagination didn't advance — still seeing "${firstCardName}" as the first card after clicking next. Stopping instead of looping forever.`);
+        break;
+      }
+      lastFirstCardName = firstCardName;
 
       for (let i = 0; i < totalCards; i++) {
         const cardSelector = `[data-testid="job-application-card-${i}"]`;
