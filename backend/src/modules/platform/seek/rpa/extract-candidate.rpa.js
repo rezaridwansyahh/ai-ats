@@ -170,10 +170,21 @@ class ExtractCandidateService {
 
       // Diagnostic: proves whether a "next page" click actually advanced
       // anything, or whether we're re-reading the same page's stale DOM —
-      // the page count/skip logs alone can't tell those two apart.
+      // the page count/skip logs alone can't tell those two apart. Must use
+      // the same filtered-span logic as the real name extraction below
+      // (first span with length > 1) — grabbing the literal first <span>
+      // in the card (as this used to) hits an icon/badge span that's empty
+      // or non-name text, so it was always null and silently disabled the
+      // stuck-pagination guard below (confirmed live: the exact same 20
+      // candidates repeated for 30,000+ cycles with firstCard="null" every
+      // time, because null was explicitly excluded from the comparison).
       const firstCardName = await page.evaluate(() => {
         const card = document.querySelector('[data-testid="job-application-card-0"]');
-        return card?.querySelector('span')?.innerText?.trim() || null;
+        if (!card) return null;
+        const spans = Array.from(card.querySelectorAll('span'))
+          .map((s) => s.innerText.trim())
+          .filter((t) => t.length > 1);
+        return spans[0] || null;
       });
       console.log(`\nFound ${totalCards} candidate cards on this page — url=${page.url()} firstCard="${firstCardName}"`);
 
