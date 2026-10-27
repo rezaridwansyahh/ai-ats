@@ -1,5 +1,6 @@
 import SeekJobMapper from '../../../../shared/utils/data-mapper-seek.js';
 import { captureDebugContext } from '../../../../shared/utils/rpa-debug.js';
+import loginRpa from './login.rpa.js';
 
 const delay = (ms) => new Promise(r => setTimeout(r, ms));
 
@@ -44,6 +45,15 @@ class ExtractJobPostService {
     console.log(`Navigating to jobs page (page=${pageNum}, type=${type})`);
 
     await page.goto(`https://id.employer.seek.com/id/jobs?page=${pageNum}&type=${type}`, { waitUntil: 'networkidle2', timeout: 60000 });
+
+    // Account-selection can intercept ANY navigation, not just the initial
+    // login — confirmed live: this exact goto() landed on
+    // /account/select?returnUrl=%2Fid%2Fjobs... right after login had
+    // already resolved account-selection once. handleAccountSelection
+    // no-ops if we're not actually on that page, so this is safe to call
+    // unconditionally. Its own click navigates us to the page Seek's
+    // returnUrl points at — which is this exact URL, so no need to re-goto.
+    await loginRpa.handleAccountSelection(page);
   }
 
   // Reads the "70 iklan lowongan kerja" style header and returns the leading
