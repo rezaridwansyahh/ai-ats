@@ -125,32 +125,33 @@ class ExtractCandidateService {
 
     await page.waitForSelector('[data-testid="job-application-card"]');
 
-    // Click to open filter for full candidate list
-    try {
-      await page.waitForSelector('[data-testid="status-folder-buttons"]');
-      const filterOn = await page.evaluate(() => {
-        const filterBtn = document.querySelector('input[id="must-have-toggle"]');
-        return !!filterBtn && filterBtn.checked;
-      });
+    // Re-checked after every page.goto() too, not just once up front — a hard
+    // navigation (as opposed to the old in-app "next page" click) might not
+    // preserve this client-side toggle state, so re-verifying per page is the
+    // safe default even if Seek does happen to persist it.
+    const ensureFilterOff = async () => {
+      try {
+        await page.waitForSelector('[data-testid="status-folder-buttons"]');
+        const filterOn = await page.evaluate(() => {
+          const filterBtn = document.querySelector('input[id="must-have-toggle"]');
+          return !!filterBtn && filterBtn.checked;
+        });
 
-      if (filterOn) {
-        await page.click('input[id="must-have-toggle"]');
-        await delay(1000);
-        console.log('Filter toggle was on, turned off');
-      } else {
-        console.log('Filter toggle already off');
+        if (filterOn) {
+          await page.click('input[id="must-have-toggle"]');
+          await delay(1000);
+          console.log('Filter toggle was on, turned off');
+        } else {
+          console.log('Filter toggle already off');
+        }
+      } catch (error) {
+        console.log('Filter toggle not found or already open');
       }
-    } catch (error) {
-      console.log('Filter toggle not found or already open');
-    }
+    };
+    await ensureFilterOff();
 
     let saved = 0;
     let skipped = 0;
-    // Guards against a "next page" click that doesn't actually navigate
-    // anywhere (same unreliable a[rel="next"] pattern already found stuck
-    // in extract-job-post.rpa.js) — without this, a click that silently
-    // no-ops leaves this `while (true)` re-scraping the same page forever.
-    let lastFirstCardName = null;
 
     // Download to a temp staging dir — at this point the applicant doesn't have
     // a master_applicant row yet (that only exists after seek.service.js calls
@@ -162,37 +163,34 @@ class ExtractCandidateService {
     const downloadDir = path.join(os.tmpdir(), 'seek-cv-staging', `${account_id}_${seek_id}_${safeName}`);
     fs.mkdirSync(downloadDir, { recursive: true });
 
-    while (true) {
+    // Direct URL pagination — same fix already applied to extract-job-post.rpa.js,
+    // for the same reason: clicking a[rel="next"] can silently no-op, leaving
+    // the old `while (true)` loop re-scraping the same page forever (confirmed
+    // live: the same 20 candidates repeated for 30,000+ cycles). Bucket
+    // switching itself still happens via the tab click (seek.service.js /
+    // navigateToCandidateDetail) — that's never been the source of a stuck
+    // loop, only "next page" clicking was — so we capture whatever `s=`
+    // filter param that click (or a resume deep-link) already landed on,
+    // rather than guessing the `s=` value per bucket name.
+    const startUrl = new URL(page.url());
+    const sParam = startUrl.searchParams.get('s');
+    const startPage = parseInt(startUrl.searchParams.get('p') || '1', 10);
+    const totalPages = Math.max(1, Math.ceil((candidateType.count || 0) / 20));
+
+    for (let pageNum = startPage; pageNum <= totalPages; pageNum++) {
+      if (pageNum > startPage) {
+        const pageUrl = `https://id.employer.seek.com/id/candidates/?jobid=${seek_id}&p=${pageNum}${sParam ? `&s=${sParam}` : ''}`;
+        console.log(`Going to page ${pageNum}/${totalPages}: ${pageUrl}`);
+        await page.goto(pageUrl, { waitUntil: 'networkidle2', timeout: 60000 });
+        await page.waitForSelector('[data-testid="job-application-card"]', { timeout: 10000 }).catch(() => {});
+        await ensureFilterOff();
+      }
+
       await delay(1000);
       const totalCards = await page.evaluate(() => {
         return document.querySelectorAll('[data-testid="job-application-card"]').length;
       });
-
-      // Diagnostic: proves whether a "next page" click actually advanced
-      // anything, or whether we're re-reading the same page's stale DOM —
-      // the page count/skip logs alone can't tell those two apart. Must use
-      // the same filtered-span logic as the real name extraction below
-      // (first span with length > 1) — grabbing the literal first <span>
-      // in the card (as this used to) hits an icon/badge span that's empty
-      // or non-name text, so it was always null and silently disabled the
-      // stuck-pagination guard below (confirmed live: the exact same 20
-      // candidates repeated for 30,000+ cycles with firstCard="null" every
-      // time, because null was explicitly excluded from the comparison).
-      const firstCardName = await page.evaluate(() => {
-        const card = document.querySelector('[data-testid="job-application-card-0"]');
-        if (!card) return null;
-        const spans = Array.from(card.querySelectorAll('span'))
-          .map((s) => s.innerText.trim())
-          .filter((t) => t.length > 1);
-        return spans[0] || null;
-      });
-      console.log(`\nFound ${totalCards} candidate cards on this page — url=${page.url()} firstCard="${firstCardName}"`);
-
-      if (firstCardName !== null && firstCardName === lastFirstCardName) {
-        console.log(`[extractCandidates] Pagination didn't advance — still seeing "${firstCardName}" as the first card after clicking next. Stopping instead of looping forever.`);
-        break;
-      }
-      lastFirstCardName = firstCardName;
+      console.log(`\nPage ${pageNum}/${totalPages} — found ${totalCards} candidate cards — url=${page.url()}`);
 
       for (let i = 0; i < totalCards; i++) {
         const cardSelector = `[data-testid="job-application-card-${i}"]`;
@@ -428,28 +426,6 @@ class ExtractCandidateService {
       }
 
       console.log(`Candidates saved so far: ${saved}, skipped (already synced): ${skipped}`);
-      console.log('\nChecking for next page...');
-
-      const nextBtn = await page.$('a[rel="next"][aria-hidden="false"]');
-
-      if (nextBtn) {
-        console.log("Next page detected, clicking...");
-
-        await Promise.all([
-          nextBtn.click(),
-          page.waitForNetworkIdle({ idleTime: 500, timeout: 10000 }).catch(() => {}),
-        ]);
-      }
-
-      if (!nextBtn) {
-        console.log('No more pages. Done!');
-        break;
-      }
-
-      console.log('Going to next page...');
-      await delay(3000);
-      await page.waitForSelector('[data-testid="job-application-card"]');
-      await delay(2000);
     }
 
     console.log(`\nTotal candidates saved: ${saved}, skipped: ${skipped}`);

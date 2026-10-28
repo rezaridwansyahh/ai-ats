@@ -280,6 +280,22 @@ class SeekService {
                     buffer, path.basename(savedPath), { company_id, metadata: { applicant_id: applicant.id } }
                   );
                   await screeningModel.setApplicantInformation(applicant.id, facets);
+
+                  // Backfill email from the CV parse if the Seek scrape never
+                  // got one — only when the applicant has none yet (never
+                  // overwrite a real scraped value) and only when it's safe:
+                  // company-scoped getByEmail must find nobody else already
+                  // using it, otherwise we'd silently recreate the exact
+                  // cross-candidate merge bug this whole area was fixed for.
+                  if (!applicant.email && facets.email && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(facets.email)) {
+                    const collision = await applicantModel.getByEmail(facets.email, company_id || null);
+                    if (!collision) {
+                      await applicantModel.updateEmail(applicant.id, facets.email);
+                      applicant.email = facets.email;
+                    } else if (collision.id !== applicant.id) {
+                      console.log(`CV-parsed email for applicant ${applicant.id} collides with existing applicant ${collision.id} — left unset`);
+                    }
+                  }
                 } catch (err) {
                   console.error(`Failed to parse CV for applicant ${applicant.id}:`, err.message);
                 }
