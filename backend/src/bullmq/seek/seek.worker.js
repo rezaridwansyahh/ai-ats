@@ -1,4 +1,4 @@
-import { Worker, UnrecoverableError } from 'bullmq';
+import { Worker, UnrecoverableError, DelayedError } from 'bullmq';
 import redisConfig from '../../config/redis.js';
 import { acquireAccountLock, releaseAccountLock } from '../../shared/utils/account-lock.js';
 
@@ -14,9 +14,14 @@ function cappedBackoff(attemptsMade) {
   return Math.min(2000 * Math.pow(2, attemptsMade - 1), BACKOFF_CEILING_MS);
 }
 
+// How long to park a job whose account is busy before checking again.
+// Jitter spreads out several jobs waiting on the same account.
+const LOCK_WAIT_BASE_MS = 30 * 1000;
+const LOCK_WAIT_JITTER_MS = 15 * 1000;
+
 const scrapingWorker = new Worker(
   'seek',
-  async (job) => {
+  async (job, token) => {
     console.log(`[Worker] Processing ${job.name} - Job ID: ${job.id}`);
 
     const handler = handlers[job.name];
@@ -39,10 +44,15 @@ const scrapingWorker = new Worker(
 
     if (!acquired) {
       // Same account already has a job in flight (Chrome's userDataDir is
-      // per-account, so they can't run concurrently). Throw a plain error —
-      // NOT UnrecoverableError — so BullMQ's backoff requeues this job and
-      // the worker slot is freed immediately to pick up a different account.
-      throw new Error(`Account ${accountId} is locked by another job — will retry`);
+      // per-account, so they can't run concurrently). Park the job as delayed
+      // instead of failing it: a thrown error would use up one of the queue's
+      // 2 attempts, so a busy account made waiting jobs fail permanently.
+      // DelayedError tells BullMQ this is not a failure, and frees the worker
+      // slot for a different account.
+      const waitMs = LOCK_WAIT_BASE_MS + Math.floor(Math.random() * LOCK_WAIT_JITTER_MS);
+      console.log(`[Worker] Account ${accountId} busy — delaying ${job.name} (${job.id}) by ${Math.round(waitMs / 1000)}s`);
+      await job.moveToDelayed(Date.now() + waitMs, token);
+      throw new DelayedError();
     }
 
     try {
