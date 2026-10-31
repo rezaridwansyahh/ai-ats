@@ -191,6 +191,12 @@ CREATE TABLE company_setting (
   UNIQUE(company_id, key)
 );
 
+CREATE TABLE company_application_form (
+  company_id INTEGER REFERENCES core_company(id) ON DELETE CASCADE,
+  schema JSONB DEFAULT '{}'::jsonb,
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
 CREATE TABLE company_usage (
   id SERIAL PRIMARY KEY,
   company_id INTEGER REFERENCES core_company(id) ON DELETE CASCADE,
@@ -667,8 +673,8 @@ CREATE TABLE screening_qa (
   num_questions INTEGER,
   questions JSONB NOT NULL,
   answers JSONB,
-  application_form        JSONB,        
-  application_form_schema JSONB,       
+  application_form        JSONB,
+  application_form_schema JSONB,
   status screening_qa_status_type NOT NULL DEFAULT 'draft',
   sent_at  TIMESTAMPTZ,
   responded_at TIMESTAMPTZ,

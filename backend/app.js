@@ -12,10 +12,6 @@ import express from "express";
 import cors from 'cors';
 import { Router } from 'express';
 
-const portal = Router();
-
-const app = express();
-
 import cookies from "./src/modules/cookie/cookie.route.js";
 import linkedin from "./src/modules/platform/linkedin/linkedin.route.js"
 import seek from "./src/modules/platform/seek/seek.route.js"
@@ -69,6 +65,10 @@ import onboardingQuestion from "./src/modules/onboarding assessment/question/onb
 import chatBotSource from "./src/modules/chat-bot/source/source.route.js";
 import chatBotConversation from "./src/modules/chat-bot/conversation/conversation.route.js";
 import chatBotMessage from "./src/modules/chat-bot/message/message.route.js";
+import form from "./src/modules/application-form/form.route.js";
+
+const app = express();
+const api = Router();
 
 app.use(express.json());
 
@@ -93,113 +93,62 @@ app.use(cors({
   credentials: true,
 }));
 
-portal.use("/api/auth", auth);
-portal.use("/api/cookies", cookies);
-portal.use("/api/linkedin", linkedin);
-portal.use("/api/seek", seek);
-portal.use("/api/role", role);
-portal.use("/api/user", user);
-portal.use("/api/permission", permission);
-portal.use("/api/module", module);
-portal.use("/api/menu", menu);
-portal.use("/api/job-account", jobAccount);
-portal.use("/api/job-posting", jobPosting);
-portal.use("/api/job-sourcing", jobSourcing);
-portal.use("/api/job", job);
-portal.use("/api/applicant", applicant);
-portal.use("/api/candidate-pipeline", candidatePipeline);
-portal.use("/api/sourcing", sourcing);
-portal.use("/api/pipeline", pipeline);
-portal.use("/api/stage-category", stageCategory);
-portal.use("/api/template-stage", templateStage);
-portal.use("/api/automation-setting", automationSetting);
-portal.use("/api/screening", screening);
-portal.use("/api/company", company);
-portal.use("/api/company-usage", companyUsage);
-portal.use("/api/setting", setting);
-portal.use("/api/assessment", assessment);
-portal.use("/api/participant", participant);
-portal.use("/api/question", question);
-portal.use("/api/assessment-answer", assessmentAnswer);
-portal.use("/api/assessment-score", assessmentScore);
-portal.use("/api/session", session);
-portal.use("/api/assessment-battery-result", assessmentBatteryResult);
-portal.use("/api/assessment-ai", assessmentAI);
-portal.use("/api/portal-assessment", portalAssessment);
-portal.use("/api/portal-qa", portalQa);
-portal.use("/api/interview", interview);
-portal.use("/api/background-check", backgroundCheck);
-portal.use("/api/portal-bg-consent", portalBg);
-portal.use("/api/offer", offer);
-portal.use("/api/onboarding", onboarding);
-portal.use("/api/onboarding-lms", onboardingLms);
-portal.use("/api/portal-offer", portalOffer);
-portal.use("/api/offer-template", offerTemplate);
-portal.use("/api/interview-pack", interviewPack);
-portal.use("/api/portal-interview", portalInterview);
-portal.use("/api/offer-pack", offerPack)
-portal.use("/api/portal-contract", portalContract);
-portal.use("/api/email-template", emailTemplate)
-portal.use("/api/portal-onboarding", portalOnboarding);
-portal.use("/api/onboarding-assessment-result", onboardingAssessmentResult);
-portal.use("/api/onboarding-question", onboardingQuestion);
-portal.use("/api/chat-bot/source", chatBotSource);
-portal.use("/api/chat-bot/conversation", chatBotConversation);
-portal.use("/api/chat-bot/message", chatBotMessage);
-app.use("/portal", portal);
-app.use("/api/auth", auth);
-app.use("/api/cookies", cookies);
-app.use("/api/linkedin", linkedin);
-app.use("/api/seek", seek);
-app.use("/api/role", role);
-app.use("/api/user", user);
-app.use("/api/permission", permission);
-app.use("/api/module", module);
-app.use("/api/menu", menu);
-app.use("/api/job-account", jobAccount);
-app.use("/api/job-posting", jobPosting);
-app.use("/api/job-sourcing", jobSourcing);
-app.use("/api/job", job);
-app.use("/api/applicant", applicant);
-app.use("/api/candidate-pipeline", candidatePipeline);
-app.use("/api/assessment", assessment);
-app.use("/api/participant", participant);
-app.use("/api/question", question);
-app.use("/api/assessment-answer", assessmentAnswer);
-app.use("/api/assessment-score", assessmentScore);
-app.use("/api/session", session);
-app.use("/api/assessment-battery-result", assessmentBatteryResult);
-app.use("/api/assessment-ai", assessmentAI);
-app.use("/api/sourcing", sourcing);
-app.use("/api/pipeline", pipeline);
-app.use("/api/stage-category", stageCategory);
-app.use("/api/template-stage", templateStage);
-app.use("/api/automation-setting", automationSetting);
-app.use("/api/screening", screening);
-app.use("/api/company", company);
-app.use("/api/company-usage", companyUsage);
-app.use("/api/setting", setting);
-app.use("/api/portal-assessment", portalAssessment);
-app.use("/api/portal-qa", portalQa);
-app.use("/api/interview", interview);
-app.use("/api/background-check", backgroundCheck);
-app.use("/api/portal-bg-consent", portalBg);
-app.use("/api/offer", offer);
-app.use("/api/onboarding", onboarding);
-app.use("/api/onboarding-lms", onboardingLms);
-app.use("/api/portal-offer", portalOffer);
-app.use("/api/offer-template", offerTemplate);
-app.use("/api/interview-pack", interviewPack);
-app.use("/api/portal-interview", portalInterview);
-app.use("/api/offer-pack", offerPack);
-app.use("/api/portal-contract", portalContract);
-app.use("/api/email-template", emailTemplate)
-app.use("/api/portal-onboarding", portalOnboarding);
-app.use("/api/onboarding-assessment-result", onboardingAssessmentResult);
-app.use("/api/onboarding-question", onboardingQuestion);
-app.use("/api/chat-bot/source", chatBotSource);
-app.use("/api/chat-bot/conversation", chatBotConversation);
-app.use("/api/chat-bot/message", chatBotMessage);
+api.use("/auth", auth);
+api.use("/cookies", cookies);
+api.use("/linkedin", linkedin);
+api.use("/seek", seek);
+api.use("/role", role);
+api.use("/user", user);
+api.use("/permission", permission);
+api.use("/module", module);
+api.use("/menu", menu);
+api.use("/job-account", jobAccount);
+api.use("/job-posting", jobPosting);
+api.use("/job-sourcing", jobSourcing);
+api.use("/job", job);
+api.use("/applicant", applicant);
+api.use("/candidate-pipeline", candidatePipeline);
+api.use("/sourcing", sourcing);
+api.use("/pipeline", pipeline);
+api.use("/stage-category", stageCategory);
+api.use("/template-stage", templateStage);
+api.use("/automation-setting", automationSetting);
+api.use("/screening", screening);
+api.use("/company", company);
+api.use("/company-usage", companyUsage);
+api.use("/setting", setting);
+api.use("/assessment", assessment);
+api.use("/participant", participant);
+api.use("/question", question);
+api.use("/assessment-answer", assessmentAnswer);
+api.use("/assessment-score", assessmentScore);
+api.use("/session", session);
+api.use("/assessment-battery-result", assessmentBatteryResult);
+api.use("/assessment-ai", assessmentAI);
+api.use("/portal-assessment", portalAssessment);
+api.use("/portal-qa", portalQa);
+api.use("/interview", interview);
+api.use("/background-check", backgroundCheck);
+api.use("/portal-bg-consent", portalBg);
+api.use("/offer", offer);
+api.use("/onboarding", onboarding);
+api.use("/onboarding-lms", onboardingLms);
+api.use("/portal-offer", portalOffer);
+api.use("/offer-template", offerTemplate);
+api.use("/interview-pack", interviewPack);
+api.use("/portal-interview", portalInterview);
+api.use("/offer-pack", offerPack)
+api.use("/portal-contract", portalContract);
+api.use("/email-template", emailTemplate)
+api.use("/portal-onboarding", portalOnboarding);
+api.use("/onboarding-assessment-result", onboardingAssessmentResult);
+api.use("/onboarding-question", onboardingQuestion);
+api.use("/chat-bot/source", chatBotSource);
+api.use("/chat-bot/conversation", chatBotConversation);
+api.use("/chat-bot/message", chatBotMessage);
+api.use("/form", form);
+
+app.use(["/api", "/portal/api"], api);
 
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => {

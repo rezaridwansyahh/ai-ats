@@ -3,7 +3,7 @@ import { useLocation } from 'react-router-dom';
 import {
   Settings2, Users, ShieldCheck, Workflow, Plug,
   ShieldQuestion, FileText, CreditCard, CalendarClock, Mail, Palette,
-  Lock,
+  Lock, ClipboardList,
 } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -31,6 +31,7 @@ const SETTINGS_NAV = [
   { id: 'team', label: 'Team', icon: Users },
   { id: 'roles', label: 'Roles & Permissions', icon: ShieldCheck },
   { id: 'workflow-templates', label: 'Workflow Templates', icon: Workflow },
+  { id: 'application-form', label: 'Application Form', icon: ClipboardList },
   { id: 'integrations', label: 'Integrations', icon: Plug },
   { id: 'offer-template', label: 'Offer Letter Template', icon: FileText },
   { id: 'email-templates', label: 'Email Templates', icon: Mail },
