@@ -235,7 +235,12 @@ export default function ListSourceStep({ selectedAccount, selectedSource, onSele
                 const isSyncing = source.sync_state === 'syncing' || syncingIds.has(source.id);
                 return (
                   <TableRow key={source.id} className="hover:bg-muted/30 transition-colors">
-                    <TableCell className="font-medium truncate pr-3">{source.job_title}</TableCell>
+                    <TableCell className="font-medium truncate pr-3" title={source.job_title}>
+                      {source.job_title}
+                      <div className='text-xs text-muted-foreground'>
+                        {source.job_location ? source.job_location : ''}
+                      </div>
+                    </TableCell>
                     <TableCell>
                       <StatusBadge
                         label={source.status}
