@@ -22,6 +22,7 @@ import GeneralSettings from '../components/settings/GeneralSettings';
 import OfferTemplateSettings from '../components/settings/OfferTemplateSettings';
 import EmailTemplateSettings from '../components/settings/EmailTemplateSettings';
 import ThemeSettings from '../components/settings/ThemeSettings';
+import CompanyFormSettingPage from '@/features/application-form/pages/CompanyFormSettingPage';
 
 // ── Static Configuration ──
 
@@ -74,6 +75,7 @@ const SECTION_COMPONENTS = {
   'audit-export': AuditExportSettings,
   billing: BillingPlanSettings,
   'probation-templates': ProbationTemplatesSettings,
+  'application-form': CompanyFormSettingPage
 };
 
 // ── View Wrapper Page ──
