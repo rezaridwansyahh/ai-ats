@@ -25,11 +25,13 @@ const RESULT_SELECT = `
          map.email       AS candidate_email,
          mc.education   AS candidate_education,
          ma.assessment_code,
-         map.name AS assessment_name
+         map.name AS assessment_name,
+         cj.job_title   AS job_title
   FROM core_applicant_assessment caa
   JOIN master_candidate mc ON mc.id = caa.candidate_id
   LEFT JOIN master_applicant map ON map.id = mc.applicant_id
   LEFT JOIN master_assessment ma ON ma.id = caa.assessment_id
+  LEFT JOIN core_job cj ON cj.id = mc.job_id
 `;
 
 class AssessmentBatteryResult {

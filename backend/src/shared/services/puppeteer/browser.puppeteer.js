@@ -120,4 +120,4 @@ class BrowserPuppeteer {
   }
 }
 
-export default new BrowserPuppeteer()
+export default BrowserPuppeteer

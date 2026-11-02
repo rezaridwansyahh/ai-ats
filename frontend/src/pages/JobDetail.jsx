@@ -2,13 +2,14 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import {
   Loader2, AlertTriangle, ArrowLeft, Pencil, MapPin, Building2,
-  Briefcase, FileText, Workflow, Megaphone, RefreshCw, CheckCircle2, Users, ChevronUp,
+  Briefcase, FileText, Workflow, Megaphone, RefreshCw, CheckCircle2, Users, ChevronUp, Eye,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { Slider } from '@/components/ui/slider';
 import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from '@/components/ui/table';
@@ -17,12 +18,21 @@ import { getJobById } from '@/api/job.api';
 import { getByJobId as getJobChannels } from '@/api/job-sourcing.api';
 import { extractSeekCandidates } from '@/api/job-posting-seek.api';
 import { extractLinkedinApplicants } from '@/api/linkedin.api';
-import { getCandidatesByJobId } from '@/api/candidate.api';
+import { getPaginatedCandidatesByJobId } from '@/api/candidate.api';
 import { formatSalaryBand, formatSinceDate} from '@/lib/job-display';
 
 import { hasPermission } from '@/utils/permissions';
 
 import { StatusBadge } from '@/components/common';
+import CandidateDetailModal from '@/components/job-management/CandidateDetailModal';
+
+const CANDIDATES_PAGE_SIZE = 6;
+
+function scoreTone(score) {
+  if (score >= 80) return 'bg-emerald-50 text-emerald-700 border-emerald-200';
+  if (score >= 60) return 'bg-amber-50 text-amber-700 border-amber-200';
+  return 'bg-rose-50 text-rose-700 border-rose-200';
+}
 
 export default function JobDetailPage() {
   const canEdit = hasPermission('Sourcing', 'Job Management', 'update');
@@ -30,14 +40,24 @@ export default function JobDetailPage() {
   const { id } = useParams();
   const [job, setJob] = useState(null);
   const [channels, setChannels] = useState([]);   // core_job_sourcing rows for this job
-  const [candidates, setCandidates] = useState([]); // master_candidate rows for this job
+  const [candidates, setCandidates] = useState([]); // current page of master_candidate rows for this job
+  const [candidateTotal, setCandidateTotal] = useState(0);
+  const [candidatesLoading, setCandidatesLoading] = useState(true);
   const [candidateSearch, setCandidateSearch] = useState('');
+  const [debouncedCandidateSearch, setDebouncedCandidateSearch] = useState('');
+  const [durationFilter, setDurationFilter] = useState('');
+  const [debouncedDurationFilter, setDebouncedDurationFilter] = useState('');
+  const [minScore, setMinScore] = useState(0);
+  const [minSalaryInput, setMinSalaryInput] = useState('');
+  const [maxSalaryInput, setMaxSalaryInput] = useState('');
+  const [debouncedMinSalary, setDebouncedMinSalary] = useState('');
+  const [debouncedMaxSalary, setDebouncedMaxSalary] = useState('');
   const [candidatePage, setCandidatePage] = useState(1);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [syncing, setSyncing] = useState(false);
-  
-  const CANDIDATES_PAGE_SIZE = 6;
+  const [viewCandidate, setViewCandidate] = useState(null);
+  const [viewModalOpen, setViewModalOpen] = useState(false);
 
   const fetchJob = useCallback(async () => {
     const res = await getJobById(id);
@@ -54,14 +74,30 @@ export default function JobDetailPage() {
   }, [id]);
 
   const fetchCandidates = useCallback(async () => {
+    setCandidatesLoading(true);
     try {
-      const res = await getCandidatesByJobId(id);
+      const res = await getPaginatedCandidatesByJobId(id, {
+        search: debouncedCandidateSearch || undefined,
+        duration_q: debouncedDurationFilter || undefined,
+        min_score: minScore > 0 ? minScore : undefined,
+        min_salary: debouncedMinSalary !== '' ? debouncedMinSalary : undefined,
+        max_salary: debouncedMaxSalary !== '' ? debouncedMaxSalary : undefined,
+        page: candidatePage,
+        pageSize: CANDIDATES_PAGE_SIZE,
+      });
       setCandidates(Array.isArray(res.data?.pipelines) ? res.data.pipelines : []);
+      setCandidateTotal(res.data?.total || 0);
     } catch {
       setCandidates([]);
+      setCandidateTotal(0);
+    } finally {
+      setCandidatesLoading(false);
     }
-  }, [id]);
+  }, [id, debouncedCandidateSearch, debouncedDurationFilter, minScore, debouncedMinSalary, debouncedMaxSalary, candidatePage]);
 
+  // Job details + posting channels — one-time load, its own loading state.
+  // Candidates load separately (below) so searching/paging them doesn't
+  // blank out the rest of the page.
   useEffect(() => {
     let cancelled = false;
     (async () => {
@@ -69,7 +105,7 @@ export default function JobDetailPage() {
       setError(null);
       try {
         await fetchJob();
-        if (!cancelled) await Promise.all([fetchChannels(), fetchCandidates()]);
+        if (!cancelled) await fetchChannels();
       } catch (err) {
         if (!cancelled) setError(err.response?.data?.message || err.message || 'Failed to load job');
       } finally {
@@ -77,7 +113,32 @@ export default function JobDetailPage() {
       }
     })();
     return () => { cancelled = true; };
-  }, [fetchJob, fetchChannels, fetchCandidates]);
+  }, [fetchJob, fetchChannels]);
+
+  // Candidates: (re)fetches whenever the search term or page changes.
+  useEffect(() => { fetchCandidates(); }, [fetchCandidates]);
+
+  // Debounce the live search box before it drives a fetch — this input has
+  // no submit button, so without this every keystroke would hit the server.
+  useEffect(() => {
+    const t = setTimeout(() => setDebouncedCandidateSearch(candidateSearch), 350);
+    return () => clearTimeout(t);
+  }, [candidateSearch]);
+
+  useEffect(() => {
+    const t = setTimeout(() => setDebouncedDurationFilter(durationFilter), 350);
+    return () => clearTimeout(t);
+  }, [durationFilter]);
+
+  useEffect(() => {
+    const t = setTimeout(() => setDebouncedMinSalary(minSalaryInput), 350);
+    return () => clearTimeout(t);
+  }, [minSalaryInput]);
+
+  useEffect(() => {
+    const t = setTimeout(() => setDebouncedMaxSalary(maxSalaryInput), 350);
+    return () => clearTimeout(t);
+  }, [maxSalaryInput]);
 
   // Re-sync re-pulls applicants for each posted platform of this job (1 per platform).
   // Seek is QUEUED — the backend marks the channel sync_state='syncing' and a worker
@@ -134,7 +195,9 @@ export default function JobDetailPage() {
     }
   }, [anySyncing, channels, fetchChannels, fetchJob, fetchCandidates]);
 
-  useEffect(() => { setCandidatePage(1); }, [candidateSearch]);
+  useEffect(() => {
+    setCandidatePage(1);
+  }, [debouncedCandidateSearch, debouncedDurationFilter, minScore, debouncedMinSalary, debouncedMaxSalary]);
 
   // TEMP preview: dummy channels so the Posting card renders before real sync data
   // exists. Flip to false (or delete this block) once postings flow from sync.
@@ -147,20 +210,13 @@ export default function JobDetailPage() {
   const displayChannels = channels.length ? channels : dummyChannels;
   const isPosted = displayChannels.length > 0;
 
-  // Candidate table: filter (name/position) → paginate.
-  const filteredCandidates = (() => {
-    const q = candidateSearch.trim().toLowerCase();
-    if (!q) return candidates;
-    return candidates.filter((c) =>
-      c.candidate_name?.toLowerCase().includes(q) ||
-      (c.information?.job_position?.current || c.last_position)?.toLowerCase().includes(q)
-    );
-  })();
-  const candidateTotalPages = Math.max(1, Math.ceil(filteredCandidates.length / CANDIDATES_PAGE_SIZE));
-  const pagedCandidates = filteredCandidates.slice(
-    (candidatePage - 1) * CANDIDATES_PAGE_SIZE,
-    candidatePage * CANDIDATES_PAGE_SIZE
+  // Search/pagination now happen server-side (see fetchCandidates) — `candidates`
+  // is already exactly the page that should render.
+  const hasActiveCandidateSearch = Boolean(
+    debouncedCandidateSearch.trim() || debouncedDurationFilter.trim()
+    || minScore > 0 || debouncedMinSalary !== '' || debouncedMaxSalary !== ''
   );
+  const candidateTotalPages = Math.max(1, Math.ceil(candidateTotal / CANDIDATES_PAGE_SIZE));
 
   if (loading) {
     return (
@@ -180,6 +236,11 @@ export default function JobDetailPage() {
       </div>
     );
   }
+
+  const handleViewCandidate = (candidate) => {
+    setViewCandidate(candidate);
+    setViewModalOpen(true);
+  };
 
   const required  = Array.isArray(job.required_skills)  ? job.required_skills  : [];
   const preferred = Array.isArray(job.preferred_skills) ? job.preferred_skills : [];
@@ -285,54 +346,155 @@ export default function JobDetailPage() {
             {/* Candidates — searchable, paginated table (counts/funnel live in Candidate Pipeline) */}
             <Card className="py-4 gap-3">
               <CardHeader>
-                <CardTitle className="text-sm flex items-center justify-between gap-3 flex-wrap">
-                  <span className="flex items-center gap-2">
-                    <Users className="h-4 w-4 text-primary" /> Candidates
-                    <span className="text-[10px] font-normal text-muted-foreground">{candidates.length}</span>
-                  </span>
-                  <Input
-                    placeholder="Search candidates..."
-                    value={candidateSearch}
-                    onChange={(e) => setCandidateSearch(e.target.value)}
-                    className="max-w-[220px] h-8 text-xs font-normal"
-                  />
+                <CardTitle className="text-sm flex items-center gap-2">
+                  <Users className="h-4 w-4 text-primary" /> Candidates
+                  <span className="text-[10px] font-normal text-muted-foreground">{candidateTotal}</span>
                 </CardTitle>
+
+                <div className="flex flex-wrap items-end gap-3 pt-1">
+                  <div className="w-[130px]">
+                    <div className="text-[10px] font-semibold uppercase text-muted-foreground mb-1">Name</div>
+                    <Input
+                      placeholder="Search candidates..."
+                      value={candidateSearch}
+                      onChange={(e) => setCandidateSearch(e.target.value)}
+                      className="h-8 text-xs font-normal"
+                    />
+                  </div>
+
+                  <div className="w-[120px]">
+                    <div className="text-[10px] font-semibold uppercase text-muted-foreground mb-1">Duration</div>
+                    <Input
+                      placeholder="e.g. 2 tahun"
+                      value={durationFilter}
+                      onChange={(e) => setDurationFilter(e.target.value)}
+                      className="h-8 text-xs font-normal"
+                    />
+                  </div>
+
+                  <div className="w-[130px]">
+                    <div className="flex items-center justify-between mb-1.5">
+                      <div className="text-[10px] font-semibold uppercase text-muted-foreground">Min Score</div>
+                      <span className="text-[11px] font-semibold text-primary">{minScore || '0+'}</span>
+                    </div>
+                    <Slider
+                      value={[minScore]}
+                      onValueChange={(v) => setMinScore(v[0])}
+                      min={0}
+                      max={100}
+                      step={5}
+                      className="h-8 flex items-center"
+                    />
+                  </div>
+
+                  <div className="w-[110px]">
+                    <div className="text-[10px] font-semibold uppercase text-muted-foreground mb-1">Min Salary</div>
+                    <Input
+                      type="number"
+                      placeholder="0"
+                      value={minSalaryInput}
+                      onChange={(e) => setMinSalaryInput(e.target.value)}
+                      className="h-8 text-xs font-normal"
+                    />
+                  </div>
+                  <div className="w-[110px]">
+                    <div className="text-[10px] font-semibold uppercase text-muted-foreground mb-1">Max Salary</div>
+                    <Input
+                      type="number"
+                      placeholder="No limit"
+                      value={maxSalaryInput}
+                      onChange={(e) => setMaxSalaryInput(e.target.value)}
+                      className="h-8 text-xs font-normal"
+                    />
+                  </div>
+
+                  {hasActiveCandidateSearch && (
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="h-8 text-[11px] text-muted-foreground"
+                      onClick={() => {
+                        setCandidateSearch('');
+                        setDurationFilter('');
+                        setMinScore(0);
+                        setMinSalaryInput('');
+                        setMaxSalaryInput('');
+                      }}
+                    >
+                      Clear filters
+                    </Button>
+                  )}
+                </div>
               </CardHeader>
               <CardContent className="p-0">
-                {candidates.length === 0 ? (
+                {candidatesLoading ? (
+                  <div className="py-8 flex items-center justify-center">
+                    <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
+                  </div>
+                ) : candidates.length === 0 ? (
                   <p className="py-8 text-xs text-muted-foreground text-center italic">
-                    No candidates yet.
-                  </p>
-                ) : filteredCandidates.length === 0 ? (
-                  <p className="py-8 text-xs text-muted-foreground text-center italic">
-                    No candidates match your search.
+                    {hasActiveCandidateSearch ? 'No candidates match your search.' : 'No candidates yet.'}
                   </p>
                 ) : (
                   <>
-                    <Table>
+                    <Table className="table-fixed w-full">
                       <TableHeader className="bg-muted/40">
                         <TableRow>
-                          <TableHead className="text-[10px] font-bold uppercase pl-6">Candidate</TableHead>
-                          <TableHead className="text-[10px] font-bold uppercase w-[180px]">Position</TableHead>
-                          <TableHead className="text-[10px] font-bold uppercase w-[170px]">Stage</TableHead>
+                          <TableHead className="text-[10px] font-bold uppercase pl-6 w-[20%]">Candidate</TableHead>
+                          <TableHead className="text-[10px] font-bold uppercase w-[16%]">Position</TableHead>
+                          <TableHead className="text-[10px] font-bold uppercase w-[10%]">Duration</TableHead>
+                          <TableHead className="text-[10px] font-bold uppercase w-[12%]">Location</TableHead>
+                          <TableHead className="text-[10px] font-bold uppercase w-[13%]">Stage</TableHead>
+                          <TableHead className="text-[10px] font-bold uppercase w-[11%] text-center">Score</TableHead>
+                          <TableHead className="text-[10px] font-bold uppercase w-[18%] pr-6 text-right">View</TableHead>
                         </TableRow>
                       </TableHeader>
                       <TableBody>
-                        {pagedCandidates.map((c) => (
-                          <TableRow key={c.id} className="hover:bg-muted/30">
-                            <TableCell className="text-xs font-medium pl-6 truncate" title={c.candidate_name}>
-                              {c.candidate_name}
-                            </TableCell>
-                            <TableCell className="text-xs text-muted-foreground truncate" title={c.information?.job_position?.current || c.last_position || ''}>
-                              {c.information?.job_position?.current || c.last_position || '—'}
-                            </TableCell>
-                            <TableCell>
-                              <Badge variant="outline" className="text-[10px]">
-                                {c.latest_stage_name || 'Not started'}
-                              </Badge>
-                            </TableCell>
-                          </TableRow>
-                        ))}
+                        {candidates.map((c) => {
+                          const jobPosition = c.information?.job_position || {};
+                          return (
+                            <TableRow key={c.id} className="hover:bg-muted/30">
+                              <TableCell className="text-xs font-medium pl-6 truncate" title={c.candidate_name}>
+                                {c.candidate_name}
+                              </TableCell>
+                              <TableCell className="text-xs text-muted-foreground truncate" title={jobPosition.current || c.last_position || ''}>
+                                {jobPosition.current || c.last_position || '—'}
+                              </TableCell>
+                              <TableCell className="text-xs text-muted-foreground truncate" title={jobPosition.duration || ''}>
+                                {jobPosition.duration || '—'}
+                              </TableCell>
+                              <TableCell className="text-xs text-muted-foreground truncate" title={jobPosition.location || ''}>
+                                {jobPosition.location || '—'}
+                              </TableCell>
+                              <TableCell className="truncate">
+                                <Badge variant="outline" className="text-[10px]">
+                                  {c.latest_stage_name || 'Not started'}
+                                </Badge>
+                              </TableCell>
+                              <TableCell className="text-center">
+                                {!c.information || Object.keys(c.information).length < 1 ? (
+                                  <Badge variant="outline" className="text-[9px] text-muted-foreground">No CV</Badge>
+                                ) : c.match_score == null ? (
+                                  <Badge variant="outline" className="text-[9px] text-muted-foreground">No Info</Badge>
+                                ) : (
+                                  <Badge className={`text-[10px] font-mono font-bold ${scoreTone(c.match_score)}`}>
+                                    {c.match_score}
+                                  </Badge>
+                                )}
+                              </TableCell>
+                              <TableCell className="pr-6 text-right">
+                                <Button
+                                  variant="outline"
+                                  size="sm"
+                                  className="h-7 text-[11px] gap-1"
+                                  onClick={() => handleViewCandidate(c)}
+                                >
+                                  <Eye className="h-3 w-3" /> View
+                                </Button>
+                              </TableCell>
+                            </TableRow>
+                          );
+                        })}
                       </TableBody>
                     </Table>
 
@@ -340,7 +502,7 @@ export default function JobDetailPage() {
                     <div className="flex items-center justify-between gap-2 px-6 py-3 border-t">
                       <span className="text-[10px] text-muted-foreground">
                         {(candidatePage - 1) * CANDIDATES_PAGE_SIZE + 1}–
-                        {Math.min(candidatePage * CANDIDATES_PAGE_SIZE, filteredCandidates.length)} of {filteredCandidates.length}
+                        {Math.min(candidatePage * CANDIDATES_PAGE_SIZE, candidateTotal)} of {candidateTotal}
                       </span>
                       <div className="flex items-center gap-1">
                         <Button variant="outline" size="sm" className="h-7 text-xs" disabled={candidatePage <= 1} onClick={() => setCandidatePage((p) => p - 1)}>
@@ -476,6 +638,13 @@ export default function JobDetailPage() {
           </aside>
         </div>
       </div>
+
+      <CandidateDetailModal
+        open={viewModalOpen}
+        onOpenChange={setViewModalOpen}
+        candidate={viewCandidate}
+        jobId={id}
+      />
     </>
   );
 }

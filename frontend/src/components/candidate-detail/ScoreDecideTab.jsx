@@ -1,42 +1,13 @@
 import { useEffect, useRef, useState } from 'react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Loader2, AlertTriangle, Sparkles } from 'lucide-react';
-import ReportViewA from '@/components/assessment-a/report/ReportView';
-import ReportViewB from '@/components/assessment-b/report/ReportView';
-import ReportViewC from '@/components/assessment-c/report/ReportView';
-import ReportViewD from '@/components/assessment-d/report/ReportView';
 import { unpackAssessorState, packAssessorState } from '@/components/assessment/assessor-state';
 import {
   updateAssessmentReport,
   regenerateNarrative,
   getAssessmentResultById,
 } from '@/api/assessment-battery-result.api';
-import ReportViewInsights from '@/components/assessment-insights/report/ReportView';
-import ReportViewTKI from '@/components/assessment-tki/report/ReportView';
-import {
-  unpackAssessorState as unpackGeneric,
-  packAssessorState   as packGeneric,
-} from '@/components/assessment/assessor-state';
-import {
-  unpackAssessorState as unpackInsights,
-  packAssessorState   as packInsights,
-} from '@/components/assessment-insights/report/assessor-state';
-import {
-  unpackAssessorState as unpackTKI,
-  packAssessorState   as packTKI,
-} from '@/components/assessment-tki/report/assessor-state';
-
-// Per-assessment annotation shapes (notes/ratings/meta differ across Insights, TKI, A-D).
-// Pick the codec by assessment_id at render time.
-const INSIGHTS_ASSESSMENT_ID = 5;
-const TKI_ASSESSMENT_ID      = 6;
-function pickCodec(result) {
-  switch (result?.assessment_id) {
-    case INSIGHTS_ASSESSMENT_ID: return { unpack: unpackInsights, pack: packInsights };
-    case TKI_ASSESSMENT_ID:      return { unpack: unpackTKI,      pack: packTKI      };
-    default:                     return { unpack: unpackGeneric,  pack: packGeneric  };
-  }
-}
+import { renderReportView } from './report-view-picker';
 
 // Debounce window — mirrors the value in the retired AssessmentDetailDialog.
 const SAVE_DEBOUNCE_MS = 600;
@@ -57,7 +28,7 @@ const POLL_MAX_ATTEMPTS = 12; // ~60s total
 // /assessment-battery-result/:id while ai_report_status is pending/generating. When
 // it lands on 'completed', we merge any freshly-generated section narratives into
 // `state` for keys the assessor has NOT already filled in (assessor edits always win).
-export default function ScoreDecideTab({ candidate, battery, result, onJumpToTab, saveNowRef, onSaveStatusChange, finalRecRef, onFinalRecChange }) {
+export default function ScoreDecideTab({ candidate, jobTitle, jobDetail, battery, result, onJumpToTab, saveNowRef, onSaveStatusChange, finalRecRef, onFinalRecChange }) {
   const hasResults = !!result?.results?.by_subtest;
 
   const [liveResult, setLiveResult] = useState(result);
@@ -290,6 +261,10 @@ export default function ScoreDecideTab({ candidate, battery, result, onJumpToTab
   const profile = {
     name:       liveResult.participant_name      ?? candidate?.name      ?? '—',
     position:   liveResult.participant_position  ?? candidate?.role      ?? '—',
+    job_title:    jobTitle ?? null, // the job applied to — ReportView shows this instead of `position` (resume's last job) when present
+    job_location: jobDetail?.job_location ?? null,
+    work_type:    jobDetail?.work_type ?? null,
+    work_option:  jobDetail?.work_option ?? null,
     department: liveResult.participant_department ?? '—',
     education:  liveResult.participant_education  ?? candidate?.education ?? '—',
     email:      liveResult.participant_email     ?? candidate?.email     ?? '—',
@@ -439,16 +414,6 @@ function DotPulse() {
     return () => clearInterval(t);
   }, []);
   return <span>{'.'.repeat(n)}</span>;
-}
-
-function renderReportView(battery, props) {
-  switch (battery) {
-    case 'A': return <ReportViewA {...props} />;
-    case 'C': return <ReportViewC {...props} />;
-    case 'D': return <ReportViewD {...props} />;
-    case 'B':
-    default:  return <ReportViewB {...props} />;
-  }
 }
 
 function SaveStatusBadge({ status, error }) {

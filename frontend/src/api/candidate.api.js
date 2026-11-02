@@ -65,3 +65,11 @@ export const getProgress = (id) =>
 
 export const addCandidateStage = (candidateId, job_stage_id, decision) =>
   api.post(`/candidate-pipeline/${candidateId}/stages`, { job_stage_id, decision });
+
+// Dashboard: Active jobs that have gone `days`+ with zero candidates.
+export const getNoApplicants = (days = 5) =>
+  api.get(`/candidate-pipeline/no-applicants`, { params: { days } });
+
+// Dashboard: average days from application to Hired, over the last `days`.
+export const getTimeToHire = (days = 30) =>
+  api.get(`/candidate-pipeline/time-to-hire`, { params: { days } });

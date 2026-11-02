@@ -1,7 +1,7 @@
 import jwt from 'jsonwebtoken';
 import PortalAssessment from './portal-assessment.model.js';
 import AssessmentBatteryResult from '../assessment/assessment-battery-result/assessment-battery-result.model.js';
-import assessmentBatteryResultService from '../assessment/assessment-battery-result/assessment-battery-result.service.js';
+import assessmentBatteryResultService, { composeAuthoritativeResults } from '../assessment/assessment-battery-result/assessment-battery-result.service.js';
 import questionService from '../assessment/question/question.service.js';
 import assessmentAnswerService from '../assessment/assessment-answer/assessment-answer.service.js';
 import assessmentScoreService from '../assessment/assessment-score/assessment-score.service.js';
@@ -258,11 +258,24 @@ class PortalAssessmentService {
       // instead of inserting a second row, which would hit the
       // UNIQUE (candidate_id, assessment_id) constraint.
       const existing = await AssessmentBatteryResult.getForUpdate(client, session.candidate_id, assessmentId);
+
+      // Score-bearing fields are recomputed server-side from the already-
+      // authoritative assessment_score rows — the client's results/summary
+      // is only trusted for date/tabSwitches metadata and summary.assessor
+      // (untouched here). See composeAuthoritativeResults' own comment for why.
+      const authoritative = existing?.id
+        ? await composeAuthoritativeResults({
+            assessment_id: assessmentId, result_id: existing.id, clientBySubtest: results.by_subtest,
+          })
+        : null;
+      const finalResults = authoritative ? { ...results, by_subtest: authoritative.by_subtest } : results;
+      const finalSummary = authoritative ? { ...summary, ...authoritative.summaryOverrides } : summary;
+
       const row = existing
         ? await AssessmentBatteryResult.update(client, existing.id, {
             status: 'completed',
-            results,
-            summary,
+            results: finalResults,
+            summary: finalSummary,
             started_at: existing.started_at || null,
             completed_at: new Date().toISOString(),
           })
@@ -270,8 +283,8 @@ class PortalAssessmentService {
             candidate_id: session.candidate_id,
             assessment_id:  assessmentId,
             status:         'completed',
-            results,
-            summary,
+            results: finalResults,
+            summary: finalSummary,
             started_at:     null,
             completed_at:   new Date().toISOString(),
           });

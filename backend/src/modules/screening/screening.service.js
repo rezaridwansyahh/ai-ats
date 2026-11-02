@@ -1,5 +1,6 @@
 import screeningModel from './screening.model.js';
 import jobModel from '../job/job.model.js';
+import getDb from '../../config/postgres.js';
 import CandidatePipelineService from '../candidate-pipeline/candidate-pipeline.service.js';
 import automationModel from '../automation-setting/automation.model.js';
 import aiService from '../../shared/services/ai.service.js';
@@ -342,33 +343,83 @@ class ScreeningService {
   }
 
   // L4 Calibration — ready cohort for one job (scored, no decision yet).
-  async getCalibration(job_id, { company_id = null } = {}) {
+  async getCalibration(job_id, { company_id = null } = {}, query = {}) {
     if (!job_id) throw { status: 400, message: 'job_id is required' };
     const job = await jobModel.getById(job_id);
     if (!job) throw { status: 404, message: 'Job not found' };
     if (company_id && job.company_id && job.company_id !== company_id) {
       throw { status: 403, message: 'Cross-tenant access denied' };
     }
-    return await screeningModel.getCalibrationCohort(job_id);
+    const { search, bucket, min_score, page, pageSize } = query;
+    return await screeningModel.getCalibrationCohort(job_id, { search, bucket, min_score, page, pageSize });
   }
 
-  // L4 Calibration — bulk advance selected screenings to Interview.
-  async advanceBulk(job_id, { screening_ids, decision_reason, decided_by, company_id = null }) {
+  // L4 Calibration — bulk advance selected candidates to Interview.
+  // Drives each row through the SAME CandidatePipelineService.addStage() path
+  // as the single-candidate decision flow (setDecision() below) — that's what
+  // actually moves master_candidate.latest_stage forward and (via its
+  // category-based side effects) creates the candidate_interview row. The
+  // previous version of this method only wrote candidate_screening.decision
+  // and inserted candidate_interview directly, so the candidate's pipeline
+  // stage itself never advanced — "Advance" reported success but nothing
+  // visibly moved on the board.
+  //
+  // Keyed by candidate_id, not screening_id: candidate_screening rows are
+  // lazily created on first L3 (candidate-detail) visit, so a scored
+  // candidate who was never individually opened has no screening row yet —
+  // getCalibrationCohort() legitimately returns screening_id: null for them.
+  // The Ready-to-Advance table used to select/key rows by screening_id, so
+  // every never-opened candidate shared the same `null` key — checking one
+  // checked all of them at once. candidate_id is always present and unique,
+  // so we accept candidate_ids here and lazily ensure the screening row.
+  async advanceBulk(job_id, { candidate_ids, decision_reason, decided_by, company_id = null }) {
     if (!job_id) throw { status: 400, message: 'job_id is required' };
-    if (!Array.isArray(screening_ids) || screening_ids.length === 0) {
-      throw { status: 400, message: 'screening_ids must be a non-empty array' };
+    if (!Array.isArray(candidate_ids) || candidate_ids.length === 0) {
+      throw { status: 400, message: 'candidate_ids must be a non-empty array' };
     }
     const job = await jobModel.getById(job_id);
     if (!job) throw { status: 404, message: 'Job not found' };
     if (company_id && job.company_id && job.company_id !== company_id) {
       throw { status: 403, message: 'Cross-tenant access denied' };
     }
-    return await screeningModel.bulkAdvanceToInterview({
-      screening_ids,
-      decision_reason,
-      decided_by,
-      company_id,
-    });
+
+    const advanced = [];
+    const skipped = [];
+    const errors = [];
+    const interview_ids = [];
+
+    for (const candidate_id of candidate_ids) {
+      try {
+        const screening_id = await screeningModel.ensureScreeningForCandidate(candidate_id);
+        const existing = await screeningModel.getScreeningById(screening_id);
+        if (!existing) { errors.push({ candidate_id, message: 'not found' }); continue; }
+        if (company_id && existing.company_id && existing.company_id !== company_id) {
+          errors.push({ candidate_id, message: 'cross-tenant denied' });
+          continue;
+        }
+        if (existing.decision) {
+          skipped.push({ candidate_id, reason: `already ${existing.decision}` });
+          continue;
+        }
+
+        await CandidatePipelineService.addStage(existing.candidate_id, existing.latest_stage, 'advance');
+        await screeningModel.setScreeningDecision({
+          screening_id, decision: 'advance', decision_reason, decided_by,
+        });
+
+        const interviewRow = await getDb().query(
+          `SELECT id FROM candidate_interview WHERE candidate_id = $1 AND job_id = $2`,
+          [existing.candidate_id, existing.job_id]
+        );
+        if (interviewRow.rows[0]) interview_ids.push(interviewRow.rows[0].id);
+
+        advanced.push(candidate_id);
+      } catch (err) {
+        errors.push({ candidate_id, message: err.message || String(err) });
+      }
+    }
+
+    return { advanced, skipped, errors, interview_ids };
   }
 
   // L3/L4 — recruiter decision (advance / hold / reject).
@@ -392,6 +443,14 @@ class ScreeningService {
     return {updateStage, updateDecision}
   }
 
+  // Match tab — mark a score row's preview as opened.
+  async markScoreViewed(score_id) {
+    if (!score_id) throw { status: 400, message: 'score_id is required' };
+    const updated = await screeningModel.markScoreViewed(score_id);
+    if (!updated) throw { status: 404, message: 'Score not found' };
+    return updated;
+  }
+
   // L1 Workboard — cross-position triage for the caller's company.
   async getWorkboard(company_id) {
     if (!company_id) throw { status: 400, message: 'company_id is required' };
@@ -406,6 +465,12 @@ class ScreeningService {
       throw { status: 400, message: `engine must be one of: ${validEngines.join(', ')}` };
     }
     return await screeningModel.getCandidatesByJobAndEngine(job_id, engine || null);
+  }
+
+  // Summary-tile counts only — see getEngineCounts() model comment.
+  async getEngineCounts(job_id) {
+    if (!job_id) throw { status: 400, message: 'job_id is required' };
+    return await screeningModel.getEngineCounts(job_id);
   }
 
   // Parse a list of applicants (one extractFacets call each). Used by L1 multi-select.

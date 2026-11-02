@@ -1,5 +1,6 @@
 import SeekJobMapper from '../../../../shared/utils/data-mapper-seek.js';
-import browserPuppeteer from '../../../../shared/services/puppeteer/browser.puppeteer.js';
+import { captureDebugContext } from '../../../../shared/utils/rpa-debug.js';
+import loginRpa from './login.rpa.js';
 
 const delay = (ms) => new Promise(r => setTimeout(r, ms));
 
@@ -7,7 +8,7 @@ class ExtractJobPostService {
   async waitForOptionalTable(page) {
     try {
       const table = await page.waitForSelector('table tbody tr td', {
-        timeout: 3000 // wait max 3 seconds
+        timeout: 10000 // wait max 10 seconds 
       });
 
       return table; // table exists
@@ -40,10 +41,37 @@ class ExtractJobPostService {
     }
   }
 
-  async redirectJobsPage(page, type) {
-    console.log('Navigating to jobs page');
+  async redirectJobsPage(page, type, pageNum = 1) {
+    console.log(`Navigating to jobs page (page=${pageNum}, type=${type})`);
 
-    await page.goto(`https://id.employer.seek.com/id/jobs?type=${type}`, { waitUntil: 'networkidle0' });
+    await page.goto(`https://id.employer.seek.com/id/jobs?page=${pageNum}&type=${type}`, { waitUntil: 'networkidle2', timeout: 60000 });
+
+    // Account-selection can intercept ANY navigation, not just the initial
+    // login — confirmed live: this exact goto() landed on
+    // /account/select?returnUrl=%2Fid%2Fjobs... right after login had
+    // already resolved account-selection once. handleAccountSelection
+    // no-ops if we're not actually on that page, so this is safe to call
+    // unconditionally. Its own click navigates us to the page Seek's
+    // returnUrl points at — which is this exact URL, so no need to re-goto.
+    await loginRpa.handleAccountSelection(page);
+  }
+
+  // Reads the "70 iklan lowongan kerja" style header and returns the leading
+  // number — used to compute total pages up front instead of clicking
+  // "next" and hoping it actually navigated (that selector turned out to be
+  // unreliable). Indonesian locale uses "." as a thousands separator (same
+  // issue as candidate_count below), so only the leading digit/dot run is
+  // taken and dots are stripped, rather than stripping all non-digits from
+  // the whole string (which could accidentally pull in unrelated numbers
+  // elsewhere in the text).
+  async getTotalCount(page) {
+    const text = await page.$eval('h2[data-testid="totalCount"]', (el) => el.textContent).catch(() => null);
+    if (!text) return null;
+
+    const match = text.trim().match(/^[\d.]+/);
+    if (!match) return null;
+
+    return Number(match[0].replace(/\./g, ''));
   }
 
   /**
@@ -66,12 +94,15 @@ class ExtractJobPostService {
    * so there's no reason to hold every row's data in memory for the
    * entire run just to throw it away at the end.
    */
-  async extractJobPost(page, { onRow, shouldSkipDetail } = {}) {
+  async extractJobPost(page, type, { onRow, shouldSkipDetail } = {}) {
     console.log('Starting Extract Job Post');
-    const browser = browserPuppeteer.getBrowser();
+    // Puppeteer pages already know their own parent browser — no need to go
+    // through a shared wrapper instance (which no longer exists as a
+    // process-wide singleton now that each job gets its own).
+    const browser = page.browser();
 
     const counts = { scraped: 0, skipped: 0, failed: 0 };
-    let hasNext = true;
+    const PAGE_SIZE = 20; // fixed — Seek's listing has no page-size control/filter
 
     const report = async (data) => {
       counts.scraped++;
@@ -87,10 +118,23 @@ class ExtractJobPostService {
       }
     };
 
-    while(hasNext) {
+    // totalPages isn't known yet — it's only read once page 1's content has
+    // actually rendered (see below). Loop bound starts unbounded and gets
+    // fixed in on the first iteration once we know the real count.
+    let totalPages = 1;
+
+    for (let pageNum = 1; pageNum <= totalPages; pageNum++) {
+      if (pageNum > 1) {
+        await this.redirectJobsPage(page, type, pageNum);
+      }
+
       const table = await this.waitForOptionalTable(page);
 
-      if(!table) return counts;
+      if(!table) {
+        console.log(`[extractJobPost] page=${pageNum}: no table found — stopping`);
+        await captureDebugContext(page, `extractJobPost-noTable-page${pageNum}`);
+        break;
+      }
 
       await page.waitForFunction(() => {
         const firstCell = document.querySelector('table tbody tr td');
@@ -98,8 +142,20 @@ class ExtractJobPostService {
       });
       await delay(1000);
 
+      if (pageNum === 1) {
+        // Read only now that the page's dynamic content has actually
+        // rendered — reading this immediately after navigation (before the
+        // table/content wait above) raced a slower-to-resolve query (seen
+        // live: consistently missing for type=expired, consistently present
+        // for type=open — a deterministic timing gap, not flakiness).
+        const totalCount = await this.getTotalCount(page);
+        totalPages = totalCount != null ? Math.ceil(totalCount / PAGE_SIZE) : 1;
+        console.log(`[extractJobPost] type=${type}: totalCount=${totalCount ?? 'unknown'}, totalPages=${totalPages}`);
+      }
+
       const rows = await page.$$('table tbody tr');
-      console.log('Start page');
+
+      console.log(`Start page ${pageNum}/${totalPages}`);
       for (let i = 0; i < rows.length; i++) {
         // Every row is independently guarded — one row's unexpected
         // failure (timeout, navigation error, unforeseen selector issue)
@@ -112,7 +168,7 @@ class ExtractJobPostService {
           // malformed/unexpected row (ad banner, skeleton, layout variant)
           // returns seek_id: null instead of throwing.
           const basicData = await row.evaluate((row) => {
-            const empty = { seek_id: null, job_title: null, candidate_count: null, location: null, created_by: null };
+            const empty = { seek_id: null, job_title: null, candidate_count: null, location: null, created_by: null, blocked: false };
 
             // get seek_id
             const href = row.getAttribute('data-testid');
@@ -145,12 +201,20 @@ class ExtractJobPostService {
             const digitsOnly = countString?.replace(/\D/g, '');
             const candidate_count = digitsOnly ? Number(digitsOnly) : null;
 
+            // Seek shows a "Diblokir" (Blocked) status badge on the job title
+            // cell when a listing's been blocked for review — matched on the
+            // title attribute, not the surrounding CSS classes (those are
+            // atomic-CSS-generated hashes that can change on any Seek
+            // frontend rebuild, e.g. `_9dd8r0`, `_1byve3w59` — not stable).
+            const blocked = !!divDividedArr[0].querySelector('[title="Diblokir"]');
+
             return {
               seek_id: seek_id,
               job_title: job_title,
               candidate_count: candidate_count,
               location: locations,
-              created_by: created_by
+              created_by: created_by,
+              blocked: blocked,
             };
           });
 
@@ -173,7 +237,7 @@ class ExtractJobPostService {
           const dotBtn = await this.waitForDotBtn(page, row);
 
           if (!dotBtn) {
-            console.log("no btn");
+            console.log(`[extractJobPost] seek_id=${basicData.seek_id}: dot-btn not found — saving basic data only`);
             await report(basicData);
             continue;
           }
@@ -183,6 +247,7 @@ class ExtractJobPostService {
           const dropdown = await this.waitForDropdown(page);
 
           if (!dropdown) {
+            console.log(`[extractJobPost] seek_id=${basicData.seek_id}: dropdown never opened after dot-btn click — saving basic data only`);
             await report(basicData);
             continue;
           }
@@ -211,6 +276,7 @@ class ExtractJobPostService {
           const freshRow = freshRows[i];  // FIX: different variable name
 
           if (!freshRow) {
+            console.log(`[extractJobPost] seek_id=${basicData.seek_id}: row disappeared after re-query (pagination/DOM shift?) — saving job_desc only`);
             await report({ ...basicData, job_desc: contentDesc });
             continue;
           }
@@ -219,6 +285,7 @@ class ExtractJobPostService {
           const dotBtnAgain = await this.waitForDotBtn(page, freshRow);  // FIX: use freshRow
 
           if (!dotBtnAgain) {
+            console.log(`[extractJobPost] seek_id=${basicData.seek_id}: dot-btn not found on re-query — saving job_desc only`);
             await report({ ...basicData, job_desc: contentDesc });
             continue;
           }
@@ -228,6 +295,7 @@ class ExtractJobPostService {
           const dropdown2 = await this.waitForDropdown(page);
 
           if (!dropdown2) {  // FIX: null check was missing
+            console.log(`[extractJobPost] seek_id=${basicData.seek_id}: dropdown never reopened on re-query — saving job_desc only`);
             await report({ ...basicData, job_desc: contentDesc });
             continue;
           }
@@ -240,6 +308,7 @@ class ExtractJobPostService {
           });
 
           if (!detailBtnClicked) {
+            console.log(`[extractJobPost] seek_id=${basicData.seek_id}: detail menu item not found — saving job_desc only`);
             await report({ ...basicData, job_desc: contentDesc });
             continue;
           }
@@ -287,19 +356,6 @@ class ExtractJobPostService {
           continue;
         }
       }
-      const nextBtn = await page.$('a[rel="next"][aria-hidden="false"]');
-      hasNext = false;
-
-      if(nextBtn) {
-        await Promise.all([
-          nextBtn.click(),
-          page.waitForNetworkIdle({ idleTime: 500, timeout: 10000 }).catch(() => {}),
-        ]);
-
-        hasNext = true;
-      }
-
-      if (!hasNext) console.log("No more pages.");
     }
 
     return counts;
@@ -315,9 +371,11 @@ class ExtractJobPostService {
    * Returns the same { scraped, skipped, failed } counts as extractJobPost.
    */
   async syncAll(page, type, { onRow, shouldSkipDetail } = {}) {
-    await this.redirectJobsPage(page, type);
+    // Page 1 load — extractJobPost reads the total-count header off this
+    // page before looping, and navigates to page 2+ itself from there.
+    await this.redirectJobsPage(page, type, 1);
 
-    const counts = await this.extractJobPost(page, {
+    const counts = await this.extractJobPost(page, type, {
       shouldSkipDetail: shouldSkipDetail
         ? (basicData) => shouldSkipDetail(basicData, type)
         : undefined,

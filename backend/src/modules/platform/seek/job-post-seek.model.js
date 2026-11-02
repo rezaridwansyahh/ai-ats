@@ -64,6 +64,7 @@ class JobPostSeekModel {
         mjss.id AS seek_mapping_id,
         mjss.seek_id,
         mjss.candidate_count,
+        mjss.progress,
         mjss.created_date_seek,
         mjss.created_by
       FROM mapping_job_sourcing_seek mjss

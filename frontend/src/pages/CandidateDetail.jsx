@@ -11,7 +11,7 @@ import { STEPS } from '@/components/candidate-detail/steps';
 import { BATTERIES, getInitials } from '@/lib/batteries';
 import { getCandidateById, addCandidateStage } from '@/api/candidate.api';
 import { getSessionsFromCandidate } from '@/api/session.api';
-import { getResultFromCandidate, downloadReportPdf } from '@/api/assessment-battery-result.api';
+import { getResultFromCandidate, downloadReportPdf, downloadQaPdf } from '@/api/assessment-battery-result.api';
 import { getJobById } from '@/api/job.api';
 import { toast } from 'sonner';
 import { hasPermission } from '@/utils/permissions';
@@ -33,6 +33,8 @@ export default function CandidateDetailPage() {
   const [activeKey, setActiveKey]   = useState('setup');
   const [battery, setBattery]       = useState(null);
   const [jobBattery, setJobBattery] = useState(null); // job's assigned battery (Job Management)
+  const [jobTitle, setJobTitle]     = useState(null); // the job this candidate applied to — shown in the report instead of their resume's last position
+  const [jobDetail, setJobDetail]   = useState(null); // { job_location, work_type, work_option } — fills the report's info-grid slots that used to show personal candidate data
   const [existingSessions, setExistingSessions] = useState([]);
 
   const restoredOnceRef   = useRef(false);
@@ -49,6 +51,7 @@ export default function CandidateDetailPage() {
   const [sidebarFinalRec, setSidebarFinalRec] = useState(null);
   const [advanceStatus, setAdvanceStatus] = useState('idle'); // idle|loading|done|error
   const [printing, setPrinting] = useState(false);
+  const [downloadingQa, setDownloadingQa] = useState(false);
 
   /* ── Fetch candidate ─────────────────────────────────────────── */
   useEffect(() => {
@@ -72,14 +75,23 @@ export default function CandidateDetailPage() {
   }, [candidateId]);
 
   useEffect(() => {
-    if (!jobId) { setJobBattery(null); return undefined; }
+    if (!jobId) { setJobBattery(null); setJobTitle(null); setJobDetail(null); return undefined; }
     let cancelled = false;
     (async () => {
       try {
         const res = await getJobById(jobId);
-        if (!cancelled) setJobBattery(res.data?.job?.assessment_battery ?? null);
+        const job = res.data?.job;
+        if (!cancelled) {
+          setJobBattery(job?.assessment_battery ?? null);
+          setJobTitle(job?.job_title ?? null);
+          setJobDetail(job ? {
+            job_location: job.job_location ?? null,
+            work_type: job.work_type ?? null,
+            work_option: job.work_option ?? null,
+          } : null);
+        }
       } catch {
-        if (!cancelled) setJobBattery(null);
+        if (!cancelled) { setJobBattery(null); setJobTitle(null); setJobDetail(null); }
       }
     })();
     return () => { cancelled = true; };
@@ -266,6 +278,36 @@ export default function CandidateDetailPage() {
     }
   };
 
+  /* ── Q&A transcript PDF — question text + what the candidate answered,
+     distinct from the scored report above ── */
+  const handleDownloadQaPdf = async () => {
+    if (!latestResult?.id) return;
+    setDownloadingQa(true);
+    try {
+      const res = await downloadQaPdf(latestResult.id);
+      const url = URL.createObjectURL(new Blob([res.data], { type: 'application/pdf' }));
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `assessment-qa-${candidateView.name || latestResult.id}.pdf`;
+      a.click();
+      URL.revokeObjectURL(url);
+    } catch (err) {
+      let message = 'Failed to generate Q&A PDF';
+      const errBlob = err?.response?.data;
+      if (errBlob instanceof Blob) {
+        try {
+          const parsed = JSON.parse(await errBlob.text());
+          if (parsed?.message) message = parsed.message;
+        } catch { /* keep default message */ }
+      } else if (err?.message) {
+        message = err.message;
+      }
+      toast.error(message);
+    } finally {
+      setDownloadingQa(false);
+    }
+  };
+
   return (
     <>
       {/* ── Sticky Header ─────────────────────────────────────── */}
@@ -330,6 +372,8 @@ export default function CandidateDetailPage() {
                 <ScoreDecideTab
                   key={latestResult?.id ?? `no-result-${battery ?? 'none'}`}
                   candidate={candidateView}
+                  jobTitle={jobTitle}
+                  jobDetail={jobDetail}
                   battery={battery}
                   result={latestResult}
                   onJumpToTab={setActiveKey}
@@ -373,6 +417,8 @@ export default function CandidateDetailPage() {
                 onSaveNow={handleSaveNow}
                 onPrint={handlePrintPdf}
                 printing={printing}
+                onDownloadQa={handleDownloadQaPdf}
+                downloadingQa={downloadingQa}
               />
               <AssessmentStepsNav
                 activeKey={activeKey}
@@ -509,7 +555,7 @@ function TindakLanjutCard({ finalRec, onPick, onAdvance, advanceStatus, hasStage
 }
 
 /* ── Sidebar: contextual action card ─────────────────────────────── */
-function AssessmentActionCard({ activeKey, completed, battery, onSelect, saveStatus, onSaveNow, onPrint, printing }) {
+function AssessmentActionCard({ activeKey, completed, battery, onSelect, saveStatus, onSaveNow, onPrint, printing, onDownloadQa, downloadingQa }) {
   if (activeKey === 'setup') {
     return (
       <Card>
@@ -588,6 +634,17 @@ function AssessmentActionCard({ activeKey, completed, battery, onSelect, saveSta
             {printing
               ? <><Loader2 className="h-3.5 w-3.5 mr-1.5 animate-spin" />Generating…</>
               : <><Printer className="h-3.5 w-3.5 mr-1.5" /> Print / Save PDF</>}
+          </Button>
+          <Button
+            variant="outline"
+            size="sm"
+            className="w-full text-xs"
+            onClick={onDownloadQa}
+            disabled={downloadingQa}
+          >
+            {downloadingQa
+              ? <><Loader2 className="h-3.5 w-3.5 mr-1.5 animate-spin" />Generating…</>
+              : <><FileText className="h-3.5 w-3.5 mr-1.5" /> Download Q&A PDF</>}
           </Button>
           {saveStatus === 'saved' && (
             <p className="text-[10px] text-emerald-600 flex items-center gap-1">

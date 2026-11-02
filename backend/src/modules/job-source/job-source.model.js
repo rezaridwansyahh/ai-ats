@@ -214,7 +214,8 @@ class JobSourceModel {
   async markSynced(id) {
     const result = await getDb().query(`
       UPDATE core_job_sourcing
-      SET sync_state = 'idle', last_sync = NOW(), updated_at = NOW()
+      SET sync_state = 'idle', last_sync = NOW(), updated_at = NOW(),
+          current_bucket = NULL, last_seek_candidate_id = NULL
       WHERE id = $1
       RETURNING *
     `, [id]);
@@ -231,6 +232,39 @@ class JobSourceModel {
     return result.rows[0];
   }
 
+  // Dashboard "currently syncing" list — reuses sync_state the same way the
+  // Sync button already does (markSyncing is called the moment a job is
+  // enqueued, so this reflects queued-or-running, not strictly "actively
+  // scraping right now this instant"). progress/candidate_count come from
+  // mapping_job_sourcing_seek — null for non-Seek platforms.
+  async getSyncing(company_id) {
+    const result = await getDb().query(`
+      SELECT cjs.id, cjs.job_title, cjs.platform, cjs.status, cjs.sync_started_at,
+             mjss.progress, mjss.candidate_count
+      FROM core_job_sourcing cjs
+      LEFT JOIN master_job_account mja ON mja.id = cjs.account_id
+      LEFT JOIN job_post jp ON jp.id = cjs.job_post_id
+      LEFT JOIN core_job cj ON cj.id = jp.job_id
+      LEFT JOIN mapping_job_sourcing_seek mjss ON mjss.job_sourcing_id = cjs.id
+      WHERE cjs.sync_state = 'syncing'
+        AND COALESCE(mja.company_id, cj.company_id) = $1
+      ORDER BY cjs.sync_started_at ASC NULLS LAST
+    `, [company_id]);
+    return result.rows;
+  }
+
+  // Persists how far seek-extract-candidate got, so a retry after a mid-scrape
+  // failure can resume instead of restarting the whole multi-bucket scrape.
+  async updateSyncCursor(id, { current_bucket, last_seek_candidate_id }) {
+    const result = await getDb().query(`
+      UPDATE core_job_sourcing
+      SET current_bucket = $1, last_seek_candidate_id = $2, updated_at = NOW()
+      WHERE id = $3
+      RETURNING *
+    `, [current_bucket, last_seek_candidate_id, id]);
+    return result.rows[0];
+  }
+
   async updateStatus(id, status) {
     const result = await getDb().query(`
       UPDATE core_job_sourcing
@@ -240,6 +274,29 @@ class JobSourceModel {
     `, [status, id]);
 
     return result.rows[0];
+  }
+
+  // Scheduler eligibility (Seek) — used only by the night sweep now; daytime
+  // syncing is manual-click-only. An Expired sourcing that's already
+  // extracted every candidate that will ever exist for it (progress >=
+  // candidate_count) is permanently done — no point re-scraping it forever.
+  // Active sourcings are always eligible since candidate_count can keep
+  // growing. sync_state='error' is excluded so a dead/broken login doesn't
+  // get swept every cycle forever — a manual Sync click bypasses this query
+  // entirely, so a human can still retry an errored sourcing any time.
+  async getSeekSchedulerEligible() {
+    const result = await getDb().query(`
+      SELECT cjs.id, cjs.account_id
+      FROM core_job_sourcing cjs
+      LEFT JOIN mapping_job_sourcing_seek mjss ON mjss.job_sourcing_id = cjs.id
+      WHERE cjs.platform = 'seek'
+        AND cjs.sync_state != 'error'
+        AND (
+          cjs.status = 'Active'
+          OR (cjs.status = 'Expired' AND (mjss.progress IS NULL OR mjss.progress < mjss.candidate_count))
+        )
+    `);
+    return result.rows;
   }
 
   async delete(id) {

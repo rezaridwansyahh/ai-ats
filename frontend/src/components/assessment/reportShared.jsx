@@ -125,7 +125,7 @@ export function NarrativeBlock({ id, label, state, setNarr, onGenerate, generati
         value={state['edit_' + id] || ''}
         onChange={(e) => setNarr(id, e.target.value)}
         placeholder="Tuliskan interpretasi psikologis di sini..."
-        className="min-h-[90px] bg-gradient-to-br from-emerald-50/50 to-teal-50/30 border-teal-200 focus-visible:ring-teal-500"
+        className="min-h-[180px] bg-gradient-to-br from-emerald-50/50 to-teal-50/30 border-teal-200 focus-visible:ring-teal-500"
       />
     </div>
   );

@@ -66,6 +66,40 @@ class Question {
     return bySubtest;
   }
 
+  // For server-side scoring — resolve a subtest_id straight to its parent
+  // assessment_id/subtest_key/group_key, since assessment-score.service.js's
+  // upsert only receives subtest_id from the client.
+  static async getSubtestById(subtest_id) {
+    const result = await getDb().query(`
+      SELECT id, assessment_id, subtest_key, group_key, name, weight, time_limit_seconds, order_index
+      FROM assessment_subtest
+      WHERE id = $1
+    `, [subtest_id]);
+    return result.rows[0];
+  }
+
+  static async getQuestionsBySubtestId(subtest_id) {
+    const result = await getDb().query(`
+      SELECT id, question_type, order_index, content
+      FROM assessment_question
+      WHERE subtest_id = $1 AND is_active = true
+      ORDER BY order_index
+    `, [subtest_id]);
+    return result.rows;
+  }
+
+  // All subtests for a battery, ordered — used to assemble the final
+  // composite server-side (grouping TK subtests, mapping others 1:1).
+  static async getSubtestsByAssessmentId(assessment_id) {
+    const result = await getDb().query(`
+      SELECT id, subtest_key, group_key, name, weight, time_limit_seconds, order_index
+      FROM assessment_subtest
+      WHERE assessment_id = $1
+      ORDER BY order_index
+    `, [assessment_id]);
+    return result.rows;
+  }
+
   static async getSubtestByCode(code, subtest) {
     const subtestRes = await getDb().query(`
       SELECT s.id, s.subtest_key, s.group_key, s.name, s.weight, s.time_limit_seconds, s.order_index

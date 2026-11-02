@@ -97,6 +97,46 @@ class CandidatePipeline {
     return result.rows;
   }
 
+  // Active jobs that have gone `days` or more with zero candidates —
+  // backs the dashboard's "At-Risk" widget.
+  static async getNoApplicants(company_id, days = 5) {
+    const result = await getDb().query(`
+      SELECT j.id AS job_id, j.job_title, j.created_at
+      FROM core_job j
+      LEFT JOIN master_candidate c ON c.job_id = j.id
+      WHERE j.company_id = $1
+        AND j.status = 'Active'
+        AND j.created_at <= NOW() - ($2 || ' days')::interval
+      GROUP BY j.id, j.job_title, j.created_at
+      HAVING COUNT(c.id) = 0
+      ORDER BY j.created_at ASC
+    `, [company_id, days]);
+    return result.rows;
+  }
+
+  // Average days from application to the "Hired" stage, over candidates
+  // hired in the last `days` — backs the dashboard's TTH stat.
+  static async getTimeToHire(company_id, days = 30) {
+    const result = await getDb().query(`
+      SELECT
+        AVG(EXTRACT(EPOCH FROM (s.created_at - mc.date)) / 86400.0) AS avg_days,
+        COUNT(*)::int AS hired_count
+      FROM candidate_stages s
+      JOIN job_stage js ON js.id = s.job_stage_id
+      JOIN master_candidate mc ON mc.id = s.candidate_id
+      JOIN core_job cj ON cj.id = mc.job_id
+      WHERE js.name ILIKE 'hired'
+        AND cj.company_id = $1
+        AND s.created_at >= NOW() - ($2 || ' days')::interval
+        AND mc.date IS NOT NULL
+    `, [company_id, days]);
+    const row = result.rows[0];
+    return {
+      avg_days: row?.avg_days != null ? Number(row.avg_days) : null,
+      hired_count: row?.hired_count ?? 0,
+    };
+  }
+
   static async getSummaryFiltered(category, company_id) {
     const result = await getDb().query(`
       SELECT j.id AS job_id,
@@ -125,41 +165,93 @@ class CandidatePipeline {
   // unbounded) rather than silently truncating their results to a page.
   static async getByJobId(job_id, company_id, {
     search, stage_id, min_exp, max_exp, sort, page, pageSize,
+    duration_q, min_score, min_salary, max_salary,
   } = {}) {
     const limit  = pageSize !== undefined ? Math.min(Math.max(Number(pageSize) || 15, 1), 100) : null;
     const offset = (page !== undefined && limit != null) ? (Math.max(Number(page) || 1, 1) - 1) * limit : 0;
 
-    const searchParam  = search ? `%${search}%` : null;
-    const stageParam   = stage_id !== undefined && stage_id !== null && stage_id !== '' ? Number(stage_id) : null;
-    const minExpParam  = min_exp !== undefined && min_exp !== null && min_exp !== '' ? Number(min_exp) : null;
-    const maxExpParam  = max_exp !== undefined && max_exp !== null && max_exp !== '' ? Number(max_exp) : null;
-    const sortParam    = sort === 'exp_asc' || sort === 'exp_desc' ? sort : null;
+    const searchParam    = search ? `%${search}%` : null;
+    const stageParam     = stage_id !== undefined && stage_id !== null && stage_id !== '' ? Number(stage_id) : null;
+    const minExpParam    = min_exp !== undefined && min_exp !== null && min_exp !== '' ? Number(min_exp) : null;
+    const maxExpParam    = max_exp !== undefined && max_exp !== null && max_exp !== '' ? Number(max_exp) : null;
+    const sortParam      = sort === 'exp_asc' || sort === 'exp_desc' ? sort : null;
+    const durationParam  = duration_q ? `%${duration_q}%` : null;
+    const minScoreParam  = min_score !== undefined && min_score !== null && min_score !== '' ? Number(min_score) : null;
+    const minSalaryParam = min_salary !== undefined && min_salary !== null && min_salary !== '' ? Number(min_salary) : null;
+    const maxSalaryParam = max_salary !== undefined && max_salary !== null && max_salary !== '' ? Number(max_salary) : null;
 
     const result = await getDb().query(`
       WITH base AS (
         ${CANDIDATE_PIPELINE_SELECT}
         WHERE c.job_id = $1 AND cj.company_id = $2
       ),
-      filtered AS (
-        SELECT *,
-          NULLIF(regexp_replace(COALESCE(information->'experience'->>'years_total', ''), '[^0-9.]', '', 'g'), '')::numeric AS exp_years
+      enriched AS (
+        SELECT
+          base.*,
+          NULLIF(regexp_replace(COALESCE(base.information->'experience'->>'years_total', ''), '[^0-9.]', '', 'g'), '')::numeric AS exp_years,
+          cjs_score.overall_score AS match_score,
+          sal.salary_answer AS salary_raw,
+          CASE
+            WHEN sal.salary_answer IS NULL THEN NULL
+            -- "Jt/Juta" and "Rb/Ribu" shorthand always carry a small figure
+            -- (optionally one decimal, e.g. "7.5 Jt") — never thousands-grouped.
+            WHEN sal.salary_answer ~* 'jt|juta' THEN
+              NULLIF(replace((regexp_match(sal.salary_answer, '[0-9]+(?:[.,][0-9]+)?'))[1], ',', '.'), '')::numeric * 1000000
+            WHEN sal.salary_answer ~* 'rb|ribu' THEN
+              NULLIF(replace((regexp_match(sal.salary_answer, '[0-9]+(?:[.,][0-9]+)?'))[1], ',', '.'), '')::numeric * 1000
+            -- Otherwise treat it as a full IDR figure where any "." or ","
+            -- is a thousands separator (e.g. "Rp 12,000,000"), never a decimal.
+            WHEN (regexp_match(sal.salary_answer, '[0-9][0-9.,]*[0-9]|[0-9]')) IS NULL THEN NULL
+            ELSE
+              NULLIF(regexp_replace((regexp_match(sal.salary_answer, '[0-9][0-9.,]*[0-9]|[0-9]'))[1], '[.,]', '', 'g'), '')::numeric
+          END AS salary_parsed
         FROM base
+        LEFT JOIN candidate_job_score cjs_score
+          ON cjs_score.applicant_id = base.applicant_id AND cjs_score.job_id = base.job_id
+        -- Desired-salary screening answer: the question KEY is whatever text
+        -- that job's posting used (not a fixed schema), so match any key
+        -- containing "gaji"/"salary" rather than an exact name. Joined through
+        -- mapping_job_sourcing_job so this is the answer for THIS job
+        -- specifically — an applicant can have sourcing rows from other jobs too.
+        LEFT JOIN LATERAL (
+          SELECT (kv.value ->> 'answer') AS salary_answer
+          FROM mapping_applicant_sourcing mas
+          JOIN core_job_sourcing mcjs ON mcjs.id = mas.job_sourcing_id
+          JOIN mapping_job_sourcing_job mjsj ON mjsj.job_sourcing_id = mcjs.id
+          CROSS JOIN LATERAL jsonb_each(COALESCE(mas.information, '{}'::jsonb)) AS kv(key, value)
+          WHERE mas.applicant_id = base.applicant_id
+            AND mjsj.job_id = base.job_id
+            AND (kv.key ILIKE '%gaji%' OR kv.key ILIKE '%salary%')
+          ORDER BY mas.created_at DESC
+          LIMIT 1
+        ) sal ON true
+      ),
+      filtered AS (
+        SELECT *
+        FROM enriched
         WHERE ($3::text IS NULL OR candidate_name ILIKE $3)
           AND ($4::int IS NULL OR latest_stage = $4)
+          AND ($10::text IS NULL OR information -> 'job_position' ->> 'duration' ILIKE $10)
       )
       SELECT *, COUNT(*) OVER()::int AS total_count
       FROM filtered
       WHERE ($5::numeric IS NULL OR COALESCE(exp_years, -1) >= $5)
         AND ($6::numeric IS NULL OR COALESCE(exp_years, 999999) <= $6)
+        AND ($11::int IS NULL OR COALESCE(match_score, -1) >= $11)
+        AND ($12::numeric IS NULL OR COALESCE(salary_parsed, -1) >= $12)
+        AND ($13::numeric IS NULL OR COALESCE(salary_parsed, 999999999999) <= $13)
       ORDER BY
         CASE WHEN $7 = 'exp_asc'  THEN exp_years END ASC NULLS LAST,
         CASE WHEN $7 = 'exp_desc' THEN exp_years END DESC NULLS LAST,
         created_at DESC
       LIMIT $8 OFFSET $9
-    `, [job_id, company_id, searchParam, stageParam, minExpParam, maxExpParam, sortParam, limit, offset]);
+    `, [
+      job_id, company_id, searchParam, stageParam, minExpParam, maxExpParam, sortParam, limit, offset,
+      durationParam, minScoreParam, minSalaryParam, maxSalaryParam,
+    ]);
 
     const total = result.rows[0]?.total_count ?? 0;
-    const pipelines = result.rows.map(({ total_count, exp_years, ...rest }) => rest);
+    const pipelines = result.rows.map(({ total_count, exp_years, salary_parsed, ...rest }) => rest);
     return { pipelines, total };
   }
 

@@ -191,6 +191,12 @@ CREATE TABLE company_setting (
   UNIQUE(company_id, key)
 );
 
+CREATE TABLE company_application_form (
+  company_id INTEGER REFERENCES core_company(id) ON DELETE CASCADE,
+  schema JSONB DEFAULT '{}'::jsonb,
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
 CREATE TABLE company_usage (
   id SERIAL PRIMARY KEY,
   company_id INTEGER REFERENCES core_company(id) ON DELETE CASCADE,
@@ -280,9 +286,7 @@ CREATE TABLE master_job_account (
   last_connect TIMESTAMP,
   last_sync TIMESTAMP,
   created_at TIMESTAMP NOT NULL DEFAULT NOW(),
-  updated_at TIMESTAMP NOT NULL DEFAULT NOW(),
-
-  UNIQUE(user_id, portal_name)
+  updated_at TIMESTAMP NOT NULL DEFAULT NOW()
 );
 CREATE INDEX idx_master_job_account_company ON master_job_account (company_id);
 
@@ -416,6 +420,8 @@ CREATE TABLE core_job_sourcing (
   last_sync TIMESTAMP,
   sync_state sync_state_type NOT NULL DEFAULT 'idle',  -- live applicant-sync state for this channel
   sync_started_at TIMESTAMP,
+  current_bucket VARCHAR(100),          -- resume cursor: bucket in progress when sync last stopped
+  last_seek_candidate_id VARCHAR(100),  -- resume cursor: last candidate successfully saved
   created_at TIMESTAMP NOT NULL DEFAULT NOW(),
   updated_at TIMESTAMP NOT NULL DEFAULT NOW(),
   additional JSONB,
@@ -630,6 +636,7 @@ CREATE TABLE candidate_job_score (
   role_profile             VARCHAR(50), -- unused going forward, kept for historical rows
   summary                  TEXT,
   scored_at                TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  is_viewed                BOOLEAN NOT NULL DEFAULT false, -- recruiter opened the Match-tab preview modal for this score
   UNIQUE (applicant_id, job_id)
 );
 
@@ -666,8 +673,8 @@ CREATE TABLE screening_qa (
   num_questions INTEGER,
   questions JSONB NOT NULL,
   answers JSONB,
-  application_form        JSONB,        
-  application_form_schema JSONB,       
+  application_form        JSONB,
+  application_form_schema JSONB,
   status screening_qa_status_type NOT NULL DEFAULT 'draft',
   sent_at  TIMESTAMPTZ,
   responded_at TIMESTAMPTZ,

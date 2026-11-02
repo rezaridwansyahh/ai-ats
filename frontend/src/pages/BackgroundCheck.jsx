@@ -96,16 +96,18 @@ export default function BackgroundCheckWorkboard() {
     }));
   }, [positions, bgCheckCountsByJob]);
 
-  const statusCounts = useMemo(() => {
-    const c = { claims: 0, consent: 0, tracker: 0, verdict: 0, done: 0 };
-    for (const b of bgChecks) if (c[b.status] != null) c[b.status]++;
-    return c;
-  }, [bgChecks]);
-
   const displayBgChecks = useMemo(() => {
     if (!activeJob) return bgChecks;
     return bgChecks.filter((b) => b.job_id === activeJob.job_id);
   }, [bgChecks, activeJob]);
+
+  // Status counts derived from the position-scoped list so the chips reflect
+  // whichever job is selected, not every job at once.
+  const statusCounts = useMemo(() => {
+    const c = { claims: 0, consent: 0, tracker: 0, verdict: 0, done: 0 };
+    for (const b of displayBgChecks) if (c[b.status] != null) c[b.status]++;
+    return c;
+  }, [displayBgChecks]);
 
   const filtered = useMemo(() => {
     let list = displayBgChecks;

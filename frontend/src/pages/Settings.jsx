@@ -1,9 +1,9 @@
 import { useState } from 'react';
 import { useLocation } from 'react-router-dom';
 import {
-  Settings2, Users, ShieldCheck, Workflow, Plug, Bell, Globe,
+  Settings2, Users, ShieldCheck, Workflow, Plug,
   ShieldQuestion, FileText, CreditCard, CalendarClock, Mail, Palette,
-  Lock,
+  Lock, ClipboardList,
 } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -14,8 +14,6 @@ import TeamSettings from '../components/settings/TeamSettings';
 import RolesPermissionsSettings from '../components/settings/RolesPermissionsSettings';
 import WorkflowTemplatesSettings from '../components/settings/WorkflowTemplatesSettings';
 import IntegrationsSettings from '../components/settings/IntegrationsSettings';
-import NotificationsSettings from '../components/settings/NotificationsSettings';
-import CandidatePortalSettings from '../components/settings/CandidatePortalSettings';
 import ComplianceSettings from '../components/settings/ComplianceSettings';
 import AuditExportSettings from '../components/settings/AuditExportSettings';
 import BillingPlanSettings from '../components/settings/BillingPlanSettings';
@@ -24,6 +22,7 @@ import GeneralSettings from '../components/settings/GeneralSettings';
 import OfferTemplateSettings from '../components/settings/OfferTemplateSettings';
 import EmailTemplateSettings from '../components/settings/EmailTemplateSettings';
 import ThemeSettings from '../components/settings/ThemeSettings';
+import CompanyFormSettingPage from '@/features/application-form/pages/CompanyFormSettingPage';
 
 // ── Static Configuration ──
 
@@ -33,9 +32,8 @@ const SETTINGS_NAV = [
   { id: 'team', label: 'Team', icon: Users },
   { id: 'roles', label: 'Roles & Permissions', icon: ShieldCheck },
   { id: 'workflow-templates', label: 'Workflow Templates', icon: Workflow },
+  { id: 'application-form', label: 'Application Form', icon: ClipboardList },
   { id: 'integrations', label: 'Integrations', icon: Plug },
-  { id: 'notifications', label: 'Notifications', icon: Bell },
-  { id: 'candidate-portal', label: 'Candidate Portal', icon: Globe },
   { id: 'offer-template', label: 'Offer Letter Template', icon: FileText },
   { id: 'email-templates', label: 'Email Templates', icon: Mail },
   { id: 'compliance', label: 'Compliance', icon: ShieldQuestion, badge: 'OK' },
@@ -71,14 +69,13 @@ const SECTION_COMPONENTS = {
   roles: RolesPermissionsSettings,
   'workflow-templates': WorkflowTemplatesSettings,
   integrations: IntegrationsSettings,
-  notifications: NotificationsSettings,
-  'candidate-portal': CandidatePortalSettings,
   'offer-template': OfferTemplateSettings,
   'email-templates': EmailTemplateSettings,
   compliance: ComplianceSettings,
   'audit-export': AuditExportSettings,
   billing: BillingPlanSettings,
   'probation-templates': ProbationTemplatesSettings,
+  'application-form': CompanyFormSettingPage
 };
 
 // ── View Wrapper Page ──

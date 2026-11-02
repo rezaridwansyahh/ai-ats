@@ -4,7 +4,6 @@ import jobPostRpa from "./rpa/job-post.rpa.js"
 import extractCandidateRpa from "./rpa/extract-candidate.rpa.js"
 import jobSourceModel from "../../job-source/job-source.model.js"
 import jobPostSeekModel from "./job-post-seek.model.js"
-import browserPuppeteer from "../../../shared/services/puppeteer/browser.puppeteer.js"
 import extractJobPostRpa from "../seek/rpa/extract-job-post.rpa.js"
 import applicantModel from "../../applicant/applicant.model.js"
 import jobAccountModel from "../../job-account/job-account.model.js"
@@ -19,7 +18,8 @@ import path from "path"
 
 class SeekService {
   async jobPost(account_id, service, dataForm) {
-    const page = await cookieService.includeCookiesIfExist(account_id, service) // still hardcoded from req body (user_id, service);
+    const browserPuppeteer = await cookieService.includeCookiesIfExist(account_id, service) // still hardcoded from req body (user_id, service);
+    const page = browserPuppeteer.getPage();
     const account = await this.getAccountAndDecrypt(account_id);
 
     try {
@@ -42,7 +42,8 @@ class SeekService {
       pay_max: dataForm.pay_max,
       pay_display: dataForm.pay_display,
     });
-    const page = await cookieService.includeCookiesIfExist(account_id); // still hardcoded from req body (user_id, service);
+    const browserPuppeteer = await cookieService.includeCookiesIfExist(account_id); // still hardcoded from req body (user_id, service);
+    const page = browserPuppeteer.getPage();
 
     try {
       await loginRpa.authenticatedPage(page, account_id);
@@ -60,7 +61,8 @@ class SeekService {
   }
 
   async deleteJobPostDraft(job_sourcing_id, account_id) {
-    const page = await cookieService.includeCookiesIfExist(account_id); // still hardcoded from req body (user_id, service);
+    const browserPuppeteer = await cookieService.includeCookiesIfExist(account_id); // still hardcoded from req body (user_id, service);
+    const page = browserPuppeteer.getPage();
     const jobPostSeek = await jobPostSeekModel.getDetailsByJobSourcingId(job_sourcing_id);
 
     try {
@@ -78,7 +80,8 @@ class SeekService {
   }
 
   async updateJobPostDraft(job_sourcing_id, account_id, dataForm) {
-    const page = await cookieService.includeCookiesIfExist(account_id); // still hardcoded from req body (user_id, service);
+    const browserPuppeteer = await cookieService.includeCookiesIfExist(account_id); // still hardcoded from req body (user_id, service);
+    const page = browserPuppeteer.getPage();
     const jobPostSeek = await jobPostSeekModel.getDetailsByJobSourcingId(job_sourcing_id);
     const account = await this.getAccountAndDecrypt(account_id);
 
@@ -100,17 +103,44 @@ class SeekService {
       await browserPuppeteer.close();
     }
   }
-  async extractCandidates(account_id, job_sourcing_id, page = null, progress = 0) {
-    const ownPage = !page;
+  // `browserInstance`, when passed, is a BrowserPuppeteer instance whose
+  // lifecycle belongs to the caller (e.g. syncAll sharing one session across
+  // every sourcing for an account) — this method only closes it if it opened
+  // it itself (ownBrowser), never a shared one it was just lent.
+  async extractCandidates(account_id, job_sourcing_id, browserInstance = null, progress = null) {
+    const jobPostSeek = await jobPostSeekModel.getDetailsByJobSourcingId(job_sourcing_id);
+    const cursor = await jobSourceModel.getById(job_sourcing_id);
 
-    if(!page) {
-      page = await cookieService.includeCookiesIfExist(account_id);
+    // Expired listings can never gain new applicants — once progress has
+    // caught up to Seek's own reported candidate_count, every candidate that
+    // will ever exist for this listing has already been extracted. Skip
+    // before even opening a browser/logging in, since that's the real cost
+    // here, not the DB check.
+    if (cursor?.status === 'Expired' && jobPostSeek?.candidate_count != null) {
+      const alreadyDone = (jobPostSeek.progress || 0) >= jobPostSeek.candidate_count;
+      if (alreadyDone) {
+        console.log(`[extractCandidates] job_sourcing_id=${job_sourcing_id} already 100% extracted (${jobPostSeek.progress}/${jobPostSeek.candidate_count}) — skipping`);
+        return { buckets: [], results: [], linkedJobIds: [], skipped: true };
+      }
     }
 
-    const jobPostSeek = await jobPostSeekModel.getDetailsByJobSourcingId(job_sourcing_id);
+    // Resume the durable count instead of always restarting at 0 — each run
+    // is a separate process invocation (queued job), so the in-memory
+    // counter from a previous run is long gone; this is its only record.
+    if (progress == null) progress = jobPostSeek?.progress || 0;
 
-    // Jobs this sourcing is linked to (origin + manually-mapped). Each synced
-    // applicant is auto-promoted to a candidate for every linked job.
+    const ownBrowser = !browserInstance;
+
+    if (!browserInstance) {
+      browserInstance = await cookieService.includeCookiesIfExist(account_id);
+    }
+    const page = browserInstance.getPage();
+
+    // Jobs this sourcing is linked to (origin + manually-mapped), as of the
+    // start of this run — only used for the summary returned below, NOT for
+    // the actual per-candidate auto-promotion (that re-fetches fresh inside
+    // onSave, since a link can be added while this run is already in
+    // progress — see the comment there for why a stale snapshot is wrong).
     const linkedJobIds = await jobSourceModel.getLinkedJobIds(job_sourcing_id);
 
     // Resolve the owning company from the job account so synced applicants are
@@ -131,9 +161,17 @@ class SeekService {
       }
     }
 
+    // Resume cursor from a previous failed attempt, if any — lets this run
+    // skip buckets already fully processed and jump straight to the last
+    // saved candidate's current page instead of restarting from bucket 1.
+    // (cursor itself was already fetched above, for the Expired skip check.)
+    const resumeBucket = cursor?.current_bucket || null;
+    const resumeCandidateId = cursor?.last_seek_candidate_id || null;
+    console.log(`[extractCandidates] job_sourcing_id=${job_sourcing_id} resumeBucket=${resumeBucket} resumeCandidateId=${resumeCandidateId}`);
+
     try {
       await loginRpa.authenticatedPage(page, account_id);
-      await extractCandidateRpa.navigateToCandidatePage(page, jobPostSeek.seek_id);
+      await extractCandidateRpa.navigateToCandidatePage(page, jobPostSeek.seek_id, resumeCandidateId);
 
       const buckets = await extractCandidateRpa.extractCandidateType(page, jobPostSeek.seek_id);
       const seekRecord = await jobPostSeekModel.getBySeekId(jobPostSeek.seek_id);
@@ -141,13 +179,30 @@ class SeekService {
 
       const results = [];
 
-      for (const bucket of buckets) {
+      // Buckets before the one we stopped on are already fully done — skip
+      // them entirely rather than re-walking (and re-dedup-checking) every
+      // page of an already-finished bucket. Falls back to processing every
+      // bucket if the stored bucket name no longer matches one returned now.
+      const startIndex = resumeBucket
+        ? Math.max(buckets.findIndex((b) => b.name === resumeBucket), 0)
+        : 0;
+
+      for (const [i, bucket] of buckets.slice(startIndex).entries()) {
         if (bucket.count === 0) {
           results.push({ bucket: bucket.name, saved: 0, skipped: 0, promoted: 0 });
           continue;
         }
 
-        await extractCandidateRpa.navigateToCandidateDetail(page, bucket.name);
+        // The very first bucket of a resumed run is already showing the
+        // right page — navigateToCandidatePage's `selected=` deep link
+        // resolved both bucket and page for us. Clicking the bucket tab
+        // again here would reset pagination back to page 1, throwing away
+        // the whole point of the resume. Every other bucket genuinely
+        // hasn't been opened yet this run, so it still needs the click.
+        const alreadyPositioned = i === 0 && !!resumeCandidateId;
+        if (!alreadyPositioned) {
+          await extractCandidateRpa.navigateToCandidateDetail(page, bucket.name);
+        }
 
         let promoted = 0;
 
@@ -225,6 +280,22 @@ class SeekService {
                     buffer, path.basename(savedPath), { company_id, metadata: { applicant_id: applicant.id } }
                   );
                   await screeningModel.setApplicantInformation(applicant.id, facets);
+
+                  // Backfill email from the CV parse if the Seek scrape never
+                  // got one — only when the applicant has none yet (never
+                  // overwrite a real scraped value) and only when it's safe:
+                  // company-scoped getByEmail must find nobody else already
+                  // using it, otherwise we'd silently recreate the exact
+                  // cross-candidate merge bug this whole area was fixed for.
+                  if (!applicant.email && facets.email && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(facets.email)) {
+                    const collision = await applicantModel.getByEmail(facets.email, company_id || null);
+                    if (!collision) {
+                      await applicantModel.updateEmail(applicant.id, facets.email);
+                      applicant.email = facets.email;
+                    } else if (collision.id !== applicant.id) {
+                      console.log(`CV-parsed email for applicant ${applicant.id} collides with existing applicant ${collision.id} — left unset`);
+                    }
+                  }
                 } catch (err) {
                   console.error(`Failed to parse CV for applicant ${applicant.id}:`, err.message);
                 }
@@ -238,8 +309,18 @@ class SeekService {
           // Auto-promote to candidate for every job this sourcing is linked to.
           // Dup-safe (ON CONFLICT DO NOTHING) and individually guarded so one
           // failure never aborts the batch.
+          //
+          // Fetched fresh per candidate, not reusing the function-level
+          // `linkedJobIds` snapshotted once at the top of extractCandidates —
+          // a link added mid-sync (via job-source.service.js:linkToJob,
+          // while this run is already in progress) would otherwise never
+          // promote candidates saved *after* the link but still using the
+          // stale pre-link snapshot. linkToJob's own backfill only catches
+          // applicants already in the DB at the moment of linking; anything
+          // this run saves afterward falls through unless re-checked here.
           if (applicant?.id) {
-            for (const jobId of linkedJobIds) {
+            const currentLinkedJobIds = await jobSourceModel.getLinkedJobIds(job_sourcing_id);
+            for (const jobId of currentLinkedJobIds) {
               try {
                 const created = await candidatePipelineModel.createFromApplicantIfAbsent(applicant.id, jobId);
                 if (created) {
@@ -250,6 +331,29 @@ class SeekService {
                 console.error(`Auto-promote failed for applicant ${applicant.id} → job ${jobId}:`, err.message);
               }
             }
+          }
+
+          // Record resume cursor after every successful save — not just on
+          // final failure — so whatever's been saved so far is never lost if
+          // the process is killed outright (not just a caught exception).
+          try {
+            await jobSourceModel.updateSyncCursor(job_sourcing_id, {
+              current_bucket: bucket.name,
+              last_seek_candidate_id: candidate.candidate_id,
+            });
+          } catch (err) {
+            console.error(`Failed to update sync cursor for job_sourcing_id=${job_sourcing_id}:`, err.message);
+          }
+
+          // Durable progress count — the only way a *later*, separate run
+          // (a fresh queued job, not a continuation of this process) knows
+          // how far a previous attempt actually got. Without this, an
+          // Expired listing's "already 100% extracted" check has nothing to
+          // compare against candidate_count.
+          try {
+            await jobPostSeekModel.update(job_sourcing_id, { progress: candidate.progress });
+          } catch (err) {
+            console.error(`Failed to update progress for job_sourcing_id=${job_sourcing_id}:`, err.message);
           }
         };
 
@@ -262,11 +366,20 @@ class SeekService {
         results.push({ bucket: bucket.name, saved, skipped, promoted });
       }
 
+      // Safety-net write — a bucket consisting entirely of already-synced
+      // (skipped) candidates never calls onSave, so progress could advance
+      // in-memory across a whole bucket without ever being persisted.
+      try {
+        await jobPostSeekModel.update(job_sourcing_id, { progress });
+      } catch (err) {
+        console.error(`Failed to persist final progress for job_sourcing_id=${job_sourcing_id}:`, err.message);
+      }
+
       return { buckets, results, linkedJobIds };
     } catch (err) {
       throw err;
     } finally {
-      if(ownPage) await browserPuppeteer.close();
+      if (ownBrowser) await browserInstance.close();
     }
   }
 
@@ -356,13 +469,14 @@ class SeekService {
       && existing.candidate_count === basicData.candidate_count;
   }
 
-  async syncJobPostAll(account_id, page = null) {
+  async syncJobPostAll(account_id, browserInstance = null) {
     const types = ['open', 'expired']; // Seek has no real "draft" listing under this page/type flow
-    const ownPage = !page;
+    const ownBrowser = !browserInstance;
 
-    if(!page) {
-      page = await cookieService.includeCookiesIfExist(account_id);
+    if (!browserInstance) {
+      browserInstance = await cookieService.includeCookiesIfExist(account_id);
     }
+    const page = browserInstance.getPage();
 
     try {
       await loginRpa.authenticatedPage(page, account_id);
@@ -382,21 +496,21 @@ class SeekService {
       await jobAccountModel.updateSync(account_id, 'Error');
       throw err;
     } finally {
-      if(ownPage) await browserPuppeteer.close();
+      if (ownBrowser) await browserInstance.close();
     }
   }
 
   async syncAll(account_id) {
-    const page = await cookieService.includeCookiesIfExist(account_id); // still hardcoded from req body (user_id, service);
+    const browserInstance = await cookieService.includeCookiesIfExist(account_id); // still hardcoded from req body (user_id, service);
 
     try {
-      await this.syncJobPostAll(account_id, page);
+      await this.syncJobPostAll(account_id, browserInstance);
       const sourcings = await jobSourceModel.getByAccountId(account_id);
 
       const results = [];
 
       for(const sourcing of sourcings) {
-        const candidates = await this.extractCandidates(account_id, sourcing.id, page);
+        const candidates = await this.extractCandidates(account_id, sourcing.id, browserInstance);
 
         results.push(candidates);
       }
@@ -405,12 +519,13 @@ class SeekService {
     } catch(err) {
       throw err;
     } finally {
-      await browserPuppeteer.close();
+      await browserInstance.close();
     }
   }
 
   async checkConnection(account_id) {
-    const page = await cookieService.includeCookiesIfExist(account_id);
+    const browserPuppeteer = await cookieService.includeCookiesIfExist(account_id);
+    const page = browserPuppeteer.getPage();
 
     try {
       const check = await loginRpa.authenticatedPage(page, account_id);

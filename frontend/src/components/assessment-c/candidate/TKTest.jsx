@@ -13,6 +13,7 @@ import {
   getGrade,
   getIQ,
   getIQClass,
+  getIQVerdict,
   fmtTime,
   checkGIAnswer,
 } from '../utils/scoring';
@@ -71,6 +72,7 @@ function computeSubScore(subCode, items, ansForSub) {
   if (subCode === 'GI') {
     res.iq = getIQ(ok);
     res.iqCls = getIQClass(res.iq);
+    res.verdict = getIQVerdict(res.iq).v; // IQ classification replaces the percentile verdict for GI
   }
   return res;
 }
@@ -96,6 +98,13 @@ export default function TKTest({ resultId, assessmentCode, portalHash, onComplet
   const [timeLeft, setTimeLeft] = useState(0);
   const [done, setDone] = useState({});
   const tickRef = useRef(null);
+  // The tick interval (below) is created once per subtest and never
+  // recreated while it's running, so its auto-timeout callback would
+  // otherwise close over whatever `answers` looked like at that moment
+  // (empty, right when the subtest started) — silently scoring 0 regardless
+  // of what the candidate actually answered. Routing the call through a ref
+  // that's refreshed every render keeps it pointed at the live closure.
+  const handleFinishSubRef = useRef(null);
 
   useEffect(() => {
     let cancelled = false;
@@ -204,19 +213,22 @@ export default function TKTest({ resultId, assessmentCode, portalHash, onComplet
   }, [assessmentCode, portalHash]);
 
   useEffect(() => {
+    handleFinishSubRef.current = handleFinishSub;
+  });
+
+  useEffect(() => {
     if (phase !== 'sub-active') return;
     tickRef.current = setInterval(() => {
       setTimeLeft((t) => {
         if (t <= 1) {
           clearInterval(tickRef.current);
-          handleFinishSub(true);
+          handleFinishSubRef.current(true);
           return 0;
         }
         return t - 1;
       });
     }, 1000);
     return () => clearInterval(tickRef.current);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [phase, code]);
 
   if (phase === 'loading') {
@@ -257,7 +269,13 @@ export default function TKTest({ resultId, assessmentCode, portalHash, onComplet
     setPhase('sub-active');
   };
 
-  const handleFinishSub = (auto = false) => {
+  // Declared as a function statement (not `const =>`) — it's hoisted in full,
+  // so the ref-sync effect above can read it safely even on the very first
+  // ('loading'-phase) render, which returns before reaching this point in a
+  // `const` version and left the ref pointed at a TDZ binding (crashed every
+  // candidate's first subtest with "can't access lexical declaration before
+  // initialization").
+  function handleFinishSub(auto = false) {
     if (!auto) {
       const answeredCount =
         code === 'GI'
@@ -269,7 +287,7 @@ export default function TKTest({ resultId, assessmentCode, portalHash, onComplet
     const res = scoreSub(code);
     setDone((d) => ({ ...d, [code]: res }));
     setPhase('sub-done');
-  };
+  }
 
   const handleNextSub = () => {
     const idx = tkOrder.indexOf(code);

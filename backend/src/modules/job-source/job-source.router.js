@@ -37,6 +37,7 @@ import authToken from '../../shared/middleware/auth.middleware.js';
 router.use(authToken);
 
 router.get('/', jobSourcingController.getAll);
+router.get('/syncing', jobSourcingController.getSyncing);
 router.get('/user/:user_id', jobSourcingController.getByUserId);
 router.get('/user/:user_id/status', jobSourcingController.getByUserIdAndStatus);
 router.get('/user/:user_id/full', jobSourcingController.getSeekByUserId);

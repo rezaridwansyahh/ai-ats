@@ -76,6 +76,17 @@ export const getWorkboard = () =>
 export const getLaneCandidates = (job_id, engine) =>
   api.get(`/screening/job/${job_id}/lane`, { params: engine ? { engine } : {} });
 
+// Match tab — flips a score row's preview to "viewed" the first time a
+// recruiter opens it (idempotent on the backend, safe to call repeatedly).
+export const markCandidateViewed = (score_id) =>
+  api.patch(`/screening/score/${score_id}/viewed`);
+
+// Lightweight counts for the summary tiles — fetched eagerly regardless of
+// which stage tab is open. The full per-lane candidate rows (getLaneCandidates
+// above, getCalibration below) are fetched lazily, only once their tab is opened.
+export const getEngineCounts = (job_id) =>
+  api.get(`/screening/job/${job_id}/engine-counts`);
+
 export const parseBulk = (applicant_ids) =>
   api.post('/screening/parse-bulk', { applicant_ids });
 
@@ -89,12 +100,12 @@ export const getScreeningByCandidate = (candidate_id) =>
 export const setScreeningDecision = (screening_id, { decision, decision_reason }) =>
   api.patch(`/screening/screening/${screening_id}/decision`, { decision, decision_reason });
 
-// L4 Calibration (Phase 4)
-export const getCalibration = (job_id) =>
-  api.get(`/screening/job/${job_id}/calibration`);
+// L4 Calibration (Phase 4) — params: { search, bucket, page, pageSize }
+export const getCalibration = (job_id, params = {}) =>
+  api.get(`/screening/job/${job_id}/calibration`, { params });
 
-export const advanceBulk = (job_id, screening_ids, { decision_reason } = {}) =>
-  api.post(`/screening/job/${job_id}/advance-bulk`, { screening_ids, decision_reason });
+export const advanceBulk = (job_id, candidate_ids, { decision_reason } = {}) =>
+  api.post(`/screening/job/${job_id}/advance-bulk`, { candidate_ids, decision_reason });
 
 // Follow-up Q&A (L3 candidate detail)
 export const getQa = (screening_id) =>

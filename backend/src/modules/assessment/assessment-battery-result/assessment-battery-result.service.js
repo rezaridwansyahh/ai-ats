@@ -1,4 +1,12 @@
 import AssessmentBatteryResult from './assessment-battery-result.model.js';
+import AssessmentScore from '../assessment-score/assessment-score.model.js';
+import AssessmentAnswer from '../assessment-answer/assessment-answer.model.js';
+import Question from '../question/question.model.js';
+// Aliased — this file already has its own legacy computeTkComposite (below,
+// part of the dead Battery-A-only points-based scoring path that reads from
+// the never-populated master_assessment.options.questions).
+import { scoreSubtest, computeTkComposite as computeTkCompositeV2 } from '../../../shared/services/assessment-scoring/index.js';
+import { calcPillars, PILLAR_THRESHOLDS as PILLAR_THRESHOLDS_V2 } from '../../../shared/services/assessment-scoring/pillars.scoring.js';
 import getDb from '../../../config/postgres.js';
 import { resolveParticipantByCandidate } from '../../../shared/services/candidate-resolver.js';
 import {
@@ -8,6 +16,87 @@ import {
 import logger from '../../../shared/utils/logger.js';
 
 const BATTERY_BY_ASSESSMENT_ID = { 1: 'A', 2: 'B', 3: 'C', 4: 'D', 5: 'I', 6: 'T' };
+
+// Rebuilds `results.by_subtest` and the derived parts of `summary` from the
+// server's own assessment_score rows (authoritative since the
+// assessment-score.service.js fix) instead of trusting whatever the client's
+// `results`/`summary` submission contains — this is what actually closes the
+// stale-closure timer bug at the final-submit layer, since the client's own
+// locally-computed `done` state could still be wrong even after the
+// per-subtest endpoint was fixed (the client never re-fetches the corrected
+// value before assembling its final submission).
+//
+// `date`/`tabSwitches` are genuinely client-observed (anti-cheating tab-switch
+// counts, completion timestamps) and are preserved from the client's
+// submission per subtest group — everything else score-bearing is replaced.
+// `summary.assessor` (human notes/ratings/narratives) is untouched by this
+// function entirely; the caller merges it in from the client's submission.
+async function composeAuthoritativeResults({ assessment_id, result_id, clientBySubtest }) {
+  const subtests = await Question.getSubtestsByAssessmentId(assessment_id);
+  if (!subtests.length) return null;
+
+  const scoreRows = await AssessmentScore.getByResultId(result_id);
+  const scoreBySubtestId = {};
+  scoreRows.forEach((r) => { scoreBySubtestId[r.subtest_id] = r.score; });
+
+  // Defensive fallback: a subtest somehow never explicitly scored via the
+  // per-subtest endpoint gets computed live from its raw answers here, rather
+  // than silently dropped from the final composite.
+  for (const st of subtests) {
+    if (scoreBySubtestId[st.id]) continue;
+    const items = await Question.getQuestionsBySubtestId(st.id);
+    if (!items.length) continue;
+    const answerRows = await AssessmentAnswer.getByResultIdAndSubtestId(result_id, st.id);
+    if (!answerRows.length) continue; // genuinely never attempted — leave absent
+    const answersByOrderIndex = {};
+    answerRows.forEach((r) => { answersByOrderIndex[r.order_index] = r.answer; });
+    scoreBySubtestId[st.id] = scoreSubtest({
+      assessment_id, subtest_key: st.subtest_key, group_key: st.group_key, items, answersByOrderIndex,
+    });
+  }
+
+  const tkSubtests = subtests.filter((s) => s.group_key === 'tk');
+  const otherSubtests = subtests.filter((s) => s.group_key !== 'tk');
+  const by_subtest = {};
+
+  if (tkSubtests.length) {
+    const tkOrder = tkSubtests.map((s) => s.subtest_key);
+    const subScores = {};
+    const weightByKey = {};
+    tkSubtests.forEach((s) => {
+      subScores[s.subtest_key] = scoreBySubtestId[s.id];
+      weightByKey[s.subtest_key] = s.weight;
+    });
+    if (tkOrder.every((k) => subScores[k])) {
+      const composite = computeTkCompositeV2(subScores, tkOrder, weightByKey);
+      const clientTk = clientBySubtest?.tk || {};
+      by_subtest.tk = { ...composite, date: clientTk.date, tabSwitches: clientTk.tabSwitches };
+    }
+  }
+
+  otherSubtests.forEach((s) => {
+    const score = scoreBySubtestId[s.id];
+    if (!score) return;
+    const clientEntry = clientBySubtest?.[s.subtest_key] || {};
+    by_subtest[s.subtest_key] = { ...score, date: clientEntry.date, tabSwitches: clientEntry.tabSwitches };
+  });
+
+  const battery = BATTERY_BY_ASSESSMENT_ID[assessment_id];
+  const pillar = calcPillars(battery, by_subtest);
+  const summaryOverrides = {
+    pillars: {
+      cognitive: pillar.cognitive,
+      personality: pillar.personality,
+      work_attitude: pillar.workAttitude,
+      overall: pillar.overall,
+    },
+    pillar_thresholds: PILLAR_THRESHOLDS_V2,
+    tk_composite: by_subtest.tk?.composite ?? null,
+    holland_code3: by_subtest.holland?.code3 ?? null,
+  };
+
+  return { by_subtest, summaryOverrides };
+}
 // 'I' (Insights) is mapped here so /from-candidate?battery=I resolves to assessment_id 5.
 // Note: this does NOT enable Insights as an invitation-flow battery — the assessment_sessions
 // table's battery_type ENUM still allows only A/B/C/D, so HR can't generate Insights invites
@@ -342,13 +431,27 @@ class AssessmentBatteryResultService {
       let summary;
 
       if (hasPrecomputed) {
-        // Trust client-supplied JSONB. Merge with any existing partial results (skip already-present subtests).
+        // Score-bearing fields are recomputed server-side from the
+        // already-authoritative assessment_score rows (see
+        // composeAuthoritativeResults above) — the client's `results`/
+        // `summary` submission is only trusted for genuinely client-observed
+        // metadata (date, tabSwitches) and `summary.assessor` (human notes/
+        // ratings/narratives, untouched here).
+        const authoritative = existing?.id
+          ? await composeAuthoritativeResults({
+              assessment_id: aid, result_id: existing.id, clientBySubtest: bodyResults.by_subtest,
+            })
+          : null;
+
         const existingSubtest = existing?.results?.by_subtest ?? {};
         const existingAnswers = existing?.results?.answers    ?? {};
-        const mergedBySubtest = mergeBySubtest(existingSubtest, bodyResults.by_subtest);
+        const freshBySubtest  = authoritative?.by_subtest ?? bodyResults.by_subtest;
+        const mergedBySubtest = mergeBySubtest(existingSubtest, freshBySubtest);
         const mergedAnswers   = { ...existingAnswers, ...(bodyResults.answers || {}) };
         mergedResults = { answers: mergedAnswers, by_subtest: mergedBySubtest };
-        summary       = bodySummary;
+        summary       = authoritative
+          ? { ...bodySummary, ...authoritative.summaryOverrides }
+          : bodySummary;
       } else {
         // Server-side scoring path (Battery A).
         const grouped      = groupAnswersBySubtest(answers);
@@ -476,3 +579,4 @@ class AssessmentBatteryResultService {
 }
 
 export default new AssessmentBatteryResultService();
+export { composeAuthoritativeResults };

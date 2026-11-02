@@ -205,123 +205,120 @@ class ScreeningModel {
   // Calibration cohort for one job: candidates that have a score AND no
   // decision yet (i.e. ready to be advanced/rejected/held in a batch).
   // Sorted by overall_score DESC so the recruiter sees the best first.
-  async getCalibrationCohort(job_id) {
-    const result = await getDb().query(
-      `
-      SELECT
-        cs.id                AS screening_id,
-        mc.id                AS candidate_id,
-        cs.company_id,
-        cs.decision,
-        mc.applicant_id,
-        a.name               AS applicant_name,
-        a.last_position,
-        a.address,
-        s.overall_score,
-        s.skills_score,
-        s.experience_score,
-        s.education_score,
-        s.matched_skills,
-        s.missing_skills,
-        s.summary            AS score_summary,
-        s.scored_at,
-        s.rubric_snapshot IS DISTINCT FROM cj.rubric AS rubric_is_stale,
-        sq.status            AS qa_status,
-        app_qa.information    AS application_qa
-      FROM master_candidate mc
-      JOIN core_job cj                ON cj.id = mc.job_id
-      JOIN candidate_job_score s
-        ON s.applicant_id = mc.applicant_id AND s.job_id = mc.job_id
-      LEFT JOIN master_applicant a    ON a.id  = mc.applicant_id
-      -- candidate_screening is lazily created on first L3 (candidate-detail)
-      -- visit — LEFT JOIN so a scored candidate isn't hidden from the ranking
-      -- just because nobody has opened their profile yet.
-      LEFT JOIN candidate_screening cs ON cs.candidate_id = mc.id
-      LEFT JOIN screening_qa sq ON sq.screening_id = cs.id
-      LEFT JOIN LATERAL (
-        SELECT mas.information
-        FROM mapping_applicant_sourcing mas
-        JOIN mapping_job_sourcing_job mjsj ON mjsj.job_sourcing_id = mas.job_sourcing_id
-        WHERE mas.applicant_id = mc.applicant_id AND mjsj.job_id = mc.job_id
-        ORDER BY mas.created_at DESC
-        LIMIT 1
-      ) app_qa ON true
-      WHERE mc.job_id = $1 AND cs.decision IS NULL
-      ORDER BY s.overall_score DESC NULLS LAST, cs.id ASC NULLS LAST
-      `,
-      [job_id]
-    );
-    return result.rows;
+  // Server-side paginated + filterable (search by name, bucket = the same
+  // advance/awaiting/archive recommendation buckets the UI already used to
+  // show as separate stat cards/columns — now a filter instead). Also
+  // returns bucket_counts (computed over the FULL cohort, not just this
+  // page) so the filter pills can show a count without a separate call.
+  async getCalibrationCohort(job_id, { search, bucket, min_score, page, pageSize } = {}) {
+    const limit  = pageSize !== undefined ? Math.min(Math.max(Number(pageSize) || 10, 1), 100) : null;
+    const offset = (page !== undefined && limit != null) ? (Math.max(Number(page) || 1, 1) - 1) * limit : 0;
+    const searchParam = search ? `%${search}%` : null;
+    const bucketParam = ['advance', 'awaiting', 'archive'].includes(bucket) ? bucket : null;
+    const minScoreParam = min_score !== undefined && min_score !== null && min_score !== '' ? Number(min_score) : null;
+
+    const BASE_CTE = `
+      WITH base AS (
+        SELECT
+          cs.id                AS screening_id,
+          mc.id                AS candidate_id,
+          cs.company_id,
+          cs.decision,
+          mc.applicant_id,
+          a.name               AS applicant_name,
+          a.last_position,
+          a.address,
+          mc.information,
+          s.overall_score,
+          s.skills_score,
+          s.experience_score,
+          s.education_score,
+          s.matched_skills,
+          s.missing_skills,
+          s.summary            AS score_summary,
+          s.scored_at,
+          s.rubric_snapshot IS DISTINCT FROM cj.rubric AS rubric_is_stale,
+          sq.status            AS qa_status,
+          app_qa.information    AS application_qa,
+          -- Mirrors frontend shared.js's scoreRecommendation() bucket
+          -- boundaries exactly (80+ / 60-79 / below 60).
+          CASE
+            WHEN s.overall_score >= 80 THEN 'advance'
+            WHEN s.overall_score >= 60 THEN 'awaiting'
+            ELSE 'archive'
+          END AS bucket
+        FROM master_candidate mc
+        JOIN core_job cj                ON cj.id = mc.job_id
+        JOIN candidate_job_score s
+          ON s.applicant_id = mc.applicant_id AND s.job_id = mc.job_id
+        LEFT JOIN master_applicant a    ON a.id  = mc.applicant_id
+        -- candidate_screening is lazily created on first L3 (candidate-detail)
+        -- visit — LEFT JOIN so a scored candidate isn't hidden from the ranking
+        -- just because nobody has opened their profile yet.
+        LEFT JOIN candidate_screening cs ON cs.candidate_id = mc.id
+        LEFT JOIN screening_qa sq ON sq.screening_id = cs.id
+        LEFT JOIN LATERAL (
+          SELECT mas.information
+          FROM mapping_applicant_sourcing mas
+          JOIN mapping_job_sourcing_job mjsj ON mjsj.job_sourcing_id = mas.job_sourcing_id
+          WHERE mas.applicant_id = mc.applicant_id AND mjsj.job_id = mc.job_id
+          ORDER BY mas.created_at DESC
+          LIMIT 1
+        ) app_qa ON true
+        WHERE mc.job_id = $1 AND cs.decision IS NULL
+      ),
+      searched AS (
+        SELECT * FROM base
+        WHERE ($2::text IS NULL OR applicant_name ILIKE $2)
+          AND ($3::int IS NULL OR COALESCE(overall_score, -1) >= $3)
+      )
+    `;
+
+    // Run as two independent queries rather than attaching aggregates to the
+    // paginated rows — if the current bucket/search combination matches zero
+    // rows, there'd be no row left to carry the bucket_counts on, and the
+    // pills would wrongly show every count as 0 instead of their real values.
+    // BASE_CTE only ever references $1-$3 (job_id/search/min_score), shared
+    // by both queries below — bucket/limit/offset are appended starting at
+    // $4 in the rows query only, so the counts query never needs to pass
+    // unused placeholder params (which errors with "could not determine
+    // data type of parameter" since nothing in that query text would give
+    // them a type to infer).
+    const [rowsResult, countsResult] = await Promise.all([
+      getDb().query(
+        `
+        ${BASE_CTE}
+        SELECT *, COUNT(*) OVER()::int AS total_count
+        FROM searched
+        WHERE ($4::text IS NULL OR bucket = $4)
+        ORDER BY overall_score DESC NULLS LAST, screening_id ASC NULLS LAST
+        LIMIT $5 OFFSET $6
+        `,
+        [job_id, searchParam, minScoreParam, bucketParam, limit, offset]
+      ),
+      getDb().query(
+        `
+        ${BASE_CTE}
+        SELECT
+          COUNT(*) FILTER (WHERE bucket = 'advance')::int  AS advance_count,
+          COUNT(*) FILTER (WHERE bucket = 'awaiting')::int AS awaiting_count,
+          COUNT(*) FILTER (WHERE bucket = 'archive')::int  AS archive_count
+        FROM searched
+        `,
+        [job_id, searchParam, minScoreParam]
+      ),
+    ]);
+
+    const total = rowsResult.rows[0]?.total_count ?? 0;
+    const rows = rowsResult.rows.map(({ total_count, ...rest }) => rest);
+    const bucket_counts = {
+      advance: countsResult.rows[0]?.advance_count ?? 0,
+      awaiting: countsResult.rows[0]?.awaiting_count ?? 0,
+      archive: countsResult.rows[0]?.archive_count ?? 0,
+    };
+    return { rows, total, bucket_counts };
   }
 
-  // Transactional bulk advance: mark screenings as advance + insert interview rows.
-  // Returns { advanced, skipped, errors, interview_ids }.
-  async bulkAdvanceToInterview({ screening_ids, decision_reason, decided_by, company_id }) {
-    const client = await getDb().connect();
-    const advanced = [];
-    const skipped = [];
-    const errors = [];
-    const interviewIds = [];
-    try {
-      await client.query('BEGIN');
-      for (const sid of screening_ids) {
-        try {
-          // Lock + read the screening + candidate + job ids in one shot
-          const cur = await client.query(
-            `SELECT id, candidate_id, job_id, company_id, decision
-               FROM candidate_screening
-              WHERE id = $1
-              FOR UPDATE`,
-            [sid]
-          );
-          const row = cur.rows[0];
-          if (!row) { errors.push({ screening_id: sid, message: 'not found' }); continue; }
-          if (company_id && row.company_id && row.company_id !== company_id) {
-            errors.push({ screening_id: sid, message: 'cross-tenant denied' });
-            continue;
-          }
-          if (row.decision) {
-            skipped.push({ screening_id: sid, reason: `already ${row.decision}` });
-            continue;
-          }
-
-          // Set the decision
-          await client.query(
-            `UPDATE candidate_screening
-                SET decision = 'advance',
-                    decision_reason = $2,
-                    decided_at = NOW(),
-                    decided_by = $3,
-                    updated_at = NOW()
-              WHERE id = $1`,
-            [sid, decision_reason || null, decided_by || null]
-          );
-
-          // Create the interview row (ON CONFLICT no-op so retries are safe)
-          const ins = await client.query(
-            `INSERT INTO candidate_interview (candidate_id, job_id, screening_id, company_id)
-             VALUES ($1, $2, $3, $4)
-             ON CONFLICT (candidate_id, job_id) DO UPDATE
-               SET screening_id = EXCLUDED.screening_id,
-                   updated_at = NOW()
-             RETURNING id`,
-            [row.candidate_id, row.job_id, sid, row.company_id || null]
-          );
-          interviewIds.push(ins.rows[0].id);
-          advanced.push(sid);
-        } catch (err) {
-          errors.push({ screening_id: sid, message: err.message || String(err) });
-        }
-      }
-      await client.query('COMMIT');
-    } catch (err) {
-      await client.query('ROLLBACK');
-      throw err;
-    } finally {
-      client.release();
-    }
-    return { advanced, skipped, errors, interview_ids: interviewIds };
-  }
 
   async setScreeningDecision({ screening_id, decision, decision_reason, decided_by }) {
     const result = await getDb().query(
@@ -480,6 +477,7 @@ class ScreeningModel {
         s.matched_skills,
         s.missing_skills,
         s.scored_at,
+        s.is_viewed,
         cs.id          AS screening_id,
         cs.decision,
         sq.status      AS qa_status,
@@ -514,7 +512,128 @@ class ScreeningModel {
       [job_id]
     );
     const rows = result.rows;
-    return engine ? rows.filter((r) => r.engine === engine) : rows;
+    if (!engine) return rows; // back-compat flat list — see AIScreeningWorkboard's cross-job usage
+
+    // Each stage tab's dashboard needs more than just "its own" bucket to
+    // show both what's pending AND what it already produced (that output
+    // naturally lives in the NEXT bucket) — e.g. Match wants to show
+    // already-scored candidates (the 'qa' bucket) alongside its own pending
+    // queue. Rather than make the frontend fire a second request for that
+    // adjacent bucket (as it used to), shape it into this same single
+    // response so one tab visit is still exactly one HTTP call.
+    const byEngine = (key) => rows.filter((r) => r.engine === key);
+    if (engine === 'parse') {
+      return { pending: byEngine('parse') };
+    }
+    if (engine === 'match') {
+      return { pending: byEngine('match'), scored: byEngine('qa') };
+    }
+    if (engine === 'qa') {
+      // The 'qa' bucket groups together every scored-but-not-responded
+      // candidate — qa_status NULL (never sent), 'draft', 'sent', AND
+      // 'expired' all land here, since the CASE above only distinguishes
+      // "responded" from "everything else". "Sent · awaiting reply" means
+      // qa_status === 'sent' specifically — without this filter it silently
+      // counted every scored candidate as "awaiting reply" even when Q&A
+      // was never sent to them at all (sq.status NULL).
+      //
+      // "responded" candidates have moved into the 'ready' bucket by
+      // definition (qa_status === 'responded' is exactly what promotes them
+      // out of 'qa') — excluding already-decided ones so this matches
+      // getCalibrationCohort's "awaiting decision" semantics.
+      return {
+        pending: byEngine('qa').filter((r) => r.qa_status === 'sent'),
+        responded: byEngine('ready').filter((r) => !r.decision),
+      };
+    }
+    // No 'ready' case here deliberately: this CASE expression's 'ready'
+    // bucket requires qa_status = 'responded', which wrongly excludes a
+    // scored, undecided candidate who was simply never sent Q&A at all (Q&A
+    // is optional, not a prerequisite to advance). getCalibrationCohort
+    // has the correct, broader "scored + no decision yet" definition —
+    // callers needing the Ready tab's cohort must use that, not this.
+    return byEngine(engine);
+  }
+
+  // Lightweight counts-only version of the parse/match/qa/ready split above,
+  // for the AI Screening page's summary tiles. Those tiles need to render
+  // immediately regardless of which stage tab the recruiter has open, so
+  // this is always fetched eagerly — while the full per-candidate rows for
+  // each lane (getCandidatesByJobAndEngine) and the ready cohort
+  // (getCalibrationCohort) are now fetched lazily, only when that tab is
+  // actually opened. No joined candidate fields are selected here — just
+  // COUNT(*) — so this stays cheap even as the other two grow large enough
+  // to need their own pagination.
+  async getEngineCounts(job_id) {
+    const db = getDb();
+    const laneResult = await db.query(
+      `
+      SELECT
+        CASE
+          WHEN a.information IS NULL                        THEN 'parse'
+          WHEN s.id IS NULL                                  THEN 'match'
+          WHEN sq.status IS DISTINCT FROM 'responded'        THEN 'qa'
+          ELSE                                                    'ready'
+        END AS engine,
+        COUNT(*)::int AS count,
+        -- Within the 'qa' bucket, sq.status is NULL/'draft'/'sent'/'expired'
+        -- all lumped together (anything not 'responded') — but the QA tile's
+        -- "in progress" figure means "actually sent, awaiting reply"
+        -- specifically. A candidate who was never sent Q&A at all (status
+        -- IS NULL — true for every candidate until Follow-up Q&A is used)
+        -- isn't "in progress"; counting them here was inflating this to the
+        -- full qa-bucket size regardless of whether anything was ever sent.
+        COUNT(*) FILTER (WHERE sq.status = 'sent')::int AS sent_count
+      FROM master_candidate mc
+      LEFT JOIN master_applicant a ON a.id = mc.applicant_id
+      LEFT JOIN candidate_job_score s
+        ON s.applicant_id = mc.applicant_id AND s.job_id = mc.job_id
+      LEFT JOIN candidate_screening cs ON cs.candidate_id = mc.id
+      LEFT JOIN screening_qa sq ON sq.screening_id = cs.id
+      LEFT JOIN job_stage js ON js.id = mc.latest_stage
+      LEFT JOIN recruitment_stage_category rsc ON rsc.id = js.stage_type_id
+      WHERE mc.job_id = $1
+        AND mc.applicant_id IS NOT NULL
+        AND rsc.name = 'Screening & Matching'
+      GROUP BY engine
+      `,
+      [job_id]
+    );
+
+    // "ready" here mirrors getCalibrationCohort's stricter definition (scored,
+    // no decision yet) — NOT the laneResult 'ready' bucket above, which
+    // doesn't filter out already-decided candidates (held/rejected candidates
+    // keep their stage category, so they'd still count there otherwise).
+    const cohortResult = await db.query(
+      `
+      SELECT
+        COUNT(*)::int AS ready_count,
+        COUNT(*) FILTER (WHERE sq.status = 'responded')::int AS qa_responded_count
+      FROM master_candidate mc
+      JOIN candidate_job_score s
+        ON s.applicant_id = mc.applicant_id AND s.job_id = mc.job_id
+      LEFT JOIN candidate_screening cs ON cs.candidate_id = mc.id
+      LEFT JOIN screening_qa sq ON sq.screening_id = cs.id
+      WHERE mc.job_id = $1 AND cs.decision IS NULL
+      `,
+      [job_id]
+    );
+
+    const byEngine = Object.fromEntries(laneResult.rows.map((r) => [r.engine, r.count]));
+    const qaRow = laneResult.rows.find((r) => r.engine === 'qa');
+    return {
+      parse: byEngine.parse || 0,
+      match: byEngine.match || 0,
+      qa: byEngine.qa || 0,
+      // "Actually sent, awaiting reply" — a strict subset of the 'qa' bucket
+      // above. Use this (not `qa`) for any "in progress" / "awaiting reply"
+      // display; `qa` itself still includes never-sent candidates, which is
+      // correct for its OTHER use as "already scored" in the Parse/Match
+      // tiles' footers, just wrong for a Q&A-specific count.
+      qa_sent: qaRow?.sent_count || 0,
+      ready: cohortResult.rows[0]?.ready_count || 0,
+      qa_responded: cohortResult.rows[0]?.qa_responded_count || 0,
+    };
   }
 
   // Every applicant_id on this job (any engine stage) — used by the
@@ -865,6 +984,16 @@ class ScreeningModel {
       [company_id]
     );
     return result.rows;
+  }
+
+  // Match tab: flips a score row to "viewed" the first time a recruiter
+  // opens its preview modal — idempotent, never unsets once true.
+  async markScoreViewed(score_id) {
+    const result = await getDb().query(
+      `UPDATE candidate_job_score SET is_viewed = true WHERE id = $1 RETURNING *`,
+      [score_id]
+    );
+    return result.rows[0];
   }
 }
 

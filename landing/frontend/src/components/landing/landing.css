@@ -108,6 +108,33 @@
   box-shadow: 0 4px 15px rgba(245, 158, 11, .3);
 }
 
+.landing .nav-toggle {
+  display: none;
+  flex-direction: column;
+  justify-content: center;
+  gap: 5px;
+  width: 36px;
+  height: 36px;
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 0;
+  z-index: 101;
+}
+
+.landing .nav-toggle span {
+  display: block;
+  width: 100%;
+  height: 2px;
+  background: var(--wh);
+  border-radius: 2px;
+  transition: all .3s;
+}
+
+.landing .nav-toggle.open span:nth-child(1) { transform: translateY(7px) rotate(45deg); }
+.landing .nav-toggle.open span:nth-child(2) { opacity: 0; }
+.landing .nav-toggle.open span:nth-child(3) { transform: translateY(-7px) rotate(-45deg); }
+
 /* HERO */
 .landing .hero {
   min-height: 100vh;
@@ -272,6 +299,7 @@
 
 .landing .hm {
   display: flex;
+  flex-wrap: wrap;
   gap: 2.5rem;
   margin-top: 2.5rem;
   animation: landing-su .7s ease .4s both;
@@ -1564,7 +1592,25 @@
   .landing .fi2 { grid-template-columns: 1fr 1fr; }
   .landing .cog { grid-template-columns: 1fr; }
   .landing .coi { grid-template-columns: 1fr; }
+  .landing .nav-toggle { display: flex; }
   .landing .nm { display: none; }
+  .landing .nm.open {
+    display: flex;
+    flex-direction: column;
+    align-items: stretch;
+    gap: 1rem;
+    position: absolute;
+    top: 100%;
+    left: 0;
+    right: 0;
+    margin: 0;
+    padding: 1.5rem 2.5rem 2rem;
+    background: rgba(10, 110, 92, .98);
+    backdrop-filter: blur(16px);
+    box-shadow: 0 10px 30px rgba(0, 0, 0, .2);
+  }
+  .landing .nm.open a { font-size: .95rem; padding: .4rem 0; }
+  .landing .nm.open .nc { align-self: flex-start; }
   .landing .bcal-panel-slots { flex-direction: column; gap: .5rem; }
   .landing .bcal-slot { font-size: .75rem; padding: .5rem .75rem; }
 }
@@ -1575,4 +1621,9 @@
   .landing .sr5 { grid-template-columns: 1fr; }
   .landing .vg4 { grid-template-columns: 1fr; }
   .landing .fi2 { grid-template-columns: 1fr; }
+  .landing .sr::before { display: none; }
+  .landing nav { padding: 1rem 1.25rem; }
+  .landing .hi { padding: 7rem 1.25rem 3.5rem; }
+  .landing section { padding: 3.5rem 1.25rem; }
+  .landing .hm { gap: 1.5rem 2rem; }
 }

@@ -29,6 +29,26 @@ class CandidatePipelineController {
     }
   }
 
+  async getNoApplicants(req, res) {
+    try {
+      const days = req.query.days ? Number(req.query.days) : 5;
+      const jobs = await candidatePipelineService.getNoApplicants(req.user?.company_id, days);
+      res.status(200).json({ message: 'Jobs with no applicants', jobs });
+    } catch (err) {
+      res.status(err.status || 500).json({ message: err.message });
+    }
+  }
+
+  async getTimeToHire(req, res) {
+    try {
+      const days = req.query.days ? Number(req.query.days) : 30;
+      const tth = await candidatePipelineService.getTimeToHire(req.user?.company_id, days);
+      res.status(200).json({ message: 'Time to hire', tth });
+    } catch (err) {
+      res.status(err.status || 500).json({ message: err.message });
+    }
+  }
+
   async getByJobId(req, res) {
     const query = req.query
     try {

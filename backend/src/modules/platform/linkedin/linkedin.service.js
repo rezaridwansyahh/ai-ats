@@ -1,5 +1,4 @@
 import cookieService from "../../cookie/cookie.service.js"
-import browserPuppeteer from "../../../shared/services/puppeteer/browser.puppeteer.js"
 import navigationRpa from "./rpa/navigation.rpa.js"
 import jobPostRpa from "./rpa/job-post.rpa.js"
 import projectCreateRpa from "./rpa/project-create.rpa.js"
@@ -27,7 +26,8 @@ class LinkedInService {
   async jobPost(data) {
     const { user_id, service, dataForm } = data
 
-    const page = await cookieService.includeCookiesIfExist(user_id, service) // still hardcoded from req body (user_id, service);
+    const browserPuppeteer = await cookieService.includeCookiesIfExist(user_id, service) // still hardcoded from req body (user_id, service);
+    const page = browserPuppeteer.getPage();
 
     if (!page) {
       throw new Error("No cookies found")
@@ -47,7 +47,8 @@ class LinkedInService {
   async projectCreate(data) {
     const { user_id, service, dataForm } = data
 
-    const page = await cookieService.includeCookiesIfExist(user_id, service) // still hardcoded from req body (user_id, service);
+    const browserPuppeteer = await cookieService.includeCookiesIfExist(user_id, service) // still hardcoded from req body (user_id, service);
+    const page = browserPuppeteer.getPage();
 
     if (!page) {
       throw new Error("No cookies found")
@@ -67,7 +68,8 @@ class LinkedInService {
   async recruiteSearch(data) {
     const { account_id, dataForm } = data
 
-    const page = await cookieService.includeCookiesIfExist(account_id)
+    const browserPuppeteer = await cookieService.includeCookiesIfExist(account_id)
+    const page = browserPuppeteer.getPage();
 
     if (!page) {
       throw new Error("No cookies found")
@@ -98,7 +100,8 @@ class LinkedInService {
   async recruiteSearchQueued(sourcing_id, account_id, dataForm) {
     await sourcingModel.updateStatus(sourcing_id, 'Processing');
 
-    const page = await cookieService.includeCookiesIfExist(account_id);
+    const browserPuppeteer = await cookieService.includeCookiesIfExist(account_id);
+    const page = browserPuppeteer.getPage();
     if (!page) {
       await sourcingModel.updateStatus(sourcing_id, 'Failed', 'No cookies found for this LinkedIn account');
       throw new Error('No cookies found');
@@ -120,7 +123,8 @@ class LinkedInService {
     }
   }
   async extractApplicant(account_id, job_sourcing_id, limit) {
-    const page = await cookieService.includeCookiesIfExist(account_id);
+    const browserPuppeteer = await cookieService.includeCookiesIfExist(account_id);
+    const page = browserPuppeteer.getPage();
     const sourcing = await jobSourceModel.getById(job_sourcing_id);
     const jobPostLinkedin = await jobPostLinkedinModel.getByJobSourcingId(job_sourcing_id);
 

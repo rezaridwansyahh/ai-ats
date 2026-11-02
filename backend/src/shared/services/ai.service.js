@@ -358,6 +358,8 @@ Rules:
     const prompt = `You are a CV parser. Use OCR to read the entire document including sidebars and columns. Extract structured facets and return STRICT JSON only (no prose, no markdown):
 
 {
+  "email": string,
+  "phone": string,
   "job_position": { "current": string, "category": string, "duration": string, "location": string },
   "skills": string[],
   "education": [
@@ -370,6 +372,7 @@ Rules:
 }
 
 Rules:
+- "email"/"phone": contact details from the CV header/footer, exactly as written. Empty string if not stated.
 - "category": coarse role — "Frontend", "Backend", "Full Stack", "Data", "Product Design", "Mobile", "DevOps", "Product Management", "QA", "Recruiting".
 - "duration": how long the candidate has held/held their current or most recent position (e.g. "1 yr 9 mos"). Empty string if not stated.
 - "location": city/region of that current or most recent position (e.g. "Sleman, DI Yogyakarta"). Empty string if not stated.
@@ -427,6 +430,8 @@ Rules:
     const skills = await normalizeSkills(Array.isArray(parsed.skills) ? parsed.skills : []);
 
     return {
+      email: typeof parsed.email === 'string' ? parsed.email.trim() : '',
+      phone: typeof parsed.phone === 'string' ? parsed.phone.trim() : '',
       job_position: {
         current:  typeof parsed.job_position?.current  === 'string' ? parsed.job_position.current  : '',
         category: typeof parsed.job_position?.category === 'string' ? parsed.job_position.category : '',

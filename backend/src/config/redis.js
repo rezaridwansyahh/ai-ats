@@ -8,10 +8,9 @@ const redis = {
     // maxRetriesPerRequest: null, // Important for BullMQ
   },
   defaultJobOptions: {
-    attempts: 3,
+    attempts: 1000, // effectively unlimited for a queue meant to run indefinitely
     backoff: {
-      type: 'exponential',  
-      delay: 2000, // Start with 2s, then 4s, 8s
+      type: 'seek-capped', // registered as a custom strategy in seek.worker.js
     },
     removeOnComplete: {
       age: 4 * 60 * 60, // Keep completed jobs for 4 hours (in seconds)

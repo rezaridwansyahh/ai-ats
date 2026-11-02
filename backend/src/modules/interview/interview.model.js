@@ -264,6 +264,27 @@ class InterviewModel {
     return result.rows[0] || null;
   }
 
+  // Interviews that happened (status='result') but have no scorecard
+  // recorded yet — backs the dashboard's "Scorecards Owed" widget.
+  // Urgency bucketing (OVERDUE/TODAY/THIS WEEK) is computed client-side
+  // from scheduled_at, same as the rest of the dashboard's time math.
+  async getScorecardsOwed(company_id) {
+    const result = await getDb().query(
+      `SELECT
+         ci.id         AS interview_id,
+         ci.scheduled_at,
+         mc.name       AS candidate_name,
+         cj.job_title
+       FROM candidate_interview ci
+       JOIN master_candidate mc ON mc.id = ci.candidate_id
+       JOIN core_job cj ON cj.id = ci.job_id
+       WHERE ci.status = 'result' AND cj.company_id = $1
+       ORDER BY ci.scheduled_at ASC NULLS LAST`,
+      [company_id]
+    );
+    return result.rows;
+  }
+
   async getWorkboardData(company_id) {
     const db = getDb();
 
@@ -1009,6 +1030,11 @@ class InterviewModel {
        JOIN job_stage js ON js.id = mc.latest_stage
        JOIN recruitment_stage_category rsc ON rsc.id = js.stage_type_id
        LEFT JOIN candidate_interview ci ON ci.candidate_id = mc.id AND ci.job_id = mc.job_id
+       -- Both LATERALs below are scoped to ci.current_round_id — without it,
+       -- a candidate who was already packed/scored in a PAST round (before
+       -- "Interview Again" reset them to a new round) would still show that
+       -- old round's pack_id/scored state here, permanently blocking them
+       -- from ever being added to a new pack for their current round.
        LEFT JOIN LATERAL (
          SELECT ip.id, ip.token
          FROM interview_pack_candidate ipc
@@ -1016,6 +1042,7 @@ class InterviewModel {
          WHERE ipc.applicant_id = mc.applicant_id
            AND ip.job_id = mc.job_id
            AND ip.status = 'open'
+           AND ipc.round_id = ci.current_round_id
          LIMIT 1
        ) open_pack ON true
        LEFT JOIN LATERAL (
@@ -1025,6 +1052,7 @@ class InterviewModel {
          JOIN interview_pack_outcome ipo ON ipo.pack_candidate_id = ipc.id
          WHERE ipc.applicant_id = mc.applicant_id
            AND ip.job_id = mc.job_id
+           AND ipc.round_id = ci.current_round_id
          LIMIT 1
        ) scored_pack ON true
        WHERE mc.job_id = $1 AND rsc.name = 'Interview'

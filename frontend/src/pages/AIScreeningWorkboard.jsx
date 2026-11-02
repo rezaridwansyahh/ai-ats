@@ -78,12 +78,13 @@ export default function AIScreeningWorkboard() {
 
   useEffect(() => { loadWorkboard(); }, []);
 
-  // Stage counts derived from the candidate list so chips match the filter exactly.
+  // Stage counts derived from the position-scoped list so the chips reflect
+  // whichever job is selected, not every job at once.
   const stageCounts = useMemo(() => {
     const c = { parse: 0, match: 0, qa: 0, ready: 0 };
-    for (const cand of candidates) if (c[cand.engine] != null) c[cand.engine]++;
+    for (const cand of displayCandidates) if (c[cand.engine] != null) c[cand.engine]++;
     return c;
-  }, [candidates]);
+  }, [displayCandidates]);
 
   const filtered = useMemo(() => {
     let list = displayCandidates;

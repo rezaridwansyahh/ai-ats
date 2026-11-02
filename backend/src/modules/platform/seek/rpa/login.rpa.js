@@ -1,6 +1,27 @@
 import jobAccountModel from "../../../job-account/job-account.model.js"
 import cookieService from "../../../cookie/cookie.service.js";
 import { decrypt } from "../../../../shared/utils/encrypt.js"
+import { captureDebugContext } from "../../../../shared/utils/rpa-debug.js"
+
+const delay = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
+
+// page.$() needs a live JS execution context — if a navigation is still
+// settling when it runs (common right after a redirect chain like login ->
+// account-select -> dashboard), Puppeteer throws "Execution context was
+// destroyed" instead of just returning null. That's a timing race, not a
+// real failure, so retry once after a brief pause instead of failing the
+// whole login attempt over it.
+async function safeQuery(page, selector) {
+  try {
+    return await page.$(selector);
+  } catch (err) {
+    if (!err.message.includes('Execution context was destroyed')) {
+      throw err;
+    }
+    await delay(500);
+    return await page.$(selector);
+  }
+}
 
 class SeekLoginService {
   async getAccountAndDecrypt(account_id) {
@@ -18,17 +39,17 @@ class SeekLoginService {
   }
 
   async checkRedirectDashboard(page) {
-    await page.goto('https://id.employer.seek.com/id/dashboard', { waitUntil: 'networkidle0' });
+    await page.goto('https://id.employer.seek.com/id/dashboard', { waitUntil: 'networkidle2', timeout: 60000 });
 
     return page.url() === 'https://id.employer.seek.com/id/dashboard';
   }
 
   async redirectLoginSeek(page) {
-    await page.goto('https://id.employer.seek.com/id/', { waitUntil: 'networkidle0' });
+    await page.goto('https://id.employer.seek.com/id/', { waitUntil: 'networkidle2', timeout: 60000 });
   }
 
   async checkLogin(page) {
-    const loginBtn = await page.$('a[href="/id/oauth/login/"]');
+    const loginBtn = await safeQuery(page, 'a[href="/id/oauth/login/"]');
 
     if(loginBtn) {
       return loginBtn
@@ -37,13 +58,26 @@ class SeekLoginService {
 
   async clickLoginButton(page, loginBtn) {
     console.log('Click Login Button');
-    await loginBtn.click();
+    // Clicking triggers an OAuth redirect to the actual email-entry page.
+    // Without waiting for that navigation here, fillEmail starts polling for
+    // #emailAddress immediately and can race the redirect — Promise.all
+    // (not click-then-wait sequentially) avoids missing the navigation event
+    // if it starts before the wait call is even registered.
+    await Promise.all([
+      loginBtn.click(),
+      page.waitForNavigation({ waitUntil: 'networkidle2' }),
+    ]);
   }
 
   async fillEmail(page, email) {
     console.log('Enter email');
 
-    await page.waitForSelector('#emailAddress');
+    try {
+      await page.waitForSelector('#emailAddress');
+    } catch (err) {
+      await captureDebugContext(page, 'fillEmail');
+      throw err;
+    }
     await page.type('#emailAddress', email, {delay: 100});
     await page.keyboard.press("Enter");
   }
@@ -51,22 +85,117 @@ class SeekLoginService {
   async fillPassword(page, password) {
     console.log('Enter password');
 
-    await page.waitForSelector('#password');
+    try {
+      await page.waitForSelector('#password');
+    } catch (err) {
+      await captureDebugContext(page, 'fillPassword');
+      throw err;
+    }
     await page.type('#password', password, {delay: 100});
     await page.keyboard.press("Enter");
 
-    await page.waitForNavigation({ waitUntil: 'networkidle0' });
+    try {
+      // networkidle2 (<=2 concurrent connections), not networkidle0 (zero) —
+      // matches every other navigation wait in this file. networkidle0
+      // never resolves if the page has any background polling/analytics/
+      // telemetry running after load, which is common on modern SPAs and
+      // would time out even on an otherwise-successful login.
+      await page.waitForNavigation({ waitUntil: 'networkidle2' });
+    } catch (err) {
+      await captureDebugContext(page, 'fillPassword-postsubmit');
+      throw err;
+    }
+  }
+
+  // Some accounts land on an account-picker page after password submit
+  // instead of going straight to the dashboard (seen at
+  // id.employer.seek.com/account/select?returnUrl=...) — each selectable
+  // account is an <a id="{accountId}-selectable-link">. Always picks the
+  // first one. No-ops if this page isn't the one we're on.
+  async handleAccountSelection(page) {
+    if (!page.url().startsWith('https://id.employer.seek.com/account/select')) {
+      return;
+    }
+
+    console.log('Account selection page detected');
+
+    // A one-shot page.$() right after the URL matches races the page's own
+    // render — same class of timing issue already found elsewhere in this
+    // file (networkidle0 too strict, execution-context-destroyed on
+    // chained redirects). Give it a real window to actually render instead
+    // of concluding "no link" from a single snapshot.
+    const link = await page
+      .waitForSelector('a[id$="-selectable-link"]', { timeout: 5000 })
+      .catch(() => null);
+    if (!link) {
+      await captureDebugContext(page, 'handleAccountSelection-noLink');
+      throw new Error('Account selection page shown but no selectable account link found');
+    }
+
+    try {
+      await Promise.all([
+        link.click(),
+        page.waitForNavigation({ waitUntil: 'networkidle2' }),
+      ]);
+    } catch (err) {
+      await captureDebugContext(page, 'handleAccountSelection');
+      throw err;
+    }
+  }
+
+  // Returns a reason string if the login attempt clearly failed in a way a
+  // retry can't fix, or null if it looks like it succeeded (navigated away
+  // from the login form).
+  async detectLoginFailure(page) {
+    const captcha = await safeQuery(page, 'iframe[src*="recaptcha"], iframe[title*="captcha" i], [class*="captcha" i]');
+    if (captcha) {
+      return 'CAPTCHA detected';
+    }
+
+    // Seek re-renders the same form with an inline error instead of
+    // navigating away when credentials are rejected — still seeing the
+    // password field after submitting means the login was rejected.
+    const stillOnLoginForm = await safeQuery(page, '#password');
+    if (stillOnLoginForm) {
+      return 'Invalid credentials';
+    }
+
+    return null;
   }
 
   async fillLogin(page, email, password) {
-    const loginBtn = await this.checkLogin(page);
+    // A partially-valid re-injected cookie can be enough for Seek to
+    // recognize the session and redirect straight to account selection,
+    // skipping the email/password form entirely — seen live via the
+    // fillEmail debug screenshot (url was already /account/select before
+    // any credentials were typed). Check for it before assuming we need to
+    // fill credentials at all.
+    await this.handleAccountSelection(page);
 
-    if (loginBtn) {
-      await this.clickLoginButton(page, loginBtn);
+    // checkLogin catches the pre-login landing page (oauth link, email field
+    // not rendered yet); #emailAddress catches landing directly on the form.
+    // Checking only #emailAddress here would miss the first case entirely.
+    const loginBtn = await this.checkLogin(page);
+    const needsCredentials = !!loginBtn || !!(await safeQuery(page, '#emailAddress'));
+
+    if (needsCredentials) {
+      if (loginBtn) {
+        await this.clickLoginButton(page, loginBtn);
+      }
+
+      await this.fillEmail(page, email);
+      await this.fillPassword(page, password);
+      // Account selection can also appear AFTER submitting credentials, for
+      // accounts that don't hit the cookie-skip path above.
+      await this.handleAccountSelection(page);
     }
 
-    await this.fillEmail(page, email);
-    await this.fillPassword(page, password);
+    const failureReason = await this.detectLoginFailure(page);
+    if (failureReason) {
+      const err = new Error(`Seek login failed: ${failureReason}`);
+      err.unrecoverable = true;
+      throw err;
+    }
   }
 
   async authenticatedPage(page, account_id) {

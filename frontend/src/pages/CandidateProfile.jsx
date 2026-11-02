@@ -15,6 +15,21 @@ import {
   sendCandidateEmail,
   getCandidateEmailPreview,
 } from '@/api/candidate.api';
+import { getJobById } from '@/api/job.api';
+import { getResultFromCandidate } from '@/api/assessment-battery-result.api';
+
+// Same clickable stepper + Screening & Matching detail panels used by
+// Report Candidate — both pages hydrate from the exact same getProgress()
+// endpoint/shape, so these are reused as-is rather than rebuilt.
+import { Pattern } from '@/components/report-candidate/report-stepper';
+import ScreeningMain from '@/components/report-candidate/screening/screening-main';
+import ParseDetails from '@/components/report-candidate/screening/parse-details';
+import MatchDetails from '@/components/report-candidate/screening/match-details';
+import QaDetails from '@/components/report-candidate/screening/qa-details';
+
+// Assessment stage detail — same report (scores/charts/narratives) the
+// Psych Assessment page shows, read-only (see component for why).
+import AssessmentReportReadOnly from '@/components/candidate-detail/AssessmentReportReadOnly';
 
 function getInitials(name) {
   if (typeof name !== 'string' || !name.trim()) return '?';
@@ -38,6 +53,18 @@ export default function CandidateProfile() {
 
   const [progress, setProgress]         = useState([]);
   const [progressLoading, setProgressLoading] = useState(true);
+
+  // Which stage/sub-stage of the stepper is selected — Pattern sets this to
+  // the candidate's actual current stage once progress/candidate load.
+  const [activeStep, setActiveStep]       = useState(0);
+  const [activeSubStep, setActiveSubStep] = useState(0);
+
+  // Assessment stage detail — lazy: only fetched once the recruiter actually
+  // clicks into that stage, not on every profile load.
+  const [assessmentBattery, setAssessmentBattery] = useState(null);
+  const [assessmentResult, setAssessmentResult]   = useState(null);
+  const [assessmentLoading, setAssessmentLoading] = useState(false);
+  const [assessmentLoaded, setAssessmentLoaded]   = useState(false);
 
   const [downloading, setDownloading]   = useState(false);
   const [downloadError, setDownloadError] = useState(null); // null | 'not_found' | 'error'
@@ -92,9 +119,44 @@ export default function CandidateProfile() {
     }
   };
 
+  /* ── Assessment stage detail — fetched once, lazily, the first time the
+     recruiter actually clicks into that stage (not on every profile load) ── */
+  // -1 + 1 = 0 when there's no Assessment stage on this job — never equals a
+  // real (1-indexed) activeStep, so the fetch effect below just never fires.
+  const assessmentStepNumber = progress.findIndex((s) => s.category === 'Assessment') + 1;
+
+  const fetchAssessmentDetail = async () => {
+    if (assessmentLoaded || !candidate?.job_id) return;
+    setAssessmentLoading(true);
+    try {
+      const jobRes = await getJobById(candidate.job_id);
+      const battery = jobRes.data?.job?.assessment_battery ?? null;
+      setAssessmentBattery(battery);
+      if (battery) {
+        const resultRes = await getResultFromCandidate({ candidate_id: candidateId, battery });
+        setAssessmentResult(resultRes.data?.result ?? null);
+      } else {
+        setAssessmentResult(null);
+      }
+    } catch {
+      setAssessmentBattery(null);
+      setAssessmentResult(null);
+    } finally {
+      setAssessmentLoading(false);
+      setAssessmentLoaded(true);
+    }
+  };
+
   useEffect(() => { fetchCandidate(); }, [candidateId]);
   useEffect(() => { fetchProgress(); }, [candidateId]);
   useEffect(() => { fetchEmailPreview(); }, [candidateId]);
+
+  useEffect(() => {
+    if (activeStep > 0 && activeStep === assessmentStepNumber && !assessmentLoaded && candidate?.job_id) {
+      fetchAssessmentDetail();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- only react to the stage actually becoming active
+  }, [activeStep, assessmentStepNumber, candidate?.job_id, assessmentLoaded]);
 
   /* ── CV download ── */
   const handleDownloadCv = async () => {
@@ -173,15 +235,16 @@ export default function CandidateProfile() {
     hasAttachment: candidate.attachment != null,
   };
 
-  // getProgress appears to return the job's full fixed stage list (not a
-  // growing history), so "last item = current" was wrong — it always
-  // pointed at the final stage regardless of where the candidate actually
-  // is. Match against latest_stage_name instead, which we've confirmed is
-  // correct (it's what the header badge and pipeline table both use).
-  const currentIdx = progress.findIndex((step) => {
-    const label = step.stage_name ?? step.label ?? step.name;
-    return label === view.stageName;
-  });
+  // Screening & Matching's Parse/Match/QA breakdown — same extraction
+  // ReportCandidateDetail.jsx uses against this identical getProgress shape.
+  // Hardcoded to step 1 (not looked up) to match that page's own behavior:
+  // Screening & Matching is always the first stage in a job's stage list.
+  const screeningStep = progress.find((stage) => stage.category === 'Screening & Matching');
+  const screeningData = screeningStep ? {
+    parsedDone: screeningStep.process?.parse?.result,
+    scoredDone: screeningStep.process?.match?.result,
+    qaDone: screeningStep.process?.qa?.result,
+  } : {};
 
   return (
     <>
@@ -242,16 +305,40 @@ export default function CandidateProfile() {
                     </div>
                   </div>
                 )}
+
+                {view.positions.length > 0 && (
+                  <div>
+                    <p className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground mb-1.5">
+                      Work History
+                    </p>
+                    <ul className="space-y-3">
+                      {view.positions.map((pos, i) => (
+                        <li key={i} className="flex items-start gap-3">
+                          <span className="flex h-6 w-6 items-center justify-center rounded-full bg-muted text-muted-foreground shrink-0 mt-0.5">
+                            <Briefcase className="h-3 w-3" />
+                          </span>
+                          <div className="min-w-0">
+                            <p className="text-xs font-semibold">{pos.title}</p>
+                            <p className="text-[11px] text-muted-foreground">
+                              {pos.company}{pos.years ? ` · ${pos.years} yr${pos.years === 1 ? '' : 's'}` : ''}
+                            </p>
+                          </div>
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                )}
               </CardContent>
             </Card>
 
-            {/* Stage stepper — horizontal, mirrors the S-A-I-P-V-O-N ribbon
-                used elsewhere in the app */}
+            {/* Stage stepper — same clickable Pattern component as Report
+                Candidate, hydrated from the same getProgress() response.
+                Clicking a past/current stage selects it (future stages stay
+                disabled); Screening & Matching additionally reveals its
+                Parse/Match/QA breakdown below, exactly like Report
+                Candidate. */}
             <Card>
-              <CardContent className="p-4 space-y-3">
-                <p className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
-                  Stage Timeline
-                </p>
+              <CardContent className="p-4">
                 {progressLoading ? (
                   <div className="flex items-center gap-2 text-xs text-muted-foreground py-4">
                     <Loader2 className="h-3.5 w-3.5 animate-spin" /> Loading timeline…
@@ -259,67 +346,38 @@ export default function CandidateProfile() {
                 ) : progress.length === 0 ? (
                   <p className="text-xs text-muted-foreground py-4">No stage history yet.</p>
                 ) : (
-                  <div className="flex items-start overflow-x-auto pb-1">
-                    {progress.map((step, i) => {
-                      const label = step.stage_name ?? step.label ?? step.name ?? `Stage ${i + 1}`;
-                      const date  = step.date ?? step.created_at ?? step.updated_at ?? null;
-                      const isCurrent = i === currentIdx;
-                      const isPast    = i < currentIdx;
-                      return (
-                        <div key={step.id ?? i} className="flex items-start flex-1 min-w-[110px]">
-                          <div className="flex flex-col items-center flex-1">
-                            <span className={`flex h-6 w-6 items-center justify-center rounded-full text-[10px] font-semibold shrink-0 ${
-                              isCurrent
-                                ? 'bg-primary text-primary-foreground'
-                                : isPast
-                                  ? 'bg-emerald-500 text-white'
-                                  : 'bg-muted text-muted-foreground'
-                            }`}>
-                              {isPast ? <Check className="h-3 w-3" /> : i + 1}
-                            </span>
-                            <span className={`mt-1.5 text-[11px] text-center leading-tight ${isCurrent ? 'font-semibold' : 'font-medium text-muted-foreground'}`}>
-                              {label}
-                            </span>
-                            {date && (
-                              <span className="text-[9px] text-muted-foreground mt-0.5">{date}</span>
-                            )}
-                          </div>
-                          {i < progress.length - 1 && (
-                            <div className={`h-[2px] flex-1 mt-3 ${isPast ? 'bg-emerald-400' : 'bg-border'}`} />
-                          )}
-                        </div>
-                      );
-                    })}
-                  </div>
+                  <Pattern
+                    candidate={candidate}
+                    stages={progress}
+                    activeStep={activeStep}
+                    onActiveStepChange={setActiveStep}
+                  />
                 )}
               </CardContent>
             </Card>
 
-            {/* Work history */}
-            {view.positions.length > 0 && (
-              <Card>
-                <CardContent className="p-4 space-y-2.5">
-                  <p className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
-                    Work History
-                  </p>
-                  <ul className="space-y-3">
-                    {view.positions.map((pos, i) => (
-                      <li key={i} className="flex items-start gap-3">
-                        <span className="flex h-6 w-6 items-center justify-center rounded-full bg-muted text-muted-foreground shrink-0 mt-0.5">
-                          <Briefcase className="h-3 w-3" />
-                        </span>
-                        <div className="min-w-0">
-                          <p className="text-xs font-semibold">{pos.title}</p>
-                          <p className="text-[11px] text-muted-foreground">
-                            {pos.company}{pos.years ? ` · ${pos.years} yr${pos.years === 1 ? '' : 's'}` : ''}
-                          </p>
-                        </div>
-                      </li>
-                    ))}
-                  </ul>
-                </CardContent>
-              </Card>
+            {activeStep === 1 && screeningStep && (
+              <>
+                <ScreeningMain
+                  screeningData={screeningData}
+                  onSubStepClick={setActiveSubStep}
+                  activeSubStep={activeSubStep}
+                />
+                {activeSubStep === 1 && <ParseDetails data={screeningData.parsedDone} />}
+                {activeSubStep === 2 && <MatchDetails data={screeningData.scoredDone} />}
+                {activeSubStep === 3 && <QaDetails data={screeningData.qaDone} />}
+              </>
             )}
+
+            {activeStep === assessmentStepNumber && assessmentStepNumber > 0 && (
+              <AssessmentReportReadOnly
+                loading={assessmentLoading}
+                candidate={candidate}
+                battery={assessmentBattery}
+                result={assessmentResult}
+              />
+            )}
+
           </div>
 
           {/* Sidebar */}

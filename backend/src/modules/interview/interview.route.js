@@ -8,6 +8,7 @@ router.use(authToken);
 
 // ─── Specific routes MUST come before generic param routes ───────────────────
 router.get('/workboard', interviewController.getWorkboard);
+router.get('/scorecards-owed', interviewController.getScorecardsOwed);
 router.get('/by-candidate/:candidate_id', interviewController.getInterviewByCandidateId);
 
 // Schedule-related routes (must be before /:interview_id)

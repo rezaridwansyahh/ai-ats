@@ -6,6 +6,7 @@
 /frontend/.env
 /.claude
 browser-profiles/
+debug-screenshots/
 
 /docs
 /claude history

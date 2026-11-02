@@ -21,6 +21,11 @@ class InterviewService {
     return await interviewModel.getWorkboardData(company_id);
   }
 
+  async getScorecardsOwed(company_id) {
+    if (!company_id) throw { status: 400, message: 'company_id is required' };
+    return await interviewModel.getScorecardsOwed(company_id);
+  }
+
   async getInterview(interview_id, { company_id = null } = {}) {
     if (!interview_id) throw { status: 400, message: 'interview_id is required' };
     const row = await interviewModel.getById(interview_id);
@@ -645,10 +650,15 @@ class InterviewService {
       throw { status: 400, message: 'Questions must be configured before generating a link.' };
     }
 
-   // Build rubric_snapshot from prep rubric_items
+   // Build rubric_snapshot from prep rubric_items. competency_name is the
+    // human-readable label ("Leadership") — competency_code is just an
+    // internal id ("HRD-01"). The old fallback chain checked item.label
+    // (a field rubric_items never actually has) before competency_code,
+    // so it always fell through to showing the raw code to interviewers
+    // on the pack portal, never the name.
     const rubric_snapshot = {
       custom_criteria: prep.rubric_items.map((item) => ({
-        description: item.label || item.competency_code || item.name || String(item),
+        description: item.competency_name || item.name || item.label || item.competency_code || String(item),
         weight: Number(item.weight) || 1,
       })),
     };

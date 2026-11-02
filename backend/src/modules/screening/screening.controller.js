@@ -182,14 +182,16 @@ class ScreeningController {
     }
   }
 
-  // L4 — calibration cohort
+  // L4 — calibration cohort (paginated + filterable)
   async getCalibration(req, res) {
     try {
       const job_id = Number(req.params.job_id);
-      const rows = await screeningService.getCalibration(job_id, {
-        company_id: req.user?.company_id || null,
-      });
-      res.status(200).json({ message: 'Calibration cohort', rows });
+      const { rows, total, bucket_counts } = await screeningService.getCalibration(
+        job_id,
+        { company_id: req.user?.company_id || null },
+        req.query
+      );
+      res.status(200).json({ message: 'Calibration cohort', rows, total, bucket_counts });
     } catch (err) {
       res.status(err.status || 500).json({ message: err.message });
     }
@@ -199,9 +201,9 @@ class ScreeningController {
   async advanceBulk(req, res) {
     try {
       const job_id = Number(req.params.job_id);
-      const { screening_ids, decision_reason } = req.body || {};
+      const { candidate_ids, decision_reason } = req.body || {};
       const result = await screeningService.advanceBulk(job_id, {
-        screening_ids,
+        candidate_ids,
         decision_reason,
         decided_by: req.user?.user_id || null,
         company_id: req.user?.company_id || null,
@@ -230,6 +232,16 @@ class ScreeningController {
     }
   }
 
+  async markScoreViewed(req, res) {
+    try {
+      const score_id = Number(req.params.score_id);
+      const result = await screeningService.markScoreViewed(score_id);
+      res.status(200).json({ message: 'Score marked viewed', score: result });
+    } catch (err) {
+      res.status(err.status || 500).json({ message: err.message });
+    }
+  }
+
   async getWorkboard(req, res) {
     try {
       const company_id = req.user?.company_id;
@@ -249,6 +261,16 @@ class ScreeningController {
       const engine = req.query.engine || null;
       const candidates = await screeningService.getLaneCandidates(job_id, engine);
       res.status(200).json({ message: 'Lane candidates', candidates });
+    } catch (err) {
+      res.status(err.status || 500).json({ message: err.message });
+    }
+  }
+
+  async getEngineCounts(req, res) {
+    try {
+      const job_id = Number(req.params.job_id);
+      const counts = await screeningService.getEngineCounts(job_id);
+      res.status(200).json({ message: 'Engine counts', counts });
     } catch (err) {
       res.status(err.status || 500).json({ message: err.message });
     }

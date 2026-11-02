@@ -13,6 +13,7 @@ import {
   getGrade,
   getIQ,
   getIQClass,
+  getIQVerdict,
   fmtTime,
   checkGIAnswer,
 } from '../utils/scoring';
@@ -71,6 +72,7 @@ function computeSubScore(subCode, items, ansForSub) {
   if (subCode === 'GI') {
     res.iq = getIQ(ok);
     res.iqCls = getIQClass(res.iq);
+    res.verdict = getIQVerdict(res.iq).v; // IQ classification replaces the percentile verdict for GI
   }
   return res;
 }
@@ -96,6 +98,13 @@ export default function TKTest({ resultId, assessmentCode, portalHash, onComplet
   const [timeLeft, setTimeLeft] = useState(0);
   const [done, setDone] = useState({}); // per-subtest result
   const tickRef = useRef(null);
+  // The tick interval (below) is created once per subtest and never
+  // recreated while it's running, so its auto-timeout callback would
+  // otherwise close over whatever `answers` looked like at that moment
+  // (empty, right when the subtest started) — silently scoring 0 regardless
+  // of what the candidate actually answered. Routing the call through a ref
+  // that's refreshed every render keeps it pointed at the live closure.
+  const handleFinishSubRef = useRef(null);
 
   useEffect(() => {
     let cancelled = false;
@@ -217,19 +226,22 @@ export default function TKTest({ resultId, assessmentCode, portalHash, onComplet
   };
 
   useEffect(() => {
+    handleFinishSubRef.current = handleFinishSub;
+  });
+
+  useEffect(() => {
     if (phase !== 'sub-active') return;
     tickRef.current = setInterval(() => {
       setTimeLeft((t) => {
         if (t <= 1) {
           clearInterval(tickRef.current);
-          handleFinishSub(true);
+          handleFinishSubRef.current(true);
           return 0;
         }
         return t - 1;
       });
     }, 1000);
     return () => clearInterval(tickRef.current);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [phase, code]);
 
   const startSub = () => {

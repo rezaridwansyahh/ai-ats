@@ -11,6 +11,29 @@ const STATUS_TIMESTAMP_COLUMN = {
 
 class OfferModel {
   // L1 Workboard - get all offers for company
+  // Offers with an approval chain currently in progress — backs the
+  // dashboard's "Approvals Waiting on You" widget.
+  async getPendingApprovals(company_id) {
+    const query = `
+      SELECT
+        co.id,
+        co.position_title,
+        co.offer_status,
+        co.created_at,
+        co.metadata->'approval' AS approval,
+        mc.name AS candidate_name,
+        cj.job_title
+      FROM candidate_offer co
+      JOIN master_candidate mc ON co.candidate_id = mc.id
+      JOIN core_job cj ON co.job_id = cj.id
+      WHERE co.company_id = $1
+        AND co.metadata->'approval'->>'status' = 'in_progress'
+      ORDER BY co.created_at ASC
+    `;
+    const result = await getDb().query(query, [company_id]);
+    return result.rows;
+  }
+
   async getWorkboard(company_id) {
     const query = `
       SELECT

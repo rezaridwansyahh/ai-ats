@@ -13,7 +13,7 @@ export default class SeekJobMapper {
       job_location: scraped.lokasi || scraped.location || null,
       work_option: this.mapWorkOption(scraped.opsi_tempat_kerja),
       work_type: this.mapWorkType(scraped.jenis_pekerjaan),
-      status: this.mapStatusFromType(type),
+      status: scraped.blocked ? 'Blocked' : this.mapStatusFromType(type),
       candidate_count: scraped.candidate_count ?? null,
       additional: { type: "scraped" },
       seek_id: scraped.seek_id?.toString() || scraped.id_iklan || null,
@@ -27,10 +27,14 @@ export default class SeekJobMapper {
     };
   }
 
-  // Status comes from which bucket we scraped (Seek's own ?type=open/expired page
-  // filter), not from a "status" field in the scraped modal — that field never
-  // actually exists in the jobInformation panel's data, so deriving it from scraped
-  // text was silently always falling back to 'Running' for every job.
+  // Status normally comes from which bucket we scraped (Seek's own
+  // ?type=open/expired page filter), not from a "status" field in the
+  // scraped modal — that field never actually exists in the jobInformation
+  // panel's data, so deriving it from scraped text was silently always
+  // falling back to 'Running' for every job. The one exception is a blocked
+  // listing: Seek still lists it under the "open" bucket but marks it with
+  // a "Diblokir" badge (see extract-job-post.rpa.js), which takes priority
+  // over the bucket-based guess — handled in normalize() above, not here.
   static mapStatusFromType(type) {
     if (type === 'expired') return 'Expired';
     return 'Active'; // 'open' bucket

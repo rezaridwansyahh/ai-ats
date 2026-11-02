@@ -1,5 +1,7 @@
 import assessmentBatteryResultService from './assessment-battery-result.service.js';
 import { buildAssessmentReportPdf } from './assessment-report.pdf.js';
+import { buildAssessmentQaPdf } from '../assessment-answer/assessment-qa.pdf.js';
+import assessmentAnswerService from '../assessment-answer/assessment-answer.service.js';
 
 class AssessmentBatteryResultController {
   async getAll(req, res) {
@@ -106,6 +108,22 @@ class AssessmentBatteryResultController {
       res.send(pdfBuffer);
     } catch (err) {
       console.error(`[PDF Export] Failed for result ${req.params.id}:`, err);
+      res.status(err.status || 500).json({ message: err.message });
+    }
+  }
+
+  // Per-question transcript (question text + what the candidate answered) —
+  // distinct from downloadPdf above, which is the scored/narrative report.
+  async downloadQaPdf(req, res) {
+    try {
+      const result = await assessmentBatteryResultService.getById(req.params.id);
+      const answers = await assessmentAnswerService.getByResultIdWithQuestions(req.params.id);
+      const pdfBuffer = await buildAssessmentQaPdf(result, answers);
+      res.setHeader('Content-Type', 'application/pdf');
+      res.setHeader('Content-Disposition', `attachment; filename="assessment-qa-${req.params.id}.pdf"`);
+      res.send(pdfBuffer);
+    } catch (err) {
+      console.error(`[Q&A PDF Export] Failed for result ${req.params.id}:`, err);
       res.status(err.status || 500).json({ message: err.message });
     }
   }

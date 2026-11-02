@@ -3,6 +3,9 @@ import api from './axios';
 // L1 Workboard - get all offers
 export const getWorkboard = () => api.get('/offer/workboard');
 
+// Dashboard: offers with an approval chain currently in progress
+export const getPendingApprovals = () => api.get('/offer/pending-approvals');
+
 // L2 Position - get offers by job
 export const getOffersByJob = (jobId) => api.get(`/offer/job/${jobId}`);
 

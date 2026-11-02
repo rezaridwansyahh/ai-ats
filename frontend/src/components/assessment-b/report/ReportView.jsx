@@ -11,6 +11,7 @@ import {
   rangeLbl,
   getPapiRange,
   getIQClass,
+  getIQVerdict,
   fmtDateID,
 } from '../utils/scoring';
 import { SCALE_ORDER, SCALES } from '../data/epps';
@@ -117,7 +118,7 @@ export default function ReportView({ profile, results, state, updateState, saveN
           </div>
           <div className="flex items-center gap-2">
             <span className="bg-white/15 border border-white/20 rounded-full px-3 py-1 text-[11px] font-bold">
-              Battery B · Profesional & Individual Contributor
+              Battery B{profile?.job_title ? ` · ${profile.job_title}` : ' · Profesional & Individual Contributor'}
             </span>
             <span className="bg-white/15 border border-white/25 rounded-full px-3 py-1 text-[11px] font-bold inline-flex items-center gap-1"><Lock className="w-3 h-3" /> RAHASIA</span>
           </div>
@@ -126,17 +127,16 @@ export default function ReportView({ profile, results, state, updateState, saveN
           <div>
             <div className="font-serif text-2xl md:text-3xl font-bold mb-1 leading-tight">{profile?.name}</div>
             <div className="text-sm opacity-80 mb-3.5">
-              {profile?.position}
+              {profile?.job_title ? `Job Applied: ${profile.job_title}` : profile?.position}
               {profile?.department ? ' · ' + profile.department : ''}
               {profile?.education ? ' · ' + profile.education : ''}
             </div>
             <div className="grid grid-cols-2 gap-x-3.5 gap-y-1.5 max-w-[420px]">
               {[
-                ['Tanggal Lahir', profile?.date_birth ? new Date(profile.date_birth).toLocaleDateString('id-ID', { day: '2-digit', month: 'long', year: 'numeric' }) : '—'],
                 ['Tanggal Tes', profile?.date ? fmtDateID(new Date(profile.date)) : (results.papi?.date || results.holland?.date || results.epps?.date || results.tk?.date || fmtDateID())],
-                ['Email', profile?.email || '—'],
-                ['No. Kandidat', state.nomerKandidat || '—'],
-                ['Asesor', state.asesor || '—'],
+                ['Lokasi Kerja', profile?.job_location || '—'],
+                ['Tipe Kerja', profile?.work_type || '—'],
+                ['Opsi Kerja', profile?.work_option || '—'],
               ].map(([lbl, val]) => (
                 <div key={lbl} className="bg-white/10 rounded-lg px-3 py-1.5">
                   <div className="text-[9px] font-bold tracking-widest uppercase opacity-60 mb-0.5">{lbl}</div>
@@ -182,8 +182,8 @@ export default function ReportView({ profile, results, state, updateState, saveN
           <ChipScore
             label="GI — Kemampuan Umum"
             value={tk.sub.GI.score10}
-            sub={`IQ ≈ ${tk.sub.GI.iq || '—'} · ${tk.sub.GI.iqCls?.l || getIQClass(tk.sub.GI.iq || 90).l}`}
-            verdict={getVerdict(tk.sub.GI.score10)}
+            sub={`IQ ≈ ${tk.sub.GI.iq || '—'}`}
+            verdict={getIQVerdict(tk.sub.GI.iq || 90)}
             badge={getGrade(tk.sub.GI.pct || 50).g}
           />
         ) : (
@@ -248,7 +248,7 @@ export default function ReportView({ profile, results, state, updateState, saveN
                           </tr>
                         );
                       }
-                      const vd = getVerdict(s.score10);
+                      const vd = c === 'GI' && s.iq ? getIQVerdict(s.iq) : getVerdict(s.score10);
                       const gr = getGrade(s.pct || s.score10 * 10);
                       return (
                         <tr key={c} className="border-b border-slate-100">
@@ -476,7 +476,7 @@ export default function ReportView({ profile, results, state, updateState, saveN
                   value={state['edit_' + id] || ''}
                   onChange={(e) => setNarr(id, e.target.value)}
                   placeholder="Tuliskan interpretasi di sini, atau klik Generate Sintesis AI di atas..."
-                  className="min-h-[90px] bg-gradient-to-br from-emerald-50/50 to-teal-50/30 border-teal-200 focus-visible:ring-teal-500"
+                  className="min-h-[180px] bg-gradient-to-br from-emerald-50/50 to-teal-50/30 border-teal-200 focus-visible:ring-teal-500"
                 />
               </div>
             ))}
@@ -486,7 +486,7 @@ export default function ReportView({ profile, results, state, updateState, saveN
               value={state.notes_final || ''}
               onChange={(e) => setNotes('final', e.target.value)}
               placeholder="Tuliskan kesimpulan akhir, catatan pengembangan, saran onboarding..."
-              className="min-h-[100px]"
+              className="min-h-[200px]"
             />
           </SectionCard>
         </div>

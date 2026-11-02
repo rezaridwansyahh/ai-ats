@@ -6,6 +6,7 @@ import {
   getGrade,
   s10ToLabel,
   getIQClass,
+  getIQVerdict,
   fmtDateID,
   lvlSJT,
 } from '../utils/scoring';
@@ -201,7 +202,7 @@ export default function CandidateReportView({ profile, results, onClose }) {
                 </div>
                 {tk.sub && Object.keys(tk.sub).map((code) => {
                   const s = tk.sub[code];
-                  const vd = getVerdict(s.score10);
+                  const vd = code === 'GI' && s.iq ? getIQVerdict(s.iq) : getVerdict(s.score10);
                   return (
                     <div key={code} className="border border-slate-200 rounded-lg p-3 bg-white">
                       <div className="flex items-center gap-2 mb-2">

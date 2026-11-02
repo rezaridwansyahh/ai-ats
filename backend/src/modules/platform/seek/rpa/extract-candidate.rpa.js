@@ -20,14 +20,48 @@ async function waitForNewDownload(downloadDir, filesBefore, timeoutMs = 30000, i
 }
 
 class ExtractCandidateService {
-  async navigateToCandidatePage(page, seek_id) {
-    console.log('Navigating to candidates for job ID:', seek_id);
+  // resumeCandidateId, if given, deep-links to that specific candidate via
+  // Seek's own `selected=` param — Seek resolves which page that candidate is
+  // currently on itself (confirmed live: asking for an arbitrary `p=` gets
+  // overridden back to the candidate's real page), so this is resilient to
+  // the candidate list having shifted (new applicants, status changes) since
+  // the cursor was last saved. We just close the drawer it opens afterward.
+  async navigateToCandidatePage(page, seek_id, resumeCandidateId = null) {
+    const url = resumeCandidateId
+      ? `https://id.employer.seek.com/id/candidates/?jobid=${seek_id}&selected=${resumeCandidateId}&tab=profile`
+      : `https://id.employer.seek.com/id/candidates/?jobid=${seek_id}`;
 
-    await page.goto(`https://id.employer.seek.com/id/candidates/?jobid=${seek_id}`, {
-      waitUntil: 'networkidle0',
-    });
+    console.log('Navigating to candidates:', url);
+
+    await page.goto(url, { waitUntil: 'networkidle2', timeout: 60000 });
 
     console.log('Candidate page loaded');
+
+    if (resumeCandidateId) {
+      // The drawer opens asynchronously after the base page renders — wait
+      // for it to actually exist before trying to close it, otherwise this
+      // click can fire on nothing and leave the drawer open underneath the
+      // bucket-extraction step that runs right after this returns.
+      const drawerOpened = await page
+        .waitForSelector('[id="details-view-drawer"]', { timeout: 10000 })
+        .then(() => true)
+        .catch(() => false);
+
+      if (drawerOpened) {
+        await page.evaluate(() => {
+          const btn = document.querySelector('button[aria-label="Tutup halaman"]');
+          if (btn) btn.click();
+        });
+        await page.waitForSelector('[id="details-view-drawer"]', { hidden: true, timeout: 10000 }).catch(() => {});
+      } else {
+        console.log('Resume: drawer never appeared for selected candidate — continuing anyway');
+      }
+    }
+
+    // networkidle2 (needed so a lingering background connection doesn't blow
+    // the nav timeout) can resolve before the bucket tabs have actually
+    // rendered — wait for them directly instead of trusting goto's timing.
+    await page.waitForSelector('[data-testid="desktop-buckets"]', { timeout: 15000 }).catch(() => {});
   }
 
   async navigateToCandidateDetail(page, candidateType) {
@@ -91,24 +125,30 @@ class ExtractCandidateService {
 
     await page.waitForSelector('[data-testid="job-application-card"]');
 
-    // Click to open filter for full candidate list
-    try {
-      await page.waitForSelector('[data-testid="status-folder-buttons"]');
-      const filterOn = await page.evaluate(() => {
-        const filterBtn = document.querySelector('input[id="must-have-toggle"]');
-        return !!filterBtn && filterBtn.checked;
-      });
+    // Re-checked after every page.goto() too, not just once up front — a hard
+    // navigation (as opposed to the old in-app "next page" click) might not
+    // preserve this client-side toggle state, so re-verifying per page is the
+    // safe default even if Seek does happen to persist it.
+    const ensureFilterOff = async () => {
+      try {
+        await page.waitForSelector('[data-testid="status-folder-buttons"]');
+        const filterOn = await page.evaluate(() => {
+          const filterBtn = document.querySelector('input[id="must-have-toggle"]');
+          return !!filterBtn && filterBtn.checked;
+        });
 
-      if (filterOn) {
-        await page.click('input[id="must-have-toggle"]');
-        await delay(1000);
-        console.log('Filter toggle was on, turned off');
-      } else {
-        console.log('Filter toggle already off');
+        if (filterOn) {
+          await page.click('input[id="must-have-toggle"]');
+          await delay(1000);
+          console.log('Filter toggle was on, turned off');
+        } else {
+          console.log('Filter toggle already off');
+        }
+      } catch (error) {
+        console.log('Filter toggle not found or already open');
       }
-    } catch (error) {
-      console.log('Filter toggle not found or already open');
-    }
+    };
+    await ensureFilterOff();
 
     let saved = 0;
     let skipped = 0;
@@ -123,13 +163,34 @@ class ExtractCandidateService {
     const downloadDir = path.join(os.tmpdir(), 'seek-cv-staging', `${account_id}_${seek_id}_${safeName}`);
     fs.mkdirSync(downloadDir, { recursive: true });
 
-    while (true) {
+    // Direct URL pagination — same fix already applied to extract-job-post.rpa.js,
+    // for the same reason: clicking a[rel="next"] can silently no-op, leaving
+    // the old `while (true)` loop re-scraping the same page forever (confirmed
+    // live: the same 20 candidates repeated for 30,000+ cycles). Bucket
+    // switching itself still happens via the tab click (seek.service.js /
+    // navigateToCandidateDetail) — that's never been the source of a stuck
+    // loop, only "next page" clicking was — so we capture whatever `s=`
+    // filter param that click (or a resume deep-link) already landed on,
+    // rather than guessing the `s=` value per bucket name.
+    const startUrl = new URL(page.url());
+    const sParam = startUrl.searchParams.get('s');
+    const startPage = parseInt(startUrl.searchParams.get('p') || '1', 10);
+    const totalPages = Math.max(1, Math.ceil((candidateType.count || 0) / 20));
+
+    for (let pageNum = startPage; pageNum <= totalPages; pageNum++) {
+      if (pageNum > startPage) {
+        const pageUrl = `https://id.employer.seek.com/id/candidates/?jobid=${seek_id}&p=${pageNum}${sParam ? `&s=${sParam}` : ''}`;
+        console.log(`Going to page ${pageNum}/${totalPages}: ${pageUrl}`);
+        await page.goto(pageUrl, { waitUntil: 'networkidle2', timeout: 60000 });
+        await page.waitForSelector('[data-testid="job-application-card"]', { timeout: 10000 }).catch(() => {});
+        await ensureFilterOff();
+      }
+
       await delay(1000);
       const totalCards = await page.evaluate(() => {
         return document.querySelectorAll('[data-testid="job-application-card"]').length;
       });
-
-      console.log(`\nFound ${totalCards} candidate cards on this page`);
+      console.log(`\nPage ${pageNum}/${totalPages} — found ${totalCards} candidate cards — url=${page.url()}`);
 
       for (let i = 0; i < totalCards; i++) {
         const cardSelector = `[data-testid="job-application-card-${i}"]`;
@@ -222,6 +283,13 @@ class ExtractCandidateService {
         if (checkExists && cardData.name && await checkExists(cardData.name)) {
           console.log(`Already synced, skipping: ${cardData.name}`);
           skipped++;
+          // Counts toward progress same as a newly-saved candidate — progress
+          // tracks "how far through the listing we've walked" against Seek's
+          // own candidate_count, not "how many we've inserted." Without this,
+          // a full re-walk that skips many already-known candidates could
+          // plateau progress below candidate_count forever, even though every
+          // real candidate has already been accounted for.
+          progress++;
           continue;
         }
 
@@ -244,6 +312,16 @@ class ExtractCandidateService {
         // Email isn't shown on the card, only inside the opened detail drawer —
         // Seek renders it as an aria-label like `Email someone@example.com`
         // rather than plain text, so match on the label prefix and strip it off.
+        //
+        // `[aria-label^="Email "]` is not unique to the real email field —
+        // confirmed live it also matches an unrelated UI badge (logged value
+        // was literally "(1)", a notification-style count, not an address).
+        // That's dangerous, not just wrong: applicantModel.create() does a
+        // GLOBAL getByEmail() lookup, so a non-null garbage value causes
+        // every candidate sharing it to collapse into (overwrite) the same
+        // master_applicant row instead of each getting their own. Validate
+        // it actually looks like an email before trusting it — anything else
+        // is treated as "no email found", same as the field being absent.
         const email = await page.evaluate(() => {
           const el = document.querySelector('[aria-label^="Email "]');
           if (!el) return null;
@@ -251,8 +329,9 @@ class ExtractCandidateService {
           const value = label.replace(/^Email\s*/i, '').trim();
           return value || null;
         });
+        const validEmail = email && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email) ? email : null;
 
-        console.log(`Email: ${email}`);
+        console.log(`Email: ${validEmail ?? `(discarded invalid value: "${email}")`}`);
 
         if (!candidateId) {
           console.log('No candidate_id found, skipping...');
@@ -334,7 +413,7 @@ class ExtractCandidateService {
 
         await delay(500);
         progress++;
-        const candidate = { ...cardData, candidate_id: candidateId, progress, attachment: resumeFileName, email, cv_status: cvStatus };
+        const candidate = { ...cardData, candidate_id: candidateId, progress, attachment: resumeFileName, email: validEmail, cv_status: cvStatus };
 
         // Save immediately rather than buffering — persists progress as we go
         // instead of holding the whole bucket in memory until it's all done.
@@ -347,28 +426,6 @@ class ExtractCandidateService {
       }
 
       console.log(`Candidates saved so far: ${saved}, skipped (already synced): ${skipped}`);
-      console.log('\nChecking for next page...');
-
-      const nextBtn = await page.$('a[rel="next"][aria-hidden="false"]');
-
-      if (nextBtn) {
-        console.log("Next page detected, clicking...");
-
-        await Promise.all([
-          nextBtn.click(),
-          page.waitForNetworkIdle({ idleTime: 500, timeout: 10000 }).catch(() => {}),
-        ]);
-      }
-
-      if (!nextBtn) {
-        console.log('No more pages. Done!');
-        break;
-      }
-
-      console.log('Going to next page...');
-      await delay(3000);
-      await page.waitForSelector('[data-testid="job-application-card"]');
-      await delay(2000);
     }
 
     console.log(`\nTotal candidates saved: ${saved}, skipped: ${skipped}`);

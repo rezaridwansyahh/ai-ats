@@ -1,4 +1,19 @@
 import seekQueue from "./seek.queue.js";
+import jobSourceModel from "../../modules/job-source/job-source.model.js";
+
+// | | Linked | Unlinked |
+// |---|---|---|
+// | Manual    | 1 | 3 |
+// | Scheduler | 2 | 4 |
+// Linked dominates (a swept linked sourcing must still outrank a manually
+// clicked unlinked one); manual-vs-scheduler is only a tiebreak within tier.
+async function computePriority(job_sourcing_id, trigger) {
+  const linkedJobIds = await jobSourceModel.getLinkedJobIds(job_sourcing_id);
+  const linked = linkedJobIds && linkedJobIds.length > 0;
+
+  if (linked) return trigger === 'manual' ? 1 : 2;
+  return trigger === 'manual' ? 3 : 4;
+}
 
 class SeekProducer {
   async createSeekJobPost(account_id, service, dataForm) {
@@ -41,13 +56,30 @@ class SeekProducer {
     return job;
   }
 
-  async extractSeekCandidate(account_id, job_sourcing_id) {
+  // trigger: 'manual' (Sync button / controller) or 'scheduler' (night/day
+  // sweep) — determines both queue priority (see computePriority above) and
+  // the per-sourcing duplicate guard below.
+  async extractSeekCandidate(account_id, job_sourcing_id, trigger = 'manual') {
+    const jobId = `seek-extract-candidate-${job_sourcing_id}`;
+    const existing = await seekQueue.getJob(jobId);
+
+    if (existing) {
+      const state = await existing.getState();
+      if (['waiting', 'active', 'delayed', 'paused'].includes(state)) {
+        return { job: existing, alreadyQueued: true };
+      }
+      // stale (completed/failed) — clear it so the same jobId can be reused
+      await existing.remove();
+    }
+
+    const priority = await computePriority(job_sourcing_id, trigger);
+
     const job = await seekQueue.add('seek-extract-candidate', {
       account_id,
       job_sourcing_id
-    });
+    }, { jobId, priority });
 
-    return job;
+    return { job, alreadyQueued: false };
   }
 
   // Deterministic jobId per account so a duplicate Sync click can't queue
