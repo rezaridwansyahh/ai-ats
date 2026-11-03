@@ -9,6 +9,14 @@ puppeteer.use(StealthPlugin());
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const PROFILES_DIR = path.resolve(__dirname, '../../../../browser-profiles');
 
+// DEV ONLY: with PUPPETEER_KEEP_OPEN=true (and NODE_ENV !== 'production'),
+// close() leaves the window open so you can inspect what the RPA did.
+// A profile dir can only be held by one Chrome at a time, so the kept-open
+// browser for a profile is closed when the next job for it launches.
+const KEEP_OPEN =
+  process.env.NODE_ENV !== 'production' && process.env.PUPPETEER_KEEP_OPEN === 'true';
+const keptOpen = new Map(); // profile key -> Browser left open by close()
+
 class BrowserPuppeteer {
   constructor() {
     this.page = null
@@ -16,7 +24,7 @@ class BrowserPuppeteer {
   }
 
   async init(session, accountId = null) {
-    const launchOptions = { headless: true };
+    const launchOptions = { headless: false };
 
     if (process.env.PUPPETEER_EXECUTABLE_PATH) {
       launchOptions.executablePath = process.env.PUPPETEER_EXECUTABLE_PATH;
@@ -24,6 +32,13 @@ class BrowserPuppeteer {
 
     if (accountId) {
       launchOptions.userDataDir = path.join(PROFILES_DIR, `account_${accountId}`);
+    }
+
+    this.profileKey = launchOptions.userDataDir || 'no-profile';
+    const previous = keptOpen.get(this.profileKey);
+    if (previous) {
+      keptOpen.delete(this.profileKey);
+      await previous.close().catch(() => {});
     }
 
     this.browser = await puppeteer.launch(launchOptions);
@@ -113,7 +128,16 @@ class BrowserPuppeteer {
 
   async close() {
     if (this.browser) {
-      await this.browser.close()
+      if (KEEP_OPEN) {
+        const browser = this.browser;
+        keptOpen.set(this.profileKey, browser);
+        browser.once('disconnected', () => {
+          if (keptOpen.get(this.profileKey) === browser) keptOpen.delete(this.profileKey);
+        });
+        console.log(`[puppeteer] PUPPETEER_KEEP_OPEN: leaving browser open (${this.profileKey})`);
+      } else {
+        await this.browser.close()
+      }
       this.page = null
       this.browser = null
     }

@@ -1,17 +1,8 @@
 import CompanyModel from './company.model.js';
 
 class CompanyService {
-  async getAll() {
-    return await CompanyModel.getAll();
-  }
-
-  async getById(id, requester) {
-    const company = await CompanyModel.getById(id);
-    if (!company) throw { status: 404, message: 'Company not found' };
-
-    if (!requester?.isSuperAdmin && company.id !== requester?.company_id) {
-      throw { status: 403, message: 'Not authorized to view this company' };
-    }
+  async getById(id) {
+    const company = await CompanyModel.findById(id);
 
     return company;
   }
@@ -22,8 +13,6 @@ class CompanyService {
   }
 
   async update(id, payload) {
-    const existing = await CompanyModel.getById(id);
-    if (!existing) throw { status: 404, message: 'Company not found' };
     const allowed = ['name', 'description', 'email', 'website', 'logo_url'];
     const fields = {};
     for (const k of allowed) {

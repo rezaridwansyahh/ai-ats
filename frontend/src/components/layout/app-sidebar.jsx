@@ -20,7 +20,7 @@ import {
   BookOpen,
 } from 'lucide-react';
 import { hasPermission } from '@/utils/permissions';
-import { getCompanyById } from '@/api/company.api';
+import { useCompany } from '@/features/company/context/CompanyProvider';
 import { TenantCard, UserFooter } from '@/components/common';
 
 // ─────────────────────────────────────────────
@@ -352,9 +352,10 @@ export function AppSidebar() {
   const navigate = useNavigate();
   const location = useLocation();
 
+  const { company, loading } = useCompany();
+
   const [user, setUser]               = useState(null);
   const [permissions, setPermissions] = useState([]);
-  const [company, setCompany]         = useState(null);
   const [openSections, setOpenSections] = useState({});
 
   useEffect(() => {
@@ -372,16 +373,6 @@ export function AppSidebar() {
       console.error('Failed to load auth data from localStorage:', err);
     }
   }, []);
-
-  useEffect(() => {
-    const cid = user?.company_id;
-    if (!cid) { setCompany(null); return; }
-    let cancelled = false;
-    getCompanyById(cid)
-      .then(res => { if (!cancelled) setCompany(res.data?.company || null); })
-      .catch(() => { if (!cancelled) setCompany(null); });
-    return () => { cancelled = true; };
-  }, [user?.company_id]);
 
   const sidebarItems = useSidebarStructure(permissions);
 

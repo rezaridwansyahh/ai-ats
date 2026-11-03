@@ -9,6 +9,8 @@ import PipelineBar from '@/components/layout/PipelineBar';
 import GlobalSearch from '@/components/layout/GlobalSearch';
 import { ChevronRight, Bell } from 'lucide-react';
 
+import { CompanyProvider } from '@/features/company/context/CompanyProvider.jsx';
+
 const BREADCRUMB_MAP = {
   '/dashboard':                  ['Workspace', 'Dashboard'],
   '/candidate-pipeline':         ['Workspace', 'Candidate Pipeline'],
@@ -55,66 +57,68 @@ export default function DashboardLayout() {
   }
 
   return (
-    <SidebarProvider>
-      <AppSidebar />
+    <CompanyProvider>
+      <SidebarProvider>
+        <AppSidebar />
 
-      <SidebarInset>
+        <SidebarInset>
 
-        {/* ── Top header ──
-            --app-header-h = h-12 (3rem) + border-b (1px). Declared once, here,
-            and consumed by any descendant (e.g. JobEditPage's sticky sub-header)
-            via var(--app-header-h) instead of a hardcoded/guessed pixel value.
-            Custom-property keys must be quoted strings in a React style object. */}
-        <header
-          className="flex h-12 items-center gap-3 border-b border-border/70 px-4 sticky top-0 z-20 backdrop-blur-md bg-card/90 print:hidden"
-          style={{ '--app-header-h': 'calc(3rem + 1px)' }}
-        >
-          <SidebarTrigger className="-ml-1 text-muted-foreground hover:text-foreground transition-colors" />
-          <Separator orientation="vertical" className="h-4 opacity-50" />
+          {/* ── Top header ──
+              --app-header-h = h-12 (3rem) + border-b (1px). Declared once, here,
+              and consumed by any descendant (e.g. JobEditPage's sticky sub-header)
+              via var(--app-header-h) instead of a hardcoded/guessed pixel value.
+              Custom-property keys must be quoted strings in a React style object. */}
+          <header
+            className="flex h-12 items-center gap-3 border-b border-border/70 px-4 sticky top-0 z-20 backdrop-blur-md bg-card/90 print:hidden"
+            style={{ '--app-header-h': 'calc(3rem + 1px)' }}
+          >
+            <SidebarTrigger className="-ml-1 text-muted-foreground hover:text-foreground transition-colors" />
+            <Separator orientation="vertical" className="h-4 opacity-50" />
 
-          {/* Breadcrumb */}
-          <nav className="flex items-center gap-1 text-xs" aria-label="Breadcrumb">
-            {breadcrumbs.map((crumb, i) => (
-              <span key={i} className="flex items-center gap-1">
-                {i > 0 && <ChevronRight className="h-3 w-3 text-muted-foreground/40 flex-shrink-0" />}
-                <span className={
-                  i === breadcrumbs.length - 1
-                    ? 'font-semibold text-foreground tracking-tight'
-                    : 'text-muted-foreground hover:text-foreground transition-colors cursor-pointer'
-                }>
-                  {crumb}
+            {/* Breadcrumb */}
+            <nav className="flex items-center gap-1 text-xs" aria-label="Breadcrumb">
+              {breadcrumbs.map((crumb, i) => (
+                <span key={i} className="flex items-center gap-1">
+                  {i > 0 && <ChevronRight className="h-3 w-3 text-muted-foreground/40 flex-shrink-0" />}
+                  <span className={
+                    i === breadcrumbs.length - 1
+                      ? 'font-semibold text-foreground tracking-tight'
+                      : 'text-muted-foreground hover:text-foreground transition-colors cursor-pointer'
+                  }>
+                    {crumb}
+                  </span>
                 </span>
-              </span>
-            ))}
-          </nav>
+              ))}
+            </nav>
 
-          <div className="flex-1" />
+            <div className="flex-1" />
 
 
-          <GlobalSearch />
+            <GlobalSearch />
 
-          {/* Notification bell */}
-          <button className="relative h-8 w-8 flex items-center justify-center rounded-lg hover:bg-muted/60 transition-colors">
-            <Bell className="h-4 w-4 text-muted-foreground" />
-            {/* Unread dot */}
-            <span className="absolute top-1.5 right-1.5 h-1.5 w-1.5 rounded-full bg-red-500" />
-          </button>
-        </header>
+            {/* Notification bell */}
+            <button className="relative h-8 w-8 flex items-center justify-center rounded-lg hover:bg-muted/60 transition-colors">
+              <Bell className="h-4 w-4 text-muted-foreground" />
+              {/* Unread dot */}
+              <span className="absolute top-1.5 right-1.5 h-1.5 w-1.5 rounded-full bg-red-500" />
+            </button>
+          </header>
 
-        {/* ── Pipeline bar — appears on every page ── */}
-        <div className="print:hidden">
-          <PipelineBar />
-        </div>
+          {/* ── Pipeline bar — appears on every page ── */}
+          <div className="print:hidden">
+            <PipelineBar />
+          </div>
 
-        {/* ── Main content ── */}
-        <main className="p-5 min-h-[calc(100vh-6.5rem)] print:p-0 print:min-h-0">
-          <Toaster />
-          <BreadcrumbContext.Provider value={breadcrumbCtx}>
-            <Outlet />
-          </BreadcrumbContext.Provider>
-        </main>
+          {/* ── Main content ── */}
+          <main className="p-5 min-h-[calc(100vh-6.5rem)] print:p-0 print:min-h-0">
+            <Toaster />
+            <BreadcrumbContext.Provider value={breadcrumbCtx}>
+              <Outlet />
+            </BreadcrumbContext.Provider>
+          </main>
 
-      </SidebarInset>
-    </SidebarProvider>
+        </SidebarInset>
+      </SidebarProvider>
+    </CompanyProvider>
   )
 }

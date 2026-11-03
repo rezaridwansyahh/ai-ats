@@ -18,7 +18,7 @@ import ComplianceSettings from '../components/settings/ComplianceSettings';
 import AuditExportSettings from '../components/settings/AuditExportSettings';
 import BillingPlanSettings from '../components/settings/BillingPlanSettings';
 import ProbationTemplatesSettings from '../components/settings/ProbationTemplatesSettings';
-import GeneralSettings from '../components/settings/GeneralSettings';
+import GeneralSettings from '../features/company/pages/CompanySettingPage';
 import OfferTemplateSettings from '../components/settings/OfferTemplateSettings';
 import EmailTemplateSettings from '../components/settings/EmailTemplateSettings';
 import ThemeSettings from '../components/settings/ThemeSettings';

@@ -1,14 +1,9 @@
 import getDb from '../../config/postgres.js';
 
 class CompanyModel {
-  async getAll() {
-    const result = await getDb().query(`SELECT * FROM core_company ORDER BY id ASC`);
-    return result.rows;
-  }
-
-  async getById(id) {
-    const result = await getDb().query(`SELECT * FROM core_company WHERE id = $1`, [id]);
-    return result.rows[0];
+  async findById(id) {
+    const company = await getDb().query(`SELECT * FROM core_company WHERE id = $1`, [id]);
+    return company.rows[0];
   }
 
   async create({ name, description, email, website, logo_url }) {

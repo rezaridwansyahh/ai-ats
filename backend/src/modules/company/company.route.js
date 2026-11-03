@@ -8,10 +8,9 @@ import attachRoleFlags, { requireSuperAdmin } from '../../shared/middleware/role
 router.use(authToken);
 router.use(attachRoleFlags);
 
-router.get('/', requireSuperAdmin, companyController.getAll);
-router.get('/:id', companyController.getById);
+router.get('/me', companyController.getCompanyDetail);
 router.post('/', requireSuperAdmin, companyController.create);
-router.put('/:id', requireSuperAdmin, companyController.update);
+router.put('/me', companyController.update);
 router.delete('/:id', requireSuperAdmin, companyController.delete);
 
 export default router;
