@@ -1,4 +1,4 @@
-import jobAccountModel from "../../../job-account/job-account.model.js"
+import jobAccountModel from "../../../job-accounts/job-account.model.js"
 import cookieService from "../../../cookie/cookie.service.js";
 import { decrypt } from "../../../../shared/utils/encrypt.js"
 import { captureDebugContext } from "../../../../shared/utils/rpa-debug.js"
@@ -25,7 +25,7 @@ async function safeQuery(page, selector) {
 
 class SeekLoginService {
   async getAccountAndDecrypt(account_id) {
-    const account = await jobAccountModel.getById(account_id);
+    const account = await jobAccountModel.findById(account_id);
     
     try {
       const [ivHex, encryptedPassword] = account.password.split(':');

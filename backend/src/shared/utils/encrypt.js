@@ -1,6 +1,6 @@
 import crypto from 'crypto';
 
-const ENCRYPTION_KEY = process.env.ENCRYPTION_KEY; // 32 bytes key in .env
+const ENCRYPTION_KEY = process.env.ENCRYPTION_KEY;
 
 export function encrypt(text) {
   const iv = crypto.randomBytes(16);
@@ -9,21 +9,15 @@ export function encrypt(text) {
   let encrypted = cipher.update(text, 'utf8', 'hex');
   encrypted += cipher.final('hex');
 
-  return {
-    encrypted_password: encrypted,
-    encryption_iv: iv.toString('hex')
-  };
+  return iv.toString('hex') + ':' + encrypted.toString('hex');
 }
 
-export function decrypt(encrypted_password, encryption_iv) {
-  const decipher = crypto.createDecipheriv(
-    'aes-256-cbc',
-    Buffer.from(ENCRYPTION_KEY, 'hex'),
-    Buffer.from(encryption_iv, 'hex')
-  );
+export function decrypt(encrypted_password) {
+    const [ivHex, encryptedHex] = text.split(':');
+    const iv = Buffer.from(ivHex, 'hex');
+    const encryptedText = Buffer.from(encryptedHex, 'hex');
+    const decipher = crypto.createDecipheriv('aes-256-cbc', Buffer.from(ENCRYPTION_KEY, 'hex'), iv);
+    const decrypted = Buffer.concat([decipher.update(encryptedText), decipher.final()]);
 
-  let decrypted = decipher.update(encrypted_password, 'hex', 'utf8');
-  decrypted += decipher.final('utf8');
-
-  return decrypted;
+    return decrypted.toString();
 }

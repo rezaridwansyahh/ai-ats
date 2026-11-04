@@ -1,26 +1,7 @@
 import getDb from "../../config/postgres.js"
 
 class JobAccountModel {
-  async getAll() {
-    const result = await getDb().query(`
-      SELECT *
-      FROM master_job_account
-    `);
-
-    return result.rows;
-  }
-
-  async getById(id) {
-    const result = await getDb().query(`
-      SELECT *
-      FROM master_job_account
-      WHERE id = $1
-    `, [id]);
-
-    return result.rows[0];
-  }
-
-  async getByUserId(user_id) {
+  async findByUserId(user_id) {
     const result = await getDb().query(`
       SELECT *
       FROM master_job_account
@@ -29,16 +10,6 @@ class JobAccountModel {
     `, [user_id]);
 
     return result.rows;
-  }
-
-  async getByUserIdAndPortal(user_id, portal_name) {
-    const result = await getDb().query(`
-      SELECT *
-      FROM master_job_account
-      WHERE user_id = $1 AND portal_name = $2
-    `, [user_id, portal_name]);
-
-    return result.rows[0];
   }
 
   async create(user_id, portal_name, email, password, company_id = null) {
@@ -69,28 +40,6 @@ class JobAccountModel {
       WHERE id = $${keys.length + 1}
       RETURNING *
     `, [...values, id]);
-
-    return result.rows[0];
-  }
-
-  async updateCondition(id, connection) {
-    const result = await getDb().query(`
-      UPDATE master_job_account
-      SET status_connection = $1, last_connect = NOW()
-      WHERE id = $2
-      RETURNING *  
-    `, [connection, id]);
-
-    return result.rows[0];
-  }
-
-  async updateSync(id, sync) {
-    const result = await getDb().query(`
-      UPDATE master_job_account
-      SET status_sync = $1, last_sync = NOW()
-      WHERE id = $2
-      RETURNING *  
-    `, [sync, id]);
 
     return result.rows[0];
   }

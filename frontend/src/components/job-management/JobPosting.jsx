@@ -11,7 +11,7 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group"
 import { Collapsible, CollapsibleContent } from '@/components/ui/collapsible';
 
-import { getJobAccountsByUserId } from '@/api/job-accounts.api';
+import { getJobAccountsByUserId } from '@/features/job-account/api/job-account.api';
 import { getJobPostingByJobId } from '@/api/job-postings.api';
 
 import linkedin from '@/assets/logos/linkedin.png';

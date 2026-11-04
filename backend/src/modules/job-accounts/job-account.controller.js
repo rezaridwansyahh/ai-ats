@@ -2,37 +2,13 @@ import jobAccountModel from "./job-account.model.js";
 import jobAccountService from "./job-account.service.js";
 
 class JobAccountController {
-  async getAll(req, res) {
+  async getMyAccount(req, res) {
     try {
-      const accounts = await jobAccountService.getAll();
+      const accounts = await jobAccountService.getByUserId(req.user.user_id);
 
-      res.status(200).json(accounts);
+      res.json(accounts);
     } catch (err) {
       res.status(err.status || 500).json({ message: err.message });
-    }
-  }
-
-  async getById(req, res) {
-    const { id } = req.params;
-
-    try {
-      const account = await jobAccountService.getById(id);
-
-      res.status(200).json(account);
-    } catch (err) {
-      res.status(err.status || 500).json({ message: err.message });
-    }
-  }
-
-  async getByUserId(req, res) {
-    const { user_id } = req.params;
-
-    try {
-      const accounts = await jobAccountService.getByUserId(user_id);
-
-      res.status(200).json(accounts);
-    } catch (err) {
-      res.status(500).json({ message: err.message });
     }
   }
 

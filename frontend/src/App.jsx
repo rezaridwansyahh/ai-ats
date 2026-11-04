@@ -3,7 +3,6 @@ import LoginPage from "./pages/Login"
 import RegisterPage from "./pages/Register"
 import DashboardPage from "./pages/Dashboard"
 import DashboardLayout from "./components/layout/Dashboard-Layout"
-import AccountPage from "./pages/Account"
 import ProfilePage from "./pages/Profile"
 import JobManagementPage from "./pages/JobManagement"
 import JobEditPage from "./pages/JobEdit"
@@ -122,7 +121,6 @@ function App() {
         <Route path="/selection/offer-contract/candidate/:offerId" element={<OfferCandidatePage />} />
 
         <Route path="/settings" element={<SettingsPage />} />
-        <Route path="/settings/account" element={<AccountPage />} />
         <Route path="/user-guide" element={<UserGuidePage />} />
         <Route path="/profile" element={<ProfilePage />} />
 

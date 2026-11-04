@@ -2,7 +2,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { Check, ChevronLeft, ChevronRight, HelpCircle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { PageHeader } from '@/components/common';
-import { getJobAccountsByUserId } from '@/api/job-accounts.api';
+import { getJobAccountsByUserId } from '@/features/job-account/api/job-account.api.js'
 import AccountSelection from '@/components/source-management/AccountSelection';
 import ListSource from '@/components/source-management/ListSource';
 import ListCandidate from '@/components/source-management/ListCandidate';

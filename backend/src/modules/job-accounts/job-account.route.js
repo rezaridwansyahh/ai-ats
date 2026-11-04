@@ -6,11 +6,10 @@ import authToken from '../../shared/middleware/auth.middleware.js';
 
 router.use(authToken);
 
-router.get('/', jobAccountController.getAll);
-router.get('/user/:user_id', jobAccountController.getByUserId);
-router.get('/:id', jobAccountController.getById);
+router.get('/', jobAccountController.getMyAccount);
 
 router.post('/', jobAccountController.create);
+//router.post('/:accountId/check-connection', jobAccountController.)
 
 router.put('/:id', jobAccountController.update);
 

@@ -14,7 +14,7 @@ import {
 // or creating from a specific row's "Connect" button) — null when opened
 // from a generic "Add Account" action, in which case `platforms` (the full
 // selectable list) must be provided and the user picks one here instead.
-export function AccountFormDialog({ open, onOpenChange, account, user, platform, platforms, onSubmit, loading }) {
+export function AccountFormDialog({ open, onOpenChange, account, platform, platforms, onSubmit, loading }) {
   const isEdit = !!account;
 
   const [email, setEmail]       = useState('');
@@ -48,7 +48,6 @@ export function AccountFormDialog({ open, onOpenChange, account, user, platform,
 
     if (!isEdit) {
       payload.portal_name = effectivePlatform.id;
-      payload.user_id = user?.id;
     }
 
     try {

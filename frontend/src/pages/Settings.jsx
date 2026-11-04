@@ -13,7 +13,7 @@ import { hasPermission } from '@/utils/permissions';
 import TeamSettings from '../components/settings/TeamSettings';
 import RolesPermissionsSettings from '../components/settings/RolesPermissionsSettings';
 import WorkflowTemplatesSettings from '../components/settings/WorkflowTemplatesSettings';
-import IntegrationsSettings from '../components/settings/IntegrationsSettings';
+import IntegrationsSettings from '../features/job-account/pages/JobAccountSettingPage';
 import ComplianceSettings from '../components/settings/ComplianceSettings';
 import AuditExportSettings from '../components/settings/AuditExportSettings';
 import BillingPlanSettings from '../components/settings/BillingPlanSettings';

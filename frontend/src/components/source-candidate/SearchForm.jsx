@@ -7,7 +7,7 @@ import { Button } from '@/components/ui/button';
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from '@/components/ui/select';
-import { getJobAccountsByUserId } from '@/api/job-accounts.api';
+import { getJobAccountsByUserId } from '@/features/job-account/api/job-account.api.js'
 import { hasPermission } from '@/utils/permissions';
 
 const INITIAL_FORM = {

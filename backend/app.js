@@ -21,7 +21,7 @@ import user from "./src/modules/user/user.route.js"
 import permission from "./src/modules/permission/permission.route.js"
 import module from "./src/modules/module/module.route.js"
 import menu from "./src/modules/menu/menu.route.js"
-import jobAccount from "./src/modules/job-account/job-account.route.js"
+import jobAccount from "./src/modules/job-accounts/job-account.route.js"
 import jobPosting from "./src/modules/job-post/job-post.router.js"
 import jobSourcing from './src/modules/job-source/job-source.router.js'
 import job from "./src/modules/job/job.route.js"

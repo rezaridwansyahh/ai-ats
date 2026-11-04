@@ -1,5 +1,5 @@
 import cookieModel from './cookie.model.js';
-import BrowserPuppeteer from '../../shared/services/puppeteer/browser.puppeteer.js';
+import BrowserPuppeteer from '../../shared/services/rpa/browser.js';
 
 class CookieService {
   async checkCookies(account_id) { // still hardcode to link on linkedin only

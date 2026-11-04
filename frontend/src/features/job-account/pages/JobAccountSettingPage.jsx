@@ -6,21 +6,19 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { toast } from 'sonner';
 import { Badge }    from '@/components/ui/badge';
 
-import { createJobAccount, updateJobAccount, getJobAccountsByUserId } from '@/api/job-accounts.api';
+import { createJobAccount, updateJobAccount, getJobAccountsByUserId } from '../api/job-account.api.js';
 import { checkConnection, syncSeekJobPosts } from '@/api/job-posting-seek.api';
 import { formatSinceDate } from '@/lib/job-display';
 
-import { AccountFormDialog } from '@/components/job-account/AccountFormDialog';
+import { AccountFormDialog } from '@/features/job-account/components/account-row/AccountFormDialog';
 import { hasPermission } from '@/utils/permissions';
+import { useJobAccount } from '../hooks/use-job-account.js';
 
 import linkedin from '@/assets/logos/linkedin.png';
 import seek from '@/assets/logos/seek.png';
 import glints from '@/assets/logos/glints.png';
-import instagram from '@/assets/logos/instagram.png';
-import facebook from '@/assets/logos/facebook.png';
-import whatsapp from '@/assets/logos/whatsapp.png';
 
-const LOGOS = { linkedin, seek, glints, instagram, facebook, whatsapp };
+const LOGOS = { linkedin, seek, glints };
 
 const PUBLIC_CHANNELS = [
   { id: 'linkedin', name: 'LinkedIn' },
@@ -28,14 +26,7 @@ const PUBLIC_CHANNELS = [
   { id: 'glints', name: 'Glints' },
 ];
 
-const PRIVATE_CHANNELS = [
-  { id: 'instagram', name: 'Instagram' },
-  { id: 'facebook', name: 'Facebook' },
-  { id: 'whatsapp', name: 'WhatsApp' },
-];
-
-const ALL_CHANNELS = [...PUBLIC_CHANNELS, ...PRIVATE_CHANNELS];
-const channelFor = (portalName) => ALL_CHANNELS.find((c) => c.id === portalName) || { id: portalName, name: portalName };
+const channelFor = (portalName) => PUBLIC_CHANNELS.find((c) => c.id === portalName) || { id: portalName, name: portalName };
 
 // Shared badge tones — warm-cream tokens (bg-muted/text-muted-foreground/
 // border-border), not the hardcoded slate/gray classes the ported version had.
@@ -65,67 +56,13 @@ function syncTone(status) {
   return 'negative';
 }
 
-/*
- * Integrations settings — real job platform connections, backed by
- * master_job_account (same table pages/Account.jsx already uses at
- * /settings/account). Ported that page's logic in here rather than
- * rebuilding, since it already works.
- *
- * Previously this tab was a hardcoded INTEGRATION_GROUPS mockup with zero
- * API calls — deleted rather than kept alongside the real thing. There is
- * still a second standalone mockup at pages/Integrations.jsx
- * (/settings/integrations route) that duplicates this same fake concept —
- * not touched here, flagged separately.
- *
- * Layout fix: each channel row used to be a single "flex items-center
- * justify-between flex-wrap" line with shrink-0 on nearly every child
- * (the w-56 identity block, the connection-info block, the button group).
- * flex-wrap only lets the *outer* row break, so once the button group
- * (which had no wrap of its own) needed more width than was left on
- * narrower viewports, it pushed past the card edge and caused horizontal
- * overflow. Rows now stack vertically below `lg` and each inner group
- * wraps/shrinks on its own, so nothing is forced wider than its container.
- *
- * Multi-account-per-platform: a user can now have more than one account on
- * the same platform (e.g. two Seek accounts), so rows are driven by the
- * actual connected `accounts` list (one row per account), not by mapping
- * over a fixed per-platform channel list and collapsing to a single match.
- * A platform with zero accounts shows nothing here — connecting one now
- * only happens via the single generic "Add Account" button below, which
- * lets the user pick any platform rather than each row owning its own
- * "Connect" action.
- */
 export default function IntegrationsSettings() {
+  const { accounts, loading, error, 
+          fetchAccounts, createJobAccount, updateJobAccount, deleteJobAccount 
+        } = useJobAccount();
   const canCreate = hasPermission('Settings', 'Integrations', 'create');
   const canEdit   = hasPermission('Settings', 'Integrations', 'update');
-  const [accounts, setAccounts] = useState([]);
-  const [loading, setLoading]   = useState(true);
-  const [error, setError]       = useState(null);
 
-  const [user] = useState(() => {
-    try { return JSON.parse(localStorage.getItem('user')); } catch { return null; }
-  });
-
-  const fetchAccounts = useCallback(async () => {
-    if (!user?.id) { setLoading(false); return; }
-    setLoading(true);
-    setError(null);
-    try {
-      const { data } = await getJobAccountsByUserId(user.id);
-      setAccounts(data.accounts || []);
-    } catch (err) {
-      setError(err.response?.data?.message || err.message || 'Failed to load job accounts');
-    } finally {
-      setLoading(false);
-    }
-  }, [user?.id]);
-
-  useEffect(() => { fetchAccounts(); }, [fetchAccounts]);
-
-  const [formOpen, setFormOpen]                 = useState(false);
-  const [selectedAccount, setSelectedAccount]   = useState(null);
-  const [selectedPlatform, setSelectedPlatform] = useState(null);
-  const [submitting, setSubmitting]             = useState(false);
   const [busyAccountId, setBusyAccountId]       = useState(null);
 
   const openEdit = (account) => {
@@ -140,42 +77,7 @@ export default function IntegrationsSettings() {
     setFormOpen(true);
   };
 
-  const handleCreateOrUpdate = async (payload, accountId) => {
-    if (accountId ? !canEdit : !canCreate) return;
-    setSubmitting(true);
-    try {
-      if (accountId) {
-        await updateJobAccount(accountId, payload);
-      } else {
-        await createJobAccount(payload);
-      }
-      await fetchAccounts();
-    } finally {
-      setSubmitting(false);
-    }
-  };
-
-  const runAccountAction = async (account, action, messages) => {
-    setBusyAccountId(account.id);
-    try {
-      await toast.promise(action(account.id), { position: 'top-center', ...messages });
-    } finally {
-      setBusyAccountId(null);
-      fetchAccounts();
-    }
-  };
-
-  if (!user?.id) {
-    return (
-      <div className="flex items-center gap-2 px-4 py-3 rounded-lg border border-amber-200 bg-amber-50 text-sm text-amber-700">
-        <AlertTriangle className="h-4 w-4 shrink-0" />
-        You must be signed in to manage integrations.
-      </div>
-    );
-  }
-
   const publicAccounts  = accounts.filter((acc) => PUBLIC_CHANNELS.some((c) => c.id === acc.portal_name));
-  const privateAccounts = accounts.filter((acc) => PRIVATE_CHANNELS.some((c) => c.id === acc.portal_name));
 
   return (
     <div className="space-y-4">
@@ -307,90 +209,14 @@ export default function IntegrationsSettings() {
         </CardContent>
       </Card>
 
-      {/* Private Channels */}
-      <Card className="py-0 gap-0">
-        <CardHeader className="border-b !pb-3 pt-3 flex items-center min-h-14">
-          <CardTitle className="flex justify-between items-center w-full gap-3 flex-wrap">
-            <span className="text-sm">Private Channels</span>
-            <span className="text-xs font-normal text-muted-foreground">
-              Social sharing & broadcast channels
-            </span>
-          </CardTitle>
-        </CardHeader>
-        <CardContent className="px-0 py-0">
-          {loading ? (
-            <div className="p-4 space-y-3">
-              {Array.from({ length: 2 }).map((_, i) => (
-                <Skeleton key={i} className="h-14 w-full" />
-              ))}
-            </div>
-          ) : privateAccounts.length === 0 ? (
-            <div className="px-4 py-6 text-sm text-muted-foreground text-center">
-              No private channel accounts connected yet.
-            </div>
-          ) : (
-            privateAccounts.map((account) => {
-              const channel = channelFor(account.portal_name);
-
-              return (
-                <div
-                  key={account.id}
-                  className="flex flex-col gap-3 w-full px-4 py-3 border-b last:border-b-0 lg:flex-row lg:items-center lg:justify-between lg:gap-4"
-                >
-                  <div className="flex flex-col gap-3 min-w-0 sm:flex-row sm:flex-wrap sm:items-center sm:gap-8">
-                    <div className="flex items-center gap-3 min-w-0 sm:w-56 sm:shrink-0">
-                      <div className="h-10 w-10 rounded-lg flex items-center justify-center shrink-0 overflow-hidden bg-muted/40">
-                        <img src={LOGOS[channel.id]} alt={channel.name} className="h-full w-full object-contain" />
-                      </div>
-                      <div className="min-w-0">
-                        <span className="text-sm font-semibold truncate block">{channel.name}</span>
-                        <div className="text-[11px] text-muted-foreground truncate" title={account.email || ''}>
-                          Account: {account.email || '—'}
-                        </div>
-                        <div>
-                          <StatusBadge tone="positive">{account.condition || 'Connected'}</StatusBadge>
-                        </div>
-                      </div>
-                    </div>
-                    <div className="text-xs text-muted-foreground shrink-0">
-                      Last connection: {account.last_connect ? formatSinceDate(account.last_connect) : '—'}
-                    </div>
-                  </div>
-
-                  <div className="flex flex-wrap items-center gap-2 lg:justify-end">
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      disabled={!canEdit}
-                      onClick={() => toast.promise(new Promise((resolve) => setTimeout(resolve, 3000)), {
-                        position: 'top-center', loading: 'Reconnecting…', success: 'Reconnected', error: 'Failed to reconnect',
-                      })}
-                    >
-                      Re-connect
-                    </Button>
-                    {canEdit && (
-                      <Button size="sm" onClick={() => openEdit(account)}>
-                        Configure
-                      </Button>
-                    )}
-                  </div>
-                </div>
-              );
-            })
-          )}
-        </CardContent>
-      </Card>
-
-      <AccountFormDialog
+      {/* <AccountFormDialog
         open={formOpen}
         onOpenChange={setFormOpen}
         account={selectedAccount}
-        user={user}
         platform={selectedPlatform}
-        platforms={ALL_CHANNELS}
-        onSubmit={handleCreateOrUpdate}
+        platforms={PUBLIC_CHANNELS}
         loading={submitting}
-      />
+      /> */}
     </div>
   );
 }

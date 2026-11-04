@@ -1,4 +1,4 @@
-import jobAccountModel from "../../../job-account/job-account.model.js"
+import jobAccountModel from "../../../job-accounts/job-account.model.js"
 import cookieService from "../../../cookie/cookie.service.js";
 import { decrypt } from "../../../../shared/utils/encrypt.js"
 

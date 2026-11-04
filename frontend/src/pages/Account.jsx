@@ -10,7 +10,7 @@ import { checkConnection, syncSeekJobPosts } from '@/api/job-posting-seek.api';
 
 import { hasPermission } from '@/utils/permissions';
 
-import { AccountFormDialog } from '@/components/job-account/AccountFormDialog';
+import { AccountFormDialog } from '@/features/job-account/components/account-row/AccountFormDialog';
 
 import linkedin from '@/assets/logos/linkedin.png';
 import seek from '@/assets/logos/seek.png';
