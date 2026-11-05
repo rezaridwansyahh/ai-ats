@@ -1,6 +1,6 @@
-import jobAccountModel from './job-account.model.js';
+import jobAccountModel from './account.model.js';
 import userModel from '../user/user.model.js';
-import { encrypt, decrypt } from '../../shared/utils/encrypt.js';
+import { encrypt } from '../../shared/utils/encrypt.js';
 
 class JobAccountService {
   async getByUserId(user_id) {
@@ -24,7 +24,7 @@ class JobAccountService {
       throw { status: 404, message: 'User not found' };
     }
 
-    const encryptedPassword = this.encrypt(password);
+    const encryptedPassword = encrypt(password);
     // Inherit company_id from the creating user — without this, every job
     // account has company_id=NULL, which cascades into every applicant synced
     // through it also having company_id=NULL (invisible in Talent Pool) and
@@ -40,7 +40,7 @@ class JobAccountService {
   async update(id, email, password) {
     const fields = {};
     if (email) fields.email = email;
-    if (password) fields.password = this.encrypt(password);
+    if (password) fields.password = encrypt(password);
 
     const account = await jobAccountModel.getById(id);
     if (!account) throw { status: 404, message: 'Job Account not found' };

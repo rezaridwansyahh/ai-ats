@@ -32,10 +32,6 @@ class CookieService {
     }
   }
 
-  // Returns the BrowserPuppeteer instance itself (not just the page) — the
-  // caller owns its lifecycle from here and is responsible for calling
-  // .close() on it once done. One instance per call, never shared across
-  // concurrent jobs (that's what made concurrency >1 unsafe before).
   async includeCookiesIfExist(accountId) {
     const row = await cookieModel.getByAccountId(accountId);
 
@@ -48,7 +44,6 @@ class CookieService {
 
   async addCookies(account_id, cookies) {
     return await cookieModel.save(account_id, cookies);
-    
   }
 }
 

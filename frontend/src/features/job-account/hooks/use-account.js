@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { getJobAccountsByUserId, updateJobAccount, createJobAccount, deleteJobAccount } from "../api/job-account.api";
+import { getJobAccountsByUserId, updateJobAccount, createJobAccount, deleteJobAccount } from "../api/account.api";
 
 export function useJobAccount() {
   const [accounts, setAccounts] = useState([]);
@@ -26,7 +26,10 @@ export function useJobAccount() {
   }
 
   const updateAccount = async (ctx) => {
+    setLoading(true);
+    setError(null);
 
+    
   }
 
   const deleteAccount = async (ctx) => {

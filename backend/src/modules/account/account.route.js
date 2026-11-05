@@ -1,7 +1,7 @@
 import express from 'express';
 const router = express.Router();
 
-import jobAccountController from './job-account.controller.js';
+import jobAccountController from './account.controller.js';
 import authToken from '../../shared/middleware/auth.middleware.js';
 
 router.use(authToken);

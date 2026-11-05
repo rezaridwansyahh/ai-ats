@@ -12,7 +12,7 @@ import express from "express";
 import cors from 'cors';
 import { Router } from 'express';
 
-import cookies from "./src/modules/cookie/cookie.route.js";
+import cookies from "./src/modules/account/cookie.route.js";
 import linkedin from "./src/modules/platform/linkedin/linkedin.route.js"
 import seek from "./src/modules/platform/seek/seek.route.js"
 import auth from "./src/modules/auth/auth.route.js"
@@ -21,7 +21,7 @@ import user from "./src/modules/user/user.route.js"
 import permission from "./src/modules/permission/permission.route.js"
 import module from "./src/modules/module/module.route.js"
 import menu from "./src/modules/menu/menu.route.js"
-import jobAccount from "./src/modules/job-accounts/job-account.route.js"
+import jobAccount from "./src/modules/account/account.route.js"
 import jobPosting from "./src/modules/job-post/job-post.router.js"
 import jobSourcing from './src/modules/job-source/job-source.router.js'
 import job from "./src/modules/job/job.route.js"
@@ -102,7 +102,7 @@ api.use("/user", user);
 api.use("/permission", permission);
 api.use("/module", module);
 api.use("/menu", menu);
-api.use("/job-account", jobAccount);
+api.use("/account", jobAccount);
 api.use("/job-posting", jobPosting);
 api.use("/job-sourcing", jobSourcing);
 api.use("/job", job);

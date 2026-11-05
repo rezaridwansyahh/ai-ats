@@ -6,13 +6,13 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { toast } from 'sonner';
 import { Badge }    from '@/components/ui/badge';
 
-import { createJobAccount, updateJobAccount, getJobAccountsByUserId } from '../api/job-account.api.js';
+import { createJobAccount, updateJobAccount, getJobAccountsByUserId } from '../api/account.api.js';
 import { checkConnection, syncSeekJobPosts } from '@/api/job-posting-seek.api';
 import { formatSinceDate } from '@/lib/job-display';
 
 import { AccountFormDialog } from '@/features/job-account/components/account-row/AccountFormDialog';
 import { hasPermission } from '@/utils/permissions';
-import { useJobAccount } from '../hooks/use-job-account.js';
+import { useJobAccount } from '../hooks/use-account.js';
 
 import linkedin from '@/assets/logos/linkedin.png';
 import seek from '@/assets/logos/seek.png';
@@ -58,7 +58,7 @@ function syncTone(status) {
 
 export default function IntegrationsSettings() {
   const { accounts, loading, error, 
-          fetchAccounts, createJobAccount, updateJobAccount, deleteJobAccount 
+          fetchAccount, createJobAccount, updateJobAccount, deleteJobAccount 
         } = useJobAccount();
   const canCreate = hasPermission('Settings', 'Integrations', 'create');
   const canEdit   = hasPermission('Settings', 'Integrations', 'update');
@@ -89,7 +89,7 @@ export default function IntegrationsSettings() {
           </p>
         </div>
         <div className="flex items-center gap-2">
-          <Button variant="outline" size="sm" onClick={fetchAccounts} disabled={loading}>
+          <Button variant="outline" size="sm" onClick={fetchAccount} disabled={loading}>
             <RefreshCw className={`h-3.5 w-3.5 ${loading ? 'animate-spin' : ''}`} />
             Refresh
           </Button>

@@ -1,6 +1,6 @@
 import JobPost from './job-post.model.js';
 import Job from '../job/job.model.js';
-import JobAccount from '../job-accounts/job-account.model.js';
+import JobAccount from '../account/account.model.js';
 import seekProducer from '../../bullmq/seek/seek.producer.js';
 
 const VALID_TYPES = ['Internal', 'Publish'];

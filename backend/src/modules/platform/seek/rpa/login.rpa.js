@@ -1,5 +1,5 @@
-import jobAccountModel from "../../../job-accounts/job-account.model.js"
-import cookieService from "../../../cookie/cookie.service.js";
+import jobAccountModel from "../../../account/account.model.js"
+import cookieService from "../../../account/cookie.service.js";
 import { decrypt } from "../../../../shared/utils/encrypt.js"
 import { captureDebugContext } from "../../../../shared/utils/rpa-debug.js"
 

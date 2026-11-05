@@ -1,5 +1,5 @@
-import jobAccountModel from "./job-account.model.js";
-import jobAccountService from "./job-account.service.js";
+import jobAccountModel from "./account.model.js";
+import jobAccountService from "./account.service.js";
 
 class JobAccountController {
   async getMyAccount(req, res) {
