@@ -1,7 +1,7 @@
 import JobPost from './job-post.model.js';
 import Job from '../job/job.model.js';
 import JobAccount from '../account/account.model.js';
-import seekProducer from '../../bullmq/seek/seek.producer.js';
+import * as seekProducer from '../platform/seek/queue/seek.producer.js';
 
 const VALID_TYPES = ['Internal', 'Publish'];
 const SUPPORTED_PLATFORMS = ['seek', 'linkedin'];
@@ -133,7 +133,7 @@ class JobPostService {
       jobPosts.push(jobPost);
 
       if (platform === 'seek') {
-        const queuedJob = await seekProducer.createSeekJobPostDraft(
+        const queuedJob = await seekProducer.enqueueJobPostDraft(
           account.id,
           'seek',
           jobPost.id,

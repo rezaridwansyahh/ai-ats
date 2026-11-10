@@ -12,6 +12,8 @@ import jobPostLinkedinModel from "./job-post-linkedin.model.js"
 import applicantModel from "../../applicant/applicant.model.js"
 import candidatePipelineModel from "../../candidate-pipeline/candidate-pipeline.model.js"
 import jobAccountModel from "../../account/account.model.js"
+import jobAccountService from "../../account/account.service.js"
+import BrowserPuppeteer from "../shared/browser.js"
 import companyService from "../../company/company.service.js"
 import { promoteDownloadedCv } from "../../../shared/utils/cv-storage.js"
 import aiService from "../../../shared/services/ai.service.js"
@@ -241,6 +243,31 @@ class LinkedInService {
       throw err;
     } finally {
       // await browserPuppeteer.close();
+    }
+  }
+
+  async checkConnection(account_id) {
+    const browser = new BrowserPuppeteer();
+    await browser.init({ accountId: account_id });
+    const page = browser.getPage();
+
+    const account = await jobAccountService.getById(account_id);
+    const cookieRow = await cookieService.getCookie(account_id);
+    await browser.injectCookies(cookieRow?.cookies?.cookies || []);
+
+    try {
+      const result = await loginRpa.authenticatedPage(page, account);
+
+      if (result.freshLogin) {
+        await cookieService.addCookies(account_id, { cookies: result.cookies, userAgent: result.userAgent });
+      }
+
+      return await jobAccountService.update(account_id, { status_connection: 'Connected' });
+    } catch (err) {
+      await jobAccountService.update(account_id, { status_connection: 'Error' });
+      throw err;
+    } finally {
+      await browser.close();
     }
   }
 }

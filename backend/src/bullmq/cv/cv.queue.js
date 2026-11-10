@@ -1,9 +1,14 @@
 import { Queue } from 'bullmq';
-import redisConfig from '../../config/redis.js';
+import redisConfig from '../../queue/connection.js'
 
 const cvQueue = new Queue('cv', {
-  connection: redisConfig.connection,
-  defaultJobOptions: redisConfig.defaultJobOptions,
+  connection: redisConfig,
+  defaultJobOptions: {
+    attempts: 3,
+    backoff: { type: 'exponential' },
+    removeOnComplete: { age: 3600, count: 100 },
+    removeOnFail: { age: 3600 },
+  },
 });
 
 cvQueue.on('error', (error) => {

@@ -1,4 +1,3 @@
-import jobAccountModel from "./account.model.js";
 import jobAccountService from "./account.service.js";
 
 class JobAccountController {
@@ -9,6 +8,30 @@ class JobAccountController {
       res.json(accounts);
     } catch (err) {
       res.status(err.status || 500).json({ message: err.message });
+    }
+  }
+
+  async checkConnection(req, res) {
+    const { account_id } = req.params;
+
+    try {
+      const connection = await jobAccountService.checkConnection(Number(account_id));
+
+      res.json(connection);
+    } catch (err) {
+      res.status(err.status || 500).json({ error: err.message });
+    }
+  }
+
+  async syncJobSource(req, res) {
+    const { account_id } = req.params;
+
+    try {
+      const connection = await jobAccountService.syncJobSource(Number(account_id));
+
+      res.json(connection);
+    } catch (err) {
+      res.status(err.status || 500).json({ error: err.message });
     }
   }
 
@@ -28,8 +51,12 @@ class JobAccountController {
     const { id } = req.params;
     const { email, password } = req.body;
 
+    const field = {};
+    if (email) field.email = email;
+    if (password) field.password = password;
+
     try {
-      const updatedAccount = await jobAccountService.update(id, email, password);
+      const updatedAccount = await jobAccountService.update(id, field);
 
       res.status(200).json(updatedAccount);
     } catch (err) {

@@ -95,8 +95,8 @@ export default function JobPosting({ selectedJob, onSelectionChange }) {
     setLoading(true);
     setError(null);
     try {
-      const { data } = await getJobAccountsByUserId(user.id);
-      setAccounts(data.accounts || []);
+      const accounts = await getJobAccountsByUserId();
+      setAccounts(accounts || []);
     } catch (err) {
       console.log(err.response?.data?.message || err.message || 'Failed to load job accounts')
       setError(err.response?.data?.message || err.message || 'Failed to load job accounts');

@@ -22,6 +22,7 @@ import { getJobPipeline } from '@/api/pipeline.api';
 import JobStages from '@/components/job-management/JobStages';
 import JobPosting from '@/components/job-management/JobPosting';
 import RubricEditor from '@/components/job-management/RubricEditor';
+import PositionFormEditor from '@/components/job-management/PositionFormEditor';
 
 import { StatusBadge } from '@/components/common';
 import { SkillChips } from '@/components/shared/SkillChips';
@@ -558,6 +559,7 @@ export default function JobEditPage() {
                         onPipelineChange={({ hasStages: hs }) => setHasStages(hs)}
                       />
                       <RubricEditor jobId={job.id} />
+                      <PositionFormEditor jobId={job.id} />
                     </>
                   ) : (
                     <p className="text-xs text-muted-foreground italic py-2">
@@ -1193,11 +1195,51 @@ function JDSection({
   );
 }
 
+// Lettered batteries (A-D) are labelled "Battery X · Name"; multi-word codes
+// like 'External' read better as just the name on its own.
+const batteryDisplayName = (b) => (/^[A-Z]$/.test(b.code) ? `Battery ${b.code} · ${b.label}` : b.label);
+
+const INTERNAL_CODES = ['A', 'B', 'C', 'D'];
+const EXTERNAL_CODES = ['External'];
+
 function BatterySection({ form, setField, isLocked, missingRequired, showValidation, step = 3, totalSteps = 5, onStepChange }) {
   const isMissing = showValidation && missingRequired.includes('assessment_battery');
   const locked = isLocked('assessment_battery');
-  const codes = ['A', 'B', 'C', 'D'];
   const active = form.assessment_battery ? BATTERIES[form.assessment_battery] : null;
+
+  const renderTile = (code) => {
+    const b = BATTERIES[code];
+    const isActive = code === form.assessment_battery;
+    return (
+      <button
+        key={code}
+        type="button"
+        disabled={locked}
+        aria-disabled={locked}
+        onClick={() => !locked && setField('assessment_battery', code)}
+        className={[
+          'text-left rounded-lg border p-4 transition-colors',
+          locked
+            ? 'border-border bg-muted/40 opacity-50 cursor-not-allowed'
+            : isActive
+              ? 'border-primary bg-primary/5 ring-1 ring-primary/30'
+              : 'border-border bg-card hover:border-primary/40',
+        ].join(' ')}
+      >
+        <div className="flex items-center justify-between mb-1">
+          <span className="text-[10px] font-bold tracking-widest uppercase text-muted-foreground">
+            {batteryDisplayName(b)}
+          </span>
+          {isActive && (
+            <span className="text-[9px] font-bold tracking-wider uppercase text-primary">selected</span>
+          )}
+        </div>
+        <div className="text-xs text-muted-foreground mt-1">
+          {b.test_count > 0 ? `${b.test_count} tests · ${b.duration} · ` : ''}{b.blurb}
+        </div>
+      </button>
+    );
+  };
 
   return (
     <Card data-wizard="battery-card" className="py-4 gap-3">
@@ -1236,62 +1278,44 @@ function BatterySection({ form, setField, isLocked, missingRequired, showValidat
         {locked && (
           <div className="rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-[11px] text-amber-800">
             Locked — this job is published and candidates may already have results under{' '}
-            <strong>Battery {form.assessment_battery}</strong>. Changing it isn't allowed once live.
+            <strong>{batteryDisplayName(BATTERIES[form.assessment_battery])}</strong>. Changing it isn't allowed once live.
           </div>
         )}
 
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-          {codes.map((code) => {
-            const b = BATTERIES[code];
-            const isActive = code === form.assessment_battery;
-            return (
-              <button
-                key={code}
-                type="button"
-                disabled={locked}
-                aria-disabled={locked}
-                onClick={() => !locked && setField('assessment_battery', code)}
-                className={[
-                  'text-left rounded-lg border p-4 transition-colors',
-                  locked
-                    ? 'border-border bg-muted/40 opacity-50 cursor-not-allowed'
-                    : isActive
-                      ? 'border-primary bg-primary/5 ring-1 ring-primary/30'
-                      : 'border-border bg-card hover:border-primary/40',
-                ].join(' ')}
-              >
-                <div className="flex items-center justify-between mb-1">
-                  <span className="text-[10px] font-bold tracking-widest uppercase text-muted-foreground">
-                    Battery {b.code} · {b.label}
-                  </span>
-                  {isActive && (
-                    <span className="text-[9px] font-bold tracking-wider uppercase text-primary">selected</span>
-                  )}
-                </div>
-                <div className="text-xs text-muted-foreground mt-1">
-                  {b.test_count} tests · {b.duration} · {b.blurb}
-                </div>
-              </button>
-            );
-          })}
+        <div className="space-y-1.5">
+          <p className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">Internal</p>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+            {INTERNAL_CODES.map(renderTile)}
+          </div>
+        </div>
+
+        <div className="space-y-1.5">
+          <p className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">External</p>
+          <div className="grid grid-cols-1 gap-3">
+            {EXTERNAL_CODES.map(renderTile)}
+          </div>
         </div>
 
         {active && (
           <div className="rounded-lg border bg-muted/20 p-4">
             <div className="text-[10px] font-bold tracking-widest uppercase text-muted-foreground mb-2">
-              Test sequence in Battery {active.code}
+              {active.tests.length > 0 ? `Test sequence in Battery ${active.code}` : 'How this step works'}
             </div>
-            <ol className="space-y-1.5">
-              {active.tests.map((t, i) => (
-                <li key={t.key} className="flex items-start gap-2 text-xs">
-                  <span className="font-bold text-muted-foreground w-4 shrink-0">{i + 1}.</span>
-                  <span>
-                    <span className="font-bold">{t.name}</span>
-                    <span className="text-muted-foreground"> · {t.detail}</span>
-                  </span>
-                </li>
-              ))}
-            </ol>
+            {active.tests.length > 0 ? (
+              <ol className="space-y-1.5">
+                {active.tests.map((t, i) => (
+                  <li key={t.key} className="flex items-start gap-2 text-xs">
+                    <span className="font-bold text-muted-foreground w-4 shrink-0">{i + 1}.</span>
+                    <span>
+                      <span className="font-bold">{t.name}</span>
+                      <span className="text-muted-foreground"> · {t.detail}</span>
+                    </span>
+                  </li>
+                ))}
+              </ol>
+            ) : (
+              <p className="text-xs text-muted-foreground">{active.blurb}</p>
+            )}
           </div>
         )}
       </CardContent>

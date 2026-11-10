@@ -1,20 +1,11 @@
 import "./src/config/env.js"; // must be first
 
-import "./src/bullmq/seek/seek.worker.js";
-import "./src/bullmq/linkedin/linkedin.worker.js";
-import "./src/bullmq/cv/cv.worker.js";
-import "./src/bullmq/match-rescore/match-rescore.worker.js";
-import { registerSeekSchedulers } from "./src/bullmq/seek/seek.scheduler.js";
-
-registerSeekSchedulers().catch((err) => console.error('Failed to register Seek schedulers:', err));
-
 import express from "express";
 import cors from 'cors';
 import { Router } from 'express';
 
 import cookies from "./src/modules/account/cookie.route.js";
 import linkedin from "./src/modules/platform/linkedin/linkedin.route.js"
-import seek from "./src/modules/platform/seek/seek.route.js"
 import auth from "./src/modules/auth/auth.route.js"
 import role from "./src/modules/role/role.route.js"
 import user from "./src/modules/user/user.route.js"
@@ -96,7 +87,6 @@ app.use(cors({
 api.use("/auth", auth);
 api.use("/cookies", cookies);
 api.use("/linkedin", linkedin);
-api.use("/seek", seek);
 api.use("/role", role);
 api.use("/user", user);
 api.use("/permission", permission);

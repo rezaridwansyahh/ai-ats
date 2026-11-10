@@ -1,5 +1,5 @@
 import { Worker, UnrecoverableError } from 'bullmq';
-import redisConfig from '../../config/redis.js';
+import redisConfig from '../../queue/connection.js'
 
 import handlers from "./linkedin.handler.js";
 

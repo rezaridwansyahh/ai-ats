@@ -35,8 +35,8 @@ export default function SourceManagementPage() {
     try {
       const user = JSON.parse(localStorage.getItem('user'));
       if (!user?.id) { setAccounts([]); return; }
-      const res = await getJobAccountsByUserId(user.id);
-      setAccounts(res.data.accounts || []);
+      const accounts = await getJobAccountsByUserId();
+      setAccounts(accounts || []);
     } catch {
       // no-op
     } finally {

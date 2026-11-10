@@ -7,6 +7,7 @@ import aiService from '../../shared/services/ai.service.js';
 import { sendTemplatedEmail } from '../../shared/services/candidate-mailer.js';
 import EmailTemplateService, { STAGE_SCREENING } from '../email-template/email-template.service.js';
 import { getApplicationFormTemplate } from './screening-applicationForm.js';
+import formService from '../application-form/form.services.js';
 
 class ScreeningService {
   // Layer 1 — extract facets from a CV file (multer file object).
@@ -653,8 +654,11 @@ class ScreeningService {
     }
 
     const expired_at = new Date(Date.now() + 48 * 60 * 60 * 1000);
-    const tpl = getApplicationFormTemplate();
-    const sent = await screeningModel.markQaSent(screening_id, expired_at, tpl);
+    // Company's default questions + this job's additional ones, combined —
+    // never the static template. A company form that isn't set up yet
+    // doesn't block this; the job's own questions can stand alone.
+    const combined = await formService.getCombinedForm(ctx.company_id, ctx.job_id);
+    const sent = await screeningModel.markQaSent(screening_id, expired_at, combined.schema);
 
     const origin = (process.env.PORTAL_BASE_URL || 'http://localhost:5173')
       .replace(/\/+$/, '')

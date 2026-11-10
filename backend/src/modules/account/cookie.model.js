@@ -1,7 +1,7 @@
 import getDb from "../../config/postgres.js";
 
 class CookieModel {
-  async getByAccountId(accountId) {
+  async findByAccountId(accountId) {
     const result = await getDb().query(
       'SELECT * FROM cookies WHERE account_id = $1',
       [accountId]

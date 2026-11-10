@@ -9,7 +9,8 @@ router.use(authToken);
 router.get('/', jobAccountController.getMyAccount);
 
 router.post('/', jobAccountController.create);
-//router.post('/:accountId/check-connection', jobAccountController.)
+router.post('/:account_id/check-connection', jobAccountController.checkConnection);
+router.post('/:account_id/sync-job-source', jobAccountController.syncJobSource);
 
 router.put('/:id', jobAccountController.update);
 

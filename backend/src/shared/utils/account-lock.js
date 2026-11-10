@@ -1,5 +1,5 @@
 import Redis from 'ioredis';
-import redisConfig from '../../config/redis.js';
+import redisConfig from '../../queue/connection.js'
 
 // Separate plain client from BullMQ's own Redis usage — this is just a
 // distributed mutex, not a queue concern.

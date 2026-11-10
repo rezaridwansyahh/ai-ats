@@ -84,6 +84,13 @@ echo ""
 info "========== RESTARTING PORTAL BACKEND =========="
 log "Restarting pm2..."
 pm2 restart ats-backend
+if pm2 describe ats-worker > /dev/null 2>&1; then
+  log "Restarting worker..."
+  pm2 restart ats-worker
+else
+  log "Starting worker (first run)..."
+  pm2 start worker.js --name ats-worker
+fi
 pm2 save
 log "Portal backend deployed."
 

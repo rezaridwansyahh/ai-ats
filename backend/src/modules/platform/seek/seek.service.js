@@ -1,35 +1,48 @@
-import cookieService from "../../account/cookie.service.js"
 import loginRpa from "./rpa/login.rpa.js"
 import jobPostRpa from "./rpa/job-post.rpa.js"
 import extractCandidateRpa from "./rpa/extract-candidate.rpa.js"
+import extractJobPostRpa from "../seek/rpa/extract-job-post.rpa.js"
+
+import jobAccountService from "../../account/account.service.js"
+import cookieService from "../../account/cookie.service.js"
+import companyService from "../../company/company.service.js"
+
 import jobSourceModel from "../../job-source/job-source.model.js"
 import jobPostSeekModel from "./job-post-seek.model.js"
-import extractJobPostRpa from "../seek/rpa/extract-job-post.rpa.js"
 import applicantModel from "../../applicant/applicant.model.js"
-import jobAccountModel from "../../account/account.model.js"
 import candidatePipelineModel from "../../candidate-pipeline/candidate-pipeline.model.js"
-import companyService from "../../company/company.service.js"
+
 import { promoteDownloadedCv } from "../../../shared/utils/cv-storage.js"
 import aiService from "../../../shared/services/ai.service.js"
 import screeningModel from "../../screening/screening.model.js"
 import screeningService from "../../screening/screening.service.js"
+
+import BrowserPuppeteer from "../shared/browser.js"
+
 import fs from "fs"
 import path from "path"
 
 class SeekService {
   async jobPost(account_id, service, dataForm) {
-    const browserPuppeteer = await cookieService.includeCookiesIfExist(account_id, service) // still hardcoded from req body (user_id, service);
-    const page = browserPuppeteer.getPage();
-    const account = await this.getAccountAndDecrypt(account_id);
+    const account = await jobAccountService.getById(account_id);
+    const browser = new BrowserPuppeteer();
+    await browser.init({ accountId: account_id });
+    const cookieRow = await cookieService.getCookie(account_id);
+    await browser.injectCookies(cookieRow?.cookies?.cookies || []);
+    const page = browser.getPage();
 
     try {
-      await loginRpa.fillLogin(page, account.email, account.decrypted);
+      const result = await loginRpa.authenticatedPage(page, account);
+      if (result.freshLogin) {
+        await cookieService.addCookies(account_id, { cookies: result.cookies, userAgent: result.userAgent });
+      }
+
       await jobPostRpa.fillFormJobPost(page, dataForm) // remember to incl the data, still hardcoded on the job post rpa
     } catch (err) {
       console.log(err)
       throw err
     } finally {
-      await browserPuppeteer.close();
+      await browser.close();
     }
   }
 
@@ -42,11 +55,20 @@ class SeekService {
       pay_max: dataForm.pay_max,
       pay_display: dataForm.pay_display,
     });
-    const browserPuppeteer = await cookieService.includeCookiesIfExist(account_id); // still hardcoded from req body (user_id, service);
-    const page = browserPuppeteer.getPage();
+
+    const account = await jobAccountService.getById(account_id);
+    const browser = new BrowserPuppeteer();
+    await browser.init({ accountId: account_id });
+    const cookieRow = await cookieService.getCookie(account_id);
+    await browser.injectCookies(cookieRow?.cookies?.cookies || []);
+    const page = browser.getPage();
 
     try {
-      await loginRpa.authenticatedPage(page, account_id);
+      const result = await loginRpa.authenticatedPage(page, account);
+      if (result.freshLogin) {
+        await cookieService.addCookies(account_id, { cookies: result.cookies, userAgent: result.userAgent });
+      }
+
       const { draftId } = await jobPostRpa.fillFormJobPostDraft(page, dataForm);
       const update = await jobSourceModel.updateStatus(sourcing.id, "Draft");
       const updateSeek = await jobPostSeekModel.update(sourcing.id, { seek_id: draftId });
@@ -56,17 +78,25 @@ class SeekService {
       await jobSourceModel.updateStatus(sourcing.id, "Failed");
       throw err
     } finally {
-      await browserPuppeteer.close();
+      await browser.close();
     }
   }
 
   async deleteJobPostDraft(job_sourcing_id, account_id) {
-    const browserPuppeteer = await cookieService.includeCookiesIfExist(account_id); // still hardcoded from req body (user_id, service);
-    const page = browserPuppeteer.getPage();
+    const account = await jobAccountService.getById(account_id);
+    const browser = new BrowserPuppeteer();
+    await browser.init({ accountId: account_id });
+    const cookieRow = await cookieService.getCookie(account_id);
+    await browser.injectCookies(cookieRow?.cookies?.cookies || []);
+    const page = browser.getPage();
     const jobPostSeek = await jobPostSeekModel.getDetailsByJobSourcingId(job_sourcing_id);
 
     try {
-      await loginRpa.authenticatedPage(page, account_id);
+      const result = await loginRpa.authenticatedPage(page, account);
+      if (result.freshLogin) {
+        await cookieService.addCookies(account_id, { cookies: result.cookies, userAgent: result.userAgent });
+      }
+
       await jobPostRpa.deleteJobPostDraft(page, jobPostSeek.seek_id);
 
       const deleted = await jobSourceModel.delete(job_sourcing_id);
@@ -75,18 +105,25 @@ class SeekService {
     } catch (err) {
       throw err
     } finally {
-      await browserPuppeteer.close();
+      await browser.close();
     }
   }
 
   async updateJobPostDraft(job_sourcing_id, account_id, dataForm) {
-    const browserPuppeteer = await cookieService.includeCookiesIfExist(account_id); // still hardcoded from req body (user_id, service);
-    const page = browserPuppeteer.getPage();
+    const account = await jobAccountService.getById(account_id);
+    const browser = new BrowserPuppeteer();
+    await browser.init({ accountId: account_id });
+    const cookieRow = await cookieService.getCookie(account_id);
+    await browser.injectCookies(cookieRow?.cookies?.cookies || []);
+    const page = browser.getPage();
     const jobPostSeek = await jobPostSeekModel.getDetailsByJobSourcingId(job_sourcing_id);
-    const account = await this.getAccountAndDecrypt(account_id);
 
     try {
-      await loginRpa.fillLogin(page, account.email, account.decrypted);
+      const result = await loginRpa.authenticatedPage(page, account);
+      if (result.freshLogin) {
+        await cookieService.addCookies(account_id, { cookies: result.cookies, userAgent: result.userAgent });
+      }
+
       const { message } = await jobPostRpa.updateJobPostDraft(page, jobPostSeek.seek_id, dataForm); // remember to incl the data, still hardcoded on the job post rpa
 
       if(message) {
@@ -100,22 +137,14 @@ class SeekService {
     } catch (err) {
       throw err
     } finally {
-      await browserPuppeteer.close();
+      await browser.close();
     }
   }
-  // `browserInstance`, when passed, is a BrowserPuppeteer instance whose
-  // lifecycle belongs to the caller (e.g. syncAll sharing one session across
-  // every sourcing for an account) — this method only closes it if it opened
-  // it itself (ownBrowser), never a shared one it was just lent.
+
   async extractCandidates(account_id, job_sourcing_id, browserInstance = null, progress = null) {
     const jobPostSeek = await jobPostSeekModel.getDetailsByJobSourcingId(job_sourcing_id);
     const cursor = await jobSourceModel.getById(job_sourcing_id);
 
-    // Expired listings can never gain new applicants — once progress has
-    // caught up to Seek's own reported candidate_count, every candidate that
-    // will ever exist for this listing has already been extracted. Skip
-    // before even opening a browser/logging in, since that's the real cost
-    // here, not the DB check.
     if (cursor?.status === 'Expired' && jobPostSeek?.candidate_count != null) {
       const alreadyDone = (jobPostSeek.progress || 0) >= jobPostSeek.candidate_count;
       if (alreadyDone) {
@@ -124,33 +153,23 @@ class SeekService {
       }
     }
 
-    // Resume the durable count instead of always restarting at 0 — each run
-    // is a separate process invocation (queued job), so the in-memory
-    // counter from a previous run is long gone; this is its only record.
     if (progress == null) progress = jobPostSeek?.progress || 0;
 
+    const account = await jobAccountService.getById(account_id);
     const ownBrowser = !browserInstance;
 
     if (!browserInstance) {
-      browserInstance = await cookieService.includeCookiesIfExist(account_id);
+      browserInstance = new BrowserPuppeteer();
+      await browserInstance.init({ accountId: account_id });
+      const cookieRow = await cookieService.getCookie(account_id);
+      await browserInstance.injectCookies(cookieRow?.cookies?.cookies || []);
     }
     const page = browserInstance.getPage();
 
-    // Jobs this sourcing is linked to (origin + manually-mapped), as of the
-    // start of this run — only used for the summary returned below, NOT for
-    // the actual per-candidate auto-promotion (that re-fetches fresh inside
-    // onSave, since a link can be added while this run is already in
-    // progress — see the comment there for why a stale snapshot is wrong).
     const linkedJobIds = await jobSourceModel.getLinkedJobIds(job_sourcing_id);
 
-    // Resolve the owning company from the job account so synced applicants are
-    // scoped correctly — without this, applicants insert with company_id=NULL
-    // and silently never show up in Talent Pool (WHERE ma.company_id = $1).
-    const account = await jobAccountModel.getById(account_id);
     const company_id = account?.company_id || null;
 
-    // Company name is just for a readable storage folder — resolved once up
-    // front (not per-candidate) and falls back gracefully if it's missing.
     let companyName = 'unknown';
     if (company_id) {
       try {
@@ -161,16 +180,16 @@ class SeekService {
       }
     }
 
-    // Resume cursor from a previous failed attempt, if any — lets this run
-    // skip buckets already fully processed and jump straight to the last
-    // saved candidate's current page instead of restarting from bucket 1.
-    // (cursor itself was already fetched above, for the Expired skip check.)
     const resumeBucket = cursor?.current_bucket || null;
     const resumeCandidateId = cursor?.last_seek_candidate_id || null;
     console.log(`[extractCandidates] job_sourcing_id=${job_sourcing_id} resumeBucket=${resumeBucket} resumeCandidateId=${resumeCandidateId}`);
 
     try {
-      await loginRpa.authenticatedPage(page, account_id);
+      const loginResult = await loginRpa.authenticatedPage(page, account);
+      if (loginResult.freshLogin) {
+        await cookieService.addCookies(account_id, { cookies: loginResult.cookies, userAgent: loginResult.userAgent });
+      }
+
       await extractCandidateRpa.navigateToCandidatePage(page, jobPostSeek.seek_id, resumeCandidateId);
 
       const buckets = await extractCandidateRpa.extractCandidateType(page, jobPostSeek.seek_id);
@@ -206,29 +225,15 @@ class SeekService {
 
         let promoted = 0;
 
-        // Skip candidates already saved for this job_sourcing_id — checked by
-        // the RPA layer before it clicks into the card, so a re-sync doesn't
-        // re-open the modal / re-download the resume for people we already have.
-        // Exception: a candidate whose last resume download attempt failed
-        // (cv_download_status = 'failed') is NOT skipped — a candidate that
-        // genuinely has no resume ('not_available') or already downloaded
-        // fine is left alone as before.
         const checkExists = async (name) => {
           const existing = await applicantModel.getByNameAndJobSourcing(name, job_sourcing_id);
           if (!existing) return false;
           return existing.cv_download_status !== 'failed';
         };
 
-        // Called by the RPA layer immediately per candidate (not buffered into
-        // an array and processed only after the whole bucket finishes) — so
-        // progress persists even if a later page in this bucket fails/times out.
         const onSave = async (candidate) => {
           if (!candidate.candidate_id) return;
 
-          // Retry path: this (name, job_sourcing_id) already has an applicant
-          // row whose resume download previously failed — reuse that row
-          // instead of inserting a duplicate person, and just retry the
-          // attachment + status.
           const existing = await applicantModel.getByNameAndJobSourcing(candidate.name, job_sourcing_id);
           const isRetry = !!existing && existing.cv_download_status === 'failed';
 
@@ -240,11 +245,6 @@ class SeekService {
               await applicantModel.addSourcingMapping(applicant.id, job_sourcing_id, candidate.information);
             }
           } else {
-            // Create without attachment first — the resume PDF (if any) is still
-            // sitting in a temp staging dir at this point (extract-candidate.rpa.js
-            // can't name/place it into permanent storage before the applicant's
-            // real DB id exists). Same two-step pattern the manual Talent Pool CV
-            // upload uses (sourcing.service.js:uploadCv).
             applicant = await applicantModel.create({
               job_sourcing_id,
               company_id,
@@ -253,9 +253,6 @@ class SeekService {
               last_position: candidate.last_position,
               address: candidate.address,
               education: candidate.education || null,
-              // Raw scraped screening Q&A is application-specific (this job's
-              // custom questions), so it goes on the sourcing mapping — not on
-              // this applicant row, which is shared across all their applications.
               sourcing_information: candidate.information || null,
               date: candidate.date || null,
               attachment: null,
@@ -273,7 +270,6 @@ class SeekService {
                 await applicantModel.updateCvDownloadStatus(applicant.id, 'downloaded');
                 applicant.attachment = savedPath;
 
-                // Guarded separately so a parse failure doesn't abort onSave.
                 try {
                   const buffer = fs.readFileSync(savedPath);
                   const facets = await aiService.extractFacetsFromFile(
@@ -281,12 +277,6 @@ class SeekService {
                   );
                   await screeningModel.setApplicantInformation(applicant.id, facets);
 
-                  // Backfill email from the CV parse if the Seek scrape never
-                  // got one — only when the applicant has none yet (never
-                  // overwrite a real scraped value) and only when it's safe:
-                  // company-scoped getByEmail must find nobody else already
-                  // using it, otherwise we'd silently recreate the exact
-                  // cross-candidate merge bug this whole area was fixed for.
                   if (!applicant.email && facets.email && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(facets.email)) {
                     const collision = await applicantModel.getByEmail(facets.email, company_id || null);
                     if (!collision) {
@@ -305,19 +295,7 @@ class SeekService {
               await applicantModel.updateCvDownloadStatus(applicant.id, 'failed');
             }
           }
-
-          // Auto-promote to candidate for every job this sourcing is linked to.
-          // Dup-safe (ON CONFLICT DO NOTHING) and individually guarded so one
-          // failure never aborts the batch.
-          //
-          // Fetched fresh per candidate, not reusing the function-level
-          // `linkedJobIds` snapshotted once at the top of extractCandidates —
-          // a link added mid-sync (via job-source.service.js:linkToJob,
-          // while this run is already in progress) would otherwise never
-          // promote candidates saved *after* the link but still using the
-          // stale pre-link snapshot. linkToJob's own backfill only catches
-          // applicants already in the DB at the moment of linking; anything
-          // this run saves afterward falls through unless re-checked here.
+          
           if (applicant?.id) {
             const currentLinkedJobIds = await jobSourceModel.getLinkedJobIds(job_sourcing_id);
             for (const jobId of currentLinkedJobIds) {
@@ -383,12 +361,6 @@ class SeekService {
     }
   }
 
-  // Upserts a single normalized row immediately — this is what makes the
-  // sync resilient to a mid-scrape crash: every row that's already been
-  // scraped is already saved by the time the next one starts, instead of
-  // everything living only in memory until the whole multi-page scrape
-  // finishes. Never throws — a DB failure on one row is logged and
-  // skipped rather than aborting the rest of the sync.
   async _upsertSeekJobPostRow(account_id, data) {
     try {
       const existing = data.seek_id ? await jobPostSeekModel.getBySeekId(data.seek_id) : null;
@@ -445,13 +417,6 @@ class SeekService {
     }
   }
 
-  // Decides whether a row is worth the expensive detail-modal scrape.
-  // - expired jobs can never change again once we already have their full
-  //   detail (pay/created-date), so they're skipped forever after the
-  //   first successful scrape.
-  // - open jobs are skipped only if the cheap row-level fields (title,
-  //   candidate count) and status both still match what's already stored —
-  //   any real change forces a fresh detail scrape.
   async _shouldSkipSeekDetailScrape(basicData, type) {
     if (!basicData.seek_id) return false;
 
@@ -469,17 +434,25 @@ class SeekService {
       && existing.candidate_count === basicData.candidate_count;
   }
 
-  async syncJobPostAll(account_id, browserInstance = null) {
-    const types = ['open', 'expired']; // Seek has no real "draft" listing under this page/type flow
-    const ownBrowser = !browserInstance;
+  async syncJobSource(account_id) {
+    const browser = new BrowserPuppeteer();
+    await browser.init({ accountId: account_id });
 
-    if (!browserInstance) {
-      browserInstance = await cookieService.includeCookiesIfExist(account_id);
-    }
-    const page = browserInstance.getPage();
+    const account = await jobAccountService.getById(account_id);
+    const cookieRow = await cookieService.getCookie(account_id);
+    await browser.injectCookies(cookieRow?.cookies?.cookies || []);
+
+    const types = ['open', 'expired'];
+
+    const page = browser.getPage();
 
     try {
-      await loginRpa.authenticatedPage(page, account_id);
+      const result = await loginRpa.authenticatedPage(page, account);
+
+      if (result.freshLogin) {
+        await cookieService.addCookies(account_id, { cookies: result.cookies, userAgent: result.userAgent });
+      }
+
       const summary = {};
       for(let i = 0; i < types.length; i++) {
         const counts = await extractJobPostRpa.syncAll(page, types[i], {
@@ -490,55 +463,39 @@ class SeekService {
         summary[types[i]] = counts;
         console.log(`[syncJobPostAll] account=${account_id} type=${types[i]}: scraped=${counts.scraped} skipped=${counts.skipped} failed=${counts.failed}`);
       }
-      await jobAccountModel.updateSync(account_id, 'Sync');
+      await jobAccountService.update(account_id, { status_sync: 'Sync' });
+
       return summary;
     } catch(err) {
-      await jobAccountModel.updateSync(account_id, 'Error');
+      await jobAccountService.update(account_id, { status_sync: 'Error' });
       throw err;
     } finally {
-      if (ownBrowser) await browserInstance.close();
-    }
-  }
-
-  async syncAll(account_id) {
-    const browserInstance = await cookieService.includeCookiesIfExist(account_id); // still hardcoded from req body (user_id, service);
-
-    try {
-      await this.syncJobPostAll(account_id, browserInstance);
-      const sourcings = await jobSourceModel.getByAccountId(account_id);
-
-      const results = [];
-
-      for(const sourcing of sourcings) {
-        const candidates = await this.extractCandidates(account_id, sourcing.id, browserInstance);
-
-        results.push(candidates);
-      }
-
-      return { sourcings, candidates: results };
-    } catch(err) {
-      throw err;
-    } finally {
-      await browserInstance.close();
+      await browser.close();
     }
   }
 
   async checkConnection(account_id) {
-    const browserPuppeteer = await cookieService.includeCookiesIfExist(account_id);
-    const page = browserPuppeteer.getPage();
+    const browser = new BrowserPuppeteer();
+    await browser.init({ accountId: account_id });
+    const page = browser.getPage();
+
+    const account = await jobAccountService.getById(account_id);
+    const cookieRow = await cookieService.getCookie(account_id);
+    await browser.injectCookies(cookieRow?.cookies?.cookies || []);
 
     try {
-      const check = await loginRpa.authenticatedPage(page, account_id);
+      const result = await loginRpa.authenticatedPage(page, account);
 
-      console.log(check);
-      if(check) {
-        return await jobAccountModel.updateCondition(account_id, 'Connected');
+      if (result.freshLogin) {
+        await cookieService.addCookies(account_id, { cookies: result.cookies, userAgent: result.userAgent });
       }
+
+      return await jobAccountService.update(account_id, { status_connection: 'Connected' });
     } catch(err) {
-      await jobAccountModel.updateCondition(account_id, 'Error');
+      await jobAccountService.update(account_id, { status_connection: 'Error' });
       throw err;
     } finally {
-      await browserPuppeteer.close();
+      await browser.close();
     }
   }
 }

@@ -1,6 +1,3 @@
-import jobAccountModel from "../../../account/account.model.js"
-import cookieService from "../../../account/cookie.service.js";
-import { decrypt } from "../../../../shared/utils/encrypt.js"
 import { captureDebugContext } from "../../../../shared/utils/rpa-debug.js"
 
 const delay = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
@@ -24,20 +21,6 @@ async function safeQuery(page, selector) {
 }
 
 class SeekLoginService {
-  async getAccountAndDecrypt(account_id) {
-    const account = await jobAccountModel.findById(account_id);
-    
-    try {
-      const [ivHex, encryptedPassword] = account.password.split(':');
-
-      const decrypted = decrypt(encryptedPassword, ivHex);
-
-      return { email: account.email, decrypted };
-    } catch(err) {
-      throw err;
-    }
-  }
-
   async checkRedirectDashboard(page) {
     await page.goto('https://id.employer.seek.com/id/dashboard', { waitUntil: 'networkidle2', timeout: 60000 });
 
@@ -198,31 +181,32 @@ class SeekLoginService {
     }
   }
 
-  async authenticatedPage(page, account_id) {
+  // Takes an already-resolved account ({ email, password }) — credential
+  // lookup/decryption happens one level up, in seek.service.js. Returns the
+  // fresh cookies/userAgent as data instead of persisting them itself — the
+  // caller decides where that gets saved.
+  async authenticatedPage(page, account) {
     console.log("check page");
     const isLoggedIn = await this.checkRedirectDashboard(page);
 
     if(isLoggedIn) {
       console.log("cookies valid");
-      return "Success - already authenticated";
+      return { success: true, freshLogin: false };
     }
 
     console.log("cookies invalid, logging in...");
 
-    const account = await this.getAccountAndDecrypt(account_id);
-
     await this.redirectLoginSeek(page);
-    await this.fillLogin(page, account.email, account.decrypted);
+    await this.fillLogin(page, account.email, account.password);
 
     const client = await page.createCDPSession();
     const { cookies } = await client.send('Storage.getCookies');
     const cleanCookies = cookies.map(({ partitionKey, ...rest }) => rest);
     const userAgent = await page.evaluate(() => navigator.userAgent);
 
-    await cookieService.addCookies(account_id, { cookies: cleanCookies, userAgent });
     console.log("done");
 
-    return "Success - logged in fresh";
+    return { success: true, freshLogin: true, cookies: cleanCookies, userAgent };
   }
 }
 

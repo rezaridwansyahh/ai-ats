@@ -1,5 +1,5 @@
 import { Worker, UnrecoverableError } from 'bullmq';
-import redisConfig from '../../config/redis.js';
+import redisConfig from '../../queue/connection.js'
 import handlers from './cv.handler.js';
 
 console.log('🚀 CV Worker started');
@@ -20,7 +20,7 @@ const cvWorker = new Worker(
     }
   },
   {
-    connection: redisConfig.connection,
+    connection: redisConfig,
     concurrency: 2,
   }
 );

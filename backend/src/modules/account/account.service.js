@@ -1,6 +1,8 @@
 import jobAccountModel from './account.model.js';
 import userModel from '../user/user.model.js';
-import { encrypt } from '../../shared/utils/encrypt.js';
+import registry from '../platform/shared/platform.registry.js';
+
+import { encrypt, decrypt } from '../../shared/utils/encrypt.js';
 
 class JobAccountService {
   async getByUserId(user_id) {
@@ -9,8 +11,37 @@ class JobAccountService {
     return accounts
   }
 
-  async checkConnection(user_id, account_id) {
-    
+  async getById(account_id) {
+    const account = await jobAccountModel.findById(account_id);
+    if (!account) throw { status: 404, message: 'Job Account not found' };
+
+    account.password = decrypt(account.password);
+
+    return account;
+  }
+
+  async checkConnection(account_id) {
+    const account = await jobAccountModel.findById(account_id);
+    if (!account) throw { status: 404, message: 'Job Account not found' };
+
+    const adapter = registry[account.portal_name];
+    if (!adapter?.checkConnection) {
+      throw { status: 400, message: `check-connection not supported for ${account.portal_name}` };
+    }
+
+    return await adapter.checkConnection(account_id);
+  }
+
+  async syncJobSource(account_id) {
+    const account = await jobAccountModel.findById(account_id);
+    if (!account) throw { status: 404, message: 'Job Account not found' };
+
+    const adapter = registry[account.portal_name];
+    if (!adapter?.syncJobSource) {
+      throw { status: 400, message: `sync-job-source not supported for ${account.portal_name}` };
+    }
+
+    return await adapter.syncJobSource(account_id);
   }
 
   async create(user_id, portal_name, email, password) {
@@ -37,15 +68,13 @@ class JobAccountService {
     };
   }
 
-  async update(id, email, password) {
-    const fields = {};
-    if (email) fields.email = email;
-    if (password) fields.password = encrypt(password);
+  async update(id, field) {
+    const account = await jobAccountModel.findById(id);
 
-    const account = await jobAccountModel.getById(id);
     if (!account) throw { status: 404, message: 'Job Account not found' };
 
-    const updatedAccount = await jobAccountModel.update(id, fields);
+    if (field.password) field.password = encrypt(field.password);
+    const updatedAccount = await jobAccountModel.update(id, field);
 
     return {
       message: 'Job Account updated',
@@ -54,7 +83,7 @@ class JobAccountService {
   }
 
   async delete(id) {
-    const account = await jobAccountModel.getById(id);
+    const account = await jobAccountModel.findById(id);
 
     if (!account) throw { status: 404, message: 'Job Account not found' };
 

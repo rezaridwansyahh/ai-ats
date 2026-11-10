@@ -68,14 +68,15 @@ class JobService {
                            'pay_type', 'currency', 'pay_min', 'pay_max', 'pay_display',
                            'company', 'seniority_level', 'company_url', 'status',
                            'qualifications', 'required_skills', 'preferred_skills', 'benefits',
-                           'sla_start_date', 'sla_end_date', 'assessment_battery'];
+                           'sla_start_date', 'sla_end_date', 'assessment_battery',
+                           'additional_application_questions'];
 
-    const jsonFields = new Set(['required_skills', 'preferred_skills', 'benefits']);
+    const jsonFields = new Set(['required_skills', 'preferred_skills', 'benefits', 'additional_application_questions']);
 
-    const VALID_BATTERIES = new Set(['A', 'B', 'C', 'D']);
+    const VALID_BATTERIES = new Set(['A', 'B', 'C', 'D', 'External']);
     if (data.assessment_battery !== undefined && data.assessment_battery !== null
         && !VALID_BATTERIES.has(data.assessment_battery)) {
-      throw { status: 400, message: 'assessment_battery must be one of A, B, C, D' };
+      throw { status: 400, message: 'assessment_battery must be one of A, B, C, D, External' };
     }    
 
     const fields = {};

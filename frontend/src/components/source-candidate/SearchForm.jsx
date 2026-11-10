@@ -49,9 +49,9 @@ export default function SearchForm({ onSearchStart, loading, error }) {
       setLoadingAccounts(true);
       setAccountsError(false);
       try {
-        const { data } = await getJobAccountsByUserId(userId);
+        const accounts = await getJobAccountsByUserId();
         if (cancelled) return;
-        const linkedinAccounts = (data.accounts || []).filter(
+        const linkedinAccounts = (accounts || []).filter(
           a => a.portal_name === 'linkedin'
         );
         setAccounts(linkedinAccounts);

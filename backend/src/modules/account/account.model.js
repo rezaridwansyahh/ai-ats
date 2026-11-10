@@ -1,6 +1,16 @@
 import getDb from "../../config/postgres.js"
 
 class JobAccountModel {
+  async findById(account_id) {
+    const account = await getDb().query(`
+      SELECT *
+      FROM master_job_account
+      WHERE id = $1  
+    `, [account_id]);
+
+    return account.rows[0];
+  }
+  
   async findByUserId(user_id) {
     const result = await getDb().query(`
       SELECT *

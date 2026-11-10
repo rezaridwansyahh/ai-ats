@@ -872,6 +872,7 @@ class ScreeningModel {
         cs.id          AS screening_id,
         cs.candidate_id,
         cs.job_id,
+        cs.company_id,
         mc.applicant_id,
         mc.name        AS candidate_name,
         ma.email       AS candidate_email,

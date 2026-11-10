@@ -1,6 +1,7 @@
-import seekService from "../../modules/platform/seek/seek.service.js";
-import jobSourceModel from "../../modules/job-source/job-source.model.js";
-import seekProducer from "./seek.producer.js";
+import seekService from "../seek.service.js";
+import jobSourceModel from "../../../job-source/job-source.model.js";
+import { SEEK_JOBS } from "./seek.jobs.js";
+import * as seekProducer from "./seek.producer.js";
 
 const NIGHT_START_HOUR = 21; // 9PM
 const NIGHT_END_HOUR = 5;    // 5AM
@@ -45,8 +46,8 @@ const extractCandidateHandler = async (data, job) => {
   }
 }
 
-const syncSeekJobPostHandler = async (data) => {
-  await seekService.syncJobPostAll(data.account_id);
+const syncSeekJobSourceHandler = async (data) => {
+  await seekService.syncJobSource(data.account_id);
 }
 
 const checkConnectionSeekHandler = async (data) => {
@@ -75,14 +76,13 @@ const seekNightScanHandler = async () => {
 }
 
 const handlers = {
-  'seek-create-job-post': createJobPostHandler,
-  'seek-create-job-post-draft': createJobPostDraftHandler,
-  'seek-delete-job-post-draft': deleteJobPostDraftHandler,
-  'seek-extract-candidate': extractCandidateHandler,
-  'seek-sync-job-post': syncSeekJobPostHandler,
-  'seek-check-connection': checkConnectionSeekHandler,
-  'seek-sync-all': syncAllSeekHandler,
-  'seek-night-scan': seekNightScanHandler,
+  [SEEK_JOBS.CHECK_CONNECTION]: checkConnectionSeekHandler,
+  [SEEK_JOBS.SYNC_JOB]: syncSeekJobSourceHandler,
+  [SEEK_JOBS.CREATE_JOB_POST_DRAFT]: createJobPostDraftHandler,
+  [SEEK_JOBS.EXTRACT_CANDIDATE]: extractCandidateHandler,
+  // syncAllSeekHandler / seekNightScanHandler intentionally not registered —
+  // they call seekService.syncAll() and seekProducer.extractSeekCandidate(),
+  // neither of which exist yet. Needs a design decision before wiring up.
 };
 
 export default handlers;

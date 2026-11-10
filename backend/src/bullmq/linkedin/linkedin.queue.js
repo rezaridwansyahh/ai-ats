@@ -1,5 +1,5 @@
 import { Queue } from 'bullmq'
-import redisConfig from '../../config/redis.js';
+import redisConfig from '../../queue/connection.js'
 
 const linkedinQueue = new Queue('linkedin', {
   connection: redisConfig.connection,

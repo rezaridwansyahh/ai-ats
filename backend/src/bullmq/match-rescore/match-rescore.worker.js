@@ -1,5 +1,5 @@
 import { Worker, UnrecoverableError } from 'bullmq';
-import redisConfig from '../../config/redis.js';
+import redisConfig from '../../queue/connection.js'
 import handlers from './match-rescore.handler.js';
 
 console.log('🚀 Match-Rescore Worker started');
@@ -20,7 +20,7 @@ const matchRescoreWorker = new Worker(
     }
   },
   {
-    connection: redisConfig.connection,
+    connection: redisConfig,
     concurrency: 2,
   }
 );

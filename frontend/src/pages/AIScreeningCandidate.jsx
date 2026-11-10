@@ -23,9 +23,9 @@ import {
 import {
   getScreening, setScreeningDecision, getRubric,
   getQa, getQaResponses, generateQa, updateQa, sendQa,
-  getApplicationFormTemplate,
   getScreeningByCandidate, scoreCandidate, getQaPreview
 } from '@/api/screening.api';
+import { getJobForm } from '@/features/application-form/api/form.api';
 import {
   Select,
   SelectContent,
@@ -147,7 +147,7 @@ function useMatch(data, onScored) {
   };
 }
 
-function useQa(screeningId, scored, enabled) {
+function useQa(screeningId, scored, enabled, jobId) {
   const [tab, setTab] = useState('generate'); // 'generate' | 'inbox' — generate first per spec
   const [qa, setQa] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -166,8 +166,9 @@ function useQa(screeningId, scored, enabled) {
   // Email editor modal
   const [emailModal, setEmailModal] = useState({ open: false, subject: '', body: '' });
 
-  // Standard Application Form template — read-only preview of what gets sent
-  // alongside the questions. Static, so fetched once when the Q&A step opens.
+  // Combined application form (company default + this job's additional
+  // questions) — read-only preview of what gets sent alongside the
+  // questions. Fetched once per job when the Q&A step opens.
   const [formTemplate, setFormTemplate] = useState(null);
 
   const status = qa?.status || (qa ? 'draft' : null);
@@ -211,19 +212,21 @@ function useQa(screeningId, scored, enabled) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [screeningId, scored, latched]);
 
-  // Fetch the static Application Form template once the step is opened.
+  // Preview the combined form (company's default + this job's additional
+  // questions) once the step is opened — the same schema qaSend will
+  // actually snapshot onto screening_qa when sent.
   useEffect(() => {
-    if (!latched || formTemplate) return;
+    if (!latched || formTemplate || !jobId) return;
     let cancelled = false;
     (async () => {
       try {
-        const res = await getApplicationFormTemplate();
-        if (!cancelled) setFormTemplate(res.data?.template || null);
+        const jobForm = await getJobForm(jobId);
+        if (!cancelled) setFormTemplate(jobForm?.schema || null);
       } catch { /* preview is non-critical — ignore */ }
     })();
     return () => { cancelled = true; };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [latched]);
+  }, [latched, jobId]);
 
   const handleGenerate = async (canEdit) => {
     if (!canEdit || !scored || generating) return;
@@ -352,7 +355,7 @@ export default function AIScreeningCandidatePage() {
 
   // Engine state lifted to the page so the sidebar can host the primary actions.
   const match = useMatch(data, load);
-  const qa = useQa(data?.screening_id, data?.engine === 'done', activeEngine === 'qa');
+  const qa = useQa(data?.screening_id, data?.engine === 'done', activeEngine === 'qa', data?.job_id);
 
   const handleDecide = async (decision) => {
     setSaving(true);

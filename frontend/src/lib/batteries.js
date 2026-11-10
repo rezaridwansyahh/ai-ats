@@ -77,6 +77,14 @@ export const BATTERIES = {
       { key: 'tki', name: 'Thomas-Kilmann', detail: '30 pasang pernyataan forced-choice · 5 mode konflik' },
     ],
   },
+  External: {
+    code: 'External',
+    label: 'External Assessment',
+    duration: 'Varies',
+    test_count: 0,
+    blurb: 'No internal tests — assessment happens outside this system. The recruiter records a manual decision (Advance / Hold / Reject) once results are back.',
+    tests: [],
+  },
 };
 
 export function getInitials(name = '') {

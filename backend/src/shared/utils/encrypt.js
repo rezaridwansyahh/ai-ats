@@ -13,7 +13,7 @@ export function encrypt(text) {
 }
 
 export function decrypt(encrypted_password) {
-    const [ivHex, encryptedHex] = text.split(':');
+    const [ivHex, encryptedHex] = encrypted_password.split(':');
     const iv = Buffer.from(ivHex, 'hex');
     const encryptedText = Buffer.from(encryptedHex, 'hex');
     const decipher = crypto.createDecipheriv('aes-256-cbc', Buffer.from(ENCRYPTION_KEY, 'hex'), iv);
