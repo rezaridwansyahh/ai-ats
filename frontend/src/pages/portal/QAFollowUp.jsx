@@ -752,6 +752,15 @@ function PortalFormField({ field, value, invalid, onField, onToggle, identityTyp
           </div>
           <p className="text-[10px] text-muted-foreground">{T.citiesHint}</p>
         </>
+      ) : field.type === 'textarea' ? (
+        <Textarea
+          value={value ?? ''}
+          onChange={(e) => onField(field.key, e.target.value)}
+          placeholder={placeholderFor(field)}
+          aria-invalid={invalid}
+          className={`text-sm ${errCls}`}
+          rows={4}
+        />
       ) : (
         <Input
           type={field.type === 'date' ? 'date' : 'text'}

@@ -29,3 +29,16 @@ export async function sendTemplatedEmail({ candidateName, candidateEmail, templa
   const html = renderBody(template.body, link, vars);
   await sendMail(candidateEmail, subject, html);
 }
+
+// Sends an already-finalized subject/body as-is — no template resolution,
+// no {{VAR}} interpolation. For flows that let the sender edit the wording
+// inline before sending (e.g. the External assessment invite), where the
+// preview text (link already inlined as plain text) IS the email.
+export async function sendPlainEmail({ candidateName, candidateEmail, subject, body }) {
+  if (!candidateEmail) {
+    console.warn(`[candidate-mailer] Skipping no email for candidate ${candidateName}`);
+    return;
+  }
+  const html = `<div style="font-family:Arial,sans-serif;color:#1a1a1f;line-height:1.6;white-space:pre-wrap;">${body}</div>`;
+  await sendMail(candidateEmail, subject, html);
+}

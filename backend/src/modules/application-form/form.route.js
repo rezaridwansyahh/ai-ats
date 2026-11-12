@@ -7,6 +7,7 @@ const router = express.Router();
 router.use(authToken);
 
 router.get('/company', formController.getCompanyForm);
+router.put('/company', formController.updateCompanyForm);
 router.get('/job/:job_id', formController.getJobForm);
 
 export default router;

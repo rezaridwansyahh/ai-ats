@@ -5,19 +5,25 @@ class FormService {
 	async getByCompanyId(company_id) {
 		const form = await formRepository.findByCompanyId(company_id);
 
-		if (!form) throw { status: 404, message: 'Application form has not been set up' };
+		// return empty row
+		if (!form) return { company_id, schema: { sections: [] }, updated_at: null };
 
 		return form;
 	}
 
-	// Combines the company's default questions with this job's additional
-	// ones — the position form never replaces the company form, only adds
-	// to it. Returns one schema shaped like company_application_form.schema
-	// ({ sections: [...] }) so every existing consumer (qa-details.jsx,
-	// QAFollowUp.jsx, normalizeApplicationForm/findMissingRequired) renders
-	// and validates it exactly like a company-only schema, no changes needed.
-	// A company form that hasn't been set up yet doesn't block this — the
-	// job's own questions can still stand alone.
+	async updateCompanyForm(company_id, schema) {
+		if (!schema || !Array.isArray(schema.sections)) {
+			throw { status: 400, message: 'schema.sections must be an array' };
+		}
+		for (const section of schema.sections) {
+			if (!section || typeof section.key !== 'string' || !Array.isArray(section.fields)) {
+				throw { status: 400, message: 'each section needs a key and a fields array' };
+			}
+		}
+
+		return await formRepository.upsertByCompanyId(company_id, schema);
+	}
+
 	async getCombinedForm(company_id, job_id) {
 		const job = await jobModel.getById(job_id);
 		if (!job) throw { status: 404, message: 'Job not found' };

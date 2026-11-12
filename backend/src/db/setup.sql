@@ -194,7 +194,8 @@ CREATE TABLE company_setting (
 CREATE TABLE company_application_form (
   company_id INTEGER REFERENCES core_company(id) ON DELETE CASCADE,
   schema JSONB DEFAULT '{}'::jsonb,
-  updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+  UNIQUE(company_id)
 );
 
 CREATE TABLE company_usage (
@@ -1359,6 +1360,23 @@ CREATE TABLE assessment_sessions(
   notes TEXT,
   created_at TIMESTAMP NOT NULL DEFAULT NOW(),
   updated_at TIMESTAMP NOT NULL DEFAULT NOW()
+);
+
+CREATE TABLE candidate_external_assessment (
+  id              SERIAL PRIMARY KEY,
+  candidate_id    INTEGER NOT NULL REFERENCES master_candidate(id) ON DELETE CASCADE,
+  job_id          INTEGER NOT NULL REFERENCES core_job(id) ON DELETE CASCADE,
+  company_id      INTEGER REFERENCES core_company(id) ON DELETE CASCADE,
+  assessment_url  TEXT NOT NULL,
+  status          VARCHAR(20) NOT NULL DEFAULT 'pending',  -- pending | sent | decided
+  sent_at         TIMESTAMPTZ,
+  sent_by         INTEGER REFERENCES master_users(id) ON DELETE SET NULL,
+  decision        VARCHAR(20),                             -- advance | hold | reject
+  decided_at      TIMESTAMPTZ,
+  decided_by      INTEGER REFERENCES master_users(id) ON DELETE SET NULL,
+  created_at      TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  updated_at      TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  UNIQUE (candidate_id, job_id)
 );
 
 -- ── Interview Pack ──────────────────────────────────────────────────────────

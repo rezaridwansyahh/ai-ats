@@ -20,6 +20,10 @@ const DEFAULTS = {
       subject: 'Assessment Invitation — {{JOB_TITLE}}',
       body: `Hi {{CANDIDATE_NAME}},\n\nThank you for your interest in the {{JOB_TITLE}} position. As part of our selection process, we invite you to complete a psychometric assessment (Battery {{BATTERY}}).\n\nPlease access the assessment portal via the link below:\n\n{{LINK}}\n\nThis link is valid for 7 days and is personal — kindly do not share it with others.\n\nThank you,\nThe Recruitment Team`,
     },
+    invite_external: {
+      subject: 'Assessment Invitation — {{JOB_TITLE}}',
+      body: `Hi {{CANDIDATE_NAME}},\n\nAs part of our selection process for the {{JOB_TITLE}} position, please complete the assessment via the link below:\n\n{{LINK}}\n\nThank you,\nThe Recruitment Team`,
+    },
   },
   [STAGE_OFFERING_CONTRACT]: {
     offer: {

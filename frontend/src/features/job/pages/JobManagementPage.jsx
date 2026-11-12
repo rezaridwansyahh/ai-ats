@@ -1,7 +1,5 @@
-import { useState, useEffect, useCallback, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Plus, Download, HelpCircle, Sparkles } from 'lucide-react';
-import { getJobs, deleteJob } from '@/api/job.api';
 import JobCreation from '@/components/job-management/JobCreation';
 import { PageHeader } from '@/components/common';
 import { Button } from '@/components/ui/button';
@@ -11,31 +9,17 @@ import PipelineTour, { usePipelineTour } from '@/components/tours/PipelineTour';
 import { JOB_MANAGEMENT_LIST_STEPS } from '@/components/tours/tourSteps';
 import { useEndToEndTour } from '@/components/tours/EndToEndTour';
 
+import { useJobList } from '../hooks/use-job-list';
+
 export default function JobManagementPage() {
   const navigate = useNavigate();
   const canCreate = hasPermission('Sourcing', 'Job Management', 'create');
   const canDelete = hasPermission('Sourcing', 'Job Management', 'delete');
-  const [jobs, setJobs] = useState([]);
-  const [loading, setLoading] = useState(true);
+
+  const { jobs, loading, stats, handleDeleteJob } = useJobList();
 
   const { run, setRun, markSeen, restart } = usePipelineTour('job-management-list');
   const { start: startFullWalkthrough } = useEndToEndTour();
-
-  const fetchJobs = useCallback(async () => {
-    setLoading(true);
-    try {
-      const res = await getJobs();
-      setJobs(res.data.jobs || []);
-    } catch {
-      // no-op
-    } finally {
-      setLoading(false);
-    }
-  }, []);
-
-  useEffect(() => {
-    fetchJobs();
-  }, [fetchJobs]);
 
   const handleSelectJob = (job) => {
     if (!job) return;
@@ -47,22 +31,9 @@ export default function JobManagementPage() {
 
   const handleNewJob = () => navigate('/sourcing/job-management/new');
 
-  const handleDeleteJob = async (id) => {
-    await deleteJob(id);
-    await fetchJobs();
-  };
-
   const handleExport = () => {
     console.warn('Export not yet wired to backend.');
   };
-
-  const stats = useMemo(() => {
-    const totalApplicants = jobs.reduce((sum, j) => sum + (j.candidate_count ?? 0), 0);
-    const jobsPosted = jobs.length;
-    const openJobs = jobs.filter(j => j.status === 'Active' || j.status === 'Running').length;
-    const draftJobs = jobs.filter(j => j.status === 'Draft').length;
-    return { totalApplicants, jobsPosted, openJobs, draftJobs };
-  }, [jobs]);
 
   return (
     <div className="space-y-8 p-6">
