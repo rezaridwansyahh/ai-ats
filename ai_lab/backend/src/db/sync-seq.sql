@@ -1,0 +1,1 @@
+SELECT setval('master_employee_id_seq', COALESCE((SELECT MAX(id) FROM master_employee), 1));
