@@ -1,20 +1,10 @@
 import { useEffect, useState } from 'react';
-import { Loader2, Check, Plus, X, ClipboardList } from 'lucide-react';
+import { Loader2, Check, ClipboardList } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
-import { Checkbox } from '@/components/ui/checkbox';
-import {
-  Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
-} from '@/components/ui/select';
 import { getJobById, updateJob } from '@/api/job.api';
-
-const FIELD_TYPES = ['text', 'date', 'select'];
-
-// Position-specific questions, shown to candidates in addition to — never
-// replacing — the company's default application form (Settings →
-// Application Form). Saved on core_job.additional_application_questions.
+import QuestionListEditor from '@/features/application-form/components/question-editor/QuestionListEditor';
 export default function PositionFormEditor({ jobId }) {
   const [questions, setQuestions] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -37,21 +27,6 @@ export default function PositionFormEditor({ jobId }) {
     })();
     return () => { cancelled = true; };
   }, [jobId]);
-
-  const addQuestion = () => {
-    setQuestions((qs) => [
-      ...qs,
-      { key: `q_${Date.now()}`, label: '', type: 'text', required: false, options: [] },
-    ]);
-  };
-
-  const updateQuestion = (idx, patch) => {
-    setQuestions((qs) => qs.map((q, i) => (i === idx ? { ...q, ...patch } : q)));
-  };
-
-  const removeQuestion = (idx) => {
-    setQuestions((qs) => qs.filter((_, i) => i !== idx));
-  };
 
   const handleSave = async () => {
     setSaving(true);
@@ -93,62 +68,11 @@ export default function PositionFormEditor({ jobId }) {
           </div>
         )}
 
-        {questions.length === 0 ? (
-          <p className="text-xs text-muted-foreground italic py-2">
-            No additional questions yet — candidates will only see the company's default form.
-          </p>
-        ) : (
-          <div className="space-y-3">
-            {questions.map((q, idx) => (
-              <div key={q.key} className="rounded-lg border p-3 space-y-2">
-                <div className="flex items-center gap-2">
-                  <Input
-                    value={q.label}
-                    onChange={(e) => updateQuestion(idx, { label: e.target.value })}
-                    placeholder="Question label…"
-                    className="h-8 text-xs flex-1"
-                  />
-                  <Select value={q.type} onValueChange={(v) => updateQuestion(idx, { type: v })}>
-                    <SelectTrigger className="h-8 w-28 text-xs"><SelectValue /></SelectTrigger>
-                    <SelectContent>
-                      {FIELD_TYPES.map((t) => <SelectItem key={t} value={t}>{t}</SelectItem>)}
-                    </SelectContent>
-                  </Select>
-                  <button
-                    type="button"
-                    onClick={() => removeQuestion(idx)}
-                    className="text-muted-foreground hover:text-rose-600"
-                  >
-                    <X className="h-3.5 w-3.5" />
-                  </button>
-                </div>
-
-                {q.type === 'select' && (
-                  <Input
-                    value={(q.options || []).join(', ')}
-                    onChange={(e) => updateQuestion(idx, {
-                      options: e.target.value.split(',').map((o) => o.trim()).filter(Boolean),
-                    })}
-                    placeholder="Options, comma separated…"
-                    className="h-8 text-xs"
-                  />
-                )}
-
-                <label className="flex items-center gap-2 text-[11px] text-muted-foreground">
-                  <Checkbox
-                    checked={!!q.required}
-                    onCheckedChange={(v) => updateQuestion(idx, { required: !!v })}
-                  />
-                  Required
-                </label>
-              </div>
-            ))}
-          </div>
-        )}
-
-        <Button size="sm" variant="outline" className="h-8 text-xs" onClick={addQuestion}>
-          <Plus className="h-3.5 w-3.5 mr-1.5" /> Add question
-        </Button>
+        <QuestionListEditor
+          questions={questions}
+          onChange={setQuestions}
+          emptyHint="No additional questions yet — candidates will only see the company's default form."
+        />
 
         <div className="flex items-center justify-end gap-2 pt-2 border-t">
           {saved && (

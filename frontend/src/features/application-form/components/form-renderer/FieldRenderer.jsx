@@ -1,10 +1,14 @@
 import TextField from './fields/TextField'
+import TextareaField from './fields/TextareaField'
 import SelectField from './fields/SelectField'
+import MultiSelectField from './fields/MultiSelectField'
 
 const FIELD_COMPONENTS = {
   text: TextField,
   date: TextField,
+  textarea: TextareaField,
   select: SelectField,
+  multiselect: MultiSelectField,
 };
 
 export default function FieldRenderer({ field, value, onChange, readOnly }) {

@@ -194,7 +194,8 @@ CREATE TABLE company_setting (
 CREATE TABLE company_application_form (
   company_id INTEGER REFERENCES core_company(id) ON DELETE CASCADE,
   schema JSONB DEFAULT '{}'::jsonb,
-  updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+  UNIQUE(company_id)
 );
 
 CREATE TABLE company_usage (
