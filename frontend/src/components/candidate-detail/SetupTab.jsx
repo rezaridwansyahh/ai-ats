@@ -47,24 +47,30 @@ export default function SetupTab({ jobId, jobBattery, onSendInvitation }) {
 
         <div className="rounded-lg border bg-muted/20 p-4">
           <div className="text-[10px] font-bold tracking-widest uppercase text-muted-foreground mb-2">
-            Battery {active.code} · {active.label} — {active.test_count} tests · {active.duration}
+            {active.tests.length > 0
+              ? `Battery ${active.code} · ${active.label} — ${active.test_count} tests · ${active.duration}`
+              : `${active.label}`}
           </div>
-          <ol className="space-y-1.5">
-            {active.tests.map((t, i) => (
-              <li key={t.key} className="flex items-start gap-2 text-xs">
-                <span className="font-bold text-muted-foreground w-4 shrink-0">{i + 1}.</span>
-                <span>
-                  <span className="font-bold">{t.name}</span>
-                  <span className="text-muted-foreground"> · {t.detail}</span>
-                </span>
-              </li>
-            ))}
-          </ol>
+          {active.tests.length > 0 ? (
+            <ol className="space-y-1.5">
+              {active.tests.map((t, i) => (
+                <li key={t.key} className="flex items-start gap-2 text-xs">
+                  <span className="font-bold text-muted-foreground w-4 shrink-0">{i + 1}.</span>
+                  <span>
+                    <span className="font-bold">{t.name}</span>
+                    <span className="text-muted-foreground"> · {t.detail}</span>
+                  </span>
+                </li>
+              ))}
+            </ol>
+          ) : (
+            <p className="text-xs text-muted-foreground">{active.blurb}</p>
+          )}
         </div>
 
         <div className="flex items-center justify-end gap-2 pt-1">
           <Button size="sm" onClick={onSendInvitation}>
-            Continue to Take <ArrowRight className="h-3.5 w-3.5 ml-1.5" />
+            {jobBattery === 'External' ? 'Continue' : 'Continue to Take'} <ArrowRight className="h-3.5 w-3.5 ml-1.5" />
           </Button>
         </div>
       </CardContent>

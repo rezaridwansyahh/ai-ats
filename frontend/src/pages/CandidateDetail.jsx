@@ -2,16 +2,19 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate, useParams, useLocation } from 'react-router-dom';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle,} from '@/components/ui/dialog';
 import { ArrowLeft, ArrowRight, Check, Loader2, Printer, Save, FileText, Wand2, ClipboardCheck, ThumbsUp, Pause, ThumbsDown } from 'lucide-react';
 import SetupTab from '@/components/candidate-detail/SetupTab';
 import TakeTab from '@/components/candidate-detail/TakeTab';
 import ScoreDecideTab from '@/components/candidate-detail/ScoreDecideTab';
+import ExternalSendTab from '@/components/candidate-detail/ExternalSendTab';
+import ExternalDecideTab from '@/components/candidate-detail/ExternalDecideTab';
+import DecisionPanel from '@/components/candidate-detail/DecisionPanel';
 import { STEPS } from '@/components/candidate-detail/steps';
 import { BATTERIES, getInitials } from '@/lib/batteries';
 import { getCandidateById, addCandidateStage } from '@/api/candidate.api';
 import { getSessionsFromCandidate } from '@/api/session.api';
 import { getResultFromCandidate, downloadReportPdf, downloadQaPdf } from '@/api/assessment-battery-result.api';
+import { getExternalAssessment, recordExternalDecision } from '@/api/external-assessment.api';
 import { getJobById } from '@/api/job.api';
 import { toast } from 'sonner';
 import { hasPermission } from '@/utils/permissions';
@@ -36,6 +39,8 @@ export default function CandidateDetailPage() {
   const [jobTitle, setJobTitle]     = useState(null); // the job this candidate applied to — shown in the report instead of their resume's last position
   const [jobDetail, setJobDetail]   = useState(null); // { job_location, work_type, work_option } — fills the report's info-grid slots that used to show personal candidate data
   const [existingSessions, setExistingSessions] = useState([]);
+  const [externalRecord, setExternalRecord] = useState(null);
+  const isExternal = jobBattery === 'External';
 
   const restoredOnceRef   = useRef(false);
   const restoredDecideRef = useRef(false);
@@ -127,6 +132,21 @@ export default function CandidateDetailPage() {
     if (battery == null && jobBattery) setBattery(jobBattery);
   }, [jobBattery, battery]);
 
+  /* ── External battery: fetch the send/decide record in place of sessions ── */
+  useEffect(() => {
+    if (!candidateId || !jobId || !isExternal) { setExternalRecord(null); return undefined; }
+    let cancelled = false;
+    (async () => {
+      try {
+        const res = await getExternalAssessment({ candidate_id: candidateId, job_id: Number(jobId) });
+        if (!cancelled) setExternalRecord(res.data?.record ?? null);
+      } catch {
+        if (!cancelled) setExternalRecord(null);
+      }
+    })();
+    return () => { cancelled = true; };
+  }, [candidateId, jobId, isExternal]);
+
   /* ── Fetch latest result ─────────────────────────────────────── */
   useEffect(() => {
     if (!candidateId || !battery) { setLatestResult(null); return undefined; }
@@ -170,9 +190,11 @@ export default function CandidateDetailPage() {
 
   const completed = useMemo(() => ({
     setup: !!battery,
-    take:  latestResult?.status === 'completed',
+    take: isExternal
+      ? (externalRecord?.status === 'sent' || externalRecord?.status === 'decided')
+      : latestResult?.status === 'completed',
     decide: false,
-  }), [battery, latestResult]);
+  }), [battery, latestResult, isExternal, externalRecord]);
 
   const lockedBattery = existingSessions[0]?.battery ?? null;
 
@@ -335,7 +357,7 @@ export default function CandidateDetailPage() {
           </div>
           {completed.take && (
             <span className="text-[10px] font-semibold px-2 py-1 rounded-full bg-emerald-100 text-emerald-700 border border-emerald-200">
-              Assessment Completed
+              {isExternal ? 'Assessment Sent' : 'Assessment Completed'}
             </span>
           )}
         </div>
@@ -356,32 +378,47 @@ export default function CandidateDetailPage() {
                 />
               )}
               {activeKey === 'take' && (
-                <TakeTab
-                  battery={battery}
-                  subtestStatus={subtestStatus}
-                  candidateId={candidateId}
-                  jobId={jobId}
-                  existingSessions={existingSessions}
-                  onSessionsChange={setExistingSessions}
-                  onRevoke={handleRevoke}
-                  candidateName={candidateView.name}
-                  candidateEmail={candidateView.email !== '—' ? candidateView.email : ''}
-                />
+                isExternal ? (
+                  <ExternalSendTab
+                    candidateId={candidateId}
+                    jobId={jobId}
+                    candidateName={candidateView.name}
+                    candidateEmail={candidateView.email !== '—' ? candidateView.email : ''}
+                    record={externalRecord}
+                    onRecordChange={setExternalRecord}
+                  />
+                ) : (
+                  <TakeTab
+                    battery={battery}
+                    subtestStatus={subtestStatus}
+                    candidateId={candidateId}
+                    jobId={jobId}
+                    existingSessions={existingSessions}
+                    onSessionsChange={setExistingSessions}
+                    onRevoke={handleRevoke}
+                    candidateName={candidateView.name}
+                    candidateEmail={candidateView.email !== '—' ? candidateView.email : ''}
+                  />
+                )
               )}
               {activeKey === 'decide' && (
-                <ScoreDecideTab
-                  key={latestResult?.id ?? `no-result-${battery ?? 'none'}`}
-                  candidate={candidateView}
-                  jobTitle={jobTitle}
-                  jobDetail={jobDetail}
-                  battery={battery}
-                  result={latestResult}
-                  onJumpToTab={setActiveKey}
-                  saveNowRef={saveNowRef}
-                  onSaveStatusChange={setDecideSaveStatus}
-                  finalRecRef={finalRecRef}
-                  onFinalRecChange={setSidebarFinalRec}
-                />
+                isExternal ? (
+                  <ExternalDecideTab record={externalRecord} />
+                ) : (
+                  <ScoreDecideTab
+                    key={latestResult?.id ?? `no-result-${battery ?? 'none'}`}
+                    candidate={candidateView}
+                    jobTitle={jobTitle}
+                    jobDetail={jobDetail}
+                    battery={battery}
+                    result={latestResult}
+                    onJumpToTab={setActiveKey}
+                    saveNowRef={saveNowRef}
+                    onSaveStatusChange={setDecideSaveStatus}
+                    finalRecRef={finalRecRef}
+                    onFinalRecChange={setSidebarFinalRec}
+                  />
+                )
               )}
             </div>
 
@@ -399,19 +436,28 @@ export default function CandidateDetailPage() {
           <aside className="print:hidden">
             <div className="sticky top-[184px] space-y-3">
               {activeKey === 'decide' && completed.take && (
-                <TindakLanjutCard
-                  finalRec={sidebarFinalRec}
-                  onPick={handleFinalRec}
-                  onAdvance={handleAdvance}
-                  advanceStatus={advanceStatus}
-                  hasStage={!!latestStage}
-                  canEdit={canEdit}
-                />
+                isExternal ? (
+                  <ExternalDecisionCard
+                    record={externalRecord}
+                    canEdit={canEdit}
+                    onDecisionChange={setExternalRecord}
+                  />
+                ) : (
+                  <TindakLanjutCard
+                    finalRec={sidebarFinalRec}
+                    onPick={handleFinalRec}
+                    onAdvance={handleAdvance}
+                    advanceStatus={advanceStatus}
+                    hasStage={!!latestStage}
+                    canEdit={canEdit}
+                  />
+                )
               )}
               <AssessmentActionCard
                 activeKey={activeKey}
                 completed={completed}
                 battery={battery}
+                isExternal={isExternal}
                 onSelect={handleNavigate}
                 saveStatus={decideSaveStatus}
                 onSaveNow={handleSaveNow}
@@ -450,62 +496,18 @@ const TINDAK_CONFIRM_COPY = {
 };
 
 function TindakLanjutCard({ finalRec, onPick, onAdvance, advanceStatus, hasStage, canEdit }) {
-  const locked = FINAL_DECISIONS.includes(finalRec); // Hold does NOT lock
-  const [pendingVal, setPendingVal] = useState(null);
-  const pendingOption = TINDAK_OPTIONS.find((o) => o.val === pendingVal);
-
-  const requestPick = (val) => {
-    if (locked || !canEdit) return;
-    if (val === finalRec) return; // already this state, nothing to confirm
-    setPendingVal(val);
-  };
-
-  const confirmPick = () => {
-    if (pendingVal) onPick(pendingVal);
-    setPendingVal(null);
-  };
-
   return (
-    <>
-      <Card>
-        <CardContent className="p-3 space-y-2.5">
-          <p className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
-            Decision
-          </p>
-
-          <div className="space-y-1.5">
-            {TINDAK_OPTIONS.map(({ val, label, icon: Icon, cls, activeCls }) => {
-              const active   = finalRec === val;
-              const disabled = !canEdit || (locked && !active);
-              return (
-                <button
-                  key={val}
-                  type="button"
-                  onClick={() => requestPick(val)}
-                  disabled={disabled}
-                  className={`w-full flex items-center gap-2 px-3 py-2 rounded-md text-xs font-semibold border transition-colors ${
-                    active ? activeCls : `${cls} hover:opacity-90`
-                  } ${disabled && !active ? 'opacity-40 cursor-not-allowed hover:opacity-40' : ''} ${disabled && active ? 'cursor-default' : ''}`}
-                >
-                  <Icon className="h-3.5 w-3.5 shrink-0" />
-                  {label}
-                  {active && <Check className="h-3 w-3 ml-auto" />}
-                </button>
-              );
-            })}
-          </div>
-
-          {finalRec === 'evaluasi' && (
-            <p className="text-[10px] text-muted-foreground leading-snug">
-              On hold — you can still Advance or Reject.
-            </p>
-          )}
-          {locked && (
-            <p className="text-[10px] text-muted-foreground leading-snug">
-              Decision recorded and locked.
-            </p>
-          )}
-
+    <DecisionPanel
+      options={TINDAK_OPTIONS}
+      finalDecisions={FINAL_DECISIONS}
+      confirmCopy={TINDAK_CONFIRM_COPY}
+      value={finalRec}
+      onConfirm={onPick}
+      canEdit={canEdit}
+      holdValue="evaluasi"
+      holdHint="On hold — you can still Advance or Reject."
+      belowContent={
+        <>
           {finalRec === 'direkomendasikan' && canEdit && (
             <Button
               size="sm"
@@ -529,33 +531,64 @@ function TindakLanjutCard({ finalRec, onPick, onAdvance, advanceStatus, hasStage
           {!hasStage && finalRec === 'direkomendasikan' && (
             <p className="text-[10px] text-amber-600 leading-snug">No pipeline stage configured for this candidate.</p>
           )}
-        </CardContent>
-      </Card>
+        </>
+      }
+    />
+  );
+}
 
-      <Dialog open={!!pendingVal} onOpenChange={(open) => !open && setPendingVal(null)}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Confirm: {pendingOption?.label}?</DialogTitle>
-            <DialogDescription>
-              {pendingVal ? TINDAK_CONFIRM_COPY[pendingVal] : ''}
-            </DialogDescription>
-          </DialogHeader>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setPendingVal(null)}>
-              Cancel
-            </Button>
-            <Button onClick={confirmPick}>
-              Confirm {pendingOption?.label}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+/* ── Sidebar: External-battery decision (Advance/Hold/Reject) ───── */
+const EXTERNAL_OPTIONS = [
+  { val: 'advance', label: 'Advance', icon: ThumbsUp,   cls: 'border-emerald-500 bg-emerald-50 text-emerald-700', activeCls: 'bg-emerald-600 text-white border-emerald-600' },
+  { val: 'hold',    label: 'Hold',    icon: Pause,       cls: 'border-amber-400  bg-amber-50  text-amber-700',   activeCls: 'bg-amber-500  text-white border-amber-500'  },
+  { val: 'reject',  label: 'Reject',  icon: ThumbsDown,  cls: 'border-rose-400   bg-rose-50   text-rose-700',    activeCls: 'bg-rose-600   text-white border-rose-600'   },
+];
+
+const EXTERNAL_LOCKED_DECISIONS = ['advance', 'reject'];
+
+const EXTERNAL_CONFIRM_COPY = {
+  advance: 'This will mark the candidate as advancing and move their pipeline stage forward. This is final and cannot be changed afterward.',
+  hold:    'This puts the candidate on hold. You can still move them to Advance or Reject later.',
+  reject:  'This will mark the candidate as rejected. This is final and cannot be changed afterward.',
+};
+
+function ExternalDecisionCard({ record, canEdit, onDecisionChange }) {
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState(null);
+
+  const handleConfirm = async (val) => {
+    if (!record?.id) return;
+    setSaving(true);
+    setError(null);
+    try {
+      const { data } = await recordExternalDecision(record.id, val);
+      onDecisionChange?.(data.record);
+    } catch (err) {
+      setError(err.response?.data?.message || 'Failed to record decision.');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  return (
+    <>
+      <DecisionPanel
+        options={EXTERNAL_OPTIONS}
+        finalDecisions={EXTERNAL_LOCKED_DECISIONS}
+        confirmCopy={EXTERNAL_CONFIRM_COPY}
+        value={record?.decision ?? null}
+        onConfirm={handleConfirm}
+        canEdit={canEdit && !saving}
+        holdValue="hold"
+        holdHint="On hold — you can still Advance or Reject."
+      />
+      {error && <p className="text-[10px] text-rose-600 leading-snug px-1">{error}</p>}
     </>
   );
 }
 
 /* ── Sidebar: contextual action card ─────────────────────────────── */
-function AssessmentActionCard({ activeKey, completed, battery, onSelect, saveStatus, onSaveNow, onPrint, printing, onDownloadQa, downloadingQa }) {
+function AssessmentActionCard({ activeKey, completed, battery, isExternal, onSelect, saveStatus, onSaveNow, onPrint, printing, onDownloadQa, downloadingQa }) {
   if (activeKey === 'setup') {
     return (
       <Card>
@@ -569,7 +602,7 @@ function AssessmentActionCard({ activeKey, completed, battery, onSelect, saveSta
             onClick={() => onSelect('take')}
             disabled={!battery}
           >
-            Continue to Take <ArrowRight className="h-3.5 w-3.5 ml-1.5" />
+            {isExternal ? 'Continue' : 'Continue to Take'} <ArrowRight className="h-3.5 w-3.5 ml-1.5" />
           </Button>
           {!battery && (
             <p className="text-[10px] text-amber-600 leading-snug">
@@ -594,17 +627,19 @@ function AssessmentActionCard({ activeKey, completed, battery, onSelect, saveSta
             onClick={() => onSelect('decide')}
             disabled={!completed.take}
           >
-            Go to Score & Decide <ArrowRight className="h-3.5 w-3.5 ml-1.5" />
+            {isExternal ? 'Go to Decide' : 'Go to Score & Decide'} <ArrowRight className="h-3.5 w-3.5 ml-1.5" />
           </Button>
           {!completed.take && (
             <p className="text-[10px] text-muted-foreground leading-snug">
-              Awaiting candidate to complete all subtests.
+              {isExternal ? 'Send the assessment link first.' : 'Awaiting candidate to complete all subtests.'}
             </p>
           )}
         </CardContent>
       </Card>
     );
   }
+
+  if (isExternal) return null; // Actions here (Save/Print/Download Q&A) all assume an internal battery result.
 
   if (activeKey === 'decide') {
     return (

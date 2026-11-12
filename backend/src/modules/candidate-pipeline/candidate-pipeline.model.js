@@ -25,9 +25,18 @@ const CANDIDATE_PIPELINE_SELECT = `
          COALESCE(js.name, 'Not Started') AS latest_stage_name,
          COALESCE(rsc.name, 'Not Started') AS latest_stage_category,
          CASE
-           WHEN latest_active.status = 'completed'         THEN 'decide'
-           WHEN latest_active.status IS NOT NULL           THEN 'take'
-           ELSE 'setup'
+           WHEN cj.assessment_battery = 'External' THEN
+             CASE
+               WHEN cea.status = 'decided' THEN 'decide'
+               WHEN cea.status = 'sent'    THEN 'take'
+               ELSE 'setup'
+             END
+           ELSE
+             CASE
+               WHEN latest_active.status = 'completed'         THEN 'decide'
+               WHEN latest_active.status IS NOT NULL           THEN 'take'
+               ELSE 'setup'
+             END
          END AS current_step
   FROM master_candidate c
   LEFT JOIN job_stage js       ON js.id = c.latest_stage
@@ -45,6 +54,11 @@ const CANDIDATE_PIPELINE_SELECT = `
       s.created_at DESC
     LIMIT 1
   ) latest_active ON TRUE
+  LEFT JOIN LATERAL (
+    SELECT status
+    FROM candidate_external_assessment
+    WHERE candidate_id = c.id AND job_id = c.job_id
+  ) cea ON TRUE
 `;
 
 class CandidatePipeline {

@@ -24,6 +24,7 @@ import question from "./src/modules/assessment/question/question.route.js"
 import assessmentAnswer from "./src/modules/assessment/assessment-answer/assessment-answer.route.js"
 import assessmentScore from "./src/modules/assessment/assessment-score/assessment-score.route.js"
 import session from "./src/modules/assessment/session/session.route.js"
+import externalAssessment from "./src/modules/assessment/external/external.route.js"
 import assessmentBatteryResult from "./src/modules/assessment/assessment-battery-result/assessment-battery-result.route.js"
 import assessmentAI from "./src/modules/assessment/assessment-ai/assessment-ai.route.js"
 import sourcing from "./src/modules/sourcing/sourcing.route.js"
@@ -113,6 +114,7 @@ api.use("/question", question);
 api.use("/assessment-answer", assessmentAnswer);
 api.use("/assessment-score", assessmentScore);
 api.use("/session", session);
+api.use("/external-assessment", externalAssessment);
 api.use("/assessment-battery-result", assessmentBatteryResult);
 api.use("/assessment-ai", assessmentAI);
 api.use("/portal-assessment", portalAssessment);
