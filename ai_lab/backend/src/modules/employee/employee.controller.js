@@ -45,6 +45,24 @@ class EmployeeController {
       res.status(err.status || 500).json({ message: err.message });
     }
   }
+
+  async getSummary(req, res) {
+    try {
+      const ai_summary = await employeeService.getSummary(req.params.id);
+      res.status(200).json({ message: 'Employee AI summary', ai_summary });
+    } catch (err) {
+      res.status(err.status || 500).json({ message: err.message });
+    }
+  }
+
+  async generateSummary(req, res) {
+    try {
+      const ai_summary = await employeeService.summarize(req.params.id);
+      res.status(200).json({ message: 'Employee AI summary generated', ai_summary });
+    } catch (err) {
+      res.status(err.status || 500).json({ message: err.message });
+    }
+  }  
 }
 
 export default new EmployeeController();

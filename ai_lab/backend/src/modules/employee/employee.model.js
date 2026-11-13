@@ -60,6 +60,27 @@ class EmployeeModel {
     `, [id]);
     return result.rows[0];
   }
+
+  async getSummary(employee_id) {
+    const result = await getDb().query(`
+      SELECT s.employee_id, s.summary, s.generated_at,
+             (e.updated_at > s.generated_at) AS stale
+      FROM employee_ai_summary s
+      JOIN master_employee e ON e.id = s.employee_id
+      WHERE s.employee_id = $1
+    `, [employee_id]);
+    return result.rows[0];
+  }
+
+  async saveSummary(employee_id, summary) {
+    await getDb().query(`
+      INSERT INTO employee_ai_summary (employee_id, summary, generated_at)
+      VALUES ($1, $2, NOW())
+      ON CONFLICT (employee_id) DO UPDATE
+      SET summary = EXCLUDED.summary, generated_at = NOW()
+    `, [employee_id, summary]);
+    return this.getSummary(employee_id);
+  }
 }
 
 export default new EmployeeModel();

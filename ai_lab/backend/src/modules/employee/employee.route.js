@@ -4,6 +4,8 @@ const router = express.Router();
 import employeeController from './employee.controller.js';
 
 router.get('/', employeeController.getAll);
+router.get('/:id/summary', employeeController.getSummary);
+router.post('/:id/summary', employeeController.generateSummary);
 router.get('/:id', employeeController.getById);
 router.post('/', employeeController.create);
 router.put('/:id', employeeController.update);

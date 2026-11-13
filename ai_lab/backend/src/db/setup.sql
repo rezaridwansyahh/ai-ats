@@ -1,3 +1,4 @@
+DROP TABLE IF EXISTS employee_ai_summary CASCADE;
 DROP TABLE IF EXISTS master_employee CASCADE;
 
 CREATE TABLE master_employee (
@@ -24,3 +25,9 @@ CREATE TABLE master_employee (
 );
 
 CREATE INDEX idx_master_employee_nik ON master_employee (nik);
+
+CREATE TABLE employee_ai_summary (
+  employee_id  INTEGER PRIMARY KEY REFERENCES master_employee(id) ON DELETE CASCADE,
+  summary      TEXT NOT NULL,
+  generated_at TIMESTAMP NOT NULL DEFAULT NOW()
+);

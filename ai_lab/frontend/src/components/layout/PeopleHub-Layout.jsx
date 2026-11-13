@@ -6,7 +6,6 @@ import { Button } from '@/components/ui/button';
 const QUOTA = 1000;
 const START_USED = 42; // credits already spent in the demo data
 
-// hrOnly items are hidden when the role switch is on "Manajer Produksi"
 const MENU = [
   { label: 'Beranda',      to: '/',           end: true },
   { label: 'Karyawan',     to: '/karyawan' },
@@ -52,7 +51,6 @@ export default function PeopleHubLayout() {
   const left = QUOTA - used;
   const items = MENU.filter((m) => isHr || !m.hrOnly);
 
-  // Pages read these through useOutletContext() — no separate context folder.
   const spend = (code, credits) => {
     setUsed((u) => u + credits);
     toast(`Saran AI dibuat · −${credits} kredit (${code})`);
@@ -88,7 +86,6 @@ export default function PeopleHubLayout() {
       </aside>
 
       <main className="min-w-0">
-        {/* Nav (mobile) */}
         <div className="sticky top-0 z-20 flex gap-1 overflow-x-auto bg-[#0b3d34] px-2.5 py-1.5 md:hidden">
           {items.map((m) => <NavItem key={m.to} item={m} mobile />)}
         </div>
@@ -133,7 +130,7 @@ export default function PeopleHubLayout() {
           </Button>
         </div>
 
-        <div className="max-w-[1240px] px-3 pb-[50px] pt-3.5 md:px-[22px] md:pb-[60px] md:pt-5">
+        <div className="max-w-[1760px] px-3 pb-[50px] pt-3.5 md:px-[22px] md:pb-[60px] md:pt-5">
           <Outlet context={{ role, spend }} />
         </div>
       </main>
