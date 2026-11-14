@@ -4,6 +4,7 @@ import PeopleHubLayout from "./components/layout/PeopleHub-Layout"
 import Dashboard from "./pages/Dashboard"
 import Karyawan from "./pages/Karyawan"
 import KaryawanDetail from "./pages/KaryawanDetail"
+import ScanDokumen from "./pages/ScanDokumen"
 
 function ComingSoon() {
   return (
@@ -21,6 +22,7 @@ function App() {
           <Route path="/" element={<Dashboard />} />
           <Route path="/karyawan" element={<Karyawan />} />
           <Route path="/karyawan/:id" element={<KaryawanDetail />} />
+          <Route path="/scan" element={<ScanDokumen />} />
           <Route path="*" element={<ComingSoon />} />
         </Route>
       </Routes>

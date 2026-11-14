@@ -81,6 +81,15 @@ class EmployeeModel {
     `, [employee_id, summary]);
     return this.getSummary(employee_id);
   }
+
+  async nextNik(yy) {
+    const result = await getDb().query(`
+      SELECT COALESCE(MAX(SUBSTRING(nik FROM 5)::int), 0) + 1 AS n
+      FROM master_employee
+      WHERE nik ~ $1
+    `, [`^CS${yy}[0-9]+$`]);
+    return `CS${yy}${String(result.rows[0].n).padStart(3, '0')}`;
+  }
 }
 
 export default new EmployeeModel();

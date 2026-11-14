@@ -25,7 +25,7 @@ function parseSummary(body) {
 export default function KaryawanDetail() {
   const { id } = useParams();
   const navigate = useNavigate();
-  const { role = 'hr', spend } = useOutletContext() ?? {};
+  const { role = 'hr' } = useOutletContext() ?? {};
   const isHr = role === 'hr';
   const [params, setParams] = useSearchParams();
 

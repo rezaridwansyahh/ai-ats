@@ -89,7 +89,11 @@ class EmployeeService {
 
   async create(body) {
     const fields = clean(body);
-    if (!fields.nik || !fields.nama) throw bad('nik and nama are required');
+    if (!fields.nama) throw bad('nama is required');
+    if (!fields.nik) {
+      const year = (fields.tgl_masuk || referenceDate()).slice(2, 4);
+      fields.nik = await Employee.nextNik(year);
+    }
     return await Employee.create(fields);
   }
 
@@ -116,6 +120,11 @@ class EmployeeService {
     const employee = await this.getById(id);
     const summary = await aiService.summarizeEmployee(buildFacts(employee));
     return await Employee.saveSummary(employee.id, summary);
+  }
+
+  async scanDocument(file) {
+    if (!file) throw bad('file is required');
+    return await aiService.extractEmployeeFromDocument(file.buffer, file.originalname, file.mimetype);
   }
 }
 

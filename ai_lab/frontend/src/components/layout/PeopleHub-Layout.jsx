@@ -45,19 +45,14 @@ function NavItem({ item, mobile }) {
 export default function PeopleHubLayout() {
   const navigate = useNavigate();
   const [role, setRole] = useState('hr');
-  const [used, setUsed] = useState(START_USED);
+  const used = START_USED; // static placeholder until credits are built
 
   const isHr = role === 'hr';
   const left = QUOTA - used;
   const items = MENU.filter((m) => isHr || !m.hrOnly);
 
-  const spend = (code, credits) => {
-    setUsed((u) => u + credits);
-    toast(`Saran AI dibuat · −${credits} kredit (${code})`);
-  };
   const reset = () => {
     setRole('hr');
-    setUsed(START_USED);
     toast('Data demo dikembalikan ke awal');
   };
 
@@ -131,7 +126,7 @@ export default function PeopleHubLayout() {
         </div>
 
         <div className="max-w-[1760px] px-3 pb-[50px] pt-3.5 md:px-[22px] md:pb-[60px] md:pt-5">
-          <Outlet context={{ role, spend }} />
+          <Outlet context={{ role }} />
         </div>
       </main>
     </div>

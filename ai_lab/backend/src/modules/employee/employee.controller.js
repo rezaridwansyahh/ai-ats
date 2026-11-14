@@ -63,6 +63,15 @@ class EmployeeController {
       res.status(err.status || 500).json({ message: err.message });
     }
   }  
+
+  async scan(req, res) {
+    try {
+      const fields = await employeeService.scanDocument(req.file);
+      res.status(200).json({ message: 'Document scanned', fields });
+    } catch (err) {
+      res.status(err.status || 500).json({ message: err.message });
+    }
+  }
 }
 
 export default new EmployeeController();
