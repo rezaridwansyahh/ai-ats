@@ -12,6 +12,9 @@ const TONES = {
   muted: 'bg-muted text-muted-foreground',
   info:  'bg-blue-50 text-blue-700',
   warn:  'bg-warning/15 text-warning-foreground',
+  ok:    'bg-emerald-50 text-emerald-700',
+  crit:  'bg-destructive/10 text-destructive',
+  ai:    'bg-violet-100 text-violet-700',
 };
 
 export function WarnTag({ warn }) {

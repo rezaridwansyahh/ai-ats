@@ -3,6 +3,7 @@ import { Toaster } from "@/components/ui/sonner"
 import PeopleHubLayout from "./components/layout/PeopleHub-Layout"
 import Dashboard from "./pages/Dashboard"
 import Karyawan from "./pages/Karyawan"
+import KaryawanDetail from "./pages/KaryawanDetail"
 
 function ComingSoon() {
   return (
@@ -19,6 +20,7 @@ function App() {
         <Route element={<PeopleHubLayout />}>
           <Route path="/" element={<Dashboard />} />
           <Route path="/karyawan" element={<Karyawan />} />
+          <Route path="/karyawan/:id" element={<KaryawanDetail />} />
           <Route path="*" element={<ComingSoon />} />
         </Route>
       </Routes>

@@ -20,8 +20,9 @@ const toMs = (s) => {
   const [y, m, d] = s.split('-').map(Number);
   return Date.UTC(y, m - 1, d);
 };
-const daysBetween = (a, b) => Math.round((toMs(b) - toMs(a)) / 864e5);
-const addMonths = (s, n) => {
+export const daysBetween = (a, b) => Math.round((toMs(b) - toMs(a)) / 864e5);
+export const addDays = (s, n) => new Date(toMs(s) + n * 864e5).toISOString().slice(0, 10);
+export const addMonths = (s, n) => {
   const [y, m, d] = s.split('-').map(Number);
   const t = m - 1 + n;
   const yy = y + Math.floor(t / 12);
