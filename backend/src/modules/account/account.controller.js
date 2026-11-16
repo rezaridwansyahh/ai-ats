@@ -3,7 +3,8 @@ import jobAccountService from "./account.service.js";
 class JobAccountController {
   async getMyAccount(req, res) {
     try {
-      const accounts = await jobAccountService.getByUserId(req.user.user_id);
+      const { platform } = req.query;
+      const accounts = await jobAccountService.getByUserId(req.user.user_id, { platform });
 
       res.json(accounts);
     } catch (err) {

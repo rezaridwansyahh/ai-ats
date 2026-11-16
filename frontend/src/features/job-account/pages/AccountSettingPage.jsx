@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState } from 'react';
 import { RefreshCw, AlertTriangle, Loader2, Plus } from 'lucide-react';
 import { Button }   from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -6,8 +6,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { toast } from 'sonner';
 import { Badge }    from '@/components/ui/badge';
 
-import { createJobAccount, updateJobAccount, getJobAccountsByUserId } from '../api/account.api.js';
-import { checkConnection, syncSeekJobPosts } from '@/api/job-posting-seek.api';
+import { checkAccountConnection, syncAccountJobSource } from '../api/account.api.js';
 import { formatSinceDate } from '@/lib/job-display';
 
 import { AccountFormDialog } from '@/features/job-account/components/account-row/AccountFormDialog';
@@ -57,13 +56,17 @@ function syncTone(status) {
 }
 
 export default function IntegrationsSettings() {
-  const { accounts, loading, error, 
-          fetchAccount, createJobAccount, updateJobAccount, deleteJobAccount 
+  const { accounts, loading, error,
+          fetchAccount, createAccount, updateAccount
         } = useJobAccount();
   const canCreate = hasPermission('Settings', 'Integrations', 'create');
   const canEdit   = hasPermission('Settings', 'Integrations', 'update');
 
-  const [busyAccountId, setBusyAccountId]       = useState(null);
+  const [busyAccountId, setBusyAccountId] = useState(null);
+  const [selectedAccount, setSelectedAccount]   = useState(null);
+  const [selectedPlatform, setSelectedPlatform] = useState(null);
+  const [formOpen, setFormOpen]   = useState(false);
+  const [submitting, setSubmitting] = useState(false);
 
   const openEdit = (account) => {
     setSelectedAccount(account);
@@ -75,6 +78,34 @@ export default function IntegrationsSettings() {
     setSelectedAccount(null);
     setSelectedPlatform(null); // no platform pre-bound — the dialog shows a picker
     setFormOpen(true);
+  };
+
+  const handleFormSubmit = async (payload, accountId) => {
+    setSubmitting(true);
+    try {
+      if (accountId) {
+        await updateAccount(accountId, payload);
+      } else {
+        const userId = JSON.parse(localStorage.getItem('user') || '{}')?.id;
+        await createAccount({ ...payload, user_id: userId });
+      }
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  const runAccountAction = async (account, actionFn, { loading, success, error }) => {
+    setBusyAccountId(account.id);
+    const toastId = toast.loading(loading);
+    try {
+      await actionFn(account.id);
+      toast.success(success, { id: toastId });
+      await fetchAccount();
+    } catch (err) {
+      toast.error(err.response?.data?.message || error, { id: toastId });
+    } finally {
+      setBusyAccountId(null);
+    }
   };
 
   const publicAccounts  = accounts.filter((acc) => PUBLIC_CHANNELS.some((c) => c.id === acc.portal_name));
@@ -179,7 +210,7 @@ export default function IntegrationsSettings() {
                         size="sm"
                         variant="outline"
                         disabled={!canEdit || account.status_connection !== 'Connected' || busy}
-                        onClick={() => runAccountAction(account, syncSeekJobPosts, {
+                        onClick={() => runAccountAction(account, syncAccountJobSource, {
                           loading: 'Queuing sync…', success: 'Sync queued', error: 'Failed to queue sync',
                         })}
                       >
@@ -189,7 +220,7 @@ export default function IntegrationsSettings() {
                         size="sm"
                         variant="outline"
                         disabled={!canEdit || account.status_connection === 'Re-connecting' || busy}
-                        onClick={() => runAccountAction(account, checkConnection, {
+                        onClick={() => runAccountAction(account, checkAccountConnection, {
                           loading: 'Checking connection…', success: 'Connection check queued', error: 'Failed to check connection',
                         })}
                       >
@@ -209,14 +240,15 @@ export default function IntegrationsSettings() {
         </CardContent>
       </Card>
 
-      {/* <AccountFormDialog
+      <AccountFormDialog
         open={formOpen}
         onOpenChange={setFormOpen}
         account={selectedAccount}
         platform={selectedPlatform}
         platforms={PUBLIC_CHANNELS}
+        onSubmit={handleFormSubmit}
         loading={submitting}
-      /> */}
+      />
     </div>
   );
 }

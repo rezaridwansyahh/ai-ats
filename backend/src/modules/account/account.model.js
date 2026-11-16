@@ -11,13 +11,21 @@ class JobAccountModel {
     return account.rows[0];
   }
   
-  async findByUserId(user_id) {
+  async findByUserId(user_id, { platform } = {}) {
+    const params = [user_id];
+    let where = 'WHERE mja.user_id = $1';
+    if (platform) {
+      params.push(platform);
+      where += ` AND mja.portal_name = $${params.length}`;
+    }
+
     const result = await getDb().query(`
-      SELECT *
-      FROM master_job_account
-      WHERE user_id = $1
-      ORDER BY id ASC
-    `, [user_id]);
+      SELECT mja.*, c.updated_at AS cookies_updated_at
+      FROM master_job_account mja
+      LEFT JOIN cookies c ON c.account_id = mja.id
+      ${where}
+      ORDER BY mja.id ASC
+    `, params);
 
     return result.rows;
   }

@@ -7,6 +7,10 @@ import axios from "axios";
 
 const authApi = axios.create({
   baseURL: `${import.meta.env.VITE_API_BASE_URL || "http://localhost:3000"}/portal/api`,
+  // Lets the browser accept the login response's Set-Cookie (ats_token) even
+  // though frontend/backend run on different ports in dev — read by the
+  // cookie-checker extension via chrome.cookies, not used by this app itself.
+  withCredentials: true,
 });
 
 // Shape-compatible with the previous axios-instance return so LoginCard can keep

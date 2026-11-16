@@ -5,8 +5,8 @@ import registry from '../platform/shared/platform.registry.js';
 import { encrypt, decrypt } from '../../shared/utils/encrypt.js';
 
 class JobAccountService {
-  async getByUserId(user_id) {
-    const accounts = await jobAccountModel.findByUserId(user_id);
+  async getByUserId(user_id, { platform } = {}) {
+    const accounts = await jobAccountModel.findByUserId(user_id, { platform });
 
     return accounts
   }
