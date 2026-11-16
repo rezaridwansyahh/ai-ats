@@ -72,6 +72,18 @@ class EmployeeController {
       res.status(err.status || 500).json({ message: err.message });
     }
   }
+
+  async exportXlsx(req, res) {
+    try {
+      const { buffer, filename } = await employeeService.exportXlsx();
+      res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+      res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
+      res.send(buffer);
+    } catch (err) {
+      res.status(err.status || 500).json({ message: err.message });
+    }
+  }
+
 }
 
 export default new EmployeeController();

@@ -1,6 +1,28 @@
 import Employee, { WRITABLE } from './employee.model.js';
 import aiService from '../../shared/services/ai.service.js';
 import { daysBetween, addMonths, isRealDate, today } from '../../shared/utils/date.util.js';
+import ExcelJS from 'exceljs';
+
+const EXPORT_COLUMNS = [
+  { header: 'NIK Internal', key: 'nik', width: 12 },
+  { header: 'Nama Lengkap', key: 'nama', width: 24 },
+  { header: 'Jenis Kelamin', key: 'jk', width: 14 },
+  { header: 'Tanggal Lahir', key: 'tgl_lahir', width: 14 },
+  { header: 'Pendidikan Terakhir', key: 'pendidikan', width: 18 },
+  { header: 'Divisi', key: 'divisi', width: 22 },
+  { header: 'Jabatan', key: 'jabatan', width: 26 },
+  { header: 'Level Jabatan', key: 'level', width: 14 },
+  { header: 'NIK Atasan Langsung', key: 'atasan', width: 18 },
+  { header: 'Lokasi Kerja', key: 'lokasi', width: 22 },
+  { header: 'Status Karyawan', key: 'status', width: 15 },
+  { header: 'Tanggal Masuk', key: 'tgl_masuk', width: 14 },
+  { header: 'Tanggal Akhir Kontrak', key: 'akhir_kontrak', width: 20 },
+  { header: 'Status Aktif', key: 'aktif', width: 12 },
+  { header: 'Tanggal Keluar', key: 'tgl_keluar', width: 14 },
+  { header: 'Alasan Keluar', key: 'alasan', width: 18 },
+  { header: 'Email Kantor', key: 'email', width: 36 },
+];
+
 
 const STATUS = ['PKWTT', 'PKWT', 'Magang'];
 const AKTIF = ['Aktif', 'Keluar'];
@@ -126,6 +148,33 @@ class EmployeeService {
     if (!file) throw bad('file is required');
     return await aiService.extractEmployeeFromDocument(file.buffer, file.originalname, file.mimetype);
   }
+
+  async exportXlsx() {
+    const employees = await Employee.getAll();
+
+    const wb = new ExcelJS.Workbook();
+    const ws = wb.addWorksheet('Karyawan', { views: [{ state: 'frozen', ySplit: 1 }] }); // header row stays visible
+    ws.columns = EXPORT_COLUMNS;
+    ws.getRow(1).font = { bold: true };
+
+    for (const e of employees) {
+      const row = {};
+      for (const { key } of EXPORT_COLUMNS) {
+        const v = e[key];
+        row[key] = v && DATE_FIELDS.includes(key) ? new Date(`${v}T00:00:00Z`) : v ?? null;
+      }
+      const added = ws.addRow(row);
+      for (const k of DATE_FIELDS) added.getCell(k).numFmt = 'yyyy-mm-dd';
+    }
+
+    ws.autoFilter = { from: { row: 1, column: 1 }, to: { row: 1, column: EXPORT_COLUMNS.length } };
+
+    return {
+      buffer: Buffer.from(await wb.xlsx.writeBuffer()),
+      filename: `employees_${today()}.xlsx`,
+    };
+  }
+
 }
 
 export default new EmployeeService();

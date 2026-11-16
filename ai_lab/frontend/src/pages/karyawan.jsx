@@ -4,11 +4,11 @@ import { toast } from 'sonner';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { getEmployees } from '@/api/employees.api';
+import { exportEmployees, getEmployees } from '@/api/employees.api';
 import { normalise, teamNiks } from '@/components/dashboard/dashboardMetrics.js';
 import EmployeeSidePanel from '@/components/karyawan/EmployeeSidePanel';
 import { Tag, WarnTag } from '@/components/karyawan/EmployeeTags';
-import { dec, rowKey } from '@/components/karyawan/karyawanUtils.js';
+import { blobErrorMessage, dec, downloadBlob, filenameFromHeader, rowKey } from '@/components/karyawan/karyawanUtils.js';
 
 const SELECT_CLASS = 'h-9 rounded-lg border border-input bg-card px-2.5 text-sm';
 const TH = 'sticky top-0 border-b border-border bg-muted/60 px-2.5 py-2 text-left text-[11.5px] font-semibold uppercase tracking-wide text-muted-foreground';
@@ -40,6 +40,7 @@ export default function Karyawan() {
   const [error, setError] = useState(null);
   const [reloadKey, setReloadKey] = useState(0);
   const [selKey, setSelKey] = useState(null);
+  const [exporting, setExporting] = useState(false);
 
   // Filters live in the URL, so /karyawan?warn=urg works from the Beranda KPIs.
   const [params, setParams] = useSearchParams();
@@ -106,6 +107,19 @@ export default function Karyawan() {
     });
   }, [scoped, f.q, f.aktif, f.divisi, f.lokasi, f.status, f.warn, f.prob]);
 
+  const exportXlsx = async () => {
+    setExporting(true);
+    try {
+      const res = await exportEmployees();
+      const name = filenameFromHeader(res.headers?.['content-disposition']) ?? `employees_${new Date().toISOString().slice(0, 10)}.xlsx`;
+      downloadBlob(res.data, name);
+      toast(`Ekspor selesai: ${name}`);
+    } catch (err) {
+      toast(await blobErrorMessage(err, 'Gagal mengekspor data'));
+    } finally {
+      setExporting(false);
+    }
+  };
   const selected = scoped?.find((e) => rowKey(e) === selKey) ?? null;
   const boss = selected && all ? all.find((x) => x.nik === selected.atasan) : null;
   const openProfile = (e) => navigate(`/karyawan/${e.id ?? e.nik}`);
@@ -174,10 +188,11 @@ export default function Karyawan() {
                   variant="outline"
                   size="sm"
                   className="h-8 text-xs"
-                  // MOCK: the real .xlsx export + audit log come later
-                  onClick={() => toast('Disimulasikan: ekspor .xlsx · tercatat di audit (field sensitif tidak ikut)')}
+                  disabled={exporting}
+                  title="Ekspor semua karyawan (.xlsx)"
+                  onClick={exportXlsx}
                 >
-                  ⇩ Ekspor
+                  {exporting ? 'Mengekspor…' : '⇩ Ekspor'}
                 </Button>
                 <Button size="sm" className="h-8 text-xs" onClick={() => navigate('/scan')}>＋ Tambah</Button>
               </>

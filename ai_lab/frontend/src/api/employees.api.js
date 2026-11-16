@@ -12,3 +12,4 @@ export const scanEmployeeDocument = (file) => {
   form.append('file', file);
   return api.post('/employee/scan', form); 
 };
+export const exportEmployees = () => api.get('/employee/export', { responseType: 'blob' });
