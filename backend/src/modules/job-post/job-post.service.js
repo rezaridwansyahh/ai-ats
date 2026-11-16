@@ -105,7 +105,7 @@ class JobPostService {
       if (!account_id) {
         throw { status: 400, message: `account_id is required for platform ${platform}` };
       }
-      const account = await JobAccount.getById(account_id);
+      const account = await JobAccount.findById(account_id);
       if (!account || account.user_id !== user_id || account.portal_name !== platform) {
         throw { status: 400, message: `No matching ${platform} account found for this user` };
       }

@@ -8,6 +8,18 @@ class AuthController {
     try {
       const login = await authService.login(email, password)
 
+      // Mirrors the JWT's own expiry — lets the cookie-checker extension
+      // (which has no login UI of its own) read this via chrome.cookies
+      // and forward it as a Bearer token. The app itself still reads the
+      // token from the JSON body into localStorage, same as before.
+      res.cookie('ats_token', login.token, {
+        httpOnly: true,
+        secure: process.env.NODE_ENV === 'production',
+        sameSite: process.env.NODE_ENV === 'production' ? 'none' : 'lax',
+        domain: process.env.COOKIE_DOMAIN || undefined,
+        maxAge: 60 * 60 * 1000,
+      });
+
       return res.status(200).json(login);
 
     } catch (err) {

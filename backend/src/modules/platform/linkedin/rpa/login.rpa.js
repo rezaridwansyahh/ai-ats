@@ -1,6 +1,7 @@
 class LinkedInLoginService {
-  checkIsLoggedIn(page) {
-    return page.url().includes("/talent/");
+  async checkRedirectHome(page) {
+    await page.goto('https://www.linkedin.com/talent/home', { waitUntil: 'networkidle2', timeout: 60000 });
+    return page.url().includes('/talent/');
   }
 
   async fillEmail(page, email) {
@@ -29,13 +30,8 @@ class LinkedInLoginService {
     await this.clickLoginButton(page);
   }
 
-  // Takes an already-resolved account ({ email, password }) — credential
-  // lookup/decryption happens one level up, in linkedin.service.js. Returns
-  // the fresh cookies/userAgent as data instead of persisting them itself —
-  // the caller decides where that gets saved.
   async authenticatedPage(page, account) {
-    console.log("check page");
-    const isLoggedIn = this.checkIsLoggedIn(page);
+    const isLoggedIn = await this.checkRedirectHome(page);
 
     if (isLoggedIn) {
       console.log("cookies valid");

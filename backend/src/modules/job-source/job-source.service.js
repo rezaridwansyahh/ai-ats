@@ -40,7 +40,7 @@ class JobSourceService {
   }
 
   async getByAccountId(account_id) {
-    const account = await JobAccount.getById(account_id);
+    const account = await JobAccount.findById(account_id);
     if (!account) throw { status: 404, message: 'Job account not found' };
 
     const postings = await JobSource.getByAccountId(account_id);
@@ -119,7 +119,7 @@ class JobSourceService {
     if (!account_id) {
       throw { status: 400, message: 'account_id is required' };
     }
-    const account = await JobAccount.getById(account_id);
+    const account = await JobAccount.findById(account_id);
     if (!account || account.user_id !== user_id || account.portal_name !== 'seek') {
       throw { status: 404, message: 'No matching seek account found for this user' };
     }

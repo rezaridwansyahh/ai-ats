@@ -149,7 +149,7 @@ class LinkedInService {
       // Resolve the owning company from the job account so synced applicants are
       // scoped correctly — without this, applicants insert with company_id=NULL
       // and silently never show up in Talent Pool (WHERE ma.company_id = $1).
-      const account = await jobAccountModel.getById(account_id);
+      const account = await jobAccountModel.findById(account_id);
       const company_id = account?.company_id || null;
 
       // Company name is just for a readable storage folder — resolved once up
