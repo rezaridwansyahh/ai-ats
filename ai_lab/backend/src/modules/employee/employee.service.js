@@ -3,7 +3,7 @@ import aiService from '../../shared/services/ai.service.js';
 import { daysBetween, addMonths, isRealDate, today } from '../../shared/utils/date.util.js';
 import ExcelJS from 'exceljs';
 
-const EXPORT_COLUMNS = [
+export const EXPORT_COLUMNS = [
   { header: 'NIK Internal', key: 'nik', width: 12 },
   { header: 'Nama Lengkap', key: 'nama', width: 24 },
   { header: 'Jenis Kelamin', key: 'jk', width: 14 },
@@ -50,7 +50,7 @@ function clean(body) {
   return f;
 }
 
-const referenceDate = () => {
+export const referenceDate = () => {
   const env = process.env.REFERENCE_DATE;
   return /^\d{4}-\d{2}-\d{2}$/.test(env ?? '') ? env : today();
 };

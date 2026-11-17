@@ -12,8 +12,9 @@ function getClient() {
 }
 
 async function complete(params) {
+  const openai = getClient(); 
   try {
-    return await getClient().chat.completions.create({ model: MODEL, ...params });
+    return await openai.chat.completions.create({ model: MODEL, ...params });
   } catch (err) {
     console.error('OpenAI request failed:', err.status, err.message);
     throw { status: 502, message: 'AI service is unavailable, please try again' };
@@ -29,7 +30,6 @@ const ENUMS = {
 };
 
 class AIService {
-  // Returns the summary as a plain string.
   async summarizeEmployee(facts) {
     const prompt = `Kamu adalah asisten HR. Tulis ringkasan singkat tentang SATU karyawan berdasarkan fakta di bawah ini.
 
@@ -110,6 +110,54 @@ Rules:
       throw { status: 422, message: 'No employee data could be read from this document' };
     }
     return fields;
+  }
+
+  async mapEmployeeColumns(columns, fields) {
+    const keys = fields.map((f) => f.key);
+    const prompt = `You map column headers of an Indonesian HR employee spreadsheet to database fields. Return STRICT JSON only (no prose, no markdown):
+
+{ "mapping": [ { "header": string, "field": string|null, "confidence": 0-1 } ] }
+
+Database fields:
+${fields.map((f) => `- ${f.key}: ${f.description}`).join('\n')}
+
+Rules:
+- Use only the field keys listed above. Use null when no field fits (e.g. salary, phone, ID card numbers, notes, row numbers).
+- Each field may be used for at most one header.
+- Echo each header exactly as given and return one entry per header.
+- Use the sample values to decide ambiguous headers (e.g. "Status": Tetap/Kontrak means status; Y/N or Aktif/Keluar means aktif).
+- confidence is how sure you are (0 to 1).
+
+COLUMNS:
+${JSON.stringify(columns, null, 2)}`;
+
+    const response = await complete({
+      messages: [{ role: 'user', content: prompt }],
+      response_format: { type: 'json_object' },
+      temperature: 0,
+    });
+
+    let parsed;
+    try {
+      parsed = JSON.parse(response.choices[0]?.message?.content || '{}');
+    } catch {
+      throw { status: 502, message: 'AI returned an unreadable answer, please try again' };
+    }
+
+    const headers = new Set(columns.map((c) => c.header));
+    const candidates = (Array.isArray(parsed.mapping) ? parsed.mapping : [])
+      .filter((m) => m && headers.has(m.header) && keys.includes(m.field))
+      .map((m) => ({ header: m.header, field: m.field, confidence: Math.max(0, Math.min(1, Number(m.confidence) || 0)) }))
+      .sort((a, b) => b.confidence - a.confidence);
+
+    const usedHeaders = new Set(), usedFields = new Set(), out = [];
+    for (const c of candidates) {
+      if (usedHeaders.has(c.header) || usedFields.has(c.field)) continue;
+      usedHeaders.add(c.header);
+      usedFields.add(c.field);
+      out.push(c);
+    }
+    return out;
   }
 }
 

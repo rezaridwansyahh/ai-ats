@@ -82,8 +82,8 @@ class EmployeeModel {
     return this.getSummary(employee_id);
   }
 
-  async nextNik(yy) {
-    const result = await getDb().query(`
+  async nextNik(yy, db = getDb()) {
+    const result = await db.query(`
       SELECT COALESCE(MAX(SUBSTRING(nik FROM 5)::int), 0) + 1 AS n
       FROM master_employee
       WHERE nik ~ $1
