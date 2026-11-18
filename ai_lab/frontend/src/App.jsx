@@ -6,6 +6,7 @@ import Karyawan from "./pages/Karyawan"
 import KaryawanDetail from "./pages/KaryawanDetail"
 import ScanDokumen from "./pages/ScanDokumen"
 import Impor from "./pages/Import"
+import Demografi from "./pages/Demografi"
 
 function ComingSoon() {
   return (
@@ -25,6 +26,7 @@ function App() {
           <Route path="/karyawan/:id" element={<KaryawanDetail />} />
           <Route path="/scan" element={<ScanDokumen />} />
           <Route path="/impor" element={<Impor />} />
+          <Route path="/dashboard" element={<Demografi />} />
           <Route path="*" element={<ComingSoon />} />
         </Route>
       </Routes>

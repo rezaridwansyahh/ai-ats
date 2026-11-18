@@ -62,7 +62,8 @@ export function normalise(rows) {
 
     e.akhirProb = e.status === 'PKWTT' && e.tgl_masuk ? addMonths(e.tgl_masuk, PROB_MONTHS) : null;
     const left = isActive && e.akhirProb ? daysBetween(REF_DATE, e.akhirProb) : null;
-    e.probSisa = e.dalamProb = e.probSisa != null;
+    e.probSisa = left != null && left >= 0 ? left : null;
+    e.dalamProb = e.probSisa != null;
     e.usia = e.tgl_lahir ? fullYears(e.tgl_lahir, REF_DATE) : null;
     e.generasi = e.tgl_lahir ? generation(Number(e.tgl_lahir.slice(0, 4))) : '';
     const endDate = e.aktif === 'Keluar' && e.tgl_keluar ? e.tgl_keluar : REF_DATE;
