@@ -80,9 +80,9 @@ const finalSeed = async () => {
     // 2. roles
     for (const role of rolesData) {
       await getDb().query(
-        `INSERT INTO master_roles (id, name, additional)
-         VALUES ($1, $2, $3)`,
-        [role.id, role.name, JSON.stringify(role.additional || {})]
+        `INSERT INTO master_roles (id, name, additional, is_system)
+         VALUES ($1, $2, $3, $4)`,
+        [role.id, role.name, JSON.stringify(role.additional || {}), !!role.is_system]
       );
     }
 

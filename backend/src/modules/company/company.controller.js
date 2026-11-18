@@ -10,6 +10,15 @@ class CompanyController {
     }
   }
 
+  getAll = async (req, res) => {
+    try {
+      const companies = await companyService.getAll();
+      res.json(companies);
+    } catch (err) {
+      res.status(err.status || 500).json({ message: err.message });
+    }
+  }
+
   async create(req, res) {
     try {
       const company = await companyService.create(req.body || {});

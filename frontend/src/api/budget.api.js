@@ -26,6 +26,12 @@ const budgetApi = {
     if (since) params.since = since;
     const response = await apiClient.get('/company-usage', { params });
     return response.data;
+  },
+
+  // Platform-wide MTD AI spend, across every tenant — Super Admin only.
+  getPlatformSummary: async () => {
+    const response = await apiClient.get('/company-usage/platform-summary');
+    return response.data;
   }
 };
 

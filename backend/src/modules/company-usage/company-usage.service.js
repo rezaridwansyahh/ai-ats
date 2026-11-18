@@ -55,6 +55,11 @@ class CompanyUsageService {
     }
   }
 
+  async getPlatformMonthToDateSpend() {
+    const monthStart = new Date(getCurrentMonthStart());
+    return await CompanyUsageModel.platformSpendSince(monthStart.toISOString());
+  }
+
   async list(company_id, opts) {
     return await CompanyUsageModel.listByCompany(Number(company_id), opts);
   }

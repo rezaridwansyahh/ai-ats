@@ -7,6 +7,10 @@ class CompanyService {
     return company;
   }
 
+  async getAll() {
+    return await CompanyModel.findAll();
+  }
+
   async create(payload) {
     if (!payload?.name) throw { status: 400, message: 'name is required' };
     return await CompanyModel.create(payload);
@@ -22,7 +26,7 @@ class CompanyService {
   }
 
   async delete(id) {
-    const existing = await CompanyModel.getById(id);
+    const existing = await CompanyModel.findById(id);
     if (!existing) throw { status: 404, message: 'Company not found' };
     return await CompanyModel.delete(id);
   }

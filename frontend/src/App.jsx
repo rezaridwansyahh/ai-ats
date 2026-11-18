@@ -55,7 +55,8 @@ import InterviewPacksPage from "./pages/InterviewPacksPage"
 import InterviewPackPortal from "./pages/portal/InterviewPackPortal"
 
 import AdminDashboardLayout from "./components/layout/Admin-Dashboard-Layout"
-import AdminDashboard from "./pages/AdminDashboard" 
+import AdminDashboard from "./pages/AdminDashboard"
+import { RequireSuperAdmin } from "./components/auth/RequireSuperAdmin"
 
 function App() {
   return (
@@ -136,7 +137,7 @@ function App() {
         <Route path="*" element={<ComingSoonPage />} />
         </Route>
         {/* Superadmin routes — separate layout, no PipelineBar */}
-        <Route element={<AdminDashboardLayout />}>
+        <Route element={<RequireSuperAdmin><AdminDashboardLayout /></RequireSuperAdmin>}>
           <Route path="/portal/admin/dashboard" element={<AdminDashboard />} />
           <Route path="/portal/admin/companies" element={<ComingSoonPage />} />
           <Route path="/portal/admin/roles" element={<ComingSoonPage />} />

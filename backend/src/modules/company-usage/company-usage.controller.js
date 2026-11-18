@@ -1,6 +1,15 @@
 import companyUsageService from './company-usage.service.js';
 
 class CompanyUsageController {
+  async getPlatformSummary(req, res) {
+    try {
+      const aiSpendMtd = await companyUsageService.getPlatformMonthToDateSpend();
+      res.status(200).json({ aiSpendMtd });
+    } catch (err) {
+      res.status(err.status || 500).json({ message: err.message });
+    }
+  }
+
   async list(req, res) {
     try {
       // Default to caller's company unless an admin explicitly passes ?company_id=

@@ -2,7 +2,7 @@ import Role from '../../modules/role/role.model.js';
 
 export async function attachRoleFlags(req, res, next) {
   try {
-    const roles = await Role.getByUserId(req.user.id);
+    const roles = await Role.getByUserId(req.user.user_id);
     req.user.isSuperAdmin = roles.some(r => r.is_system === true);
     next();
   } catch (err) {

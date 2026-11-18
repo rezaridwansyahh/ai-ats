@@ -55,6 +55,17 @@ class CompanyUsageModel {
     return result.rows;
   }
 
+  // Platform-wide, never scoped by company_id — for the Super Admin dashboard.
+  async platformSpendSince(since) {
+    const result = await getDb().query(
+      `SELECT COALESCE(SUM(estimated_cost_usd), 0) AS total_usd
+       FROM company_usage
+       WHERE created_at >= $1`,
+      [since]
+    );
+    return Number(result.rows[0].total_usd);
+  }
+
   async summaryByCompany(company_id, { since = null } = {}) {
     const params = [company_id];
     let where = `WHERE company_id = $1`;

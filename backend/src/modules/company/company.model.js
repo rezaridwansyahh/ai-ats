@@ -6,6 +6,19 @@ class CompanyModel {
     return company.rows[0];
   }
 
+  // Platform-admin view: every tenant plus a cheap headcount, for the
+  // Super Admin dashboard/companies list — never scoped by company_id.
+  async findAll() {
+    const result = await getDb().query(`
+      SELECT c.*, COUNT(u.id)::int AS user_count
+      FROM core_company c
+      LEFT JOIN master_users u ON u.company_id = c.id
+      GROUP BY c.id
+      ORDER BY c.id ASC
+    `);
+    return result.rows;
+  }
+
   async create({ name, description, email, website, logo_url }) {
     const result = await getDb().query(
       `INSERT INTO core_company (name, description, email, website, logo_url)
@@ -18,7 +31,7 @@ class CompanyModel {
 
   async update(id, fields) {
     const keys = Object.keys(fields);
-    if (keys.length === 0) return await this.getById(id);
+    if (keys.length === 0) return await this.findById(id);
     const setClause = keys.map((k, i) => `${k} = $${i + 1}`).join(', ');
     const result = await getDb().query(
       `UPDATE core_company SET ${setClause}, updated_at = NOW() WHERE id = $${keys.length + 1} RETURNING *`,

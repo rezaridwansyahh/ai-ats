@@ -1,6 +1,8 @@
 import { useEffect, useState } from 'react';
-import { Building2, Users, AlertTriangle } from 'lucide-react';
+import { Building2, AlertTriangle } from 'lucide-react';
 import { PageHeader } from '@/components/common';
+import { getAllCompanies } from '@/features/company/api/company.api';
+import budgetApi from '@/api/budget.api';
 
 function getGreeting() {
   const h = new Date().getHours();
@@ -19,6 +21,8 @@ function getDisplayName(user) {
 
 export default function AdminDashboard() {
   const [user, setUser]           = useState(null);
+  const [companies, setCompanies] = useState([]);
+  const [aiSpendMtd, setAiSpendMtd] = useState(0);
   const [loading, setLoading]     = useState(true);
   const [error, setError]         = useState(null);
 
@@ -31,12 +35,36 @@ export default function AdminDashboard() {
     }
   }, []);
 
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      setLoading(true);
+      setError(null);
+      try {
+        const [companiesData, spendData] = await Promise.all([
+          getAllCompanies(),
+          budgetApi.getPlatformSummary(),
+        ]);
+        if (cancelled) return;
+        setCompanies(companiesData || []);
+        setAiSpendMtd(spendData?.aiSpendMtd ?? 0);
+      } catch (err) {
+        if (!cancelled) setError(err.response?.data?.message || err.message || 'Failed to load dashboard');
+      } finally {
+        if (!cancelled) setLoading(false);
+      }
+    })();
+    return () => { cancelled = true; };
+  }, []);
+
   const greeting    = getGreeting();
   const displayName = getDisplayName(user);
+  const totalUsers  = companies.reduce((sum, c) => sum + (c.user_count ?? 0), 0);
 
   const STATS = [
-    { label: 'Total Users',   value: '—', sub: 'pending cross-tenant API' },
-    { label: 'AI Spend (MTD)', value: '—', sub: 'pending API' },
+    { label: 'Total Companies', value: loading ? '—' : companies.length },
+    { label: 'Total Users',     value: loading ? '—' : totalUsers },
+    { label: 'AI Spend (MTD)',  value: loading ? '—' : `$${Number(aiSpendMtd).toFixed(2)}` },
   ];
 
   return (
@@ -47,12 +75,18 @@ export default function AdminDashboard() {
         subtitle="Platform overview across all tenants."
       />
 
+      {error && (
+        <div className="flex items-center gap-2 px-4 py-3 rounded-lg border border-red-200 bg-red-50 text-sm text-red-600">
+          <AlertTriangle className="h-4 w-4 shrink-0" />
+          <span>{error}</span>
+        </div>
+      )}
+
       <div className="grid grid-cols-3 gap-4">
         {STATS.map((stat, i) => (
           <div key={i} className="rounded-xl border border-border bg-card px-5 py-4">
             <p className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">{stat.label}</p>
             <p className="text-2xl font-bold text-foreground mt-0.5">{stat.value}</p>
-            <p className="text-[11px] text-muted-foreground">{stat.sub}</p>
           </div>
         ))}
       </div>
@@ -67,6 +101,25 @@ export default function AdminDashboard() {
           </div>
         </div>
 
+        {loading ? (
+          <div className="px-4 py-6 text-sm text-muted-foreground text-center">Loading…</div>
+        ) : companies.length === 0 ? (
+          <div className="px-4 py-6 text-sm text-muted-foreground text-center">No companies yet.</div>
+        ) : (
+          <div className="divide-y divide-border">
+            {companies.map((c) => (
+              <div key={c.id} className="flex items-center justify-between px-4 py-3">
+                <div>
+                  <p className="text-sm font-semibold">{c.name}</p>
+                  <p className="text-[11px] text-muted-foreground">{c.email || '—'}</p>
+                </div>
+                <span className="text-xs text-muted-foreground">
+                  {c.user_count} user{c.user_count === 1 ? '' : 's'}
+                </span>
+              </div>
+            ))}
+          </div>
+        )}
       </div>
     </div>
   );
