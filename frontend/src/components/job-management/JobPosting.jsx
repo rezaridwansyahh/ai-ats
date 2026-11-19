@@ -1,20 +1,16 @@
 import { useState, useEffect, useCallback } from 'react';
 import {
-  Briefcase, MapPin, AlertTriangle, Eye, Save, Rocket,
-  Info, ChevronDown, Globe, Lock, Home,
+  Briefcase, MapPin, AlertTriangle, Eye, Home, Globe,
 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group"
-import { Collapsible, CollapsibleContent } from '@/components/ui/collapsible';
+import { Skeleton } from '@/components/ui/skeleton';
 
-import { toast } from 'sonner';
 import { getJobAccountsByUserId } from '@/features/job-account/api/account.api';
 import { getJobPostingByJobId } from '@/api/job-postings.api';
-import { publishJob } from '@/api/job-posting-seek.api';
 
 import linkedin from '@/assets/logos/linkedin.png';
 import seek from '@/assets/logos/seek.png';
@@ -27,8 +23,6 @@ import JobPreviewModal from './JobPreviewModal';
 
 const LOGOS = { linkedin, seek, glints, instagram, facebook, whatsapp };
 
-// ── Constants ────────────────────────────────────────────────────────
-
 const STATUS_COLORS = {
   Draft: 'bg-orange-50 text-orange-600 border-orange-200',
   Active: 'bg-emerald-50 text-emerald-600 border-emerald-200',
@@ -38,26 +32,20 @@ const STATUS_COLORS = {
   Blocked: 'bg-gray-50 text-gray-500 border-gray-200',
 };
 
-const PUBLIC_CHANNELS = [
-  { id: 'linkedin', name: 'LinkedIn', published: false },
-  { id: 'seek', name: 'Seek', published: false },
-  { id: 'glints', name: 'Glints', published: false }
-];
-
-const PRIVATE_CHANNELS = [
-  { id: 'instagram', name: 'Instagram', published: false },
-  { id: 'facebook', name: 'Facebook', published: false },
-  { id: 'whatsapp', name: 'WhatsApp', published: false }
-];
+const PORTAL_NAMES = {
+  linkedin: 'LinkedIn',
+  seek: 'Seek',
+  glints: 'Glints',
+  instagram: 'Instagram',
+  facebook: 'Facebook',
+  whatsapp: 'WhatsApp',
+};
 
 // ── Component ────────────────────────────────────────────────────────
 
 export default function JobPosting({ selectedJob, onSelectionChange }) {
   const [group, setGroup] = useState(null);
-  const [channels, setChannels] = useState({ "public": false, "private": false });
-  const [publicChannels, setPublicChannels] = useState(PUBLIC_CHANNELS);
-  const [privateChannels, setPrivateChannels] = useState(PRIVATE_CHANNELS);
-  const [selectedChannels, setSelectedChannels] = useState([])
+  const [selectedAccountIds, setSelectedAccountIds] = useState([]);
 
   const [accounts, setAccounts] = useState([]);
   const [loading,  setLoading]  = useState(true);
@@ -65,83 +53,18 @@ export default function JobPosting({ selectedJob, onSelectionChange }) {
   const [jobPost,  setJobPost]  = useState([]);
 
   const [previewOpen, setPreviewOpen] = useState(false);
-  const [publishing, setPublishing] = useState(false);
 
-  const updatePublic = (id, field, value) => {
-    setPublicChannels(prev => prev.map(ch => ch.id === id ? { ...ch, [field]: value } : ch));
-  };
-
-  const updatePrivate = (id, field, value) => {
-    setPrivateChannels(prev => prev.map(ch => ch.id === id ? { ...ch, [field]: value } : ch));
-  };
-
-  const toggleChannels = (key) => {
-    setChannels(prev => ({ ...prev, [key]: !prev[key] }));
-  }
-
-  const toggleGroup = (group) => {
-    setGroup(group);
-    //reset other
-    setChannels({ "public": false, "private": false })
-    setPublicChannels(PUBLIC_CHANNELS);
-    setPrivateChannels(PRIVATE_CHANNELS);
-  }
-
-  const handlePublishAll = async () => {
-    const selected = [...publicChannels, ...privateChannels].filter(
-      ch => selectedChannels.includes(ch.id)
+  const toggleAccount = (accountId) => {
+    setSelectedAccountIds(prev =>
+      prev.includes(accountId) ? prev.filter(id => id !== accountId) : [...prev, accountId]
     );
-    if (selected.length === 0) {
-      setError('Select at least one channel to publish to.');
-      return;
-    }
-
-    const platforms = [];
-    const unconnected = [];
-    for (const ch of selected) {
-      const account = accounts.find(acc => acc.portal_name === ch.id && acc.status_connection === 'Connected');
-      if (account) platforms.push({ platform: ch.id, account_id: account.id });
-      else unconnected.push(ch.name);
-    }
-
-    if (platforms.length === 0) {
-      setError(`No connected account for: ${unconnected.join(', ')}. Connect it in Settings → Integrations first.`);
-      return;
-    }
-
-    setPublishing(true);
-    setError(null);
-    try {
-      const { data } = await publishJob({
-        job_id: selectedJob.id,
-        type: 'Publish',
-        user_id: user?.id,
-        platforms,
-      });
-
-      const queuedPlatforms = (data.queued || []).map(q => q.platform);
-      setPublicChannels(prev => prev.map(ch => platforms.some(p => p.platform === ch.id) ? { ...ch, published: true } : ch));
-      setPrivateChannels(prev => prev.map(ch => platforms.some(p => p.platform === ch.id) ? { ...ch, published: true } : ch));
-
-      if (queuedPlatforms.length > 0) {
-        toast.success(`Queued for posting: ${queuedPlatforms.join(', ')}`);
-      }
-      if (unconnected.length > 0) {
-        toast.error(`Skipped (not connected): ${unconnected.join(', ')}`);
-      }
-      const noRpaYet = platforms.map(p => p.platform).filter(p => !queuedPlatforms.includes(p));
-      if (noRpaYet.length > 0) {
-        toast.warning(`${noRpaYet.join(', ')}: recorded, but automated posting isn't wired up for this platform yet.`);
-      }
-    } catch (err) {
-      setError(err.response?.data?.message || err.message || 'Failed to publish');
-    } finally {
-      setPublishing(false);
-    }
   };
 
-  const [user] = useState(JSON.parse(localStorage.getItem('user')));
-  
+  const toggleGroup = (value) => {
+    setGroup(value);
+    setSelectedAccountIds([]);
+  };
+
   const fetchAccounts = useCallback(async () => {
     setLoading(true);
     setError(null);
@@ -149,7 +72,6 @@ export default function JobPosting({ selectedJob, onSelectionChange }) {
       const accounts = await getJobAccountsByUserId();
       setAccounts(accounts || []);
     } catch (err) {
-      console.log(err.response?.data?.message || err.message || 'Failed to load job accounts')
       setError(err.response?.data?.message || err.message || 'Failed to load job accounts');
     } finally {
       setLoading(false);
@@ -167,63 +89,48 @@ export default function JobPosting({ selectedJob, onSelectionChange }) {
       const { data } = await getJobPostingByJobId(selectedJob.id);
       setJobPost(data.jobPosts || []);
     } catch(err) {
-      console.log(err.response?.data?.message || err.message || 'Failed to load job post')
       setError(err.response?.data?.message || err.message || 'Failed to load job post');
     } finally {
       setLoading(false);
     }
   }, [selectedJob?.id, selectedJob?.status]);
 
-  // Notify parent of selection changes
+  // Bubble selection up to the parent — the actual publish action happens
+  // when the "Publish Job" button is clicked, not from this component.
   useEffect(() => {
     if (!onSelectionChange) return;
-    onSelectionChange({
-      internal: {
-        enabled: group === 'internal',
-      },
-      public: {
-        enabled: channels.public,
-        channels: channels.public ? publicChannels.filter(c => selectedChannels.includes(c.id)).map(c => c.id) : [],
-      },
-      private: {
-        enabled: channels.private,
-        channels: channels.private ? privateChannels.filter(c => selectedChannels.includes(c.id)).map(c => c.id) : [],
-      }
-    });
-  }, [group, publicChannels, privateChannels, selectedChannels, onSelectionChange, jobPost]);
-
-  // Fetch Account
-  useEffect(() => {
-    async function fetch() {
-      await fetchAccounts(user.id);
-      await fetchJobSourcing(selectedJob.id)
+    if (group !== 'channels') {
+      onSelectionChange([]);
+      return;
     }
-    fetch();
-  }, [fetchAccounts, fetchJobSourcing])
+    const selection = accounts
+      .filter(acc => selectedAccountIds.includes(acc.id))
+      .map(acc => ({ platform: acc.portal_name, account_id: acc.id }));
+    onSelectionChange(selection);
+  }, [group, accounts, selectedAccountIds, onSelectionChange]);
+
+  useEffect(() => {
+    fetchAccounts();
+    fetchJobSourcing();
+  }, [fetchAccounts, fetchJobSourcing]);
 
   // Prefill selection from existing job_post when job is Active
   useEffect(() => {
     if (selectedJob?.status !== 'Active' || !Array.isArray(jobPost) || jobPost.length === 0) return;
 
-    const publicIds = PUBLIC_CHANNELS.map(c => c.id);
-    const privateIds = PRIVATE_CHANNELS.map(c => c.id);
-
     const hasInternal = jobPost.some(p => p.type === 'Internal' || p.platform === 'internal');
-    const postedPublic = jobPost.filter(p => publicIds.includes(p.platform)).map(p => p.platform);
-    const postedPrivate = jobPost.filter(p => privateIds.includes(p.platform)).map(p => p.platform);
+    const postedPlatforms = jobPost.map(p => p.platform).filter(p => p && p !== 'internal');
 
-    if (hasInternal && postedPublic.length === 0 && postedPrivate.length === 0) {
+    if (hasInternal && postedPlatforms.length === 0) {
       setGroup('internal');
       return;
     }
 
     setGroup('channels');
-    setChannels({
-      public: postedPublic.length > 0,
-      private: postedPrivate.length > 0,
-    });
-    setSelectedChannels([...postedPublic, ...postedPrivate]);
-  }, [jobPost, selectedJob?.status]);
+    setSelectedAccountIds(
+      accounts.filter(acc => postedPlatforms.includes(acc.portal_name)).map(acc => acc.id)
+    );
+  }, [jobPost, accounts, selectedJob?.status]);
 
   // Guard
   if (!selectedJob) {
@@ -235,7 +142,6 @@ export default function JobPosting({ selectedJob, onSelectionChange }) {
       </div>
     );
   }
-  
 
   return (
     <div className="space-y-5">
@@ -262,7 +168,7 @@ export default function JobPosting({ selectedJob, onSelectionChange }) {
                 </div>
               </div>
             </div>
-            <span className="text-[10px] font-bold text-muted-foreground tracking-widest">STEP 3</span>
+            <span className="text-[10px] font-bold text-muted-foreground tracking-widest">STEP 4</span>
           </div>
         </CardContent>
       </Card>
@@ -277,8 +183,8 @@ export default function JobPosting({ selectedJob, onSelectionChange }) {
         </span>
       </div>
 
-      {/* ── Internal Hire Only Card ── */}
       <RadioGroup value={group} onValueChange={toggleGroup}>
+        {/* ── Internal Hire Only ── */}
         <Card className="py-0 gap-0">
           <CardContent className="py-3.5 px-5">
             <label htmlFor="internal">
@@ -294,84 +200,49 @@ export default function JobPosting({ selectedJob, onSelectionChange }) {
           </CardContent>
         </Card>
 
-        {/* ── Publish to Channels Card ── */}
+        {/* ── Publish to Connected Accounts ── */}
         <Card className="py-0 gap-0">
           <CardHeader className="py-3 px-5">
             <label htmlFor="channels">
               <div className="flex items-center gap-3 cursor-pointer">
                 <RadioGroupItem value="channels" className="cursor-pointer" id="channels"/>
+                <Globe className="h-4 w-4 text-primary" />
                 <div>
-                  <CardTitle className="text-[13px] font-bold">Publish to Channels</CardTitle>
-                  <p className="text-[10px] text-muted-foreground mt-0.5">Select visibility groups to publish your job posting</p>
+                  <CardTitle className="text-[13px] font-bold">Publish to Connected Accounts</CardTitle>
+                  <p className="text-[10px] text-muted-foreground mt-0.5">Choose which connected job account(s) to post this job to</p>
                 </div>
               </div>
             </label>
           </CardHeader>
-          <CardContent>
-            {/* Quota info banner */}
-            <div className="flex items-center gap-2 mx-5 mb-3 px-3 py-2 rounded-lg bg-primary/5 border border-primary/10">
-              <Info className="h-3.5 w-3.5 text-primary shrink-0" />
-              <p className="text-[10px] text-muted-foreground">
-                You can set per-channel applicant quotas. Once the quota is reached, the channel stops accepting applications for this job.
-              </p>
-            </div>
-            
-            {group === 'channels' && 
-              <div>
-                {/* ── Group 1: Public ── */}
-                <VisibilityGroup
-                  checked={channels.public}
-                  onToggle={() => toggleChannels('public')}
-                  label="Public"
-                  subtitle="Publish to job boards — visible in search results"
-                  icon={<Globe className="h-4 w-4" />}
-                  indicatorColor="bg-emerald-500"
-                >
-                  {publicChannels.map(ch => (
-                    <ChannelRow
-                      key={ch.id}
-                      channel={ch}
-                      accounts={accounts}
+          {group === 'channels' && (
+            <CardContent className="px-0 py-0">
+              {loading ? (
+                <div className="p-4 space-y-3 border-t">
+                  {Array.from({ length: 2 }).map((_, i) => (
+                    <Skeleton key={i} className="h-14 w-full" />
+                  ))}
+                </div>
+              ) : accounts.length === 0 ? (
+                <div className="px-4 py-6 text-sm text-muted-foreground text-center border-t">
+                  No job accounts connected yet. Connect one in Settings &rarr; Integrations.
+                </div>
+              ) : (
+                <div className="border-t">
+                  {accounts.map(account => (
+                    <AccountRow
+                      key={account.id}
+                      account={account}
                       jobPost={jobPost}
-                      onSelect={() => setSelectedChannels(prev => 
-                        prev.includes(ch.id) ? prev.filter(c => c !== ch.id) : [...prev, ch.id]
-                      )}
-                      onQuotaChange={v => updatePublic(ch.id, 'maxApplicants', v)}
-                      actionLabel="Publish"
-                      isSelected={selectedChannels.includes(ch.id)}
+                      isSelected={selectedAccountIds.includes(account.id)}
+                      onToggle={() => toggleAccount(account.id)}
                     />
                   ))}
-                </VisibilityGroup>
-
-                {/* ── Group 2: Private ── */}
-                <VisibilityGroup
-                  checked={channels.private}
-                  onToggle={() => toggleChannels('private')}
-                  label="Private"
-                  subtitle="Share via social media — direct link only, not indexed"
-                  icon={<Lock className="h-4 w-4" />}
-                  indicatorColor="bg-amber-500"
-                >
-                  {privateChannels.map(ch => (
-                    <ChannelRow
-                      key={ch.id}
-                      channel={ch}
-                      accounts={accounts}
-                      jobPost={jobPost}
-                      onSelect={() => setSelectedChannels(prev => 
-                        prev.includes(ch.id) ? prev.filter(c => c !== ch.id) : [...prev, ch.id]
-                      )}
-                      actionLabel={ch.id === 'whatsapp' ? 'Broadcast' : 'Share'}
-                      isSelected={selectedChannels.includes(ch.id)}
-                    />
-                  ))}
-                </VisibilityGroup>
-              </div>
-            }
-          </CardContent>
+                </div>
+              )}
+            </CardContent>
+          )}
         </Card>
       </RadioGroup>
-      
 
       {/* ── Error Banner ── */}
       {error && (
@@ -381,18 +252,9 @@ export default function JobPosting({ selectedJob, onSelectionChange }) {
         </div>
       )}
 
-      {/* ── Action Buttons ── */}
-      <div className="grid grid-cols-[1fr_1fr_2fr] gap-3">
-        <Button variant="outline" className="text-xs h-9" onClick={() => setPreviewOpen(true)}>
-          <Eye className="h-3.5 w-3.5 mr-1.5" /> Preview
-        </Button>
-        <Button variant="outline" className="text-xs h-9" onClick={() => alert('Draft saved (placeholder)')}>
-          <Save className="h-3.5 w-3.5 mr-1.5" /> Save as Draft
-        </Button>
-        <Button className="text-xs h-9" onClick={handlePublishAll} disabled={publishing}>
-          <Rocket className="h-3.5 w-3.5 mr-1.5" /> {publishing ? 'Publishing…' : 'Publish to All Channels'}
-        </Button>
-      </div>
+      <Button variant="outline" className="text-xs h-9" onClick={() => setPreviewOpen(true)}>
+        <Eye className="h-3.5 w-3.5 mr-1.5" /> Preview
+      </Button>
 
       <JobPreviewModal
         open={previewOpen}
@@ -406,107 +268,49 @@ export default function JobPosting({ selectedJob, onSelectionChange }) {
 
 // ── Sub-components ───────────────────────────────────────────────────
 
-function VisibilityGroup({ checked, onToggle, label, subtitle, icon, indicatorColor, children }) {
-  return (
-    <Collapsible open={checked} className="border-t">
-      <div
-        className={`flex items-center gap-3 px-5 py-3.5 cursor-pointer transition-colors ${checked ? 'bg-muted/40' : 'hover:bg-muted/20'}`}
-        onClick={onToggle}
-      >
-        <div className={`h-2 w-2 rounded-full shrink-0 ${indicatorColor}`} />
-        <Checkbox checked={checked} onCheckedChange={onToggle} onClick={e => e.stopPropagation()} />
-        <div className="flex items-center gap-2 flex-1">
-          <span className="text-muted-foreground">{icon}</span>
-          <div>
-            <span className="text-xs font-bold">{label}</span>
-            <p className="text-[10px] text-muted-foreground">{subtitle}</p>
-          </div>
-        </div>
-        <ChevronDown className={`h-4 w-4 text-muted-foreground transition-transform ${checked ? 'rotate-180' : ''}`} />
-      </div>
-      <CollapsibleContent>
-        <div className="border-t bg-muted/10">
-          {children}  
-        </div>
-      </CollapsibleContent>
-    </Collapsible>
-  );
-}
+function AccountRow({ account, jobPost, isSelected, onToggle }) {
+  const name = PORTAL_NAMES[account.portal_name] || account.portal_name;
+  const jobPosted = jobPost?.find(jp => jp.platform === account.portal_name);
+  const connected = account.status_connection === 'Connected';
 
-function ChannelRow({ channel: ch, accounts, jobPost, onSelect, actionLabel, isSelected}) {
-  const account = accounts?.find(acc => acc.portal_name === ch.id);
-  const jobPosted = jobPost?.find(jobPost => jobPost.platform === ch.id);
   return (
-    <div key={ch.id} className="flex justify-between items-center w-full border-b last:border-b-0">
-      <div className="flex items-center gap-10">
-        <div className="flex items-center gap-3 py-3 border-b last:border-b-0">
-          <div className="h-10 w-10 rounded-lg flex items-center justify-center text-white text-[10px] font-bold shrink-0">
-            <img src={LOGOS[ch.id]} />
-          </div>
-          <div className="flex-1 min-w-50">
-            <span className="text-sm font-semibold">{ch.name}</span>
-            <div className="text-xs text-gray-400">
-              Account: {account ? account?.email : '-'}
-            </div>
-          </div>
+    <div className="flex flex-col gap-3 w-full px-4 py-3 border-b last:border-b-0 lg:flex-row lg:items-center lg:justify-between lg:gap-4">
+      <div className="flex items-center gap-3 min-w-0">
+        <Checkbox
+          checked={isSelected}
+          disabled={!connected}
+          onCheckedChange={onToggle}
+        />
+        <div className="h-10 w-10 rounded-lg flex items-center justify-center shrink-0 overflow-hidden bg-muted/40">
+          <img src={LOGOS[account.portal_name]} alt={name} className="h-full w-full object-contain" />
         </div>
-        <div className="text-xs text-gray-400">
-          Last Connection: {account?.last_connect || '-'}
+        <div className="min-w-0 sm:w-44 sm:shrink-0">
+          <span className="text-sm font-semibold">{name}</span>
+          <div className="text-[11px] text-muted-foreground truncate" title={account.email || ''}>
+            Account: {account.email || '—'}
+          </div>
         </div>
       </div>
 
-      <div className="flex gap-5">
-        <div className="min-w-40 flex items-center justify-start">
-          <div className="text-xs text-gray-400 mr-5">
-            Status :
-          </div>
-          <div className="flex items-center">
-            { account?.status_connection === 'Connected' ?
-              <Badge variant="outline" className="text-[9px] px-1.5 py-0 bg-emerald-50 text-emerald-600 border-emerald-200">
-                Connected
-              </Badge> :
-              account?.status_connection === 'Re-connecting' ? 
-                <Badge variant="outline" className="text-[9px] px-1.5 py-0 bg-gray-50 text-gray-600 border-gray-200">
-                  Re-connecting...
-                </Badge> :
-                  <Badge variant="outline" className="text-[9px] px-1.5 py-0 bg-red-50 text-red-600 border-red-200">
-                    {account?.status_connection || 'Not Connected'}
-                  </Badge>
-              }
-          </div>
-        </div>
-        <div className="min-w-24 flex items-center justify-center">
-          {account?.status_connection === 'Connected'
-            ? jobPosted
-              ? jobPosted.status === 'Running'
-                ? (
-                <Badge className="bg-gray-100 text-gray-700 border-gray-200 text-[10px] px-3 py-1">Running</Badge>
-                ) 
-                : (jobPosted.status ==='Active' || jobPosted.status === 'Draft')
-                  ? (
-                  <Badge className="bg-emerald-100 text-emerald-700 border-emerald-200 text-[10px] px-3 py-1">Published</Badge>
-                ) : (
-                  <Button 
-                    size="sm"
-                    className="text-[11px] h-8 px-4"
-                    variant={isSelected ? "default" : "outline"}
-                    onClick={onSelect}
-                    >{isSelected ? "Selected" : actionLabel}</Button>
-                )
-              : (
-                <Button 
-                  size="sm"
-                  className="text-[11px] h-8 px-4"
-                  variant={isSelected ? "default" : "outline"}
-                  onClick={onSelect}
-                >{isSelected ? "Selected" : actionLabel}</Button>
-              ) 
-            : (
-              <Badge className="text-[9px] px-1.5 py-0 bg-red-50 text-red-600 border-red-200">Not Connected</Badge>
-            )
-          }
-        </div>
-        
+      <div className="flex flex-wrap items-center gap-3 lg:justify-end">
+        <Badge
+          variant="outline"
+          className={`text-[9px] px-1.5 py-0 ${
+            connected
+              ? 'bg-emerald-50 text-emerald-600 border-emerald-200'
+              : account.status_connection === 'Re-connecting'
+                ? 'bg-gray-50 text-gray-600 border-gray-200'
+                : 'bg-red-50 text-red-600 border-red-200'
+          }`}
+        >
+          {account.status_connection === 'Re-connecting' ? 'Re-connecting…' : (account.status_connection || 'Not connected')}
+        </Badge>
+
+        {jobPosted && (
+          <Badge className={`text-[10px] px-2 py-0.5 ${STATUS_COLORS[jobPosted.status] || ''}`}>
+            {jobPosted.status}
+          </Badge>
+        )}
       </div>
     </div>
   );

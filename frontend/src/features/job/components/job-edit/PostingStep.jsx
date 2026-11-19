@@ -3,7 +3,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import JobPosting from '@/components/job-management/JobPosting';
 
-export default function PostingStep({ job, step = 4, totalSteps = 5, onStepChange }) {
+export default function PostingStep({ job, step = 4, totalSteps = 5, onStepChange, onSelectionChange }) {
   return (
     <Card className="py-4 gap-3">
       <CardHeader className="flex flex-row items-center gap-2 pb-2">
@@ -28,7 +28,7 @@ export default function PostingStep({ job, step = 4, totalSteps = 5, onStepChang
       </CardHeader>
       <CardContent>
         {job?.id ? (
-          <JobPosting selectedJob={job} />
+          <JobPosting selectedJob={job} onSelectionChange={onSelectionChange} />
         ) : (
           <p className="text-xs text-muted-foreground italic py-2">
             Channel selection unlocks after the draft is created.

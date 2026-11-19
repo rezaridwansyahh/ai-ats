@@ -50,6 +50,7 @@ export default function JobEditPage() {
     isLocked,
     missingRequired, invalidUrlFields,
     handlePublish,
+    setPostingSelection,
   } = useJobEdit(idParam, creating, canEditNow);
 
   const {
@@ -210,6 +211,7 @@ export default function JobEditPage() {
                 step={step}
                 totalSteps={SECTIONS.length}
                 onStepChange={onStepChange}
+                onSelectionChange={setPostingSelection}
               />
             )}
 

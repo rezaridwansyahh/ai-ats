@@ -1,9 +1,11 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { toast } from 'sonner';
 import {
   getJobById, createJob, updateJob, updateJobStatus, generateJobAI, generateJobSkillsAI,
 } from '../api/job.api';
 import { getJobPipeline } from '@/api/pipeline.api';
+import { publishJob } from '@/api/job-posting-seek.api';
 
 // Fields the form auto-saves.
 const TRACKED_FIELDS = [
@@ -90,6 +92,10 @@ export function useJobEdit(idParam, creating, canEditNow) {
   const [generateSkillsError, setGenerateSkillsError] = useState(null);
   const [step, setStep] = useState(0); // active step: 0=Basics 1=JD 2=Pipeline 3=Battery 4=Posting
   const [hasStages, setHasStages] = useState(false); // server-confirmed pipeline presence
+  // [{platform, account_id}] — which connected accounts PostingStep has
+  // checked off to post to. Publishing itself only happens when the Publish
+  // Job button is clicked, not from the Posting step itself.
+  const [postingSelection, setPostingSelection] = useState([]);
 
   // Ref to coalesce auto-save requests
   const savingRef = useRef(false);
@@ -330,13 +336,33 @@ export function useJobEdit(idParam, creating, canEditNow) {
       // Ensure latest auto-save flushed before publishing
       await doSave();
       await updateJobStatus(job.id, 'Active');
+
+      // Channel posting is best-effort on top of the status change — a
+      // failure here shouldn't block the job from going live, since the
+      // recruiter can always retry posting from the Posting step later.
+      if (postingSelection.length > 0) {
+        try {
+          const user = JSON.parse(localStorage.getItem('user') || '{}');
+          const { data } = await publishJob({
+            job_id: job.id,
+            type: 'Publish',
+            user_id: user?.id,
+            platforms: postingSelection,
+          });
+          const queued = (data.queued || []).map((q) => q.platform);
+          if (queued.length > 0) toast.success(`Queued for posting: ${queued.join(', ')}`);
+        } catch (postErr) {
+          toast.error(postErr.response?.data?.message || 'Job is published, but queuing channel posting failed — retry from the Posting step.');
+        }
+      }
+
       navigate(`/sourcing/job-management/${job.id}`);
     } catch (err) {
       setError(err.response?.data?.message || err.message || 'Publish failed');
     } finally {
       setPublishing(false);
     }
-  }, [canEditNow, job?.id, missingRequired, invalidUrlFields, hasStages, doSave, navigate]);
+  }, [canEditNow, job?.id, missingRequired, invalidUrlFields, hasStages, doSave, navigate, postingSelection]);
 
   return {
     job, form, setField,
@@ -347,6 +373,7 @@ export function useJobEdit(idParam, creating, canEditNow) {
     generatingSkills, generateSkillsError, handleGenerateSkillsAI,
     step, setStep,
     hasStages, setHasStages,
+    postingSelection, setPostingSelection,
     isLocked,
     missingRequired, invalidUrlFields,
     handlePublish,
