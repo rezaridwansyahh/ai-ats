@@ -12,6 +12,7 @@ debug-screenshots/
 /claude history
 
 browser-profiles/
+debug html/
 
 /man_power/*
 backend/.env

@@ -17,33 +17,49 @@ class SeekJobPostingService {
     await page.click('a[href*="/job/managejob/express/create"]');
   }
 
+  // Seek now renders this field with a React-generated id (unstable across
+  // renders) on the Indonesian-locale create-job page — the placeholder
+  // ("Masukkan nama jabatan...") is the only reliable selector left.
   async filljobTitle(page, job_title = "Software Engineer") {
     console.log('start fill job title');
 
-    await page.waitForSelector('#JobTitleTextField');
+    const titleSelector = 'input[placeholder*="jabatan" i]';
+    await page.waitForSelector(titleSelector);
 
-    await page.click('#JobTitleTextField', { clickCount: 3 });
+    await page.click(titleSelector, { clickCount: 3 });
     await page.keyboard.press('Backspace');
-    await page.type('#JobTitleTextField', job_title, { delay: 30 });
+    await page.type(titleSelector, job_title, { delay: 30 });
   }
 
   async fillJobLocation(page, job_location = "Jakarta") {
     console.log('start fill job location');
 
-    await page.waitForSelector('#JobLocation');
+    await page.waitForSelector('#job-location');
 
-    await page.click('#JobLocation', { clickCount: 3 });
+    await page.click('#job-location', { clickCount: 3 });
     await page.keyboard.press('Backspace');
 
-    await page.type('#JobLocation', job_location, { delay: 100 });
+    await page.type('#job-location', job_location, { delay: 100 });
 
-    await page.waitForSelector('ul[id="JobLocation-menu"]', { visible: true, timeout: 5000 });
-    await page.click('ul[id="JobLocation-menu"] li:first-child');
+    await page.waitForSelector('ul[id="job-location-menu"]', { visible: true, timeout: 5000 });
+    await page.click('ul[id="job-location-menu"] li:first-child');
 
     await page.waitForFunction(() => {
       const error = document.getElementById('_r_4s_');
       return !error || error.textContent.trim() !== 'Enter a valid location';
     });
+  }
+
+  // The redesigned Indonesian-locale create-job page reveals the rest of the
+  // form (work option, work type, pay, etc.) progressively — it doesn't
+  // render until this "Lanjutkan" ("Continue") button is clicked. It has no
+  // id/data-testid, so it's targeted by its visible text.
+  async clickContinueButton(page) {
+    console.log('click continue button');
+
+    const continueSelector = "button::-p-text(Lanjutkan)";
+    await page.waitForSelector(continueSelector, { visible: true, timeout: 10000 });
+    await page.click(continueSelector);
   }
 
   async fillJobWorkOption(page, work_option = 'On-site') {
@@ -234,6 +250,8 @@ class SeekJobPostingService {
     await snap('03-title');
     await this.fillJobLocation(page, data.job_location);
     await snap('04-location');
+    await this.clickContinueButton(page);
+    await snap('04b-continue');
     await this.fillJobWorkOption(page, data.work_option);
     await snap('05-work-option');
     await this.fillJobWorkType(page, data.work_type);
@@ -263,6 +281,7 @@ class SeekJobPostingService {
     await this.redirectJobsPageSection(page);
     await this.filljobTitle(page, data.jobTitle);
     await this.fillJobLocation(page, data.jobLocation);
+    await this.clickContinueButton(page);
     await this.fillJobWorkOption(page, data.workOption);
     await this.fillJobWorkType(page, data.workType);
     await this.fillJobPayType(page, data.payType);
