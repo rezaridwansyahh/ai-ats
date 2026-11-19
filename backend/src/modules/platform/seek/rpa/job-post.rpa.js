@@ -1,3 +1,5 @@
+import { captureDebugContext } from "../../../../shared/utils/rpa-debug.js"
+
 const delay = (ms) => new Promise(r => setTimeout(r, ms));
 
 class SeekJobPostingService {
@@ -216,22 +218,41 @@ class SeekJobPostingService {
     console.log('Job description set:', value);
   }
 
+  // Debug mode: captures a screenshot + the full HTML after every step,
+  // regardless of success or failure — set SEEK_RPA_DEBUG=true to enable.
+  // Off by default since it writes to disk on every single call, not just
+  // failures (unlike captureDebugContext's normal catch-block usage elsewhere).
   async fillFormJobPostDraft(page, data) {
+    const debug = process.env.SEEK_RPA_DEBUG === 'true';
+    const snap = (label) => debug ? captureDebugContext(page, `job-post-draft-${label}`) : Promise.resolve();
+
     await this.redirectJobsPage(page);
+    await snap('01-jobs-page');
     await this.redirectJobsPageSection(page);
+    await snap('02-create-section');
     await this.filljobTitle(page, data.job_title);
+    await snap('03-title');
     await this.fillJobLocation(page, data.job_location);
+    await snap('04-location');
     await this.fillJobWorkOption(page, data.work_option);
+    await snap('05-work-option');
     await this.fillJobWorkType(page, data.work_type);
+    await snap('06-work-type');
     await this.fillJobPayType(page, data.pay_type);
+    await snap('07-pay-type');
     await this.fillJobPayCurrencyRange(page, data.currency, data.pay_min, data.pay_max);
+    await snap('08-pay-range');
     const message = await this.checkSalaryCorrect(page);
     if (message) {
+      await snap('09-salary-error');
       throw new Error(message);
     }
     await this.fillJobPayDisplay(page, data.pay_display);
+    await snap('09-pay-display');
     await this.clickDraftButton(page);
+    await snap('10-draft-submitted');
     await this.redirectDraftPage(page);
+    await snap('11-draft-page');
     const draftId = await this.getSeekJobPostDraftId(page);
 
     return { draftId };
