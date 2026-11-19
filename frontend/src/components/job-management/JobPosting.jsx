@@ -11,8 +11,10 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group"
 import { Collapsible, CollapsibleContent } from '@/components/ui/collapsible';
 
+import { toast } from 'sonner';
 import { getJobAccountsByUserId } from '@/features/job-account/api/account.api';
 import { getJobPostingByJobId } from '@/api/job-postings.api';
+import { publishJob } from '@/api/job-posting-seek.api';
 
 import linkedin from '@/assets/logos/linkedin.png';
 import seek from '@/assets/logos/seek.png';
@@ -63,6 +65,7 @@ export default function JobPosting({ selectedJob, onSelectionChange }) {
   const [jobPost,  setJobPost]  = useState([]);
 
   const [previewOpen, setPreviewOpen] = useState(false);
+  const [publishing, setPublishing] = useState(false);
 
   const updatePublic = (id, field, value) => {
     setPublicChannels(prev => prev.map(ch => ch.id === id ? { ...ch, [field]: value } : ch));
@@ -84,9 +87,57 @@ export default function JobPosting({ selectedJob, onSelectionChange }) {
     setPrivateChannels(PRIVATE_CHANNELS);
   }
 
-  const handlePublishAll = () => {
-    if (channels.public) setPublicChannels(prev => prev.map(ch => ({ ...ch, published: true })));
-    if (channels.private) setPrivateChannels(prev => prev.map(ch => ({ ...ch, published: true })));
+  const handlePublishAll = async () => {
+    const selected = [...publicChannels, ...privateChannels].filter(
+      ch => selectedChannels.includes(ch.id)
+    );
+    if (selected.length === 0) {
+      setError('Select at least one channel to publish to.');
+      return;
+    }
+
+    const platforms = [];
+    const unconnected = [];
+    for (const ch of selected) {
+      const account = accounts.find(acc => acc.portal_name === ch.id && acc.status_connection === 'Connected');
+      if (account) platforms.push({ platform: ch.id, account_id: account.id });
+      else unconnected.push(ch.name);
+    }
+
+    if (platforms.length === 0) {
+      setError(`No connected account for: ${unconnected.join(', ')}. Connect it in Settings → Integrations first.`);
+      return;
+    }
+
+    setPublishing(true);
+    setError(null);
+    try {
+      const { data } = await publishJob({
+        job_id: selectedJob.id,
+        type: 'Publish',
+        user_id: user?.id,
+        platforms,
+      });
+
+      const queuedPlatforms = (data.queued || []).map(q => q.platform);
+      setPublicChannels(prev => prev.map(ch => platforms.some(p => p.platform === ch.id) ? { ...ch, published: true } : ch));
+      setPrivateChannels(prev => prev.map(ch => platforms.some(p => p.platform === ch.id) ? { ...ch, published: true } : ch));
+
+      if (queuedPlatforms.length > 0) {
+        toast.success(`Queued for posting: ${queuedPlatforms.join(', ')}`);
+      }
+      if (unconnected.length > 0) {
+        toast.error(`Skipped (not connected): ${unconnected.join(', ')}`);
+      }
+      const noRpaYet = platforms.map(p => p.platform).filter(p => !queuedPlatforms.includes(p));
+      if (noRpaYet.length > 0) {
+        toast.warning(`${noRpaYet.join(', ')}: recorded, but automated posting isn't wired up for this platform yet.`);
+      }
+    } catch (err) {
+      setError(err.response?.data?.message || err.message || 'Failed to publish');
+    } finally {
+      setPublishing(false);
+    }
   };
 
   const [user] = useState(JSON.parse(localStorage.getItem('user')));
@@ -338,8 +389,8 @@ export default function JobPosting({ selectedJob, onSelectionChange }) {
         <Button variant="outline" className="text-xs h-9" onClick={() => alert('Draft saved (placeholder)')}>
           <Save className="h-3.5 w-3.5 mr-1.5" /> Save as Draft
         </Button>
-        <Button className="text-xs h-9" onClick={handlePublishAll}>
-          <Rocket className="h-3.5 w-3.5 mr-1.5" /> Publish to All Channels
+        <Button className="text-xs h-9" onClick={handlePublishAll} disabled={publishing}>
+          <Rocket className="h-3.5 w-3.5 mr-1.5" /> {publishing ? 'Publishing…' : 'Publish to All Channels'}
         </Button>
       </div>
 
