@@ -10,6 +10,7 @@ import {
 } from '@/components/ui/table';
 import { getRoleClass, formatSalaryBand, formatSinceDate } from '@/lib/job-display';
 import { StatusBadge } from '@/components/common';
+import { DeleteJobDialog } from './DeleteJobDialog';
 
 const STATUS_OPTIONS = ['Draft', 'Active', 'Running', 'Expired', 'Failed', 'Blocked'];
 const PAGE_SIZE = 10;
@@ -51,6 +52,8 @@ export default function JobCreation({
   const [statusFilter, setStatusFilter] = useState('all');
   const [activeTab, setActiveTab] = useState('all');
   const [page, setPage] = useState(1);
+  const [jobToDelete, setJobToDelete] = useState(null);
+  const [deleting, setDeleting] = useState(false);
 
   const tabCounts = useMemo(() => {
     const counts = {};
@@ -83,8 +86,15 @@ export default function JobCreation({
 
   const handleDeleteClick = (e, job) => {
     e.stopPropagation();
-    if (window.confirm(`Delete "${job.job_title}"? This cannot be undone.`)) {
-      onDeleteJob(job.id);
+    setJobToDelete(job);
+  };
+
+  const handleConfirmDelete = async (id) => {
+    setDeleting(true);
+    try {
+      await onDeleteJob(id);
+    } finally {
+      setDeleting(false);
     }
   };
 
@@ -283,7 +293,6 @@ export default function JobCreation({
                             </Button>
                             {canDelete && (
                               <Button
-                                disabled={job.status === 'Active'}
                                 variant="ghost"
                                 size="icon"
                                 className="h-7 w-7 rounded-lg text-red-500 hover:text-red-600"
@@ -364,6 +373,14 @@ export default function JobCreation({
           </div>
         )}
       </div>
+
+      <DeleteJobDialog
+        open={!!jobToDelete}
+        onOpenChange={(v) => !v && setJobToDelete(null)}
+        job={jobToDelete}
+        onConfirm={handleConfirmDelete}
+        loading={deleting}
+      />
     </div>
   );
 }

@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
+import { toast } from 'sonner';
 import { getJobs, deleteJob } from '../api/job.api';
 
 // Job Management's list/stats/delete logic, lifted out of the page.
@@ -23,8 +24,14 @@ export function useJobList() {
   }, [fetchJobs]);
 
   const handleDeleteJob = async (id) => {
-    await deleteJob(id);
-    await fetchJobs();
+    try {
+      await deleteJob(id);
+      await fetchJobs();
+      toast.success('Job deleted');
+    } catch (err) {
+      toast.error(err.response?.data?.message || err.message || 'Failed to delete job');
+      throw err;
+    }
   };
 
   const stats = useMemo(() => {

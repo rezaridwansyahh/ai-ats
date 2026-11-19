@@ -36,6 +36,18 @@ class JobAccountController {
     }
   }
 
+  async extractCandidates(req, res) {
+    const { account_id, job_sourcing_id } = req.params;
+
+    try {
+      const result = await jobAccountService.extractCandidates(Number(account_id), job_sourcing_id);
+
+      res.json(result);
+    } catch (err) {
+      res.status(err.status || 500).json({ error: err.message });
+    }
+  }
+
   async create(req, res) {
     const { user_id, portal_name, email, password } = req.body;
 

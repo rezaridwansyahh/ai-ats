@@ -2,7 +2,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { toast } from 'sonner';
 import { getJobById } from '../api/job.api';
 import { getByJobId as getJobChannels } from '@/api/job-sourcing.api';
-import { extractSeekCandidates } from '@/api/job-posting-seek.api';
+import { extractAccountCandidates } from '@/features/job-account/api/account.api';
 import { extractLinkedinApplicants } from '@/api/linkedin.api';
 import { getPaginatedCandidatesByJobId } from '@/api/candidate.api';
 
@@ -128,7 +128,7 @@ export function useJobDetail(id) {
     try {
       // Seek: enqueue (returns immediately; backend sets sync_state='syncing').
       for (const ch of syncableChannels.filter((c) => c.platform === 'seek')) {
-        await extractSeekCandidates({ account_id: ch.account_id, job_sourcing_id: ch.id });
+        await extractAccountCandidates(ch.account_id, ch.id);
       }
       await fetchChannels(); // surface the "syncing" badge right away
       // LinkedIn: synchronous for now (no queue/status yet).

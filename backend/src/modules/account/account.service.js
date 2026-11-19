@@ -44,6 +44,20 @@ class JobAccountService {
     return await adapter.syncJobSource(account_id);
   }
 
+  async extractCandidates(account_id, job_sourcing_id) {
+    if (!job_sourcing_id) throw { status: 400, message: 'job_sourcing_id is required' };
+
+    const account = await jobAccountModel.findById(account_id);
+    if (!account) throw { status: 404, message: 'Job Account not found' };
+
+    const adapter = registry[account.portal_name];
+    if (!adapter?.extractCandidate) {
+      throw { status: 400, message: `candidate extraction not supported for ${account.portal_name}` };
+    }
+
+    return await adapter.extractCandidate(account_id, job_sourcing_id);
+  }
+
   async create(user_id, portal_name, email, password) {
     if (!user_id || !portal_name || !email || !password) {
       throw { status: 400, message: 'user_id, portal_name, email, and password are required'};

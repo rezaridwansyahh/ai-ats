@@ -11,6 +11,7 @@ router.get('/', jobAccountController.getMyAccount);
 router.post('/', jobAccountController.create);
 router.post('/:account_id/check-connection', jobAccountController.checkConnection);
 router.post('/:account_id/sync-job-source', jobAccountController.syncJobSource);
+router.post('/:account_id/extract-candidates/:job_sourcing_id', jobAccountController.extractCandidates);
 
 router.put('/:id', jobAccountController.update);
 

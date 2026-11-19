@@ -14,7 +14,7 @@ import { AccountBanner } from '@/components/source-management/AccountBanner';
 import LinkJobModal from '@/components/source-management/LinkJobModal';
 import { JOB_STATUS_VARIANT } from '@/constants/job-status';
 import { getByAccountId } from '@/api/job-sourcing.api';
-import { extractSeekCandidates } from '@/api/job-posting-seek.api';
+import { extractAccountCandidates } from '@/features/job-account/api/account.api';
 import { toast } from 'sonner';
 import { hasPermission } from '@/utils/permissions';
 
@@ -100,7 +100,7 @@ export default function ListSourceStep({ selectedAccount, selectedSource, onSele
     if (!selectedAccount?.id || syncingIds.has(source.id)) return;
     setSyncingIds(prev => new Set(prev).add(source.id));
     try {
-      await extractSeekCandidates({ account_id: selectedAccount.id, job_sourcing_id: source.id });
+      await extractAccountCandidates(selectedAccount.id, source.id);
       toast.success(`${source.last_sync ? 'Re-sync' : 'Sync'} queued for "${source.job_title}"`);
       // Backend marks sync_state='syncing' synchronously before responding — refetch to show it.
       await fetchSources({ silent: true });

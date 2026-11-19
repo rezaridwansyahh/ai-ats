@@ -50,16 +50,27 @@ class SeekJobPostingService {
     });
   }
 
-  // The redesigned Indonesian-locale create-job page reveals the rest of the
-  // form (work option, work type, pay, etc.) progressively — it doesn't
-  // render until this "Lanjutkan" ("Continue") button is clicked. It has no
-  // id/data-testid, so it's targeted by its visible text.
-  async clickContinueButton(page) {
+  // The redesigned create-job page reveals the rest of the form (work
+  // option, work type, pay, etc.) progressively, in several stacked
+  // sections on the same page (title+location, then a category
+  // recommendation section, then more) — each gated behind its own
+  // continue button with no id/data-testid, reused for every gate. The
+  // label depends on the account's locale — "Lanjutkan" (Indonesian) or
+  // "Continue" (English) — so match both. Click until it stops appearing
+  // rather than assuming a fixed number of sections, since that count
+  // isn't stable.
+  async clickContinueButton(page, { maxAttempts = 5 } = {}) {
     console.log('click continue button');
 
-    const continueSelector = "button::-p-text(Lanjutkan)";
+    const continueSelector = "button::-p-text(Lanjutkan), button::-p-text(Continue)";
     await page.waitForSelector(continueSelector, { visible: true, timeout: 10000 });
-    await page.click(continueSelector);
+
+    for (let i = 0; i < maxAttempts; i++) {
+      const btn = await page.$(continueSelector);
+      if (!btn) break;
+      await btn.click();
+      await delay(1500);
+    }
   }
 
   async fillJobWorkOption(page, work_option = 'On-site') {

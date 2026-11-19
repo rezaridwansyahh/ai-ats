@@ -5,6 +5,7 @@ const registry = {
   seek: {
     checkConnection: seekProducer.enqueueCheckConnection,
     syncJobSource: seekProducer.enqueueSyncJobSource,
+    extractCandidate: seekProducer.enqueueExtractCandidate,
   },
   linkedin: {
     checkConnection: linkedinProducer.enqueueCheckConnection,
