@@ -13,6 +13,7 @@ import applicantModel from "../../applicant/applicant.model.js"
 import candidatePipelineModel from "../../candidate-pipeline/candidate-pipeline.model.js"
 
 import { promoteDownloadedCv } from "../../../shared/utils/cv-storage.js"
+import { captureDebugContext } from "../../../shared/utils/rpa-debug.js"
 import aiService from "../../../shared/services/ai.service.js"
 import screeningModel from "../../screening/screening.model.js"
 import screeningService from "../../screening/screening.service.js"
@@ -75,6 +76,7 @@ class SeekService {
 
       return { jobPost: update, jobPostSeek: updateSeek };
     } catch (err) {
+      await captureDebugContext(page, `job-post-draft-failed-${job_post_id}`);
       await jobSourceModel.updateStatus(sourcing.id, "Failed");
       throw err
     } finally {
