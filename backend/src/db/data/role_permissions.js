@@ -1,8 +1,8 @@
-// Role tiers:
-//   Admin   (1) — full CRUD on every menu
-//   Manager (2) — read / create / update (no delete)
-//   Staff   (3) — read / create
-//   Intern  (4) — read only
+// Role tiers (same tier shape per company — see roles.js):
+//   Admin   — full CRUD on every menu
+//   Manager — read / create / update (no delete)
+//   Staff   — read / create
+//   Intern  — read only
 //
 // Derived from permissions.js's actual generated rows (not a contiguous
 // module_menu id range), so removing/adding a menu never requires renumbering.
@@ -16,8 +16,15 @@ function rolePerms(role_id, allowedFuncs) {
 }
 
 export default [
-  ...rolePerms(1, ['read', 'create', 'update', 'delete']),
-  ...rolePerms(2, ['read', 'create', 'update']),
-  ...rolePerms(3, ['read', 'create']),
-  ...rolePerms(4, ['read']),
+  // Myralix (company 1)
+  ...rolePerms(1, ['read', 'create', 'update', 'delete']), // Admin
+  ...rolePerms(2, ['read', 'create', 'update']),            // Manager
+  ...rolePerms(3, ['read', 'create']),                      // Staff
+  ...rolePerms(4, ['read']),                                // Intern
+
+  // Acme Recruiting (company 2) — independent grant set, same tiers
+  ...rolePerms(6, ['read', 'create', 'update', 'delete']), // Admin
+  ...rolePerms(7, ['read', 'create', 'update']),            // Manager
+  ...rolePerms(8, ['read', 'create']),                      // Staff
+  ...rolePerms(9, ['read']),                                // Intern
 ];

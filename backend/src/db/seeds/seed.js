@@ -98,9 +98,9 @@ const seed = async () => {
     // 0. companies (must be inserted before users — users reference company_id)
     for (const c of companiesData) {
       await getDb().query(
-        `INSERT INTO core_company (id, name, description, email, website, logo_url)
-         VALUES ($1, $2, $3, $4, $5, $6)`,
-        [c.id, c.name, c.description, c.email, c.website, c.logo_url]
+        `INSERT INTO core_company (id, name, slug, description, email, website, logo_url)
+         VALUES ($1, $2, $3, $4, $5, $6, $7)`,
+        [c.id, c.name, c.slug, c.description, c.email, c.website, c.logo_url]
       );
     }
 
@@ -116,13 +116,14 @@ const seed = async () => {
     // 2. roles
     for (const role of rolesData) {
       await getDb().query(
-        `INSERT INTO master_roles (id, name, additional, is_system)
-         VALUES ($1, $2, $3, $4)`,
+        `INSERT INTO master_roles (id, name, additional, is_system, company_id)
+         VALUES ($1, $2, $3, $4, $5)`,
         [
           role.id,
           role.name,
           JSON.stringify(role.additional || {}),
-          !!role.is_system
+          !!role.is_system,
+          role.company_id ?? null
         ]
       );
     }

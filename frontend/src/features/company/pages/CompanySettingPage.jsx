@@ -5,10 +5,12 @@ import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { useCompany } from '../context/CompanyProvider';
 import { useUpdateCompany } from "../hooks/use-update-company.js"
+import { hasPermission } from '@/utils/permissions';
 
 export default function GeneralSettings() {
   const { company, loading } = useCompany();
   const { save, saving, error } = useUpdateCompany();
+  const canEdit = hasPermission('Settings', 'Company', 'update');
 
   const [isEditing, setIsEditing] = useState(false);
   const [draft, setDraft]     = useState({});
@@ -46,10 +48,12 @@ export default function GeneralSettings() {
             <CardTitle className="text-sm">Organization</CardTitle>
             <p className="text-xs text-muted-foreground">Company profile used on job posts and candidate communication.</p>
           </div>
-          <Button onClick={() => startEdit(company)}>
-            <Pencil />
-            Edit
-          </Button>
+          {canEdit && (
+            <Button onClick={() => startEdit(company)}>
+              <Pencil />
+              Edit
+            </Button>
+          )}
         </CardHeader>
         <CardContent className="space-y-0 divide-y">
           {loading ? 

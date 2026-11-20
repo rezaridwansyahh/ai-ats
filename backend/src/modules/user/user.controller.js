@@ -81,7 +81,7 @@ class UserController {
 
   async getMasterRoles(req, res) {
     try {
-      const roles = await userService.getMasterRoles();
+      const roles = await userService.getMasterRoles(req.user?.company_id);
       res.status(200).json({ message: "List all available roles", roles });
     } catch (err) {
       res.status(err.status || 500).json({ message: err.message });

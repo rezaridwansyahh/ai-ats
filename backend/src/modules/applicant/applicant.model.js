@@ -249,7 +249,7 @@ class ApplicantModel {
   // not on this applicant row, since it's application-specific (RPA sources
   // like Seek/LinkedIn). `information` here stays the person-level AI-parsed
   // CV facets, shared across every application this applicant has.
-  async create({ job_sourcing_id, upload_batch_id, company_id, name, email, last_position, address, education, information, date, attachment, sourcing_information = null, cv_download_status = null }) {
+  async create({ job_sourcing_id, upload_batch_id, company_id, name, email, phone, last_position, address, education, information, date, attachment, sourcing_information = null, cv_download_status = null }) {
     const infoJson = information ? JSON.stringify(information) : null;
 
     let applicant;
@@ -261,19 +261,21 @@ class ApplicantModel {
           upload_batch_id = $1,
           company_id      = $2,
           name             = $3,
-          last_position    = $4,
-          address          = $5,
-          education        = $6,
-          information      = $7,
-          date             = $8,
-          attachment       = $9,
-          cv_download_status = $10
-        WHERE id = $11
+          phone            = $4,
+          last_position    = $5,
+          address          = $6,
+          education        = $7,
+          information      = $8,
+          date             = $9,
+          attachment       = $10,
+          cv_download_status = $11
+        WHERE id = $12
         RETURNING *
       `, [
         upload_batch_id || null,
         company_id || null,
         name,
+        phone || null,
         last_position, address,
         education || null,
         infoJson,
@@ -286,14 +288,15 @@ class ApplicantModel {
     } else {
       const result = await getDb().query(`
         INSERT INTO master_applicant
-          (upload_batch_id, company_id, name, email, last_position, address, education, information, date, attachment, cv_download_status)
-        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
+          (upload_batch_id, company_id, name, email, phone, last_position, address, education, information, date, attachment, cv_download_status)
+        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)
         RETURNING *
       `, [
         upload_batch_id || null,
         company_id || null,
         name,
         email || null,
+        phone || null,
         last_position, address,
         education || null,
         infoJson,

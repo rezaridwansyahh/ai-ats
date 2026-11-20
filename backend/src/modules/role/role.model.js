@@ -1,11 +1,15 @@
 import getDb from "../../config/postgres.js"
 
 class RoleModel {
-  async getAll() {
+  // is_system rows (Super Admin) are company_id = NULL and always visible —
+  // they're not owned by any tenant, so no company's role list should ever
+  // exclude them outright (callers still filter is_system for non-super-admins).
+  async getAll(company_id) {
     const result = await getDb().query(`
-      SELECT * 
+      SELECT *
       FROM master_roles
-    `);
+      WHERE company_id = $1 OR is_system = true
+    `, [company_id]);
 
     return result.rows;
   }
@@ -72,14 +76,6 @@ class RoleModel {
     return result.rows;
   }
 
-  async getAllMasterRoles() {
-    const result = await getDb().query(`
-      SELECT id, name, additional
-      FROM master_roles
-      ORDER BY id ASC
-    `);
-    return result.rows;
-  }
 
   async replaceUserRoles(user_id, role_ids) {
     await getDb().query(`DELETE FROM mapping_users_roles WHERE user_id = $1`, [user_id]);
@@ -111,16 +107,26 @@ class RoleModel {
     }
   }
 
-  async create(name, additional) {
+  async create(name, additional, company_id) {
     const result = await getDb().query(
       `
-      INSERT INTO master_roles (name, additional) 
-      VALUES ($1, $2) 
+      INSERT INTO master_roles (name, additional, company_id)
+      VALUES ($1, $2, $3)
       RETURNING *
     `,
-      [name, additional]
+      [name, additional, company_id]
     );
     return result.rows[0];
+  }
+
+  // Global capability catalog — not company-scoped, same functionality rows
+  // every tenant draws from when a new company's default roles are built.
+  async getAllGlobalPermissions() {
+    const result = await getDb().query(`
+      SELECT id, functionality
+      FROM global_permissions
+    `);
+    return result.rows;
   }
 
 

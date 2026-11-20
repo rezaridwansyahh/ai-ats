@@ -2,6 +2,7 @@ export default [
   {
     id: 1,
     name: 'Myralix',
+    slug: 'myralix',
     description: 'Talent Acquisition platform — primary tenant.',
     email: 'hello@myralix.com',
     website: 'https://myralix.com',
@@ -10,6 +11,7 @@ export default [
   {
     id: 2,
     name: 'Acme Recruiting',
+    slug: 'acme-recruiting',
     description: 'Demo customer for staffing agency workflows.',
     email: 'contact@acme-recruiting.example',
     website: 'https://acme-recruiting.example',

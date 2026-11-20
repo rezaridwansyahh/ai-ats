@@ -3,6 +3,7 @@ import bcrypt from 'bcrypt';
 
 import UserModel from '../user/user.model.js';
 import RoleModel from '../role/role.model.js';
+import RoleService from '../role/role.service.js';
 import logger from '../../shared/utils/logger.js';
 import PermissionModel from '../permission/permission.model.js';
 import CompanyService from '../company/company.service.js';
@@ -82,10 +83,12 @@ class AuthService {
     const hashedPassword = await bcrypt.hash(password, 12);
     const newUser = await UserModel.create(email, hashedPassword, username, company.id);
 
-    const roles = await RoleModel.getAllMasterRoles();
-    const adminRole = roles.find((r) => r.name === 'Admin');
-    if (!adminRole) throw { status: 500, message: 'Admin role not found — check role seed data' };
-    await RoleModel.replaceUserRoles(newUser.id, [adminRole.id]);
+    // Every company gets its own independent Admin/Manager/Staff/Intern —
+    // never the shared global rows (that was the cross-tenant RBAC bug this
+    // replaced: every signup used to land on the literal same "Admin" role
+    // every other company's admin also used).
+    const defaultRoles = await RoleService.createDefaultRolesForCompany(company.id);
+    await RoleModel.replaceUserRoles(newUser.id, [defaultRoles.Admin.id]);
 
     logger.info(`User registered: ${email}, new company "${company.name}" (id ${company.id})`);
 

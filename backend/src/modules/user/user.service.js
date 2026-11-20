@@ -95,8 +95,11 @@ class UserService {
     return user;
   }
 
-  async getMasterRoles() {
-    return await Role.getAllMasterRoles();
+  // Assignable roles for this company's own User Management picker — never
+  // includes is_system (Super Admin is never assignable to a tenant user).
+  async getMasterRoles(company_id) {
+    const roles = await Role.getAll(company_id);
+    return roles.filter((r) => !r.is_system);
   }
 }
 
