@@ -3,6 +3,7 @@ export default [
   {
     id: 1,
     name: 'PT Abhimata Persada',
+    slug: 'abhimata-persada',
     description: null,
     email: null,        // TODO: fill in once confirmed
     website: null,

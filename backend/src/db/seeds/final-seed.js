@@ -62,9 +62,9 @@ const finalSeed = async () => {
     // 0. company (must be inserted before users — users reference company_id)
     for (const c of finalCompanyData) {
       await getDb().query(
-        `INSERT INTO core_company (id, name, description, email, website, logo_url)
-         VALUES ($1, $2, $3, $4, $5, $6)`,
-        [c.id, c.name, c.description, c.email, c.website, c.logo_url]
+        `INSERT INTO core_company (id, name, slug, description, email, website, logo_url)
+         VALUES ($1, $2, $3, $4, $5, $6, $7)`,
+        [c.id, c.name, c.slug, c.description, c.email, c.website, c.logo_url]
       );
     }
 
@@ -77,14 +77,22 @@ const finalSeed = async () => {
       );
     }
 
-    // 2. roles
-    for (const role of rolesData) {
+    // 2. roles — roles.js also carries demo-only companies' roles (seed.js's
+    // responsibility, not this bootstrap's), so only insert roles that belong
+    // to a company this bootstrap actually creates, or are company-less
+    // system roles (e.g. Super Admin).
+    const finalCompanyIds = new Set(finalCompanyData.map((c) => c.id));
+    const finalRolesData = rolesData.filter(
+      (r) => r.company_id == null || finalCompanyIds.has(r.company_id)
+    );
+    for (const role of finalRolesData) {
       await getDb().query(
-        `INSERT INTO master_roles (id, name, additional, is_system)
-         VALUES ($1, $2, $3, $4)`,
-        [role.id, role.name, JSON.stringify(role.additional || {}), !!role.is_system]
+        `INSERT INTO master_roles (id, name, additional, is_system, company_id)
+         VALUES ($1, $2, $3, $4, $5)`,
+        [role.id, role.name, JSON.stringify(role.additional || {}), !!role.is_system, role.company_id ?? null]
       );
     }
+    const finalRoleIds = new Set(finalRolesData.map((r) => r.id));
 
     // 3. modules
     for (const module of modulesData) {
@@ -120,8 +128,9 @@ const finalSeed = async () => {
       );
     }
 
-    // 7. role_permissions
-    for (const rp of rolePermissionsData) {
+    // 7. role_permissions — same filter as the roles above, so this never
+    // references a role_id that wasn't actually inserted.
+    for (const rp of rolePermissionsData.filter((rp) => finalRoleIds.has(rp.role_id))) {
       await getDb().query(
         `INSERT INTO mapping_roles_permissions (id, role_id, permission_id)
          VALUES ($1, $2, $3)`,

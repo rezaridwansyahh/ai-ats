@@ -19,6 +19,33 @@ class CompanyController {
     }
   }
 
+  getById = async (req, res) => {
+    try {
+      const company = await companyService.getByIdDetail(Number(req.params.id));
+      res.json(company);
+    } catch (err) {
+      res.status(err.status || 500).json({ message: err.message });
+    }
+  }
+
+  getUsers = async (req, res) => {
+    try {
+      const users = await companyService.getUsers(Number(req.params.id));
+      res.json(users);
+    } catch (err) {
+      res.status(err.status || 500).json({ message: err.message });
+    }
+  }
+
+  async updateById(req, res) {
+    try {
+      const company = await companyService.update(Number(req.params.id), req.body || {});
+      res.json(company);
+    } catch (err) {
+      res.status(err.status || 500).json({ message: err.message });
+    }
+  }
+
   async create(req, res) {
     try {
       const company = await companyService.create(req.body || {});

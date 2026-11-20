@@ -160,6 +160,7 @@ CREATE EXTENSION IF NOT EXISTS pg_trgm;
 CREATE TABLE core_company (
   id SERIAL PRIMARY KEY,
   name VARCHAR(255) NOT NULL UNIQUE,
+  slug VARCHAR(100) UNIQUE, -- public career page URL segment, e.g. /careers/:slug
   description TEXT,
   email VARCHAR(255),
   website VARCHAR(255),
@@ -234,7 +235,10 @@ CREATE TABLE master_roles (
   id SERIAL PRIMARY KEY,
   name VARCHAR(100) NOT NULL,
   additional JSONB,
-  is_system BOOLEAN NOT NULL DEFAULT false
+  is_system BOOLEAN NOT NULL DEFAULT false,
+  -- NULL only for is_system rows (e.g. Super Admin) — platform-wide, owned by
+  -- no tenant. Every ordinary role belongs to exactly one company.
+  company_id INTEGER REFERENCES core_company(id) ON DELETE CASCADE
 );
 
 CREATE TABLE mapping_users_roles (
@@ -508,6 +512,7 @@ CREATE TABLE master_applicant (
   company_id INTEGER REFERENCES core_company(id) ON DELETE CASCADE,
   name VARCHAR(255) NOT NULL,
   email VARCHAR(255),
+  phone VARCHAR(50),
   last_position VARCHAR(255) NOT NULL,
   address VARCHAR(255) NOT NULL,
   education VARCHAR(255),

@@ -1,4 +1,5 @@
 import CompanyModel from './company.model.js';
+import userService from '../user/user.service.js';
 
 class CompanyService {
   async getById(id) {
@@ -7,8 +8,22 @@ class CompanyService {
     return company;
   }
 
+  // Platform-admin detail view: a single tenant plus its headcount.
+  async getByIdDetail(id) {
+    const company = await CompanyModel.findByIdWithUserCount(id);
+    if (!company) throw { status: 404, message: 'Company not found' };
+    return company;
+  }
+
   async getAll() {
     return await CompanyModel.findAll();
+  }
+
+  // Platform-admin roster for one tenant — never expose the password hash
+  // here even though the shared user-list query selects it.
+  async getUsers(id) {
+    const users = await userService.getAllWithRoles(id);
+    return users.map(({ password, ...rest }) => rest);
   }
 
   async create(payload) {

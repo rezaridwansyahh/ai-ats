@@ -52,6 +52,7 @@ import offerPack from "./src/modules/offer-pack/offer-pack.route.js";
 import portalContract from "./src/modules/portal-contract/portal-contract.route.js";
 import emailTemplate from "./src/modules/email-template/email-template.route.js";
 import portalOnboarding from "./src/modules/portal-onboarding/portal-onboarding.route.js";
+import portalCareers from "./src/modules/portal-careers/portal-careers.route.js";
 import onboardingAssessmentResult from "./src/modules/onboarding assessment/onboarding-assessment-result.route.js";
 import onboardingQuestion from "./src/modules/onboarding assessment/question/onboarding-question.route.js";
 import chatBotSource from "./src/modules/chat-bot/source/source.route.js";
@@ -133,6 +134,7 @@ api.use("/offer-pack", offerPack)
 api.use("/portal-contract", portalContract);
 api.use("/email-template", emailTemplate)
 api.use("/portal-onboarding", portalOnboarding);
+api.use("/portal-careers", portalCareers);
 api.use("/onboarding-assessment-result", onboardingAssessmentResult);
 api.use("/onboarding-question", onboardingQuestion);
 api.use("/chat-bot/source", chatBotSource);

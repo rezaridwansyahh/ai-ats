@@ -32,4 +32,5 @@ export default [
   { id: 24, name: 'Integrations' },
   { id: 25, name: 'Account' },
   { id: 27, name: 'Budget' }, // AI Budget Settings (Task 6.12b)
+  { id: 28, name: 'Company' }, // Company profile self-service (PUT /company/me)
 ];

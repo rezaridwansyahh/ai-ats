@@ -1,6 +1,8 @@
 import { Routes, Route, Navigate } from "react-router-dom"
 import LoginPage from "./pages/Login"
 import RegisterPage from "./pages/Register"
+import CareersListPage from "./pages/CareersListPage"
+import CareerJobPage from "./pages/CareerJobPage"
 import DashboardPage from "./pages/Dashboard"
 import DashboardLayout from "./components/layout/Dashboard-Layout"
 import ProfilePage from "./pages/Profile"
@@ -56,6 +58,8 @@ import InterviewPackPortal from "./pages/portal/InterviewPackPortal"
 
 import AdminDashboardLayout from "./components/layout/Admin-Dashboard-Layout"
 import AdminDashboard from "./pages/AdminDashboard"
+import AdminCompanies from "./pages/AdminCompanies"
+import AdminCompanyDetail from "./pages/AdminCompanyDetail"
 import { RequireSuperAdmin } from "./components/auth/RequireSuperAdmin"
 
 function App() {
@@ -65,6 +69,8 @@ function App() {
       <Routes>
         <Route path="/" element={<LoginPage />} />
         <Route path="/login" element={<LoginPage />} />
+        <Route path="/careers/:slug" element={<CareersListPage />} />
+        <Route path="/careers/:slug/jobs/:jobId" element={<CareerJobPage />} />
         <Route path="/register" element={<RegisterPage />} />
 
         {/* Public candidate-facing portal */}
@@ -139,7 +145,8 @@ function App() {
         {/* Superadmin routes — separate layout, no PipelineBar */}
         <Route element={<RequireSuperAdmin><AdminDashboardLayout /></RequireSuperAdmin>}>
           <Route path="/portal/admin/dashboard" element={<AdminDashboard />} />
-          <Route path="/portal/admin/companies" element={<ComingSoonPage />} />
+          <Route path="/portal/admin/companies" element={<AdminCompanies />} />
+          <Route path="/portal/admin/companies/:id" element={<AdminCompanyDetail />} />
           <Route path="/portal/admin/roles" element={<ComingSoonPage />} />
         </Route>
       </Routes>
