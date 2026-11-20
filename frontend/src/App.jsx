@@ -59,6 +59,7 @@ import InterviewPackPortal from "./pages/portal/InterviewPackPortal"
 import AdminDashboardLayout from "./components/layout/Admin-Dashboard-Layout"
 import AdminDashboard from "./pages/AdminDashboard"
 import AdminCompanies from "./pages/AdminCompanies"
+import AdminRoles from "./pages/AdminRoles"
 import AdminCompanyDetail from "./pages/AdminCompanyDetail"
 import { RequireSuperAdmin } from "./components/auth/RequireSuperAdmin"
 
@@ -147,7 +148,7 @@ function App() {
           <Route path="/portal/admin/dashboard" element={<AdminDashboard />} />
           <Route path="/portal/admin/companies" element={<AdminCompanies />} />
           <Route path="/portal/admin/companies/:id" element={<AdminCompanyDetail />} />
-          <Route path="/portal/admin/roles" element={<ComingSoonPage />} />
+          <Route path="/portal/admin/roles" element={<AdminRoles />} />
         </Route>
       </Routes>
 

@@ -27,6 +27,10 @@ class RoleService {
     return requesterIsSuperAdmin ? roles : roles.filter(r => !r.is_system);
   }
 
+  async getAllAcrossCompanies() {
+    return await Role.getAllAcrossCompanies();
+  }
+
   async getById(id, requesterCompanyId, requesterIsSuperAdmin = false) {
     const role = await Role.getById(id);
     if (!role) throw { status: 404, message: 'Role not found' };

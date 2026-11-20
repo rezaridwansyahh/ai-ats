@@ -14,6 +14,23 @@ class RoleModel {
     return result.rows;
   }
 
+  // Platform-admin cross-tenant audit — every ordinary role across every
+  // company, with its user count. Never used by a company's own Role
+  // Management (that stays scoped via getAll above); this is read-only
+  // support/debug tooling behind requireSuperAdmin.
+  async getAllAcrossCompanies() {
+    const result = await getDb().query(`
+      SELECT
+        r.id, r.name, r.company_id, c.name AS company_name,
+        (SELECT COUNT(*)::int FROM mapping_users_roles mur WHERE mur.role_id = r.id) AS user_count
+      FROM master_roles r
+      JOIN core_company c ON c.id = r.company_id
+      WHERE r.is_system = false
+      ORDER BY c.name ASC, r.name ASC
+    `);
+    return result.rows;
+  }
+
   async getById(id) {
     const result = await getDb().query(`
       SELECT * 

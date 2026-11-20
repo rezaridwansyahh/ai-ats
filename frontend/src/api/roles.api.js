@@ -9,3 +9,6 @@ export const setRolePermissions = (id, permission_ids)  => api.put(`/role/${id}/
 
 export const getRolePermissions = (id)  => api.get(`/permission/role/${id}`);
 export const getAllPermissions   = ()   => api.get('/permission/details');
+
+// Super Admin only — cross-tenant audit, not scoped to the caller's own company.
+export const getAllRolesAcrossCompanies = () => api.get('/role/admin/all-companies');

@@ -10,6 +10,15 @@ class RoleController {
 		}
 	}
 
+	async getAllAcrossCompanies(req, res) {
+		try {
+			const roles = await roleService.getAllAcrossCompanies();
+			res.status(200).json({ message: "List all Roles across every company", roles });
+		} catch (err) {
+			res.status(err.status || 500).json({ message: err.message });
+		}
+	}
+
 	async getById(req, res) {
 		try {
 			const role = await roleService.getById(req.params.id, req.user.company_id, req.user.isSuperAdmin);
