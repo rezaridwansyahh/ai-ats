@@ -7,6 +7,8 @@ import KaryawanDetail from "./pages/KaryawanDetail"
 import ScanDokumen from "./pages/ScanDokumen"
 import Impor from "./pages/Import"
 import Demografi from "./pages/Demografi"
+import Setting from "./pages/Setting"
+
 
 function ComingSoon() {
   return (
@@ -27,6 +29,7 @@ function App() {
           <Route path="/scan" element={<ScanDokumen />} />
           <Route path="/impor" element={<Impor />} />
           <Route path="/dashboard" element={<Demografi />} />
+          <Route path="/pengaturan" element={<Setting />} />
           <Route path="*" element={<ComingSoon />} />
         </Route>
       </Routes>
