@@ -2,9 +2,9 @@
 export const REF_DATE = '2026-11-30';
 export const MGR_NIK = 'CS22002'; 
 
-const B1 = 30;          
-const B2 = 60;          
-const PROB_MONTHS = 3;  
+export const B1 = 30;
+export const B2 = 60;
+export const PROB_MONTHS = 3;
 const DATE_FIELDS = ['tgl_lahir', 'tgl_masuk', 'akhir_kontrak', 'tgl_keluar'];
 const BLN = ['Jan', 'Feb', 'Mar', 'Apr', 'Mei', 'Jun', 'Jul', 'Agu', 'Sep', 'Okt', 'Nov', 'Des'];
 
