@@ -505,10 +505,6 @@ Mitigates risk R-5 (AI cost runaway).
 Acceptance criteria met:
 ✓ Budget $0.10 → screening returns 402
 ✓ Budget $1.00 + spend $0.85 → exactly one Slack alert
-
-🤖 Generated with [Claude Code](https://claude.com/claude-code)
-
-Co-Authored-By: Claude <noreply@anthropic.com>
 ```
 
 ---
