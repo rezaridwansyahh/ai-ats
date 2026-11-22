@@ -1,4 +1,8 @@
 // services/browser.js
+// Must come before puppeteer-extra: puppeteer v25 is ESM-only, and
+// puppeteer-extra (CJS) require()s it — if the ESM module isn't evaluated
+// yet, require(esm) throws "ReferenceError: default is not defined".
+import 'puppeteer';
 import puppeteer from 'puppeteer-extra';
 import StealthPlugin from 'puppeteer-extra-plugin-stealth';
 import path from 'path';
