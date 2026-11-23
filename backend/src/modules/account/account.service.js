@@ -1,6 +1,7 @@
 import jobAccountModel from './account.model.js';
 import userModel from '../user/user.model.js';
 import registry from '../platform/shared/platform.registry.js';
+import jobSourceModel from '../job-source/job-source.model.js';
 
 import { encrypt, decrypt } from '../../shared/utils/encrypt.js';
 
@@ -55,7 +56,12 @@ class JobAccountService {
       throw { status: 400, message: `candidate extraction not supported for ${account.portal_name}` };
     }
 
-    return await adapter.extractCandidate(account_id, job_sourcing_id);
+    const result = await adapter.extractCandidate(account_id, job_sourcing_id);
+    // Marked synchronously here (not left to the worker) so the UI's
+    // "Syncing…" badge is accurate the moment this request returns, not
+    // only once the worker actually picks the job up off the queue.
+    await jobSourceModel.markSyncing(job_sourcing_id);
+    return result;
   }
 
   async create(user_id, portal_name, email, password) {

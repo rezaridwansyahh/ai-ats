@@ -5,4 +5,5 @@ export const SEEK_JOBS = {
   SYNC_APPLICANT: 'seek-sync-applicant',
   CREATE_JOB_POST_DRAFT: 'seek-create-job-post-draft',
   EXTRACT_CANDIDATE: 'seek-extract-candidate',
+  NIGHT_SCAN: 'seek-night-scan',
 };

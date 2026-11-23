@@ -68,7 +68,7 @@ const seekNightScanHandler = async () => {
   for (const row of rows) {
     try {
       await jobSourceModel.markSyncing(row.id);
-      await seekProducer.extractSeekCandidate(row.account_id, row.id, 'scheduler');
+      await seekProducer.enqueueExtractCandidate(row.account_id, row.id, 'scheduler');
     } catch (err) {
       console.error(`[Scheduler] Night scan failed to enqueue sourcing ${row.id}:`, err.message);
     }
