@@ -34,6 +34,17 @@ class BrowserPuppeteer {
       launchOptions.executablePath = process.env.PUPPETEER_EXECUTABLE_PATH;
     }
 
+    // Opt-in only — exposes a DevTools-inspectable debug port (chrome://inspect
+    // on your own machine, tunneled over SSH) so you can click/type into a
+    // running RPA session, e.g. to clear an OTP challenge by hand. Bound to
+    // localhost by default via Chrome itself; never enabled unless asked for.
+    if (process.env.PUPPETEER_REMOTE_DEBUGGING === 'true') {
+      launchOptions.args = [
+        ...(launchOptions.args || []),
+        `--remote-debugging-port=${process.env.PUPPETEER_REMOTE_DEBUGGING_PORT || '9222'}`,
+      ];
+    }
+
     if (accountId) {
       launchOptions.userDataDir = path.join(PROFILES_DIR, `account_${accountId}`);
       await fs.promises.mkdir(launchOptions.userDataDir, { recursive: true });

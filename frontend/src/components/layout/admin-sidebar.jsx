@@ -16,9 +16,9 @@ import { Home, Building2, ShieldCheck } from 'lucide-react';
 import { UserFooter } from '@/components/common';
 
 const NAV_ITEMS = [
-  { label: 'Dashboard', icon: Home,        route: '/portal/admin/dashboard' },
-  { label: 'Companies', icon: Building2,   route: '/portal/admin/companies' },
-  { label: 'Roles',     icon: ShieldCheck, route: '/portal/admin/roles' },
+  { label: 'Dashboard', icon: Home,        route: '/admin/dashboard' },
+  { label: 'Companies', icon: Building2,   route: '/admin/companies' },
+  { label: 'Roles',     icon: ShieldCheck, route: '/admin/roles' },
 ];
 
 export function AdminSidebar() {

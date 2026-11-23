@@ -60,7 +60,7 @@ export default function AdminCompanyDetail() {
       <div className="flex flex-col items-center gap-2 py-16 text-destructive">
         <AlertTriangle className="h-8 w-8" />
         <p className="text-sm font-medium">{error || 'Company not found'}</p>
-        <Button variant="outline" size="sm" onClick={() => navigate('/portal/admin/companies')}>
+        <Button variant="outline" size="sm" onClick={() => navigate('/admin/companies')}>
           Back to Companies
         </Button>
       </div>
@@ -70,7 +70,7 @@ export default function AdminCompanyDetail() {
   return (
     <div className="space-y-4">
       <div className="flex items-center gap-2">
-        <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => navigate('/portal/admin/companies')}>
+        <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => navigate('/admin/companies')}>
           <ArrowLeft className="h-4 w-4" />
         </Button>
         <div className="flex-1">

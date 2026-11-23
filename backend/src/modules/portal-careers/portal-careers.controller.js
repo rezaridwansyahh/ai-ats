@@ -1,6 +1,10 @@
 import portalCareersService from './portal-careers.service.js';
 
 class PortalCareersController {
+  getRecaptchaConfig(req, res) {
+    res.json(portalCareersService.getRecaptchaConfig());
+  }
+
   async getCompanyCareers(req, res) {
     try {
       const data = await portalCareersService.getCompanyCareers(req.params.slug);

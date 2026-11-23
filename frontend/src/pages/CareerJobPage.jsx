@@ -7,7 +7,8 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Skeleton } from '@/components/ui/skeleton';
-import { getJobDetail, submitApplication } from '@/api/careers.api';
+import ReCAPTCHA from 'react-google-recaptcha';
+import { getJobDetail, submitApplication, getRecaptchaConfig } from '@/api/careers.api';
 
 function CareerFonts() {
   return (
@@ -73,7 +74,7 @@ export default function CareerJobPage() {
   const isOpen = job.status === 'Active';
 
   return (
-    <div className="min-h-screen bg-[#F7F6FB]" style={{ fontFamily: "'Plus Jakarta Sans', system-ui, sans-serif" }}>
+    <div className="min-h-screen bg-[#F7F6FB] flex flex-col" style={{ fontFamily: "'Plus Jakarta Sans', system-ui, sans-serif" }}>
       <CareerFonts />
       <header className="bg-white border-b border-[#E6E2D8]">
         <div className="max-w-[1040px] mx-auto px-5 h-16 flex items-center gap-3">
@@ -88,16 +89,18 @@ export default function CareerJobPage() {
         </div>
       </header>
 
-      {view === 'detail' && <JobDetail job={job} isOpen={isOpen} slug={slug} onApply={() => setView('apply')} />}
-      {view === 'apply' && (
-        <ApplyForm
-          job={job}
-          slug={slug}
-          onBack={() => setView('detail')}
-          onDone={(ref) => { setReference(ref); setView('done'); }}
-        />
-      )}
-      {view === 'done' && <Done job={job} slug={slug} reference={reference} />}
+      <main className="flex-1">
+        {view === 'detail' && <JobDetail job={job} isOpen={isOpen} slug={slug} onApply={() => setView('apply')} />}
+        {view === 'apply' && (
+          <ApplyForm
+            job={job}
+            slug={slug}
+            onBack={() => setView('detail')}
+            onDone={(ref) => { setReference(ref); setView('done'); }}
+          />
+        )}
+        {view === 'done' && <Done job={job} slug={slug} reference={reference} />}
+      </main>
 
       <footer className="border-t border-[#E6E2D8] bg-white text-[#66706B] text-xs py-4 mt-6">
         <div className="max-w-[1040px] mx-auto px-5 flex items-center justify-between flex-wrap gap-2">
@@ -182,8 +185,17 @@ function ApplyForm({ job, slug, onBack, onDone }) {
   const [errors, setErrors] = useState({});
   const [submitting, setSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState(null);
+  const [recaptchaConfig, setRecaptchaConfig] = useState({ enabled: false, siteKey: null });
+  const [recaptchaToken, setRecaptchaToken] = useState(null);
   const fileInput = useRef(null);
   const honeypotRef = useRef(null);
+  const recaptchaRef = useRef(null);
+
+  useEffect(() => {
+    getRecaptchaConfig()
+      .then(({ data }) => setRecaptchaConfig(data))
+      .catch(() => setRecaptchaConfig({ enabled: false, siteKey: null })); // fail open — never block applying over a config-fetch hiccup
+  }, []);
 
   const setField = (k, v) => setFields((f) => ({ ...f, [k]: v }));
 
@@ -201,6 +213,7 @@ function ApplyForm({ job, slug, onBack, onDone }) {
       email: !EMAIL_RE.test(fields.email.trim()),
       phone: !PHONE_RE.test(fields.phone.trim().replace(/[\s-]/g, '')),
       consent: !consent,
+      recaptcha: recaptchaConfig.enabled && !recaptchaToken,
     };
     setErrors(next);
     return !Object.values(next).some(Boolean);
@@ -224,11 +237,16 @@ function ApplyForm({ job, slug, onBack, onDone }) {
       if (fields.linkedin_url) formData.append('linkedin_url', fields.linkedin_url.trim());
       if (fields.salary_expectation) formData.append('salary_expectation', fields.salary_expectation.trim());
       formData.append('source', params.get('src') === 'linkedin' ? 'linkedin' : 'career_site');
+      if (recaptchaConfig.enabled) formData.append('recaptcha_token', recaptchaToken);
 
       const { data } = await submitApplication(slug, job.id, formData);
       onDone(data.reference);
     } catch (err) {
       setSubmitError(err.response?.data?.message || 'Failed to submit your application. Please try again.');
+      // A reCAPTCHA token is single-use — reset the widget so a retry (e.g.
+      // after a different validation error) can get a fresh one.
+      recaptchaRef.current?.reset();
+      setRecaptchaToken(null);
     } finally {
       setSubmitting(false);
     }
@@ -306,6 +324,18 @@ function ApplyForm({ job, slug, onBack, onDone }) {
             <span>I consent to {job.job_title ? '' : ''}this company processing my personal data for recruitment purposes, including retention for up to 12 months for other relevant openings.</span>
           </div>
           {errors.consent && <p className="text-xs text-[#C0392B] -mt-3">Consent is required to continue.</p>}
+
+          {recaptchaConfig.enabled && (
+            <div>
+              <ReCAPTCHA
+                ref={recaptchaRef}
+                sitekey={recaptchaConfig.siteKey}
+                onChange={setRecaptchaToken}
+                onExpired={() => setRecaptchaToken(null)}
+              />
+              {errors.recaptcha && <p className="text-xs text-[#C0392B] mt-1">Please verify you're not a robot.</p>}
+            </div>
+          )}
 
           {submitError && (
             <div className="flex items-center gap-2 bg-red-50 border border-red-200 text-red-600 rounded-[10px] px-3.5 py-2.5 text-sm">

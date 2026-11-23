@@ -145,10 +145,10 @@ function App() {
         </Route>
         {/* Superadmin routes — separate layout, no PipelineBar */}
         <Route element={<RequireSuperAdmin><AdminDashboardLayout /></RequireSuperAdmin>}>
-          <Route path="/portal/admin/dashboard" element={<AdminDashboard />} />
-          <Route path="/portal/admin/companies" element={<AdminCompanies />} />
-          <Route path="/portal/admin/companies/:id" element={<AdminCompanyDetail />} />
-          <Route path="/portal/admin/roles" element={<AdminRoles />} />
+          <Route path="/admin/dashboard" element={<AdminDashboard />} />
+          <Route path="/admin/companies" element={<AdminCompanies />} />
+          <Route path="/admin/companies/:id" element={<AdminCompanyDetail />} />
+          <Route path="/admin/roles" element={<AdminRoles />} />
         </Route>
       </Routes>
 

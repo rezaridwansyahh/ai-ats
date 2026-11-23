@@ -10,6 +10,25 @@ import { sendPlainEmail } from '../../shared/services/candidate-mailer.js';
 const PHONE_RE = /^(\+62|62|0)8\d{7,12}$/;
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
+// One shared platform-wide reCAPTCHA v2 (checkbox) pair, not per-tenant —
+// every company's career page lives on this same domain, so a single
+// Google reCAPTCHA registration already covers all of them. Optional: with
+// no keys set, the feature is simply off and the apply form works without it.
+async function verifyRecaptcha(token) {
+  const secretKey = process.env.RECAPTCHA_SECRET_KEY;
+  if (!secretKey) return true; // not configured anywhere — nothing to enforce
+  if (!token) return false;
+
+  const params = new URLSearchParams({ secret: secretKey, response: token });
+  const res = await fetch('https://www.google.com/recaptcha/api/siteverify', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+    body: params,
+  });
+  const data = await res.json();
+  return !!data.success;
+}
+
 function publicCompany(c) {
   return { name: c.name, slug: c.slug, description: c.description, logo_url: c.logo_url, website: c.website };
 }
@@ -39,6 +58,14 @@ function publicJob(j) {
 }
 
 class PortalCareersService {
+  // Never returns the secret key — only whether the widget should render
+  // and which public site key to render it with.
+  getRecaptchaConfig() {
+    const siteKey = process.env.RECAPTCHA_SITE_KEY;
+    const enabled = !!(siteKey && process.env.RECAPTCHA_SECRET_KEY);
+    return { enabled, siteKey: enabled ? siteKey : null };
+  }
+
   async getCompanyCareers(slug) {
     const company = await companyModel.findBySlug(slug);
     if (!company) throw { status: 404, message: 'Company not found' };
@@ -66,8 +93,16 @@ class PortalCareersService {
     if (job.status !== 'Active') throw { status: 409, message: 'This position is no longer accepting applications' };
 
     // Honeypot — a hidden field no human ever fills in; bots that fill every
-    // input in the form trip it. No third-party CAPTCHA wired up for v1.
+    // input in the form trip it.
     if (fields.website) throw { status: 400, message: 'Invalid submission' };
+
+    // reCAPTCHA — only enforced when both keys are actually configured
+    // (verifyRecaptcha no-ops to true otherwise), so this never blocks
+    // submissions on a deployment that hasn't opted in yet.
+    if (process.env.RECAPTCHA_SECRET_KEY) {
+      const recaptchaValid = await verifyRecaptcha(fields.recaptcha_token);
+      if (!recaptchaValid) throw { status: 400, message: 'reCAPTCHA verification failed. Please try again.' };
+    }
 
     const name = (fields.name || '').trim();
     const email = (fields.email || '').trim();

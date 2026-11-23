@@ -13,3 +13,8 @@ export const submitApplication = (slug, jobId, formData) =>
   portalApi.post(`/portal-careers/${slug}/jobs/${jobId}/apply`, formData, {
     headers: { 'Content-Type': 'multipart/form-data' },
   });
+
+// { enabled, siteKey } — enabled is false (siteKey null) on any deployment
+// that hasn't set up RECAPTCHA_SITE_KEY/RECAPTCHA_SECRET_KEY yet.
+export const getRecaptchaConfig = () =>
+  portalApi.get('/portal-careers/recaptcha-config');
