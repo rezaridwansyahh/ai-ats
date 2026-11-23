@@ -458,14 +458,16 @@ class ScreeningService {
     return await screeningModel.getWorkboardData(company_id);
   }
 
-  // List candidates in a job's lane (parse | match | ready).
-  async getLaneCandidates(job_id, engine) {
+  // List candidates in a job's lane (parse | match | qa | ready).
+  // page/pageSize/search only matter for engine === 'qa' (see
+  // getQaPendingPaginated) — harmless no-ops for the other lanes.
+  async getLaneCandidates(job_id, engine, { page, pageSize, search } = {}) {
     if (!job_id) throw { status: 400, message: 'job_id is required' };
     const validEngines = ['parse', 'match', 'qa', 'ready'];
     if (engine && !validEngines.includes(engine)) {
       throw { status: 400, message: `engine must be one of: ${validEngines.join(', ')}` };
     }
-    return await screeningModel.getCandidatesByJobAndEngine(job_id, engine || null);
+    return await screeningModel.getCandidatesByJobAndEngine(job_id, engine || null, { page, pageSize, search });
   }
 
   // Summary-tile counts only — see getEngineCounts() model comment.

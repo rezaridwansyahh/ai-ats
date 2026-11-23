@@ -48,6 +48,18 @@ class JobAccountController {
     }
   }
 
+  async openDebugSession(req, res) {
+    const { account_id } = req.params;
+
+    try {
+      const result = await jobAccountService.openDebugSession(Number(account_id));
+
+      res.json({ message: 'Debug session queued — connect via chrome://inspect or VNC once it launches.', ...result });
+    } catch (err) {
+      res.status(err.status || 500).json({ error: err.message });
+    }
+  }
+
   async create(req, res) {
     const { user_id, portal_name, email, password } = req.body;
 

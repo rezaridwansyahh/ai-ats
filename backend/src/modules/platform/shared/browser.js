@@ -12,22 +12,10 @@ puppeteer.use(StealthPlugin());
 
 const PROFILES_DIR = process.env.BROWSER_PROFILES_DIR || path.resolve(process.cwd(), 'browser-profiles')
 
-// DEV ONLY: with PUPPETEER_KEEP_OPEN=true (and NODE_ENV !== 'production'),
-// close() leaves the window open so you can inspect what the RPA did.
-// A profile dir can only be held by one Chrome at a time, so the kept-open
-// browser for a profile is closed when the next job for it launches.
-//
-// PUPPETEER_REMOTE_DEBUGGING=true keeps it open unconditionally (even in
-// production) — the whole point of that mode is driving the browser by hand
-// over chrome://inspect (e.g. to clear an OTP challenge), so an automatic
-// close() would yank it away mid-session.
-const KEEP_OPEN =
+const KEEP_OPEN_DEFAULT =
   (process.env.NODE_ENV !== 'production' && process.env.PUPPETEER_KEEP_OPEN === 'true') ||
   process.env.PUPPETEER_REMOTE_DEBUGGING === 'true';
-// profile key -> { browser, pid, disconnected } for a browser left open by
-// close() — disconnected:true means Puppeteer's own CDP session was torn
-// down (see close()'s PUPPETEER_REMOTE_DEBUGGING branch), so there's no
-// `browser` handle left to close gracefully, only a pid to kill.
+
 const keptOpen = new Map();
 
 class BrowserPuppeteer {
@@ -35,20 +23,22 @@ class BrowserPuppeteer {
     this.page = null;
     this.browser = null;
     this.profileKey = null;
+    this.keepOpen = false;
+    this.remoteDebugging = false;
   }
 
-  async init({ accountId = null } = {}) {
-    const launchOptions = { headless: process.env.PUPPETEER_HEADLESS === 'true' };
+  async init({ accountId = null, headless, remoteDebugging, keepOpen } = {}) {
+    const useHeadless = headless !== undefined ? headless : process.env.PUPPETEER_HEADLESS === 'true';
+    this.remoteDebugging = remoteDebugging !== undefined ? remoteDebugging : process.env.PUPPETEER_REMOTE_DEBUGGING === 'true';
+    this.keepOpen = keepOpen !== undefined ? keepOpen : (KEEP_OPEN_DEFAULT || this.remoteDebugging);
+
+    const launchOptions = { headless: useHeadless };
 
     if (process.env.PUPPETEER_EXECUTABLE_PATH) {
       launchOptions.executablePath = process.env.PUPPETEER_EXECUTABLE_PATH;
     }
 
-    // Opt-in only — exposes a DevTools-inspectable debug port (chrome://inspect
-    // on your own machine, tunneled over SSH) so you can click/type into a
-    // running RPA session, e.g. to clear an OTP challenge by hand. Bound to
-    // localhost by default via Chrome itself; never enabled unless asked for.
-    if (process.env.PUPPETEER_REMOTE_DEBUGGING === 'true') {
+    if (this.remoteDebugging) {
       launchOptions.args = [
         ...(launchOptions.args || []),
         `--remote-debugging-port=${process.env.PUPPETEER_REMOTE_DEBUGGING_PORT || '9222'}`,
@@ -62,17 +52,14 @@ class BrowserPuppeteer {
 
     this.profileKey = launchOptions.userDataDir || 'no-profile';
 
-    if (KEEP_OPEN) {
-      const previous = keptOpen.get(this.profileKey);
-      if (previous) {
-        keptOpen.delete(this.profileKey);
-        if (previous.disconnected) {
-          // No CDP connection left to ask it to close gracefully (see
-          // close() below) — kill the process directly by pid instead.
-          try { process.kill(previous.pid); } catch { /* already gone */ }
-        } else {
-          await previous.browser.close().catch(() => {});
-        }
+    const previous = keptOpen.get(this.profileKey);
+    if (previous) {
+      keptOpen.delete(this.profileKey);
+      if (previous.disconnected) {
+
+        try { process.kill(previous.pid); } catch { /* already gone */ }
+      } else {
+        await previous.browser.close().catch(() => {});
       }
     }
 
@@ -133,20 +120,13 @@ class BrowserPuppeteer {
   async close() {
     if (!this.browser) return;
 
-    if (KEEP_OPEN) {
+    if (this.keepOpen) {
       const browser = this.browser;
       const key = this.profileKey;
       const pid = browser.process()?.pid;
 
-      if (process.env.PUPPETEER_REMOTE_DEBUGGING === 'true') {
-        // Detach Puppeteer's own CDP connection entirely, not just skip
-        // close() — a human solving a Cloudflare challenge over
-        // chrome://inspect still gets "verification failed", since that
-        // just adds a second CDP client on top of Puppeteer's own, and
-        // Cloudflare flags the CDP attachment itself, not who's clicking.
-        // Interact with the browser over VNC (not chrome://inspect) from
-        // here on; the process can now only be ended by killing its pid
-        // (handled in init() above when the next job for this profile starts).
+      if (this.remoteDebugging) {
+        
         await browser.disconnect();
         keptOpen.set(key, { pid, disconnected: true });
         console.log(`[puppeteer] Detached CDP — browser (pid ${pid}) still running at ${key}, untouched by any automation client now. Use VNC, not chrome://inspect, to interact with it.`);

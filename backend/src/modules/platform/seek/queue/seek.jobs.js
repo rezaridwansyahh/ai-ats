@@ -6,4 +6,5 @@ export const SEEK_JOBS = {
   CREATE_JOB_POST_DRAFT: 'seek-create-job-post-draft',
   EXTRACT_CANDIDATE: 'seek-extract-candidate',
   NIGHT_SCAN: 'seek-night-scan',
+  DEBUG_SESSION: 'seek-debug-session',
 };

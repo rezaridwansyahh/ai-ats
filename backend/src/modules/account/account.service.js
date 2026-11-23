@@ -57,11 +57,20 @@ class JobAccountService {
     }
 
     const result = await adapter.extractCandidate(account_id, job_sourcing_id);
-    // Marked synchronously here (not left to the worker) so the UI's
-    // "Syncing…" badge is accurate the moment this request returns, not
-    // only once the worker actually picks the job up off the queue.
     await jobSourceModel.markSyncing(job_sourcing_id);
     return result;
+  }
+
+  async openDebugSession(account_id) {
+    const account = await jobAccountModel.findById(account_id);
+    if (!account) throw { status: 404, message: 'Job Account not found' };
+
+    const adapter = registry[account.portal_name];
+    if (!adapter?.debugSession) {
+      throw { status: 400, message: `debug session not supported for ${account.portal_name}` };
+    }
+
+    return await adapter.debugSession(account_id);
   }
 
   async create(user_id, portal_name, email, password) {
@@ -76,10 +85,7 @@ class JobAccountService {
     }
 
     const encryptedPassword = encrypt(password);
-    // Inherit company_id from the creating user — without this, every job
-    // account has company_id=NULL, which cascades into every applicant synced
-    // through it also having company_id=NULL (invisible in Talent Pool) and
-    // resume PDFs landing in an "unassigned_unknown" storage folder.
+
     const newAccount = await jobAccountModel.create(user_id, portal_name, email, encryptedPassword, user.company_id ?? null);
 
     return {

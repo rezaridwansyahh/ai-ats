@@ -59,3 +59,17 @@ export async function enqueueExtractCandidate(account_id, job_sourcing_id, trigg
     },
   );
 }
+
+// Super Admin only — opens a headful, remote-debuggable Puppeteer instance
+// for this account on demand (its existing profile + cookies, not a fresh
+// session), so a human can take over via chrome://inspect/VNC without
+// needing to flip env vars or restart the worker. Never auto-retries
+// (queue default is attempts: 1) — a retry would just launch a second,
+// orphaned browser while someone's already looking at the first one.
+export function enqueueDebugSession(account_id) {
+  return seekQueue.add(
+    SEEK_JOBS.DEBUG_SESSION,
+    { account_id },
+    { deduplication: { id: `debug-session-${account_id}` } },
+  );
+}

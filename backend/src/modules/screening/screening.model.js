@@ -366,8 +366,13 @@ class ScreeningModel {
           CASE
             WHEN ma.information IS NULL THEN 'parse'
             WHEN s.id IS NULL          THEN 'match'
-            WHEN sq IS NULL            THEN 'qa'
-            ELSE 'ready'
+            -- Q&A is optional, not a required gate — a scored candidate who
+            -- was never selected for Q&A at all (sq.status IS NULL) stays in
+            -- 'match', not 'qa'. Only an explicitly-selected-but-unanswered
+            -- candidate (sq exists, status not yet 'responded') is 'qa'.
+            WHEN sq.status IS NULL      THEN 'match'
+            WHEN sq.status = 'responded' THEN 'ready'
+            ELSE 'qa'
           END AS engine
         FROM master_candidate mc
         JOIN core_job cj ON cj.id = mc.job_id
@@ -456,7 +461,7 @@ class ScreeningModel {
   // Engine derivation matches getWorkboardData.
   // Joins candidate_screening when available (lazy-created on first L3 visit)
   // so the frontend can deep-link rows straight into L3.
-  async getCandidatesByJobAndEngine(job_id, engine) {
+  async getCandidatesByJobAndEngine(job_id, engine, options = {}) {
     const db = getDb();
     const result = await db.query(
       `
@@ -485,8 +490,11 @@ class ScreeningModel {
         CASE
           WHEN a.information IS NULL                        THEN 'parse'
           WHEN s.id IS NULL                                  THEN 'match'
-          WHEN sq.status IS DISTINCT FROM 'responded'        THEN 'qa'
-          ELSE                                                    'ready'
+          -- Q&A is optional — never-selected (sq.status NULL) stays 'match',
+          -- same fix as getWorkboardData above.
+          WHEN sq.status IS NULL                             THEN 'match'
+          WHEN sq.status = 'responded'                       THEN 'ready'
+          ELSE                                                    'qa'
         END AS engine
       FROM master_candidate mc
       LEFT JOIN master_applicant a ON a.id = mc.applicant_id
@@ -517,32 +525,38 @@ class ScreeningModel {
     // Each stage tab's dashboard needs more than just "its own" bucket to
     // show both what's pending AND what it already produced (that output
     // naturally lives in the NEXT bucket) — e.g. Match wants to show
-    // already-scored candidates (the 'qa' bucket) alongside its own pending
-    // queue. Rather than make the frontend fire a second request for that
-    // adjacent bucket (as it used to), shape it into this same single
-    // response so one tab visit is still exactly one HTTP call.
+    // already-scored candidates alongside its own pending-to-score queue.
+    // Rather than make the frontend fire a second request for that adjacent
+    // bucket, shape it into this same single response so one tab visit is
+    // still exactly one HTTP call.
     const byEngine = (key) => rows.filter((r) => r.engine === key);
     if (engine === 'parse') {
       return { pending: byEngine('parse') };
     }
     if (engine === 'match') {
-      return { pending: byEngine('match'), scored: byEngine('qa') };
+      // 'match' now covers both "not yet scored" and "scored, never
+      // selected for Q&A" — split by score_id presence to recover the two
+      // lists this tab actually needs (pending-to-score vs scored-and-
+      // available-to-select-for-Q&A).
+      const matchBucket = byEngine('match');
+      return {
+        pending: matchBucket.filter((r) => r.score_id == null),
+        scored: matchBucket.filter((r) => r.score_id != null),
+      };
     }
     if (engine === 'qa') {
-      // The 'qa' bucket groups together every scored-but-not-responded
-      // candidate — qa_status NULL (never sent), 'draft', 'sent', AND
-      // 'expired' all land here, since the CASE above only distinguishes
-      // "responded" from "everything else". "Sent · awaiting reply" means
-      // qa_status === 'sent' specifically — without this filter it silently
-      // counted every scored candidate as "awaiting reply" even when Q&A
-      // was never sent to them at all (sq.status NULL).
+      // 'qa' now only contains candidates explicitly selected for Q&A
+      // (sq exists) who haven't responded yet — draft/sent/expired all show
+      // here so a recruiter can send or resend, not just 'sent'.
       //
-      // "responded" candidates have moved into the 'ready' bucket by
-      // definition (qa_status === 'responded' is exactly what promotes them
-      // out of 'qa') — excluding already-decided ones so this matches
-      // getCalibrationCohort's "awaiting decision" semantics.
+      // The actual pending list is paginated separately (see
+      // getQaPendingPaginated) since this bucket can grow large; this
+      // method still returns it unpaginated here for back-compat callers
+      // that pass no pagination options.
+      const paginated = await this.getQaPendingPaginated(job_id, options);
       return {
-        pending: byEngine('qa').filter((r) => r.qa_status === 'sent'),
+        pending: paginated.rows,
+        pending_total: paginated.total,
         responded: byEngine('ready').filter((r) => !r.decision),
       };
     }
@@ -553,6 +567,63 @@ class ScreeningModel {
     // has the correct, broader "scored + no decision yet" definition —
     // callers needing the Ready tab's cohort must use that, not this.
     return byEngine(engine);
+  }
+
+  // Paginated, server-side version of the 'qa' bucket above — unlike the
+  // other lanes, Q&A can grow large (every "sent, awaiting reply" candidate
+  // piles up here until a recruiter resolves them), so this can't just
+  // fetch-everything-then-slice-in-JS the way the rest of
+  // getCandidatesByJobAndEngine does.
+  async getQaPendingPaginated(job_id, { page = 1, pageSize = 10, search } = {}) {
+    const db = getDb();
+    const limit = Math.min(Math.max(Number(pageSize) || 10, 1), 100);
+    const offset = (Math.max(Number(page) || 1, 1) - 1) * limit;
+    const searchParam = search ? `%${search}%` : null;
+
+    const WHERE = `
+      WHERE mc.job_id = $1
+        AND rsc.name = 'Screening & Matching'
+        AND sq.status IS DISTINCT FROM 'responded'
+        AND ($2::text IS NULL OR a.name ILIKE $2)
+    `;
+    const FROM = `
+      FROM master_candidate mc
+      JOIN candidate_job_score s ON s.applicant_id = mc.applicant_id AND s.job_id = mc.job_id
+      LEFT JOIN master_applicant a ON a.id = mc.applicant_id
+      JOIN candidate_screening cs ON cs.candidate_id = mc.id
+      JOIN screening_qa sq ON sq.screening_id = cs.id
+      LEFT JOIN job_stage js ON js.id = mc.latest_stage
+      LEFT JOIN recruitment_stage_category rsc ON rsc.id = js.stage_type_id
+    `;
+
+    const [rowsResult, countResult] = await Promise.all([
+      db.query(
+        `
+        SELECT
+          mc.id          AS candidate_id,
+          mc.applicant_id,
+          mc.job_id,
+          a.name         AS applicant_name,
+          a.last_position,
+          s.id           AS score_id,
+          s.overall_score,
+          s.scored_at,
+          cs.id          AS screening_id,
+          cs.decision,
+          sq.status      AS qa_status,
+          sq.sent_at,
+          sq.expired_at
+        ${FROM}
+        ${WHERE}
+        ORDER BY sq.sent_at ASC NULLS LAST, mc.created_at DESC
+        LIMIT $3 OFFSET $4
+        `,
+        [job_id, searchParam, limit, offset]
+      ),
+      db.query(`SELECT COUNT(*)::int AS total ${FROM} ${WHERE}`, [job_id, searchParam]),
+    ]);
+
+    return { rows: rowsResult.rows, total: countResult.rows[0]?.total || 0 };
   }
 
   // Lightweight counts-only version of the parse/match/qa/ready split above,
@@ -572,17 +643,15 @@ class ScreeningModel {
         CASE
           WHEN a.information IS NULL                        THEN 'parse'
           WHEN s.id IS NULL                                  THEN 'match'
-          WHEN sq.status IS DISTINCT FROM 'responded'        THEN 'qa'
-          ELSE                                                    'ready'
+          -- Q&A is optional — never-selected (sq.status NULL) stays 'match',
+          -- same fix as getWorkboardData/getCandidatesByJobAndEngine above.
+          WHEN sq.status IS NULL                             THEN 'match'
+          WHEN sq.status = 'responded'                       THEN 'ready'
+          ELSE                                                    'qa'
         END AS engine,
         COUNT(*)::int AS count,
-        -- Within the 'qa' bucket, sq.status is NULL/'draft'/'sent'/'expired'
-        -- all lumped together (anything not 'responded') — but the QA tile's
-        -- "in progress" figure means "actually sent, awaiting reply"
-        -- specifically. A candidate who was never sent Q&A at all (status
-        -- IS NULL — true for every candidate until Follow-up Q&A is used)
-        -- isn't "in progress"; counting them here was inflating this to the
-        -- full qa-bucket size regardless of whether anything was ever sent.
+        -- "In progress" means "actually sent, awaiting reply" specifically —
+        -- draft (generated, not sent) and expired don't count as in progress.
         COUNT(*) FILTER (WHERE sq.status = 'sent')::int AS sent_count
       FROM master_candidate mc
       LEFT JOIN master_applicant a ON a.id = mc.applicant_id
@@ -619,17 +688,37 @@ class ScreeningModel {
       [job_id]
     );
 
+    // Total ever-scored, regardless of Q&A/decision state — the Match tile's
+    // footer needs this now that 'match' above covers both "not scored" and
+    // "scored, no Q&A selected" (it can no longer be derived from the 'qa'
+    // bucket count, which now means something narrower: "selected for Q&A").
+    const scoredResult = await db.query(
+      `
+      SELECT COUNT(*)::int AS scored_count
+      FROM master_candidate mc
+      LEFT JOIN master_applicant a ON a.id = mc.applicant_id
+      JOIN candidate_job_score s
+        ON s.applicant_id = mc.applicant_id AND s.job_id = mc.job_id
+      LEFT JOIN job_stage js ON js.id = mc.latest_stage
+      LEFT JOIN recruitment_stage_category rsc ON rsc.id = js.stage_type_id
+      WHERE mc.job_id = $1
+        AND mc.applicant_id IS NOT NULL
+        AND rsc.name = 'Screening & Matching'
+      `,
+      [job_id]
+    );
+
     const byEngine = Object.fromEntries(laneResult.rows.map((r) => [r.engine, r.count]));
     const qaRow = laneResult.rows.find((r) => r.engine === 'qa');
     return {
       parse: byEngine.parse || 0,
       match: byEngine.match || 0,
       qa: byEngine.qa || 0,
+      scored: scoredResult.rows[0]?.scored_count || 0,
       // "Actually sent, awaiting reply" — a strict subset of the 'qa' bucket
-      // above. Use this (not `qa`) for any "in progress" / "awaiting reply"
-      // display; `qa` itself still includes never-sent candidates, which is
-      // correct for its OTHER use as "already scored" in the Parse/Match
-      // tiles' footers, just wrong for a Q&A-specific count.
+      // above (which now only contains draft/sent/expired candidates who
+      // were explicitly selected for Q&A at all — never-selected candidates
+      // are 'match', not 'qa').
       qa_sent: qaRow?.sent_count || 0,
       ready: cohortResult.rows[0]?.ready_count || 0,
       qa_responded: cohortResult.rows[0]?.qa_responded_count || 0,
