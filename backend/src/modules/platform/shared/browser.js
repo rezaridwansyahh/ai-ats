@@ -24,7 +24,11 @@ const PROFILES_DIR = process.env.BROWSER_PROFILES_DIR || path.resolve(process.cw
 const KEEP_OPEN =
   (process.env.NODE_ENV !== 'production' && process.env.PUPPETEER_KEEP_OPEN === 'true') ||
   process.env.PUPPETEER_REMOTE_DEBUGGING === 'true';
-const keptOpen = new Map(); // profile key -> Browser left open by close()
+// profile key -> { browser, pid, disconnected } for a browser left open by
+// close() — disconnected:true means Puppeteer's own CDP session was torn
+// down (see close()'s PUPPETEER_REMOTE_DEBUGGING branch), so there's no
+// `browser` handle left to close gracefully, only a pid to kill.
+const keptOpen = new Map();
 
 class BrowserPuppeteer {
   constructor() {
@@ -62,7 +66,13 @@ class BrowserPuppeteer {
       const previous = keptOpen.get(this.profileKey);
       if (previous) {
         keptOpen.delete(this.profileKey);
-        await previous.close().catch(() => {});
+        if (previous.disconnected) {
+          // No CDP connection left to ask it to close gracefully (see
+          // close() below) — kill the process directly by pid instead.
+          try { process.kill(previous.pid); } catch { /* already gone */ }
+        } else {
+          await previous.browser.close().catch(() => {});
+        }
       }
     }
 
@@ -126,11 +136,28 @@ class BrowserPuppeteer {
     if (KEEP_OPEN) {
       const browser = this.browser;
       const key = this.profileKey;
-      keptOpen.set(key, browser);
-      browser.once('disconnected', () => {
-        if (keptOpen.get(key) === browser) keptOpen.delete(key);
-      });
-      console.log(`[puppeteer] PUPPETEER_KEEP_OPEN: leaving browser open (${key})`);
+      const pid = browser.process()?.pid;
+
+      if (process.env.PUPPETEER_REMOTE_DEBUGGING === 'true') {
+        // Detach Puppeteer's own CDP connection entirely, not just skip
+        // close() — a human solving a Cloudflare challenge over
+        // chrome://inspect still gets "verification failed", since that
+        // just adds a second CDP client on top of Puppeteer's own, and
+        // Cloudflare flags the CDP attachment itself, not who's clicking.
+        // Interact with the browser over VNC (not chrome://inspect) from
+        // here on; the process can now only be ended by killing its pid
+        // (handled in init() above when the next job for this profile starts).
+        await browser.disconnect();
+        keptOpen.set(key, { pid, disconnected: true });
+        console.log(`[puppeteer] Detached CDP — browser (pid ${pid}) still running at ${key}, untouched by any automation client now. Use VNC, not chrome://inspect, to interact with it.`);
+      } else {
+        keptOpen.set(key, { pid, disconnected: false, browser });
+        browser.once('disconnected', () => {
+          const entry = keptOpen.get(key);
+          if (entry?.browser === browser) keptOpen.delete(key);
+        });
+        console.log(`[puppeteer] PUPPETEER_KEEP_OPEN: leaving browser open (${key})`);
+      }
     } else {
       await this.browser.close();
     }
