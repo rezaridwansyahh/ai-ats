@@ -80,7 +80,7 @@ export default function CareersListPage() {
   }
 
   return (
-    <div className="min-h-screen bg-[#F7F6FB]" style={{ fontFamily: "'Plus Jakarta Sans', system-ui, sans-serif" }}>
+    <div className="min-h-screen bg-[#F7F6FB] flex flex-col" style={{ fontFamily: "'Plus Jakarta Sans', system-ui, sans-serif" }}>
       <CareerFonts />
 
       <header className="bg-white border-b border-[#E6E2D8]">
@@ -99,6 +99,7 @@ export default function CareersListPage() {
         </div>
       </header>
 
+      <main className="flex-1">
       <section className="max-w-[1040px] mx-auto px-5 pt-11 pb-7">
         <h1 style={{ fontFamily: "'Fraunces', serif", fontWeight: 500 }} className="text-[40px] leading-[1.1] text-[#1B2420] mb-2.5">
           Grow with <em className="not-italic text-[#640199]">{company.name}</em>
@@ -165,6 +166,7 @@ export default function CareersListPage() {
           ))}
         </div>
       </section>
+      </main>
 
       <footer className="border-t border-[#E6E2D8] bg-white text-[#66706B] text-xs py-4">
         <div className="max-w-[1040px] mx-auto px-5 flex items-center justify-between flex-wrap gap-2">

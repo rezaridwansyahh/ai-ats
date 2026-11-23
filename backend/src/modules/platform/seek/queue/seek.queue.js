@@ -4,7 +4,7 @@ import connection from '../../../../queue/connection.js';
 const seekQueue = new Queue('seek', {
   connection,
   defaultJobOptions: {
-    attempts: 3,
+    attempts: 1,
     backoff: { type: 'exponential' },
     removeOnComplete: { age: 3600, count: 100 },
     removeOnFail: { age: 3600 }

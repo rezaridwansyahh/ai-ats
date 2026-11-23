@@ -91,7 +91,7 @@ export default function AdminCompanies() {
               {companies.map((c) => (
                 <button
                   key={c.id}
-                  onClick={() => navigate(`/portal/admin/companies/${c.id}`)}
+                  onClick={() => navigate(`/admin/companies/${c.id}`)}
                   className="w-full flex items-center justify-between px-4 py-3 text-left hover:bg-accent/50 transition-colors"
                 >
                   <div className="flex items-center gap-3 min-w-0">

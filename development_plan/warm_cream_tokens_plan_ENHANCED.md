@@ -461,10 +461,6 @@ Date:   Sun May 31 20:36:49 2026 +0700
 
     Task 6.5 from audit v4.0 (2h FE)
 
-    🤖 Generated with [Claude Code](https://claude.com/claude-code)
-
-    Co-Authored-By: Claude <noreply@anthropic.com>
-
  33 files changed, 145 insertions(+), 136 deletions(-)
 ```
 

@@ -259,7 +259,8 @@ class ScreeningController {
     try {
       const job_id = Number(req.params.job_id);
       const engine = req.query.engine || null;
-      const candidates = await screeningService.getLaneCandidates(job_id, engine);
+      const { page, pageSize, search } = req.query;
+      const candidates = await screeningService.getLaneCandidates(job_id, engine, { page, pageSize, search });
       res.status(200).json({ message: 'Lane candidates', candidates });
     } catch (err) {
       res.status(err.status || 500).json({ message: err.message });

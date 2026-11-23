@@ -1,4 +1,8 @@
 // services/browser.js
+// Must come before puppeteer-extra: puppeteer v25 is ESM-only, and
+// puppeteer-extra (CJS) require()s it — if the ESM module isn't evaluated
+// yet, require(esm) throws "ReferenceError: default is not defined".
+import 'puppeteer';
 import puppeteer from 'puppeteer-extra';
 import StealthPlugin from 'puppeteer-extra-plugin-stealth';
 import fs from "fs";
@@ -8,26 +12,37 @@ puppeteer.use(StealthPlugin());
 
 const PROFILES_DIR = process.env.BROWSER_PROFILES_DIR || path.resolve(process.cwd(), 'browser-profiles')
 
-// DEV ONLY: with PUPPETEER_KEEP_OPEN=true (and NODE_ENV !== 'production'),
-// close() leaves the window open so you can inspect what the RPA did.
-// A profile dir can only be held by one Chrome at a time, so the kept-open
-// browser for a profile is closed when the next job for it launches.
-const KEEP_OPEN =
-  process.env.NODE_ENV !== 'production' && process.env.PUPPETEER_KEEP_OPEN === 'true';
-const keptOpen = new Map(); // profile key -> Browser left open by close()
+const KEEP_OPEN_DEFAULT =
+  (process.env.NODE_ENV !== 'production' && process.env.PUPPETEER_KEEP_OPEN === 'true') ||
+  process.env.PUPPETEER_REMOTE_DEBUGGING === 'true';
+
+const keptOpen = new Map();
 
 class BrowserPuppeteer {
   constructor() {
     this.page = null;
     this.browser = null;
     this.profileKey = null;
+    this.keepOpen = false;
+    this.remoteDebugging = false;
   }
 
-  async init({ accountId = null } = {}) {
-    const launchOptions = { headless: process.env.PUPPETEER_HEADLESS === 'true' };
+  async init({ accountId = null, headless, remoteDebugging, keepOpen } = {}) {
+    const useHeadless = headless !== undefined ? headless : process.env.PUPPETEER_HEADLESS === 'true';
+    this.remoteDebugging = remoteDebugging !== undefined ? remoteDebugging : process.env.PUPPETEER_REMOTE_DEBUGGING === 'true';
+    this.keepOpen = keepOpen !== undefined ? keepOpen : (KEEP_OPEN_DEFAULT || this.remoteDebugging);
+
+    const launchOptions = { headless: useHeadless };
 
     if (process.env.PUPPETEER_EXECUTABLE_PATH) {
       launchOptions.executablePath = process.env.PUPPETEER_EXECUTABLE_PATH;
+    }
+
+    if (this.remoteDebugging) {
+      launchOptions.args = [
+        ...(launchOptions.args || []),
+        `--remote-debugging-port=${process.env.PUPPETEER_REMOTE_DEBUGGING_PORT || '9222'}`,
+      ];
     }
 
     if (accountId) {
@@ -37,11 +52,14 @@ class BrowserPuppeteer {
 
     this.profileKey = launchOptions.userDataDir || 'no-profile';
 
-    if (KEEP_OPEN) {
-      const previous = keptOpen.get(this.profileKey);
-      if (previous) {
-        keptOpen.delete(this.profileKey);
-        await previous.close().catch(() => {});
+    const previous = keptOpen.get(this.profileKey);
+    if (previous) {
+      keptOpen.delete(this.profileKey);
+      if (previous.disconnected) {
+
+        try { process.kill(previous.pid); } catch { /* already gone */ }
+      } else {
+        await previous.browser.close().catch(() => {});
       }
     }
 
@@ -102,14 +120,24 @@ class BrowserPuppeteer {
   async close() {
     if (!this.browser) return;
 
-    if (KEEP_OPEN) {
+    if (this.keepOpen) {
       const browser = this.browser;
       const key = this.profileKey;
-      keptOpen.set(key, browser);
-      browser.once('disconnected', () => {
-        if (keptOpen.get(key) === browser) keptOpen.delete(key);
-      });
-      console.log(`[puppeteer] PUPPETEER_KEEP_OPEN: leaving browser open (${key})`);
+      const pid = browser.process()?.pid;
+
+      if (this.remoteDebugging) {
+        
+        await browser.disconnect();
+        keptOpen.set(key, { pid, disconnected: true });
+        console.log(`[puppeteer] Detached CDP — browser (pid ${pid}) still running at ${key}, untouched by any automation client now. Use VNC, not chrome://inspect, to interact with it.`);
+      } else {
+        keptOpen.set(key, { pid, disconnected: false, browser });
+        browser.once('disconnected', () => {
+          const entry = keptOpen.get(key);
+          if (entry?.browser === browser) keptOpen.delete(key);
+        });
+        console.log(`[puppeteer] PUPPETEER_KEEP_OPEN: leaving browser open (${key})`);
+      }
     } else {
       await this.browser.close();
     }

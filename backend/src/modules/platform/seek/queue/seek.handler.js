@@ -58,6 +58,10 @@ const syncAllSeekHandler = async (data) => {
   await seekService.syncAll(data.account_id);
 }
 
+const debugSessionHandler = async (data) => {
+  await seekService.openDebugSession(data.account_id);
+}
+
 // Night sweep (9PM-5AM, ~every 30min): every eligible sourcing, linked or
 // not — this is the once-a-night guarantee every Active sourcing gets swept
 // regardless of priority.
@@ -68,7 +72,7 @@ const seekNightScanHandler = async () => {
   for (const row of rows) {
     try {
       await jobSourceModel.markSyncing(row.id);
-      await seekProducer.extractSeekCandidate(row.account_id, row.id, 'scheduler');
+      await seekProducer.enqueueExtractCandidate(row.account_id, row.id, 'scheduler');
     } catch (err) {
       console.error(`[Scheduler] Night scan failed to enqueue sourcing ${row.id}:`, err.message);
     }
@@ -80,9 +84,12 @@ const handlers = {
   [SEEK_JOBS.SYNC_JOB]: syncSeekJobSourceHandler,
   [SEEK_JOBS.CREATE_JOB_POST_DRAFT]: createJobPostDraftHandler,
   [SEEK_JOBS.EXTRACT_CANDIDATE]: extractCandidateHandler,
-  // syncAllSeekHandler / seekNightScanHandler intentionally not registered —
-  // they call seekService.syncAll() and seekProducer.extractSeekCandidate(),
-  // neither of which exist yet. Needs a design decision before wiring up.
+  [SEEK_JOBS.DEBUG_SESSION]: debugSessionHandler,
+  // syncAllSeekHandler intentionally not registered — calls
+  // seekService.syncAll(), which doesn't exist yet. seekNightScanHandler is
+  // implemented and correct, but its repeatable cron registration was
+  // deliberately dropped (unregistered via scripts/unregister-seek-night-scan.js)
+  // pending a decision on re-enabling it — leave unregistered here too until then.
 };
 
 export default handlers;

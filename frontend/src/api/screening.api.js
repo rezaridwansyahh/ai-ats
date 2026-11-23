@@ -73,8 +73,10 @@ export const getMatchingResults = (job_id) =>
 export const getWorkboard = () =>
   api.get('/screening/workboard');
 
-export const getLaneCandidates = (job_id, engine) =>
-  api.get(`/screening/job/${job_id}/lane`, { params: engine ? { engine } : {} });
+// page/pageSize/search only apply to engine === 'qa' (server-side paginated
+// there — see getQaPendingPaginated); harmless no-ops for the other lanes.
+export const getLaneCandidates = (job_id, engine, { page, pageSize, search } = {}) =>
+  api.get(`/screening/job/${job_id}/lane`, { params: { ...(engine ? { engine } : {}), page, pageSize, search } });
 
 // Match tab — flips a score row's preview to "viewed" the first time a
 // recruiter opens it (idempotent on the backend, safe to call repeatedly).

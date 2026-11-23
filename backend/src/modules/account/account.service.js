@@ -1,6 +1,7 @@
 import jobAccountModel from './account.model.js';
 import userModel from '../user/user.model.js';
 import registry from '../platform/shared/platform.registry.js';
+import jobSourceModel from '../job-source/job-source.model.js';
 
 import { encrypt, decrypt } from '../../shared/utils/encrypt.js';
 
@@ -55,7 +56,21 @@ class JobAccountService {
       throw { status: 400, message: `candidate extraction not supported for ${account.portal_name}` };
     }
 
-    return await adapter.extractCandidate(account_id, job_sourcing_id);
+    const result = await adapter.extractCandidate(account_id, job_sourcing_id);
+    await jobSourceModel.markSyncing(job_sourcing_id);
+    return result;
+  }
+
+  async openDebugSession(account_id) {
+    const account = await jobAccountModel.findById(account_id);
+    if (!account) throw { status: 404, message: 'Job Account not found' };
+
+    const adapter = registry[account.portal_name];
+    if (!adapter?.debugSession) {
+      throw { status: 400, message: `debug session not supported for ${account.portal_name}` };
+    }
+
+    return await adapter.debugSession(account_id);
   }
 
   async create(user_id, portal_name, email, password) {
@@ -70,10 +85,7 @@ class JobAccountService {
     }
 
     const encryptedPassword = encrypt(password);
-    // Inherit company_id from the creating user — without this, every job
-    // account has company_id=NULL, which cascades into every applicant synced
-    // through it also having company_id=NULL (invisible in Talent Pool) and
-    // resume PDFs landing in an "unassigned_unknown" storage folder.
+
     const newAccount = await jobAccountModel.create(user_id, portal_name, email, encryptedPassword, user.company_id ?? null);
 
     return {

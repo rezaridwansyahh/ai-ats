@@ -6,9 +6,9 @@ import { Toaster } from '@/components/ui/sonner';
 import { ChevronRight } from 'lucide-react';
 
 const BREADCRUMB_MAP = {
-  '/portal/admin/dashboard': ['Platform', 'Dashboard'],
-  '/portal/admin/companies': ['Platform', 'Companies'],
-  '/portal/admin/roles':     ['Platform', 'Roles'],
+  '/admin/dashboard': ['Platform', 'Dashboard'],
+  '/admin/companies': ['Platform', 'Companies'],
+  '/admin/roles':     ['Platform', 'Roles'],
 };
 
 export default function AdminDashboardLayout() {

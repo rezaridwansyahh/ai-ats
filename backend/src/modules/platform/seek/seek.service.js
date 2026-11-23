@@ -500,6 +500,27 @@ class SeekService {
       await browser.close();
     }
   }
+
+  async openDebugSession(account_id) {
+    const account = await jobAccountService.getById(account_id);
+    const browser = new BrowserPuppeteer();
+    await browser.init({ accountId: account_id, headless: false, remoteDebugging: true });
+    const page = browser.getPage();
+
+    const cookieRow = await cookieService.getCookie(account_id);
+    await browser.injectCookies(cookieRow?.cookies?.cookies || []);
+
+    try {
+      const result = await loginRpa.authenticatedPage(page, account);
+      if (result.freshLogin) {
+        await cookieService.addCookies(account_id, { cookies: result.cookies, userAgent: result.userAgent });
+      }
+    } catch (err) {
+      console.error(`[debug-session] login check failed for account ${account_id}, leaving browser open anyway:`, err.message);
+    } finally {
+      await browser.close();
+    }
+  }
 }
 
 export default new SeekService();

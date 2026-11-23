@@ -20,6 +20,7 @@ import QAStageDashboard from '@/components/ai-screening/QAStageDashboard';
 import PipelineStageDashboard from '@/components/ai-screening/PipelineStageDashboard';
 
 const READY_PAGE_SIZE = 10;
+const QA_PAGE_SIZE = 10;
 
 function statusTone(status) {
   switch ((status || '').toLowerCase()) {
@@ -61,10 +62,25 @@ export default function AIScreeningPage() {
   const [cohortRows, setCohortRows] = useState([]);
   const [parseRows, setParseRows]   = useState([]);
   const [matchRows, setMatchRows]   = useState([]);
+  // matchScoredRows: Match tab's "already scored, available to select for
+  // Q&A" reference list. qaRows: the Q&A tab's OWN pending-reply list. These
+  // used to share one state variable (both called it "qaRows") — whichever
+  // tab fetched last silently overwrote the other's data, so switching back
+  // to a previously-visited tab showed the wrong rows until something else
+  // happened to force a refetch. They're genuinely different data and need
+  // separate state.
+  const [matchScoredRows, setMatchScoredRows] = useState([]);
   const [qaRows, setQaRows]         = useState([]);
   const [qaRespondedRows, setQaRespondedRows] = useState([]);
   const [loadedLanes, setLoadedLanes] = useState(() => new Set());
   const [laneLoading, setLaneLoading] = useState(false);
+
+  // Q&A tab's own server-side search/pagination state — same pattern as the
+  // Ready tab below, since the 'qa' lane is now paginated server-side too.
+  const [qaSearch, setQaSearch] = useState('');
+  const [debouncedQaSearch, setDebouncedQaSearch] = useState('');
+  const [qaPage, setQaPage] = useState(1);
+  const [qaTotal, setQaTotal] = useState(0);
 
   // Ready tab's own server-side search/bucket-filter/pagination state —
   // lives here (not in PipelineStageDashboard) since fetching is owned by
@@ -97,18 +113,27 @@ export default function AIScreeningPage() {
       setReadyBucketCounts(res.data?.bucket_counts || { advance: 0, awaiting: 0, archive: 0 });
       return;
     }
+    if (lane === 'qa') {
+      const res = await getLaneCandidates(jobId, lane, {
+        search: debouncedQaSearch || undefined,
+        page: qaPage,
+        pageSize: QA_PAGE_SIZE,
+      });
+      const data = res.data?.candidates || {};
+      setQaRows(Array.isArray(data.pending) ? data.pending : []);
+      setQaTotal(data.pending_total || 0);
+      setQaRespondedRows(Array.isArray(data.responded) ? data.responded : []);
+      return;
+    }
     const res = await getLaneCandidates(jobId, lane);
     const data = res.data?.candidates || {};
     if (lane === 'parse') {
       setParseRows(Array.isArray(data.pending) ? data.pending : []);
     } else if (lane === 'match') {
       setMatchRows(Array.isArray(data.pending) ? data.pending : []);
-      setQaRows(Array.isArray(data.scored) ? data.scored : []);
-    } else if (lane === 'qa') {
-      setQaRows(Array.isArray(data.pending) ? data.pending : []);
-      setQaRespondedRows(Array.isArray(data.responded) ? data.responded : []);
+      setMatchScoredRows(Array.isArray(data.scored) ? data.scored : []);
     }
-  }, [jobId, debouncedReadySearch, readyBucket, readyMinScore, readyPage]);
+  }, [jobId, debouncedReadySearch, readyBucket, readyMinScore, readyPage, debouncedQaSearch, qaPage]);
 
   // Fetches a stage tab's own lane if it isn't already cached — exactly one
   // call. `force` bypasses the cache (used after an action changes the data).
@@ -193,6 +218,22 @@ export default function AIScreeningPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps -- only react to the ready-tab filters themselves changing
   }, [debouncedReadySearch, readyBucket, readyMinScore, readyPage]);
 
+  // Same pattern as the Ready tab above, for the Q&A tab's own search/page.
+  useEffect(() => {
+    const t = setTimeout(() => setDebouncedQaSearch(qaSearch), 350);
+    return () => clearTimeout(t);
+  }, [qaSearch]);
+
+  useEffect(() => { setQaPage(1); }, [debouncedQaSearch]);
+
+  const qaFiltersMountRef = useRef(false);
+  useEffect(() => {
+    if (!qaFiltersMountRef.current) { qaFiltersMountRef.current = true; return; }
+    if (!jobId || activeStage !== 'qa') return;
+    ensureStageLoaded('qa', { force: true });
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- only react to the qa-tab filters themselves changing
+  }, [debouncedQaSearch, qaPage]);
+
   // Lazy-create screening row if missing, then open candidate detail
   const openCandidate = async (row) => {
     try {
@@ -204,12 +245,14 @@ export default function AIScreeningPage() {
 
   // Sourced from the eagerly-fetched counts, not the (possibly not-yet-loaded)
   // row arrays — these need to render correctly before any tab's full data
-  // has been fetched. Matches the exact same definitions the row-based
-  // version used: parsedDone = match+qa counts, scoredDone = qa count,
-  // qaDone = qa_responded count, total = ready count.
+  // has been fetched. parsedDone = match+qa counts (still holds: the
+  // parse/match/qa/ready partition's total-minus-parse didn't change, only
+  // where the match/qa boundary sits within it). scoredDone now uses the
+  // dedicated `scored` count instead of `qa` — `qa` used to mean "has a
+  // score" but now means "selected for Q&A" specifically, a narrower thing.
   const total_candidates = counts.ready ?? 0;
   const parsedDone = (counts.match ?? 0) + (counts.qa ?? 0);
-  const scoredDone = counts.qa ?? 0;
+  const scoredDone = counts.scored ?? 0;
   const qaDone     = counts.qa_responded ?? 0;
   const pctOf = (n) => (total_candidates > 0 ? Math.round((n / total_candidates) * 100) : 0);
 
@@ -354,7 +397,7 @@ export default function AIScreeningPage() {
               jobId={jobId}
               job={job}
               pendingRows={matchRows}
-              scoredRows={[...qaRows]}
+              scoredRows={[...matchScoredRows]}
               onOpen={openCandidate}
               onScored={refreshAfterAction}
             />
@@ -363,6 +406,12 @@ export default function AIScreeningPage() {
           {activeStage === 'qa' && (
             <QAStageDashboard
               pendingRows={qaRows}
+              pendingTotal={qaTotal}
+              page={qaPage}
+              pageSize={QA_PAGE_SIZE}
+              onPageChange={setQaPage}
+              search={qaSearch}
+              onSearchChange={setQaSearch}
               respondedRows={qaRespondedRows}
               undecidedCount={total_candidates}
               onOpen={openCandidate}
