@@ -219,10 +219,17 @@ export default function MatchStageDashboard({ jobId, job, pendingRows = [], scor
   const paged = sorted.slice((pageClamped - 1) * pageSize, pageClamped * pageSize);
 
   const rowId = (r) => r.screening_id ?? r.applicant_id;
-  const allSelected = sorted.length > 0 && sorted.every((r) => selectedIds.has(rowId(r)));
+  // Scoped to `paged` (this page only), not `sorted` (every filtered row
+  // across every page) — selections on other pages persist, same pattern
+  // PipelineStageDashboard already uses correctly for its own select-all.
+  const allSelected = paged.length > 0 && paged.every((r) => selectedIds.has(rowId(r)));
 
   const toggleSelectAll = () => {
-    setSelectedIds(allSelected ? new Set() : new Set(sorted.map(rowId)));
+    setSelectedIds((prev) => {
+      const next = new Set(prev);
+      paged.forEach((r) => (allSelected ? next.delete(rowId(r)) : next.add(rowId(r))));
+      return next;
+    });
   };
 
   const toggleSelectRow = (r) => {
