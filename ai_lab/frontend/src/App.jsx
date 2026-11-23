@@ -1,6 +1,6 @@
-import { Routes, Route } from "react-router-dom"
+import { Routes, Route, Navigate } from "react-router-dom"
 import { Toaster } from "@/components/ui/sonner"
-import PeopleHubLayout from "./components/layout/PeopleHub-Layout"
+import ModuleLayout from "./components/layout/ModuleLayout"
 import Dashboard from "./pages/Dashboard"
 import Karyawan from "./pages/Karyawan"
 import KaryawanDetail from "./pages/KaryawanDetail"
@@ -10,8 +10,6 @@ import Demografi from "./pages/Demografi"
 import Setting from "./pages/Setting"
 import Notification from "./pages/Notification"
 import Credit from "./pages/CreditAi"
-
-
 
 function ComingSoon() {
   return (
@@ -25,16 +23,29 @@ function App() {
   return (
     <>
       <Routes>
-        <Route element={<PeopleHubLayout />}>
+        <Route element={<ModuleLayout />}>
+          {/* People Hub */}
           <Route path="/" element={<Dashboard />} />
           <Route path="/karyawan" element={<Karyawan />} />
           <Route path="/karyawan/:id" element={<KaryawanDetail />} />
-          <Route path="/scan" element={<ScanDokumen />} />
-          <Route path="/impor" element={<Impor />} />
           <Route path="/dashboard" element={<Demografi />} />
-          <Route path="/pengaturan" element={<Setting />} />
           <Route path="/pengingat" element={<Notification />} />
+          <Route path="/impor" element={<Impor />} />
+          <Route path="/scan" element={<ScanDokumen />} />
+          <Route path="/pengaturan" element={<Setting />} />
           <Route path="/kredit" element={<Credit />} />
+
+          {/* Attendance Intelligence */}
+          <Route path="/attendance" element={<Navigate to="/attendance/beranda" replace />} />
+          <Route path="/attendance/beranda" element={<ComingSoon />} />
+          <Route path="/attendance/dashboard" element={<ComingSoon />} />
+          <Route path="/attendance/rekap" element={<ComingSoon />} />
+          <Route path="/attendance/rekap/:id" element={<ComingSoon />} />
+          <Route path="/attendance/cuti" element={<ComingSoon />} />
+          <Route path="/attendance/impor" element={<ComingSoon />} />
+          <Route path="/attendance/absen" element={<ComingSoon />} />
+          <Route path="/attendance/pengaturan" element={<ComingSoon />} />
+
           <Route path="*" element={<ComingSoon />} />
         </Route>
       </Routes>

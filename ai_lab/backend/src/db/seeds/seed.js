@@ -1,5 +1,8 @@
 import getDb from '../../config/postgres.js';
 import employeesData from '../data/employees.js';
+import modulesData from '../data/modules.js';
+import menusData from '../data/menus.js';
+import moduleMenuData from '../data/module_menu.js';
 
 const seed = async () => {
 
@@ -7,6 +10,9 @@ const seed = async () => {
   try {
     await client.query('BEGIN');
     await client.query('DELETE FROM master_employee');
+    await client.query('DELETE FROM mapping_modules_menus');
+    await client.query('DELETE FROM master_menus');
+    await client.query('DELETE FROM master_modules');
 
     for (const emp of employeesData) {
       await client.query(
@@ -22,8 +28,34 @@ const seed = async () => {
       );
     }
 
+    for (const mod of modulesData) {
+      await client.query(
+        `INSERT INTO master_modules (id, name) VALUES ($1, $2)`,
+        [mod.id, mod.name]
+      );
+    }
+
+    for (const menu of menusData) {
+      await client.query(
+        `INSERT INTO master_menus (id, name) VALUES ($1, $2)`,
+        [menu.id, menu.name]
+      );
+    }
+
+    // Rows are inserted in array order, so mapping ids follow the sidebar order.
+    for (const mm of moduleMenuData) {
+      await client.query(
+        `INSERT INTO mapping_modules_menus (module_id, menu_id) VALUES ($1, $2)`,
+        [mm.module_id, mm.menu_id]
+      );
+    }
+
+    // Modules and menus are inserted with explicit ids, so move their sequences past them.
+    await client.query(`SELECT setval(pg_get_serial_sequence('master_modules', 'id'), (SELECT MAX(id) FROM master_modules))`);
+    await client.query(`SELECT setval(pg_get_serial_sequence('master_menus', 'id'), (SELECT MAX(id) FROM master_menus))`);
+
     await client.query('COMMIT');
-    console.log(`Seeded ${employeesData.length} employees`);
+    console.log(`Seeded ${employeesData.length} employees, ${modulesData.length} modules, ${menusData.length} menus`);
   } catch (err) {
     await client.query('ROLLBACK');
     throw err;

@@ -6,6 +6,8 @@ import getDb from './src/config/postgres.js';
 
 import employee from './src/modules/employee/employee.route.js';
 import employeeImport from './src/modules/employee-import/employee-import.route.js';
+import moduleRoute from "./src/modules/module/module.route.js";
+import menuRoute from "./src/modules/menu/menu.route.js";
 
 const app = express();
 const api = Router();
@@ -20,6 +22,8 @@ api.get('/health', async (_req, res) => {
 
 api.use('/employee', employee);
 api.use('/employee-import', employeeImport);
+api.use("/module", moduleRoute);
+api.use("/menu", menuRoute);
 
 app.use('/api', api);
 

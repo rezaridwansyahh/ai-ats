@@ -1,3 +1,6 @@
+DROP TABLE IF EXISTS mapping_modules_menus CASCADE;
+DROP TABLE IF EXISTS master_menus CASCADE;
+DROP TABLE IF EXISTS master_modules CASCADE;
 DROP TABLE IF EXISTS employee_change CASCADE;
 DROP TABLE IF EXISTS employee_import CASCADE;
 DROP TABLE IF EXISTS employee_ai_summary CASCADE;
@@ -46,4 +49,21 @@ CREATE TABLE employee_change (
   old_value   JSONB NOT NULL,
   new_value   JSONB NOT NULL,
   changed_at  TIMESTAMP NOT NULL DEFAULT NOW()
+);
+
+CREATE TABLE master_modules (
+  id SERIAL PRIMARY KEY,
+  name VARCHAR(100) NOT NULL
+);
+
+CREATE TABLE master_menus (
+  id SERIAL PRIMARY KEY,
+  name VARCHAR(100) NOT NULL
+);
+
+CREATE TABLE mapping_modules_menus (
+  id SERIAL PRIMARY KEY,
+  module_id INTEGER NOT NULL REFERENCES master_modules(id) ON DELETE CASCADE,
+  menu_id INTEGER NOT NULL REFERENCES master_menus(id) ON DELETE CASCADE,
+  UNIQUE (module_id, menu_id)
 );
