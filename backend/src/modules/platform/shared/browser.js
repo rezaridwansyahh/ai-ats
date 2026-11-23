@@ -16,8 +16,14 @@ const PROFILES_DIR = process.env.BROWSER_PROFILES_DIR || path.resolve(process.cw
 // close() leaves the window open so you can inspect what the RPA did.
 // A profile dir can only be held by one Chrome at a time, so the kept-open
 // browser for a profile is closed when the next job for it launches.
+//
+// PUPPETEER_REMOTE_DEBUGGING=true keeps it open unconditionally (even in
+// production) — the whole point of that mode is driving the browser by hand
+// over chrome://inspect (e.g. to clear an OTP challenge), so an automatic
+// close() would yank it away mid-session.
 const KEEP_OPEN =
-  process.env.NODE_ENV !== 'production' && process.env.PUPPETEER_KEEP_OPEN === 'true';
+  (process.env.NODE_ENV !== 'production' && process.env.PUPPETEER_KEEP_OPEN === 'true') ||
+  process.env.PUPPETEER_REMOTE_DEBUGGING === 'true';
 const keptOpen = new Map(); // profile key -> Browser left open by close()
 
 class BrowserPuppeteer {
