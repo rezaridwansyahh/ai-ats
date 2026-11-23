@@ -17,6 +17,7 @@ import { Slider } from '@/components/ui/slider';
 import { StatCard } from './shared';
 import {
   generateQa, sendQa, rerunAllMatchForJob, scorePendingForJob, markCandidateViewed,
+  getScreeningByCandidate,
 } from '@/api/screening.api';
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter,
@@ -259,12 +260,12 @@ export default function MatchStageDashboard({ jobId, job, pendingRows = [], scor
 
   const handleAdvanceToQa = async () => {
     const selectedRows = sorted.filter((r) => selectedIds.has(rowId(r)));
-    const eligible = selectedRows.filter((r) => !r.qa_status && r.screening_id);
-    const skipped = selectedRows.length - eligible.length;
+    const alreadyInQa = selectedRows.filter((r) => r.qa_status).length;
+    const eligible = selectedRows.filter((r) => !r.qa_status);
 
     if (eligible.length === 0) {
       toast.error('Nothing to advance', {
-        description: skipped > 0 ? 'Selected candidates already have Follow-up Q&A in progress.' : 'Select at least one candidate first.',
+        description: alreadyInQa > 0 ? 'Selected candidates already have Follow-up Q&A in progress.' : 'Select at least one candidate first.',
       });
       return;
     }
@@ -273,8 +274,16 @@ export default function MatchStageDashboard({ jobId, job, pendingRows = [], scor
     try {
       const outcomes = await Promise.allSettled(
         eligible.map(async (r) => {
-          await generateQa(r.screening_id, {});
-          await sendQa(r.screening_id);
+          // Freshly-scored candidates never opened in L3 don't have a
+          // candidate_screening row yet (it's lazy-created there) — create
+          // it on the fly instead of silently dropping them from the batch.
+          let screening_id = r.screening_id;
+          if (!screening_id) {
+            const res = await getScreeningByCandidate(r.candidate_id);
+            screening_id = res.data?.screening?.screening_id;
+          }
+          await generateQa(screening_id, {});
+          await sendQa(screening_id);
         })
       );
       const failed = outcomes.filter((o) => o.status === 'rejected');
@@ -284,7 +293,7 @@ export default function MatchStageDashboard({ jobId, job, pendingRows = [], scor
         });
       } else {
         toast.success('Advanced to QA', {
-          description: `${eligible.length} candidate${eligible.length === 1 ? '' : 's'} sent Follow-up Q&A.${skipped > 0 ? ` ${skipped} skipped (already in progress).` : ''}`,
+          description: `${eligible.length} candidate${eligible.length === 1 ? '' : 's'} sent Follow-up Q&A.${alreadyInQa > 0 ? ` ${alreadyInQa} skipped (already in progress).` : ''}`,
         });
       }
       setSelectedIds(new Set());
