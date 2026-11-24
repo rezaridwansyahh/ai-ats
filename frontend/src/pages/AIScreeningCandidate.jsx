@@ -26,6 +26,7 @@ import {
   getScreeningByCandidate, scoreCandidate, getQaPreview
 } from '@/api/screening.api';
 import { getJobForm } from '@/features/application-form/api/form.api';
+import { downloadCandidateCv } from '@/api/candidate.api';
 import {
   Select,
   SelectContent,
@@ -519,6 +520,9 @@ export default function AIScreeningCandidatePage() {
                   onPick={setDecisionDraft}
                 />
               </div>
+              <div data-tour="candidate-cv">
+                <CvCard applicantId={data.applicant_id} candidateName={candidate_name} />
+              </div>
               <StepsNav
                 activeEngine={activeEngine}
                 onStep={goToStep}
@@ -855,6 +859,99 @@ function DecisionCard({ decision, existingReason, locked, lockReason, onPick }) 
   );
 }
 
+/* ─────────── Sidebar: CV preview trigger card ─────────── */
+function CvCard({ applicantId, candidateName }) {
+  const [open, setOpen] = useState(false);
+
+  return (
+    <>
+      <Card className="animate-scale-in">
+        <CardContent className="p-3 space-y-2">
+          <p className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground flex items-center gap-1.5">
+            <FileText className="h-3.5 w-3.5 text-primary" /> CV
+          </p>
+          <Button
+            variant="outline"
+            size="sm"
+            className="w-full h-8 text-xs gap-1.5"
+            disabled={!applicantId}
+            onClick={() => setOpen(true)}
+          >
+            <FileText className="h-3.5 w-3.5" /> View CV
+          </Button>
+        </CardContent>
+      </Card>
+
+      <CvPreviewDialog
+        open={open}
+        onOpenChange={setOpen}
+        applicantId={applicantId}
+        candidateName={candidateName}
+      />
+    </>
+  );
+}
+
+/* ─────────── CV preview modal ─────────── */
+function CvPreviewDialog({ open, onOpenChange, applicantId, candidateName }) {
+  const [cvUrl, setCvUrl] = useState(null);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState(null);
+
+  useEffect(() => {
+    if (!open || !applicantId) return;
+    let cancelled = false;
+    let objectUrl = null;
+
+    setCvUrl(null);
+    setError(null);
+    setLoading(true);
+    downloadCandidateCv(applicantId)
+      .then((res) => {
+        if (cancelled) return;
+        objectUrl = window.URL.createObjectURL(new Blob([res.data], { type: 'application/pdf' }));
+        setCvUrl(objectUrl);
+      })
+      .catch((err) => {
+        if (cancelled) return;
+        setError(err.response?.status === 404 ? 'No CV available for this candidate.' : (err.response?.data?.message || err.message || 'Failed to load CV'));
+      })
+      .finally(() => { if (!cancelled) setLoading(false); });
+
+    return () => {
+      cancelled = true;
+      if (objectUrl) window.URL.revokeObjectURL(objectUrl);
+    };
+  }, [open, applicantId]);
+
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="sm:max-w-3xl h-[85vh] flex flex-col">
+        <DialogHeader>
+          <DialogTitle className="flex items-center gap-2">
+            <FileText className="h-4 w-4 text-primary" /> {candidateName || 'Candidate'}'s CV
+          </DialogTitle>
+          <DialogDescription>CV preview</DialogDescription>
+        </DialogHeader>
+
+        <div className="flex-1 min-h-0 rounded-lg border bg-muted/10 overflow-hidden">
+          {loading ? (
+            <div className="h-full flex items-center justify-center">
+              <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
+            </div>
+          ) : error ? (
+            <div className="h-full flex flex-col items-center justify-center gap-2 text-center p-6">
+              <AlertTriangle className="h-5 w-5 text-muted-foreground" />
+              <p className="text-xs text-muted-foreground">{error}</p>
+            </div>
+          ) : (
+            <iframe title="CV preview" src={cvUrl} className="w-full h-full" />
+          )}
+        </div>
+      </DialogContent>
+    </Dialog>
+  );
+}
 
 /* ─────────── Decision modal (reason + confirm) ─────────── */
 function DecisionDialog({ decision, reason, setReason, saving, onConfirm, onClose }) {

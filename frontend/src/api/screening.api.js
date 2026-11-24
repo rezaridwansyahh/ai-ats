@@ -102,7 +102,7 @@ export const getScreeningByCandidate = (candidate_id) =>
 export const setScreeningDecision = (screening_id, { decision, decision_reason }) =>
   api.patch(`/screening/screening/${screening_id}/decision`, { decision, decision_reason });
 
-// L4 Calibration (Phase 4) — params: { search, bucket, page, pageSize }
+// L4 Calibration (Phase 4) — params: { search, bucket, min_score, qa_filled, page, pageSize }
 export const getCalibration = (job_id, params = {}) =>
   api.get(`/screening/job/${job_id}/calibration`, { params });
 

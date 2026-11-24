@@ -200,6 +200,7 @@ ${(qualifications || '').slice(0, 4000)}
     const prompt = `You are a CV parser. Extract structured facets from the CV text below and return STRICT JSON matching this schema (no prose, no markdown):
 
 {
+  "phone": string,
   "job_position": { "current": string, "category": string, "duration": string, "location": string },
   "skills": string[],
   "education": [
@@ -212,6 +213,7 @@ ${(qualifications || '').slice(0, 4000)}
 }
 
 Rules:
+- "phone": contact phone number from the CV header/footer, exactly as written. Empty string if not stated.
 - "category" is a coarse role category like "Frontend", "Backend", "Full Stack", "Data", "Product Design", "Mobile", "DevOps", "Product Management", "QA", "Recruiting".
 - "duration" is how long the candidate has held/held their current or most recent position (e.g. "1 yr 9 mos"). Empty string if not stated.
 - "location" is the city/region of that current or most recent position (e.g. "Sleman, DI Yogyakarta"). Empty string if not stated.
@@ -254,6 +256,7 @@ ${trimmed}
     const skills = await normalizeSkills(parsed.skills);
 
     const facets = {
+      phone: typeof parsed.phone === 'string' ? parsed.phone.trim() : '',
       job_position: {
         current: typeof parsed.job_position?.current === 'string' ? parsed.job_position.current : '',
         category: typeof parsed.job_position?.category === 'string' ? parsed.job_position.category : '',
