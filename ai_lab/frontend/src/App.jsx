@@ -10,6 +10,8 @@ import Demografi from "./pages/Demografi"
 import Setting from "./pages/Setting"
 import Notification from "./pages/Notification"
 import Credit from "./pages/CreditAi"
+import Attendance from "./pages/Attendance"
+import AttendanceDashboard from "./pages/AttendanceDashboard"
 
 function ComingSoon() {
   return (
@@ -37,8 +39,8 @@ function App() {
 
           {/* Attendance Intelligence */}
           <Route path="/attendance" element={<Navigate to="/attendance/beranda" replace />} />
-          <Route path="/attendance/beranda" element={<ComingSoon />} />
-          <Route path="/attendance/dashboard" element={<ComingSoon />} />
+          <Route path="/attendance/beranda" element={<Attendance />} />
+          <Route path="/attendance/dashboard" element={<AttendanceDashboard />} />
           <Route path="/attendance/rekap" element={<ComingSoon />} />
           <Route path="/attendance/rekap/:id" element={<ComingSoon />} />
           <Route path="/attendance/cuti" element={<ComingSoon />} />

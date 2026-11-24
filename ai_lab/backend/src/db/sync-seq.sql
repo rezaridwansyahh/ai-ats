@@ -1,4 +1,4 @@
 SELECT setval('master_employee_id_seq', COALESCE((SELECT MAX(id) FROM master_employee), 1));
-SELECT setval(pg_get_serial_sequence('master_modules', 'id'), (SELECT MAX(id) FROM master_modules));
-SELECT setval(pg_get_serial_sequence('master_menus', 'id'), (SELECT MAX(id) FROM master_menus));
-SELECT setval(pg_get_serial_sequence('mapping_modules_menus', 'id'), (SELECT MAX(id) FROM mapping_modules_menus));
+SELECT setval('master_modules_id_seq', COALESCE((SELECT MAX(id) FROM master_modules), 1));
+SELECT setval('master_menus_id_seq', COALESCE((SELECT MAX(id) FROM master_menus), 1));
+SELECT setval('mapping_modules_menus_id_seq', COALESCE((SELECT MAX(id) FROM mapping_modules_menus), 1));

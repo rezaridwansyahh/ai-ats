@@ -8,6 +8,8 @@ import employee from './src/modules/employee/employee.route.js';
 import employeeImport from './src/modules/employee-import/employee-import.route.js';
 import moduleRoute from "./src/modules/module/module.route.js";
 import menuRoute from "./src/modules/menu/menu.route.js";
+import attendance from './src/modules/attendance/attendance.route.js';
+import attendanceSetting from './src/modules/attendance-setting/attendance-setting.route.js';
 
 const app = express();
 const api = Router();
@@ -24,6 +26,8 @@ api.use('/employee', employee);
 api.use('/employee-import', employeeImport);
 api.use("/module", moduleRoute);
 api.use("/menu", menuRoute);
+api.use('/attendance', attendance);
+api.use('/attendance-setting', attendanceSetting);
 
 app.use('/api', api);
 

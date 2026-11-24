@@ -1,3 +1,5 @@
+DROP TABLE IF EXISTS attendance_day CASCADE;
+DROP TABLE IF EXISTS attendance_setting CASCADE;
 DROP TABLE IF EXISTS mapping_modules_menus CASCADE;
 DROP TABLE IF EXISTS master_menus CASCADE;
 DROP TABLE IF EXISTS master_modules CASCADE;
@@ -14,7 +16,7 @@ CREATE TABLE employee_import (
 
 CREATE TABLE master_employee (
   id SERIAL PRIMARY KEY,
-  nik VARCHAR(30)  NOT NULL,
+  nik VARCHAR(30) UNIQUE,
   nama VARCHAR(255) NOT NULL,
   jk VARCHAR(20),
   tgl_lahir DATE,
@@ -66,4 +68,26 @@ CREATE TABLE mapping_modules_menus (
   module_id INTEGER NOT NULL REFERENCES master_modules(id) ON DELETE CASCADE,
   menu_id INTEGER NOT NULL REFERENCES master_menus(id) ON DELETE CASCADE,
   UNIQUE (module_id, menu_id)
+);
+
+CREATE TABLE attendance_day (
+  id SERIAL PRIMARY KEY,
+  nik VARCHAR(30) NOT NULL REFERENCES master_employee(nik) ON UPDATE CASCADE ON DELETE CASCADE,
+  tgl DATE NOT NULL,
+  status  VARCHAR(20) NOT NULL CHECK (status IN ('Hadir', 'Dinas Luar', 'WFH', 'Cuti', 'Sakit', 'Izin', 'Alpa')),
+  jam_masuk  TIME,
+  jam_pulang TIME,
+  ket VARCHAR(255),
+  source VARCHAR(20) NOT NULL DEFAULT 'mesin' CHECK (source IN ('mesin', 'pwa', 'pengajuan', 'hr')),
+  created_at TIMESTAMP NOT NULL DEFAULT NOW(),
+  updated_at TIMESTAMP NOT NULL DEFAULT NOW(),
+  UNIQUE (nik, tgl)
+);
+
+CREATE INDEX idx_attendance_day_tgl ON attendance_day (tgl);
+
+CREATE TABLE attendance_setting (
+  key        VARCHAR(50) PRIMARY KEY,
+  value      JSONB NOT NULL,
+  updated_at TIMESTAMP NOT NULL DEFAULT NOW()
 );

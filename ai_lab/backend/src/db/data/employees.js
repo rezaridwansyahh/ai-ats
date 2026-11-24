@@ -15,7 +15,7 @@ export default [
   // --- production + warehouse (Joko's team)
   e(6,  'CS16005', 'Oki Sitompul',        'Laki-laki', '1983-11-19', 'D3', 'Gudang & Logistik', 'Supervisor Gudang', 'Supervisor', 'CS22002', BKS, 'PKWTT', '2016-06-06'),
   e(7,  'CS16001', 'Yuni Saputra',        'Perempuan', '1984-10-21', 'S1', 'Produksi', 'Supervisor Produksi', 'Supervisor', 'CS22002', BKS, 'PKWTT', '2016-01-13'),
-  e(8,  'CS18004', 'Andi Wijaya',         'Laki-laki', '1985-07-02', 'SMA/SMK', 'Gudang & Logistik', 'Staf Gudang', 'Staf', 'CS16005', BKS, 'PKWTT', '2018-08-23'),
+  e(8,  'CS18024', 'Andi Wijaya',         'Laki-laki', '1985-07-02', 'SMA/SMK', 'Gudang & Logistik', 'Staf Gudang', 'Staf', 'CS16005', BKS, 'PKWTT', '2018-08-23'),
   e(9,  'CS20004', 'Hendra Utami',        'Laki-laki', '1990-01-30', 'SMA/SMK', 'Produksi', 'Operator Produksi', 'Operator', 'CS16001', BKS, 'PKWTT', '2020-09-07'),
   e(10, 'CS21003', 'Sari Wulandari',      'Perempuan', '1993-06-12', 'SMA/SMK', 'Produksi', 'Operator Produksi', 'Operator', 'CS16001', BKS, 'PKWTT', '2021-04-19'),
   // contracts around the reference date: Lewat / Segera / Segera / Perhatian / none
@@ -36,6 +36,5 @@ export default [
   e(22, 'CS09001', 'Teguh Santoso',       'Laki-laki', '1967-05-09', 'SD/SMP', 'Produksi', 'Operator Packing', 'Operator', 'CS16001', BKS, 'PKWTT', '2009-02-02', null, 'Keluar', '2025-11-28', 'Pensiun'),
   e(23, 'CS24003', 'Rizky Hidayat',       'Laki-laki', '1996-02-16', 'D3', 'Gudang & Logistik', 'Staf Gudang', 'Staf', 'CS16005', BKS, 'PKWT', '2024-03-01', '2026-02-28', 'Keluar', '2026-02-28', 'Kontrak berakhir'),
   e(24, 'CS23004', 'Citra Lestari',       'Perempuan', '1994-08-30', 'S1', 'Keuangan & Akuntansi', 'Staf Akuntansi', 'Staf', 'CS18005', JKT, 'PKWTT', '2023-05-15', null, 'Keluar', '2026-08-14', 'Resign sukarela'),
-  // --- deliberate data-quality case: duplicate NIK (CS18004 = Andi Wijaya) + empty education
   e(25, 'CS18004', 'Wahyu Pratama',       'Laki-laki', '1992-04-04', null, 'Gudang & Logistik', 'Staf Gudang', 'Staf', 'CS16005', BKS, 'PKWTT', '2023-06-12'),
 ];

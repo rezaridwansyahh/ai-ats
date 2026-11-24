@@ -1,5 +1,6 @@
 import getDb from '../../config/postgres.js';
 import employeesData from '../data/employees.js';
+import attendanceData from '../data/attendance.js';
 import modulesData from '../data/modules.js';
 import menusData from '../data/menus.js';
 import moduleMenuData from '../data/module_menu.js';
@@ -9,6 +10,7 @@ const seed = async () => {
   const client = await getDb().connect();
   try {
     await client.query('BEGIN');
+    await client.query('DELETE FROM attendance_day');
     await client.query('DELETE FROM master_employee');
     await client.query('DELETE FROM mapping_modules_menus');
     await client.query('DELETE FROM master_menus');
@@ -25,6 +27,14 @@ const seed = async () => {
           emp.id, emp.nik, emp.nama, emp.jk, emp.tgl_lahir, emp.pendidikan, emp.divisi, emp.jabatan, emp.level, emp.atasan,
           emp.lokasi, emp.status, emp.tgl_masuk, emp.akhir_kontrak, emp.aktif, emp.tgl_keluar, emp.alasan, emp.email,
         ]
+      );
+    }
+
+    for (const a of attendanceData) {
+      await client.query(
+        `INSERT INTO attendance_day (nik, tgl, status, jam_masuk, jam_pulang, ket, source)
+         VALUES ($1, $2, $3, $4, $5, $6, $7)`,
+        [a.nik, a.tgl, a.status, a.jam_masuk, a.jam_pulang, a.ket, a.source]
       );
     }
 
@@ -55,7 +65,7 @@ const seed = async () => {
     await client.query(`SELECT setval(pg_get_serial_sequence('master_menus', 'id'), (SELECT MAX(id) FROM master_menus))`);
 
     await client.query('COMMIT');
-    console.log(`Seeded ${employeesData.length} employees, ${modulesData.length} modules, ${menusData.length} menus`);
+    console.log(`Seeded ${employeesData.length} employees, ${attendanceData.length} attendance rows, ${modulesData.length} modules, ${menusData.length} menus`);
   } catch (err) {
     await client.query('ROLLBACK');
     throw err;
