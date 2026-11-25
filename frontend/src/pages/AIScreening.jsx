@@ -82,17 +82,15 @@ export default function AIScreeningPage() {
   const [qaPage, setQaPage] = useState(1);
   const [qaTotal, setQaTotal] = useState(0);
 
-  // Ready tab's own server-side search/bucket-filter/pagination state —
-  // lives here (not in PipelineStageDashboard) since fetching is owned by
-  // this page, same pattern as every other filtered/paginated table this
-  // session (JobDetail, CandidatePipelineDetail, TalentPool).
   const [readySearch, setReadySearch] = useState('');
   const [debouncedReadySearch, setDebouncedReadySearch] = useState('');
   const [readyBucket, setReadyBucket] = useState('');
   const [readyMinScore, setReadyMinScore] = useState(0);
+  const [readyQaFilled, setReadyQaFilled] = useState('');
   const [readyPage, setReadyPage] = useState(1);
   const [readyTotal, setReadyTotal] = useState(0);
   const [readyBucketCounts, setReadyBucketCounts] = useState({ advance: 0, awaiting: 0, archive: 0 });
+  const [readyQaCounts, setReadyQaCounts] = useState({ filled: 0, not_filled: 0 });
 
   const [advancing, setAdvancing] = useState(false);
 
@@ -105,12 +103,14 @@ export default function AIScreeningPage() {
         search: debouncedReadySearch || undefined,
         bucket: readyBucket || undefined,
         min_score: readyMinScore > 0 ? readyMinScore : undefined,
+        qa_filled: readyQaFilled || undefined,
         page: readyPage,
         pageSize: READY_PAGE_SIZE,
       });
       setCohortRows(Array.isArray(res.data?.rows) ? res.data.rows : []);
       setReadyTotal(res.data?.total || 0);
       setReadyBucketCounts(res.data?.bucket_counts || { advance: 0, awaiting: 0, archive: 0 });
+      setReadyQaCounts(res.data?.qa_counts || { filled: 0, not_filled: 0 });
       return;
     }
     if (lane === 'qa') {
@@ -133,7 +133,7 @@ export default function AIScreeningPage() {
       setMatchRows(Array.isArray(data.pending) ? data.pending : []);
       setMatchScoredRows(Array.isArray(data.scored) ? data.scored : []);
     }
-  }, [jobId, debouncedReadySearch, readyBucket, readyMinScore, readyPage, debouncedQaSearch, qaPage]);
+  }, [jobId, debouncedReadySearch, readyBucket, readyMinScore, readyQaFilled, readyPage, debouncedQaSearch, qaPage]);
 
   // Fetches a stage tab's own lane if it isn't already cached — exactly one
   // call. `force` bypasses the cache (used after an action changes the data).
@@ -149,10 +149,7 @@ export default function AIScreeningPage() {
     }
   }, [jobId, loadedLanes, fetchLane]);
 
-  // Refresh after an action that changes the data (advance, (re)score). The
-  // job row + summary counts always refresh; the per-lane rows are dropped
-  // from the cache entirely (not just the current tab's) so any tab visited
-  // afterward re-fetches fresh instead of showing stale pre-action rows.
+
   const refreshAfterAction = useCallback(async () => {
     if (!jobId) return;
     const [jobRes, countsRes] = await Promise.all([getJobById(jobId), getEngineCounts(jobId)]);
@@ -205,7 +202,7 @@ export default function AIScreeningPage() {
   }, [readySearch]);
 
   // Any filter change restarts pagination at page 1.
-  useEffect(() => { setReadyPage(1); }, [debouncedReadySearch, readyBucket, readyMinScore]);
+  useEffect(() => { setReadyPage(1); }, [debouncedReadySearch, readyBucket, readyMinScore, readyQaFilled]);
 
   // Re-fetch the ready lane when its own filters/page change, but only
   // while that tab is actually open — otherwise this would fire a request
@@ -216,7 +213,7 @@ export default function AIScreeningPage() {
     if (!jobId || activeStage !== 'ready') return;
     ensureStageLoaded('ready', { force: true });
     // eslint-disable-next-line react-hooks/exhaustive-deps -- only react to the ready-tab filters themselves changing
-  }, [debouncedReadySearch, readyBucket, readyMinScore, readyPage]);
+  }, [debouncedReadySearch, readyBucket, readyMinScore, readyQaFilled, readyPage]);
 
   // Same pattern as the Ready tab above, for the Q&A tab's own search/page.
   useEffect(() => {
@@ -243,13 +240,6 @@ export default function AIScreeningPage() {
     }
   };
 
-  // Sourced from the eagerly-fetched counts, not the (possibly not-yet-loaded)
-  // row arrays — these need to render correctly before any tab's full data
-  // has been fetched. parsedDone = match+qa counts (still holds: the
-  // parse/match/qa/ready partition's total-minus-parse didn't change, only
-  // where the match/qa boundary sits within it). scoredDone now uses the
-  // dedicated `scored` count instead of `qa` — `qa` used to mean "has a
-  // score" but now means "selected for Q&A" specifically, a narrower thing.
   const total_candidates = counts.ready ?? 0;
   const parsedDone = (counts.match ?? 0) + (counts.qa ?? 0);
   const scoredDone = counts.scored ?? 0;
@@ -433,6 +423,9 @@ export default function AIScreeningPage() {
               bucketCounts={readyBucketCounts}
               minScore={readyMinScore}
               onMinScoreChange={setReadyMinScore}
+              qaFilled={readyQaFilled}
+              onQaFilledChange={setReadyQaFilled}
+              qaCounts={readyQaCounts}
               advancing={advancing}
               onAdvance={async (ids, reasonText) => {
                 setAdvancing(true);

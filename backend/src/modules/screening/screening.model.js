@@ -86,12 +86,14 @@ class ScreeningModel {
   }
 
   async setApplicantInformation(applicant_id, information) {
+    const parsedPhone = typeof information?.phone === 'string' ? information.phone.trim() : '';
     const result = await getDb().query(
       `UPDATE master_applicant
-       SET information = $2
+       SET information = $2,
+           phone = CASE WHEN (phone IS NULL OR phone = '') AND $3 <> '' THEN $3 ELSE phone END
        WHERE id = $1
        RETURNING *`,
-      [applicant_id, information ? JSON.stringify(information) : null]
+      [applicant_id, information ? JSON.stringify(information) : null, parsedPhone]
     );
     return result.rows[0];
   }
@@ -202,20 +204,13 @@ class ScreeningModel {
     return result.rows[0] || null;
   }
 
-  // Calibration cohort for one job: candidates that have a score AND no
-  // decision yet (i.e. ready to be advanced/rejected/held in a batch).
-  // Sorted by overall_score DESC so the recruiter sees the best first.
-  // Server-side paginated + filterable (search by name, bucket = the same
-  // advance/awaiting/archive recommendation buckets the UI already used to
-  // show as separate stat cards/columns — now a filter instead). Also
-  // returns bucket_counts (computed over the FULL cohort, not just this
-  // page) so the filter pills can show a count without a separate call.
-  async getCalibrationCohort(job_id, { search, bucket, min_score, page, pageSize } = {}) {
+  async getCalibrationCohort(job_id, { search, bucket, min_score, qa_filled, page, pageSize } = {}) {
     const limit  = pageSize !== undefined ? Math.min(Math.max(Number(pageSize) || 10, 1), 100) : null;
     const offset = (page !== undefined && limit != null) ? (Math.max(Number(page) || 1, 1) - 1) * limit : 0;
     const searchParam = search ? `%${search}%` : null;
     const bucketParam = ['advance', 'awaiting', 'archive'].includes(bucket) ? bucket : null;
     const minScoreParam = min_score !== undefined && min_score !== null && min_score !== '' ? Number(min_score) : null;
+    const qaFilledParam = ['filled', 'not_filled'].includes(qa_filled) ? qa_filled : null;
 
     const BASE_CTE = `
       WITH base AS (
@@ -274,16 +269,6 @@ class ScreeningModel {
       )
     `;
 
-    // Run as two independent queries rather than attaching aggregates to the
-    // paginated rows — if the current bucket/search combination matches zero
-    // rows, there'd be no row left to carry the bucket_counts on, and the
-    // pills would wrongly show every count as 0 instead of their real values.
-    // BASE_CTE only ever references $1-$3 (job_id/search/min_score), shared
-    // by both queries below — bucket/limit/offset are appended starting at
-    // $4 in the rows query only, so the counts query never needs to pass
-    // unused placeholder params (which errors with "could not determine
-    // data type of parameter" since nothing in that query text would give
-    // them a type to infer).
     const [rowsResult, countsResult] = await Promise.all([
       getDb().query(
         `
@@ -291,10 +276,19 @@ class ScreeningModel {
         SELECT *, COUNT(*) OVER()::int AS total_count
         FROM searched
         WHERE ($4::text IS NULL OR bucket = $4)
-        ORDER BY overall_score DESC NULLS LAST, screening_id ASC NULLS LAST
-        LIMIT $5 OFFSET $6
+          AND ($5::text IS NULL
+               OR ($5 = 'filled' AND qa_status IS NOT NULL)
+               OR ($5 = 'not_filled' AND qa_status IS NULL))
+        -- Candidates who responded to Q&A surface first — that's extra
+        -- signal worth a recruiter's attention before anyone who was never
+        -- sent (or never finished) one. qa_status is an enum column, so this
+        -- compares against the enum label directly rather than coalescing to
+        -- '' first (an empty string isn't a valid enum value and errors).
+        ORDER BY (qa_status = 'responded') DESC NULLS LAST,
+          overall_score DESC NULLS LAST, screening_id ASC NULLS LAST
+        LIMIT $6 OFFSET $7
         `,
-        [job_id, searchParam, minScoreParam, bucketParam, limit, offset]
+        [job_id, searchParam, minScoreParam, bucketParam, qaFilledParam, limit, offset]
       ),
       getDb().query(
         `
@@ -302,7 +296,9 @@ class ScreeningModel {
         SELECT
           COUNT(*) FILTER (WHERE bucket = 'advance')::int  AS advance_count,
           COUNT(*) FILTER (WHERE bucket = 'awaiting')::int AS awaiting_count,
-          COUNT(*) FILTER (WHERE bucket = 'archive')::int  AS archive_count
+          COUNT(*) FILTER (WHERE bucket = 'archive')::int  AS archive_count,
+          COUNT(*) FILTER (WHERE qa_status IS NOT NULL)::int AS qa_filled_count,
+          COUNT(*) FILTER (WHERE qa_status IS NULL)::int     AS qa_not_filled_count
         FROM searched
         `,
         [job_id, searchParam, minScoreParam]
@@ -316,7 +312,11 @@ class ScreeningModel {
       awaiting: countsResult.rows[0]?.awaiting_count ?? 0,
       archive: countsResult.rows[0]?.archive_count ?? 0,
     };
-    return { rows, total, bucket_counts };
+    const qa_counts = {
+      filled: countsResult.rows[0]?.qa_filled_count ?? 0,
+      not_filled: countsResult.rows[0]?.qa_not_filled_count ?? 0,
+    };
+    return { rows, total, bucket_counts, qa_counts };
   }
 
 
@@ -345,13 +345,6 @@ class ScreeningModel {
     return result.rows;
   }
 
-  // Workboard data scoped to a company.
-  // Engine status is derived from existing tables (no candidate_screening parent yet):
-  //   parse  = master_applicant.information IS NULL
-  //   match  = parsed but no candidate_job_score row for this (applicant, job)
-  //   ready  = candidate_job_score row exists
-  //   qa     = 0 for v1 (engine not implemented)
-  // Returns { counts, positions, attention } shaped for the L1 Workboard UI.
   async getWorkboardData(company_id) {
     const db = getDb();
 
@@ -456,11 +449,7 @@ class ScreeningModel {
 
     return { counts, positions, attention };
   }
-
-  // Returns candidates in a job filtered by engine status. Used by L1/L2 lane lists.
-  // Engine derivation matches getWorkboardData.
-  // Joins candidate_screening when available (lazy-created on first L3 visit)
-  // so the frontend can deep-link rows straight into L3.
+  
   async getCandidatesByJobAndEngine(job_id, engine, options = {}) {
     const db = getDb();
     const result = await db.query(

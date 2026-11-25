@@ -351,28 +351,10 @@ class ScreeningService {
     if (company_id && job.company_id && job.company_id !== company_id) {
       throw { status: 403, message: 'Cross-tenant access denied' };
     }
-    const { search, bucket, min_score, page, pageSize } = query;
-    return await screeningModel.getCalibrationCohort(job_id, { search, bucket, min_score, page, pageSize });
+    const { search, bucket, min_score, qa_filled, page, pageSize } = query;
+    return await screeningModel.getCalibrationCohort(job_id, { search, bucket, min_score, qa_filled, page, pageSize });
   }
 
-  // L4 Calibration — bulk advance selected candidates to Interview.
-  // Drives each row through the SAME CandidatePipelineService.addStage() path
-  // as the single-candidate decision flow (setDecision() below) — that's what
-  // actually moves master_candidate.latest_stage forward and (via its
-  // category-based side effects) creates the candidate_interview row. The
-  // previous version of this method only wrote candidate_screening.decision
-  // and inserted candidate_interview directly, so the candidate's pipeline
-  // stage itself never advanced — "Advance" reported success but nothing
-  // visibly moved on the board.
-  //
-  // Keyed by candidate_id, not screening_id: candidate_screening rows are
-  // lazily created on first L3 (candidate-detail) visit, so a scored
-  // candidate who was never individually opened has no screening row yet —
-  // getCalibrationCohort() legitimately returns screening_id: null for them.
-  // The Ready-to-Advance table used to select/key rows by screening_id, so
-  // every never-opened candidate shared the same `null` key — checking one
-  // checked all of them at once. candidate_id is always present and unique,
-  // so we accept candidate_ids here and lazily ensure the screening row.
   async advanceBulk(job_id, { candidate_ids, decision_reason, decided_by, company_id = null }) {
     if (!job_id) throw { status: 400, message: 'job_id is required' };
     if (!Array.isArray(candidate_ids) || candidate_ids.length === 0) {
@@ -423,7 +405,6 @@ class ScreeningService {
     return { advanced, skipped, errors, interview_ids };
   }
 
-  // L3/L4 — recruiter decision (advance / hold / reject).
   async setDecision({ screening_id, decision, decision_reason, decided_by, company_id = null }) {
     if (!screening_id) throw { status: 400, message: 'screening_id is required' };
     const valid = ['advance', 'hold', 'reject'];
@@ -444,7 +425,6 @@ class ScreeningService {
     return {updateStage, updateDecision}
   }
 
-  // Match tab — mark a score row's preview as opened.
   async markScoreViewed(score_id) {
     if (!score_id) throw { status: 400, message: 'score_id is required' };
     const updated = await screeningModel.markScoreViewed(score_id);
@@ -458,9 +438,7 @@ class ScreeningService {
     return await screeningModel.getWorkboardData(company_id);
   }
 
-  // List candidates in a job's lane (parse | match | qa | ready).
-  // page/pageSize/search only matter for engine === 'qa' (see
-  // getQaPendingPaginated) — harmless no-ops for the other lanes.
+
   async getLaneCandidates(job_id, engine, { page, pageSize, search } = {}) {
     if (!job_id) throw { status: 400, message: 'job_id is required' };
     const validEngines = ['parse', 'match', 'qa', 'ready'];
