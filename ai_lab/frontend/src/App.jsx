@@ -12,6 +12,7 @@ import Notification from "./pages/Notification"
 import Credit from "./pages/CreditAi"
 import Attendance from "./pages/Attendance"
 import AttendanceDashboard from "./pages/AttendanceDashboard"
+import AttendanceEvent from "./pages/AttendanceEvent"
 
 function ComingSoon() {
   return (
@@ -45,7 +46,7 @@ function App() {
           <Route path="/attendance/rekap/:id" element={<ComingSoon />} />
           <Route path="/attendance/cuti" element={<ComingSoon />} />
           <Route path="/attendance/impor" element={<ComingSoon />} />
-          <Route path="/attendance/absen" element={<ComingSoon />} />
+          <Route path="/attendance/absen" element={<AttendanceEvent />} />
           <Route path="/attendance/pengaturan" element={<ComingSoon />} />
 
           <Route path="*" element={<ComingSoon />} />

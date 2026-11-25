@@ -1,3 +1,4 @@
+DROP TABLE IF EXISTS attendance_scan CASCADE;
 DROP TABLE IF EXISTS attendance_day CASCADE;
 DROP TABLE IF EXISTS attendance_setting CASCADE;
 DROP TABLE IF EXISTS mapping_modules_menus CASCADE;
@@ -91,3 +92,14 @@ CREATE TABLE attendance_setting (
   value      JSONB NOT NULL,
   updated_at TIMESTAMP NOT NULL DEFAULT NOW()
 );
+
+CREATE TABLE attendance_scan (
+  id SERIAL PRIMARY KEY,
+  nik VARCHAR(30) NOT NULL REFERENCES master_employee(nik) ON UPDATE CASCADE ON DELETE CASCADE,
+  time TIMESTAMPTZ NOT NULL,
+  type VARCHAR(3) NOT NULL CHECK (type IN ('in', 'out')),
+  geo_status VARCHAR(20) NOT NULL DEFAULT 'unavailable' CHECK (geo_status IN ('ok', 'denied', 'unavailable', 'lookup_failed')),
+  geo_label VARCHAR(255),
+  geo_accuracy INTEGER
+);
+CREATE INDEX idx_attendance_scan_nik_time ON attendance_scan (nik, time);

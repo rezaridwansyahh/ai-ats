@@ -10,6 +10,7 @@ import moduleRoute from "./src/modules/module/module.route.js";
 import menuRoute from "./src/modules/menu/menu.route.js";
 import attendance from './src/modules/attendance/attendance.route.js';
 import attendanceSetting from './src/modules/attendance-setting/attendance-setting.route.js';
+import attendanceEvent from './src/modules/attendanve-event/attendance-event.route.js';
 
 const app = express();
 const api = Router();
@@ -28,6 +29,7 @@ api.use("/module", moduleRoute);
 api.use("/menu", menuRoute);
 api.use('/attendance', attendance);
 api.use('/attendance-setting', attendanceSetting);
+api.use('/attendance-event', attendanceEvent);
 
 app.use('/api', api);
 
