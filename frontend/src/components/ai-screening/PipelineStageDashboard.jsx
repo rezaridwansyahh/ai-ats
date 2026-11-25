@@ -342,7 +342,7 @@ export default function PipelineStageDashboard({
                   </span>
                   <Button size="sm" className="text-xs" disabled={selected.size === 0 || advancing} onClick={handleAdvanceClick}>
                     {advancing ? <Loader2 className="h-3.5 w-3.5 mr-1.5 animate-spin" /> : null}
-                    Advance {selected.size} to interview <ArrowRight className="h-3.5 w-3.5 ml-1.5" />
+                    Advance {selected.size} to Next Stage <ArrowRight className="h-3.5 w-3.5 ml-1.5" />
                   </Button>
                 </div>
                 <Textarea

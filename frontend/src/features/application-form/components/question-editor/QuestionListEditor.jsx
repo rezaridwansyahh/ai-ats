@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import { Plus, X } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
@@ -6,6 +7,24 @@ import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from '@/components/ui/select';
 import { FIELD_TYPES, OPTIONS_FIELD_TYPES } from '../../lib/field-types';
+
+function OptionsInput({ options, onCommit }) {
+  const [draft, setDraft] = useState((options || []).join(', '));
+
+  const commit = () => {
+    onCommit(draft.split(',').map((o) => o.trim()).filter(Boolean));
+  };
+
+  return (
+    <Input
+      value={draft}
+      onChange={(e) => setDraft(e.target.value)}
+      onBlur={commit}
+      placeholder="Options, comma separated…"
+      className="h-8 text-xs"
+    />
+  );
+}
 
 export default function QuestionListEditor({ questions, onChange, emptyHint }) {
   const addQuestion = () => {
@@ -54,13 +73,9 @@ export default function QuestionListEditor({ questions, onChange, emptyHint }) {
               </div>
 
               {OPTIONS_FIELD_TYPES.has(q.type) && (
-                <Input
-                  value={(q.options || []).join(', ')}
-                  onChange={(e) => updateQuestion(idx, {
-                    options: e.target.value.split(',').map((o) => o.trim()).filter(Boolean),
-                  })}
-                  placeholder="Options, comma separated…"
-                  className="h-8 text-xs"
+                <OptionsInput
+                  options={q.options}
+                  onCommit={(options) => updateQuestion(idx, { options })}
                 />
               )}
 
