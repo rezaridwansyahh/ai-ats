@@ -6,6 +6,8 @@ import getDb from '../../config/postgres.js';
 import interviewModel from '../interview/interview.model.js';
 import backgroundCheckModel from '../background-check/background-check.model.js';
 import OfferModel from '../offer/offer.model.js';
+import pipelineService from '../pipeline/pipeline.service.js';
+import jobModel from '../job/job.model.js';
 
 class CandidatePipelineService {
   async getAll(company_id) {
@@ -238,6 +240,90 @@ class CandidatePipelineService {
     }
 
     return result;
+  }
+
+  async advanceBulk(job_id, candidate_ids, expected_stage_id, decision) {
+    if (!job_id) throw { status: 400, message: 'job_id is required' };
+    if (!Array.isArray(candidate_ids) || candidate_ids.length === 0) {
+      throw { status: 400, message: 'candidate_ids must be a non-empty array' };
+    }
+    if (!candidate_ids.every((id) => Number.isInteger(id))) {
+      throw { status: 400, message: 'candidate_ids must all be integers' };
+    }
+    if (!expected_stage_id) throw { status: 400, message: 'expected_stage_id is required' };
+
+    const job = await jobModel.getById(job_id);
+    if (!job) throw { status: 404, message: 'Job not found' };
+
+    const pipeline = await pipelineService.getByJobId(job_id);
+    if (!pipeline.stages || pipeline.stages.length === 0) {
+      throw { status: 409, message: 'This job has no pipeline stages configured' };
+    }
+
+    const currentStagesIndex = pipeline.stages.findIndex((s) => s.id === expected_stage_id);
+    if (currentStagesIndex === -1) {
+      throw { status: 409, message: "expected_stage_id is not part of this job's stage list" };
+    }
+    const isLastStage = currentStagesIndex === pipeline.stages.length - 1;
+    const nextStage = isLastStage ? pipeline.stages[currentStagesIndex] : pipeline.stages[currentStagesIndex + 1];
+
+    const candRows = await getDb().query(
+      `SELECT id, latest_stage FROM master_candidate WHERE id = ANY($1::int[]) AND job_id = $2`,
+      [candidate_ids, job_id]
+    );
+    const latestById = new Map(candRows.rows.map((r) => [r.id, r.latest_stage]));
+
+    const notFound = candidate_ids.filter((id) => !latestById.has(id));
+    if (notFound.length > 0) {
+      throw { status: 404, message: `Candidate(s) not found in this job: ${notFound.join(', ')}` };
+    }
+
+    const eligible = [];
+    const skipped = [];
+    for (const id of candidate_ids) {
+      if (latestById.get(id) === expected_stage_id) {
+        eligible.push(id);
+      } else {
+        skipped.push({ candidate_id: id, reason: 'stage changed since selection' });
+      }
+    }
+
+    if (eligible.length === 0) {
+      return { advanced: [], skipped, nextStage };
+    }
+
+    const result = await CandidatePipeline.addStageBulk(eligible, nextStage.id, decision);
+
+    // Same best-effort policy as addStage: a side-effect failure must not
+    // roll back the stage move that already succeeded above.
+    try {
+      if (nextStage.category === 'Interview') {
+        await getDb().query(
+          `INSERT INTO candidate_interview (candidate_id, job_id, company_id)
+           SELECT unnest($1::int[]), $2, $3
+           ON CONFLICT (candidate_id, job_id) DO NOTHING`,
+          [eligible, job_id, job.company_id]
+        );
+      } else if (nextStage.category === 'Background Check') {
+        await getDb().query(
+          `INSERT INTO candidate_bg (candidate_id, job_id, company_id)
+           SELECT unnest($1::int[]), $2, $3
+           ON CONFLICT (candidate_id, job_id) DO NOTHING`,
+          [eligible, job_id, job.company_id]
+        );
+      } else if (nextStage.category === 'Offering & Contract') {
+        await getDb().query(
+          `INSERT INTO candidate_offer (candidate_id, job_id, company_id, position_title, contract_type, offer_status, created_by)
+           SELECT unnest($1::int[]), $2, $3, $4, $5::contract_type_enum, 'draft', $6
+           ON CONFLICT (candidate_id, job_id) DO NOTHING`,
+          [eligible, job_id, job.company_id, job.job_title || null, 'PKWTT', null]
+        );
+      }
+    } catch (sideEffectErr) {
+      console.error('advanceBulk side-effect error:', sideEffectErr?.message || sideEffectErr);
+    }
+
+    return { ...result, advanced: eligible, skipped, nextStage };
   }
 
   async getProgress(candidate_id) {

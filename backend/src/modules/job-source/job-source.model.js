@@ -44,7 +44,7 @@ class JobSourceModel {
       ) mas ON mas.job_sourcing_id = cjs.id
       WHERE cjs.account_id = $1
       GROUP BY cjs.id, mjss.candidate_count, mas.synced_count
-      ORDER BY cjs.created_at ASC
+      ORDER BY cjs.created_at DESC
     `, [account_id]);
 
     return result.rows;
