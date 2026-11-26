@@ -1,3 +1,5 @@
+DROP TABLE IF EXISTS attendance_import CASCADE;
+DROP TABLE IF EXISTS pin_mapping CASCADE;
 DROP TABLE IF EXISTS attendance_scan CASCADE;
 DROP TABLE IF EXISTS attendance_day CASCADE;
 DROP TABLE IF EXISTS attendance_setting CASCADE;
@@ -71,6 +73,20 @@ CREATE TABLE mapping_modules_menus (
   UNIQUE (module_id, menu_id)
 );
 
+CREATE TABLE pin_mapping (
+  pin VARCHAR(30) PRIMARY KEY,
+  nik VARCHAR(30) NOT NULL REFERENCES master_employee(nik) ON UPDATE CASCADE ON DELETE CASCADE
+);
+
+CREATE TABLE attendance_import (
+  id         SERIAL PRIMARY KEY,
+  file_name  VARCHAR(255) NOT NULL,
+  mapping    JSONB,
+  undo       JSONB NOT NULL DEFAULT '[]',
+  created_at TIMESTAMP NOT NULL DEFAULT NOW(),
+  undone_at  TIMESTAMP
+);
+
 CREATE TABLE attendance_day (
   id SERIAL PRIMARY KEY,
   nik VARCHAR(30) NOT NULL REFERENCES master_employee(nik) ON UPDATE CASCADE ON DELETE CASCADE,
@@ -80,6 +96,7 @@ CREATE TABLE attendance_day (
   jam_pulang TIME,
   ket VARCHAR(255),
   source VARCHAR(20) NOT NULL DEFAULT 'mesin' CHECK (source IN ('mesin', 'pwa', 'pengajuan', 'hr')),
+  import_id INTEGER REFERENCES attendance_import(id) ON DELETE SET NULL,
   created_at TIMESTAMP NOT NULL DEFAULT NOW(),
   updated_at TIMESTAMP NOT NULL DEFAULT NOW(),
   UNIQUE (nik, tgl)
@@ -103,3 +120,4 @@ CREATE TABLE attendance_scan (
   geo_accuracy INTEGER
 );
 CREATE INDEX idx_attendance_scan_nik_time ON attendance_scan (nik, time);
+

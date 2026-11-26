@@ -1,6 +1,6 @@
 import api from './axios';
 
-const importForm = (file, extra = {}) => {
+export const importForm = (file, extra = {}) => {
   const form = new FormData();
   form.append('file', file);
   for (const [k, v] of Object.entries(extra)) form.append(k, JSON.stringify(v));

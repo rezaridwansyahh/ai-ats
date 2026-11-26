@@ -78,7 +78,10 @@ const NORMALIZE = {
 
 const cellText = (v) => {
   if (v == null) return '';
-  if (v instanceof Date) return v.toISOString().slice(0, 10); // date cells (UTC midnight)
+  if (v instanceof Date) {
+    const iso = v.toISOString();
+    return iso.slice(11, 19) === '00:00:00' ? iso.slice(0, 10) : `${iso.slice(0, 10)} ${iso.slice(11, 19)}`;
+  }
   if (typeof v === 'object') {
     if (Array.isArray(v.richText)) return v.richText.map((t) => t.text).join('').trim();
     if ('result' in v) return cellText(v.result); // formula
@@ -88,7 +91,7 @@ const cellText = (v) => {
   return String(v).trim();
 };
 
-async function parseSheet(file) {
+export async function parseSheet(file, maxRows = MAX_ROWS) {
   const ext = path.extname(file.originalname).toLowerCase();
   const wb = new ExcelJS.Workbook();
   let ws;
@@ -130,7 +133,7 @@ async function parseSheet(file) {
     const cells = {};
     headers.forEach((h, i) => { if (h) cells[h] = texts[i]; });
     rows.push({ row: n, cells }); 
-    if (rows.length > MAX_ROWS) throw bad(`Too many rows (maximum ${MAX_ROWS})`);
+    if (rows.length > maxRows) throw bad(`Too many rows (maximum ${maxRows})`);
   }
   if (!rows.length) throw bad('The file has no data rows');
   return { headers: headers.filter(Boolean), rows };
