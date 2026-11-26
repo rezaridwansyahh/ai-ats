@@ -500,6 +500,40 @@ static async getNotificationContext(candidate_id) {
     }
   }
 
+  // Batched version of addStage — same two writes (audit row + pointer
+  // update), but one INSERT/UPDATE for the whole candidate_ids array instead
+  // of one pair per candidate. Every candidate in the array moves to the
+  // SAME job_stage_id with the SAME decision — caller is responsible for
+  // having verified they all share the same current stage first.
+  static async addStageBulk(candidate_ids, job_stage_id, decision) {
+    const client = await getDb().connect();
+    const decisionJson = JSON.stringify({ decision });
+    try {
+      await client.query('BEGIN'); 
+
+      const stageInsert = await client.query(`
+        INSERT INTO candidate_stages (candidate_id, job_stage_id, decision)
+        SELECT unnest($1::int[]), $2, $3::jsonb
+        RETURNING *
+      `, [candidate_ids, job_stage_id, decisionJson]);
+
+      const candidateUpdate = await client.query(`
+        UPDATE master_candidate
+        SET latest_stage = $1, updated_at = NOW()
+        WHERE id = ANY($2::int[])
+        RETURNING *
+      `, [job_stage_id, candidate_ids]);
+
+      await client.query('COMMIT');
+      return { stages: stageInsert.rows, candidates: candidateUpdate.rows };
+    } catch (err) {
+      await client.query('ROLLBACK');
+      throw err;
+    } finally {
+      client.release();
+    }
+  }
+
   static async getProgress(candidate_id) {
     const result = await getDb().query(`
       WITH candidate_data AS (
