@@ -28,9 +28,9 @@ import externalAssessment from "./src/modules/assessment/external/external.route
 import assessmentBatteryResult from "./src/modules/assessment/assessment-battery-result/assessment-battery-result.route.js"
 import assessmentAI from "./src/modules/assessment/assessment-ai/assessment-ai.route.js"
 import sourcing from "./src/modules/sourcing/sourcing.route.js"
-import pipeline from "./src/modules/pipeline/pipeline.route.js"
-import stageCategory from "./src/modules/stage-category/stage-category.route.js"
-import templateStage from "./src/modules/template-stage/template-stage.route.js"
+import jobStage from "./src/modules/stages/job-stage/job-stage.route.js"
+import stageCategory from "./src/modules/stages/stage-category/stage-category.route.js"
+import templateStage from "./src/modules/stages/template-stage/template-stage.route.js"
 import automationSetting from "./src/modules/automation-setting/automation.route.js"
 import screening from "./src/modules/screening/screening.route.js"
 import company from "./src/modules/company/company.route.js"
@@ -101,7 +101,7 @@ api.use("/job", job);
 api.use("/applicant", applicant);
 api.use("/candidate-pipeline", candidatePipeline);
 api.use("/sourcing", sourcing);
-api.use("/pipeline", pipeline);
+api.use("/pipeline", jobStage);
 api.use("/stage-category", stageCategory);
 api.use("/template-stage", templateStage);
 api.use("/automation-setting", automationSetting);

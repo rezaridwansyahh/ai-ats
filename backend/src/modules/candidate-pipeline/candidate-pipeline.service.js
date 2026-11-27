@@ -6,7 +6,7 @@ import getDb from '../../config/postgres.js';
 import interviewModel from '../interview/interview.model.js';
 import backgroundCheckModel from '../background-check/background-check.model.js';
 import OfferModel from '../offer/offer.model.js';
-import pipelineService from '../pipeline/pipeline.service.js';
+import jobStageService from '../stages/job-stage/job-stage.service.js';
 import jobModel from '../job/job.model.js';
 
 class CandidatePipelineService {
@@ -255,17 +255,17 @@ class CandidatePipelineService {
     const job = await jobModel.getById(job_id);
     if (!job) throw { status: 404, message: 'Job not found' };
 
-    const pipeline = await pipelineService.getByJobId(job_id);
-    if (!pipeline.stages || pipeline.stages.length === 0) {
+    const jobStage = await jobStageService.getByJobId(job_id);
+    if (!jobStage.stages || jobStage.stages.length === 0) {
       throw { status: 409, message: 'This job has no pipeline stages configured' };
     }
 
-    const currentStagesIndex = pipeline.stages.findIndex((s) => s.id === expected_stage_id);
+    const currentStagesIndex = jobStage.stages.findIndex((s) => s.id === expected_stage_id);
     if (currentStagesIndex === -1) {
       throw { status: 409, message: "expected_stage_id is not part of this job's stage list" };
     }
-    const isLastStage = currentStagesIndex === pipeline.stages.length - 1;
-    const nextStage = isLastStage ? pipeline.stages[currentStagesIndex] : pipeline.stages[currentStagesIndex + 1];
+    const isLastStage = currentStagesIndex === jobStage.stages.length - 1;
+    const nextStage = isLastStage ? jobStage.stages[currentStagesIndex] : jobStage.stages[currentStagesIndex + 1];
 
     const candRows = await getDb().query(
       `SELECT id, latest_stage FROM master_candidate WHERE id = ANY($1::int[]) AND job_id = $2`,

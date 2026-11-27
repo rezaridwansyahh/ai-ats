@@ -1,11 +1,11 @@
-import PipelineModel from "./pipeline.model.js";
-import getDb from "../../config/postgres.js";
+import JobStageModel from "./job-stage.model.js";
+import getDb from "../../../config/postgres.js";
 
-class PipelineService {
+class JobStageService {
   async getByJobId(jobId) {
-    const pipeline = await PipelineModel.getByJobId(jobId);
-    if (!pipeline) return { job_id: jobId, template_stage_id: null, template_name: null, is_custom: true, stages: [] };
-    return pipeline;
+    const jobStage = await JobStageModel.getByJobId(jobId);
+    if (!jobStage) return { job_id: jobId, template_stage_id: null, template_name: null, is_custom: true, stages: [] };
+    return jobStage;
   }
 
   async saveStages(jobId, stages, templateId) {
@@ -21,7 +21,7 @@ class PipelineService {
       if (tplCheck.rows.length === 0) {
         throw { status: 404, message: 'Template not found' };
       }
-      await PipelineModel.applyTemplate(jobId, templateId);
+      await JobStageModel.applyTemplate(jobId, templateId);
     } else {
       // Custom mode — validate stages
       if (!Array.isArray(stages) || stages.length === 0) {
@@ -40,11 +40,11 @@ class PipelineService {
         }
       }
 
-      await PipelineModel.saveCustomStages(jobId, stages);
+      await JobStageModel.saveCustomStages(jobId, stages);
     }
 
-    return await PipelineModel.getByJobId(jobId);
+    return await JobStageModel.getByJobId(jobId);
   }
 }
 
-export default new PipelineService();
+export default new JobStageService();

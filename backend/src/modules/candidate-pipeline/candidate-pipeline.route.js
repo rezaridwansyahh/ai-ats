@@ -21,6 +21,7 @@ router.get('/:id/email/preview', candidatePipelineController.previewEmail);
 router.post('/', candidatePipelineController.create);
 router.post('/:id/stages', candidatePipelineController.addStage);
 router.post('/:id/email', candidatePipelineController.email);
+router.post('/job/:job_id/advance-bulk', candidatePipelineController.advanceBulk);
 
 router.put('/:id', candidatePipelineController.update);
 

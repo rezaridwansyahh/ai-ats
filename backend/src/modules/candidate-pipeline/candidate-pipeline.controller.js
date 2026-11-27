@@ -123,6 +123,17 @@ class CandidatePipelineController {
     }
   }
 
+  async advanceBulk(req, res) {
+    try {
+      const job_id = Number(req.params.job_id);
+      const { candidate_ids, expected_stage_id, decision } = req.body || {};
+      const result = await candidatePipelineService.advanceBulk(job_id, candidate_ids, expected_stage_id, decision);
+      res.status(200).json({ message: 'Advance-bulk complete', ...result });
+    } catch (err) {
+      res.status(err.status || 500).json({ message: err.message });
+    }
+  }
+
   async email(req, res) {
     try {
       const result = await candidatePipelineService.email(req.params.id);

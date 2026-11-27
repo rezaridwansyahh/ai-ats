@@ -1,11 +1,11 @@
 import express from 'express';
 const router = express.Router();
-import pipelineController from './pipeline.controller.js';
-import authToken from '../../shared/middleware/auth.middleware.js';
+import jobStageController from './job-stage.controller.js';
+import authToken from '../../../shared/middleware/auth.middleware.js';
 
 router.use(authToken);
 
-router.get('/:jobId', pipelineController.getByJobId);
-router.put('/:jobId', pipelineController.saveStages);
+router.get('/:jobId', jobStageController.getByJobId);
+router.put('/:jobId', jobStageController.saveStages);
 
 export default router;

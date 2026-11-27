@@ -1,6 +1,6 @@
-import getDb from "../../config/postgres.js";
+import getDb from "../../../config/postgres.js";
 
-class PipelineModel {
+class JobStageModel {
   async getByJobId(jobId) {
     const result = await getDb().query(`
       SELECT
@@ -118,4 +118,4 @@ class PipelineModel {
   }
 }
 
-export default new PipelineModel();
+export default new JobStageModel();
