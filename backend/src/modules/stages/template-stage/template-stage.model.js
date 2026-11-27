@@ -1,4 +1,4 @@
-import getDb from "../../config/postgres.js";
+import getDb from "../../../config/postgres.js";
 
 class TemplateStageModel {
   async getAll() {
