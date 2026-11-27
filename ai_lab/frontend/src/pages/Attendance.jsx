@@ -24,6 +24,7 @@ export default function AttendanceHome() {
   }
 
   const { period, kpi, attention, insights } = data;
+  const q = `?from=${period.from}&to=${period.to}`;
   const month = new Date(`${period.from}T00:00:00Z`).toLocaleDateString('id-ID', { month: 'long', timeZone: 'UTC' });
 
   return (
@@ -36,16 +37,16 @@ export default function AttendanceHome() {
 
       <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
         <KpiCard label="Rata-rata % kehadiran" value={`${dec(kpi.pctHadir)}%`} sub="di luar cuti" onClick={() => navigate('/attendance/dashboard')} />
-        <KpiCard label="Kejadian terlambat" value={String(kpi.lateEvents)} sub={`${kpi.lateMinutes} menit total`} onClick={() => navigate('/attendance/rekap')} />
-        <KpiCard label="Perlu perhatian" value={String(kpi.needAttention)} sub="karyawan dengan ≥1 tanda" onClick={() => navigate('/attendance/rekap')} />
+        <KpiCard label="Kejadian terlambat" value={String(kpi.lateEvents)} sub={`${kpi.lateMinutes} menit total`} onClick={() => navigate(`/attendance/rekap${q}`)} />
+        <KpiCard label="Perlu perhatian" value={String(kpi.needAttention)} sub="karyawan dengan ≥1 tanda" onClick={() => navigate(`/attendance/rekap${q}`)} />
         <KpiCard label="Cuti menunggu persetujuan" value={kpi.pendingLeave == null ? '—' : String(kpi.pendingLeave)} sub="via link ke atasan" onClick={() => navigate('/attendance/cuti')} />
       </div>
 
       <div className="grid items-start gap-4 lg:grid-cols-2">
         <AttentionCard
           attention={attention}
-          onOpen={(nik) => navigate(`/attendance/rekap/${nik}`)}
-          onAll={() => navigate('/attendance/rekap')}
+          onOpen={(nik) => navigate(`/attendance/rekap/${nik}${q}`)}
+          onAll={() => navigate(`/attendance/rekap${q}`)}
         />
         <div className="space-y-4">
           <AttendanceInsight title={`Insight kehadiran ${month}`} insights={insights} />

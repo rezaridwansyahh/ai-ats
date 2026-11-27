@@ -14,6 +14,8 @@ import Attendance from "./pages/Attendance"
 import AttendanceDashboard from "./pages/AttendanceDashboard"
 import AttendanceEvent from "./pages/AttendanceEvent"
 import AttendanceImport from "./pages/AttendanceImport"
+import AttendanceRekap from "./pages/AttendanceRekap"
+import AttendanceRekapDetail from "./pages/AttendanceRekapDetail"
 
 function ComingSoon() {
   return (
@@ -43,8 +45,8 @@ function App() {
           <Route path="/attendance" element={<Navigate to="/attendance/beranda" replace />} />
           <Route path="/attendance/beranda" element={<Attendance />} />
           <Route path="/attendance/dashboard" element={<AttendanceDashboard />} />
-          <Route path="/attendance/rekap" element={<ComingSoon />} />
-          <Route path="/attendance/rekap/:id" element={<ComingSoon />} />
+          <Route path="/attendance/rekap" element={<AttendanceRekap />} />
+          <Route path="/attendance/rekap/:nik" element={<AttendanceRekapDetail />} />
           <Route path="/attendance/cuti" element={<ComingSoon />} />
           <Route path="/attendance/impor" element={<AttendanceImport />} />
           <Route path="/attendance/absen" element={<AttendanceEvent />} />

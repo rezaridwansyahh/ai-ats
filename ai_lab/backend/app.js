@@ -12,6 +12,7 @@ import attendance from './src/modules/attendance/attendance.route.js';
 import attendanceSetting from './src/modules/attendance-setting/attendance-setting.route.js';
 import attendanceEvent from './src/modules/attendanve-event/attendance-event.route.js';
 import attendanceImport from './src/modules/attendance-import/attendance-import.route.js';
+import attendanceRekap from './src/modules/attendance-rekap/attendance-rekap.route.js';
 
 const app = express();
 const api = Router();
@@ -32,6 +33,7 @@ api.use('/attendance', attendance);
 api.use('/attendance-setting', attendanceSetting);
 api.use('/attendance-event', attendanceEvent);
 api.use('/attendance-import', attendanceImport);
+api.use('/attendance-rekap', attendanceRekap);
 
 app.use('/api', api);
 

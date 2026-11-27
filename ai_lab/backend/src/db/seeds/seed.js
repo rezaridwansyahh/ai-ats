@@ -4,6 +4,7 @@ import attendanceData from '../data/attendance.js';
 import modulesData from '../data/modules.js';
 import menusData from '../data/menus.js';
 import moduleMenuData from '../data/module_menu.js';
+import attendanceSettingsData from '../data/attendance_settings.js';
 
 const seed = async () => {
 
@@ -15,6 +16,7 @@ const seed = async () => {
     await client.query('DELETE FROM mapping_modules_menus');
     await client.query('DELETE FROM master_menus');
     await client.query('DELETE FROM master_modules');
+    await client.query('DELETE FROM attendance_setting');
 
     for (const emp of employeesData) {
       await client.query(
@@ -51,6 +53,12 @@ const seed = async () => {
         [menu.id, menu.name]
       );
     }
+    for (const s of attendanceSettingsData) {
+      await client.query(
+        `INSERT INTO attendance_setting (key, value) VALUES ($1, $2)`,
+        [s.key, JSON.stringify(s.value)]
+      );
+    }
 
     // Rows are inserted in array order, so mapping ids follow the sidebar order.
     for (const mm of moduleMenuData) {
@@ -65,7 +73,7 @@ const seed = async () => {
     await client.query(`SELECT setval(pg_get_serial_sequence('master_menus', 'id'), (SELECT MAX(id) FROM master_menus))`);
 
     await client.query('COMMIT');
-    console.log(`Seeded ${employeesData.length} employees, ${attendanceData.length} attendance rows, ${modulesData.length} modules, ${menusData.length} menus`);
+    console.log(`Seeded ${employeesData.length} employees, ${attendanceData.length} attendance rows, ${attendanceSettingsData.length} settings, ${modulesData.length} modules, ${menusData.length} menus`);
   } catch (err) {
     await client.query('ROLLBACK');
     throw err;

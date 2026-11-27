@@ -34,8 +34,8 @@ export default function AttendanceDashboard() {
   }
 
   const { period, kpi, status, byWeekday, weekly, divisions, insights } = data;
-  const toRekap = () => navigate('/attendance/rekap');
-
+  const toRekap = () => navigate(`/attendance/rekap?from=${period.from}&to=${period.to}`);
+  
   return (
     <div className="space-y-4">
       <PageHead
