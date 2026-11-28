@@ -48,7 +48,7 @@ const ms = (s) => Date.parse(`${s}T00:00:00Z`);
 const dow = (s) => (new Date(ms(s)).getUTCDay() + 6) % 7; // 0 = Monday
 const addDays = (s, n) => new Date(ms(s) + n * dayMs).toISOString().slice(0, 10);
 
-function workdays(from, to, holidays) {
+export function workdays(from, to, holidays) {
   const out = [];
   for (let d = from; d <= to; d = addDays(d, 1)) if (dow(d) < 5 && !holidays.has(d)) out.push(d);
   return out;

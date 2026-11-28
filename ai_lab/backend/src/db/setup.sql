@@ -1,3 +1,5 @@
+DROP TABLE IF EXISTS leave_request CASCADE;
+DROP TABLE IF EXISTS leave_balance CASCADE;
 DROP TABLE IF EXISTS attendance_import CASCADE;
 DROP TABLE IF EXISTS pin_mapping CASCADE;
 DROP TABLE IF EXISTS attendance_scan CASCADE;
@@ -10,6 +12,8 @@ DROP TABLE IF EXISTS employee_change CASCADE;
 DROP TABLE IF EXISTS employee_import CASCADE;
 DROP TABLE IF EXISTS employee_ai_summary CASCADE;
 DROP TABLE IF EXISTS master_employee CASCADE;
+
+CREATE EXTENSION IF NOT EXISTS pgcrypto;
 
 CREATE TABLE employee_import (
   id         SERIAL PRIMARY KEY,
@@ -120,4 +124,32 @@ CREATE TABLE attendance_scan (
   geo_accuracy INTEGER
 );
 CREATE INDEX idx_attendance_scan_nik_time ON attendance_scan (nik, time);
+
+CREATE TABLE leave_request (
+  id SERIAL PRIMARY KEY,
+  nik VARCHAR(30) NOT NULL REFERENCES master_employee(nik) ON UPDATE CASCADE ON DELETE CASCADE,
+  jenis VARCHAR(20) NOT NULL,
+  tgl_mulai DATE NOT NULL,
+  tgl_selesai DATE NOT NULL,
+  alasan VARCHAR(255),
+  status VARCHAR(20) NOT NULL DEFAULT 'Menunggu atasan',
+  token UUID NOT NULL UNIQUE DEFAULT gen_random_uuid(),
+  token_expires_at TIMESTAMP,
+  catatan_atasan VARCHAR(255),
+  decided_by VARCHAR(30) REFERENCES master_employee(nik) ON UPDATE CASCADE ON DELETE SET NULL,
+  decided_at TIMESTAMP,
+  created_at TIMESTAMP NOT NULL DEFAULT NOW()
+);
+CREATE INDEX idx_leave_request_nik ON leave_request (nik);
+CREATE INDEX idx_leave_request_tgl ON leave_request (tgl_mulai, tgl_selesai);
+
+CREATE TABLE leave_balance (
+  nik VARCHAR(30) NOT NULL REFERENCES master_employee(nik) ON UPDATE CASCADE ON DELETE CASCADE,
+  tahun INTEGER NOT NULL,
+  terpakai_awal INTEGER NOT NULL DEFAULT 0,
+  penyesuaian INTEGER NOT NULL DEFAULT 0,
+  catatan VARCHAR(255),
+  updated_at TIMESTAMP NOT NULL DEFAULT NOW(),
+  PRIMARY KEY (nik, tahun)
+);
 

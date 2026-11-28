@@ -16,6 +16,8 @@ import AttendanceEvent from "./pages/AttendanceEvent"
 import AttendanceImport from "./pages/AttendanceImport"
 import AttendanceRekap from "./pages/AttendanceRekap"
 import AttendanceRekapDetail from "./pages/AttendanceRekapDetail"
+import AttendanceLeave from "./pages/AttendanceLeave"
+import LeavePortal from "./pages/LeavePortal"
 
 function ComingSoon() {
   return (
@@ -29,6 +31,9 @@ function App() {
   return (
     <>
       <Routes>
+        {/* public, no layout */}
+        <Route path="/portal/leave/:token" element={<LeavePortal />} />
+
         <Route element={<ModuleLayout />}>
           {/* People Hub */}
           <Route path="/" element={<Dashboard />} />
@@ -47,7 +52,7 @@ function App() {
           <Route path="/attendance/dashboard" element={<AttendanceDashboard />} />
           <Route path="/attendance/rekap" element={<AttendanceRekap />} />
           <Route path="/attendance/rekap/:nik" element={<AttendanceRekapDetail />} />
-          <Route path="/attendance/cuti" element={<ComingSoon />} />
+          <Route path="/attendance/cuti" element={<AttendanceLeave />} />
           <Route path="/attendance/impor" element={<AttendanceImport />} />
           <Route path="/attendance/absen" element={<AttendanceEvent />} />
           <Route path="/attendance/pengaturan" element={<ComingSoon />} />

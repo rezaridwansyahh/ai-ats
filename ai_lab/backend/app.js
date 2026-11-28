@@ -13,6 +13,8 @@ import attendanceSetting from './src/modules/attendance-setting/attendance-setti
 import attendanceEvent from './src/modules/attendanve-event/attendance-event.route.js';
 import attendanceImport from './src/modules/attendance-import/attendance-import.route.js';
 import attendanceRekap from './src/modules/attendance-rekap/attendance-rekap.route.js';
+import leave from './src/modules/leave/leave.route.js';
+import portalLeave from './src/modules/portal-leave/portal-leave.route.js';
 
 const app = express();
 const api = Router();
@@ -34,6 +36,8 @@ api.use('/attendance-setting', attendanceSetting);
 api.use('/attendance-event', attendanceEvent);
 api.use('/attendance-import', attendanceImport);
 api.use('/attendance-rekap', attendanceRekap);
+api.use('/leave', leave);
+api.use('/portal-leave', portalLeave);
 
 app.use('/api', api);
 

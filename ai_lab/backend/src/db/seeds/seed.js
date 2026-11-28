@@ -5,6 +5,8 @@ import modulesData from '../data/modules.js';
 import menusData from '../data/menus.js';
 import moduleMenuData from '../data/module_menu.js';
 import attendanceSettingsData from '../data/attendance_settings.js';
+import leaveRequestsData from '../data/leave_requests.js';
+import leaveBalancesData from '../data/leave_balances.js';
 
 const seed = async () => {
 
@@ -17,6 +19,8 @@ const seed = async () => {
     await client.query('DELETE FROM master_menus');
     await client.query('DELETE FROM master_modules');
     await client.query('DELETE FROM attendance_setting');
+    await client.query('DELETE FROM leave_request');
+    await client.query('DELETE FROM leave_balance');
 
     for (const emp of employeesData) {
       await client.query(
@@ -67,6 +71,22 @@ const seed = async () => {
         [mm.module_id, mm.menu_id]
       );
     }
+
+    for (const l of leaveRequestsData) {
+      await client.query(
+        `INSERT INTO leave_request (id, nik, jenis, tgl_mulai, tgl_selesai, alasan, status, token_expires_at, decided_at)
+        VALUES ($1, $2, $3, $4, $5, $6, $7, CASE WHEN $8::boolean THEN NOW() + INTERVAL '72 hours' END, $9)`,
+        [l.id, l.nik, l.jenis, l.tgl_mulai, l.tgl_selesai, l.alasan, l.status, l.status === 'Menunggu atasan', l.decided_at]
+      );
+    }
+
+    for (const b of leaveBalancesData) {
+      await client.query(
+        `INSERT INTO leave_balance (nik, tahun, terpakai_awal, penyesuaian, catatan)
+        VALUES ($1, $2, $3, $4, $5)`,
+        [b.nik, b.tahun, b.terpakai_awal, b.penyesuaian, b.catatan]
+      );
+}
 
     // Modules and menus are inserted with explicit ids, so move their sequences past them.
     await client.query(`SELECT setval(pg_get_serial_sequence('master_modules', 'id'), (SELECT MAX(id) FROM master_modules))`);
