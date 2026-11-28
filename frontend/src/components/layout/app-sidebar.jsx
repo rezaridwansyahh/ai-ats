@@ -118,9 +118,9 @@ const SOON_ITEMS = new Set([]);
 // Explicit ordering for items inside the "Selection" section.
 const SELECTION_MENU_ORDER = [
   'AI Screening',
-  'Interview',
   'Psych Assessment',
   'Medical Assessment',
+  'Interview',
   'Background Check',
 ];
 
